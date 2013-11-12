@@ -9,14 +9,16 @@ class Metadata(object):
   }
 
   def __init__(self, **kwargs):
+    '''
+    The constructor for a Metadata subclass takes its keys as keyword arguments.
+    '''
     for (key, value) in kwargs.iteritems():
       self.set_metadata_key(key, value)
 
-  @staticmethod
-  def get_type_constructor(metadata_type):
-    return unicode if metadata_type == basestring else metadata_type
-
   def set_metadata_key(self, key, value):
+    '''
+    Perform validation, then set this Metadata object's value for a given key.
+    '''
     if key not in self.METADATA_KEYS:
       raise ValueError('Unexpected metadata key: %s' % (key,))
     metadata_type = self.METADATA_KEYS[key]
@@ -35,11 +37,27 @@ class Metadata(object):
 
   @staticmethod
   def get_metadata_subclass(bundle_type):
+    '''
+    Return the Metadata subclass associated with a given bundle type.
+    '''
     subclass_name = '%sMetadata' % (bundle_type.title(),)
     return Metadata.METADATA_SUBCLASSES[subclass_name]
 
   @staticmethod
+  def get_type_constructor(metadata_type):
+    '''
+    Return the type constructor for each type of metadata.
+    Note that basestrings cannot be instantiated, so we return unicode instead.
+    '''
+    return unicode if metadata_type == basestring else metadata_type
+
+  @staticmethod
   def from_dicts(bundle_type, rows):
+    '''
+    Construct a Metadata object given a bundle type and a denormalized list of
+    metadata dicts. These dicts may either be those returned by from_dicts or
+    sqlalchemy Row objects from the metadata table.
+    '''
     subclass = Metadata.get_metadata_subclass(bundle_type)
     metadata = {}
     for (key, metadata_type) in subclass.METADATA_KEYS.iteritems():
