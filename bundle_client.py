@@ -1,4 +1,29 @@
 class BundleClient(object):
+  '''
+  Abstract base class that describes the BundleClient interface.
+
+  There are three categories of BundleClient commands:
+    basic operations: creating, browsing, and downloading bundles
+    sharing operations: permissions and group administration
+    remote operations: commands that link a local CodaLab instance to a remote
+
+  There will be several implementations of this class. Each derived
+  implementation supports more commands.
+    RpcBundleClient:
+      Supports the basic and sharing operations, but shells out to a remote
+      CodaLab instance to actually perform them.
+    LocalBundleClient:
+      Supports all operations. Basic operations are performed locally.
+      The sharing and remote are shelled out to a remote instance.
+    RemoteBundleClient:
+      Supports all operations. Sharing operations happen locally.
+
+  Class heirarchy (A -> B means B subclasses A):
+    BundleClient -> RpcBundleClient -> LocalBundleClient -> RemoteBundleClient
+  '''
+
+  # Commands for creating bundles: upload, update, make, and run.
+
   def upload(self, path, metadata):
     '''
     Create a new bundle with a copy of the directory at the given path in the
@@ -13,18 +38,6 @@ class BundleClient(object):
     '''
     Update a bundle's metadata with the given data. Overwrite old metadata.
     '''
-    # TODO(skishore): We need a way to update bundle contents.
-    # Do we need to have a version for each bundles that is only null for
-    # derived bundles but not for uploaded bundles?
-    raise NotImplementedError
-
-  def download(self, bundle_id, path):
-    '''
-    Download the contents of the given bundle to the given local path.
-    '''
-    # TODO(skishore): What are we going to do about dependencies here?
-    # We should probably realize them. This isn't too bad, because run bundles
-    # will not include their dependencies in their final value.
     raise NotImplementedError
 
   def make(self, targets):
@@ -40,27 +53,43 @@ class BundleClient(object):
   def run(self, program_bundle_id, targets, command):
     '''
     Run the given program bundle, create bundle of output, and return its id.
-    The input bundles (the targets) are symlinked in as dependencies.
+    The program and input bundles are symlinked in as dependencies at runtime,
+    but are NOT included in the final result.
     '''
-    # TODO(skishore): After evaluating a run, we should only save files in the
-    # output directory. We should drop the program and input directories.
+    # TODO(skishore): Figure out how the command should be parametrized.
     raise NotImplementedError
+
+  # Commands for browsing bundles: info, ls, cat, grep, and search.
 
   def info(self, bundle_id):
     '''
     Return a dict containing detailed information about a given bundle:
+      bundle_type: one of (program, dataset, macro, make, run)
       location: its physical location on the filesystem
       metadata: its metadata object
       status: a description of the bundle's status
     '''
     raise NotImplementedError
 
-  def list(self, target):
+  def ls(self, target):
     '''
     Return a directory listing of the target, which is a (bundle_id, path) pair.
     This listing should include the same information as ls -la.
     '''
     # TODO(skishore): Need to decide on an output format for this method.
+    raise NotImplementedError
+
+  def cat(self, target):
+    '''
+    Print the contents of the target file at to stdout.
+    Raise a ValueError if the target is not a file.
+    '''
+    raise NotImplementedError
+
+  def grep(self, target, pattern):
+    '''
+    Grep the contents of the target bundle, directory, or file for the pattern.
+    '''
     raise NotImplementedError
 
   def search(self, query):
@@ -70,10 +99,20 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
+  # Various utility commands for pulling bundles back out of the system.
+
+  def download(self, bundle_id, path):
+    '''
+    Download the contents of the given bundle to the given local path.
+    '''
+    # TODO(skishore): What are we going to do about dependencies here?
+    # We should probably realize them. This isn't too bad, because derived
+    # bundles will not include their dependencies in their final value.
+    raise NotImplementedError
+
   def wait(self, bundle_id):
     '''
     Block on the execution of the given bundle. Return SUCCESS or FAILED
     based on whether it was computed successfully.
     '''
-    # This method can just be implemented by repeatedly calling info().
     raise NotImplementedError
