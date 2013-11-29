@@ -48,6 +48,8 @@ class BundleStoreFSTest(unittest.TestCase):
       actual_result = BundleStore.normalize_path(test_path)
       self.assertTrue(os.path.isabs(actual_result))
       self.assertEqual(actual_result, expected_result)
+      # Test idempotency. An absolute path be a fixed point of normalize_path.
+      self.assertEqual(BundleStore.normalize_path(actual_result), actual_result)
 
   def test_recursive_ls(self):
     '''
