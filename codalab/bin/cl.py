@@ -80,6 +80,13 @@ class BundleCLI(object):
       )
     return bundles[0].uuid
 
+  def parse_target(self, target):
+    if ':' in target:
+      (bundle_spec, subpath) = target.split(':', 1)
+    else:
+      (bundle_spec, subpath) = (target, '')
+    return (self.parse_bundle_spec(bundle_spec), subpath)
+
   def do_command(self, argv):
     if argv:
       (command, remaining_args) = (argv[0], argv[1:])
@@ -131,7 +138,10 @@ class BundleCLI(object):
     print self.client.upload(args.bundle_type, args.path, metadata)
 
   def do_info_command(self, argv, parser):
-    parser.add_argument('bundle_spec', help='either a uuid or a bundle name')
+    parser.add_argument(
+      'bundle_spec',
+      help='bundle identifier: [<uuid>|<name>]'
+    )
     args = parser.parse_args(argv)
     uuid = self.parse_bundle_spec(args.bundle_spec)
     info = self.client.info(uuid)
@@ -139,8 +149,8 @@ class BundleCLI(object):
 %s: %s
 %s
 Tags: %s
-    state: %s
-    location: %s
+  State: %s
+  Location: %s
     '''.strip() % (
       info['bundle_type'].title(),
       (info['metadata'].get('name') or '<no name>'),
@@ -149,6 +159,17 @@ Tags: %s
       info['state'].upper(),
       info['location'],
     )
+
+  def do_ls_command(self, argv, parser):
+    parser.add_argument(
+      'target',
+      help='[<uuid>|<name>][:<subpath within bundle>]',
+    )
+    args = parser.parse_args(argv)
+    target = self.parse_target(args.target)
+    (directories, files) = self.client.ls(target)
+    print '\n  '.join(['Directories:'] + list(directories))
+    print '\n  '.join(['Files:'] + list(files))
 
   def do_reset_command(self, argv, parser):
     parser.add_argument(
