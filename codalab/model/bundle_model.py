@@ -1,3 +1,8 @@
+from sqlalchemy import (
+  and_,
+  select,
+)
+
 from codalab.bundles import get_bundle_subclass
 from codalab.model.tables import (
   bundle as cl_bundle,
@@ -31,19 +36,60 @@ class BundleModel(object):
     '''
     Retrieve a bundle from the database given its uuid.
     '''
+    bundles = self.batch_get_bundles(uuids=[uuid])
+    if not bundles:
+      raise ValueError('Could not find bundle with uuid %s' % (uuid,))
+    elif len(bundles) > 1:
+      raise ValueError('Found multiple bundles with uuid %s' % (uuid,))
+    return bundles[0]
+
+  def search_bundles(self, metadata):
+    '''
+    Returns a list of bundles that match the given metadata search.
+    '''
+    if len(metadata) != 1:
+      raise NotImplementedError('Complex search has not been implemented.')
+    [(key, value)] = metadata.items()
+    clause = and_(
+      cl_bundle_metadata.c.metadata_key == key,
+      cl_bundle_metadata.c.metadata_value == value,
+    )
     with self.engine.begin() as connection:
-      bundle_row = connection.execute(cl_bundle.select().where(
-        cl_bundle.c.uuid == uuid
-      )).fetchone()
-      if not bundle_row:
-        raise ValueError('Could not find bundle with uuid %s' % (uuid,))
-      metadata_rows = connection.execute(cl_bundle_metadata.select().where(
-        cl_bundle_metadata.c.bundle_uuid == uuid
+      metadata_rows = connection.execute(select([
+        cl_bundle_metadata.c.bundle_uuid,
+      ]).where(clause)).fetchall()
+    uuids = set([row.bundle_uuid for row in metadata_rows])
+    if not uuids:
+      return []
+    return self.batch_get_bundles(uuids)
+
+  def batch_get_bundles(self, uuids):
+    '''
+    Return a list of bundles given their uuids.
+    '''
+    with self.engine.begin() as connection:
+      bundle_rows = connection.execute(cl_bundle.select().where(
+        cl_bundle.c.uuid.in_(uuids)
       )).fetchall()
-    bundle_value = dict(bundle_row, metadata=metadata_rows)
-    bundle = get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
-    bundle.validate()
-    return bundle
+      metadata_rows = connection.execute(cl_bundle_metadata.select().where(
+        cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+      )).fetchall()
+    # Make a dictionary for each bundle with both data and metadata.
+    bundle_values = {row.uuid: dict(row) for row in bundle_rows}
+    for bundle_value in bundle_values.itervalues():
+      bundle_value['metadata'] = []
+    for metadata_row in metadata_rows:
+      if metadata_row.bundle_uuid not in bundle_values:
+        raise ValueError('Got metadata %s for deleted bundle' % (metadata_row,))
+      bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
+    # Construct and validate all of the retrieved bundles.
+    bundles = [
+      get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
+      for bundle_value in bundle_values.itervalues()
+    ]
+    for bundle in bundles:
+      bundle.validate()
+    return bundles
 
   def save_bundle(self, bundle):
     '''

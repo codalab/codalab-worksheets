@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import re
 import sys
 
 from codalab.bundles import (
@@ -12,12 +13,16 @@ from codalab.lib.metadata_util import (
   add_metadata_arguments,
   request_missing_metadata,
 )
+from codalab.objects.bundle import Bundle
 
 
 class BundleCLI(object):
   '''
   Each CodaLab bundle command corresponds to a function on this class.
   This function should take a list of arguments and perform the action.
+
+    ex: BundleCLI.do_command(['upload', 'program', '.'])
+        -> BundleCLI.do_upload_command(['program', '.'], parser)
   '''
   DESCRIPTIONS = {
     'help': 'Show a usage message for cl.py or for a particular command.',
@@ -33,6 +38,9 @@ class BundleCLI(object):
     self.verbose = verbose
 
   def exit(self, message, error_code=1):
+    '''
+    Print the message to stderr and exit with the given error code.
+    '''
     if not error_code:
       raise ValueError('exit called with error_code=0')
     print >> sys.stderr, message
@@ -47,6 +55,30 @@ class BundleCLI(object):
       def mock_formatter_class(*args, **kwargs):
         return formatter_class(max_help_position=30, *args, **kwargs)
       parser.formatter_class = mock_formatter_class
+
+  def parse_bundle_spec(self, bundle_spec):
+    '''
+    Take a string bundle_spec, which is EITHER a uuid or a bundle name,
+    and resolve it to a unique bundle uuid.
+    '''
+    if not bundle_spec:
+      raise ValueError('Tried to expand empty bundle_spec!')
+    if re.match(Bundle.UUID_REGEX, bundle_spec):
+      return bundle_spec
+    elif not re.match(UploadedBundle.NAME_REGEX, bundle_spec):
+      raise ValueError(
+        "Bundle names should match '%s', was '%s'" %
+        (UploadedBundle.NAME_REGEX, bundle_spec)
+      )
+    bundles = self.client.model.search_bundles({'name': bundle_spec})
+    if not bundles:
+      raise ValueError('No bundle found with name: %s' % (bundle_spec,))
+    elif len(bundles) > 1:
+      raise ValueError(
+        'Found multiple bundles with name %s: %s' %
+        (bundle_spec, ''.join('\n    %s' % (bundle,) for bundle in bundles))
+      )
+    return bundles[0].uuid
 
   def do_command(self, argv):
     if argv:
@@ -97,6 +129,26 @@ class BundleCLI(object):
     bundle_subclass = get_bundle_subclass(args.bundle_type)
     metadata = request_missing_metadata(bundle_subclass, args)
     print self.client.upload(args.bundle_type, args.path, metadata)
+
+  def do_info_command(self, argv, parser):
+    parser.add_argument('bundle_spec', help='either a uuid or a bundle name')
+    args = parser.parse_args(argv)
+    uuid = self.parse_bundle_spec(args.bundle_spec)
+    info = self.client.info(uuid)
+    print '''
+%s: %s
+%s
+Tags: %s
+    state: %s
+    location: %s
+    '''.strip() % (
+      info['bundle_type'].title(),
+      (info['metadata'].get('name') or '<no name>'),
+      (info['metadata'].get('description') or '<no description>'),
+      (', '.join(info['metadata'].get('tags')) or '<no tags>'),
+      info['state'].upper(),
+      info['location'],
+    )
 
   def do_reset_command(self, argv, parser):
     parser.add_argument(

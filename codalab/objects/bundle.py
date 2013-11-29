@@ -1,3 +1,4 @@
+import re
 import uuid
 
 from codalab.model.database_object import DatabaseObject
@@ -16,6 +17,7 @@ class Bundle(DatabaseObject):
   BUNDLE_TYPE = None
   METADATA_SPEC = None
   METADATA_TYPES = None
+  UUID_REGEX = '^0x[0-9a-f]{32}\Z'
 
   @classmethod
   def construct(cls, *args, **kwargs):
@@ -24,6 +26,11 @@ class Bundle(DatabaseObject):
   def validate(self):
     assert(self.BUNDLE_TYPE is not None), \
       'Initialized abstract bundle class %s' % (self.__class__.__name__,)
+    if not re.match(self.UUID_REGEX, self.uuid):
+      raise ValueError(
+        "Bundle uuids must match '%s', was: '%s'" %
+        (self.UUID_REGEX, self.uuid)
+      )
     if self.bundle_type != self.BUNDLE_TYPE:
       raise ValueError(
         'Mismatched bundle types: %s vs %s' %
@@ -41,7 +48,7 @@ class Bundle(DatabaseObject):
   def update_in_memory(self, row):
     metadata = row.pop('metadata')
     if 'uuid' not in row:
-      row['uuid'] = str(uuid.uuid4())
+      row['uuid'] = '0x%s' % (uuid.uuid4().hex,)
     super(Bundle, self).update_in_memory(row)
     if isinstance(metadata, dict):
       metadata = Metadata(**metadata)
