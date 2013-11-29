@@ -5,6 +5,7 @@ import sys
 
 from codalab.bundles import get_bundle_subclass
 from codalab.client.local_bundle_client import LocalBundleClient
+from codalab.lib.metadata_util import request_missing_metadata
 
 
 class BundleCLI(object):
@@ -41,25 +42,25 @@ class BundleCLI(object):
       parser.formatter_class = mock_formatter_class
 
   def do_command(self, argv):
-    if not argv:
-      self.do_help_command(['help'])
-    else:
+    if argv:
       (command, remaining_args) = (argv[0], argv[1:])
-      command_fn = getattr(self, 'do_%s_command' % (command,), None)
-      if not command_fn:
-        self.exit("'%s' is not a codalab command. %s" % (command, self.USAGE))
-      parser = argparse.ArgumentParser(
-        prog='./cl.py %s' % (command,),
-        description=self.DESCRIPTIONS[command],
-      )
-      self.hack_formatter(parser)
-      if self.verbose:
-        command_fn(remaining_args, parser)
-      else:
-        try:
-          return command_fn(remaining_args, parser)
-        except Exception, e:
-          self.exit('%s: %s' % (e.__class__.__name__, e))
+    else:
+      (command, remaining_args) = ('help', [])
+    command_fn = getattr(self, 'do_%s_command' % (command,), None)
+    if not command_fn:
+      self.exit("'%s' is not a codalab command. %s" % (command, self.USAGE))
+    parser = argparse.ArgumentParser(
+      prog='./cl.py %s' % (command,),
+      description=self.DESCRIPTIONS[command],
+    )
+    self.hack_formatter(parser)
+    if self.verbose:
+      command_fn(remaining_args, parser)
+    else:
+      try:
+        return command_fn(remaining_args, parser)
+      except Exception, e:
+        self.exit('%s: %s' % (e.__class__.__name__, e))
 
   def do_help_command(self, argv, parser):
     if argv:
@@ -99,7 +100,7 @@ class BundleCLI(object):
     )
     args = parser.parse_args(argv)
     bundle_subclass = get_bundle_subclass(args.bundle_type)
-    metadata = {k: getattr(args, k) for k in bundle_subclass.METADATA_TYPES}
+    metadata = request_missing_metadata(args, bundle_subclass.METADATA_TYPES)
     print metadata
     print self.client.upload(args.bundle_type, args.path, metadata)
 
