@@ -13,6 +13,14 @@ class BundleModel(object):
     '''
     self.engine = engine
 
+  def _reset(self):
+    '''
+    Do a drop / create table to clear and reset the schema of all tables.
+    '''
+    # Do not run this function in production!
+    db_metadata.drop_all(self.engine)
+    self.create_tables()
+
   def create_tables(self):
     '''
     Create all Codalab bundle tables if they do not already exist.

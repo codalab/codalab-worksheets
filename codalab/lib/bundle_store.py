@@ -18,6 +18,15 @@ class BundleStore(object):
     self.temp = os.path.join(self.codalab_home, self.TEMP_SUBDIRECTORY)
     self.make_directories()
 
+  def _reset(self):
+    '''
+    Delete all stored bundles and then recreate the root directories.
+    '''
+    # Do not run this function in production!
+    shutil.rmtree(self.data)
+    shutil.rmtree(self.temp)
+    self.make_directories()
+
   def make_directories(self):
     '''
     Create the root, data, and temp directories for this BundleStore.

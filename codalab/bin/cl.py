@@ -99,12 +99,16 @@ class BundleCLI(object):
     print self.client.upload(args.bundle_type, args.path, metadata)
 
   def do_reset_command(self, argv, parser):
-    parser.add_argument('--commit', type=bool, help='no-op unless committed')
-    args = parser.parser_args(argv)
+    parser.add_argument(
+      '--commit',
+      action='store_true',
+      help='reset is a no-op unless committed',
+    )
+    args = parser.parse_args(argv)
     if not args.commit:
-      raise ValueError('Reset does nothing unless committed!')
-    self.client.bundle_store.clear()
-    self.client.model.clear()
+      raise ValueError('If you really want to delete all bundles, use --commit')
+    self.client.bundle_store._reset()
+    self.client.model._reset()
 
 
 if __name__ == '__main__':
