@@ -17,6 +17,9 @@ class LocalBundleClient(BundleClient):
     bundle_subclass = get_bundle_subclass(bundle_type)
     if not issubclass(bundle_subclass, UploadedBundle):
       raise ValueError('Tried to upload %s!' % (bundle_subclass.__name__,))
+    # Type-check the bundle metadata BEFORE uploading the bundle data.
+    # This optimization will avoid file operations on failed bundle creations.
+    bundle_subclass.construct(data_hash='', metadata=metadata).validate()
     data_hash = self.bundle_store.upload(path)
     bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
     self.model.save_bundle(bundle)
