@@ -30,7 +30,7 @@ def add_metadata_arguments(bundle_subclass, metadata_keys, parser):
         dest=metadata_key_to_argument(metadata_key,),
         help=(help_text + help_suffix),
         metavar=short_key.upper(),
-        nargs=('+' if metadata_type == set else None),
+        nargs=('*' if metadata_type == set else None),
       )
 
 
@@ -44,6 +44,10 @@ def request_missing_metadata(bundle_subclass, args):
     metadata_key: getattr(args, metadata_key_to_argument(metadata_key,))
     for metadata_key in metadata_types
   }
+  # A special-case: if the user specified all required metadata on the command
+  # line, do NOT show the editor. This allows for programmatic bundle creation.
+  if not any(value is None for value in initial_metadata.values()):
+    return initial_metadata
   # Construct a form template with the required keys, prefilled with the
   # command-line metadata options.
   template_lines = []
