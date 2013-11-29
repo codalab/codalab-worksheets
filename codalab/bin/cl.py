@@ -94,7 +94,7 @@ class BundleCLI(object):
       (command, remaining_args) = ('help', [])
     command_fn = getattr(self, 'do_%s_command' % (command,), None)
     if not command_fn:
-      self.exit("'%s' is not a codalab command. %s" % (command, self.USAGE))
+      self.exit("'%s' is not a codalab command. Try './cl.py help'.")
     parser = argparse.ArgumentParser(
       prog='./cl.py %s' % (command,),
       description=self.DESCRIPTIONS[command],
@@ -140,22 +140,25 @@ class BundleCLI(object):
   def do_info_command(self, argv, parser):
     parser.add_argument(
       'bundle_spec',
-      help='bundle identifier: [<uuid>|<name>]'
+      help='identifier: [<uuid>|<name>]'
     )
     args = parser.parse_args(argv)
     uuid = self.parse_bundle_spec(args.bundle_spec)
     info = self.client.info(uuid)
+    tag_str = ', '.join(sorted(info['metadata'].get('tags', [])))
+    tag_str = ' (%s)' % (tag_str,) if tag_str else ''
     print '''
 %s: %s
-%s
-Tags: %s
-  State: %s
-  Location: %s
+%s%s
+  uuid:     %s
+  location: %s
+  state:    %s
     '''.strip() % (
-      info['bundle_type'].title(),
+      info['bundle_type'],
       (info['metadata'].get('name') or '<no name>'),
       (info['metadata'].get('description') or '<no description>'),
-      (', '.join(info['metadata'].get('tags')) or '<no tags>'),
+      tag_str,
+      info['uuid'],
       info['state'].upper(),
       info['location'],
     )

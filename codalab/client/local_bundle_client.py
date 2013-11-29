@@ -41,6 +41,7 @@ class LocalBundleClient(BundleClient):
     bundle = self.model.get_bundle(uuid)
     return {
       'bundle_type': bundle.bundle_type,
+      'uuid': bundle.uuid,
       'location': self.bundle_store.get_location(bundle.data_hash),
       'metadata': bundle.metadata.to_dict(),
       'state': bundle.state,
