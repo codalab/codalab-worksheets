@@ -8,9 +8,13 @@ from codalab.objects.metadata import Metadata
 class Bundle(DatabaseObject):
   TABLE = cl_bundle
 
-  # Bundle subclasses should have a string BUNDLE_TYPE and a METADATA_TYPES
-  # dictionary mapping metadata keys -> value types.
+  # Bundle subclasses should have the following class-level attributes:
+  #   - BUNDLE_TYPE: a string bundle type
+  #   - METADATA_SPEC: a list of (metadata_key, short_key, help_text) triples
+  #   - METADATA_TYPES: a dict mapping metadata keys -> value types.
+  # The metadata spec is used to generate form UI for different bundle types.
   BUNDLE_TYPE = None
+  METADATA_SPEC = None
   METADATA_TYPES = None
 
   @classmethod

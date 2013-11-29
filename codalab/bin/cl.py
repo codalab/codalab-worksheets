@@ -1,11 +1,17 @@
 #!/usr/bin/env python
 import argparse
-import platform
 import sys
 
-from codalab.bundles import get_bundle_subclass
+from codalab.bundles import (
+  BUNDLE_SUBCLASSES,
+  get_bundle_subclass,
+)
+from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.client.local_bundle_client import LocalBundleClient
-from codalab.lib.metadata_util import request_missing_metadata
+from codalab.lib.metadata_util import (
+  add_metadata_arguments,
+  request_missing_metadata,
+)
 
 
 class BundleCLI(object):
@@ -18,6 +24,7 @@ class BundleCLI(object):
     'upload': 'Create a bundle by uploading an existing directory.',
     'info': 'Show detailed information about an existing bundle.',
     'ls': 'List the contents of a bundle.',
+    'reset': 'Delete the codalab bundle store and reset the database.',
   }
   COMMON_COMMANDS = ('upload', 'info', 'ls')
 
@@ -80,29 +87,24 @@ class BundleCLI(object):
   def do_upload_command(self, argv, parser):
     parser.add_argument('bundle_type', help='bundle type: [program|dataset]')
     parser.add_argument('path', help='path of the directory to upload')
-    parser.add_argument('--name', help='name: [a-zA-Z0-9_]+)')
-    parser.add_argument(
-      '--desc',
-      dest='description',
-      help='human-readable description',
-      metavar='DESC',
-    )
-    parser.add_argument('--tags', help='list of search tags', nargs='+')
-    this_machine = platform.machine()
-    default_architecture = [this_machine] if this_machine else []
-    parser.add_argument(
-      '--arch',
-      default=default_architecture,
-      dest='architecture',
-      help='viable architectures (for programs)',
-      metavar='ARCH',
-      nargs='+',
-    )
+    # Add metadata arguments for UploadedBundle and all of its subclasses.
+    metadata_keys = set()
+    add_metadata_arguments(UploadedBundle, metadata_keys, parser)
+    for bundle_subclass in BUNDLE_SUBCLASSES:
+      if issubclass(bundle_subclass, UploadedBundle):
+        add_metadata_arguments(bundle_subclass, metadata_keys, parser)
     args = parser.parse_args(argv)
     bundle_subclass = get_bundle_subclass(args.bundle_type)
-    metadata = request_missing_metadata(args, bundle_subclass.METADATA_TYPES)
-    print metadata
+    metadata = request_missing_metadata(bundle_subclass, args)
     print self.client.upload(args.bundle_type, args.path, metadata)
+
+  def do_reset_command(self, argv, parser):
+    parser.add_argument('--commit', type=bool, help='no-op unless committed')
+    args = parser.parser_args(argv)
+    if not args.commit:
+      raise ValueError('Reset does nothing unless committed!')
+    self.client.bundle_store.clear()
+    self.client.model.clear()
 
 
 if __name__ == '__main__':

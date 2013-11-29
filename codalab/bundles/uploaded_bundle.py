@@ -5,12 +5,17 @@ from codalab.objects.bundle import Bundle
 
 
 class UploadedBundle(Bundle):
+  NAME_REGEX = '^[a-zA-Z_][a-zA-Z0-9_-]*$'
+  METADATA_SPEC = [
+    ('name', 'name', 'name: %s' % (NAME_REGEX,)),
+    ('description', 'desc', 'human-readable description'),
+    ('tags', 'tags', 'list of searchable tags'),
+  ]
   METADATA_TYPES = {
     'name': basestring,
     'description': basestring,
     'tags': set,
   }
-  NAME_REGEX = '[a-zA-Z_][a-zA-Z0-9_]*'
 
   @classmethod
   def construct(cls, data_hash, metadata):
@@ -24,13 +29,13 @@ class UploadedBundle(Bundle):
 
   def validate(self):
     super(UploadedBundle, self).validate()
-    class_name = self.__class__.__name__
+    bundle_type = self.bundle_type.title()
     if not self.metadata.name:
-      raise ValueError('%ss must have non-empty names' % (class_name,))
+      raise ValueError('%ss must have non-empty names' % (bundle_type,))
     if not re.match(self.NAME_REGEX, self.metadata.name):
       raise ValueError(
-        "%s names must match %s, was '%s'" %
-        (class_name, self.NAME_REGEX, self.metadata.name)
+        "%s names must match '%s', was '%s'" %
+        (bundle_type, self.NAME_REGEX, self.metadata.name)
       )
     if not self.metadata.description:
-      raise ValueError('%ss must have non-empty description' % (class_name,))
+      raise ValueError('%ss must have non-empty descriptions' % (bundle_type,))
