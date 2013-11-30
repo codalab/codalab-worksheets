@@ -4,6 +4,7 @@ from sqlalchemy import (
 )
 
 from codalab.bundles import get_bundle_subclass
+from codalab.common import IntegrityError
 from codalab.model.tables import (
   bundle as cl_bundle,
   bundle_metadata as cl_bundle_metadata,
@@ -40,7 +41,7 @@ class BundleModel(object):
     if not bundles:
       raise ValueError('Could not find bundle with uuid %s' % (uuid,))
     elif len(bundles) > 1:
-      raise ValueError('Found multiple bundles with uuid %s' % (uuid,))
+      raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
     return bundles[0]
 
   def search_bundles(self, **kwargs):
@@ -80,7 +81,7 @@ class BundleModel(object):
       bundle_value['metadata'] = []
     for metadata_row in metadata_rows:
       if metadata_row.bundle_uuid not in bundle_values:
-        raise ValueError('Got metadata %s for deleted bundle' % (metadata_row,))
+        raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
       bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
     # Construct and validate all of the retrieved bundles.
     bundles = [

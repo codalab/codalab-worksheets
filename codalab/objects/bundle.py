@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from codalab.common import precondition
 from codalab.model.database_object import DatabaseObject
 from codalab.model.tables import bundle as cl_bundle
 from codalab.objects.metadata import Metadata
@@ -21,18 +22,18 @@ class Bundle(DatabaseObject):
     raise NotImplementedError
 
   def validate(self):
-    assert(self.BUNDLE_TYPE is not None), \
-      'Initialized abstract bundle class %s' % (self.__class__.__name__,)
-    if not re.match(self.UUID_REGEX, self.uuid):
-      raise ValueError(
-        "Bundle uuids must match '%s', was: '%s'" %
-        (self.UUID_REGEX, self.uuid)
-      )
-    if self.bundle_type != self.BUNDLE_TYPE:
-      raise ValueError(
-        'Mismatched bundle types: %s vs %s' %
-        (self.bundle_type, self.BUNDLE_TYPE)
-      )
+    '''
+    Check a number of basic conditions that would indicate serious errors if
+    they do not hold. Subclasses may override this method for further
+    validation, but they should always call the super's method.
+    '''
+    abstract_init = 'init-ed abstract bundle: %s' % (self.__class__.__name__,)
+    precondition(self.BUNDLE_TYPE, abstract_init)
+    malformed_uuid = 'uuid must match %s, is %s' % (self.UUID_REGEX, self.uuid)
+    precondition(re.match(self.UUID_REGEX, self.uuid), malformed_uuid)
+    type_mismatch = 'Mismatch: %s vs %s' % (self.bundle_type, self.BUNDLE_TYPE)
+    precondition(self.bundle_type == self.BUNDLE_TYPE, type_mismatch)
+    # Use the subclasses's metadata specification to check metadata integrity.
     self.metadata.validate(self.METADATA_SPECS)
 
   def __repr__(self):

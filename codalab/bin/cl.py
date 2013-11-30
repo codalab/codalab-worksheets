@@ -5,9 +5,11 @@ import sys
 from codalab.bundles import (
   BUNDLE_SUBCLASSES,
   get_bundle_subclass,
+  UPLOADABLE_TYPES,
 )
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.client.local_bundle_client import LocalBundleClient
+from codalab.common import precondition
 from codalab.lib import metadata_util
 
 
@@ -36,8 +38,7 @@ class BundleCLI(object):
     '''
     Print the message to stderr and exit with the given error code.
     '''
-    if not error_code:
-      raise ValueError('exit called with error_code=0')
+    precondition(error_code, 'exit called with error_code == 0')
     print >> sys.stderr, message
     sys.exit(error_code)
 
@@ -72,7 +73,7 @@ class BundleCLI(object):
     else:
       try:
         return command_fn(remaining_args, parser)
-      except Exception, e:
+      except ValueError, e:
         self.exit('%s: %s' % (e.__class__.__name__, e))
 
   def do_help_command(self, argv, parser):
@@ -91,7 +92,8 @@ class BundleCLI(object):
       )
 
   def do_upload_command(self, argv, parser):
-    parser.add_argument('bundle_type', help='bundle type: [program|dataset]')
+    help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADABLE_TYPES)))
+    parser.add_argument('bundle_type', help=help_text)
     parser.add_argument('path', help='path of the directory to upload')
     # Add metadata arguments for UploadedBundle and all of its subclasses.
     metadata_keys = set()
@@ -100,6 +102,10 @@ class BundleCLI(object):
       if issubclass(bundle_subclass, UploadedBundle):
         metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
     args = parser.parse_args(argv)
+    if args.bundle_type not in UPLOADABLE_TYPES:
+      raise ValueError('Invalid bundle type %s (options: [%s])' % (
+        args.bundle_type, '|'.join(sorted(UPLOADABLE_TYPES)),
+      ))
     bundle_subclass = get_bundle_subclass(args.bundle_type)
     metadata = metadata_util.request_missing_data(bundle_subclass, args)
     print self.client.upload(args.bundle_type, args.path, metadata)

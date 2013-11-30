@@ -25,11 +25,11 @@ def get_spec_uuid(model, bundle_spec):
     )
   bundles = model.search_bundles(name=bundle_spec)
   if not bundles:
-    raise ValueError('No bundle found with name: %s' % (bundle_spec,))
+    raise ValueError("No bundle found with name '%s'" % (bundle_spec,))
   elif len(bundles) > 1:
     raise ValueError(
-      'Found multiple bundles with name %s: %s' %
-      (bundle_spec, ''.join('\n    %s' % (bundle,) for bundle in bundles))
+      "Found multiple bundles with name '%s':%s" %
+      (bundle_spec, ''.join('\n  %s' % (bundle,) for bundle in bundles))
     )
   return bundles[0].uuid
 

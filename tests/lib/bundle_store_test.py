@@ -4,6 +4,7 @@ import mock
 import os
 import unittest
 
+from codalab.common import PreconditionViolation
 from codalab.lib.bundle_store import BundleStore
 
 
@@ -83,9 +84,8 @@ class BundleStoreTest(unittest.TestCase):
       BundleStore.get_relative_path('asdf', 'asdfblah'),
       'blah',
     )
-    # The path is not a prefix, so get_relative_path should raise ValueError.
     self.assertRaises(
-      ValueError,
+      PreconditionViolation,
       lambda: BundleStore.get_relative_path('asdfg', 'asdfblah'),
     )
 

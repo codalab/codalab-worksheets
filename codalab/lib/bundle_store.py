@@ -6,6 +6,8 @@ import os
 import shutil
 import uuid
 
+from codalab.common import precondition
+
 
 class BundleStore(object):
   DATA_SUBDIRECTORY = 'data'
@@ -108,8 +110,7 @@ class BundleStore(object):
 
   @staticmethod
   def get_relative_path(root, path):
-    if not path.startswith(root):
-      raise ValueError('Path %s was not under root %s' % (path, root))
+    precondition(path.startswith(root), 'Path %s not under %s' % (path, root))
     return path[len(root):]
 
   @classmethod
@@ -167,8 +168,8 @@ class BundleStore(object):
     '''
     Return the hash of the file's contents, read in blocks of size BLOCK_SIZE.
     '''
-    if not os.path.isabs(file_path):
-      raise ValueError('hash_file called with relative path: %s' % (file_path,))
+    message = 'hash_file called with relative path: %s' % (file_path,)
+    precondition(os.path.isabs(file_path), message)
     contents_hash = hashlib.sha1()
     with open(file_path, 'rb') as file_handle:
       while True:

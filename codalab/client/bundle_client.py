@@ -82,7 +82,6 @@ class BundleClient(object):
   def cat(self, target):
     '''
     Print the contents of the target file at to stdout.
-    Raise a ValueError if the target is not a file.
     '''
     raise NotImplementedError
 

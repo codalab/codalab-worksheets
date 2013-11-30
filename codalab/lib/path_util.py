@@ -1,9 +1,14 @@
 import os
 
+from codalab.common import precondition
+
 
 def ls(path):
-  if not os.path.isabs(path):
-    raise ValueError('Tried to ls relative path: %s' % (path,))
+  precondition(os.path.isabs(path), 'ls got relative path: %s' % (path,))
+  if not os.path.exists(path):
+    raise ValueError('ls got non-existent path: %s' % (path,))
+  if not os.path.isdir(path):
+    raise ValueError('ls got non-directory: %s' % (path,))
   (directories, files) = ([], [])
   for file_name in os.listdir(path):
     if os.path.isfile(os.path.join(path, file_name)):

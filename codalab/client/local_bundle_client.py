@@ -1,6 +1,11 @@
-from codalab.bundles import get_bundle_subclass
-from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.common import CODALAB_HOME
+from codalab.bundles import (
+  get_bundle_subclass,
+  UPLOADABLE_TYPES,
+)
+from codalab.common import (
+  CODALAB_HOME,
+  precondition,
+)
 from codalab.client.bundle_client import BundleClient
 from codalab.lib.bundle_store import BundleStore
 from codalab.lib import (
@@ -20,9 +25,9 @@ class LocalBundleClient(BundleClient):
     return canonicalize.get_spec_uuid(self.model, bundle_spec)
 
   def upload(self, bundle_type, path, metadata):
+    message = 'Invalid upload bundle_type: %s' % (bundle_type,)
+    precondition(bundle_type in UPLOADABLE_TYPES, message)
     bundle_subclass = get_bundle_subclass(bundle_type)
-    if not issubclass(bundle_subclass, UploadedBundle):
-      raise ValueError('Tried to upload %s!' % (bundle_subclass.__name__,))
     # Type-check the bundle metadata BEFORE uploading the bundle data.
     # This optimization will avoid file operations on failed bundle creations.
     bundle_subclass.construct(data_hash='', metadata=metadata).validate()

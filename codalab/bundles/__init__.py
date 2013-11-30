@@ -1,5 +1,6 @@
 from codalab.bundles.dataset_bundle import DatasetBundle
 from codalab.bundles.program_bundle import ProgramBundle
+from codalab.bundles.uploaded_bundle import UploadedBundle
 
 
 BUNDLE_SUBCLASSES = (
@@ -10,6 +11,11 @@ BUNDLE_SUBCLASSES = (
 BUNDLE_TYPE_MAP = {cls.BUNDLE_TYPE: cls for cls in BUNDLE_SUBCLASSES}
 assert(len(BUNDLE_TYPE_MAP) == len(BUNDLE_SUBCLASSES)), \
   'bundle_type collision: %s' % (BUNDLE_TYPE_MAP,)
+
+UPLOADABLE_TYPES = set(
+  bundle_type for (bundle_type, cls) in BUNDLE_TYPE_MAP.iteritems()
+  if issubclass(cls, UploadedBundle)
+)
 
 
 def get_bundle_subclass(bundle_type):
