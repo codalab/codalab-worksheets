@@ -2,20 +2,16 @@ import re
 
 from codalab.common import State
 from codalab.objects.bundle import Bundle
+from codalab.objects.metadata_spec import MetadataSpec
 
 
 class UploadedBundle(Bundle):
   NAME_REGEX = '^[a-zA-Z_][a-zA-Z0-9_-]*$'
-  METADATA_SPEC = [
-    ('name', 'name', 'name: %s' % (NAME_REGEX,)),
-    ('description', 'desc', 'human-readable description'),
-    ('tags', 'tags', 'list of searchable tags'),
-  ]
-  METADATA_TYPES = {
-    'name': basestring,
-    'description': basestring,
-    'tags': set,
-  }
+  METADATA_SPECS = (
+    MetadataSpec('name', basestring, 'name: %s' % (NAME_REGEX,)),
+    MetadataSpec('description', basestring, 'human-readable description'),
+    MetadataSpec('tags', set, 'list of searchable tags'),
+  )
 
   @classmethod
   def construct(cls, data_hash, metadata):

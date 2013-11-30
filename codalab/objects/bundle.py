@@ -8,16 +8,13 @@ from codalab.objects.metadata import Metadata
 
 class Bundle(DatabaseObject):
   TABLE = cl_bundle
+  UUID_REGEX = '^0x[0-9a-f]{32}\Z'
 
   # Bundle subclasses should have the following class-level attributes:
   #   - BUNDLE_TYPE: a string bundle type
-  #   - METADATA_SPEC: a list of (metadata_key, short_key, help_text) triples
-  #   - METADATA_TYPES: a dict mapping metadata keys -> value types.
-  # The metadata spec is used to generate form UI for different bundle types.
+  #   - METADATA_SPECS: a list of MetadataSpec objects
   BUNDLE_TYPE = None
-  METADATA_SPEC = None
-  METADATA_TYPES = None
-  UUID_REGEX = '^0x[0-9a-f]{32}\Z'
+  METADATA_SPECS = None
 
   @classmethod
   def construct(cls, *args, **kwargs):
@@ -36,7 +33,7 @@ class Bundle(DatabaseObject):
         'Mismatched bundle types: %s vs %s' %
         (self.bundle_type, self.BUNDLE_TYPE)
       )
-    self.metadata.validate(self.METADATA_TYPES)
+    self.metadata.validate(self.METADATA_SPECS)
 
   def __repr__(self):
     return '%s(uuid=%r, name=%r)' % (
@@ -53,12 +50,12 @@ class Bundle(DatabaseObject):
     if isinstance(metadata, dict):
       metadata = Metadata(**metadata)
     elif isinstance(metadata, (list, tuple)):
-      metadata = Metadata.from_dicts(self.METADATA_TYPES, metadata)
+      metadata = Metadata.from_dicts(self.METADATA_SPECS, metadata)
     self.metadata = metadata
   
   def to_dict(self):
     result = super(Bundle, self).to_dict()
-    result['metadata'] = self.metadata.to_dicts(self.METADATA_TYPES)
+    result['metadata'] = self.metadata.to_dicts(self.METADATA_SPECS)
     for metadata_row in result['metadata']:
       metadata_row['bundle_uuid'] = self.uuid
     return result

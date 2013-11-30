@@ -3,15 +3,16 @@ import unittest
 
 from codalab.objects.bundle import Bundle
 from codalab.objects.metadata import Metadata
+from codalab.objects.metadata_spec import MetadataSpec
 
 
 class MockBundle(Bundle):
   BUNDLE_TYPE = 'mock'
-  METADATA_TYPES = {
-    'str_metadata': basestring,
-    'int_metadata': int,
-    'set_metadata': set,
-  }
+  METADATA_SPECS = (
+    MetadataSpec('str_metadata', basestring, 'test str metadata'),
+    MetadataSpec('int_metadata', int, 'test int metadata'),
+    MetadataSpec('set_metadata', set, 'test set metadata'),
+  )
 
   @classmethod
   def construct(cls, **kwargs):
@@ -47,11 +48,11 @@ class BundleTest(unittest.TestCase):
     )
 
   def check_bundle(self, bundle, uuid=None):
-    for (key, value_type)in MockBundle.METADATA_TYPES.iteritems():
-      expected_value = getattr(self, key)
-      if value_type == set:
+    for spec in MockBundle.METADATA_SPECS:
+      expected_value = getattr(self, spec.key)
+      if spec.type == set:
         expected_value = set(expected_value)
-      self.assertEqual(getattr(bundle.metadata, key), expected_value)
+      self.assertEqual(getattr(bundle.metadata, spec.key), expected_value)
     for column in self.columns:
       if column == 'uuid':
         expected_value = uuid or getattr(bundle, column)

@@ -4,22 +4,23 @@ class Metadata(object):
     for (key, value) in kwargs.iteritems():
       self.set_metadata_key(key, value)
 
-  def validate(self, metadata_types):
+  def validate(self, metadata_specs):
     '''
     Check that this metadata has the correct metadata keys and that it has
     metadata values of the correct types.
     '''
+    expected_keys = set(spec.key for spec in metadata_specs)
     for key in self._metadata_keys:
-      if key not in metadata_types:
+      if key not in expected_keys:
         raise ValueError('Unexpected metadata key: %s' % (key,))
-    for (key, value_type) in metadata_types.iteritems():
-      if key not in self._metadata_keys:
+    for spec in metadata_specs:
+      if spec.key not in self._metadata_keys:
         raise ValueError('Missing metadata key: %s' % (key,))
-      value = getattr(self, key)
-      if not isinstance(value, value_type):
+      value = getattr(self, spec.key)
+      if not isinstance(value, spec.type):
         raise ValueError(
           'Metadata value for %s should be of type %s, was %s' %
-          (key, value_type, type(value))
+          (key, spec.type, type(value))
         )
 
   def set_metadata_key(self, key, value):
@@ -40,14 +41,16 @@ class Metadata(object):
     return unicode if value_type == basestring else value_type 
 
   @classmethod
-  def from_dicts(cls, metadata_types, rows):
+  def from_dicts(cls, metadata_specs, rows):
     '''
     Construct a Metadata object given a denormalized list of metadata dicts.
     These dicts may either be those returned by from_dicts or sqlalchemy Row objects from the metadata table.
     '''
     metadata_dict = {}
-    for (key, value_type) in metadata_types.iteritems():
-      metadata_dict[key] = cls.get_type_constructor(value_type)()
+    metadata_types = {}
+    for spec in metadata_specs:
+      metadata_types[spec.key] = spec.type
+      metadata_dict[spec.key] = cls.get_type_constructor(spec.type)()
     for row in rows:
       (maybe_unicode_key, value) = (row['metadata_key'], row['metadata_value'])
       # If the key is Unicode text (which is the case if it was extracted from a
@@ -65,7 +68,7 @@ class Metadata(object):
         metadata_dict[key] = cls.get_type_constructor(value_type)(value)
     return Metadata(**metadata_dict)
 
-  def to_dicts(self, metadata_types):
+  def to_dicts(self, metadata_specs):
     '''
     Serialize this metadata object and return a list of dicts that can be saved
     to a MySQL table. These dicts should have the following keys:
@@ -73,12 +76,12 @@ class Metadata(object):
       metadata_value
     '''
     result = []
-    for (key, value_type) in metadata_types.iteritems():
-      value = getattr(self, key, self.get_type_constructor(value_type)())
-      values = value if value_type == set else (value,)
+    for spec in metadata_specs:
+      value = getattr(self, spec.key, self.get_type_constructor(spec.type)())
+      values = value if spec.type == set else (value,)
       for value in values:
         result.append({
-          'metadata_key': unicode(key),
+          'metadata_key': unicode(spec.key),
           'metadata_value': unicode(value),
         })
     return result
