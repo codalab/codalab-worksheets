@@ -145,11 +145,9 @@ class BundleCLI(object):
     args = parser.parse_args(argv)
     uuid = self.parse_bundle_spec(args.bundle_spec)
     info = self.client.info(uuid)
-    tag_str = ', '.join(sorted(info['metadata'].get('tags', [])))
-    tag_str = ' (%s)' % (tag_str,) if tag_str else ''
     print '''
 %s: %s
-%s%s
+%s
   uuid:     %s
   location: %s
   state:    %s
@@ -157,10 +155,9 @@ class BundleCLI(object):
       info['bundle_type'],
       (info['metadata'].get('name') or '<no name>'),
       (info['metadata'].get('description') or '<no description>'),
-      tag_str,
       info['uuid'],
-      info['state'].upper(),
       info['location'],
+      info['state'].upper(),
     )
 
   def do_ls_command(self, argv, parser):
