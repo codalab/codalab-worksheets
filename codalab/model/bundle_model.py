@@ -43,13 +43,13 @@ class BundleModel(object):
       raise ValueError('Found multiple bundles with uuid %s' % (uuid,))
     return bundles[0]
 
-  def search_bundles(self, metadata):
+  def search_bundles(self, **kwargs):
     '''
     Returns a list of bundles that match the given metadata search.
     '''
-    if len(metadata) != 1:
-      raise NotImplementedError('Complex search has not been implemented.')
-    [(key, value)] = metadata.items()
+    if len(kwargs) != 1:
+      raise NotImplementedError('Complex searches have not been implemented.')
+    [(key, value)] = kwargs.items()
     clause = and_(
       cl_bundle_metadata.c.metadata_key == key,
       cl_bundle_metadata.c.metadata_value == value,

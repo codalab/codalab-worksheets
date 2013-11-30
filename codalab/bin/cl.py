@@ -70,7 +70,7 @@ class BundleCLI(object):
         "Bundle names should match '%s', was '%s'" %
         (UploadedBundle.NAME_REGEX, bundle_spec)
       )
-    bundles = self.client.model.search_bundles({'name': bundle_spec})
+    bundles = self.client.model.search_bundles(name=bundle_spec)
     if not bundles:
       raise ValueError('No bundle found with name: %s' % (bundle_spec,))
     elif len(bundles) > 1:
@@ -146,18 +146,18 @@ class BundleCLI(object):
     uuid = self.parse_bundle_spec(args.bundle_spec)
     info = self.client.info(uuid)
     print '''
-%s: %s
-%s
-  uuid:     %s
-  location: %s
-  state:    %s
-    '''.strip() % (
-      info['bundle_type'],
-      (info['metadata'].get('name') or '<no name>'),
-      (info['metadata'].get('description') or '<no description>'),
-      info['uuid'],
-      info['location'],
-      info['state'].upper(),
+{bundle_type}: {name}
+{description}
+  uuid:     {uuid}
+  location: {location}
+  state:    {state}
+    '''.strip().format(
+      bundle_type=info['bundle_type'],
+      name=(info['metadata'].get('name') or '<no name>'),
+      description=(info['metadata'].get('description') or '<no description>'),
+      uuid=info['uuid'],
+      location=info['location'],
+      state=info['state'].upper(),
     )
 
   def do_ls_command(self, argv, parser):
