@@ -6,7 +6,7 @@ import tempfile
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
 
 
-def add_metadata_arguments(bundle_subclass, metadata_keys, parser):
+def add_arguments(bundle_subclass, metadata_keys, parser):
   '''
   Add arguments to a command-line argument parser for all metadata keys
   needed by the given bundle subclass. Skip keys already in metadata_keys.
@@ -27,7 +27,7 @@ def add_metadata_arguments(bundle_subclass, metadata_keys, parser):
       )
 
 
-def request_missing_metadata(bundle_subclass, args):
+def request_missing_data(bundle_subclass, args):
   '''
   For any metadata arguments that were not supplied through the command line,
   pop up an editor and request that data from the user.
@@ -60,31 +60,32 @@ def request_missing_metadata(bundle_subclass, args):
     form.write(template)
     form.flush()
     subprocess.call([editor, form.name])
-    return parse_metadata_form(bundle_subclass.METADATA_SPECS, form.name)
+    with open(form.name) as form:
+      form_result = form.readlines()
+  return parse_metadata_form(bundle_subclass.METADATA_SPECS, form_result)
 
 
-def parse_metadata_form(metadata_specs, form_name):
+def parse_metadata_form(metadata_specs, form_result):
   '''
   Parse the result of a form template produced in request_missing_metadata.
   '''
   metadata_types = {spec.key: spec.type for spec in metadata_specs}
   result = {}
-  with open(form_name) as form:
-    for line in form:
-      line = line.strip()
-      if line and not line.startswith('#'):
-        if ':' not in line:
-          raise ValueError('Malformatted line (no colon): %s' % (line,))
-        (metadata_key, remainder) = line.split(':', 1)
-        metadata_key = metadata_key.lower()
-        if metadata_key not in metadata_types:
-          raise ValueError('Unexpected metadata key: %s' % (metadata_key,))
-        metadata_type = metadata_types[metadata_key]
-        if metadata_type == set:
-          result[metadata_key] = [
-            subpart for part in remainder.strip().split()
-            for subpart in part.split(',') if subpart
-          ]
-        else:
-          result[metadata_key] = remainder.strip()
+  for line in form_result:
+    line = line.strip()
+    if line and not line.startswith('#'):
+      if ':' not in line:
+        raise ValueError('Malformatted line (no colon): %s' % (line,))
+      (metadata_key, remainder) = line.split(':', 1)
+      metadata_key = metadata_key.lower()
+      if metadata_key not in metadata_types:
+        raise ValueError('Unexpected metadata key: %s' % (metadata_key,))
+      metadata_type = metadata_types[metadata_key]
+      if metadata_type == set:
+        result[metadata_key] = [
+          subpart for part in remainder.strip().split()
+          for subpart in part.split(',') if subpart
+        ]
+      else:
+        result[metadata_key] = remainder.strip()
   return result

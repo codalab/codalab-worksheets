@@ -3,7 +3,10 @@ from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import CODALAB_HOME
 from codalab.client.bundle_client import BundleClient
 from codalab.lib.bundle_store import BundleStore
-from codalab.lib.path_util import PathUtil
+from codalab.lib import (
+  canonicalize,
+  path_util,
+)
 from codalab.model.util import get_codalab_model
 
 
@@ -12,6 +15,9 @@ class LocalBundleClient(BundleClient):
     codalab_home = codalab_home or CODALAB_HOME
     self.bundle_store = BundleStore(codalab_home)
     self.model = get_codalab_model(codalab_home)
+
+  def get_spec_uuid(self, bundle_spec):
+    return canonicalize.get_spec_uuid(self.model, bundle_spec)
 
   def upload(self, bundle_type, path, metadata):
     bundle_subclass = get_bundle_subclass(bundle_type)
@@ -48,5 +54,5 @@ class LocalBundleClient(BundleClient):
     }
 
   def ls(self, target):
-    path = PathUtil.expand_target(self.bundle_store, self.model, target)
-    return PathUtil.ls(path)
+    path = canonicalize.get_target_path(self.bundle_store, self.model, target)
+    return path_util.ls(path)
