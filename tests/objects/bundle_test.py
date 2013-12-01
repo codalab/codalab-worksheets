@@ -32,7 +32,6 @@ class BundleTest(unittest.TestCase):
   bundle_type = MockBundle.BUNDLE_TYPE
   data_hash = 'my_data_hash'
   state = 'my_state'
-  is_current = True
 
   def construct_mock_bundle(self):
     metadata = Metadata(
@@ -43,7 +42,6 @@ class BundleTest(unittest.TestCase):
     return MockBundle.construct(
       data_hash=self.data_hash,
       state=self.state,
-      is_current=self.is_current,
       metadata=metadata,
     )
 

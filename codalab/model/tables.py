@@ -1,12 +1,12 @@
 from sqlalchemy import (
   Column,
   ForeignKey,
+  Index,
   MetaData,
   Table,
   UniqueConstraint,
 )
 from sqlalchemy.types import (
-  Boolean,
   Integer,
   String,
   Text,
@@ -25,7 +25,6 @@ bundle = Table(
   # The data_hash will be NULL if the bundle's value is still being computed.
   Column('data_hash', String(63), nullable=True),
   Column('state', String(63), nullable=False),
-  Column('is_current', Boolean, nullable=False),
   UniqueConstraint('uuid', name='uix_1'),
   sqlite_autoincrement=True,
 )
@@ -38,6 +37,11 @@ bundle_metadata = Table(
   Column('metadata_key', String(63), nullable=False),
   Column('metadata_value', String(63), nullable=False),
   sqlite_autoincrement=True,
+)
+Index(
+  'metadata_key_value_index',
+  bundle_metadata.c.metadata_key,
+  bundle_metadata.c.metadata_value,
 )
 
 dependency = Table(
