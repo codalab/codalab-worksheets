@@ -2,7 +2,6 @@ import simplejson as json
 import unittest
 
 from codalab.objects.bundle import Bundle
-from codalab.objects.metadata import Metadata
 from codalab.objects.metadata_spec import MetadataSpec
 
 
@@ -34,15 +33,16 @@ class BundleTest(unittest.TestCase):
   state = 'my_state'
 
   def construct_mock_bundle(self):
-    metadata = Metadata(
-      str_metadata=self.str_metadata,
-      int_metadata=self.int_metadata,
-      set_metadata=self.set_metadata,
-    )
+    metadata = {
+      'str_metadata': self.str_metadata,
+      'int_metadata': self.int_metadata,
+      'set_metadata': self.set_metadata,
+    }
     return MockBundle.construct(
       data_hash=self.data_hash,
       state=self.state,
       metadata=metadata,
+      dependencies=[],
     )
 
   def check_bundle(self, bundle, uuid=None):

@@ -10,4 +10,5 @@ class UploadedBundle(NamedBundle):
       'data_hash': data_hash,
       'state': State.READY,
       'metadata': metadata,
+      'dependencies': [],
     })

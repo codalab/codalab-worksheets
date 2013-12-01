@@ -1,7 +1,9 @@
 class Metadata(object):
-  def __init__(self, **kwargs):
+  def __init__(self, metadata_specs, metadata_dict):
+    if isinstance(metadata_dict, (list, tuple)):
+      metadata_dict = self.collapse_dicts(metadata_specs, metadata_dict)
     self._metadata_keys = set()
-    for (key, value) in kwargs.iteritems():
+    for (key, value) in metadata_dict.iteritems():
       self.set_metadata_key(key, value)
 
   def validate(self, metadata_specs):
@@ -41,10 +43,9 @@ class Metadata(object):
     return unicode if value_type == basestring else value_type 
 
   @classmethod
-  def from_dicts(cls, metadata_specs, rows):
+  def collapse_dicts(cls, metadata_specs, rows):
     '''
-    Construct a Metadata object given a denormalized list of metadata dicts.
-    These dicts may either be those returned by from_dicts or sqlalchemy Row objects from the metadata table.
+    Convert a list of Metadata dictionaries into a normalized metadata dict.
     '''
     metadata_dict = {}
     metadata_types = {}
@@ -66,7 +67,7 @@ class Metadata(object):
             (metadata_dict[key], value, key)
           )
         metadata_dict[key] = cls.get_type_constructor(value_type)(value)
-    return Metadata(**metadata_dict)
+    return metadata_dict
 
   def to_dicts(self, metadata_specs):
     '''

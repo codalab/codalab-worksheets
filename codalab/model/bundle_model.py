@@ -8,6 +8,7 @@ from codalab.common import IntegrityError
 from codalab.model.tables import (
   bundle as cl_bundle,
   bundle_metadata as cl_bundle_metadata,
+  dependency as cl_dependency,
   db_metadata,
 )
 
@@ -75,14 +76,22 @@ class BundleModel(object):
       metadata_rows = connection.execute(cl_bundle_metadata.select().where(
         cl_bundle_metadata.c.bundle_uuid.in_(uuids)
       )).fetchall()
+      dependency_rows = connection.execute(cl_dependency.select().where(
+        cl_dependency.c.child_uuid.in_(uuids)
+      )).fetchall()
     # Make a dictionary for each bundle with both data and metadata.
     bundle_values = {row.uuid: dict(row) for row in bundle_rows}
     for bundle_value in bundle_values.itervalues():
       bundle_value['metadata'] = []
+      bundle_value['dependencies'] = []
     for metadata_row in metadata_rows:
       if metadata_row.bundle_uuid not in bundle_values:
         raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
       bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
+    for dep_row in dependency_rows:
+      if dep_row.child_uuid not in bundle_values:
+        raise IntegrityError('Got dependency %s without bundle' % (dep_row,))
+      bundle_values[dep_row.child_uuid]['dependencies'].append(dep_row)
     # Construct and validate all of the retrieved bundles.
     bundles = [
       get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
@@ -99,7 +108,9 @@ class BundleModel(object):
     bundle.validate()
     bundle_value = bundle.to_dict()
     bundle_metadata_values = bundle_value.pop('metadata')
+    dependency_values = bundle_value.pop('dependencies')
     with self.engine.begin() as connection:
       result = connection.execute(cl_bundle.insert().values(bundle_value))
       connection.execute(cl_bundle_metadata.insert(), bundle_metadata_values)
+      connection.execute(cl_dependency.insert(), dependency_values)
       bundle.id = result.lastrowid

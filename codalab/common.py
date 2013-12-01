@@ -29,13 +29,12 @@ class State(object):
   An enumeration of states that a bundle can be in.
   '''
   CREATED = 'created'
-  BLOCKING = 'blocking'
   STAGED = 'staged'
   RUNNING = 'running'
   READY = 'ready'
   FAILED = 'failed'
 
-  OPTIONS = set([CREATED, BLOCKING, STAGED, RUNNING, READY, FAILED])
+  OPTIONS = set([CREATED, STAGED, RUNNING, READY, FAILED])
   FINAL_STATES = set([READY, FAILED])
 
 

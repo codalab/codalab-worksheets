@@ -33,6 +33,25 @@ def canonicalize(metadata_dicts):
   )
 
 
+class MockDependency(object):
+  _fields = {
+    'child_uuid': 'my_uuid',
+    'child_path': 'my_child_path',
+    'parent_uuid': 'my_parent_uuid',
+    'parent_path': 'my_parent_path',
+  }
+
+  def __init__(self, row=None):
+    if row:
+      for (field, value) in self._fields.iteritems():
+        self._tester.assertEqual(row[field], value)
+    for (field, value) in self._fields.iteritems():
+      setattr(self, field, value)
+
+  def to_dict(self):
+    return dict(self._fields)
+
+
 class MockBundle(object):
   _fields = {
     'uuid': 'my_uuid',
@@ -40,6 +59,7 @@ class MockBundle(object):
     'data_hash': 'my_data_hash',
     'state': 'my_state',
     'metadata': {'key_1': 'value_1', 'key_2': 'value_2'},
+    'dependencies': [MockDependency().to_dict()]
   }
 
   def __init__(self, row=None):
@@ -51,6 +71,8 @@ class MockBundle(object):
             metadata_to_dicts(self._fields['uuid'], self._fields['metadata'])
           )
           self._tester.assertEqual(actual_value, expected_value)
+        elif field == 'dependencies':
+          [MockDependency(dep) for dep in row[field]]
         else:
           self._tester.assertEqual(row[field], value)
     for (field, value) in self._fields.iteritems():
@@ -68,6 +90,7 @@ class MockBundle(object):
 class BundleModelTest(unittest.TestCase):
   def setUp(self):
     MockBundle._tester = self
+    MockDependency._tester = self
     self.engine = create_engine('sqlite://', strategy='threadlocal')
     self.model = BundleModel(self.engine)
     # We'll test the result of this schema creation step in test_create_tables.
