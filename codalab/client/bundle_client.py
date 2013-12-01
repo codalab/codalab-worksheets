@@ -47,8 +47,6 @@ class BundleClient(object):
     targets should be a dict mapping target keys to (uuid, path) pairs.
     Each of the targets will by symlinked into the new bundle at its key.
     '''
-    # TODO(skishore): How will metadata be inferred for this bundle type?
-    # TODO(skishore): Figure out if this method will call run or vice-versa.
     raise NotImplementedError
 
   def run(self, program_uuid, targets, command):

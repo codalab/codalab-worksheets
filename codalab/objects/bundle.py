@@ -21,6 +21,10 @@ class Bundle(DatabaseObject):
   def construct(cls, *args, **kwargs):
     raise NotImplementedError
 
+  @staticmethod
+  def generate_uuid():
+    return '0x%s' % (uuid.uuid4().hex,)
+
   def validate(self):
     '''
     Check a number of basic conditions that would indicate serious errors if
@@ -46,7 +50,7 @@ class Bundle(DatabaseObject):
   def update_in_memory(self, row):
     metadata = row.pop('metadata')
     if 'uuid' not in row:
-      row['uuid'] = '0x%s' % (uuid.uuid4().hex,)
+      row['uuid'] = self.generate_uuid()
     super(Bundle, self).update_in_memory(row)
     if isinstance(metadata, dict):
       metadata = Metadata(**metadata)

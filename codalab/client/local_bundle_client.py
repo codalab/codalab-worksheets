@@ -5,6 +5,7 @@ from codalab.bundles import (
 from codalab.common import (
   CODALAB_HOME,
   precondition,
+  State,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib.bundle_store import BundleStore
@@ -50,10 +51,13 @@ class LocalBundleClient(BundleClient):
 
   def info(self, uuid):
     bundle = self.model.get_bundle(uuid)
+    location = None
+    if bundle.state == State.READY:
+      location = self.bundle_store.get_location(bundle.data_hash)
     return {
       'bundle_type': bundle.bundle_type,
       'uuid': bundle.uuid,
-      'location': self.bundle_store.get_location(bundle.data_hash),
+      'location': location,
       'metadata': bundle.metadata.to_dict(),
       'state': bundle.state,
     }

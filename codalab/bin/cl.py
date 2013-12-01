@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import os
 import sys
 
 from codalab.bundles import (
@@ -22,13 +23,14 @@ class BundleCLI(object):
         -> BundleCLI.do_upload_command(['program', '.'], parser)
   '''
   DESCRIPTIONS = {
-    'help': 'Show a usage message for cl.py or for a particular command.',
+    'help': 'Show a usage message for cl or for a particular command.',
     'upload': 'Create a bundle by uploading an existing directory.',
+    'make': 'Create a bundle by packaging data from existing bundles.',
     'info': 'Show detailed information about an existing bundle.',
     'ls': 'List the contents of a bundle.',
     'reset': 'Delete the codalab bundle store and reset the database.',
   }
-  COMMON_COMMANDS = ('upload', 'info', 'ls')
+  COMMON_COMMANDS = ('upload', 'make', 'info', 'ls')
 
   def __init__(self, client, verbose):
     self.client = client
@@ -53,7 +55,7 @@ class BundleCLI(object):
       parser.formatter_class = mock_formatter_class
 
   def parse_target(self, target):
-    return tuple(target.split('/', 1)) if '/' in target else (target, '')
+    return tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
 
   def do_command(self, argv):
     if argv:
@@ -62,9 +64,9 @@ class BundleCLI(object):
       (command, remaining_args) = ('help', [])
     command_fn = getattr(self, 'do_%s_command' % (command,), None)
     if not command_fn:
-      self.exit("'%s' is not a codalab command. Try './cl.py help'.")
+      self.exit("'%s' is not a codalab command. Try 'cl help'.")
     parser = argparse.ArgumentParser(
-      prog='./cl.py %s' % (command,),
+      prog='cl %s' % (command,),
       description=self.DESCRIPTIONS[command],
     )
     self.hack_formatter(parser)
@@ -79,7 +81,7 @@ class BundleCLI(object):
   def do_help_command(self, argv, parser):
     if argv:
       self.do_command([argv[0], '-h'])
-    print 'usage: ./cl.py <command> <arguments>'
+    print 'usage: cl <command> <arguments>'
     print '\nThe most commonly used codalab commands are:'
     max_length = max(len(command) for command in self.DESCRIPTIONS)
     indent = 2
@@ -110,6 +112,20 @@ class BundleCLI(object):
     metadata = metadata_util.request_missing_data(bundle_subclass, args)
     print self.client.upload(args.bundle_type, args.path, metadata)
 
+  def do_make_command(self, argv, parser):
+    help = '<key>:[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
+    parser.add_argument('target', help=help, nargs='+')
+    args = parser.parse_args(argv)
+    targets = {}
+    for argument in args.target:
+      if ':' not in argument:
+        raise ValueError('Malformed target %s (expected %s)' % (argument, help))
+      (key, target) = argument.split(':', 1)
+      if key in targets:
+        raise ValueError('Duplicate key: %s' % (key,))
+      targets[key] = self.parse_target(target)
+    print self.client.make(targets)
+
   def do_info_command(self, argv, parser):
     parser.add_argument(
       'bundle_spec',
@@ -129,14 +145,14 @@ class BundleCLI(object):
       name=(info['metadata'].get('name') or '<no name>'),
       description=(info['metadata'].get('description') or '<no description>'),
       uuid=info['uuid'],
-      location=info['location'],
+      location=(info['location'] or '<this bundle is not ready>'),
       state=info['state'].upper(),
     )
 
   def do_ls_command(self, argv, parser):
     parser.add_argument(
       'target',
-      help='[<uuid>|<name>][:<subpath within bundle>]',
+      help='[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,),
     )
     args = parser.parse_args(argv)
     target = self.parse_target(args.target)
