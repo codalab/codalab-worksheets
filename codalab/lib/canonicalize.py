@@ -4,7 +4,6 @@ Helper functions that convert ambiguous inputs into canonical forms:
   target (bundle_spec, subpath) -> filesystem path
 '''
 import os
-import re
 
 from codalab.common import (
   State,
@@ -20,12 +19,12 @@ def get_spec_uuid(model, bundle_spec):
   '''
   if not bundle_spec:
     raise UsageError('Tried to expand empty bundle_spec!')
-  if re.match(Bundle.UUID_REGEX, bundle_spec):
+  if Bundle.UUID_REGEX.match(bundle_spec):
     return bundle_spec
-  elif not re.match(UploadedBundle.NAME_REGEX, bundle_spec):
+  elif not UploadedBundle.NAME_REGEX.match(bundle_spec):
     raise UsageError(
-      "Bundle names should match '%s', was '%s'" %
-      (UploadedBundle.NAME_REGEX, bundle_spec)
+      'Bundle names must match %s, was %s' %
+      (UploadedBundle.NAME_REGEX.pattern, bundle_spec)
     )
   bundles = model.search_bundles(name=bundle_spec)
   if not bundles:

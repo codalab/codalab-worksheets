@@ -10,7 +10,7 @@ from codalab.objects.metadata import Metadata
 
 class Bundle(DatabaseObject):
   TABLE = cl_bundle
-  UUID_REGEX = '^0x[0-9a-f]{32}\Z'
+  UUID_REGEX = re.compile('^0x[0-9a-f]{32}\Z')
 
   # Bundle subclasses should have the following class-level attributes:
   #   - BUNDLE_TYPE: a string bundle type
@@ -31,8 +31,11 @@ class Bundle(DatabaseObject):
     '''
     Raise a PreconditionViolation if the uuid does not conform to its regex.
     '''
-    malformed_uuid = 'uuid must match %s, is %s' % (cls.UUID_REGEX, uuid)
-    precondition(re.match(cls.UUID_REGEX, uuid), malformed_uuid)
+    malformed_uuid = 'uuids must match %s, was %s' % (
+      cls.UUID_REGEX.pattern,
+      uuid,
+    )
+    precondition(cls.UUID_REGEX.match(uuid), malformed_uuid)
 
   def validate(self):
     '''
