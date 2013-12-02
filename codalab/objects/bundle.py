@@ -53,8 +53,8 @@ class Bundle(DatabaseObject):
   def __repr__(self):
     return '%s(uuid=%r, name=%r)' % (
       self.__class__.__name__,
-      self.uuid,
-      self.metadata.name,
+      str(self.uuid),
+      str(self.metadata.name),
     )
 
   def update_in_memory(self, row):

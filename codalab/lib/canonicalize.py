@@ -6,6 +6,7 @@ Helper functions that convert ambiguous inputs into canonical forms:
 import os
 import re
 
+from codalab.common import State
 from codalab.objects.bundle import Bundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 
@@ -41,6 +42,8 @@ def get_target_path(bundle_store, model, target):
   (bundle_spec, path) = target
   uuid = get_spec_uuid(model, bundle_spec)
   bundle = model.get_bundle(uuid)
+  if bundle.state != State.READY:
+    raise ValueError('%s is not ready' % (bundle,))
   bundle_root = bundle_store.get_location(bundle.data_hash)
   final_path = os.path.join(bundle_root, path)
   return final_path
