@@ -34,6 +34,20 @@ class BundleModel(object):
     '''
     db_metadata.create_all(self.engine)
 
+  def do_multirow_insert(self, connection, table, values):
+    '''
+    Insert multiple rows into the given table.
+
+    This method may be overridden by models that use more powerful SQL dialects.
+    '''
+    # This is a lowest-common-denominator implementation of a multi-row insert.
+    # It deals with a couple of SQL dialect issues:
+    #   - Some dialects do not support empty inserts, so we test 'if values'.
+    #   - Some dialects do not support multiple inserts in a single statement,
+    #     which we deal with by using the DBAPI execute_many pattern.
+    if values:
+      connection.execute(table.insert(), values)
+
   def get_bundle(self, uuid):
     '''
     Retrieve a bundle from the database given its uuid.
@@ -107,10 +121,10 @@ class BundleModel(object):
     '''
     bundle.validate()
     bundle_value = bundle.to_dict()
-    bundle_metadata_values = bundle_value.pop('metadata')
+    metadata_values = bundle_value.pop('metadata')
     dependency_values = bundle_value.pop('dependencies')
     with self.engine.begin() as connection:
       result = connection.execute(cl_bundle.insert().values(bundle_value))
-      connection.execute(cl_bundle_metadata.insert(), bundle_metadata_values)
-      connection.execute(cl_dependency.insert(), dependency_values)
+      self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+      self.do_multirow_insert(connection, cl_dependency, dependency_values)
       bundle.id = result.lastrowid
