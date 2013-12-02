@@ -10,7 +10,10 @@ from codalab.bundles import (
 )
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.client.local_bundle_client import LocalBundleClient
-from codalab.common import precondition
+from codalab.common import (
+  precondition,
+  UsageError,
+)
 from codalab.lib import metadata_util
 
 
@@ -75,7 +78,7 @@ class BundleCLI(object):
     else:
       try:
         return command_fn(remaining_args, parser)
-      except ValueError, e:
+      except UsageError, e:
         self.exit('%s: %s' % (e.__class__.__name__, e))
 
   def do_help_command(self, argv, parser):
@@ -105,7 +108,7 @@ class BundleCLI(object):
         metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
     args = parser.parse_args(argv)
     if args.bundle_type not in UPLOADABLE_TYPES:
-      raise ValueError('Invalid bundle type %s (options: [%s])' % (
+      raise UsageError('Invalid bundle type %s (options: [%s])' % (
         args.bundle_type, '|'.join(sorted(UPLOADABLE_TYPES)),
       ))
     bundle_subclass = get_bundle_subclass(args.bundle_type)
@@ -119,10 +122,10 @@ class BundleCLI(object):
     targets = {}
     for argument in args.target:
       if ':' not in argument:
-        raise ValueError('Malformed target %s (expected %s)' % (argument, help))
+        raise UsageError('Malformed target %s (expected %s)' % (argument, help))
       (key, target) = argument.split(':', 1)
       if key in targets:
-        raise ValueError('Duplicate key: %s' % (key,))
+        raise UsageError('Duplicate key: %s' % (key,))
       targets[key] = self.parse_target(target)
     print self.client.make(targets)
 
@@ -168,7 +171,7 @@ class BundleCLI(object):
     )
     args = parser.parse_args(argv)
     if not args.commit:
-      raise ValueError('If you really want to delete all bundles, use --commit')
+      raise UsageError('If you really want to delete all bundles, use --commit')
     self.client.bundle_store._reset()
     self.client.model._reset()
 

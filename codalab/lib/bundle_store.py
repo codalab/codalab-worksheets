@@ -6,7 +6,10 @@ import os
 import shutil
 import uuid
 
-from codalab.common import precondition
+from codalab.common import (
+  precondition,
+  UsageError,
+)
 
 
 class BundleStore(object):
@@ -52,10 +55,10 @@ class BundleStore(object):
   @staticmethod
   def check_isdir(path, fn_name):
     '''
-    Raise ValueError if the given path does not point to a directory.
+    Raise UsageError if the given path does not point to a directory.
     '''
     if not os.path.isdir(path):
-      raise ValueError('%s called with non-directory: %s' % (fn_name, path))
+      raise UsageError('%s called with non-directory: %s' % (fn_name, path))
 
   def get_location(self, data_hash):
     '''
@@ -116,12 +119,12 @@ class BundleStore(object):
   @classmethod
   def check_for_symlinks(cls, root, dirs_and_files=None):
     '''
-    Raise ValueError if there are any symlinks under the given path.
+    Raise UsageError if there are any symlinks under the given path.
     '''
     (directories, files) = dirs_and_files or cls.recursive_ls(root)
     for path in itertools.chain(directories, files):
       if os.path.islink(path):
-        raise ValueError('Found symlink %s under %s' % (path, root))
+        raise UsageError('Found symlink %s under %s' % (path, root))
 
   @classmethod
   def set_permissions(cls, root, permissions, dirs_and_files=None):

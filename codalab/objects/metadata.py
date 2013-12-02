@@ -1,3 +1,6 @@
+from codalab.common import UsageError
+
+
 class Metadata(object):
   def __init__(self, metadata_specs, metadata_dict):
     if isinstance(metadata_dict, (list, tuple)):
@@ -14,13 +17,13 @@ class Metadata(object):
     expected_keys = set(spec.key for spec in metadata_specs)
     for key in self._metadata_keys:
       if key not in expected_keys:
-        raise ValueError('Unexpected metadata key: %s' % (key,))
+        raise UsageError('Unexpected metadata key: %s' % (key,))
     for spec in metadata_specs:
       if spec.key not in self._metadata_keys:
-        raise ValueError('Missing metadata key: %s' % (key,))
+        raise UsageError('Missing metadata key: %s' % (key,))
       value = getattr(self, spec.key)
       if not isinstance(value, spec.type):
-        raise ValueError(
+        raise UsageError(
           'Metadata value for %s should be of type %s, was %s' %
           (key, spec.type, type(value))
         )
@@ -62,7 +65,7 @@ class Metadata(object):
         metadata_dict[key].add(value)
       else:
         if metadata_dict.get(key):
-          raise ValueError(
+          raise UsageError(
             'Got duplicate values %s and %s for key %s' %
             (metadata_dict[key], value, key)
           )

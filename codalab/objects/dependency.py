@@ -1,5 +1,6 @@
 import re
 
+from codalab.common import UsageError
 from codalab.model.database_object import DatabaseObject
 from codalab.model.tables import dependency as cl_dependency
 
@@ -14,7 +15,7 @@ class Dependency(DatabaseObject):
     Bundle.check_uuid(self.child_uuid)
     Bundle.check_uuid(self.parent_uuid)
     if not re.match(self.CHILD_PATH_REGEX, self.child_path):
-      raise ValueError(
+      raise UsageError(
         'child_subpath should match %s, was %s' %
         (self.CHILD_PATH_REGEX, self.child_path)
       )

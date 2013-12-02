@@ -2,6 +2,8 @@ import os
 import subprocess
 import tempfile
 
+from codalab.common import UsageError
+
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
 
@@ -75,11 +77,11 @@ def parse_metadata_form(metadata_specs, form_result):
     line = line.strip()
     if line and not line.startswith('#'):
       if ':' not in line:
-        raise ValueError('Malformatted line (no colon): %s' % (line,))
+        raise UsageError('Malformatted line (no colon): %s' % (line,))
       (metadata_key, remainder) = line.split(':', 1)
       metadata_key = metadata_key.lower()
       if metadata_key not in metadata_types:
-        raise ValueError('Unexpected metadata key: %s' % (metadata_key,))
+        raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
       metadata_type = metadata_types[metadata_key]
       if metadata_type == set:
         result[metadata_key] = [

@@ -4,7 +4,10 @@ from sqlalchemy import (
 )
 
 from codalab.bundles import get_bundle_subclass
-from codalab.common import IntegrityError
+from codalab.common import (
+  IntegrityError,
+  UsageError,
+)
 from codalab.model.tables import (
   bundle as cl_bundle,
   bundle_metadata as cl_bundle_metadata,
@@ -54,7 +57,7 @@ class BundleModel(object):
     '''
     bundles = self.batch_get_bundles(uuids=[uuid])
     if not bundles:
-      raise ValueError('Could not find bundle with uuid %s' % (uuid,))
+      raise UsageError('Could not find bundle with uuid %s' % (uuid,))
     elif len(bundles) > 1:
       raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
     return bundles[0]
