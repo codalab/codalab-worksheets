@@ -64,7 +64,7 @@ class Bundle(DatabaseObject):
       row['uuid'] = self.generate_uuid()
     super(Bundle, self).update_in_memory(row)
     self.metadata = Metadata(self.METADATA_SPECS, metadata)
-    self.dependencies = [Dependency(**dep) for dep in dependencies]
+    self.dependencies = [Dependency(dep) for dep in dependencies]
   
   def to_dict(self):
     result = super(Bundle, self).to_dict()

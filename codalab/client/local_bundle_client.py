@@ -25,6 +25,12 @@ class LocalBundleClient(BundleClient):
   def get_spec_uuid(self, bundle_spec):
     return canonicalize.get_spec_uuid(self.model, bundle_spec)
 
+  def get_uuid_targets(self, targets):
+    return {
+      key: (self.get_spec_uuid(bundle_spec), subpath)
+      for (key, (bundle_spec, subpath)) in targets.iteritems()
+    }
+
   def upload(self, bundle_type, path, metadata):
     message = 'Invalid upload bundle_type: %s' % (bundle_type,)
     precondition(bundle_type in UPLOADABLE_TYPES, message)
@@ -39,7 +45,8 @@ class LocalBundleClient(BundleClient):
 
   def make(self, targets):
     bundle_subclass = get_bundle_subclass('make')
-    bundle = bundle_subclass.construct(targets)
+    uuid_targets = self.get_uuid_targets(targets)
+    bundle = bundle_subclass.construct(uuid_targets, targets=targets)
     self.model.save_bundle(bundle)
     return bundle.uuid
 

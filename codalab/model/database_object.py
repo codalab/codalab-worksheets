@@ -9,7 +9,7 @@ class DatabaseObject(object):
     self.columns = tuple(
       column.name for column in self.TABLE.c if column.name != 'id'
     )
-    self.update_in_memory(row)
+    self.update_in_memory(dict(row))
 
   def update_in_memory(self, row):
     '''

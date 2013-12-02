@@ -9,9 +9,10 @@ class MakeBundle(NamedBundle):
   NAME_LENGTH = 8
 
   @classmethod
-  def construct(cls, targets):
+  def construct(cls, uuid_targets, targets=None):
     uuid = cls.generate_uuid()
     # Compute metadata with default values for name and description.
+    targets = targets or uuid_targets
     description = 'Package containing %s' % (
       ', '.join(
         '%s:%s' % (key, os.path.join(*[part for part in target if part]))
@@ -25,7 +26,7 @@ class MakeBundle(NamedBundle):
     }
     # List the dependencies of this bundle on its targets.
     dependencies = []
-    for (child_path, (parent_uuid, parent_path)) in targets:
+    for (child_path, (parent_uuid, parent_path)) in uuid_targets.iteritems():
       dependencies.append({
         'child_uuid': uuid,
         'child_path': child_path,
