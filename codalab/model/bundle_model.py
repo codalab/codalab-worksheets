@@ -6,6 +6,7 @@ from sqlalchemy import (
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
   IntegrityError,
+  precondition,
   UsageError,
 )
 from codalab.model.tables import (
@@ -55,7 +56,7 @@ class BundleModel(object):
     '''
     Retrieve a bundle from the database given its uuid.
     '''
-    bundles = self.batch_get_bundles(uuids=[uuid])
+    bundles = self.batch_get_bundles(uuid=uuid)
     if not bundles:
       raise UsageError('Could not find bundle with uuid %s' % (uuid,))
     elif len(bundles) > 1:
@@ -78,18 +79,35 @@ class BundleModel(object):
         cl_bundle_metadata.c.bundle_uuid,
       ]).where(clause)).fetchall()
     uuids = set([row.bundle_uuid for row in metadata_rows])
-    if not uuids:
-      return []
-    return self.batch_get_bundles(uuids)
+    return self.batch_get_bundles(uuid=uuids)
 
-  def batch_get_bundles(self, uuids):
+  def batch_get_bundles(self, **kwargs):
     '''
-    Return a list of bundles given their uuids.
+    Return a list of bundles given a dict mapping cl_bundle columns to values.
+    If a value is a list, set, or tuple, produce an IN clause on that column.
+    '''
+    precondition(kwargs, 'batch_get_bundles got an empty kwargs dict!')
+    clauses = []
+    for (key, value) in kwargs.iteritems():
+      if isinstance(value, (list, set, tuple)):
+        if not value:
+          return []
+        clauses.append(getattr(cl_bundle.c, key).in_(value))
+      else:
+        clauses.append(getattr(cl_bundle.c, key) == value)
+    return self._batch_get_bundles(and_(*clauses))
+
+  def _batch_get_bundles(self, clause):
+    '''
+    Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
     '''
     with self.engine.begin() as connection:
-      bundle_rows = connection.execute(cl_bundle.select().where(
-        cl_bundle.c.uuid.in_(uuids)
-      )).fetchall()
+      bundle_rows = connection.execute(
+        cl_bundle.select().where(clause)
+      ).fetchall()
+      uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
+      if not uuids:
+        return []
       metadata_rows = connection.execute(cl_bundle_metadata.select().where(
         cl_bundle_metadata.c.bundle_uuid.in_(uuids)
       )).fetchall()
@@ -117,6 +135,15 @@ class BundleModel(object):
     for bundle in bundles:
       bundle.validate()
     return bundles
+
+  def batch_update_bundles(self, bundles, update):
+    '''
+    Update a list of bundles given a dict mapping columns to new values.
+    '''
+    if bundles:
+      clause = cl_bundle.c.id.in_(bundle.id for bundle in bundles)
+      with self.engine.begin() as connection:
+        connection.execute(cl_bundle.update().where(clause).values(update))
 
   def save_bundle(self, bundle):
     '''
