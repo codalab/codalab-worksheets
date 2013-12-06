@@ -136,21 +136,6 @@ class BundleModel(object):
       bundle.validate()
     return bundles
 
-  def batch_update_bundle_states(self, bundles, new_state):
-    '''
-    Update a list of bundles all in one state to all be in the new_state.
-    Return True if all updates succeed.
-    '''
-    if bundles:
-      states = set(bundle.state for bundle in bundles)
-      precondition(len(states) == 1, 'Got multiple states: %s' % (states,))
-      return self.batch_update_bundles(
-        bundles=bundles,
-        update={'state': new_state},
-        condition={'state': bundles[0].state},
-      )
-    return True
-
   def batch_update_bundles(self, bundles, update, condition=None):
     '''
     Update a list of bundles given a dict mapping columns to new values.
