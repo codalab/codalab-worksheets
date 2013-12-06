@@ -52,6 +52,21 @@ class BundleModel(object):
     if values:
       connection.execute(table.insert(), values)
 
+  def make_bundle_clause(self, kwargs):
+    '''
+    Return a list of bundles given a dict mapping cl_bundle columns to values.
+    If a value is a list, set, or tuple, produce an IN clause on that column.
+    '''
+    clauses = [True]
+    for (key, value) in kwargs.iteritems():
+      if isinstance(value, (list, set, tuple)):
+        if not value:
+          return False
+        clauses.append(getattr(cl_bundle.c, key).in_(value))
+      else:
+        clauses.append(getattr(cl_bundle.c, key) == value)
+    return and_(*clauses)
+
   def get_bundle(self, uuid):
     '''
     Retrieve a bundle from the database given its uuid.
@@ -83,24 +98,9 @@ class BundleModel(object):
 
   def batch_get_bundles(self, **kwargs):
     '''
-    Return a list of bundles given a dict mapping cl_bundle columns to values.
-    If a value is a list, set, or tuple, produce an IN clause on that column.
-    '''
-    precondition(kwargs, 'batch_get_bundles got an empty kwargs dict!')
-    clauses = []
-    for (key, value) in kwargs.iteritems():
-      if isinstance(value, (list, set, tuple)):
-        if not value:
-          return []
-        clauses.append(getattr(cl_bundle.c, key).in_(value))
-      else:
-        clauses.append(getattr(cl_bundle.c, key) == value)
-    return self._batch_get_bundles(and_(*clauses))
-
-  def _batch_get_bundles(self, clause):
-    '''
     Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
     '''
+    clause = self.make_bundle_clause(kwargs)
     with self.engine.begin() as connection:
       bundle_rows = connection.execute(
         cl_bundle.select().where(clause)
@@ -136,14 +136,42 @@ class BundleModel(object):
       bundle.validate()
     return bundles
 
-  def batch_update_bundles(self, bundles, update):
+  def batch_update_bundle_states(self, bundles, new_state):
     '''
-    Update a list of bundles given a dict mapping columns to new values.
+    Update a list of bundles all in one state to all be in the new_state.
+    Return True if all updates succeed.
     '''
     if bundles:
-      clause = cl_bundle.c.id.in_(bundle.id for bundle in bundles)
+      states = set(bundle.state for bundle in bundles)
+      precondition(len(states) == 1, 'Got multiple states: %s' % (states,))
+      return self.batch_update_bundles(
+        bundles=bundles,
+        update={'state': new_state},
+        condition={'state': bundles[0].state},
+      )
+    return True
+
+  def batch_update_bundles(self, bundles, update, condition=None):
+    '''
+    Update a list of bundles given a dict mapping columns to new values.
+    Return True if all updates succeed.
+    '''
+    precondition('id' not in update, 'Illegal update: %s' % (update,))
+    if bundles:
+      bundle_ids = set(bundle.id for bundle in bundles)
+      clause = cl_bundle.c.id.in_(bundle_ids)
+      if condition:
+        clause = and_(clause, self.make_bundle_clause(condition))
       with self.engine.begin() as connection:
-        connection.execute(cl_bundle.update().where(clause).values(update))
+        result = connection.execute(
+          cl_bundle.update().where(clause).values(update)
+        )
+        success = result.rowcount == len(bundle_ids)
+        if success:
+          for bundle in bundles:
+            bundle.update_in_memory(update)
+        return success
+    return True
 
   def save_bundle(self, bundle):
     '''
