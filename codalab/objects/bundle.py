@@ -60,14 +60,19 @@ class Bundle(DatabaseObject):
       str(self.metadata.name),
     )
 
-  def update_in_memory(self, row):
-    metadata = row.pop('metadata')
-    dependencies = row.pop('dependencies')
+  def update_in_memory(self, row, strict=False):
+    metadata = row.pop('metadata', None)
+    dependencies = row.pop('dependencies', None)
+    if strict:
+      precondition(metadata is not None, 'No metadata: %s' % (row,))
+      precondition(dependencies is not None, 'No dependencies: %s' % (row,))
     if 'uuid' not in row:
       row['uuid'] = self.generate_uuid()
     super(Bundle, self).update_in_memory(row)
-    self.metadata = Metadata(self.METADATA_SPECS, metadata)
-    self.dependencies = [Dependency(dep) for dep in dependencies]
+    if metadata is not None:
+      self.metadata = Metadata(self.METADATA_SPECS, metadata)
+    if dependencies is not None:
+      self.dependencies = [Dependency(dep) for dep in dependencies]
   
   def to_dict(self):
     result = super(Bundle, self).to_dict()
@@ -79,7 +84,8 @@ class Bundle(DatabaseObject):
 
   def run(self, bundle_store, parent_dict):
     '''
-    Construct this bundle within a temporary folder in the given BundleStore.
+    Perform the computation needed to construct this bundle, upload the result
+    to the given BundleStore, and return its new data hash.
 
     parent_dict should be a dictionary mapping uuids -> bundles for each uuid
     that this bundle depends on.

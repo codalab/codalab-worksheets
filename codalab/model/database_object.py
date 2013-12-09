@@ -9,15 +9,18 @@ class DatabaseObject(object):
     self.columns = tuple(
       column.name for column in self.TABLE.c if column.name != 'id'
     )
-    self.update_in_memory(dict(row))
+    self.update_in_memory(dict(row), strict=True)
 
-  def update_in_memory(self, row):
+  def update_in_memory(self, row, strict=False):
     '''
     Initialize the attributes on this object from the data in the row.
     The attributes of the row are inferred from the table columns.
+
+    If strict is True, checks that all columns are included in the row.
     '''
-    for column in self.columns:
-      precondition(column in row, 'Row %s missing column: %s' % (row, column))
+    if strict:
+      for column in self.columns:
+        precondition(column in row, 'Row %s missing column: %s' % (row, column))
     for (key, value) in row.iteritems():
       message = 'Row %s has extra column: %s' % (row, key)
       precondition(hasattr(self.TABLE.c, key), message)

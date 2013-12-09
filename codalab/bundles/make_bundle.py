@@ -1,7 +1,11 @@
 import os
+import tempfile
 
 from codalab.bundles.named_bundle import NamedBundle
-from codalab.common import State
+from codalab.common import (
+  State,
+  UsageError,
+)
 
 
 class MakeBundle(NamedBundle):
@@ -43,4 +47,22 @@ class MakeBundle(NamedBundle):
     })
 
   def run(self, bundle_store, parent_dict):
-    raise NotImplementedError
+    temp_dir = tempfile.mkdtemp()
+    for dep in self.dependencies:
+      parent = parent_dict[dep.parent_uuid]
+      # Compute an absolute target and check that the dependency exists.
+      full_target = os.path.join(
+        bundle_store.get_location(parent.data_hash),
+        dep.parent_path,
+      )
+      if not os.path.exists(full_target):
+        raise UsageError('Target %s not found!' % (full_target,))
+      # Create a symlink that points to the dependency's relative target.
+      relative_target = os.path.join(
+        os.pardir,
+        bundle_store.get_location(parent.data_hash, relative=True),
+        dep.parent_path,
+      )
+      link_path = os.path.join(temp_dir, dep.child_path)
+      os.symlink(relative_target, link_path)
+    return bundle_store.upload(temp_dir, allow_symlinks=True)

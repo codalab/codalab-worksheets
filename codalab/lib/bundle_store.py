@@ -63,13 +63,15 @@ class BundleStore(object):
     if not os.path.isdir(path):
       raise UsageError('%s called with non-directory: %s' % (fn_name, path))
 
-  def get_location(self, data_hash):
+  def get_location(self, data_hash, relative=False):
     '''
     Returns the on-disk location of the bundle with the given data hash.
     '''
+    if relative:
+      return data_hash
     return os.path.join(self.data, data_hash)
 
-  def upload(self, path, forbid_symlinks=False):
+  def upload(self, path, allow_symlinks=False):
     '''
     Copy the contents of the directory at path into the data subdirectory,
     in a subfolder named by a hash of the contents of the new data directory.
@@ -81,10 +83,10 @@ class BundleStore(object):
     # Recursively copy the directory into a new BundleStore temp directory.
     temp_directory = str(uuid.uuid4())
     temp_path = os.path.join(self.temp, temp_directory)
-    shutil.copytree(absolute_path, temp_path)
+    shutil.copytree(absolute_path, temp_path, symlinks=allow_symlinks)
     # Recursively list the directory just once as an optimization.
     dirs_and_files = self.recursive_ls(temp_path)
-    if forbid_symlinks:
+    if not allow_symlinks:
       self.check_for_symlinks(temp_path, dirs_and_files)
     self.set_permissions(temp_path, 0o755, dirs_and_files)
     # Hash the contents of the temporary directory, and then if there is no
@@ -137,7 +139,12 @@ class BundleStore(object):
     '''
     (directories, files) = dirs_and_files or cls.recursive_ls(root)
     for path in itertools.chain(directories, files):
-      os.chmod(path, permissions)
+      try:
+        os.chmod(path, permissions)
+      except OSError, e:
+        # chmod-ing a broken symlink will raise ENOENT, so we pass on this case.
+        if not (e.errno == errno.ENOENT and os.path.islink(path)):
+          raise
 
   @classmethod
   def hash_directory(cls, path, dirs_and_files=None):

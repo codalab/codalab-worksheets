@@ -35,7 +35,11 @@ class Worker(object):
     Return True if all updates succeed.
     '''
     if bundles:
-      with self.profile('Setting %s bundles to %s' % (len(bundles), new_state)):
+      message = 'Setting %s bundles to %s...' % (
+        len(bundles),
+        new_state.upper(),
+      )
+      with self.profile(message):
         states = set(bundle.state for bundle in bundles)
         precondition(len(states) == 1, 'Got multiple states: %s' % (states,))
         success = self.model.batch_update_bundles(
@@ -90,12 +94,13 @@ class Worker(object):
       self.pretty_print('Got %s bundles.' % (len(bundles),))
     random.shuffle(bundles)
     for bundle in bundles:
-      if self.model.batch_update_bundle_states([bundle], State.RUNNING):
+      if self.update_bundle_states([bundle], State.RUNNING):
         self.pretty_print('Locked %s.' % (bundle,))
         parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
         parents = self.model.batch_get_bundles(uuid=parent_uuids)
         parent_dict = {parent.uuid: parent for parent in parents}
-        bundle.run(self.bundle_store, parent_dict)
+        data_hash = bundle.run(self.bundle_store, parent_dict)
+        raise ValueError(data_hash)
       break
     else:
       self.pretty_print('Failed to lock a bundle!')
