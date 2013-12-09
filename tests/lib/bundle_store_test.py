@@ -92,7 +92,8 @@ class BundleStoreTest(unittest.TestCase):
   @mock.patch('codalab.lib.bundle_store.uuid')
   @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
   @mock.patch('codalab.lib.bundle_store.shutil', new_callable=mock.Mock)
-  def run_upload_trial(self, mock_shutil, mock_os, mock_uuid, new):
+  def run_upload_trial(
+      self, mock_shutil, mock_os, mock_uuid, new, forbid_symlinks):
     '''
     Test that upload takes the following actions, in order:
       - Copies the bundle into the temp directory
@@ -163,18 +164,22 @@ class BundleStoreTest(unittest.TestCase):
     bundle_store = MockBundleStore(test_root)
     self.assertFalse(check_isdir_called[0])
     self.assertFalse(check_for_symlinks_called[0])
-    bundle_store.upload(unnormalized_bundle_path)
+    bundle_store.upload(
+      unnormalized_bundle_path, forbid_symlinks=forbid_symlinks)
     self.assertTrue(check_isdir_called[0])
+    self.assertEqual(check_for_symlinks_called[0], forbid_symlinks)
     if new:
       mock_os.rename.assert_called_with(temp_directory, final_directory)
     else:
       mock_shutil.rmtree.assert_called_with(temp_directory)
 
   def test_new_upload(self):
-    self.run_upload_trial(new=True)
+    self.run_upload_trial(new=True, forbid_symlinks=True)
+    self.run_upload_trial(new=True, forbid_symlinks=False)
 
   def test_old_upload(self):
-    self.run_upload_trial(new=False)
+    self.run_upload_trial(new=False, forbid_symlinks=True)
+    self.run_upload_trial(new=False, forbid_symlinks=False)
 
   @mock.patch('codalab.lib.bundle_store.os', new_callable=lambda: None)
   @mock.patch('codalab.lib.bundle_store.shutil', new_callable=lambda: None)

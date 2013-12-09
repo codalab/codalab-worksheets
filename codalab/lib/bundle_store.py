@@ -17,6 +17,9 @@ class BundleStore(object):
   TEMP_SUBDIRECTORY = 'temp'
   BLOCK_SIZE = 0x40000
 
+  FILE_PREFIX = 'file'
+  LINK_PREFIX = 'link'
+
   def __init__(self, codalab_home):
     self.codalab_home = self.normalize_path(codalab_home)
     self.data = os.path.join(self.codalab_home, self.DATA_SUBDIRECTORY)
@@ -66,7 +69,7 @@ class BundleStore(object):
     '''
     return os.path.join(self.data, data_hash)
 
-  def upload(self, path):
+  def upload(self, path, forbid_symlinks=False):
     '''
     Copy the contents of the directory at path into the data subdirectory,
     in a subfolder named by a hash of the contents of the new data directory.
@@ -81,7 +84,8 @@ class BundleStore(object):
     shutil.copytree(absolute_path, temp_path)
     # Recursively list the directory just once as an optimization.
     dirs_and_files = self.recursive_ls(temp_path)
-    self.check_for_symlinks(temp_path, dirs_and_files)
+    if forbid_symlinks:
+      self.check_for_symlinks(temp_path, dirs_and_files)
     self.set_permissions(temp_path, 0o755, dirs_and_files)
     # Hash the contents of the temporary directory, and then if there is no
     # data with this hash value, move this directory into the data directory.
@@ -174,10 +178,15 @@ class BundleStore(object):
     message = 'hash_file called with relative path: %s' % (file_path,)
     precondition(os.path.isabs(file_path), message)
     contents_hash = hashlib.sha1()
-    with open(file_path, 'rb') as file_handle:
-      while True:
-        data = file_handle.read(cls.BLOCK_SIZE)
-        if not data:
-          break
-        contents_hash.update(data)
+    if os.path.islink(file_path):
+      contents_hash = hashlib.sha1(cls.LINK_PREFIX)
+      contents_hash.update(os.readlink(file_path))
+    else:
+      contents_hash = hashlib.sha1(cls.FILE_PREFIX)
+      with open(file_path, 'rb') as file_handle:
+        while True:
+          data = file_handle.read(cls.BLOCK_SIZE)
+          if not data:
+            break
+          contents_hash.update(data)
     return contents_hash.hexdigest()

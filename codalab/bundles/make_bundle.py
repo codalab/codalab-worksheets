@@ -41,3 +41,6 @@ class MakeBundle(NamedBundle):
       'metadata': metadata,
       'dependencies': dependencies,
     })
+
+  def run(self, bundle_store, parent_dict):
+    raise NotImplementedError

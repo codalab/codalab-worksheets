@@ -12,3 +12,6 @@ class UploadedBundle(NamedBundle):
       'metadata': metadata,
       'dependencies': [],
     })
+
+  def run(self, bundle_store, parent_dict):
+    assert(False), '%ss should never be run!' % (self.__class__.__name__,)

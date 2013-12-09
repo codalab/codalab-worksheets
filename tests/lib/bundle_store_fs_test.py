@@ -65,8 +65,9 @@ class BundleStoreFSTest(unittest.TestCase):
     underneat the given path.
     '''
     BundleStore.check_for_symlinks(self.bundle_path)
+    link_target = '../some/random/thing/to/symlink/to'
     symlink_path = os.path.join(self.bundle_directories[-1], 'my_symlink')
-    os.symlink('/some/random/thing/to/symlink/to', symlink_path)
+    os.symlink(link_target, symlink_path)
     self.assertRaises(
       ValueError,
       lambda: BundleStore.check_for_symlinks(self.bundle_path),
@@ -87,8 +88,17 @@ class BundleStoreFSTest(unittest.TestCase):
     '''
     Test that hash_file_contents reads a file and hashes its contents.
     '''
+    self.assertNotEqual(BundleStore.FILE_PREFIX, BundleStore.LINK_PREFIX)
+    # Check that files are hashed with a file prefix.
     # TODO(skishore): Try this test with a much larger file.
-    expected_hash = hashlib.sha1(self.contents).hexdigest()
+    expected_hash = hashlib.sha1(BundleStore.FILE_PREFIX + self.contents).hexdigest()
     for path in self.bundle_files:
       file_hash = BundleStore.hash_file_contents(path)
       self.assertEqual(file_hash, expected_hash)
+    # Check that links are hashed with a link prefix.
+    link_target = '../some/random/thing/to/symlink/to'
+    expected_hash = hashlib.sha1(BundleStore.LINK_PREFIX + link_target).hexdigest()
+    symlink_path = os.path.join(self.bundle_directories[-1], 'my_symlink')
+    os.symlink(link_target, symlink_path)
+    link_hash = BundleStore.hash_file_contents(symlink_path)
+    self.assertEqual(link_hash, expected_hash)

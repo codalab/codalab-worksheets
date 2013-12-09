@@ -76,3 +76,12 @@ class Bundle(DatabaseObject):
       metadata_row['bundle_uuid'] = self.uuid
     result['dependencies'] = [dep.to_dict() for dep in self.dependencies]
     return result
+
+  def run(self, bundle_store, parent_dict):
+    '''
+    Construct this bundle within a temporary folder in the given BundleStore.
+
+    parent_dict should be a dictionary mapping uuids -> bundles for each uuid
+    that this bundle depends on.
+    '''
+    raise NotImplementedError
