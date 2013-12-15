@@ -72,7 +72,7 @@ class BundleCLI(object):
       (command, remaining_args) = ('help', [])
     command_fn = getattr(self, 'do_%s_command' % (command,), None)
     if not command_fn:
-      self.exit("'%s' is not a codalab command. Try 'cl help'.")
+      self.exit("'%s' is not a codalab command. Try 'cl help'." % (command,))
     parser = argparse.ArgumentParser(
       prog='cl %s' % (command,),
       description=self.DESCRIPTIONS[command],
