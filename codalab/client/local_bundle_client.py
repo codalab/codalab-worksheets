@@ -44,11 +44,9 @@ class LocalBundleClient(BundleClient):
   def get_target_path(self, target):
     return canonicalize.get_target_path(self.bundle_store, self.model, target)
 
-  def get_uuid_targets(self, targets):
-    return {
-      key: (self.get_spec_uuid(bundle_spec), subpath)
-      for (key, (bundle_spec, subpath)) in targets.iteritems()
-    }
+  def get_bundle_target(self, target):
+    (bundle_spec, subpath) = target
+    return (self.model.get_bundle(self.get_spec_uuid(bundle_spec)), subpath)
 
   def upload(self, bundle_type, path, metadata):
     message = 'Invalid upload bundle_type: %s' % (bundle_type,)
@@ -64,20 +62,19 @@ class LocalBundleClient(BundleClient):
 
   def make(self, targets):
     bundle_subclass = get_bundle_subclass('make')
-    uuid_targets = self.get_uuid_targets(targets)
-    bundle = bundle_subclass.construct(uuid_targets, targets=targets)
+    targets = {
+      key: self.get_bundle_target(target)
+      for (key, target) in targets.iteritems()
+    }
+    bundle = bundle_subclass.construct(targets)
     self.model.save_bundle(bundle)
     return bundle.uuid
 
   def run(self, program_target, input_target, command):
-    program_uuid = self.get_spec_uuid(program_target[0])
-    program = self.model.get_bundle(program_uuid)
-    input_uuid = self.get_spec_uuid(input_target[0])
-    input = self.model.get_bundle(input_uuid)
-    targets = {'program': program_target, 'input': input_target}
-    uuid_targets = self.get_uuid_targets(targets)
+    program_target = self.get_bundle_target(program_target)
+    input_target = self.get_bundle_target(input_target)
     bundle_subclass = get_bundle_subclass('run')
-    bundle = bundle_subclass.construct(program, input, uuid_targets, command)
+    bundle = bundle_subclass.construct(program_target, input_target, command)
     self.model.save_bundle(bundle)
     return bundle.uuid
 

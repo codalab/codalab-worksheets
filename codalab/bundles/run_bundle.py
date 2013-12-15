@@ -15,7 +15,9 @@ class RunBundle(NamedBundle):
   NAME_LENGTH = 8
 
   @classmethod
-  def construct(cls, program, input, uuid_targets, command):
+  def construct(cls, parent_target, input_target, command):
+    (program, program_path) = parent_target
+    (input, input_path) = input_target
     if not isinstance(program, ProgramBundle):
       raise UsageError('%s is not a program!' % (program,))
     if not isinstance(input, NamedBundle):
@@ -24,9 +26,11 @@ class RunBundle(NamedBundle):
       raise UsageError('%r is not a valid command!' % (command,))
     uuid = cls.generate_uuid()
     # Compute metadata with default values for name and description.
-    description = 'Run %s on %s: %r' % (
+    description = 'Run %s/%s on %s/%s: %r' % (
       program.metadata.name,
+      program_path,
       input.metadata.name,
+      input_path,
       command,
     )
     metadata = {
@@ -36,11 +40,12 @@ class RunBundle(NamedBundle):
     }
     # List the dependencies of this bundle on its targets.
     dependencies = []
-    for (child_path, (parent_uuid, parent_path)) in uuid_targets.iteritems():
+    targets = {'parent': parent_target, 'input': input_target}
+    for (child_path, (parent, parent_path)) in targets.iteritems():
       dependencies.append({
         'child_uuid': uuid,
         'child_path': child_path,
-        'parent_uuid': parent_uuid,
+        'parent_uuid': parent.uuid,
         'parent_path': parent_path,
       })
     return cls({
