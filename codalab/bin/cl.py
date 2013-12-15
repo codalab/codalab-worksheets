@@ -147,7 +147,7 @@ class BundleCLI(object):
           row_strs.append(value + (length - len(value))*' ')
         print '  '.join(row_strs)
         if i == 0:
-          print (sum(lengths) + 2*len(columns))*'-'
+          print (sum(lengths) + 2*(len(columns) - 1))*'-'
 
 
   def do_info_command(self, argv, parser):
