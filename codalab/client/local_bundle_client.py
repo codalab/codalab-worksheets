@@ -25,6 +25,9 @@ class LocalBundleClient(BundleClient):
   def get_spec_uuid(self, bundle_spec):
     return canonicalize.get_spec_uuid(self.model, bundle_spec)
 
+  def get_target_path(self, target):
+    return canonicalize.get_target_path(self.bundle_store, self.model, target)
+
   def get_uuid_targets(self, targets):
     return {
       key: (self.get_spec_uuid(bundle_spec), subpath)
@@ -70,5 +73,5 @@ class LocalBundleClient(BundleClient):
     }
 
   def ls(self, target):
-    path = canonicalize.get_target_path(self.bundle_store, self.model, target)
+    path = self.get_target_path(target)
     return path_util.ls(path)
