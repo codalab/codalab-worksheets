@@ -1,9 +1,16 @@
+import os
+from subprocess import (
+  check_call,
+  PIPE,
+)
+
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.bundles.program_bundle import ProgramBundle
 from codalab.common import (
   State,
   UsageError,
 )
+import codalab.lib.path_util as path_util
 
 
 class RunBundle(NamedBundle):
@@ -50,5 +57,16 @@ class RunBundle(NamedBundle):
     })
 
   def run(self, bundle_store, parent_dict):
-    temp_dir = self.symlink_dependencies(bundle_store, parent_dict)
-    raise NotImplementedError(temp_dir)
+    command = self.command
+    for macro in ('program', 'input', 'output'):
+      command = command.replace('$' + macro, macro)
+    temp_dir = self.symlink_dependencies(bundle_store, parent_dict, rel=False)
+    stdout_path = os.path.join('output', 'stdout')
+    stderr_path = os.path.join('output', 'stderr')
+    with path_util.chdir(temp_dir):
+      print 'Executing command: %s' % (command,)
+      print 'In temp directory: %s' % (temp_dir,)
+      os.mkdir('output')
+      with open(stdout_path, 'w') as stdout, open(stderr_path, 'w') as stderr:
+        check_call(command, stdout=stdout, stderr=stderr, shell=True)
+    return bundle_store.upload(os.path.join(temp_dir, 'output'))

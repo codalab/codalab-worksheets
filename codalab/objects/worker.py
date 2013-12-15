@@ -1,7 +1,9 @@
 import contextlib
 import datetime
 import random
+import sys
 import time
+import traceback
 
 from codalab.common import (
   precondition,
@@ -119,13 +121,24 @@ class Worker(object):
     parents = self.model.batch_get_bundles(uuid=parent_uuids)
     parent_dict = {parent.uuid: parent for parent in parents}
     # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
-    with self.profile('Running %s...' % (bundle,)):
+    with self.profile('Running bundle...'):
+      print '\n-- Run started! --\nRunning %s.' % (bundle,)
       try:
         data_hash = bundle.run(self.bundle_store, parent_dict)
-        self.pretty_print('Success! Got data_hash: %s' % (data_hash,))
+        print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
         update = {'data_hash': data_hash, 'state': State.READY}
-      except Exception, e:
-        self.pretty_print('FAILED! Caught %s: %s' % (e.__class__.__name__, e))
+      except Exception:
+        # TODO(skishore): Clean up run temporary directories in failure states.
+        # TODO(skishore): Add metadata updates: time / CPU of run.
+        # TODO(skishore): Record stderr / stdout for failed runs as well.
+        # TODO(skishore): Implement cl cat.
+        # TODO(skishore): Implement remote bundle client.
+        (type, error, tb) = sys.exc_info()
+        print '-- FAILED! --\nTraceback:\n%s\n%s: %s\n' % (
+          ''.join(traceback.format_tb(tb))[:-1],
+          error.__class__.__name__,
+          error,
+        )
         update = {'state': State.FAILED}
     with self.profile('Setting 1 bundle to %s...' % (update['state'].upper(),)):
       condition = {'state': bundle.state}

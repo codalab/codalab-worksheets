@@ -1,9 +1,20 @@
+import contextlib
 import os
 
 from codalab.common import (
   precondition,
   UsageError,
 )
+
+
+@contextlib.contextmanager
+def chdir(new_dir):
+  cur_dir = os.getcwd()
+  try:
+    os.chdir(new_dir)
+    yield
+  finally:
+    os.chdir(cur_dir)
 
 
 def ls(path):

@@ -90,7 +90,7 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  def search(self, query):
+  def search(self, query=None):
     '''
     Run a search on bundle metadata and return data for all bundles that match.
     The data for each bundle is a dict with the same keys as a dict from info.
