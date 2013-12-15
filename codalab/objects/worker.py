@@ -48,7 +48,7 @@ class Worker(object):
           condition={'state': bundles[0].state},
         )
         if not success:
-          self.pretty_print('WARNING: updated failed!')
+          self.pretty_print('WARNING: update failed!')
         return success
     return True
 
@@ -95,12 +95,35 @@ class Worker(object):
     random.shuffle(bundles)
     for bundle in bundles:
       if self.update_bundle_states([bundle], State.RUNNING):
-        self.pretty_print('Locked %s.' % (bundle,))
-        parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
-        parents = self.model.batch_get_bundles(uuid=parent_uuids)
-        parent_dict = {parent.uuid: parent for parent in parents}
-        data_hash = bundle.run(self.bundle_store, parent_dict)
-        raise ValueError(data_hash)
-      break
+        self.run_bundle(bundle)
+        break
     else:
       self.pretty_print('Failed to lock a bundle!')
+
+  def run_bundle(self, bundle):
+    '''
+    Run the given bundle and then update its state to be either READY or FAILED.
+    If the bundle is now READY, its data_hash should be set.
+    '''
+    # Check that we're running a bundle in the RUNNING state.
+    state_message = 'Unexpected bundle state: %s' % (bundle.state,)
+    precondition(bundle.state == State.RUNNING, state_message)
+    data_hash_message = 'Unexpected bundle data_hash: %s' % (bundle.data_hash,)
+    precondition(bundle.data_hash is None, data_hash_message)
+    # Compute a dict mapping parent_uuid -> parent for each dep of this bundle.
+    parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
+    parents = self.model.batch_get_bundles(uuid=parent_uuids)
+    parent_dict = {parent.uuid: parent for parent in parents}
+    # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
+    with self.profile('Running %s...' % (bundle,)):
+      try:
+        data_hash = bundle.run(self.bundle_store, parent_dict)
+        self.pretty_print('Success! Got data_hash: %s' % (data_hash,))
+        update = {'data_hash': data_hash, 'state': State.READY}
+      except Exception, e:
+        self.pretty_print('FAILED! Caught %s: %s' % (e.__class__.__name__, e))
+        update = {'state': State.FAILED}
+    with self.profile('Setting 1 bundle to %s...' % (update['state'].upper(),)):
+      condition = {'state': bundle.state}
+      if not self.model.batch_update_bundles([bundle], update, condition):
+        self.pretty_print('WARNING: update failed!')

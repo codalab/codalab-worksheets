@@ -66,8 +66,8 @@ class Bundle(DatabaseObject):
     if strict:
       precondition(metadata is not None, 'No metadata: %s' % (row,))
       precondition(dependencies is not None, 'No dependencies: %s' % (row,))
-    if 'uuid' not in row:
-      row['uuid'] = self.generate_uuid()
+      if 'uuid' not in row:
+        row['uuid'] = self.generate_uuid()
     super(Bundle, self).update_in_memory(row)
     if metadata is not None:
       self.metadata = Metadata(self.METADATA_SPECS, metadata)
