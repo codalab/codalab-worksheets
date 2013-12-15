@@ -49,13 +49,11 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  def run(self, program_uuid, targets, command):
+  def run(self, program_target, input_target, command):
     '''
     Run the given program bundle, create bundle of output, and return its uuid.
-    The program and input bundles are symlinked in as dependencies at runtime,
-    but are NOT included in the final result.
+    The program and input targets are symlinked in as dependencies at runtime.
     '''
-    # TODO(skishore): Figure out how the command should be parametrized.
     raise NotImplementedError
 
   # Commands for browsing bundles: info, ls, cat, grep, and search.

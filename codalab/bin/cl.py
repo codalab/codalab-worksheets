@@ -147,22 +147,17 @@ class BundleCLI(object):
     print self.client.make(targets)
 
   def do_run_command(self, argv, parser):
-    parser.add_argument(
-      'program_bundle_spec',
-      help='identifier: [<uuid>|<name>]'
-    )
-    parser.add_argument(
-      'input_bundle_spec',
-      help='identifier: [<uuid>|<name>]'
-    )
+    help = '[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
+    parser.add_argument('program_target', help=help)
+    parser.add_argument('input_target', help=help)
     parser.add_argument(
       'command',
       help='shell command with $program, $input, and $output macros',
     )
     args = parser.parse_args(argv)
-    program_uuid = self.client.get_spec_uuid(args.program_bundle_spec)
-    input_uuid = self.client.get_spec_uuid(args.input_bundle_spec)
-    print self.client.run(program_uuid, input_uuid, args.command)
+    program_target = self.parse_target(args.program_target)
+    input_target = self.parse_target(args.input_target)
+    print self.client.run(program_target, input_target, args.command)
 
   def do_list_command(self, argv, parser):
     parser.parse_args(argv)

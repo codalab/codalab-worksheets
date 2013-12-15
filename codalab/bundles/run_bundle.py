@@ -1,8 +1,5 @@
 import os
-from subprocess import (
-  check_call,
-  PIPE,
-)
+import subprocess
 
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.bundles.program_bundle import ProgramBundle
@@ -18,7 +15,7 @@ class RunBundle(NamedBundle):
   NAME_LENGTH = 8
 
   @classmethod
-  def construct(cls, program, input, command):
+  def construct(cls, program, input, uuid_targets, command):
     if not isinstance(program, ProgramBundle):
       raise UsageError('%s is not a program!' % (program,))
     if not isinstance(input, NamedBundle):
@@ -39,12 +36,12 @@ class RunBundle(NamedBundle):
     }
     # List the dependencies of this bundle on its targets.
     dependencies = []
-    for (parent, child_path) in ((program, 'program'), (input, 'input')):
+    for (child_path, (parent_uuid, parent_path)) in uuid_targets.iteritems():
       dependencies.append({
         'child_uuid': uuid,
         'child_path': child_path,
-        'parent_uuid': parent.uuid,
-        'parent_path': '',
+        'parent_uuid': parent_uuid,
+        'parent_path': parent_path,
       })
     return cls({
       'uuid': uuid,
@@ -68,5 +65,8 @@ class RunBundle(NamedBundle):
       print 'In temp directory: %s' % (temp_dir,)
       os.mkdir('output')
       with open(stdout_path, 'w') as stdout, open(stderr_path, 'w') as stderr:
-        check_call(command, stdout=stdout, stderr=stderr, shell=True)
-    return bundle_store.upload(os.path.join(temp_dir, 'output'))
+        subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
+      os.unlink('program')
+      os.unlink('input')
+    self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=True)
+    return bundle_store.upload(temp_dir, allow_symlinks=True)
