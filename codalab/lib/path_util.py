@@ -39,7 +39,7 @@ def cat(path):
     raise UsageError('cat got non-existent path: %s' % (path,))
   if os.path.isdir(path):
     raise UsageError('cat got directory: %s' % (path,))
-  BUFFER_SIZE = 4096
+  BUFFER_SIZE = 0x40000
   with open(path, 'rb') as f:
     while True:
       buffer = f.read(BUFFER_SIZE)
