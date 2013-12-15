@@ -149,7 +149,6 @@ class BundleCLI(object):
         if i == 0:
           print (sum(lengths) + 2*(len(columns) - 1))*'-'
 
-
   def do_info_command(self, argv, parser):
     parser.add_argument(
       'bundle_spec',
