@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import argparse
+import itertools
 import os
-import prettytable
 import sys
 
 from codalab.bundles import (
@@ -133,14 +133,22 @@ class BundleCLI(object):
 
   def do_list_command(self, argv, parser):
     parser.parse_args(argv)
-    columns = ('uuid', 'name', 'bundle_type', 'state')
-    table = prettytable.PrettyTable(columns)
-    for bundle_info in self.client.search():
-      table.add_row([
-        bundle_info.get(column, bundle_info['metadata'].get(column))
-        for column in columns
-      ])
-    print table
+    bundle_info_list = self.client.search()
+    if bundle_info_list:
+      columns = ('uuid', 'name', 'bundle_type', 'state')
+      rows = list(itertools.chain([columns], (
+        [info.get(col, info['metadata'].get(col, '')) for col in columns]
+        for info in bundle_info_list
+      )))
+      lengths = [max(len(value) for value in col) for col in zip(*rows)]
+      for (i, row) in enumerate(rows):
+        row_strs = []
+        for (value, length) in zip(row, lengths):
+          row_strs.append(value + (length - len(value))*' ')
+        print '  '.join(row_strs)
+        if i == 0:
+          print (sum(lengths) + 2*len(columns))*'-'
+
 
   def do_info_command(self, argv, parser):
     parser.add_argument(
