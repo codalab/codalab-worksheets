@@ -58,6 +58,7 @@ class Worker(object):
     If any parent is FAILED, move them to FAILED.
     If all parents are READY, move them to STAGED.
     '''
+    print '-- Updating CREATED bundles! --'
     with self.profile('Getting CREATED bundles...'):
       bundles = self.model.batch_get_bundles(state=State.CREATED)
       self.pretty_print('Got %s bundles.' % (len(bundles),))
@@ -83,12 +84,14 @@ class Worker(object):
     self.update_bundle_states(bundles_to_stage, State.STAGED)
     num_blocking = len(bundles) - len(bundles_to_fail) - len(bundles_to_stage)
     self.pretty_print('%s bundles are still blocking.' % (num_blocking,))
+    print ''
 
   def update_staged_bundles(self):
     '''
     If there are any STAGED bundles, pick one and try to lock it.
     If we get a lock, move the locked bundle to RUNNING and then run it.
     '''
+    print '-- Updating STAGED bundles! --'
     with self.profile('Getting STAGED bundles...'):
       bundles = self.model.batch_get_bundles(state=State.STAGED)
       self.pretty_print('Got %s bundles.' % (len(bundles),))
@@ -99,6 +102,7 @@ class Worker(object):
         break
     else:
       self.pretty_print('Failed to lock a bundle!')
+    print ''
 
   def run_bundle(self, bundle):
     '''

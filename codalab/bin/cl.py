@@ -3,6 +3,7 @@ import argparse
 import itertools
 import os
 import sys
+import time
 
 from codalab.bundles import (
   BUNDLE_SUBCLASSES,
@@ -16,6 +17,7 @@ from codalab.common import (
   UsageError,
 )
 from codalab.lib import metadata_util
+from codalab.objects.worker import Worker
 
 
 class BundleCLI(object):
@@ -33,6 +35,7 @@ class BundleCLI(object):
     'list': 'Show basic information for all bundles.',
     'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
+    'worker': 'Run the codalab bundle worker.',
     'reset': 'Delete the codalab bundle store and reset the database.',
   }
   COMMON_COMMANDS = ('upload', 'make', 'list', 'info', 'ls')
@@ -182,6 +185,20 @@ class BundleCLI(object):
     (directories, files) = self.client.ls(target)
     print '\n  '.join(['Directories:'] + list(directories))
     print '\n  '.join(['Files:'] + list(files))
+
+  def do_worker_command(self, argv, parser):
+    parser.add_argument('iterations', type=int, default=None, nargs='?')
+    args = parser.parse_args(argv)
+    worker = Worker(self.client.bundle_store, self.client.model)
+    i = 0
+    while not args.iterations or i < args.iterations:
+      if i:
+        time.sleep(60)
+      print 'Running CodaLab bundle worker iteration %s...\n' % (i,)
+      worker.update_created_bundles()
+      worker.update_staged_bundles()
+      i += 1
+
 
   def do_reset_command(self, argv, parser):
     parser.add_argument(
