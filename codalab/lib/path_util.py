@@ -1,5 +1,6 @@
 import contextlib
 import os
+import sys
 
 from codalab.common import (
   precondition,
@@ -30,3 +31,19 @@ def ls(path):
     else:
       directories.append(file_name)
   return (directories, files)
+
+
+def cat(path):
+  precondition(os.path.isabs(path), 'cat got relative path: %s' % (path,))
+  if not os.path.exists(path):
+    raise UsageError('cat got non-existent path: %s' % (path,))
+  if os.path.isdir(path):
+    raise UsageError('cat got directory: %s' % (path,))
+  BUFFER_SIZE = 4096
+  with open(path, 'rb') as f:
+    while True:
+      buffer = f.read(BUFFER_SIZE)
+      if not buffer:
+        break
+      sys.stdout.write(buffer)
+      sys.stdout.flush()

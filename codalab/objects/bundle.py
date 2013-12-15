@@ -102,6 +102,7 @@ class Bundle(DatabaseObject):
     Symlink this bundle's dependencies into the directory at path.
     The caller is responsible for cleaning up this directory.
     '''
+    precondition(os.path.isabs(path), '%s is a relative path!' % (path,))
     precondition(os.path.isdir(path), '%s is not a directory!' % (path,))
     for dep in self.dependencies:
       parent = parent_dict[dep.parent_uuid]

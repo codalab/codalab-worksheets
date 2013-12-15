@@ -85,6 +85,10 @@ class LocalBundleClient(BundleClient):
     path = self.get_target_path(target)
     return path_util.ls(path)
 
+  def cat(self, target):
+    path = self.get_target_path(target)
+    path_util.cat(path)
+
   def search(self, query=None):
     if query:
       bundles = self.model.search_bundles(**query)

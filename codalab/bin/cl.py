@@ -36,10 +36,11 @@ class BundleCLI(object):
     'list': 'Show basic information for all bundles.',
     'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
+    'cat': 'Print the contents of a file in a bundle.',
     'worker': 'Run the codalab bundle worker.',
     'reset': 'Delete the codalab bundle store and reset the database.',
   }
-  COMMON_COMMANDS = ('upload', 'make', 'run', 'list', 'info', 'ls')
+  COMMON_COMMANDS = ('upload', 'make', 'run', 'list', 'info', 'ls', 'cat')
 
   def __init__(self, client, verbose):
     self.client = client
@@ -215,6 +216,15 @@ class BundleCLI(object):
     print '\n  '.join(['Directories:'] + list(directories))
     print '\n  '.join(['Files:'] + list(files))
 
+  def do_cat_command(self, argv, parser):
+    parser.add_argument(
+      'target',
+      help='[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,),
+    )
+    args = parser.parse_args(argv)
+    target = self.parse_target(args.target)
+    self.client.cat(target)
+
   def do_worker_command(self, argv, parser):
     parser.add_argument('iterations', type=int, default=None, nargs='?')
     args = parser.parse_args(argv)
@@ -227,7 +237,6 @@ class BundleCLI(object):
       worker.update_created_bundles()
       worker.update_staged_bundles()
       i += 1
-
 
   def do_reset_command(self, argv, parser):
     parser.add_argument(
