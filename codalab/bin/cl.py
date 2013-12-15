@@ -32,13 +32,14 @@ class BundleCLI(object):
     'help': 'Show a usage message for cl or for a particular command.',
     'upload': 'Create a bundle by uploading an existing directory.',
     'make': 'Create a bundle by packaging data from existing bundles.',
+    'run': 'Create a bundle by running a program bundle on an input.',
     'list': 'Show basic information for all bundles.',
     'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
     'worker': 'Run the codalab bundle worker.',
     'reset': 'Delete the codalab bundle store and reset the database.',
   }
-  COMMON_COMMANDS = ('upload', 'make', 'list', 'info', 'ls')
+  COMMON_COMMANDS = ('upload', 'make', 'run', 'list', 'info', 'ls')
 
   def __init__(self, client, verbose):
     self.client = client
@@ -143,6 +144,24 @@ class BundleCLI(object):
         raise UsageError('Duplicate key: %s' % (key,))
       targets[key] = self.parse_target(target)
     print self.client.make(targets)
+
+  def do_run_command(self, argv, parser):
+    parser.add_argument(
+      'program_bundle_spec',
+      help='identifier: [<uuid>|<name>]'
+    )
+    parser.add_argument(
+      'input_bundle_spec',
+      help='identifier: [<uuid>|<name>]'
+    )
+    parser.add_argument(
+      'command',
+      help='shell command with $program, $input, and $output macros',
+    )
+    args = parser.parse_args(argv)
+    program_uuid = self.client.get_spec_uuid(args.program_bundle_spec)
+    input_uuid = self.client.get_spec_uuid(args.input_bundle_spec)
+    print self.client.run(program_uuid, input_uuid, args.command)
 
   def do_list_command(self, argv, parser):
     parser.parse_args(argv)

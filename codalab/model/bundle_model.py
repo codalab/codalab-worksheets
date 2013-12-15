@@ -128,9 +128,10 @@ class BundleModel(object):
         raise IntegrityError('Got dependency %s without bundle' % (dep_row,))
       bundle_values[dep_row.child_uuid]['dependencies'].append(dep_row)
     # Construct and validate all of the retrieved bundles.
+    sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
     bundles = [
       get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
-      for bundle_value in bundle_values.itervalues()
+      for bundle_value in sorted_values
     ]
     for bundle in bundles:
       bundle.validate()
