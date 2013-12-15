@@ -15,8 +15,8 @@ class RunBundle(NamedBundle):
   NAME_LENGTH = 8
 
   @classmethod
-  def construct(cls, parent_target, input_target, command):
-    (program, program_path) = parent_target
+  def construct(cls, program_target, input_target, command):
+    (program, program_path) = program_target
     (input, input_path) = input_target
     if not isinstance(program, ProgramBundle):
       raise UsageError('%s is not a program!' % (program,))
@@ -40,7 +40,7 @@ class RunBundle(NamedBundle):
     }
     # List the dependencies of this bundle on its targets.
     dependencies = []
-    targets = {'parent': parent_target, 'input': input_target}
+    targets = {'program': program_target, 'input': input_target}
     for (child_path, (parent, parent_path)) in targets.iteritems():
       dependencies.append({
         'child_uuid': uuid,
