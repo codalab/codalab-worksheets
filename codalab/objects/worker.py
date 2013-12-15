@@ -1,8 +1,10 @@
 import contextlib
 import datetime
 import random
+import shutil
 import sys
 import time
+import tempfile
 import traceback
 
 from codalab.common import (
@@ -120,27 +122,44 @@ class Worker(object):
     parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
     parents = self.model.batch_get_bundles(uuid=parent_uuids)
     parent_dict = {parent.uuid: parent for parent in parents}
+    # Create a scratch directory to run the bundle in.
+    with self.profile('Creating temp directory...'):
+      temp_dir = tempfile.mkdtemp()
     # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
     with self.profile('Running bundle...'):
       print '\n-- Run started! --\nRunning %s.' % (bundle,)
       try:
-        data_hash = bundle.run(self.bundle_store, parent_dict)
-        print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
+        data_hash = bundle.run(self.bundle_store, parent_dict, temp_dir)
         update = {'data_hash': data_hash, 'state': State.READY}
+        if self.finalize_run(bundle, update):
+          print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
+        else:
+          print '-- FAILED due to concurrently update --\n'
       except Exception:
-        # TODO(skishore): Clean up run temporary directories in failure states.
         # TODO(skishore): Add metadata updates: time / CPU of run.
+        # TODO(skishore): Expose metadata updates on the command line.
+        # TODO(skishore): Implement metadata for non-uploaded bundles.
         # TODO(skishore): Record stderr / stdout for failed runs as well.
         # TODO(skishore): Implement cl cat.
         # TODO(skishore): Implement remote bundle client.
         (type, error, tb) = sys.exc_info()
+        self.finalize_run(bundle, {'state': State.FAILED})
         print '-- FAILED! --\nTraceback:\n%s\n%s: %s\n' % (
           ''.join(traceback.format_tb(tb))[:-1],
           error.__class__.__name__,
           error,
         )
-        update = {'state': State.FAILED}
+    # Clean up after the run.
+    with self.profile('Cleaning up temp directory...'):
+      shutil.rmtree(temp_dir)
+
+  def finalize_run(self, bundle, update):
+    '''
+    Update a bundle at the end of a run. Return True on success.
+    '''
     with self.profile('Setting 1 bundle to %s...' % (update['state'].upper(),)):
       condition = {'state': bundle.state}
-      if not self.model.batch_update_bundles([bundle], update, condition):
+      success = self.model.batch_update_bundles([bundle], update, condition)
+      if not success:
         self.pretty_print('WARNING: update failed!')
+    return success

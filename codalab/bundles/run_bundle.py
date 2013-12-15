@@ -56,13 +56,13 @@ class RunBundle(NamedBundle):
       'dependencies': dependencies,
     })
 
-  def run(self, bundle_store, parent_dict):
+  def run(self, bundle_store, parent_dict, temp_dir):
     command = self.command
     for macro in ('program', 'input', 'output'):
       command = command.replace('$' + macro, macro)
-    temp_dir = self.symlink_dependencies(bundle_store, parent_dict, rel=False)
     stdout_path = os.path.join('output', 'stdout')
     stderr_path = os.path.join('output', 'stderr')
+    self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=False)
     with path_util.chdir(temp_dir):
       print 'Executing command: %s' % (command,)
       print 'In temp directory: %s' % (temp_dir,)

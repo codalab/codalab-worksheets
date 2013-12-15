@@ -43,6 +43,6 @@ class MakeBundle(NamedBundle):
       'dependencies': dependencies,
     })
 
-  def run(self, bundle_store, parent_dict):
-    temp_dir = self.symlink_dependencies(bundle_store, parent_dict, rel=True)
+  def run(self, bundle_store, parent_dict, temp_dir):
+    self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=True)
     return bundle_store.upload(temp_dir, allow_symlinks=True)

@@ -97,12 +97,12 @@ class Bundle(DatabaseObject):
     '''
     raise NotImplementedError
 
-  def symlink_dependencies(self, bundle_store, parent_dict, rel):
+  def install_dependencies(self, bundle_store, parent_dict, path, rel):
     '''
-    Symlink this bundle's dependencies into a new temporary directory and
-    return its path. The caller is responsible for cleaning up the temp dir.
+    Symlink this bundle's dependencies into the directory at path.
+    The caller is responsible for cleaning up this directory.
     '''
-    temp_dir = tempfile.mkdtemp()
+    precondition(os.path.isdir(path), '%s is not a directory!' % (path,))
     for dep in self.dependencies:
       parent = parent_dict[dep.parent_uuid]
       # Compute an absolute target and check that the dependency exists.
@@ -119,6 +119,5 @@ class Bundle(DatabaseObject):
           bundle_store.get_location(parent.data_hash, relative=True),
           dep.parent_path,
         )
-      link_path = os.path.join(temp_dir, dep.child_path)
+      link_path = os.path.join(path, dep.child_path)
       os.symlink(target, link_path)
-    return temp_dir
