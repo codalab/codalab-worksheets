@@ -1,7 +1,12 @@
+import os
 import re
+import tempfile
 import uuid
 
-from codalab.common import precondition
+from codalab.common import (
+  precondition,
+  UsageError,
+)
 from codalab.model.database_object import DatabaseObject
 from codalab.model.tables import bundle as cl_bundle
 from codalab.objects.dependency import Dependency
@@ -91,3 +96,28 @@ class Bundle(DatabaseObject):
     that this bundle depends on.
     '''
     raise NotImplementedError
+
+  def symlink_dependencies(self, bundle_store, parent_dict):
+    '''
+    Symlink this bundle's dependencies into a new temporary directory and
+    return its path. The caller is responsible for cleaning up the temp dir.
+    '''
+    temp_dir = tempfile.mkdtemp()
+    for dep in self.dependencies:
+      parent = parent_dict[dep.parent_uuid]
+      # Compute an absolute target and check that the dependency exists.
+      full_target = os.path.join(
+        bundle_store.get_location(parent.data_hash),
+        dep.parent_path,
+      )
+      if not os.path.exists(full_target):
+        raise UsageError('Target %s not found!' % (full_target,))
+      # Create a symlink that points to the dependency's relative target.
+      relative_target = os.path.join(
+        os.pardir,
+        bundle_store.get_location(parent.data_hash, relative=True),
+        dep.parent_path,
+      )
+      link_path = os.path.join(temp_dir, dep.child_path)
+      os.symlink(relative_target, link_path)
+    return temp_dir

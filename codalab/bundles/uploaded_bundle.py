@@ -7,6 +7,7 @@ class UploadedBundle(NamedBundle):
   def construct(cls, data_hash, metadata):
     return cls({
       'bundle_type': cls.BUNDLE_TYPE,
+      'command': None,
       'data_hash': data_hash,
       'state': State.READY,
       'metadata': metadata,

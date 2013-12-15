@@ -8,7 +8,7 @@ from codalab.model.tables import dependency as cl_dependency
 class Dependency(DatabaseObject):
   TABLE = cl_dependency
 
-  CHILD_PATH_REGEX = re.compile('^[a-zA-Z0-9_-]+\Z')
+  CHILD_PATH_REGEX = re.compile('^[a-zA-Z0-9_\-.]+\Z')
 
   def validate(self):
     from codalab.objects.bundle import Bundle

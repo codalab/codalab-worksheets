@@ -22,6 +22,8 @@ bundle = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('uuid', String(63), nullable=False),
   Column('bundle_type', String(63), nullable=False),
+  # The command will be NULL except for run bundles.
+  Column('command', Text, nullable=True),
   # The data_hash will be NULL if the bundle's value is still being computed.
   Column('data_hash', String(63), nullable=True),
   Column('state', String(63), nullable=False),

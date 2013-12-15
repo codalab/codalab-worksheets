@@ -6,7 +6,7 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 
 class NamedBundle(Bundle):
-  NAME_REGEX = re.compile('^[a-zA-Z_][a-zA-Z0-9_-]*\Z')
+  NAME_REGEX = re.compile('^[a-zA-Z_][a-zA-Z0-9_\-]*\Z')
   METADATA_SPECS = (
     MetadataSpec('name', basestring, 'name: %s' % (NAME_REGEX.pattern,)),
     MetadataSpec('description', basestring, 'human-readable description'),
