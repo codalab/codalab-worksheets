@@ -65,8 +65,9 @@ class BundleClient(object):
     Return a dict containing detailed information about a given bundle:
       bundle_type: one of (program, dataset, macro, make, run)
       location: its physical location on the filesystem
-      metadata: its metadata object
+      metadata: its metadata dict
       state: its current state
+      uuid: its uuid
     '''
     raise NotImplementedError
 
@@ -91,8 +92,8 @@ class BundleClient(object):
 
   def search(self, query):
     '''
-    Run a search on bundle metadata and return the uuids of all bundles that
-    are returned by the query.
+    Run a search on bundle metadata and return data for all bundles that match.
+    The data for each bundle is a dict with the same keys as a dict from info.
     '''
     raise NotImplementedError
 

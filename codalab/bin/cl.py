@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import os
+import prettytable
 import sys
 
 from codalab.bundles import (
@@ -29,11 +30,12 @@ class BundleCLI(object):
     'help': 'Show a usage message for cl or for a particular command.',
     'upload': 'Create a bundle by uploading an existing directory.',
     'make': 'Create a bundle by packaging data from existing bundles.',
-    'info': 'Show detailed information about an existing bundle.',
+    'list': 'Show basic information for all bundles.',
+    'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
     'reset': 'Delete the codalab bundle store and reset the database.',
   }
-  COMMON_COMMANDS = ('upload', 'make', 'info', 'ls')
+  COMMON_COMMANDS = ('upload', 'make', 'list', 'info', 'ls')
 
   def __init__(self, client, verbose):
     self.client = client
@@ -128,6 +130,17 @@ class BundleCLI(object):
         raise UsageError('Duplicate key: %s' % (key,))
       targets[key] = self.parse_target(target)
     print self.client.make(targets)
+
+  def do_list_command(self, argv, parser):
+    parser.parse_args(argv)
+    columns = ('uuid', 'name', 'bundle_type', 'state')
+    table = prettytable.PrettyTable(columns)
+    for bundle_info in self.client.search():
+      table.add_row([
+        bundle_info.get(column, bundle_info['metadata'].get(column))
+        for column in columns
+      ])
+    print table
 
   def do_info_command(self, argv, parser):
     parser.add_argument(

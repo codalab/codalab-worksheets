@@ -22,6 +22,22 @@ class LocalBundleClient(BundleClient):
     self.bundle_store = BundleStore(codalab_home)
     self.model = get_codalab_model(codalab_home)
 
+  def get_bundle_info(self, bundle):
+    '''
+    Convert a bundle to a data dict. This method should NOT hit the filesystem.
+    '''
+    location = None
+    if bundle.state == State.READY:
+      # get_location is in-memory and fast for existing bundle stores.
+      location = self.bundle_store.get_location(bundle.data_hash)
+    return {
+      'bundle_type': bundle.bundle_type,
+      'location': location,
+      'metadata': bundle.metadata.to_dict(),
+      'state': bundle.state,
+      'uuid': bundle.uuid,
+    }
+
   def get_spec_uuid(self, bundle_spec):
     return canonicalize.get_spec_uuid(self.model, bundle_spec)
 
@@ -61,17 +77,15 @@ class LocalBundleClient(BundleClient):
 
   def info(self, uuid):
     bundle = self.model.get_bundle(uuid)
-    location = None
-    if bundle.state == State.READY:
-      location = self.bundle_store.get_location(bundle.data_hash)
-    return {
-      'bundle_type': bundle.bundle_type,
-      'uuid': bundle.uuid,
-      'location': location,
-      'metadata': bundle.metadata.to_dict(),
-      'state': bundle.state,
-    }
+    return self.get_bundle_info(bundle)
 
   def ls(self, target):
     path = self.get_target_path(target)
     return path_util.ls(path)
+
+  def search(self, query=None):
+    if query:
+      bundles = self.model.search_bundles(**query)
+    else:
+      bundles = self.model.batch_get_bundles()
+    return [self.get_bundle_info(bundle) for bundle in bundles]
