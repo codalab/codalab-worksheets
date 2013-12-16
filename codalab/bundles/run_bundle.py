@@ -69,7 +69,7 @@ class RunBundle(NamedBundle):
       print 'Executing command: %s' % (command,)
       print 'In temp directory: %s' % (temp_dir,)
       os.mkdir('output')
-      with open(stdout_path, 'w') as stdout, open(stderr_path, 'w') as stderr:
+      with open(stdout_path, 'wb') as stdout, open(stderr_path, 'wb') as stderr:
         subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
       os.unlink('program')
       os.unlink('input')

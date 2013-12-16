@@ -63,7 +63,7 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
     form.write(template)
     form.flush()
     subprocess.call([editor, form.name])
-    with open(form.name) as form:
+    with open(form.name, 'rb') as form:
       form_result = form.readlines()
   return parse_metadata_form(bundle_subclass.METADATA_SPECS, form_result)
 

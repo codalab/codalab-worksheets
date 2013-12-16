@@ -9,6 +9,6 @@ if __name__ == '__main__':
   client = LocalBundleClient()
   server = SimpleXMLRPCServer(('localhost', BUNDLE_RPC_PORT), allow_none=True)
   for command in RemoteBundleClient.PROXY_COMMANDS:
-    server.register_function(getattr(client, command), command) 
+    server.register_function(getattr(client, command), command)
   print 'Listening on port %s...' % (BUNDLE_RPC_PORT,)
   server.serve_forever()
