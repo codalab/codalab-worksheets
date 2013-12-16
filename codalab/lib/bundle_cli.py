@@ -244,6 +244,7 @@ class BundleCLI(object):
     self.client.cat(target)
 
   def do_worker_command(self, argv, parser):
+    # This command only works if self.client is a LocalBundleClient.
     parser.add_argument('iterations', type=int, default=None, nargs='?')
     args = parser.parse_args(argv)
     worker = Worker(self.client.bundle_store, self.client.model)
@@ -257,6 +258,7 @@ class BundleCLI(object):
       i += 1
 
   def do_reset_command(self, argv, parser):
+    # This command only works if self.client is a LocalBundleClient.
     parser.add_argument(
       '--commit',
       action='store_true',
@@ -267,17 +269,3 @@ class BundleCLI(object):
       raise UsageError('If you really want to delete all bundles, use --commit')
     self.client.bundle_store._reset()
     self.client.model._reset()
-
-
-if __name__ == '__main__':
-  flags = {flag: flag in sys.argv for flag in ('--local', '--verbose')}
-  argv = [argument for argument in sys.argv[1:] if argument not in flags]
-  # Defer client imports because sqlalchemy and xmlrpclib are heavy-weight.
-  if flags['--local']:
-    from codalab.client.local_bundle_client import LocalBundleClient
-    client = LocalBundleClient()
-  else:
-    from codalab.client.remote_bundle_client import RemoteBundleClient
-    client = RemoteBundleClient()
-  cli = BundleCLI(client, verbose=flags['--verbose'])
-  cli.do_command(argv)
