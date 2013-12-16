@@ -175,15 +175,14 @@ class BundleCLI(object):
       help='identifier: [<uuid>|<name>]'
     )
     args = parser.parse_args(argv)
-    uuid = self.client.get_spec_uuid(args.bundle_spec)
-    info = self.client.info(uuid)
+    info = self.client.info(args.bundle_spec)
     bundle_subclass = get_bundle_subclass(info['bundle_type'])
     new_metadata = metadata_util.request_missing_data(
       bundle_subclass,
       args,
       info['metadata'],
     )
-    self.client.update(uuid, new_metadata)
+    self.client.update(info['uuid'], new_metadata)
 
   def do_list_command(self, argv, parser):
     parser.parse_args(argv)
@@ -209,8 +208,7 @@ class BundleCLI(object):
       help='identifier: [<uuid>|<name>]'
     )
     args = parser.parse_args(argv)
-    uuid = self.client.get_spec_uuid(args.bundle_spec)
-    info = self.client.info(uuid)
+    info = self.client.info(args.bundle_spec)
     print '''
 {bundle_type}: {name}
 {description}

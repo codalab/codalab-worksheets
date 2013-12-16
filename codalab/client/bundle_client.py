@@ -35,7 +35,7 @@ class BundleClient(object):
   def make(self, targets):
     '''
     Create a new bundle with dependencies on the given targets. Return its uuid.
-    targets should be a dict mapping target keys to (uuid, path) pairs.
+    targets should be a dict mapping target keys to (bundle_spec, path) pairs.
     Each of the targets will by symlinked into the new bundle at its key.
     '''
     raise NotImplementedError
@@ -43,7 +43,8 @@ class BundleClient(object):
   def run(self, program_target, input_target, command):
     '''
     Run the given program bundle, create bundle of output, and return its uuid.
-    The program and input targets are symlinked in as dependencies at runtime.
+    The program and input targets are (bundle_spec, path) pairs taht are
+    symlinked in as dependencies at runtime.
     '''
     raise NotImplementedError
 
@@ -60,8 +61,10 @@ class BundleClient(object):
 
   # Commands for browsing bundles: info, ls, cat, grep, and search.
 
-  def info(self, uuid):
+  def info(self, bundle_spec):
     '''
+    bundle_spec should be either a bundle uuid or a unique bundle name.
+
     Return a dict containing detailed information about a given bundle:
       bundle_type: one of (program, dataset, macro, make, run)
       location: its physical location on the filesystem
@@ -74,7 +77,7 @@ class BundleClient(object):
   def ls(self, target):
     '''
     Return (list of directories, list of files) located underneath the target.
-    The target should be a (uuid, path) pair.
+    The target should be a (bundle_spec, path) pair.
     '''
     raise NotImplementedError
 
