@@ -181,7 +181,8 @@ class BundleCLI(object):
       args,
       info['metadata'],
     )
-    self.client.update(info['uuid'], new_metadata)
+    if new_metadata != info['metadata']:
+      self.client.update(info['uuid'], new_metadata)
 
   def do_list_command(self, argv, parser):
     parser.parse_args(argv)
