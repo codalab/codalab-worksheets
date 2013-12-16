@@ -2,12 +2,10 @@ import re
 
 from codalab.common import UsageError
 from codalab.model.database_object import DatabaseObject
-from codalab.model.tables import dependency as cl_dependency
 
 
 class Dependency(DatabaseObject):
-  TABLE = cl_dependency
-
+  COLUMNS = ('child_uuid', 'child_path', 'parent_uuid', 'parent_path')
   CHILD_PATH_REGEX = re.compile('^[a-zA-Z0-9_\-.]+\Z')
 
   def validate(self):

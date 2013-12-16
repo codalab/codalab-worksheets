@@ -1,6 +1,5 @@
 import os
 import re
-import tempfile
 import uuid
 
 from codalab.common import (
@@ -8,13 +7,12 @@ from codalab.common import (
   UsageError,
 )
 from codalab.model.database_object import DatabaseObject
-from codalab.model.tables import bundle as cl_bundle
 from codalab.objects.dependency import Dependency
 from codalab.objects.metadata import Metadata
 
 
 class Bundle(DatabaseObject):
-  TABLE = cl_bundle
+  COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state')
   UUID_REGEX = re.compile('^0x[0-9a-f]{32}\Z')
 
   # Bundle subclasses should have the following class-level attributes:

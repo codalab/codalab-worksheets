@@ -1,6 +1,7 @@
 import simplejson as json
 import unittest
 
+from codalab.model.tables import bundle as cl_bundle
 from codalab.objects.bundle import Bundle
 from codalab.objects.metadata_spec import MetadataSpec
 
@@ -20,15 +21,14 @@ class MockBundle(Bundle):
 
 
 class BundleTest(unittest.TestCase):
-  columns = tuple(
-    column.name for column in Bundle.TABLE.c if column.name != 'id'
-  )
+  COLUMNS = tuple(col.name for col in cl_bundle.c if col.name != 'id')
 
   str_metadata = 'my_str'
   int_metadata = 17
   set_metadata = ['value_1', 'value_2']
 
   bundle_type = MockBundle.BUNDLE_TYPE
+  command = 'my_command'
   data_hash = 'my_data_hash'
   state = 'my_state'
 
@@ -39,6 +39,7 @@ class BundleTest(unittest.TestCase):
       'set_metadata': self.set_metadata,
     }
     return MockBundle.construct(
+      command=self.command,
       data_hash=self.data_hash,
       state=self.state,
       metadata=metadata,
@@ -51,12 +52,19 @@ class BundleTest(unittest.TestCase):
       if spec.type == set:
         expected_value = set(expected_value)
       self.assertEqual(getattr(bundle.metadata, spec.key), expected_value)
-    for column in self.columns:
+    for column in self.COLUMNS:
       if column == 'uuid':
         expected_value = uuid or getattr(bundle, column)
       else:
         expected_value = getattr(self, column)
       self.assertEqual(getattr(bundle, column), expected_value)
+
+  def test_columns(self):
+    '''
+    Test that Bundle.COLUMNS includes precisely the non-id columns of cl_bundle,
+    in the same order.
+    '''
+    self.assertEqual(Bundle.COLUMNS, self.COLUMNS)
 
   def test_init(self):
     '''
