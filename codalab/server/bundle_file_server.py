@@ -4,10 +4,10 @@ from BaseHTTPServer import (
   HTTPServer,
 )
 
-from codalab.common import BUNDLE_FTP_PORT
+from codalab.common import BUNDLE_FILE_PORT
 
 
-class BundleFTPServer(HTTPServer):
+class BundleFileServer(HTTPServer):
   class MultipartHandler(BaseHTTPRequestHandler):
     def do_POST(self):
       header = self.headers.getheader('content-type')
@@ -20,9 +20,9 @@ class BundleFTPServer(HTTPServer):
       print multipart
 
   def __init__(self):
-    address = ('localhost', BUNDLE_FTP_PORT)
+    address = ('localhost', BUNDLE_FILE_PORT)
     HTTPServer.__init__(self, address, self.MultipartHandler)
 
   def serve_forever(self):
-    print 'FTP server serving on port %s...' % (BUNDLE_FTP_PORT,)
+    print 'File server serving on port %s...' % (BUNDLE_FILE_PORT,)
     HTTPServer.serve_forever(self)

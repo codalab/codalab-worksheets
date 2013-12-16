@@ -4,11 +4,11 @@ import argparse
 
 if __name__ == '__main__':
   parser = argparse.ArgumentParser()
-  parser.add_argument('server_type', help='[ftp|rpc]', default='rpc', nargs='?')
+  parser.add_argument('server_type', help='[file|rpc]', default='rpc', nargs='?')
   args = parser.parse_args()
-  if args.server_type == 'ftp':
-    from codalab.server.bundle_ftp_server import BundleFTPServer
-    server = BundleFTPServer()
+  if args.server_type == 'file':
+    from codalab.server.bundle_file_server import BundleFileServer
+    server = BundleFileServer()
   elif args.server_type == 'rpc':
     from codalab.server.bundle_rpc_server import BundleRPCServer
     server = BundleRPCServer()
