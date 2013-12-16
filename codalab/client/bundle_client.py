@@ -22,7 +22,7 @@ class BundleClient(object):
     BundleClient -> RpcBundleClient -> LocalBundleClient -> RemoteBundleClient
   '''
 
-  # Commands for creating bundles: upload, update, make, and run.
+  # Commands for creating and editing bundles: upload, make, run, and update.
 
   def upload(self, bundle_type, path, metadata):
     '''

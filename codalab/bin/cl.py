@@ -11,7 +11,6 @@ from codalab.bundles import (
   UPLOADABLE_TYPES,
 )
 from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.common import (
   precondition,
   UsageError,
@@ -271,8 +270,14 @@ class BundleCLI(object):
 
 
 if __name__ == '__main__':
-  VERBOSE = '--verbose'
-  verbose = VERBOSE in sys.argv
-  argv = [argument for argument in sys.argv[1:] if argument != VERBOSE]
-  cli = BundleCLI(LocalBundleClient(), verbose=verbose)
+  flags = {flag: flag in sys.argv for flag in ('--local', '--verbose')}
+  argv = [argument for argument in sys.argv[1:] if argument not in flags]
+  # Defer client imports because sqlalchemy and xmlrpclib are heavy-weight.
+  if flags['--local']:
+    from codalab.client.local_bundle_client import LocalBundleClient
+    client = LocalBundleClient()
+  else:
+    from codalab.client.remote_bundle_client import RemoteBundleClient
+    client = RemoteBundleClient()
+  cli = BundleCLI(client, verbose=flags['--verbose'])
   cli.do_command(argv)
