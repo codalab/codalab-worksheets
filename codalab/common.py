@@ -2,6 +2,7 @@ import os
 
 
 BUNDLE_RPC_PORT = 2800
+BUNDLE_FTP_PORT = 2801
 CODALAB_HOME = os.path.expanduser('~/.codalab')
 
 
