@@ -33,6 +33,7 @@ class BundleCLI(object):
     'upload': 'Create a bundle by uploading an existing directory.',
     'make': 'Create a bundle by packaging data from existing bundles.',
     'run': 'Create a bundle by running a program bundle on an input.',
+    'update': "Update an existing bundle's metadata.",
     'list': 'Show basic information for all bundles.',
     'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
@@ -40,7 +41,16 @@ class BundleCLI(object):
     'worker': 'Run the codalab bundle worker.',
     'reset': 'Delete the codalab bundle store and reset the database.',
   }
-  COMMON_COMMANDS = ('upload', 'make', 'run', 'list', 'info', 'ls', 'cat')
+  COMMON_COMMANDS = (
+    'upload',
+    'make',
+    'run',
+    'update',
+    'list',
+    'info',
+    'ls',
+    'cat',
+  )
 
   def __init__(self, client, verbose):
     self.client = client
@@ -158,6 +168,22 @@ class BundleCLI(object):
     program_target = self.parse_target(args.program_target)
     input_target = self.parse_target(args.input_target)
     print self.client.run(program_target, input_target, args.command)
+
+  def do_update_command(self, argv, parser):
+    parser.add_argument(
+      'bundle_spec',
+      help='identifier: [<uuid>|<name>]'
+    )
+    args = parser.parse_args(argv)
+    uuid = self.client.get_spec_uuid(args.bundle_spec)
+    info = self.client.info(uuid)
+    bundle_subclass = get_bundle_subclass(info['bundle_type'])
+    new_metadata = metadata_util.request_missing_data(
+      bundle_subclass,
+      args,
+      info['metadata'],
+    )
+    self.client.update(uuid, new_metadata)
 
   def do_list_command(self, argv, parser):
     parser.parse_args(argv)

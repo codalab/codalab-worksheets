@@ -78,6 +78,10 @@ class LocalBundleClient(BundleClient):
     self.model.save_bundle(bundle)
     return bundle.uuid
 
+  def update(self, uuid, metadata):
+    bundle = self.model.get_bundle(uuid)
+    self.model.update_bundle_metadata(bundle, metadata)
+
   def info(self, uuid):
     bundle = self.model.get_bundle(uuid)
     return self.get_bundle_info(bundle)

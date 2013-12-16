@@ -172,3 +172,13 @@ class BundleModel(object):
       self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
       self.do_multirow_insert(connection, cl_dependency, dependency_values)
       bundle.id = result.lastrowid
+
+  def update_bundle_metadata(self, bundle, metadata):
+    bundle.update_in_memory({'metadata': metadata})
+    bundle.validate()
+    metadata_values = bundle.to_dict().pop('metadata')
+    with self.engine.begin() as connection:
+      connection.execute(cl_bundle_metadata.delete().where(
+        cl_bundle_metadata.c.bundle_uuid == bundle.uuid
+      ))
+      self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)

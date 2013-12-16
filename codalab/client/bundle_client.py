@@ -32,15 +32,6 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  # TODO(skishore): Add an 'update' command that takes a uuid, metadata, and an
-  # optional path and that has two modes:
-  #   - If only metadata is passed, the existing bundle metadta is updated
-  #   - If a path is passed:
-  #     a) The bundle must be an uploaded bundle
-  #     b) A new bundle with metadata derived from the existing bundle is made
-  #     c) The new bundle's meatadata is updated with the passed metadata
-  #     d) The old bundle is deprecated
-
   def make(self, targets):
     '''
     Create a new bundle with dependencies on the given targets. Return its uuid.
@@ -54,6 +45,17 @@ class BundleClient(object):
     Run the given program bundle, create bundle of output, and return its uuid.
     The program and input targets are symlinked in as dependencies at runtime.
     '''
+    raise NotImplementedError
+
+  def update(self, uuid, metadata):
+    '''
+    Update the bundle with the given uuid with the new metadata.
+    '''
+    # Add a second mode to this command, triggered if a path is passed, that:
+    #  a) The bundle must be an uploaded bundle
+    #  b) A new bundle with metadata derived from the existing bundle is made
+    #  c) The new bundle's meatadata is updated with the passed metadata
+    #  d) The old bundle is deprecated
     raise NotImplementedError
 
   # Commands for browsing bundles: info, ls, cat, grep, and search.

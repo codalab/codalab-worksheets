@@ -29,19 +29,20 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
       )
 
 
-def request_missing_data(bundle_subclass, args):
+def request_missing_data(bundle_subclass, args, initial_metadata=None):
   '''
   For any metadata arguments that were not supplied through the command line,
   pop up an editor and request that data from the user.
   '''
-  initial_metadata = {
-    spec.key: getattr(args, metadata_key_to_argument(spec.key,))
-    for spec in bundle_subclass.METADATA_SPECS
-  }
-  # A special-case: if the user specified all required metadata on the command
-  # line, do NOT show the editor. This allows for programmatic bundle creation.
-  if not any(value is None for value in initial_metadata.values()):
-    return initial_metadata
+  if not initial_metadata:
+    initial_metadata = {
+      spec.key: getattr(args, metadata_key_to_argument(spec.key,))
+      for spec in bundle_subclass.METADATA_SPECS
+    }
+    # A special-case: if the user specified all required metadata on the command
+    # line, do NOT show the editor. This allows for programmatic bundle creation.
+    if not any(value is None for value in initial_metadata.values()):
+      return initial_metadata
   # Construct a form template with the required keys, prefilled with the
   # command-line metadata options.
   template_lines = []

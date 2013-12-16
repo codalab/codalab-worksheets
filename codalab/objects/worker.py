@@ -137,8 +137,7 @@ class Worker(object):
           print '-- FAILED due to concurrently update --\n'
       except Exception:
         # TODO(skishore): Add metadata updates: time / CPU of run.
-        # TODO(skishore): Expose metadata updates on the command line.
-        # TODO(skishore): Implement metadata for non-uploaded bundles.
+        # TODO(skishore): Implement metadata on creation for non-uploaded bundles.
         # TODO(skishore): Record stderr / stdout for failed runs as well.
         # TODO(skishore): Implement remote bundle client.
         (type, error, tb) = sys.exc_info()
