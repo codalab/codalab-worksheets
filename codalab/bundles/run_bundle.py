@@ -62,14 +62,12 @@ class RunBundle(NamedBundle):
     command = self.command
     for macro in ('program', 'input', 'output'):
       command = command.replace('$' + macro, macro)
-    stdout_path = os.path.join('output', 'stdout')
-    stderr_path = os.path.join('output', 'stderr')
     self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=False)
     with path_util.chdir(temp_dir):
       print 'Executing command: %s' % (command,)
       print 'In temp directory: %s' % (temp_dir,)
       os.mkdir('output')
-      with open(stdout_path, 'wb') as stdout, open(stderr_path, 'wb') as stderr:
+      with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
         subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
       os.unlink('program')
       os.unlink('input')
