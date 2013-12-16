@@ -21,7 +21,7 @@ class DatabaseObject(object):
         precondition(column in row, 'Row %s missing column: %s' % (row, column))
     for (key, value) in row.iteritems():
       message = 'Row %s has extra column: %s' % (row, key)
-      precondition(key in self.COLUMNS, message)
+      precondition(key in self.COLUMNS or key == 'id', message)
       setattr(self, key, value)
 
   def to_dict(self):
