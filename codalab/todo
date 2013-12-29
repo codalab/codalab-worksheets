@@ -1,0 +1,7 @@
+file transfer
+save failed outputs
+permissions: 755 or 644 (include in hash)
+
+update bundle contents by creating a new bundle
+
+implement macros
