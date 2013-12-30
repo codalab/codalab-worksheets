@@ -1,7 +1,7 @@
 # TODO(skishore): Add code to clean up the temp directory based on mtimes.
 import os
 import shutil
-import tempfile
+import uuid
 
 from codalab.lib import path_util
 
@@ -50,7 +50,8 @@ class BundleStore(object):
     absolute_path = path_util.normalize(path)
     path_util.check_isdir(absolute_path, 'upload')
     # Recursively copy the directory into a new BundleStore temp directory.
-    temp_path = tempfile.mkdtemp(dir=self.temp)
+    temp_directory = uuid.uuid4().hex
+    temp_path = os.path.join(self.temp, temp_directory)
     shutil.copytree(absolute_path, temp_path, symlinks=allow_symlinks)
     # Recursively list the directory just once as an optimization.
     dirs_and_files = path_util.recursive_ls(temp_path)

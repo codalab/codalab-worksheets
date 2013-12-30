@@ -34,9 +34,9 @@ class BundleStoreTest(unittest.TestCase):
 
   @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
   @mock.patch('codalab.lib.bundle_store.shutil', new_callable=mock.Mock)
-  @mock.patch('codalab.lib.bundle_store.tempfile')
+  @mock.patch('codalab.lib.bundle_store.uuid')
   @mock.patch('codalab.lib.bundle_store.path_util')
-  def run_upload_trial(self, mock_path_util, mock_tempfile,
+  def run_upload_trial(self, mock_path_util, mock_uuid,
                        mock_shutil, mock_os, new, allow_symlinks):
     '''
     Test that upload takes the following actions, in order:
@@ -66,7 +66,7 @@ class BundleStoreTest(unittest.TestCase):
 
     temp_dir = 'abloogywoogywu'
     temp_path = os.path.join(test_temp, temp_dir)
-    mock_tempfile.mkdtemp.return_value = temp_path
+    mock_uuid.uuid4.return_value = type('MockUUID', (), {'hex': temp_dir})()
 
     test_dirs_and_files = 'my test dirs_and_files sentinel'
 
