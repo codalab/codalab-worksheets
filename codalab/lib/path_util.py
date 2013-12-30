@@ -6,6 +6,7 @@ from codalab.common import (
   precondition,
   UsageError,
 )
+from codalab.lib import file_util
 
 
 @contextlib.contextmanager
@@ -39,11 +40,5 @@ def cat(path):
     raise UsageError('cat got non-existent path: %s' % (path,))
   if os.path.isdir(path):
     raise UsageError('cat got directory: %s' % (path,))
-  BUFFER_SIZE = 0x40000
   with open(path, 'rb') as f:
-    while True:
-      buffer = f.read(BUFFER_SIZE)
-      if not buffer:
-        break
-      sys.stdout.write(buffer)
-      sys.stdout.flush()
+    file_util.copy(f, sys.stdout)
