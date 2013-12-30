@@ -5,10 +5,10 @@ import stat
 import tempfile
 import unittest
 
-from codalab.lib.bundle_store import BundleStore
+from codalab.lib import path_util
 
 
-class BundleStoreFSTest(unittest.TestCase):
+class PathUtilFSTest(unittest.TestCase):
   contents = 'random file contents'
 
   def setUp(self):
@@ -38,24 +38,24 @@ class BundleStoreFSTest(unittest.TestCase):
   def tearDown(self):
     shutil.rmtree(self.temp_directory)
 
-  def test_normalize_path(self):
+  def test_normalize(self):
     test_pairs = [
       ('~', os.path.expanduser('~')),
       (os.curdir, os.getcwd()),
       (os.pardir, os.path.abspath(os.path.join(os.getcwd(), os.pardir))),
     ]
     for (test_path, expected_result) in test_pairs:
-      actual_result = BundleStore.normalize_path(test_path)
+      actual_result = path_util.normalize(test_path)
       self.assertTrue(os.path.isabs(actual_result))
       self.assertEqual(actual_result, expected_result)
-      # Test idempotency. An absolute path be a fixed point of normalize_path.
-      self.assertEqual(BundleStore.normalize_path(actual_result), actual_result)
+      # Test idempotency. An absolute path be a fixed point of normalize.
+      self.assertEqual(path_util.normalize(actual_result), actual_result)
 
   def test_recursive_ls(self):
     '''
     Test that recursive_ls lists all absolute paths within a directory.
     '''
-    (directories, files) = BundleStore.recursive_ls(self.bundle_path)
+    (directories, files) = path_util.recursive_ls(self.bundle_path)
     self.assertEqual(set(directories), set(self.bundle_directories))
     self.assertEqual(set(files), set(self.bundle_files))
 
@@ -64,13 +64,13 @@ class BundleStoreFSTest(unittest.TestCase):
     Test that check_for_symlinks raises a ValueError iff there is a symlink
     underneat the given path.
     '''
-    BundleStore.check_for_symlinks(self.bundle_path)
+    path_util.check_for_symlinks(self.bundle_path)
     link_target = '../some/random/thing/to/symlink/to'
     symlink_path = os.path.join(self.bundle_directories[-1], 'my_symlink')
     os.symlink(link_target, symlink_path)
     self.assertRaises(
       ValueError,
-      lambda: BundleStore.check_for_symlinks(self.bundle_path),
+      lambda: path_util.check_for_symlinks(self.bundle_path),
     )
 
   def test_set_permissions(self):
@@ -80,7 +80,7 @@ class BundleStoreFSTest(unittest.TestCase):
     # This test will NOT work if the r and w bits for the user are not on!
     # If r is 0, stat will fail. If w is 0, tearDown will fail post the test.
     permissions = 0o723
-    BundleStore.set_permissions(self.bundle_path, permissions)
+    path_util.set_permissions(self.bundle_path, permissions)
     for path in self.bundle_directories + self.bundle_files:
       self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), permissions)
 
@@ -88,17 +88,17 @@ class BundleStoreFSTest(unittest.TestCase):
     '''
     Test that hash_file_contents reads a file and hashes its contents.
     '''
-    self.assertNotEqual(BundleStore.FILE_PREFIX, BundleStore.LINK_PREFIX)
+    self.assertNotEqual(path_util.FILE_PREFIX, path_util.LINK_PREFIX)
     # Check that files are hashed with a file prefix.
     # TODO(skishore): Try this test with a much larger file.
-    expected_hash = hashlib.sha1(BundleStore.FILE_PREFIX + self.contents).hexdigest()
+    expected_hash = hashlib.sha1(path_util.FILE_PREFIX + self.contents).hexdigest()
     for path in self.bundle_files:
-      file_hash = BundleStore.hash_file_contents(path)
+      file_hash = path_util.hash_file_contents(path)
       self.assertEqual(file_hash, expected_hash)
     # Check that links are hashed with a link prefix.
     link_target = '../some/random/thing/to/symlink/to'
-    expected_hash = hashlib.sha1(BundleStore.LINK_PREFIX + link_target).hexdigest()
+    expected_hash = hashlib.sha1(path_util.LINK_PREFIX + link_target).hexdigest()
     symlink_path = os.path.join(self.bundle_directories[-1], 'my_symlink')
     os.symlink(link_target, symlink_path)
-    link_hash = BundleStore.hash_file_contents(symlink_path)
+    link_hash = path_util.hash_file_contents(symlink_path)
     self.assertEqual(link_hash, expected_hash)
