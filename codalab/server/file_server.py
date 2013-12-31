@@ -5,6 +5,7 @@ import uuid
 import xmlrpclib
 
 from codalab.common import precondition
+from codalab.lib import path_util
 
 
 class FileServer(SimpleXMLRPCServer):
@@ -12,7 +13,7 @@ class FileServer(SimpleXMLRPCServer):
 
   def __init__(self, address, temp):
     # Keep a a dictionary mapping file uuids to open file handles in a temp dir.
-    self.file_handle_map = {}
+    self.file_uuid_map = {}
     self.temp = temp
     # Register file-like RPC methods to allow for file transfer.
     SimpleXMLRPCServer.__init__(self, address, allow_none=True)
@@ -30,8 +31,10 @@ class FileServer(SimpleXMLRPCServer):
       (mode, read_only) = ('wb', False)
       (fd, path) = tempfile.mkstemp(dir=self.temp)
       os.close(fd)
+    else:
+      path_util.check_isfile(path, 'open_file')
     file_handle = open(path, mode)
-    self.file_handle_map[file_uuid] = (file_handle, read_only)
+    self.file_uuid_map[file_uuid] = (file_handle, read_only)
     return file_uuid
 
   def read_file(self, file_uuid, num_bytes=None):
@@ -39,14 +42,14 @@ class FileServer(SimpleXMLRPCServer):
     Read up to num_bytes from the given file uuid. Return an empty buffer
     if and only if this file handle is at EOF.
     '''
-    (file_handle, _) = self.file_handle_map[file_uuid]
+    (file_handle, _) = self.file_uuid_map[file_uuid]
     return xmlrpclib.Binary(file_handle.read(num_bytes))
 
   def write_file(self, file_uuid, buffer):
     '''
     Write data from the given binary data buffer to the file uuid.
     '''
-    (file_handle, read_only) = self.file_handle_map[file_uuid]
+    (file_handle, read_only) = self.file_uuid_map[file_uuid]
     precondition(not read_only, 'Wrote to read-only file: %s' % (file_uuid,))
     file_handle.write(buffer.data)
 
@@ -54,5 +57,7 @@ class FileServer(SimpleXMLRPCServer):
     '''
     Close the given file uuid.
     '''
-    (file_handle, _) = self.file_handle_map.pop(file_uuid)
-    file_handle.close()
+    file_pair = self.file_uuid_map.pop(file_uuid, None)
+    if file_pair:
+      (file_handle, _) = file_pair
+      file_handle.close()
