@@ -1,4 +1,13 @@
-#!/usr/bin/env python
+'''
+BundleCLI is a class that provides one major API method, do_command, which takes
+a list of CodaLab bundle system command-line arguments and executes them.
+
+Each of the supported commands corresponds to a method on this class.
+This function takes an argument list and an ArgumentParser and does the action.
+
+  ex: BundleCLI.do_command(['upload', 'program', '.'])
+   -> BundleCLI.do_upload_command(['program', '.'], parser)
+'''
 import argparse
 import itertools
 import os
@@ -20,13 +29,6 @@ from codalab.objects.worker import Worker
 
 
 class BundleCLI(object):
-  '''
-  Each CodaLab bundle command corresponds to a function on this class.
-  This function should take a list of arguments and perform the action.
-
-    ex: BundleCLI.do_command(['upload', 'program', '.'])
-        -> BundleCLI.do_upload_command(['program', '.'], parser)
-  '''
   DESCRIPTIONS = {
     'help': 'Show a usage message for cl or for a particular command.',
     'upload': 'Create a bundle by uploading an existing directory.',

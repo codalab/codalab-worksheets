@@ -1,3 +1,11 @@
+'''
+Worker is a class that executes bundles that need to be run.
+
+It requires direct access to the bundle database and data store, and it
+provides a few methods once it is initialized:
+  update_created_bundles: update bundles that are blocking on others.
+  update_ready_bundles: run a single bundle in the ready state.
+'''
 import contextlib
 import datetime
 import random

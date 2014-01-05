@@ -1,27 +1,17 @@
+'''
+Abstract base class that describes the client interface for interacting with
+the CodaLab bundle system.
+
+There are three categories of BundleClient commands:
+  - Commands that create and edit bundles: upload, make, run and update.
+  - Commands for browsing bundles: info, ls, cat, grep, and search.
+  - Various utility commands for pulling bundles back out of the system.
+
+There are a couple of implementations of this class:
+  - LocalBundleClient - interacts directly with a BundleStore and BundleModel.
+  - RemoteBundleClient - shells out to a BundleRPCServer to implement its API.
+'''
 class BundleClient(object):
-  '''
-  Abstract base class that describes the BundleClient interface.
-
-  There are three categories of BundleClient commands:
-    basic operations: creating, browsing, and downloading bundles
-    sharing operations: permissions and group administration
-    remote operations: commands that link a local CodaLab instance to a remote
-
-  There will be several implementations of this class. Each derived
-  implementation supports more commands.
-    RpcBundleClient:
-      Supports the basic and sharing operations, but shells out to a remote
-      CodaLab instance to actually perform them.
-    LocalBundleClient:
-      Supports all operations. Basic operations are performed locally.
-      The sharing and remote are shelled out to a remote instance.
-    RemoteBundleClient:
-      Supports all operations. Sharing operations happen locally.
-
-  Class heirarchy (A -> B means B subclasses A):
-    BundleClient -> RpcBundleClient -> LocalBundleClient -> RemoteBundleClient
-  '''
-
   # Commands for creating and editing bundles: upload, make, run, and update.
 
   def upload(self, bundle_type, path, metadata):

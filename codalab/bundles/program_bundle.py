@@ -1,3 +1,9 @@
+'''
+ProgramBundle is Bundle type that inherits from UploadedBundle but that adds a
+new metadata key, architectures.
+
+When a RunBundle is constructed, its program_target must be in a ProgramBundle.
+'''
 import platform
 
 from codalab.bundles.uploaded_bundle import UploadedBundle

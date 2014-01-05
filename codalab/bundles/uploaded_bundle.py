@@ -1,3 +1,8 @@
+'''
+UploadedBundle is a abstract Bundle supertype that represents a bundle that is
+directly uploaded to the bundle store. Uploaded bundles are constructed with
+just a bundle store data hash and a metadata dict, and never need to be run.
+'''
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.common import State
 

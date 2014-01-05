@@ -1,9 +1,15 @@
+'''
+ORMObject is an abstract base class for an object can be serialized to and
+deserialized from a database row. Subclasses of this class can be initialized
+with a database row, and their to_dict method serializes them back to a row.
+
+To use this class, subclass it and set its COLUMNS class attribute to be the
+non-id columns of a SQLAlchemy table.
+'''
 from codalab.common import precondition
 
 
-class DatabaseObject(object):
-  # To use this class, subclass it and set its COLUMNS class attribute to be the
-  # non-id columns of a SQLALchemy table.
+class ORMObject(object):
   COLUMNS = None
 
   def __init__(self, row):

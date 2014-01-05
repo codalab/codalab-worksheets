@@ -1,3 +1,7 @@
+'''
+NameBundle is an abstract Bundle supertype that all other bundle types subclass.
+It requires name, description, and tags metadata for all of its subclasses.
+'''
 import re
 
 from codalab.common import UsageError

@@ -1,3 +1,8 @@
+'''
+Provides a method to get a BundleModel object. This method should read model
+configuration parameters (such as database types, connection parameters, etc)
+from a file. It does not do that yet.
+'''
 from codalab.model.sqlite_model import SQLiteModel
 
 

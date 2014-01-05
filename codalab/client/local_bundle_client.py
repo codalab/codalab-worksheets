@@ -1,3 +1,7 @@
+'''
+LocalBundleClient is BundleClient implementation that interacts directly with a
+BundleStore and a BundleModel. All filesystem operations are handled locally.
+'''
 from codalab.bundles import (
   get_bundle_subclass,
   UPLOADABLE_TYPES,

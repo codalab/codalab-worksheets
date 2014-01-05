@@ -1,6 +1,9 @@
-# TODO(skishore): Dedupe temp file code between this module and BundleStore.
-# TODO(skishore): Deal with temp file placement and cleanup everywhere.
-# TODO(skishore): There may be some security issues in zip extraction.
+'''
+zip_util provides helpers that:
+  a) zip a directory on the local filesystem and return the zip file
+  b) unzip a zip file and extract the zipped directory
+'''
+# TODO(skishore): Clean up temp file management here and in BundleStore.
 import os
 import shutil
 import tempfile

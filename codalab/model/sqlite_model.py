@@ -1,3 +1,7 @@
+'''
+SQLiteModel is a subclass of BundleModel which stores the metadata in a
+sqlite3 database in a local file in the CodaLab home directory.
+'''
 import os
 from sqlalchemy import create_engine
 

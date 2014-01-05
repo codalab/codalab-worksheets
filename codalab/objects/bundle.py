@@ -1,3 +1,19 @@
+'''
+Bundle is the ORM class for an individual bundle in the bundle system.
+This class overrides the ORMObject serialization methods, because a single
+bundle is stored in the database as one row in in the bundle table, plus
+multiple rows in the metadata and dependency tables.
+
+Each bundle type is implemented in a subclass of this class. These subclasses
+must set their BUNDLE_TYPE and METADATA_SPEC class attributes. In addition,
+they may override a number of methods of the base class:
+  construct: different bundle subclass might take different parameters
+  validate: bundle subclasses may require additional validation
+  run: bundle subclasses that must be executed must override this method
+
+The base class provides one method, install_dependencies, that may be useful
+when implementing the run method.
+'''
 import os
 import re
 import uuid
@@ -6,12 +22,12 @@ from codalab.common import (
   precondition,
   UsageError,
 )
-from codalab.model.database_object import DatabaseObject
+from codalab.model.orm_object import ORMObject
 from codalab.objects.dependency import Dependency
 from codalab.objects.metadata import Metadata
 
 
-class Bundle(DatabaseObject):
+class Bundle(ORMObject):
   COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state')
   UUID_REGEX = re.compile('^0x[0-9a-f]{32}\Z')
 

@@ -1,3 +1,7 @@
+'''
+MakeBundle is a Bundle type that symlinks a number of targets in from other
+bundles to produce a new, packaged bundle.
+'''
 import os
 
 from codalab.bundles.named_bundle import NamedBundle

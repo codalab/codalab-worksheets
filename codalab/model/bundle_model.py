@@ -1,3 +1,6 @@
+'''
+BundleModel is a wrapper around database calls to save and load bundle metadata.
+'''
 from sqlalchemy import (
   and_,
   select,

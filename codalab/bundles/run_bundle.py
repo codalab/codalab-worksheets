@@ -1,3 +1,13 @@
+'''
+RunBundle is a bundle type that is produced by running a program on an input.
+
+Its constructor takes a program target (which must be in a ProgramBundle),
+an input target (which can be in any bundle), and a command to run.
+
+When the bundle is executed, it symlinks the program target in to ./program,
+symlinks the input target in to ./input, and then streams output to ./stdout
+and ./stderr. The ./output directory may also be used to store output files.
+'''
 import os
 import subprocess
 

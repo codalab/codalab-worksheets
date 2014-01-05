@@ -1,3 +1,8 @@
+'''
+RemoteBundleClient is a BundleClient implementation that shells out to a
+BundleRPCServer for each command. Filesystem operations are implemented using
+the FileServer operations exposed by the RPC server.
+'''
 import contextlib
 import sys
 import xmlrpclib
@@ -21,9 +26,7 @@ class RemoteBundleClient(BundleClient):
     'update',
     'info',
     'ls',
-    #'grep',
     'search',
-    #'download',
     'wait',
   )
   COMMANDS = CLIENT_COMMANDS + (

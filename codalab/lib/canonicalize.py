@@ -1,7 +1,12 @@
 '''
-Helper functions that convert ambiguous inputs into canonical forms:
-  bundle_spec [<uuid>|<name>] -> uuid
-  target (bundle_spec, subpath) -> filesystem path
+canonicalize provides helpers that convert ambiguous inputs to canonical forms:
+  get_spec_uuid: bundle_spec [<uuid>|<name>] -> uuid
+  get_target_path: target (bundle_spec, subpath) -> filesystem path
+
+These methods are only available if we have direct access to the bundle system.
+Converting a bundle spec to a uuid requires access to the bundle databases,
+while getting the on-disk location of a target requires access to both the
+database and the bundle store.
 '''
 import os
 

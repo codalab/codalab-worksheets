@@ -1,3 +1,9 @@
+'''
+BundleStore is a data store that stores actual bundle data. Bundles are logical
+folders within this data store. This class provides two main methods:
+  get_location: return the location of the folder with the given data hash.
+  upload: upload a local directory to the store and return its data hash.
+'''
 # TODO(skishore): Add code to clean up the temp directory based on mtimes.
 import os
 import shutil

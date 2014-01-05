@@ -1,3 +1,8 @@
+'''
+Metadata is a wrapper around all of the metadata rows for a single bundle.
+Its constructor takes both the metadata and the bundle's metadata specs,
+and validates the metadata before returning.
+'''
 from codalab.common import UsageError
 
 

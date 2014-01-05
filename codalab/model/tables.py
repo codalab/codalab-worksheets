@@ -1,3 +1,6 @@
+'''
+The SQLAlchemy table objects for the CodaLab bundle system tables.
+'''
 from sqlalchemy import (
   Column,
   ForeignKey,
@@ -12,8 +15,7 @@ from sqlalchemy.types import (
   Text,
 )
 
-# TODO(skishore): Add various indices once we know how we're querying the db.
-# TODO(skishore): Write these in a MySQL-compatible form.
+
 db_metadata = MetaData()
 
 bundle = Table(
