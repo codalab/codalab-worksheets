@@ -1,10 +1,22 @@
+'''
+FileServer is an RPC server that exposes a file-like interface for reading and
+writing files on the server's local filesystem.
+
+The core method that opens files handles, open_file, is NOT exposed as an RPC
+method for security reasons. Instead, alternate methods for opening files (such
+as open_temp_file) are exposed by this class and its subclasses. These methods
+all return a file uuid, which is like a Unix file descriptor.
+
+The other RPC methods on this server are read_file, write_file, and close_file.
+These methods take a file uuid in addition to their regular arguments, and they
+perform the requested operation on the file handle corresponding to that uuid.
+'''
 import os
 from SimpleXMLRPCServer import SimpleXMLRPCServer
 import tempfile
 import uuid
 import xmlrpclib
 
-from codalab.common import precondition
 from codalab.lib import path_util
 
 
@@ -24,7 +36,7 @@ class FileServer(SimpleXMLRPCServer):
 
   def open_file(self, path, mode):
     '''
-    Open a file handle to the given path and return a UUID identifying it.
+    Open a file handle to the given path and return a uuid identifying it.
     '''
     path_util.check_isfile(path, 'open_file')
     file_uuid = uuid.uuid4().hex
@@ -33,7 +45,7 @@ class FileServer(SimpleXMLRPCServer):
 
   def open_temp_file(self):
     '''
-    Open a new temp file for write and return a file UUID identifying it.
+    Open a new temp file for write and return a file uuid identifying it.
     '''
     (fd, path) = tempfile.mkstemp(dir=self.temp)
     os.close(fd)
