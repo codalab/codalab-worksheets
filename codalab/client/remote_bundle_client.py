@@ -58,7 +58,9 @@ class RemoteBundleClient(BundleClient):
       remote_file_uuid = self.open_temp_file()
       dest = RPCFileHandle(remote_file_uuid, self.proxy)
       with contextlib.closing(dest):
-        file_util.copy(source, dest)
+        # FileServer does not expose an API for forcibly flushing writes, so
+        # we rely on closing the file to flush it.
+        file_util.copy(source, dest, autoflush=False)
     return self.upload_zip(bundle_type, remote_file_uuid, metadata)
 
   def cat(self, target):

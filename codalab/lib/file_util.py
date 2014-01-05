@@ -1,7 +1,7 @@
 BUFFER_SIZE = 0x40000
 
 
-def copy(source, dest):
+def copy(source, dest, autoflush=True):
   '''
   Read from the source file handle and write the data to the dest file handle.
   '''
@@ -10,4 +10,5 @@ def copy(source, dest):
     if not buffer:
       break
     dest.write(buffer)
-    dest.flush()
+    if autoflush:
+      dest.flush()

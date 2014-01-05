@@ -1,3 +1,8 @@
+'''
+RPCFileHandle is a wrapper class that takes a file uuid and a proxy for the
+FileServer that provided that file uuid. This wrapper provides a very simple
+file-like interface for that file handle.
+'''
 import xmlrpclib
 
 
@@ -14,9 +19,6 @@ class RPCFileHandle(object):
     binary = xmlrpclib.Binary(buffer)
     self.proxy.write_file(self.file_uuid, binary)
   
-  def flush(self):
-    pass
-    
   def close(self):
     if not self.closed:
       self.proxy.close_file(self.file_uuid)
