@@ -27,11 +27,11 @@ class RemoteBundleClient(BundleClient):
     'wait',
   )
   COMMANDS = CLIENT_COMMANDS + (
-    'upload_zip',
-    'open_file',
+    'open_target',
+    'open_temp_file',
     'read_file',
     'close_file',
-    'open_target',
+    'upload_zip',
   )
 
   def __init__(self):
@@ -55,7 +55,7 @@ class RemoteBundleClient(BundleClient):
   def upload(self, bundle_type, path, metadata):
     zip_path = zip_util.zip_directory(path)
     with open(zip_path, 'rb') as source:
-      remote_file_uuid = self.open_file()
+      remote_file_uuid = self.open_temp_file()
       dest = RPCFileHandle(remote_file_uuid, self.proxy)
       with contextlib.closing(dest):
         file_util.copy(source, dest)

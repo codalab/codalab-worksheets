@@ -24,14 +24,20 @@ class BundleRPCServer(FileServer):
       self.register_function(getattr(self, command), command)
 
   def upload_zip(self, bundle_type, file_uuid, metadata):
-    zip_path = self.file_paths.pop(file_uuid, None)
+    '''
+    Upload the zip in the temp file identified by the given file UUID.
+    '''
+    zip_path = self.temp_file_paths.pop(file_uuid, None)
     zip_directory = zip_util.unzip_directory(zip_path)
     precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
     return self.client.upload(bundle_type, zip_directory, metadata)
 
   def open_target(self, target):
+    '''
+    Open a read-only file handle to the given bundle target.
+    '''
     path = self.client.get_target_path(target)
-    return self.open_file(path)
+    return self.open_file(path, 'rb')
 
   def serve_forever(self):
     print 'RPC server serving on port %s...' % (BUNDLE_RPC_PORT,)
