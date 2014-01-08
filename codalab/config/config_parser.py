@@ -11,6 +11,13 @@ configuration in this file:
 
 Imports in this file are deferred to as late as possible because some of these
 modules (ex: the model) depend on heavy-weight library imports (ex: sqlalchemy).
+
+As an added benefit of the lazy importing and initialization, note that a config
+file that specifies enough information to construct some of these classes is
+still valid. For example, the config file for a remote client will not need to
+include any server configuration.
+
+See client_config.json and server_config.json for examples.
 '''
 import json
 import os
