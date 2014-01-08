@@ -5,14 +5,6 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.
 '''
-import os
-
-
-BUNDLE_FILE_PORT = 2800
-BUNDLE_RPC_PORT = 2801
-CODALAB_HOME = os.path.expanduser('~/.codalab')
-
-
 class IntegrityError(ValueError):
   '''
   Raised by the model when there is a database integrity issue.

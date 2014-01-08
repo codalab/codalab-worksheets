@@ -7,24 +7,20 @@ from codalab.bundles import (
   UPLOADABLE_TYPES,
 )
 from codalab.common import (
-  CODALAB_HOME,
   precondition,
   State,
 )
 from codalab.client.bundle_client import BundleClient
-from codalab.lib.bundle_store import BundleStore
 from codalab.lib import (
   canonicalize,
   path_util,
 )
-from codalab.model.util import get_codalab_model
 
 
 class LocalBundleClient(BundleClient):
-  def __init__(self, codalab_home=None):
-    codalab_home = codalab_home or CODALAB_HOME
-    self.bundle_store = BundleStore(codalab_home)
-    self.model = get_codalab_model(codalab_home)
+  def __init__(self, bundle_store, model):
+    self.bundle_store = bundle_store
+    self.model = model
 
   def get_bundle_info(self, bundle):
     '''

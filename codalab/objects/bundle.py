@@ -104,7 +104,7 @@ class Bundle(ORMObject):
   def run(self, bundle_store, parent_dict):
     '''
     Perform the computation needed to construct this bundle, upload the result
-    to the given BundleStore, and return its new data hash.
+    to the given bundle store, and return its new data hash.
 
     parent_dict should be a dictionary mapping uuids -> bundles for each uuid
     that this bundle depends on.

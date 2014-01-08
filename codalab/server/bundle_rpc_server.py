@@ -12,12 +12,8 @@ filesystem operations. BundleRPCServer supports variants of these methods:
 '''
 import tempfile
 
-from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.common import (
-  BUNDLE_RPC_PORT,
-  precondition,
-)
+from codalab.common import precondition
 from codalab.lib import zip_util
 from codalab.server.file_server import FileServer
 
@@ -28,9 +24,8 @@ class BundleRPCServer(FileServer):
     'open_target',
   )
 
-  def __init__(self):
-    address = ('localhost', BUNDLE_RPC_PORT)
-    self.client = LocalBundleClient()
+  def __init__(self, address, client):
+    self.client = client
     FileServer.__init__(self, address, tempfile.gettempdir())
     for command in RemoteBundleClient.CLIENT_COMMANDS:
       self.register_function(getattr(self.client, command), command)
@@ -56,5 +51,4 @@ class BundleRPCServer(FileServer):
     return self.open_file(path, 'rb')
 
   def serve_forever(self):
-    print 'RPC server serving on port %s...' % (BUNDLE_RPC_PORT,)
     FileServer.serve_forever(self)

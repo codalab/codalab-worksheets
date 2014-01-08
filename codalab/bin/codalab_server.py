@@ -1,7 +1,10 @@
 #!/usr/bin/env python
+import sys
+
+from codalab.config.config_parser import ConfigParser
 
 
 if __name__ == '__main__':
-  from codalab.server.bundle_rpc_server import BundleRPCServer
-  server = BundleRPCServer()
-  server.serve_forever()
+  config_parser = ConfigParser(sys.argv[1])
+  rpc_server = config_parser.rpc_server()
+  rpc_server.serve_forever()

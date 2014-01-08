@@ -8,10 +8,7 @@ import sys
 import xmlrpclib
 
 from codalab.client.bundle_client import BundleClient
-from codalab.common import (
-  BUNDLE_RPC_PORT,
-  UsageError,
-)
+from codalab.common import UsageError
 from codalab.lib import (
   file_util,
   zip_util,
@@ -37,8 +34,7 @@ class RemoteBundleClient(BundleClient):
     'upload_zip',
   )
 
-  def __init__(self):
-    address = 'http://localhost:%s/' % (BUNDLE_RPC_PORT,)
+  def __init__(self, address):
     self.proxy = xmlrpclib.ServerProxy(address)
     def do_command(command):
       def inner(*args, **kwargs):
