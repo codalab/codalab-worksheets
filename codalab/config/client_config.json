@@ -5,8 +5,5 @@
   "client": {
     "class": "RemoteBundleClient",
     "address": "http://localhost:2800"
-  },
-  "model": {
-    "class": "SQLiteModel"
   }
 }
