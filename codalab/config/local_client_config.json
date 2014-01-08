@@ -1,5 +1,8 @@
 {
   "home": "~/.codalab",
+  "cli": {
+    "verbose": false
+  },
   "client": {
     "class": "LocalBundleClient"
   },
