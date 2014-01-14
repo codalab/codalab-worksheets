@@ -163,7 +163,7 @@ class BundleCLI(object):
     parser.add_argument('input_target', help=help)
     parser.add_argument(
       'command',
-      help='shell command with $program, $input, and $output macros',
+      help='shell command with access to program, input, and output',
     )
     args = parser.parse_args(argv)
     program_target = self.parse_target(args.program_target)

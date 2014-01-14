@@ -70,8 +70,6 @@ class RunBundle(NamedBundle):
 
   def run(self, bundle_store, parent_dict, temp_dir):
     command = self.command
-    for macro in ('program', 'input', 'output'):
-      command = command.replace('$' + macro, macro)
     self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=False)
     with path_util.chdir(temp_dir):
       print 'Executing command: %s' % (command,)
@@ -81,5 +79,4 @@ class RunBundle(NamedBundle):
         subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
       os.unlink('program')
       os.unlink('input')
-    self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=True)
     return bundle_store.upload(temp_dir, allow_symlinks=True)
