@@ -234,8 +234,10 @@ class BundleCLI(object):
     args = parser.parse_args(argv)
     target = self.parse_target(args.target)
     (directories, files) = self.client.ls(target)
-    print '\n  '.join(['Directories:'] + list(directories))
-    print '\n  '.join(['Files:'] + list(files))
+    if directories:
+      print '\n  '.join(['Directories:'] + list(directories))
+    if files:
+      print '\n  '.join(['Files:'] + list(files))
 
   def do_cat_command(self, argv, parser):
     parser.add_argument(
