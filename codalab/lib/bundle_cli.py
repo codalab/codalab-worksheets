@@ -22,6 +22,7 @@ from codalab.bundles import (
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import (
   precondition,
+  State,
   UsageError,
 )
 from codalab.lib import metadata_util
@@ -39,6 +40,7 @@ class BundleCLI(object):
     'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
     'cat': 'Print the contents of a file in a bundle.',
+    'wait': 'Wait until a bundle is ready or failed, then print its state.',
     'worker': 'Run the codalab bundle worker.',
     'reset': 'Delete the codalab bundle store and reset the database.',
   }
@@ -51,6 +53,7 @@ class BundleCLI(object):
     'info',
     'ls',
     'cat',
+    'wait',
   )
 
   def __init__(self, client, verbose):
@@ -205,25 +208,20 @@ class BundleCLI(object):
           print (sum(lengths) + 2*(len(columns) - 1))*'-'
 
   def do_info_command(self, argv, parser):
-    parser.add_argument(
-      'bundle_spec',
-      help='identifier: [<uuid>|<name>]'
-    )
+    parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
     args = parser.parse_args(argv)
     info = self.client.info(args.bundle_spec)
     print '''
 {bundle_type}: {name}
 {description}
   uuid:     {uuid}
-  location: {location}
   state:    {state}
     '''.strip().format(
       bundle_type=info['bundle_type'],
       name=(info['metadata'].get('name') or '<no name>'),
       description=(info['metadata'].get('description') or '<no description>'),
       uuid=info['uuid'],
-      location=(info['location'] or '<this bundle is not ready>'),
-      state=info['state'].upper(),
+      state=info['state'],
     )
 
   def do_ls_command(self, argv, parser):
@@ -247,6 +245,15 @@ class BundleCLI(object):
     args = parser.parse_args(argv)
     target = self.parse_target(args.target)
     self.client.cat(target)
+
+  def do_wait_command(self, argv, parser):
+    parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
+    args = parser.parse_args(argv)
+    state = self.client.wait(args.bundle_spec)
+    if state == State.READY:
+      print state
+    else:
+      self.exit(state)
 
   def do_worker_command(self, argv, parser):
     # This command only works if self.client is a LocalBundleClient.

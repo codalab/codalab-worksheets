@@ -11,6 +11,11 @@ There are a couple of implementations of this class:
   - LocalBundleClient - interacts directly with a BundleStore and BundleModel.
   - RemoteBundleClient - shells out to a BundleRPCServer to implement its API.
 '''
+import time
+
+from codalab.common import State
+
+
 class BundleClient(object):
   # Commands for creating and editing bundles: upload, make, run, and update.
 
@@ -101,9 +106,19 @@ class BundleClient(object):
     # bundles will not include their dependencies in their final value.
     raise NotImplementedError
 
-  def wait(self, uuid):
+  def wait(self, bundle_spec):
     '''
-    Block on the execution of the given bundle. Return SUCCESS or FAILED
+    Block on the execution of the given bundle. Return READY or FAILED
     based on whether it was computed successfully.
     '''
-    raise NotImplementedError
+    # Constants for a simple exponential backoff routine that will decrease the
+    # frequency at which we check this bundle's state from 1s to 1m.
+    period = 1.0
+    backoff = 1.1
+    max_period = 60.0
+    info = self.info(bundle_spec)
+    while info['state'] not in (State.READY, State.FAILED):
+      time.sleep(period)
+      period = min(backoff*period, max_period)
+      info = self.info(bundle_spec)
+    return info['state']

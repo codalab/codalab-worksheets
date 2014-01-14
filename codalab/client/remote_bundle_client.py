@@ -24,7 +24,6 @@ class RemoteBundleClient(BundleClient):
     'info',
     'ls',
     'search',
-    'wait',
   )
   COMMANDS = CLIENT_COMMANDS + (
     'open_target',
