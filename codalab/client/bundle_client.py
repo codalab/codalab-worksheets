@@ -62,7 +62,6 @@ class BundleClient(object):
 
     Return a dict containing detailed information about a given bundle:
       bundle_type: one of (program, dataset, macro, make, run)
-      location: its physical location on the filesystem
       metadata: its metadata dict
       state: its current state
       uuid: its uuid

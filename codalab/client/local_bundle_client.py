@@ -6,10 +6,7 @@ from codalab.bundles import (
   get_bundle_subclass,
   UPLOADABLE_TYPES,
 )
-from codalab.common import (
-  precondition,
-  State,
-)
+from codalab.common import precondition
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
   canonicalize,
@@ -26,13 +23,8 @@ class LocalBundleClient(BundleClient):
     '''
     Convert a bundle to a data dict. This method should NOT hit the filesystem.
     '''
-    location = None
-    if bundle.state == State.READY:
-      # get_location is in-memory and fast for existing bundle stores.
-      location = self.bundle_store.get_location(bundle.data_hash)
     return {
       'bundle_type': bundle.bundle_type,
-      'location': location,
       'metadata': bundle.metadata.to_dict(),
       'state': bundle.state,
       'uuid': bundle.uuid,
