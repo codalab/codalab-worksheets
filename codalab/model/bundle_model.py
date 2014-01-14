@@ -26,6 +26,7 @@ class BundleModel(object):
     Initialize a BundleModel with the given SQLAlchemy engine.
     '''
     self.engine = engine
+    self.create_tables()
 
   def _reset(self):
     '''
