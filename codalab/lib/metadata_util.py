@@ -24,7 +24,7 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
         default=spec.default,
         dest=metadata_key_to_argument(spec.key,),
         help=(spec.description + help_suffix),
-        metavar=spec.short_key.upper(),
+        metavar=spec.metavar,
         nargs=('*' if spec.type == set else None),
       )
 

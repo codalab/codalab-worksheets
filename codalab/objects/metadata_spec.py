@@ -12,9 +12,19 @@ The description, short_key, and default of a metadata spec are used to produce
 nicely-formatted help strings for bundle creation commands.
 '''
 class MetadataSpec(object):
-  def __init__(self, key, type, description, short_key=None, default=None):
+  def __init__(
+      self,
+      key,
+      type,
+      description,
+      short_key=None,
+      metavar=None,
+      default=None,
+  ):
     self.key = key
     self.type = type
     self.description = description
-    self.short_key = short_key or self.key[:4]
+    self.default = default
+    self.short_key = short_key or self.key
+    self.metavar = metavar or self.short_key.upper()
     self.default = default

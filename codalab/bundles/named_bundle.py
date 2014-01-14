@@ -14,7 +14,7 @@ class NamedBundle(Bundle):
   METADATA_SPECS = (
     MetadataSpec('name', basestring, 'name: %s' % (NAME_REGEX.pattern,)),
     MetadataSpec('description', basestring, 'human-readable description'),
-    MetadataSpec('tags', set, 'list of searchable tags'),
+    MetadataSpec('tags', set, 'list of searchable tags', metavar='TAG'),
   )
 
   def validate(self):

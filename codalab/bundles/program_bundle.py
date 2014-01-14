@@ -20,5 +20,6 @@ class ProgramBundle(UploadedBundle):
     'architectures',
     set,
     'viable architectures',
+    short_key='arch',
     default=architectures,
   ))
