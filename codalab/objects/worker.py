@@ -80,12 +80,12 @@ class Worker(object):
     with self.profile('Getting parents...'):
       parents = self.model.batch_get_bundles(uuid=parent_uuids)
       self.pretty_print('Got %s bundles.' % (len(parents),))
-    parent_states = {parent.uuid: parent.state for parent in parents}
+    all_parent_states = {parent.uuid: parent.state for parent in parents}
     bundles_to_fail = []
     bundles_to_stage = []
     for bundle in bundles:
       parent_states = set(
-        parent_states.get(dep.parent_uuid, State.FAILED)
+        all_parent_states.get(dep.parent_uuid, State.FAILED)
         for dep in bundle.dependencies
       )
       if State.FAILED in parent_states:
