@@ -21,9 +21,8 @@ class BundleStoreTest(unittest.TestCase):
     return BundleStoreTest.test_root
 
   @mock.patch('codalab.lib.bundle_store.os')
-  @mock.patch('codalab.lib.bundle_store.shutil', new_callable=lambda: None)
   @mock.patch('codalab.lib.bundle_store.path_util')
-  def test_init(self, mock_path_util, mock_shutil, mock_os):
+  def test_init(self, mock_path_util, mock_os):
     '''
     Check that __init__ calls normalize path and then creates the directories.
     '''
@@ -33,11 +32,10 @@ class BundleStoreTest(unittest.TestCase):
     self.assertEqual(mock_path_util.make_directory.call_args_list, self.mkdir_calls)
 
   @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
-  @mock.patch('codalab.lib.bundle_store.shutil', new_callable=mock.Mock)
   @mock.patch('codalab.lib.bundle_store.uuid')
   @mock.patch('codalab.lib.bundle_store.path_util')
   def run_upload_trial(self, mock_path_util, mock_uuid,
-                       mock_shutil, mock_os, new, allow_symlinks):
+                       mock_os, new, allow_symlinks):
     '''
     Test that upload takes the following actions, in order:
       - Copies the bundle into the temp directory
@@ -45,8 +43,9 @@ class BundleStoreTest(unittest.TestCase):
       - Hashes the directory
       - Moves the directory into data (if new) or deletes it (if old)
     '''
-    check_isdir_called = [False]
+    check_isvalid_called = [False]
     check_for_symlinks_called = [False]
+    rename_called = [False]
 
     mock_os.path = mock.Mock()
     mock_os.path.join = os.path.join
@@ -57,12 +56,18 @@ class BundleStoreTest(unittest.TestCase):
     test_data = os.path.join(test_root, 'data')
     test_temp = os.path.join(test_root, 'temp')
     test_directory_hash = 'directory-hash'
-    final_path = os.path.join(test_data, test_directory_hash)
+    final_path = os.path.join(test_data, '0x' + test_directory_hash)
 
     def exists(path):
       self.assertEqual(path, final_path)
-      return not new
+      return not new or rename_called[0]
     mock_os.path.exists = exists
+
+    def rename(source_path, dest_path):
+      self.assertEqual(source_path, temp_path)
+      self.assertEqual(dest_path, final_path)
+      rename_called[0] = True
+    mock_os.rename = rename
 
     temp_dir = 'abloogywoogywu'
     temp_path = os.path.join(test_temp, temp_dir)
@@ -75,10 +80,10 @@ class BundleStoreTest(unittest.TestCase):
       return bundle_path
     mock_path_util.normalize = normalize
 
-    def check_isdir(path, fn_name):
+    def check_isvalid(path, fn_name):
       self.assertEqual(path, bundle_path)
-      check_isdir_called[0] = True
-    mock_path_util.check_isdir = check_isdir
+      check_isvalid_called[0] = True
+    mock_path_util.check_isvalid = check_isvalid
 
     def recursive_ls(path):
       self.assertEqual(path, temp_path)
@@ -113,16 +118,17 @@ class BundleStoreTest(unittest.TestCase):
         self.temp = os.path.join(root, 'temp') 
 
     bundle_store = MockBundleStore(test_root)
-    self.assertFalse(check_isdir_called[0])
+    self.assertFalse(check_isvalid_called[0])
     self.assertFalse(check_for_symlinks_called[0])
     bundle_store.upload(
       unnormalized_bundle_path, allow_symlinks=allow_symlinks)
-    self.assertTrue(check_isdir_called[0])
+    self.assertTrue(check_isvalid_called[0])
     self.assertEqual(check_for_symlinks_called[0], not allow_symlinks)
     if new:
-      mock_os.rename.assert_called_with(temp_path, final_path)
+      self.assertTrue(rename_called[0])
     else:
-      mock_shutil.rmtree.assert_called_with(temp_path)
+      self.assertFalse(rename_called[0])
+      mock_path_util.remove.assert_called_with(temp_path)
 
   def test_new_upload(self):
     self.run_upload_trial(new=True, allow_symlinks=True)
