@@ -6,13 +6,13 @@ There are a few classes of methods provided here:
     normalize, check_isvalid, check_isdir, check_isfile, check_for_symlinks
 
   Functions to list directories and to deal with subpaths of paths:
-    get_relative_path, ls, recursive_ls
+    safe_join, get_relative_path, ls, recursive_ls
 
   Functions to read files to compute hashes, write results to stdout, etc:
     cat, hash_directory, hash_file_contents
 
   Functions that modify that filesystem in controlled ways:
-    make_directory, set_permissions
+    copy, make_directory, remove, set_permissions
 '''
 import contextlib
 import errno
@@ -123,6 +123,15 @@ def check_for_symlinks(root, dirs_and_files=None):
 ################################################################################
 # Functions to list directories and to deal with subpaths of paths.
 ################################################################################
+
+
+def safe_join(*paths):
+  '''
+  Join a sequence of paths but filter out any that are empty. Used for targets.
+  Note that os.path.join has this functionality EXCEPT at the end of the list,
+  which causes problems when a target subpath is empty.
+  '''
+  return os.path.join(*filter(None, paths))
 
 
 def get_relative_path(root, path):

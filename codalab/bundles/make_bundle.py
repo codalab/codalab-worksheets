@@ -2,10 +2,9 @@
 MakeBundle is a Bundle type that symlinks a number of targets in from other
 bundles to produce a new, packaged bundle.
 '''
-import os
-
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.common import State
+from codalab.lib import path_util
 
 
 class MakeBundle(NamedBundle):
@@ -18,7 +17,7 @@ class MakeBundle(NamedBundle):
     # Compute metadata with default values for name and description.
     description = 'Package containing %s' % (
       ', '.join(
-        '%s:%s' % (key, os.path.join(parent.metadata.name, parent_path))
+        '%s:%s' % (key, path_util.safe_join(parent.metadata.name, parent_path))
         for (key, (parent, parent_path)) in sorted(targets.iteritems())
       ),
     )

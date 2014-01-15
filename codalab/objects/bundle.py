@@ -22,6 +22,7 @@ from codalab.common import (
   precondition,
   UsageError,
 )
+from codalab.lib import path_util
 from codalab.model.orm_object import ORMObject
 from codalab.objects.dependency import Dependency
 from codalab.objects.metadata import Metadata
@@ -121,7 +122,7 @@ class Bundle(ORMObject):
     for dep in self.dependencies:
       parent = parent_dict[dep.parent_uuid]
       # Compute an absolute target and check that the dependency exists.
-      target = os.path.join(
+      target = path_util.safe_join(
         bundle_store.get_location(parent.data_hash),
         dep.parent_path,
       )
@@ -130,7 +131,7 @@ class Bundle(ORMObject):
         raise UsageError('Target not found: %s' % (target_text,))
       if rel:
         # Create a symlink that points to the dependency's relative target.
-        target = os.path.join(
+        target = path_util.safe_join(
           os.pardir,
           bundle_store.get_location(parent.data_hash, relative=True),
           dep.parent_path,

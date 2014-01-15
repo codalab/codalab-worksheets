@@ -8,15 +8,13 @@ Converting a bundle spec to a uuid requires access to the bundle databases,
 while getting the on-disk location of a target requires access to both the
 database and the bundle store.
 '''
-import os
-
 from codalab.common import (
   State,
   UsageError,
 )
 from codalab.objects.bundle import Bundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.lib.path_util import TargetPath
+from codalab.lib import path_util
 
 
 def get_spec_uuid(model, bundle_spec):
@@ -53,7 +51,7 @@ def get_target_path(bundle_store, model, target):
   if bundle.state != State.READY:
     raise UsageError('%s is not ready' % (bundle,))
   bundle_root = bundle_store.get_location(bundle.data_hash)
-  final_path = os.path.join(bundle_root, path) if path else bundle_root
-  result = TargetPath(final_path)
+  final_path = path_util.safe_join(bundle_root, path)
+  result = path_util.TargetPath(final_path)
   result.target = target
   return result

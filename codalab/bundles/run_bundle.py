@@ -36,11 +36,9 @@ class RunBundle(NamedBundle):
       raise UsageError('%r is not a valid command!' % (command,))
     uuid = cls.generate_uuid()
     # Compute metadata with default values for name and description.
-    description = 'Run %s/%s on %s/%s: %r' % (
-      program.metadata.name,
-      program_path,
-      input.metadata.name,
-      input_path,
+    description = 'Run %s on %s: %r' % (
+      path_util.safe_join(program.metadata.name, program_path),
+      path_util.safe_join(input.metadata.name, input_path),
       command,
     )
     metadata = {
