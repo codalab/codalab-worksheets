@@ -39,9 +39,9 @@ class BundleRPCServer(FileServer):
     upload the unzipped directory. Return the new bundle's id.
     '''
     zip_path = self.temp_file_paths.pop(file_uuid, None)
-    zip_directory = zip_util.unzip_directory(zip_path)
     precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
-    return self.client.upload(bundle_type, zip_directory, metadata)
+    path = zip_util.unzip(zip_path)
+    return self.client.upload(bundle_type, path, metadata)
 
   def open_target(self, target):
     '''

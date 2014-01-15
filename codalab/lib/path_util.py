@@ -231,6 +231,13 @@ def hash_file_contents(path):
 ################################################################################
 
 
+def copy(source_path, dest_path):
+  if os.path.isdir(source_path):
+    shutil.copytree(source_path, dest_path, symlinks=True)
+  else:
+    shutil.copyfile(source_path, dest_path)
+
+
 def make_directory(path):
   '''
   Create the directory at the given path.
@@ -247,7 +254,7 @@ def remove(path):
   '''
   Removethe given path, whether it is a directory, file, or link.
   '''
-  check_isvalid(path, 'delete')
+  check_isvalid(path, 'remove')
   if os.path.isdir(path):
     shutil.rmtree(path)
   elif os.path.islink(path):

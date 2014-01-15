@@ -51,7 +51,7 @@ class RemoteBundleClient(BundleClient):
       setattr(self, command, do_command(command))
 
   def upload(self, bundle_type, path, metadata):
-    zip_path = zip_util.zip_directory(path)
+    zip_path = zip_util.zip(path)
     with open(zip_path, 'rb') as source:
       remote_file_uuid = self.open_temp_file()
       dest = RPCFileHandle(remote_file_uuid, self.proxy)

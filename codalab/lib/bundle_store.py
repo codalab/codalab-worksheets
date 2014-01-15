@@ -6,7 +6,6 @@ folders within this data store. This class provides two main methods:
 '''
 # TODO(skishore): Add code to clean up the temp directory based on mtimes.
 import os
-import shutil
 import uuid
 
 from codalab.lib import path_util
@@ -27,8 +26,8 @@ class BundleStore(object):
     Delete all stored bundles and then recreate the root directories.
     '''
     # Do not run this function in production!
-    shutil.rmtree(self.data)
-    shutil.rmtree(self.temp)
+    path_util.remove(self.data)
+    path_util.remove(self.temp)
     self.make_directories()
 
   def make_directories(self):
@@ -58,14 +57,12 @@ class BundleStore(object):
     # Recursively copy the directory into a new BundleStore temp directory.
     temp_directory = uuid.uuid4().hex
     temp_path = os.path.join(self.temp, temp_directory)
+    path_util.copy(absolute_path, temp_path)
     # Multiplex between uploading a directory and uploading a file here.
-    # All other path_util calls will use the list of dirs_and_files from here.
+    # All other path_util calls will use these lists of directories and files.
     if os.path.isdir(temp_path):
-      shutil.copytree(absolute_path, temp_path, symlinks=allow_symlinks)
-      # Recursively list the directory just once as an optimization.
       dirs_and_files = path_util.recursive_ls(temp_path)
     else:
-      shutil.copyfile(absolute_path, temp_path)
       dirs_and_files = ([], [temp_path])
     if not allow_symlinks:
       path_util.check_for_symlinks(temp_path, dirs_and_files)
@@ -75,7 +72,7 @@ class BundleStore(object):
     data_hash = '0x%s' % (path_util.hash_directory(temp_path, dirs_and_files),)
     final_path = os.path.join(self.data, data_hash)
     if os.path.exists(final_path):
-      path_util.delete(temp_path)
+      path_util.remove(temp_path)
     else:
       os.rename(temp_path, final_path)
     # After this operation there should always be a directory at the final path.
