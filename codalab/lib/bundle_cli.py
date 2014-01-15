@@ -141,22 +141,18 @@ class BundleCLI(object):
     parser.add_argument('target', help=help, nargs='+')
     args = parser.parse_args(argv)
     targets = {}
-    # Provide syntactic sugar for creating a make bundle that links to a
-    # subdirectory of an existing bundle. This directory will have a symlink to
-    # every file and directory under that bundle.
-    if len(args.target) == 1 and ':' not in args.target:
-      argument = args.target.pop()
-      target = self.parse_target(argument)
-      (dependencies, files) = self.client.ls(target)
-      for path in itertools.chain(dependencies, files):
-        args.target.append('%s:%s' % (path, os.path.join(argument, path)))
     # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
     for argument in args.target:
-      if ':' not in argument:
-        raise UsageError('Multiple targets must have keys, got: %s' % (argument,))
-      (key, target) = argument.split(':', 1)
+      if ':' in argument:
+        (key, target) = argument.split(':', 1)
+      else:
+        # Provide syntactic sugar for a make bundle with a single anonymous target.
+        (key, target) = ('', argument)
       if key in targets:
-        raise UsageError('Duplicate key: %s' % (key,))
+        if key:
+          raise UsageError('Duplicate key: %s' % (key,))
+        else:
+          raise UsageError('Must specify keys when packaging multiple targets!')
       targets[key] = self.parse_target(target)
     print self.client.make(targets)
 

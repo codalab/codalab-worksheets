@@ -118,7 +118,6 @@ class Bundle(ORMObject):
     The caller is responsible for cleaning up this directory.
     '''
     precondition(os.path.isabs(path), '%s is a relative path!' % (path,))
-    precondition(os.path.isdir(path), '%s is not a directory!' % (path,))
     for dep in self.dependencies:
       parent = parent_dict[dep.parent_uuid]
       # Compute an absolute target and check that the dependency exists.
@@ -132,9 +131,9 @@ class Bundle(ORMObject):
       if rel:
         # Create a symlink that points to the dependency's relative target.
         target = path_util.safe_join(
-          os.pardir,
+          (os.pardir if dep.child_path else ''),
           bundle_store.get_location(parent.data_hash, relative=True),
           dep.parent_path,
         )
-      link_path = os.path.join(path, dep.child_path)
+      link_path = path_util.safe_join(path, dep.child_path)
       os.symlink(target, link_path)

@@ -2,8 +2,14 @@
 MakeBundle is a Bundle type that symlinks a number of targets in from other
 bundles to produce a new, packaged bundle.
 '''
+import os
+
 from codalab.bundles.named_bundle import NamedBundle
-from codalab.common import State
+from codalab.common import (
+  precondition,
+  State,
+  UsageError,
+)
 from codalab.lib import path_util
 
 
@@ -14,11 +20,16 @@ class MakeBundle(NamedBundle):
   @classmethod
   def construct(cls, targets):
     uuid = cls.generate_uuid()
+    # Check that targets does not include both keyed and anonymous targets.
+    if len(targets) > 1 and '' in targets:
+      raise UsageError('Must specify keys when packaging multiple targets!')
     # Compute metadata with default values for name and description.
     description = 'Package containing %s' % (
       ', '.join(
-        '%s:%s' % (key, path_util.safe_join(parent.metadata.name, parent_path))
-        for (key, (parent, parent_path)) in sorted(targets.iteritems())
+        '%s%s' % (
+          ((':' + key) if key else ''),
+          path_util.safe_join(parent.metadata.name, parent_path),
+        ) for (key, (parent, parent_path)) in sorted(targets.iteritems())
       ),
     )
     metadata = {
@@ -46,5 +57,9 @@ class MakeBundle(NamedBundle):
     })
 
   def run(self, bundle_store, parent_dict, temp_dir):
+    if any(not dep.child_path for dep in self.dependencies):
+      message = '%s has keyed and anonymous targets!' % (self,),
+      precondition(len(self.dependencies) == 1, message)
+      temp_dir = os.path.join(temp_dir, 'anonymous_link')
     self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=True)
     return bundle_store.upload(temp_dir, allow_symlinks=True)

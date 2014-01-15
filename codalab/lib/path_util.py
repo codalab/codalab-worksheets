@@ -50,7 +50,7 @@ def path_error(message, path):
   be appended to the message instead of the computed path.
   '''
   if isinstance(path, TargetPath):
-    path = os.sep.join(path.target)
+    path = safe_join(*path.target)
   return UsageError(' '.join((message, path)))
 
 
@@ -87,7 +87,10 @@ def check_isvalid(path, fn_name):
   Raise a UsageError if the file at that path does not exist.
   '''
   precondition(os.path.isabs(path), '%s got relative path: %s' % (fn_name, path))
-  if not os.path.exists(path):
+  # Broken symbolic links are valid paths, so we use lexists instead of exists.
+  # This case will come up when executing a make bundle with an anonymous target,
+  # because the symlink will be broken until it is moved into the bundle store.
+  if not os.path.lexists(path):
     raise path_error('%s got non-existent path:' % (fn_name,), path)
 
 
@@ -243,6 +246,9 @@ def hash_file_contents(path):
 def copy(source_path, dest_path):
   if os.path.isdir(source_path):
     shutil.copytree(source_path, dest_path, symlinks=True)
+  elif os.path.islink(source_path):
+    link_target = os.readlink(source_path)
+    os.symlink(link_target, dest_path)
   else:
     shutil.copyfile(source_path, dest_path)
 
