@@ -20,11 +20,9 @@ class LocalBundleClient(BundleClient):
     self.model = model
 
   def get_bundle_info(self, bundle):
-    '''
-    Convert a bundle to a data dict. This method should NOT hit the filesystem.
-    '''
     return {
       'bundle_type': bundle.bundle_type,
+      'data_hash': bundle.data_hash,
       'metadata': bundle.metadata.to_dict(),
       'state': bundle.state,
       'uuid': bundle.uuid,

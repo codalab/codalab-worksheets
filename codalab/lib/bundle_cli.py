@@ -214,13 +214,15 @@ class BundleCLI(object):
     print '''
 {bundle_type}: {name}
 {description}
-  uuid:     {uuid}
-  state:    {state}
+  uuid:  {uuid}
+  hash:  {data_hash}
+  state: {state}
     '''.strip().format(
       bundle_type=info['bundle_type'],
       name=(info['metadata'].get('name') or '<no name>'),
       description=(info['metadata'].get('description') or '<no description>'),
       uuid=info['uuid'],
+      data_hash=(info['data_hash'] or '<no hash>'),
       state=info['state'],
     )
 

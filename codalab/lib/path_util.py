@@ -19,6 +19,7 @@ import errno
 import hashlib
 import itertools
 import os
+import shutil
 import sys
 
 from codalab.common import (
@@ -240,6 +241,19 @@ def make_directory(path):
     if e.errno != errno.EEXIST:
       raise
   check_isdir(path, 'make_directories')
+
+
+def remove(path):
+  '''
+  Removethe given path, whether it is a directory, file, or link.
+  '''
+  check_isvalid(path, 'delete')
+  if os.path.isdir(path):
+    shutil.rmtree(path)
+  elif os.path.islink(path):
+    os.unlink(path)
+  else:
+    os.remove(path)
 
 
 def set_permissions(path, permissions, dirs_and_files=None):

@@ -53,6 +53,7 @@ def get_target_path(bundle_store, model, target):
   if bundle.state != State.READY:
     raise UsageError('%s is not ready' % (bundle,))
   bundle_root = bundle_store.get_location(bundle.data_hash)
-  final_path = TargetPath(os.path.join(bundle_root, path))
-  final_path.target = target
-  return final_path
+  final_path = os.path.join(bundle_root, path) if path else bundle_root
+  result = TargetPath(final_path)
+  result.target = target
+  return result
