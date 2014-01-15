@@ -34,6 +34,25 @@ FILE_PREFIX = 'file'
 LINK_PREFIX = 'link'
 
 
+class TargetPath(unicode):
+  '''
+  Wrapper around unicode objects that allows us to add extra attributes to them.
+  In particular, canonicalize.get_target_path will return a TargetPath with the
+  'target' attribute set to the un-canonicalized target.
+  '''
+
+
+def path_error(message, path):
+  '''
+  Raised when a user-supplied path causes an exception. If the path passed to
+  this error's constructor came from a call to get_target_path, the target will
+  be appended to the message instead of the computed path.
+  '''
+  if isinstance(path, TargetPath):
+    path = os.sep.join(path.target)
+  return UsageError(' '.join((message, path)))
+
+
 @contextlib.contextmanager
 def chdir(new_dir):
   '''
@@ -68,7 +87,7 @@ def check_isvalid(path, fn_name):
   '''
   precondition(os.path.isabs(path), '%s got relative path: %s' % (fn_name, path))
   if not os.path.exists(path):
-    raise UsageError('%s got non-existent path: %s' % (fn_name, path))
+    raise path_error('%s got non-existent path:' % (fn_name,), path)
 
 
 def check_isdir(path, fn_name):
@@ -77,7 +96,7 @@ def check_isdir(path, fn_name):
   '''
   check_isvalid(path, fn_name)
   if not os.path.isdir(path):
-    raise UsageError('%s got non-directory: %s' % (fn_name, path))
+    raise path_error('%s got non-directory:' % (fn_name,), path)
 
 
 def check_isfile(path, fn_name):
@@ -86,7 +105,7 @@ def check_isfile(path, fn_name):
   '''
   check_isvalid(path, fn_name)
   if os.path.isdir(path):
-    raise UsageError('%s got directory: %s' % (fn_name, path))
+    raise path_error('%s got directory:' % (fn_name,), path)
 
 
 def check_for_symlinks(root, dirs_and_files=None):
@@ -96,7 +115,8 @@ def check_for_symlinks(root, dirs_and_files=None):
   (directories, files) = dirs_and_files or recursive_ls(root)
   for path in itertools.chain(directories, files):
     if os.path.islink(path):
-      raise UsageError('Found symlink %s under %s' % (path, root))
+      relative_path = get_relative_path(root, path)
+      raise path_error('Found symlink %s under path:' % (relative_path,), root)
 
 
 ################################################################################

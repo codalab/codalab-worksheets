@@ -126,7 +126,8 @@ class Bundle(ORMObject):
         dep.parent_path,
       )
       if not os.path.exists(target):
-        raise UsageError('Target %s not found!' % (target,))
+        target_text = '%s%s%s' % (parent.metadata.name, os.sep, dep.parent_path)
+        raise UsageError('Target not found: %s' % (target_text,))
       if rel:
         # Create a symlink that points to the dependency's relative target.
         target = os.path.join(

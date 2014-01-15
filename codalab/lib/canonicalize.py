@@ -16,6 +16,7 @@ from codalab.common import (
 )
 from codalab.objects.bundle import Bundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
+from codalab.lib.path_util import TargetPath
 
 
 def get_spec_uuid(model, bundle_spec):
@@ -52,5 +53,6 @@ def get_target_path(bundle_store, model, target):
   if bundle.state != State.READY:
     raise UsageError('%s is not ready' % (bundle,))
   bundle_root = bundle_store.get_location(bundle.data_hash)
-  final_path = os.path.join(bundle_root, path)
+  final_path = TargetPath(os.path.join(bundle_root, path))
+  final_path.target = target
   return final_path
