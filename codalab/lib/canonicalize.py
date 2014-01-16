@@ -15,6 +15,7 @@ from codalab.common import (
 from codalab.objects.bundle import Bundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.lib import path_util
+from codalab.model.util import LikeQuery
 
 
 def get_spec_uuid(model, bundle_spec):
@@ -25,18 +26,23 @@ def get_spec_uuid(model, bundle_spec):
     raise UsageError('Tried to expand empty bundle_spec!')
   if Bundle.UUID_REGEX.match(bundle_spec):
     return bundle_spec
-  elif not UploadedBundle.NAME_REGEX.match(bundle_spec):
+  elif Bundle.UUID_PREFIX_REGEX.match(bundle_spec):
+    bundles = model.batch_get_bundles(uuid=LikeQuery(bundle_spec + '%'))
+    message = "uuid starting with '%s'" % (bundle_spec,)
+  elif UploadedBundle.NAME_REGEX.match(bundle_spec):
+    bundles = model.search_bundles(name=bundle_spec)
+    message = "name '%s'" % (bundle_spec,)
+  else:
     raise UsageError(
       'Bundle names must match %s, was %s' %
       (UploadedBundle.NAME_REGEX.pattern, bundle_spec)
     )
-  bundles = model.search_bundles(name=bundle_spec)
   if not bundles:
-    raise UsageError("No bundle found with name '%s'" % (bundle_spec,))
+    raise UsageError('No bundle found with %s' % (message,))
   elif len(bundles) > 1:
     raise UsageError(
-      "Found multiple bundles with name '%s':%s" %
-      (bundle_spec, ''.join('\n  %s' % (bundle,) for bundle in bundles))
+      'Found multiple bundles with %s:%s' %
+      (message, ''.join('\n  %s' % (bundle,) for bundle in bundles))
     )
   return bundles[0].uuid
 

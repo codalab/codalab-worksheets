@@ -12,6 +12,7 @@ from codalab.common import (
   precondition,
   UsageError,
 )
+from codalab.model.util import LikeQuery
 from codalab.model.tables import (
   bundle as cl_bundle,
   bundle_metadata as cl_bundle_metadata,
@@ -60,6 +61,7 @@ class BundleModel(object):
     '''
     Return a list of bundles given a dict mapping cl_bundle columns to values.
     If a value is a list, set, or tuple, produce an IN clause on that column.
+    If a value is a LikeQuery, produce a LIKE clause on that column.
     '''
     clauses = [True]
     for (key, value) in kwargs.iteritems():
@@ -67,6 +69,8 @@ class BundleModel(object):
         if not value:
           return False
         clauses.append(getattr(cl_bundle.c, key).in_(value))
+      elif isinstance(value, LikeQuery):
+        clauses.append(getattr(cl_bundle.c, key).like(value))
       else:
         clauses.append(getattr(cl_bundle.c, key) == value)
     return and_(*clauses)

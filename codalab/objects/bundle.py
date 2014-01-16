@@ -31,6 +31,7 @@ from codalab.objects.metadata import Metadata
 class Bundle(ORMObject):
   COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state')
   UUID_REGEX = re.compile('^0x[0-9a-f]{32}\Z')
+  UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}\Z')
 
   # Bundle subclasses should have the following class-level attributes:
   #   - BUNDLE_TYPE: a string bundle type
