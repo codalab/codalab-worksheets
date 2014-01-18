@@ -15,9 +15,8 @@ import sys
 import time
 
 from codalab.bundles import (
-  BUNDLE_SUBCLASSES,
   get_bundle_subclass,
-  UPLOADABLE_TYPES,
+  UPLOADED_TYPES,
 )
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.common import (
@@ -118,19 +117,19 @@ class BundleCLI(object):
       )
 
   def do_upload_command(self, argv, parser):
-    help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADABLE_TYPES)))
+    help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
     parser.add_argument('bundle_type', help=help_text)
     parser.add_argument('path', help='path of the directory to upload')
     # Add metadata arguments for UploadedBundle and all of its subclasses.
     metadata_keys = set()
     metadata_util.add_arguments(UploadedBundle, metadata_keys, parser)
-    for bundle_type in UPLOADABLE_TYPES:
+    for bundle_type in UPLOADED_TYPES:
       bundle_subclass = get_bundle_subclass(bundle_type)
       metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
     args = parser.parse_args(argv)
-    if args.bundle_type not in UPLOADABLE_TYPES:
+    if args.bundle_type not in UPLOADED_TYPES:
       raise UsageError('Invalid bundle type %s (options: [%s])' % (
-        args.bundle_type, '|'.join(sorted(UPLOADABLE_TYPES)),
+        args.bundle_type, '|'.join(sorted(UPLOADED_TYPES)),
       ))
     bundle_subclass = get_bundle_subclass(args.bundle_type)
     metadata = metadata_util.request_missing_data(bundle_subclass, args)

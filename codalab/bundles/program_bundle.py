@@ -4,14 +4,8 @@ new metadata key, architectures.
 
 When a RunBundle is constructed, its program_target must be in a ProgramBundle.
 '''
-import platform
-
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.objects.metadata_spec import MetadataSpec
-
-
-def get_default_architecture(args):
-  return [platform.machine()] if platform.machine() else []
 
 
 class ProgramBundle(UploadedBundle):
@@ -22,5 +16,4 @@ class ProgramBundle(UploadedBundle):
     set,
     'viable architectures',
     short_key='arch',
-    default=get_default_architecture,
   ))

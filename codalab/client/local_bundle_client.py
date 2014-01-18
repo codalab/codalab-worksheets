@@ -4,7 +4,7 @@ BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from codalab.bundles import (
   get_bundle_subclass,
-  UPLOADABLE_TYPES,
+  UPLOADED_TYPES,
 )
 from codalab.common import precondition
 from codalab.client.bundle_client import BundleClient
@@ -40,7 +40,7 @@ class LocalBundleClient(BundleClient):
 
   def upload(self, bundle_type, path, metadata):
     message = 'Invalid upload bundle_type: %s' % (bundle_type,)
-    precondition(bundle_type in UPLOADABLE_TYPES, message)
+    precondition(bundle_type in UPLOADED_TYPES, message)
     bundle_subclass = get_bundle_subclass(bundle_type)
     # Type-check the bundle metadata BEFORE uploading the bundle data.
     # This optimization will avoid file operations on failed bundle creations.

@@ -1,6 +1,5 @@
 '''
 This module exports some simple names used throughout the CodaLab bundle system:
-  - Constants that should eventually be moved to some configuration file.
   - The various CodaLab error classes, with documentation for each.
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.

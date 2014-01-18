@@ -25,7 +25,7 @@ class Metadata(object):
         raise UsageError('Unexpected metadata key: %s' % (key,))
     for spec in metadata_specs:
       if spec.key not in self._metadata_keys:
-        raise UsageError('Missing metadata key: %s' % (key,))
+        raise UsageError('Missing metadata key: %s' % (spec.key,))
       value = getattr(self, spec.key)
       if not isinstance(value, spec.type):
         raise UsageError(

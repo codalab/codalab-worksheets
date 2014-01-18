@@ -3,6 +3,7 @@ import subprocess
 import tempfile
 
 from codalab.common import UsageError
+from codalab.lib.metadata_defaults import MetadataDefaults
 
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
@@ -48,7 +49,7 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
   for spec in bundle_subclass.METADATA_SPECS:
     initial_value = initial_metadata.get(spec.key) or ''
     if not initial_value:
-      initial_value = spec.get_default(args)
+      initial_value = MetadataDefaults.get_default(spec, bundle_subclass, args)
     if spec.type == set:
       initial_value = ' '.join(initial_value or [])
     template_lines.append('%s: %s' % (spec.key.title(), initial_value))
@@ -66,13 +67,14 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
     subprocess.call([editor, form.name])
     with open(form.name, 'rb') as form:
       form_result = form.readlines()
-  return parse_metadata_form(bundle_subclass.METADATA_SPECS, form_result)
+  return parse_metadata_form(bundle_subclass, form_result)
 
 
-def parse_metadata_form(metadata_specs, form_result):
+def parse_metadata_form(bundle_subclass, form_result):
   '''
   Parse the result of a form template produced in request_missing_metadata.
   '''
+  metadata_specs = bundle_subclass.METADATA_SPECS
   metadata_types = {spec.key: spec.type for spec in metadata_specs}
   result = {}
   for line in form_result:
@@ -92,4 +94,8 @@ def parse_metadata_form(metadata_specs, form_result):
         ]
       else:
         result[metadata_key] = remainder.strip()
+  # If the user left an anonymous name for this bundle, wipe it out and let the
+  # bundle subclass's constructor choose a name instead.
+  if result.get('name') == MetadataDefaults.get_anonymous_name(bundle_subclass):
+    result['name'] = ''
   return result
