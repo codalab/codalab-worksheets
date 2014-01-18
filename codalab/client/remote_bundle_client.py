@@ -34,7 +34,7 @@ class RemoteBundleClient(BundleClient):
   )
 
   def __init__(self, address):
-    self.proxy = xmlrpclib.ServerProxy(address)
+    self.proxy = xmlrpclib.ServerProxy(address, allow_none=True)
     def do_command(command):
       def inner(*args, **kwargs):
         try:

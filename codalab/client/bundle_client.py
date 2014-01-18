@@ -27,7 +27,7 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  def make(self, targets):
+  def make(self, targets, metadata):
     '''
     Create a new bundle with dependencies on the given targets. Return its uuid.
     targets should be a dict mapping target keys to (bundle_spec, path) pairs.
@@ -35,7 +35,7 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  def run(self, program_target, input_target, command):
+  def run(self, program_target, input_target, command, metadata):
     '''
     Run the given program bundle, create bundle of output, and return its uuid.
     The program and input targets are (bundle_spec, path) pairs taht are

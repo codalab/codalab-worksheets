@@ -50,21 +50,22 @@ class LocalBundleClient(BundleClient):
     self.model.save_bundle(bundle)
     return bundle.uuid
 
-  def make(self, targets):
+  def make(self, targets, metadata):
     bundle_subclass = get_bundle_subclass('make')
     targets = {
       key: self.get_bundle_target(target)
       for (key, target) in targets.iteritems()
     }
-    bundle = bundle_subclass.construct(targets)
+    bundle = bundle_subclass.construct(targets, metadata)
     self.model.save_bundle(bundle)
     return bundle.uuid
 
-  def run(self, program_target, input_target, command):
+  def run(self, program_target, input_target, command, metadata):
     program_target = self.get_bundle_target(program_target)
     input_target = self.get_bundle_target(input_target)
     bundle_subclass = get_bundle_subclass('run')
-    bundle = bundle_subclass.construct(program_target, input_target, command)
+    bundle = bundle_subclass.construct(
+      program_target, input_target, command, metadata)
     self.model.save_bundle(bundle)
     return bundle.uuid
 

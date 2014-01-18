@@ -62,7 +62,7 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
       initial_metadata[spec.key] = default
   # If the --auto flag was used, skip showing the editor.
   if getattr(args, 'auto', False):
-    return initial_metadata
+    return filter_anonymous_name(bundle_subclass, initial_metadata)
   # Construct a form template with the required keys, prefilled with the
   # command-line metadata options.
   template_lines = []
@@ -109,8 +109,17 @@ def parse_metadata_form(bundle_subclass, form_result):
         result[metadata_key] = remainder.replace(',', ' ').strip().split()
       else:
         result[metadata_key] = remainder.strip()
-  # If the user left an anonymous name for this bundle, wipe it out and let the
-  # bundle subclass's constructor choose a name instead.
-  if result.get('name') == MetadataDefaults.get_anonymous_name(bundle_subclass):
-    result['name'] = ''
-  return result
+  if 'name' not in result:
+    raise UsageError('No name specified; aborting')
+  return filter_anonymous_name(bundle_subclass, result)
+
+
+def filter_anonymous_name(bundle_subclass, metadata):
+  '''
+  If the user left an anonymous name for this bundle, wipe it out and let the
+  bundle subclass's constructor choose a name instead.
+  '''
+  anonymous_name = MetadataDefaults.get_anonymous_name(bundle_subclass)
+  if metadata.get('name') == anonymous_name:
+    metadata['name'] = None
+  return metadata

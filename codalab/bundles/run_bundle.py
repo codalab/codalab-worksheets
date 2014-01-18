@@ -25,7 +25,7 @@ class RunBundle(NamedBundle):
   NAME_LENGTH = 8
 
   @classmethod
-  def construct(cls, program_target, input_target, command):
+  def construct(cls, program_target, input_target, command, metadata):
     (program, program_path) = program_target
     (input, input_path) = input_target
     if not isinstance(program, ProgramBundle):
@@ -35,17 +35,9 @@ class RunBundle(NamedBundle):
     if not isinstance(command, basestring):
       raise UsageError('%r is not a valid command!' % (command,))
     uuid = cls.generate_uuid()
-    # Compute metadata with default values for name and description.
-    description = 'Run %s on %s: %r' % (
-      path_util.safe_join(program.metadata.name, program_path),
-      path_util.safe_join(input.metadata.name, input_path),
-      command,
-    )
-    metadata = {
-      'name': 'run-%s' % (uuid[:cls.NAME_LENGTH],),
-      'description': description,
-      'tags': [],
-    }
+    # Support anonymous run bundles with names based on their uuid.
+    if not metadata['name']:
+      metadata['name'] = 'run-%s' % (uuid[:cls.NAME_LENGTH],)
     # List the dependencies of this bundle on its targets.
     dependencies = []
     targets = {'program': program_target, 'input': input_target}

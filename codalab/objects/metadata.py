@@ -30,7 +30,7 @@ class Metadata(object):
       if not isinstance(value, spec.type):
         raise UsageError(
           'Metadata value for %s should be of type %s, was %s' %
-          (key, spec.type, type(value))
+          (spec.key, spec.type, type(value))
         )
 
   def set_metadata_key(self, key, value):

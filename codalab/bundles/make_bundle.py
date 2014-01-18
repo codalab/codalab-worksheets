@@ -10,7 +10,6 @@ from codalab.common import (
   State,
   UsageError,
 )
-from codalab.lib import path_util
 
 
 class MakeBundle(NamedBundle):
@@ -18,25 +17,14 @@ class MakeBundle(NamedBundle):
   NAME_LENGTH = 8
 
   @classmethod
-  def construct(cls, targets):
+  def construct(cls, targets, metadata):
     uuid = cls.generate_uuid()
     # Check that targets does not include both keyed and anonymous targets.
     if len(targets) > 1 and '' in targets:
       raise UsageError('Must specify keys when packaging multiple targets!')
-    # Compute metadata with default values for name and description.
-    description = 'Package containing %s' % (
-      ', '.join(
-        '%s%s' % (
-          ((':' + key) if key else ''),
-          path_util.safe_join(parent.metadata.name, parent_path),
-        ) for (key, (parent, parent_path)) in sorted(targets.iteritems())
-      ),
-    )
-    metadata = {
-      'name': 'make-%s' % (uuid[:cls.NAME_LENGTH],),
-      'description': description,
-      'tags': [],
-    }
+    # Support anonymous make bundles with names based on their uuid.
+    if not metadata['name']:
+      metadata['name'] = 'make-%s' % (uuid[:cls.NAME_LENGTH],)
     # List the dependencies of this bundle on its targets.
     dependencies = []
     for (child_path, (parent, parent_path)) in targets.iteritems():

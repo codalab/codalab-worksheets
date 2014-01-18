@@ -18,20 +18,26 @@ from codalab.lib import path_util
 class MetadataDefaults(object):
   @staticmethod
   def get_anonymous_name(bundle_subclass):
-    return 'anonoymous-' + bundle_subclass.BUNDLE_TYPE
+    return 'anonymous-' + bundle_subclass.BUNDLE_TYPE
 
   @staticmethod
   def get_default(spec, bundle_subclass, args):
     fn_name = 'get_default_%s' % (spec.key,)
     fn = getattr(MetadataDefaults, fn_name, None)
-    return fn(bundle_subclass, args) if fn else ''
+    if fn:
+      return fn(bundle_subclass, args)
+    result = spec.get_constructor()()
+    # We need to return a list instead of a set because command-line values for
+    # set metadata objects must be JSON-able. When the metadata is marshalled
+    # into the database, it will be converted into a set.
+    return list(result) if type(result) == set else []
 
   @staticmethod
   def get_default_name(bundle_subclass, args):
     if hasattr(args, 'path'):
       absolute_path = path_util.normalize(args.path)
       return os.path.basename(absolute_path)
-    return 'anonymous-%s' % (bundle_subclass.BUNDLE_TYPE,)
+    return MetadataDefaults.get_anonymous_name(bundle_subclass)
 
   @staticmethod
   def get_default_description(bundle_subclass, args):
@@ -39,7 +45,7 @@ class MetadataDefaults(object):
       absolute_path = path_util.normalize(args.path)
       return 'Upload %s' % (absolute_path,)
     elif bundle_subclass is MakeBundle:
-      return 'Package %s' % (', '.join(args.targets))
+      return 'Package %s' % (', '.join(args.target))
     elif bundle_subclass is RunBundle:
       return 'Run {program} on {input}: {command}'.format(
         program=args.program_target,

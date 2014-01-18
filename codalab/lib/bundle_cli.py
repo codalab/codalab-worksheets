@@ -18,7 +18,9 @@ from codalab.bundles import (
   get_bundle_subclass,
   UPLOADED_TYPES,
 )
+from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
+from codalab.bundles.run_bundle import RunBundle
 from codalab.common import (
   precondition,
   State,
@@ -122,11 +124,11 @@ class BundleCLI(object):
     parser.add_argument('path', help='path of the directory to upload')
     # Add metadata arguments for UploadedBundle and all of its subclasses.
     metadata_keys = set()
-    metadata_util.add_auto_argument(parser)
     metadata_util.add_arguments(UploadedBundle, metadata_keys, parser)
     for bundle_type in UPLOADED_TYPES:
       bundle_subclass = get_bundle_subclass(bundle_type)
       metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
+    metadata_util.add_auto_argument(parser)
     args = parser.parse_args(argv)
     if args.bundle_type not in UPLOADED_TYPES:
       raise UsageError('Invalid bundle type %s (options: [%s])' % (
@@ -139,6 +141,8 @@ class BundleCLI(object):
   def do_make_command(self, argv, parser):
     help = '[<key>:][<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
     parser.add_argument('target', help=help, nargs='+')
+    metadata_util.add_arguments(MakeBundle, set(), parser)
+    metadata_util.add_auto_argument(parser)
     args = parser.parse_args(argv)
     targets = {}
     # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
@@ -154,7 +158,8 @@ class BundleCLI(object):
         else:
           raise UsageError('Must specify keys when packaging multiple targets!')
       targets[key] = self.parse_target(target)
-    print self.client.make(targets)
+    metadata = metadata_util.request_missing_data(MakeBundle, args)
+    print self.client.make(targets, metadata)
 
   def do_run_command(self, argv, parser):
     help = '[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
@@ -164,10 +169,13 @@ class BundleCLI(object):
       'command',
       help='shell command with access to program, input, and output',
     )
+    metadata_util.add_arguments(RunBundle, set(), parser)
+    metadata_util.add_auto_argument(parser)
     args = parser.parse_args(argv)
     program_target = self.parse_target(args.program_target)
     input_target = self.parse_target(args.input_target)
-    print self.client.run(program_target, input_target, args.command)
+    metadata = metadata_util.request_missing_data(RunBundle, args)
+    print self.client.run(program_target, input_target, args.command, metadata)
 
   def do_update_command(self, argv, parser):
     parser.add_argument(
