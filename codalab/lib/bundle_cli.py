@@ -122,6 +122,7 @@ class BundleCLI(object):
     parser.add_argument('path', help='path of the directory to upload')
     # Add metadata arguments for UploadedBundle and all of its subclasses.
     metadata_keys = set()
+    metadata_util.add_auto_argument(parser)
     metadata_util.add_arguments(UploadedBundle, metadata_keys, parser)
     for bundle_type in UPLOADED_TYPES:
       bundle_subclass = get_bundle_subclass(bundle_type)

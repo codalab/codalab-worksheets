@@ -29,6 +29,18 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
       )
 
 
+def add_auto_argument(parser):
+  '''
+  Adds a --auto argument that will skip showing the editor to request any
+  unspecified metadata values.
+  '''
+  parser.add_argument(
+    '--auto',
+    action='store_true',
+    help="use metadata defaults and don't show an editor",
+  )
+
+
 def request_missing_data(bundle_subclass, args, initial_metadata=None):
   '''
   For any metadata arguments that were not supplied through the command line,
@@ -43,13 +55,19 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
     # line, do NOT show the editor. This allows for programmatic bundle creation.
     if not any(value is None for value in initial_metadata.values()):
       return initial_metadata
+  # Fill in default values for all unsupplied metadata keys.
+  for spec in bundle_subclass.METADATA_SPECS:
+    if not initial_metadata[spec.key]:
+      default = MetadataDefaults.get_default(spec, bundle_subclass, args)
+      initial_metadata[spec.key] = default
+  # If the --auto flag was used, skip showing the editor.
+  if getattr(args, 'auto', False):
+    return initial_metadata
   # Construct a form template with the required keys, prefilled with the
   # command-line metadata options.
   template_lines = []
   for spec in bundle_subclass.METADATA_SPECS:
     initial_value = initial_metadata.get(spec.key) or ''
-    if not initial_value:
-      initial_value = MetadataDefaults.get_default(spec, bundle_subclass, args)
     if spec.type == set:
       initial_value = ' '.join(initial_value or [])
     template_lines.append('%s: %s' % (spec.key.title(), initial_value))
