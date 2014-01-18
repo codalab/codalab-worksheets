@@ -124,9 +124,9 @@ class BundleCLI(object):
     # Add metadata arguments for UploadedBundle and all of its subclasses.
     metadata_keys = set()
     metadata_util.add_arguments(UploadedBundle, metadata_keys, parser)
-    for bundle_subclass in BUNDLE_SUBCLASSES:
-      if issubclass(bundle_subclass, UploadedBundle):
-        metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
+    for bundle_type in UPLOADABLE_TYPES:
+      bundle_subclass = get_bundle_subclass(bundle_type)
+      metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
     args = parser.parse_args(argv)
     if args.bundle_type not in UPLOADABLE_TYPES:
       raise UsageError('Invalid bundle type %s (options: [%s])' % (
