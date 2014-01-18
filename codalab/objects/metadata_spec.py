@@ -28,3 +28,13 @@ class MetadataSpec(object):
     self.short_key = short_key or self.key
     self.metavar = metavar or self.short_key.upper()
     self.default = default
+
+  def get_default(self, args):
+    if self.default:
+      return self.default(args)
+    return self.get_constructor()()
+
+  def get_constructor(self):
+    if self.type == basestring:
+      return unicode
+    return self.type

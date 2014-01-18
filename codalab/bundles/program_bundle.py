@@ -10,7 +10,8 @@ from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.objects.metadata_spec import MetadataSpec
 
 
-architectures = [platform.machine()] if platform.machine() else []
+def get_default_architecture(args):
+  return [platform.machine()] if platform.machine() else []
 
 
 class ProgramBundle(UploadedBundle):
@@ -21,5 +22,5 @@ class ProgramBundle(UploadedBundle):
     set,
     'viable architectures',
     short_key='arch',
-    default=architectures,
+    default=get_default_architecture,
   ))

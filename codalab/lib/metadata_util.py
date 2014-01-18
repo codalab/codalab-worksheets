@@ -21,7 +21,6 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
       metadata_keys.add(spec.key)
       parser.add_argument(
         '--%s' % (spec.short_key,),
-        default=spec.default,
         dest=metadata_key_to_argument(spec.key,),
         help=(spec.description + help_suffix),
         metavar=spec.metavar,
@@ -48,6 +47,8 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
   template_lines = []
   for spec in bundle_subclass.METADATA_SPECS:
     initial_value = initial_metadata.get(spec.key) or ''
+    if not initial_value:
+      initial_value = spec.get_default(args)
     if spec.type == set:
       initial_value = ' '.join(initial_value or [])
     template_lines.append('%s: %s' % (spec.key.title(), initial_value))

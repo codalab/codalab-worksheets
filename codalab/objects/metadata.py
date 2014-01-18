@@ -42,31 +42,23 @@ class Metadata(object):
       value = set(value)
     setattr(self, key, value)
 
-  @staticmethod
-  def get_type_constructor(value_type):
-    '''
-    Return the type constructor for each type of metadata.
-    Note that basestrings cannot be instantiated, so we return unicode instead.
-    '''
-    return unicode if value_type == basestring else value_type 
-
   @classmethod
   def collapse_dicts(cls, metadata_specs, rows):
     '''
     Convert a list of Metadata dictionaries into a normalized metadata dict.
     '''
     metadata_dict = {}
-    metadata_types = {}
+    metadata_spec_dict = {}
     for spec in metadata_specs:
-      metadata_types[spec.key] = spec.type
-      metadata_dict[spec.key] = cls.get_type_constructor(spec.type)()
+      metadata_dict[spec.key] = spec.get_constructor()()
+      metadata_spec_dict[spec.key] = spec
     for row in rows:
       (maybe_unicode_key, value) = (row['metadata_key'], row['metadata_value'])
       # If the key is Unicode text (which is the case if it was extracted from a
       # database), cast it to a string. This operation encodes it with UTF-8.
       key = str(maybe_unicode_key)
-      value_type = metadata_types[key]
-      if value_type == set:
+      spec = metadata_spec_dict[key]
+      if spec.type == set:
         metadata_dict[key].add(value)
       else:
         if metadata_dict.get(key):
@@ -74,7 +66,7 @@ class Metadata(object):
             'Got duplicate values %s and %s for key %s' %
             (metadata_dict[key], value, key)
           )
-        metadata_dict[key] = cls.get_type_constructor(value_type)(value)
+        metadata_dict[key] = spec.get_constructor()(value)
     return metadata_dict
 
   def to_dicts(self, metadata_specs):
@@ -86,7 +78,7 @@ class Metadata(object):
     '''
     result = []
     for spec in metadata_specs:
-      value = getattr(self, spec.key, self.get_type_constructor(spec.type)())
+      value = getattr(self, spec.key, spec.get_constructor()())
       values = value if spec.type == set else (value,)
       for value in values:
         result.append({
