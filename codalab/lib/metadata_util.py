@@ -88,10 +88,7 @@ def parse_metadata_form(bundle_subclass, form_result):
         raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
       metadata_type = metadata_types[metadata_key]
       if metadata_type == set:
-        result[metadata_key] = [
-          subpart for part in remainder.strip().split()
-          for subpart in part.split(',') if subpart
-        ]
+        result[metadata_key] = remainder.replace(',', ' ').strip().split()
       else:
         result[metadata_key] = remainder.strip()
   # If the user left an anonymous name for this bundle, wipe it out and let the
