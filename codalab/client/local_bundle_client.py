@@ -20,12 +20,14 @@ class LocalBundleClient(BundleClient):
     self.model = model
 
   def get_bundle_info(self, bundle):
+    hard_dependencies = bundle.get_hard_dependencies()
     return {
       'bundle_type': bundle.bundle_type,
       'data_hash': bundle.data_hash,
       'metadata': bundle.metadata.to_dict(),
       'state': bundle.state,
       'uuid': bundle.uuid,
+      'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
     }
 
   def get_spec_uuid(self, bundle_spec):

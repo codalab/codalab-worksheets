@@ -58,6 +58,11 @@ class RunBundle(NamedBundle):
       'dependencies': dependencies,
     })
 
+  def get_hard_dependencies(self):
+    # The program and input are symlinked into a run bundle while it is being
+    # executed, but they are deleted once the run is complete.
+    return []
+
   def run(self, bundle_store, parent_dict, temp_dir):
     command = self.command
     self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=False)

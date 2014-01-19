@@ -44,6 +44,9 @@ class MakeBundle(NamedBundle):
       'dependencies': dependencies,
     })
 
+  def get_hard_dependencies(self):
+    return self.dependencies
+
   def run(self, bundle_store, parent_dict, temp_dir):
     if any(not dep.child_path for dep in self.dependencies):
       message = '%s has keyed and anonymous targets!' % (self,),

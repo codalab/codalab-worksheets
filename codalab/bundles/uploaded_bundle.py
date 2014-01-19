@@ -19,5 +19,9 @@ class UploadedBundle(NamedBundle):
       'dependencies': [],
     })
 
+  def get_hard_dependencies(self):
+    # Uploaded bundles will never include symlinks to other bundles.
+    return []
+
   def run(self, bundle_store, parent_dict):
     assert(False), '%ss should never be run!' % (self.__class__.__name__,)

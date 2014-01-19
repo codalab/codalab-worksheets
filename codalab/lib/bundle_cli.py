@@ -26,7 +26,10 @@ from codalab.common import (
   State,
   UsageError,
 )
-from codalab.lib import metadata_util
+from codalab.lib import (
+  metadata_util,
+  path_util,
+)
 from codalab.objects.worker import Worker
 
 
@@ -215,12 +218,31 @@ class BundleCLI(object):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
     args = parser.parse_args(argv)
     info = self.client.info(args.bundle_spec)
+    # Compute a nicely-formatted list of hard dependencies. Since this type of
+    # dependency is realized within this bundle as a symlink to another bundle,
+    # label these dependencies as 'references' in the UI.
+    hard_dependencies = ''
+    if info['hard_dependencies']:
+      deps = info['hard_dependencies']
+      if len(deps) == 1 and not deps[0]['child_path']:
+        hard_dependencies = '\nReference:\n  %s' % (path_util.safe_join(
+          deps[0]['parent_uuid'],
+          deps[0]['parent_path'],
+        ),)
+      else:
+        hard_dependencies = '\nReferences:\n%s' % ('\n'.join(
+          '  %s:%s' % (
+            dep['child_path'],
+            path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
+          ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
+        ))
+    # Print out the final summary of the bundle info.
     print '''
 {bundle_type}: {name}
 {description}
-  uuid:  {uuid}
-  hash:  {data_hash}
-  state: {state}
+  UUID:  {uuid}
+  Hash:  {data_hash}
+  State: {state}{hard_dependencies}
     '''.strip().format(
       bundle_type=info['bundle_type'],
       name=(info['metadata'].get('name') or '<no name>'),
@@ -228,6 +250,7 @@ class BundleCLI(object):
       uuid=info['uuid'],
       data_hash=(info['data_hash'] or '<no hash>'),
       state=info['state'],
+      hard_dependencies=hard_dependencies,
     )
 
   def do_ls_command(self, argv, parser):

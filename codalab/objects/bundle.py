@@ -103,16 +103,6 @@ class Bundle(ORMObject):
     result['dependencies'] = [dep.to_dict() for dep in self.dependencies]
     return result
 
-  def run(self, bundle_store, parent_dict):
-    '''
-    Perform the computation needed to construct this bundle, upload the result
-    to the given bundle store, and return its new data hash.
-
-    parent_dict should be a dictionary mapping uuids -> bundles for each uuid
-    that this bundle depends on.
-    '''
-    raise NotImplementedError
-
   def install_dependencies(self, bundle_store, parent_dict, path, rel):
     '''
     Symlink this bundle's dependencies into the directory at path.
@@ -138,3 +128,20 @@ class Bundle(ORMObject):
         )
       link_path = path_util.safe_join(path, dep.child_path)
       os.symlink(target, link_path)
+
+  def get_hard_dependencies(self):
+    '''
+    Returns a list of dependencies that are actually symlinked into this bundle
+    at the time that it is uploaded to the bundle store.
+    '''
+    raise NotImplementedError
+
+  def run(self, bundle_store, parent_dict):
+    '''
+    Perform the computation needed to construct this bundle, upload the result
+    to the given bundle store, and return its new data hash.
+
+    parent_dict should be a dictionary mapping uuids -> bundles for each uuid
+    that this bundle depends on.
+    '''
+    raise NotImplementedError
