@@ -35,7 +35,7 @@ def add_auto_argument(parser):
   unspecified metadata values.
   '''
   parser.add_argument(
-    '--auto',
+    '-a', '--auto',
     action='store_true',
     help="use metadata defaults and don't show an editor",
   )

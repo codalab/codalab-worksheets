@@ -218,13 +218,11 @@ class BundleCLI(object):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
     parser.add_argument(
       '-p', '--parents',
-      dest='parents',
       action='store_true',
       help="print a list of this bundle's parents",
     )
     parser.add_argument(
       '-c', '--children',
-      dest='children',
       action='store_true',
       help="print a list of this bundle's children",
     )
