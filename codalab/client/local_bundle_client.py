@@ -19,9 +19,9 @@ class LocalBundleClient(BundleClient):
     self.bundle_store = bundle_store
     self.model = model
 
-  def get_bundle_info(self, bundle):
+  def get_bundle_info(self, bundle, parents=None, children=None):
     hard_dependencies = bundle.get_hard_dependencies()
-    return {
+    result = {
       'bundle_type': bundle.bundle_type,
       'data_hash': bundle.data_hash,
       'metadata': bundle.metadata.to_dict(),
@@ -29,6 +29,11 @@ class LocalBundleClient(BundleClient):
       'uuid': bundle.uuid,
       'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
     }
+    if parents is not None:
+      result['parents'] = [str(parent) for parent in parents]
+    if children is not None:
+      result['children'] = [str(child) for child in children]
+    return result
 
   def get_spec_uuid(self, bundle_spec):
     return canonicalize.get_spec_uuid(self.model, bundle_spec)
@@ -75,10 +80,12 @@ class LocalBundleClient(BundleClient):
     bundle = self.model.get_bundle(uuid)
     self.model.update_bundle_metadata(bundle, metadata)
 
-  def info(self, bundle_spec):
+  def info(self, bundle_spec, parents=False, children=False):
     uuid = self.get_spec_uuid(bundle_spec)
     bundle = self.model.get_bundle(uuid)
-    return self.get_bundle_info(bundle)
+    parents = self.model.get_parents(uuid) if parents else None
+    children = self.model.get_children(uuid) if children else None
+    return self.get_bundle_info(bundle, parents=parents, children=children)
 
   def ls(self, target):
     path = self.get_target_path(target)

@@ -56,15 +56,26 @@ class BundleClient(object):
 
   # Commands for browsing bundles: info, ls, cat, grep, and search.
 
-  def info(self, bundle_spec):
+  def info(self, bundle_spec, parents=False, children=False):
     '''
     bundle_spec should be either a bundle uuid or a unique bundle name.
 
     Return a dict containing detailed information about a given bundle:
       bundle_type: one of (program, dataset, macro, make, run)
+      data_hash: hash of the bundle's data, if the bundle is READY
       metadata: its metadata dict
       state: its current state
       uuid: its uuid
+      hard_dependencies: list of this bundle's realized dependencies
+
+    If parents is True, this dict will also map 'parents' to a list of string
+    representations of each bundle that this bundle depends on. If children is
+    True, then it will map 'children' to bundles that depend on this bundle.
+
+    Note that the list of parents and children include all logical dependencies,
+    not just dependencies that are realized within the final bundle. For
+    example, a run would depend on its program and input even though symlinks to
+    those bundles are deleted before the program is uploaded.
     '''
     raise NotImplementedError
 

@@ -86,6 +86,32 @@ class BundleModel(object):
       raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
     return bundles[0]
 
+  def get_parents(self, uuid):
+    '''
+    Get all dependencies that the bundle with the given uuid depends on.
+    '''
+    with self.engine.begin() as connection:
+      rows = connection.execute(select([
+        cl_dependency.c.parent_uuid
+      ]).where(
+        cl_dependency.c.child_uuid == uuid
+      )).fetchall()
+    uuids = set([row.parent_uuid for row in rows])
+    return self.batch_get_bundles(uuid=uuids)
+
+  def get_children(self, uuid):
+    '''
+    Get all dependencies that depend on the bundle with the given uuid.
+    '''
+    with self.engine.begin() as connection:
+      rows = connection.execute(select([
+        cl_dependency.c.child_uuid
+      ]).where(
+        cl_dependency.c.parent_uuid == uuid
+      )).fetchall()
+    uuids = set([row.child_uuid for row in rows])
+    return self.batch_get_bundles(uuid=uuids)
+
   def search_bundles(self, **kwargs):
     '''
     Returns a list of bundles that match the given metadata search.

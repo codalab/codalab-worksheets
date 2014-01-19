@@ -216,8 +216,32 @@ class BundleCLI(object):
 
   def do_info_command(self, argv, parser):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
+    parser.add_argument(
+      '-p', '--parents',
+      dest='parents',
+      action='store_true',
+      help="print a list of this bundle's parents",
+    )
+    parser.add_argument(
+      '-c', '--children',
+      dest='children',
+      action='store_true',
+      help="print a list of this bundle's children",
+    )
     args = parser.parse_args(argv)
-    info = self.client.info(args.bundle_spec)
+    if args.parents and args.children:
+      raise UsageError('Only one of -p and -c should be used at a time!')
+    info = self.client.info(args.bundle_spec, args.parents, args.children)
+    if args.parents:
+      if info['parents']:
+        print '\n'.join(info['parents'])
+    elif args.children:
+      if info['children']:
+        print '\n'.join(info['children'])
+    else:
+      print self.format_basic_info(info)
+
+  def format_basic_info(self, info):
     # Compute a nicely-formatted list of hard dependencies. Since this type of
     # dependency is realized within this bundle as a symlink to another bundle,
     # label these dependencies as 'references' in the UI.
@@ -236,8 +260,8 @@ class BundleCLI(object):
             path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
           ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
         ))
-    # Print out the final summary of the bundle info.
-    print '''
+    # Return the formatted summary of the bundle info.
+    return '''
 {bundle_type}: {name}
 {description}
   UUID:  {uuid}
