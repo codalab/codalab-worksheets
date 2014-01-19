@@ -17,7 +17,7 @@ from codalab.common import State
 
 
 class BundleClient(object):
-  # Commands for creating and editing bundles: upload, make, run, and update.
+  # Commands for creating/editing bundles: upload, make, run, edit, and delete.
 
   def upload(self, bundle_type, path, metadata):
     '''
@@ -38,28 +38,32 @@ class BundleClient(object):
   def run(self, program_target, input_target, command, metadata):
     '''
     Run the given program bundle, create bundle of output, and return its uuid.
-    The program and input targets are (bundle_spec, path) pairs taht are
-    symlinked in as dependencies at runtime.
+    The program and input targets are (bundle_spec, path) pairs that are
+    symlinked in as dependencies during runtime.
     '''
     raise NotImplementedError
 
-  def update(self, uuid, metadata):
+  def edit(self, uuid, metadata):
     '''
     Update the bundle with the given uuid with the new metadata.
     '''
-    # Add a second mode to this command, triggered if a path is passed, that:
-    #  a) The bundle must be an uploaded bundle
-    #  b) A new bundle with metadata derived from the existing bundle is made
-    #  c) The new bundle's meatadata is updated with the passed metadata
-    #  d) The old bundle is deprecated
+    raise NotImplementedError
+
+  def delete(self, bundle_spec, force=False):
+    '''
+    bundle_spec should be either a bundle uuid, a unique prefix of a uuid, or
+    a unique bundle name.
+
+    Delete this bundle. If force is True, delete all its (direct and indirect)
+    descendents too. If force is False, and if this bundle has any downstream
+    dependencies, this method will raise a UsageError.
+    '''
     raise NotImplementedError
 
   # Commands for browsing bundles: info, ls, cat, grep, and search.
 
   def info(self, bundle_spec, parents=False, children=False):
     '''
-    bundle_spec should be either a bundle uuid or a unique bundle name.
-
     Return a dict containing detailed information about a given bundle:
       bundle_type: one of (program, dataset, macro, make, run)
       data_hash: hash of the bundle's data, if the bundle is READY

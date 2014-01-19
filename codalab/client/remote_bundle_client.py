@@ -20,7 +20,8 @@ class RemoteBundleClient(BundleClient):
   CLIENT_COMMANDS = (
     'make',
     'run',
-    'update',
+    'edit',
+    'delete',
     'info',
     'ls',
     'search',

@@ -6,7 +6,10 @@ from codalab.bundles import (
   get_bundle_subclass,
   UPLOADED_TYPES,
 )
-from codalab.common import precondition
+from codalab.common import (
+  precondition,
+  UsageError,
+)
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
   canonicalize,
@@ -76,9 +79,19 @@ class LocalBundleClient(BundleClient):
     self.model.save_bundle(bundle)
     return bundle.uuid
 
-  def update(self, uuid, metadata):
+  def edit(self, uuid, metadata):
     bundle = self.model.get_bundle(uuid)
     self.model.update_bundle_metadata(bundle, metadata)
+
+  def delete(self, bundle_spec, force=False):
+    uuid = self.get_spec_uuid(bundle_spec)
+    children = self.model.get_children(uuid)
+    if children and not force:
+      raise UsageError('Bundles depend on %s:\n  %s' % (
+        bundle_spec,
+        '\n  '.join(str(child) for child in children),
+      ))
+    self.model.delete_tree([uuid], force=force)
 
   def info(self, bundle_spec, parents=False, children=False):
     uuid = self.get_spec_uuid(bundle_spec)

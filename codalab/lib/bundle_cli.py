@@ -39,7 +39,8 @@ class BundleCLI(object):
     'upload': 'Create a bundle by uploading an existing directory.',
     'make': 'Create a bundle by packaging data from existing bundles.',
     'run': 'Create a bundle by running a program bundle on an input.',
-    'update': "Update an existing bundle's metadata.",
+    'edit': "Edit an existing bundle's metadata.",
+    'rm': 'Delete a bundle and all bundles that depend on it.',
     'list': 'Show basic information for all bundles.',
     'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
@@ -52,7 +53,8 @@ class BundleCLI(object):
     'upload',
     'make',
     'run',
-    'update',
+    'edit',
+    'rm',
     'list',
     'info',
     'ls',
@@ -180,11 +182,8 @@ class BundleCLI(object):
     metadata = metadata_util.request_missing_data(RunBundle, args)
     print self.client.run(program_target, input_target, args.command, metadata)
 
-  def do_update_command(self, argv, parser):
-    parser.add_argument(
-      'bundle_spec',
-      help='identifier: [<uuid>|<name>]'
-    )
+  def do_edit_command(self, argv, parser):
+    parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
     args = parser.parse_args(argv)
     info = self.client.info(args.bundle_spec)
     bundle_subclass = get_bundle_subclass(info['bundle_type'])
@@ -194,7 +193,17 @@ class BundleCLI(object):
       info['metadata'],
     )
     if new_metadata != info['metadata']:
-      self.client.update(info['uuid'], new_metadata)
+      self.client.edit(info['uuid'], new_metadata)
+
+  def do_rm_command(self, argv, parser):
+    parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
+    parser.add_argument(
+      '-f', '--force',
+      action='store_true',
+      help='delete all downstream dependencies',
+    )
+    args = parser.parse_args(argv)
+    self.client.delete(args.bundle_spec, args.force)
 
   def do_list_command(self, argv, parser):
     parser.parse_args(argv)

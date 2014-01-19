@@ -88,7 +88,7 @@ class BundleModel(object):
 
   def get_parents(self, uuid):
     '''
-    Get all dependencies that the bundle with the given uuid depends on.
+    Get all bundles that the bundle with the given uuid depends on.
     '''
     with self.engine.begin() as connection:
       rows = connection.execute(select([
@@ -101,14 +101,20 @@ class BundleModel(object):
 
   def get_children(self, uuid):
     '''
-    Get all dependencies that depend on the bundle with the given uuid.
+    Get all bundles that depend on the bundle with the given uuid.
+
+    uuid may also be a list, set, or tuple, in which case we return all bundles
+    that depend on any bundle in that collection. This mode is used to optimize
+    calls to delete_tree.
     '''
+    if isinstance(uuid, (list, set, tuple)):
+      clause = cl_dependency.c.parent_uuid.in_(uuid)
+    else:
+      clause = (cl_dependency.c.parent_uuid == uuid)
     with self.engine.begin() as connection:
       rows = connection.execute(select([
         cl_dependency.c.child_uuid
-      ]).where(
-        cl_dependency.c.parent_uuid == uuid
-      )).fetchall()
+      ]).where(clause)).fetchall()
     uuids = set([row.child_uuid for row in rows])
     return self.batch_get_bundles(uuid=uuids)
 
@@ -216,3 +222,26 @@ class BundleModel(object):
         cl_bundle_metadata.c.bundle_uuid == bundle.uuid
       ))
       self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+
+  def delete_tree(self, uuids, force=False):
+    '''
+    Delete bundles with the given uuids and all bundles that are (direct or
+    indirect) descendents of them.
+
+    If force is False, there should be no descendents of the given bundles.
+    '''
+    children = self.get_children(uuid=uuids)
+    if children:
+      precondition(force, 'Bundles depend on %s:\n  %s' % (
+        self.get_bundle(uuids[0]),
+        '\n  '.join(str(child) for child in children),
+      ))
+      self.delete_tree([child.uuid for child in children], force=True)
+    with self.engine.begin() as connection:
+      connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
+      connection.execute(cl_bundle_metadata.delete().where(
+        cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+      ))
+      connection.execute(cl_dependency.delete().where(
+        cl_dependency.c.child_uuid.in_(uuids)
+      ))
