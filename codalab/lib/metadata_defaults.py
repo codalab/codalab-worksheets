@@ -37,6 +37,9 @@ class MetadataDefaults(object):
     if hasattr(args, 'path'):
       absolute_path = path_util.normalize(args.path)
       return os.path.basename(absolute_path)
+    elif bundle_subclass is MakeBundle:
+      if len(args.target) == 1 and ':' not in args.target[0]:
+        return os.path.basename(args.target[0])
     return MetadataDefaults.get_anonymous_name(bundle_subclass)
 
   @staticmethod
