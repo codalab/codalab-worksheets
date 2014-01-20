@@ -142,7 +142,7 @@ class Worker(object):
         if self.finalize_run(bundle, update):
           print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
         else:
-          print '-- FAILED due to concurrently update --\n'
+          print '-- FAILED due to concurrent update --\n'
       except Exception:
         # TODO(skishore): Add metadata updates: time / CPU of run.
         # TODO(skishore): Implement metadata on creation for non-uploaded bundles.
