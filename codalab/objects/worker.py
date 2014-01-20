@@ -8,7 +8,6 @@ provides a few methods once it is initialized:
 '''
 import contextlib
 import datetime
-import os
 import random
 import subprocess
 import sys
