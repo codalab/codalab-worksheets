@@ -147,7 +147,6 @@ class Worker(object):
         # TODO(skishore): Add metadata updates: time / CPU of run.
         # TODO(skishore): Implement metadata on creation for non-uploaded bundles.
         # TODO(skishore): Record stderr / stdout for failed runs as well.
-        # TODO(skishore): Implement remote bundle client.
         (type, error, tb) = sys.exc_info()
         self.finalize_run(bundle, {'state': State.FAILED})
         print '-- FAILED! --\nTraceback:\n%s\n%s: %s\n' % (
