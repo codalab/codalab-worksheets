@@ -12,7 +12,7 @@ There are a few classes of methods provided here:
     cat, hash_directory, hash_file_contents
 
   Functions that modify that filesystem in controlled ways:
-    copy, make_directory, remove, set_permissions
+    copy, make_directory, remove, remove_symlinks, set_permissions
 '''
 import contextlib
 import errno
@@ -283,6 +283,16 @@ def remove(path):
     shutil.rmtree(path)
   else:
     os.remove(path)
+
+
+def remove_symlinks(root, dirs_and_files=None):
+  '''
+  Delete any existing symlinks under the given path.
+  '''
+  (directories, files) = dirs_and_files or recursive_ls(root)
+  for path in itertools.chain(directories, files):
+    if os.path.islink(path):
+      os.unlink(path)
 
 
 def set_permissions(path, permissions, dirs_and_files=None):

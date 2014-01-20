@@ -8,8 +8,9 @@ provides a few methods once it is initialized:
 '''
 import contextlib
 import datetime
+import os
 import random
-import shutil
+import subprocess
 import sys
 import time
 import tempfile
@@ -19,6 +20,7 @@ from codalab.common import (
   precondition,
   State,
 )
+from codalab.lib import path_util
 
 
 class Worker(object):
@@ -145,18 +147,35 @@ class Worker(object):
           print '-- FAILED due to concurrent update --\n'
       except Exception:
         # TODO(skishore): Add metadata updates: time / CPU of run.
-        # TODO(skishore): Implement metadata on creation for non-uploaded bundles.
-        # TODO(skishore): Record stderr / stdout for failed runs as well.
         (type, error, tb) = sys.exc_info()
-        self.finalize_run(bundle, {'state': State.FAILED})
-        print '-- FAILED! --\nTraceback:\n%s\n%s: %s\n' % (
+        traceback_str = 'Traceback:\n%s\n%s: %s\n' % (
           ''.join(traceback.format_tb(tb))[:-1],
           error.__class__.__name__,
           error,
         )
+        with self.profile('Uploading failed bundle...'):
+          data_hash = self.upload_failed_bundle(error, temp_dir)
+        update = {'data_hash': data_hash, 'state': State.FAILED}
+        self.finalize_run(bundle, update)
+        print '-- FAILED! --\n%s' % (traceback_str,)
     # Clean up after the run.
     with self.profile('Cleaning up temp directory...'):
-      shutil.rmtree(temp_dir)
+      path_util.remove(temp_dir)
+
+  def upload_failed_bundle(self, error, temp_dir):
+    '''
+    Try to upload some data for a failed bundle run. Return a data hash if this
+    fallback upload was successful, or None if not.
+    '''
+    if isinstance(error, subprocess.CalledProcessError):
+      # The exception happened in the bundle's binary, not in our Python code.
+      # Right now, this is the only case in which we upload the failed bundle.
+      path_util.remove_symlinks(temp_dir)
+      try:
+        return self.bundle_store.upload(temp_dir)
+      except Exception:
+        pass
+    return None
 
   def finalize_run(self, bundle, update):
     '''

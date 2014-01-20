@@ -9,6 +9,7 @@ while getting the on-disk location of a target requires access to both the
 database and the bundle store.
 '''
 from codalab.common import (
+  precondition,
   State,
   UsageError,
 )
@@ -54,8 +55,13 @@ def get_target_path(bundle_store, model, target):
   (bundle_spec, path) = target
   uuid = get_spec_uuid(model, bundle_spec)
   bundle = model.get_bundle(uuid)
-  if bundle.state != State.READY:
-    raise UsageError('%s is not ready' % (bundle,))
+  if not bundle.data_hash:
+    message = 'Unexpected: %s is ready but it has no data hash!' % (bundle,)
+    precondition(bundle.state != State.READY, message)
+    if bundle.state == State.FAILED:
+      raise UsageError('%s failed unrecoverably' % (bundle,))
+    else:
+      raise UsageError('%s has not yet been executed' % (bundle,))
   bundle_root = bundle_store.get_location(bundle.data_hash)
   final_path = path_util.safe_join(bundle_root, path)
   result = path_util.TargetPath(final_path)
