@@ -188,6 +188,13 @@ def cat(path):
     file_util.copy(file_handle, sys.stdout)
 
 
+def getmtime(path):
+  '''
+  Like os.path.getmtime, but does not follow symlinks.
+  '''
+  return os.lstat(path).st_mtime
+
+
 def hash_directory(path, dirs_and_files=None):
   '''
   Return the hash of the contents of the folder at the given path.
@@ -244,11 +251,11 @@ def hash_file_contents(path):
 
 
 def copy(source_path, dest_path):
-  if os.path.isdir(source_path):
-    shutil.copytree(source_path, dest_path, symlinks=True)
-  elif os.path.islink(source_path):
+  if os.path.islink(source_path):
     link_target = os.readlink(source_path)
     os.symlink(link_target, dest_path)
+  elif os.path.isdir(source_path):
+    shutil.copytree(source_path, dest_path, symlinks=True)
   else:
     shutil.copyfile(source_path, dest_path)
 
@@ -270,10 +277,10 @@ def remove(path):
   Removethe given path, whether it is a directory, file, or link.
   '''
   check_isvalid(path, 'remove')
-  if os.path.isdir(path):
-    shutil.rmtree(path)
-  elif os.path.islink(path):
+  if os.path.islink(path):
     os.unlink(path)
+  elif os.path.isdir(path):
+    shutil.rmtree(path)
   else:
     os.remove(path)
 

@@ -4,8 +4,9 @@ folders within this data store. This class provides two main methods:
   get_location: return the location of the folder with the given data hash.
   upload: upload a local directory to the store and return its data hash.
 '''
-# TODO(skishore): Add code to clean up the temp directory based on mtimes.
+import errno
 import os
+import time
 import uuid
 
 from codalab.lib import path_util
@@ -14,6 +15,10 @@ from codalab.lib import path_util
 class BundleStore(object):
   DATA_SUBDIRECTORY = 'data'
   TEMP_SUBDIRECTORY = 'temp'
+  # The amount of time an orphaned folder can live in the data and temp
+  # directories before it is garbage collected by full_cleanup.
+  DATA_CLEANUP_TIME = 60
+  TEMP_CLEANUP_TIME = 60*60
 
   def __init__(self, codalab_home):
     self.codalab_home = path_util.normalize(codalab_home)
@@ -71,10 +76,48 @@ class BundleStore(object):
     # data with this hash value, move this directory into the data directory.
     data_hash = '0x%s' % (path_util.hash_directory(temp_path, dirs_and_files),)
     final_path = os.path.join(self.data, data_hash)
-    if os.path.exists(final_path):
+    final_path_exists = False
+    try:
+      os.utime(final_path, None)
+      final_path_exists = True
+    except OSError, e:
+      if e.errno == errno.ENOENT:
+        os.rename(temp_path, final_path)
+      else:
+        raise
+    if final_path_exists:
       path_util.remove(temp_path)
-    else:
-      os.rename(temp_path, final_path)
     # After this operation there should always be a directory at the final path.
     assert(os.path.exists(final_path)), 'Uploaded to %s failed!' % (final_path,)
     return data_hash
+
+  def cleanup(self, model, data_hash):
+    '''
+    If the given data hash is not needed for any bundle, delete its data.
+    '''
+    bundles = model.batch_get_bundles(data_hash=data_hash)
+    if not bundles:
+      absolute_path = self.get_location(data_hash)
+      path_util.remove(absolute_path)
+
+  def full_cleanup(self, model):
+    '''
+    For each data hash in the store, check if it should be garbage collected and
+    delete its data if so. In addition, delete any old temporary files.
+    '''
+    old_data_files = self.list_old_files(self.data, self.DATA_CLEANUP_TIME)
+    for data_hash in old_data_files:
+      self.cleanup(model, data_hash)
+    old_temp_files = self.list_old_files(self.temp, self.TEMP_CLEANUP_TIME)
+    for temp_file in old_temp_files:
+      temp_path = os.path.join(self.temp, temp_file)
+      path_util.remove(temp_path)
+
+  def list_old_files(self, path, cleanup_time):
+    cleanup_cutoff = time.time() - cleanup_time
+    result = []
+    for file in os.listdir(path):
+      absolute_path = os.path.join(path, file)
+      if path_util.getmtime(absolute_path) < cleanup_cutoff:
+        result.append(file)
+    return result

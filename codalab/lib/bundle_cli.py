@@ -46,8 +46,9 @@ class BundleCLI(object):
     'ls': 'List the contents of a bundle.',
     'cat': 'Print the contents of a file in a bundle.',
     'wait': 'Wait until a bundle is ready or failed, then print its state.',
-    'worker': 'Run the codalab bundle worker.',
-    'reset': 'Delete the codalab bundle store and reset the database.',
+    'cleanup': 'Clean up the CodaLab bundle store.',
+    'worker': 'Run the CodaLab bundle worker.',
+    'reset': 'Delete the CodaLab bundle store and reset the database.',
   }
   COMMON_COMMANDS = (
     'upload',
@@ -314,6 +315,11 @@ class BundleCLI(object):
       print state
     else:
       self.exit(state)
+
+  def do_cleanup_command(self, argv, parser):
+    # This command only works if self.client is a LocalBundleClient.
+    parser.parse_args(argv)
+    self.client.bundle_store.full_cleanup(self.client.model)
 
   def do_worker_command(self, argv, parser):
     # This command only works if self.client is a LocalBundleClient.
