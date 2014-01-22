@@ -179,8 +179,10 @@ class BundleModel(object):
 
   def batch_update_bundles(self, bundles, update, condition=None):
     '''
-    Update a list of bundles given a dict mapping columns to new values.
-    Return True if all updates succeed.
+    Update a list of bundles given a dict mapping columns to new values and
+    return True if all updates succeed.
+
+    If a condition is specified, only update bundles that satisfy the condition.
     '''
     precondition('id' not in update, 'Illegal update: %s' % (update,))
     if bundles:

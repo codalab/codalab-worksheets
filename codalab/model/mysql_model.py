@@ -1,6 +1,6 @@
 '''
-SQLiteModel is a subclass of BundleModel which stores the metadata in a
-sqlite3 database in a local file in the CodaLab home directory.
+MySQLModel is a subclass of BundleModel that stores metadata on a MySQL
+server that it connects to with the given connect parameters.
 '''
 from sqlalchemy import create_engine
 

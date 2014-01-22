@@ -7,6 +7,10 @@
     "class": "LocalBundleClient"
   },
   "model": {
-    "class": "SQLiteModel"
+    "class": "MySQLModel",
+    "username": "codalab",
+    "password": "",
+    "address": "localhost",
+    "database": "codalab"
   }
 }
