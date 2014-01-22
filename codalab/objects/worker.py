@@ -82,18 +82,30 @@ class Worker(object):
       parents = self.model.batch_get_bundles(uuid=parent_uuids)
       self.pretty_print('Got %s bundles.' % (len(parents),))
     all_parent_states = {parent.uuid: parent.state for parent in parents}
+    all_parent_uuids = set(all_parent_states)
     bundles_to_fail = []
     bundles_to_stage = []
     for bundle in bundles:
-      parent_states = set(
-        all_parent_states.get(dep.parent_uuid, State.FAILED)
-        for dep in bundle.dependencies
-      )
-      if State.FAILED in parent_states:
-        bundles_to_fail.append(bundle)
-      elif all(state == State.READY for state in parent_states):
+      parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
+      missing_uuids = parent_uuids - all_parent_uuids
+      if missing_uuids:
+        bundles_to_fail.append(
+          (bundle, 'Missing parent bundles: %s' % (', '.join(missing_uuids),)))
+      parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
+      failed_uuids = [
+        uuid for (uuid, state) in parent_states.iteritems()
+        if state == State.FAILED
+      ]
+      if failed_uuids:
+        bundles_to_fail.append(
+          (bundle, 'Parent bundles failed: %s' % (', '.join(failed_uuids),)))
+      elif all(state == State.READY for state in parent_states.itervalues()):
         bundles_to_stage.append(bundle)
-    self.update_bundle_states(bundles_to_fail, State.FAILED)
+    with self.profile('Failing %s bundles...' % (len(bundles_to_fail),)):
+      for (bundle, failure_message) in bundles_to_fail:
+        metadata_update = {'failure_message': failure_message}
+        update = {'state': State.FAILED, 'metadata': metadata_update}
+        self.model.update_bundle(bundle, update)
     self.update_bundle_states(bundles_to_stage, State.STAGED)
     num_blocking = len(bundles) - len(bundles_to_fail) - len(bundles_to_stage)
     self.pretty_print('%s bundles are still blocking.' % (num_blocking,))

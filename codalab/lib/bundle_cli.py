@@ -268,13 +268,19 @@ class BundleCLI(object):
             path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
           ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
         ))
+    # Compute a nicely-formatted failure message, if this bundle failed.
+    failure_message = ''
+    if info['metadata'].get('failure_message'):
+      failure_message = '\nFailure message:\n  %s' % ('\n  '.join(
+        info['metadata']['failure_message'].split('\n')
+      ))
     # Return the formatted summary of the bundle info.
     return '''
 {bundle_type}: {name}
 {description}
   UUID:  {uuid}
   Hash:  {data_hash}
-  State: {state}{hard_dependencies}
+  State: {state}{hard_dependencies}{failure_message}
     '''.strip().format(
       bundle_type=info['bundle_type'],
       name=(info['metadata'].get('name') or '<no name>'),
@@ -283,6 +289,7 @@ class BundleCLI(object):
       data_hash=(info['data_hash'] or '<no hash>'),
       state=info['state'],
       hard_dependencies=hard_dependencies,
+      failure_message=failure_message,
     )
 
   def do_ls_command(self, argv, parser):
