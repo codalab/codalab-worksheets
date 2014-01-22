@@ -244,10 +244,12 @@ class BundleModel(object):
       ))
       self.delete_tree([child.uuid for child in children], force=True)
     with self.engine.begin() as connection:
-      connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
-      connection.execute(cl_bundle_metadata.delete().where(
-        cl_bundle_metadata.c.bundle_uuid.in_(uuids)
-      ))
+      # We must delete bundles rows in the opposite order that we create them
+      # to avoid foreign-key constraint failures.
       connection.execute(cl_dependency.delete().where(
         cl_dependency.c.child_uuid.in_(uuids)
       ))
+      connection.execute(cl_bundle_metadata.delete().where(
+        cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+      ))
+      connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
