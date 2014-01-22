@@ -239,7 +239,7 @@ class BundleModel(object):
     bundle.validate()
     # Construct clauses and update lists for updating certain bundle columns.
     if update:
-      clause = cl_bundle.uuid == bundle.uuid
+      clause = cl_bundle.c.uuid == bundle.uuid
     if metadata_update:
       metadata_clause = and_(
         cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
