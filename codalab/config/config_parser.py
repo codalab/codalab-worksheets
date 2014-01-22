@@ -75,6 +75,11 @@ class ConfigParser(object):
   @cached
   def model(self):
     model_class = self.config['model']['class']
+    if model_class == 'MySQLModel':
+      arguments = ('username', 'password', 'address', 'database')
+      kwargs = {arg: self.config['model'][arg] for arg in arguments}
+      from codalab.model.mysql_model import MySQLModel
+      return MySQLModel(**kwargs)
     if model_class == 'SQLiteModel':
       home = self.home()
       from codalab.model.sqlite_model import SQLiteModel
