@@ -17,3 +17,8 @@ class MySQLModel(BundleModel):
     )
     engine = create_engine(engine_url, strategy='threadlocal')
     super(MySQLModel, self).__init__(engine)
+
+  def do_multirow_insert(self, connection, table, values):
+    # MySQL allows for more efficient multi-row insertions.
+    if values:
+      connection.execute(table.insert().values(values))
