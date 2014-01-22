@@ -81,6 +81,10 @@ class LocalBundleClient(BundleClient):
 
   def edit(self, uuid, metadata):
     bundle = self.model.get_bundle(uuid)
+    legal_keys = set(spec.key for spec in bundle.get_user_defined_metadata())
+    illegal_keys = [key for key in metadata if key not in legal_keys]
+    if illegal_keys:
+      raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
     self.model.update_bundle_metadata(bundle, metadata)
 
   def delete(self, bundle_spec, force=False):

@@ -103,6 +103,13 @@ class Bundle(ORMObject):
     result['dependencies'] = [dep.to_dict() for dep in self.dependencies]
     return result
 
+  @classmethod
+  def get_user_defined_metadata(cls):
+    '''
+    Return a list of metadata specs for metadata that must be input by the user.
+    '''
+    return [spec for spec in cls.METADATA_SPECS if not spec.generated]
+
   def install_dependencies(self, bundle_store, parent_dict, path, rel):
     '''
     Symlink this bundle's dependencies into the directory at path.

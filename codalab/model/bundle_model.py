@@ -214,13 +214,19 @@ class BundleModel(object):
       bundle.id = result.lastrowid
 
   def update_bundle_metadata(self, bundle, metadata):
-    bundle.update_in_memory({'metadata': metadata})
+    '''
+    Update all metadata keys included in the given metadata dict.
+    Other metadata keys are NOT affected.
+    '''
+    for (key, value) in metadata.iteritems():
+      bundle.metadata.set_metadata_key(key, value)
     bundle.validate()
     metadata_values = bundle.to_dict().pop('metadata')
     with self.engine.begin() as connection:
-      connection.execute(cl_bundle_metadata.delete().where(
-        cl_bundle_metadata.c.bundle_uuid == bundle.uuid
-      ))
+      connection.execute(cl_bundle_metadata.delete().where(and_(
+        cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
+        cl_bundle_metadata.c.metadata_key.in_(metadata),
+      )))
       self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
 
   def delete_tree(self, uuids, force=False):

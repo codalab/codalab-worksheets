@@ -24,14 +24,15 @@ class Metadata(object):
       if key not in expected_keys:
         raise UsageError('Unexpected metadata key: %s' % (key,))
     for spec in metadata_specs:
-      if spec.key not in self._metadata_keys:
+      if spec.key in self._metadata_keys:
+        value = getattr(self, spec.key)
+        if not isinstance(value, spec.type):
+          raise UsageError(
+            'Metadata value for %s should be of type %s, was %s' %
+            (spec.key, spec.type, type(value))
+          )
+      elif not spec.generated:
         raise UsageError('Missing metadata key: %s' % (spec.key,))
-      value = getattr(self, spec.key)
-      if not isinstance(value, spec.type):
-        raise UsageError(
-          'Metadata value for %s should be of type %s, was %s' %
-          (spec.key, spec.type, type(value))
-        )
 
   def set_metadata_key(self, key, value):
     '''
@@ -50,7 +51,8 @@ class Metadata(object):
     metadata_dict = {}
     metadata_spec_dict = {}
     for spec in metadata_specs:
-      metadata_dict[spec.key] = spec.get_constructor()()
+      if spec.type == set or not spec.generated:
+        metadata_dict[spec.key] = spec.get_constructor()()
       metadata_spec_dict[spec.key] = spec
     for row in rows:
       (maybe_unicode_key, value) = (row['metadata_key'], row['metadata_value'])
@@ -78,13 +80,14 @@ class Metadata(object):
     '''
     result = []
     for spec in metadata_specs:
-      value = getattr(self, spec.key, spec.get_constructor()())
-      values = value if spec.type == set else (value,)
-      for value in values:
-        result.append({
-          'metadata_key': unicode(spec.key),
-          'metadata_value': unicode(value),
-        })
+      if spec.key in self._metadata_keys:
+        value = getattr(self, spec.key)
+        values = value if spec.type == set else (value,)
+        for value in values:
+          result.append({
+            'metadata_key': unicode(spec.key),
+            'metadata_value': unicode(value),
+          })
     return result
 
   def to_dict(self):

@@ -17,7 +17,7 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
   help_suffix = ''
   if bundle_subclass.BUNDLE_TYPE:
     help_suffix = ' (for %ss)' % (bundle_subclass.BUNDLE_TYPE,)
-  for spec in bundle_subclass.METADATA_SPECS:
+  for spec in bundle_subclass.get_user_defined_metadata():
     if spec.key not in metadata_keys:
       metadata_keys.add(spec.key)
       parser.add_argument(
@@ -49,14 +49,14 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
   if not initial_metadata:
     initial_metadata = {
       spec.key: getattr(args, metadata_key_to_argument(spec.key,))
-      for spec in bundle_subclass.METADATA_SPECS
+      for spec in bundle_subclass.get_user_defined_metadata()
     }
     # A special-case: if the user specified all required metadata on the command
     # line, do NOT show the editor. This allows for programmatic bundle creation.
     if not any(value is None for value in initial_metadata.values()):
       return initial_metadata
   # Fill in default values for all unsupplied metadata keys.
-  for spec in bundle_subclass.METADATA_SPECS:
+  for spec in bundle_subclass.get_user_defined_metadata():
     if not initial_metadata[spec.key]:
       default = MetadataDefaults.get_default(spec, bundle_subclass, args)
       initial_metadata[spec.key] = default
@@ -66,7 +66,7 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
   # Construct a form template with the required keys, prefilled with the
   # command-line metadata options.
   template_lines = []
-  for spec in bundle_subclass.METADATA_SPECS:
+  for spec in bundle_subclass.get_user_defined_metadata():
     initial_value = initial_metadata.get(spec.key) or ''
     if spec.type == set:
       initial_value = ' '.join(initial_value or [])
@@ -92,7 +92,7 @@ def parse_metadata_form(bundle_subclass, form_result):
   '''
   Parse the result of a form template produced in request_missing_metadata.
   '''
-  metadata_specs = bundle_subclass.METADATA_SPECS
+  metadata_specs = bundle_subclass.get_user_defined_metadata()
   metadata_types = {spec.key: spec.type for spec in metadata_specs}
   result = {}
   for line in form_result:
