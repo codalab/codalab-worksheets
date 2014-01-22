@@ -180,11 +180,16 @@ class BundleModel(object):
   def batch_update_bundles(self, bundles, update, condition=None):
     '''
     Update a list of bundles given a dict mapping columns to new values and
-    return True if all updates succeed.
+    return True if all updates succeed. This method does NOT update metadata.
 
     If a condition is specified, only update bundles that satisfy the condition.
+
+    In general, this method should only be used for programmatic updates, as in
+    the bundle worker. It is provided as an efficient way to perform a simple
+    update on many, but these updates are not validated.
     '''
-    precondition('id' not in update, 'Illegal update: %s' % (update,))
+    message = 'Illegal update: %s' % (update,)
+    precondition('id' not in update and 'uuid' not in update, message)
     if bundles:
       bundle_ids = set(bundle.id for bundle in bundles)
       clause = cl_bundle.c.id.in_(bundle_ids)
@@ -215,23 +220,44 @@ class BundleModel(object):
       self.do_multirow_insert(connection, cl_dependency, dependency_values)
       bundle.id = result.lastrowid
 
-  def update_bundle_metadata(self, bundle, metadata):
+  def update_bundle(self, bundle, update):
     '''
-    Update all metadata keys included in the given metadata dict.
-    Other metadata keys are NOT affected.
+    Update a bundle's columns and metadata in the database and in memory.
+    The update is done as a diff: columns that do not appear in the update dict
+    and metadata keys that do not appear in the metadata sub-dict are unaffected.
+
+    This method validates all updates to the bundle, so it is appropriate
+    to use this method to update bundles based on user input (eg: cl edit).
     '''
-    for (key, value) in metadata.iteritems():
+    message = 'Illegal update: %s' % (update,)
+    precondition('id' not in update and 'uuid' not in update, message)
+    # Apply the column and metadata updates in memory and validate the result.
+    metadata_update = update.pop('metadata', {})
+    bundle.update_in_memory(update)
+    for (key, value) in metadata_update.iteritems():
       bundle.metadata.set_metadata_key(key, value)
     bundle.validate()
-    metadata_values = bundle.to_dict().pop('metadata')
-    with self.engine.begin() as connection:
-      connection.execute(cl_bundle_metadata.delete().where(and_(
+    # Construct clauses and update lists for updating certain bundle columns.
+    if update:
+      clause = cl_bundle.uuid == bundle.uuid
+    if metadata_update:
+      metadata_clause = and_(
         cl_bundle_metadata.c.bundle_uuid == bundle.uuid,
-        cl_bundle_metadata.c.metadata_key.in_(metadata),
-      )))
-      self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+        cl_bundle_metadata.c.metadata_key.in_(metadata_update)
+      )
+      metadata_values = [
+        row_dict for row_dict in bundle.to_dict().pop('metadata')
+        if row_dict['metadata_key'] in metadata_update
+      ]
+    # Perform the actual updates.
+    with self.engine.begin() as connection:
+      if update:
+        connection.execute(cl_bundle.update().where(clause).values(update))
+      if metadata_update:
+        connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
+        self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
 
-  def delete_tree(self, uuids, force=False):
+  def delete_bundle_tree(self, uuids, force=False):
     '''
     Delete bundles with the given uuids and all bundles that are (direct or
     indirect) descendents of them.

@@ -85,7 +85,7 @@ class LocalBundleClient(BundleClient):
     illegal_keys = [key for key in metadata if key not in legal_keys]
     if illegal_keys:
       raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
-    self.model.update_bundle_metadata(bundle, metadata)
+    self.model.update_bundle(bundle, {'metadata': metadata})
 
   def delete(self, bundle_spec, force=False):
     uuid = self.get_spec_uuid(bundle_spec)
@@ -95,7 +95,7 @@ class LocalBundleClient(BundleClient):
         bundle_spec,
         '\n  '.join(str(child) for child in children),
       ))
-    self.model.delete_tree([uuid], force=force)
+    self.model.delete_bundle_tree([uuid], force=force)
 
   def info(self, bundle_spec, parents=False, children=False):
     uuid = self.get_spec_uuid(bundle_spec)
