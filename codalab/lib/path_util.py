@@ -163,6 +163,11 @@ def recursive_ls(path):
   '''
   Return a (list of directories, list of files) in the given directory and
   all of its nested subdirectories. All paths returned are absolute.
+
+  Symlinks are returned in the list of files, even if they point to directories.
+  This makes it possible to distinguish between real and symlinked directories
+  when computing the hash of a directory. This function will NOT descend into
+  symlinked directories.
   '''
   check_isdir(path, 'recursive_ls')
   (directories, files) = ([], []) 
@@ -171,6 +176,14 @@ def recursive_ls(path):
     directories.append(root)
     for file_name in file_names:
       files.append(os.path.join(root, file_name))
+    # os.walk ignores symlinks to directories, but we should count them as files.
+    # However, we can't used the followlinks parameter, because a) we don't want
+    # to descend into directories and b) we could end up in an infinite loop if
+    # we were to pass that flag. Instead, we handle symlinks here:
+    for subpath in os.listdir(root):
+      full_subpath = os.path.join(root, subpath)
+      if os.path.islink(full_subpath) and os.path.isdir(full_subpath):
+        files.append(full_subpath)
   return (directories, files)
 
 
