@@ -269,8 +269,11 @@ class BundleCLI(object):
           ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
         ))
     # Compute a nicely-formatted failure message, if this bundle failed.
+    # It is possible for bundles that are not failed to have failure messages:
+    # for example, if a bundle is killed in the database after running for too
+    # long then succeeds afterwards, it will be in this state.
     failure_message = ''
-    if info['metadata'].get('failure_message'):
+    if info['state'] == State.FAILED and info['metadata'].get('failure_message'):
       failure_message = '\nFailure message:\n  %s' % ('\n  '.join(
         info['metadata']['failure_message'].split('\n')
       ))

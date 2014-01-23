@@ -18,6 +18,7 @@ import traceback
 from codalab.common import (
   precondition,
   State,
+  UsageError,
 )
 from codalab.lib import path_util
 
@@ -151,24 +152,22 @@ class Worker(object):
       print '\n-- Run started! --\nRunning %s.' % (bundle,)
       try:
         data_hash = bundle.run(self.bundle_store, parent_dict, temp_dir)
-        update = {'data_hash': data_hash, 'state': State.READY}
-        if self.finalize_run(bundle, update):
-          print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
-        else:
-          print '-- FAILED due to concurrent update --\n'
+        self.finalize_run(bundle, State.READY, data_hash)
+        print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
       except Exception:
         # TODO(skishore): Add metadata updates: time / CPU of run.
         (type, error, tb) = sys.exc_info()
-        traceback_str = 'Traceback:\n%s\n%s: %s\n' % (
-          ''.join(traceback.format_tb(tb))[:-1],
-          error.__class__.__name__,
-          error,
-        )
+        failure_message = '%s: %s' % (error.__class__.__name__, error)
+        if not isinstance(error, UsageError):
+          failure_message = 'Traceback:\n%s\n%s' % (
+            ''.join(traceback.format_tb(tb))[:-1],
+            failure_message,
+          )
         with self.profile('Uploading failed bundle...'):
           data_hash = self.upload_failed_bundle(error, temp_dir)
-        update = {'data_hash': data_hash, 'state': State.FAILED}
-        self.finalize_run(bundle, update)
-        print '-- FAILED! --\n%s' % (traceback_str,)
+        metadata_update = {'failure_message': failure_message}
+        self.finalize_run(bundle, State.FAILED, data_hash, metadata_update)
+        print '-- FAILED! --\n%s\n' % (failure_message,)
     # Clean up after the run.
     with self.profile('Cleaning up temp directory...'):
       path_util.remove(temp_dir)
@@ -188,13 +187,13 @@ class Worker(object):
         pass
     return None
 
-  def finalize_run(self, bundle, update):
+  def finalize_run(self, bundle, state, data_hash, metadata_update=None):
     '''
-    Update a bundle at the end of a run. Return True on success.
+    Update a bundle to the new state and data hash at the end of a run.
     '''
-    with self.profile('Setting 1 bundle to %s...' % (update['state'].upper(),)):
-      condition = {'state': bundle.state}
-      success = self.model.batch_update_bundles([bundle], update, condition)
-      if not success:
-        self.pretty_print('WARNING: update failed!')
-    return success
+    metadata_update = metadata_update or {}
+    update = {'state': state, 'data_hash': data_hash}
+    if metadata_update:
+      update['metadata'] = metadata_update
+    with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
+      self.model.update_bundle(bundle, update)
