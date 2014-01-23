@@ -64,9 +64,7 @@ class LocalBundleClient(BundleClient):
     precondition(bundle_type in UPLOADED_TYPES, message)
     bundle_subclass = get_bundle_subclass(bundle_type)
     self.validate_user_metadata(bundle_subclass, metadata)
-    # Type-check the bundle metadata BEFORE uploading the bundle data.
-    # This optimization will avoid file operations on failed bundle creations.
-    bundle_subclass.construct(data_hash='', metadata=metadata).validate()
+    # Upload the given path and record additional metadata from the upload.
     (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
     metadata.update(bundle_store_metadata)
     bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)

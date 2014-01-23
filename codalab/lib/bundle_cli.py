@@ -147,12 +147,18 @@ class BundleCLI(object):
       metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
     metadata_util.add_auto_argument(parser)
     args = parser.parse_args(argv)
+    # Check that the upload path exists.
+    path_util.check_isvalid(args.path, 'upload')
+    # Pull out the upload bundle type from the arguments and validate it.
     if args.bundle_type not in UPLOADED_TYPES:
       raise UsageError('Invalid bundle type %s (options: [%s])' % (
         args.bundle_type, '|'.join(sorted(UPLOADED_TYPES)),
       ))
     bundle_subclass = get_bundle_subclass(args.bundle_type)
     metadata = metadata_util.request_missing_data(bundle_subclass, args)
+    # Type-check the bundle metadata BEFORE uploading the bundle data.
+    # This optimization will avoid file copies on failed bundle creations.
+    bundle_subclass.construct(data_hash='', metadata=metadata).validate()
     print self.client.upload(args.bundle_type, args.path, metadata)
 
   def do_make_command(self, argv, parser):
