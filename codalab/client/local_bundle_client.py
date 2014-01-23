@@ -56,6 +56,7 @@ class LocalBundleClient(BundleClient):
     # This optimization will avoid file operations on failed bundle creations.
     bundle_subclass.construct(data_hash='', metadata=metadata).validate()
     data_hash = self.bundle_store.upload(path)
+    metadata['data_size'] = self.bundle_store.get_size(data_hash)
     bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
     self.model.save_bundle(bundle)
     return bundle.uuid

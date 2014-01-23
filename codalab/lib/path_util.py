@@ -9,7 +9,7 @@ There are a few classes of methods provided here:
     safe_join, get_relative_path, ls, recursive_ls
 
   Functions to read files to compute hashes, write results to stdout, etc:
-    cat, hash_directory, hash_file_contents
+    cat, getmtime, get_size, hash_directory, hash_file_contents
 
   Functions that modify that filesystem in controlled ways:
     copy, make_directory, remove, remove_symlinks, set_permissions
@@ -193,6 +193,17 @@ def getmtime(path):
   Like os.path.getmtime, but does not follow symlinks.
   '''
   return os.lstat(path).st_mtime
+
+
+def get_size(path, dirs_and_files=None):
+  '''
+  Get the size (in bytes) of the file or directory at or under the given path.
+  Does not include symlinked files and directories.
+  '''
+  if os.path.islink(path) or not os.path.isdir(path):
+    return os.lstat(path).st_size
+  dirs_and_files = dirs_and_files or recursive_ls(path)
+  return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
 
 
 def hash_directory(path, dirs_and_files=None):

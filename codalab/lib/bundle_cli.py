@@ -90,6 +90,12 @@ class BundleCLI(object):
   def parse_target(self, target):
     return tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
 
+  def size_str(self, size):
+    for unit in ('bytes', 'KB', 'MB', 'GB'):
+      if size < 1024:
+        return '%d %s' % (size, unit)
+      size /= 1024
+
   def time_str(self, ts):
     return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')
 
@@ -267,8 +273,10 @@ class BundleCLI(object):
     }
     # Format statistics about this bundle - creation time, runtime, size, etc.
     stats = []
-    if metadata['created']:
+    if 'created' in metadata:
       stats.append('Created: %s' % (self.time_str(metadata['created']),))
+    if 'data_size' in metadata:
+      stats.append('Size:    %s' % (self.size_str(metadata['data_size']),))
     fields['stats'] = 'Stats:\n  %s\n' % ('\n  '.join(stats),) if stats else ''
     # Compute a nicely-formatted list of hard dependencies. Since this type of
     # dependency is realized within this bundle as a symlink to another bundle,

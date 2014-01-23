@@ -50,6 +50,12 @@ class BundleStore(object):
       return data_hash
     return os.path.join(self.data, data_hash)
 
+  def get_size(self, data_hash):
+    '''
+    Return the size of the given bundle, given its data hash.
+    '''
+    return path_util.get_size(self.get_location(data_hash))
+
   def upload(self, path, allow_symlinks=False):
     '''
     Copy the contents of the directory at path into the data subdirectory,

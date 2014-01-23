@@ -193,6 +193,8 @@ class Worker(object):
     '''
     metadata_update = metadata_update or {}
     update = {'state': state, 'data_hash': data_hash}
+    if data_hash:
+      metadata_update['data_size'] = self.bundle_store.get_size(data_hash)
     if metadata_update:
       update['metadata'] = metadata_update
     with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
