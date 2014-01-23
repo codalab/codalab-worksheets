@@ -151,8 +151,9 @@ class Worker(object):
     with self.profile('Running bundle...'):
       print '\n-- Run started! --\nRunning %s.' % (bundle,)
       try:
-        data_hash = bundle.run(self.bundle_store, parent_dict, temp_dir)
-        self.finalize_run(bundle, State.READY, data_hash)
+        (data_hash, metadata) = bundle.run(
+          self.bundle_store, parent_dict, temp_dir)
+        self.finalize_run(bundle, State.READY, data_hash, metadata)
         print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
       except Exception:
         # TODO(skishore): Add metadata updates: time / CPU of run.
@@ -164,9 +165,9 @@ class Worker(object):
             failure_message,
           )
         with self.profile('Uploading failed bundle...'):
-          data_hash = self.upload_failed_bundle(error, temp_dir)
-        metadata_update = {'failure_message': failure_message}
-        self.finalize_run(bundle, State.FAILED, data_hash, metadata_update)
+          (data_hash, metadata) = self.upload_failed_bundle(error, temp_dir)
+        metadata.update({'failure_message': failure_message})
+        self.finalize_run(bundle, State.FAILED, data_hash, metadata)
         print '-- FAILED! --\n%s\n' % (failure_message,)
     # Clean up after the run.
     with self.profile('Cleaning up temp directory...'):
@@ -174,8 +175,8 @@ class Worker(object):
 
   def upload_failed_bundle(self, error, temp_dir):
     '''
-    Try to upload some data for a failed bundle run. Return a data hash if this
-    fallback upload was successful, or None if not.
+    Try to upload some data for a failed bundle run. Return a (data_hash, metadata)
+    pair if this fallback upload was successful, or (None, {}) if not.
     '''
     if isinstance(error, subprocess.CalledProcessError):
       # The exception happened in the bundle's binary, not in our Python code.
@@ -185,17 +186,14 @@ class Worker(object):
         return self.bundle_store.upload(temp_dir)
       except Exception:
         pass
-    return None
+    return (None, {})
 
-  def finalize_run(self, bundle, state, data_hash, metadata_update=None):
+  def finalize_run(self, bundle, state, data_hash, metadata=None):
     '''
     Update a bundle to the new state and data hash at the end of a run.
     '''
-    metadata_update = metadata_update or {}
     update = {'state': state, 'data_hash': data_hash}
-    if data_hash:
-      metadata_update['data_size'] = self.bundle_store.get_size(data_hash)
-    if metadata_update:
-      update['metadata'] = metadata_update
+    if metadata:
+      update['metadata'] = metadata
     with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
       self.model.update_bundle(bundle, update)

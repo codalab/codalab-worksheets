@@ -50,18 +50,13 @@ class BundleStore(object):
       return data_hash
     return os.path.join(self.data, data_hash)
 
-  def get_size(self, data_hash):
-    '''
-    Return the size of the given bundle, given its data hash.
-    '''
-    return path_util.get_size(self.get_location(data_hash))
-
   def upload(self, path, allow_symlinks=False):
     '''
     Copy the contents of the directory at path into the data subdirectory,
     in a subfolder named by a hash of the contents of the new data directory.
 
-    Return the name of the new subfolder, that is, the data hash.
+    Return a (data_hash, metadata) pair, where the metadata is a dict mapping
+    keys to precomputed statistics about the new data directory.
     '''
     absolute_path = path_util.normalize(path)
     path_util.check_isvalid(absolute_path, 'upload')
@@ -81,6 +76,7 @@ class BundleStore(object):
     # Hash the contents of the temporary directory, and then if there is no
     # data with this hash value, move this directory into the data directory.
     data_hash = '0x%s' % (path_util.hash_directory(temp_path, dirs_and_files),)
+    data_size = path_util.get_size(temp_path, dirs_and_files)
     final_path = os.path.join(self.data, data_hash)
     final_path_exists = False
     try:
@@ -95,7 +91,7 @@ class BundleStore(object):
       path_util.remove(temp_path)
     # After this operation there should always be a directory at the final path.
     assert(os.path.exists(final_path)), 'Uploaded to %s failed!' % (final_path,)
-    return data_hash
+    return (data_hash, {'data_size': data_size})
 
   def cleanup(self, model, data_hash):
     '''
