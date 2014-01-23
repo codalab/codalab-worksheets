@@ -356,7 +356,7 @@ class BundleCLI(object):
     worker = Worker(self.client.bundle_store, self.client.model)
     i = 0
     while not args.iterations or i < args.iterations:
-      if i:
+      if i and not args.iterations:
         time.sleep(60)
       print 'Running CodaLab bundle worker iteration %s...\n' % (i,)
       worker.update_created_bundles()
