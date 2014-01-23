@@ -105,7 +105,7 @@ class BundleModel(object):
 
     uuid may also be a list, set, or tuple, in which case we return all bundles
     that depend on any bundle in that collection. This mode is used to optimize
-    calls to delete_tree.
+    calls to delete_bundle_tree.
     '''
     if isinstance(uuid, (list, set, tuple)):
       clause = cl_dependency.c.parent_uuid.in_(uuid)
@@ -270,7 +270,7 @@ class BundleModel(object):
         self.get_bundle(uuids[0]),
         '\n  '.join(str(child) for child in children),
       ))
-      self.delete_tree([child.uuid for child in children], force=True)
+      self.delete_bundle_tree([child.uuid for child in children], force=True)
     with self.engine.begin() as connection:
       # We must delete bundles rows in the opposite order that we create them
       # to avoid foreign-key constraint failures.
