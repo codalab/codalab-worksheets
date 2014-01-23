@@ -78,7 +78,6 @@ class Bundle(ORMObject):
     return '%s(uuid=%r, name=%r)' % (
       self.__class__.__name__,
       str(self.uuid),
-      str(self.metadata.name),
     )
 
   def update_in_memory(self, row, strict=False):
@@ -124,7 +123,8 @@ class Bundle(ORMObject):
         dep.parent_path,
       )
       if not os.path.exists(target):
-        target_text = path_util.safe_join(parent.metadata.name, dep.parent_path)
+        parent_spec = getattr(parent.metadata, 'name', parent.uuid)
+        target_text = path_util.safe_join(parent_spec, dep.parent_path)
         raise UsageError('Target not found: %s' % (target_text,))
       if rel:
         # Create a symlink that points to the dependency's relative target.

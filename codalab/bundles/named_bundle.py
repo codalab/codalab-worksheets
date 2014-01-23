@@ -30,3 +30,10 @@ class NamedBundle(Bundle):
       )
     if not self.metadata.description:
       raise UsageError('%ss must have non-empty descriptions' % (bundle_type,))
+
+  def __repr__(self):
+    return '%s(uuid=%r, name=%r)' % (
+      self.__class__.__name__,
+      str(self.uuid),
+      str(self.metadata.name),
+    )
