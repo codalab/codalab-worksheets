@@ -48,10 +48,22 @@ class LocalBundleClient(BundleClient):
     (bundle_spec, subpath) = target
     return (self.model.get_bundle(self.get_spec_uuid(bundle_spec)), subpath)
 
+  def validate_user_metadata(self, bundle_subclass, metadata):
+    '''
+    Check that the user did not supply values for any auto-generated metadata.
+    Raise a UsageError with the offending keys if they are.
+    '''
+    legal_keys = set(spec.key for spec in
+      bundle_subclass.get_user_defined_metadata())
+    illegal_keys = [key for key in metadata if key not in legal_keys]
+    if illegal_keys:
+      raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
+
   def upload(self, bundle_type, path, metadata):
     message = 'Invalid upload bundle_type: %s' % (bundle_type,)
     precondition(bundle_type in UPLOADED_TYPES, message)
     bundle_subclass = get_bundle_subclass(bundle_type)
+    self.validate_user_metadata(bundle_subclass, metadata)
     # Type-check the bundle metadata BEFORE uploading the bundle data.
     # This optimization will avoid file operations on failed bundle creations.
     bundle_subclass.construct(data_hash='', metadata=metadata).validate()
@@ -63,6 +75,7 @@ class LocalBundleClient(BundleClient):
 
   def make(self, targets, metadata):
     bundle_subclass = get_bundle_subclass('make')
+    self.validate_user_metadata(bundle_subclass, metadata)
     targets = {
       key: self.get_bundle_target(target)
       for (key, target) in targets.iteritems()
@@ -75,6 +88,7 @@ class LocalBundleClient(BundleClient):
     program_target = self.get_bundle_target(program_target)
     input_target = self.get_bundle_target(input_target)
     bundle_subclass = get_bundle_subclass('run')
+    self.validate_user_metadata(bundle_subclass, metadata)
     bundle = bundle_subclass.construct(
       program_target, input_target, command, metadata)
     self.model.save_bundle(bundle)
@@ -82,10 +96,7 @@ class LocalBundleClient(BundleClient):
 
   def edit(self, uuid, metadata):
     bundle = self.model.get_bundle(uuid)
-    legal_keys = set(spec.key for spec in bundle.get_user_defined_metadata())
-    illegal_keys = [key for key in metadata if key not in legal_keys]
-    if illegal_keys:
-      raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
+    self.validate_user_metadata(bundle, metadata)
     self.model.update_bundle(bundle, {'metadata': metadata})
 
   def delete(self, bundle_spec, force=False):
