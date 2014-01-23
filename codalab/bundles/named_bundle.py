@@ -3,6 +3,7 @@ NameBundle is an abstract Bundle supertype that all other bundle types subclass.
 It requires name, description, and tags metadata for all of its subclasses.
 '''
 import re
+import time
 
 from codalab.common import UsageError
 from codalab.objects.bundle import Bundle
@@ -15,8 +16,16 @@ class NamedBundle(Bundle):
     MetadataSpec('name', basestring, 'name: %s' % (NAME_REGEX.pattern,)),
     MetadataSpec('description', basestring, 'human-readable description'),
     MetadataSpec('tags', set, 'list of searchable tags', metavar='TAG'),
+    MetadataSpec('created', int, '', generated=True),
     MetadataSpec('failure_message', basestring, '', generated=True),
   )
+
+  @classmethod
+  def construct(cls, row):
+    # The base NamedBundle construct method takes a bundle row and adds in
+    # automatically generated metadata values.
+    row['metadata']['created'] = int(time.time())
+    return cls(row)
 
   def validate(self):
     super(NamedBundle, self).validate()

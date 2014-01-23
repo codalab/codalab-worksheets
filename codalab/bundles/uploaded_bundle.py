@@ -10,7 +10,7 @@ from codalab.common import State
 class UploadedBundle(NamedBundle):
   @classmethod
   def construct(cls, data_hash, metadata):
-    return cls({
+    return super(UploadedBundle, cls).construct({
       'bundle_type': cls.BUNDLE_TYPE,
       'command': None,
       'data_hash': data_hash,

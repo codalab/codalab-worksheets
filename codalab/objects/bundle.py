@@ -52,11 +52,8 @@ class Bundle(ORMObject):
     '''
     Raise a PreconditionViolation if the uuid does not conform to its regex.
     '''
-    malformed_uuid = 'uuids must match %s, was %s' % (
-      cls.UUID_REGEX.pattern,
-      uuid,
-    )
-    precondition(cls.UUID_REGEX.match(uuid), malformed_uuid)
+    message = 'uuids must match %s, was %s' % (cls.UUID_REGEX.pattern, uuid)
+    precondition(cls.UUID_REGEX.match(uuid), message)
 
   def validate(self):
     '''

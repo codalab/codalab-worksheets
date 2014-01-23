@@ -9,6 +9,8 @@ This function takes an argument list and an ArgumentParser and does the action.
    -> BundleCLI.do_upload_command(['program', '.'], parser)
 '''
 import argparse
+import collections
+import datetime
 import itertools
 import os
 import sys
@@ -87,6 +89,9 @@ class BundleCLI(object):
 
   def parse_target(self, target):
     return tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
+
+  def time_str(self, ts):
+    return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')
 
   def do_command(self, argv):
     if argv:
@@ -250,19 +255,32 @@ class BundleCLI(object):
       print self.format_basic_info(info)
 
   def format_basic_info(self, info):
+    metadata = collections.defaultdict(lambda: None, info['metadata'])
+    # Format some simple fields of the basic info string.
+    fields = {
+      'bundle_type': info['bundle_type'],
+      'uuid': info['uuid'],
+      'data_hash': info['data_hash'] or '<no hash>',
+      'state': info['state'],
+      'name': metadata['name'] or '<no name>',
+      'description': metadata['description'] or '<no description>',
+    }
+    # Format statistics about this bundle - creation time, runtime, size, etc.
+    stats = []
+    if metadata['created']:
+      stats.append('Created: %s' % (self.time_str(metadata['created']),))
+    fields['stats'] = 'Stats:\n  %s\n' % ('\n  '.join(stats),) if stats else ''
     # Compute a nicely-formatted list of hard dependencies. Since this type of
     # dependency is realized within this bundle as a symlink to another bundle,
     # label these dependencies as 'references' in the UI.
-    hard_dependencies = ''
+    fields['hard_dependencies'] = ''
     if info['hard_dependencies']:
       deps = info['hard_dependencies']
       if len(deps) == 1 and not deps[0]['child_path']:
-        hard_dependencies = '\nReference:\n  %s' % (path_util.safe_join(
-          deps[0]['parent_uuid'],
-          deps[0]['parent_path'],
-        ),)
+        fields['hard_dependencies'] = 'Reference:\n  %s\n' % (
+          path_util.safe_join(deps[0]['parent_uuid'], deps[0]['parent_path']),)
       else:
-        hard_dependencies = '\nReferences:\n%s' % ('\n'.join(
+        fields['hard_dependencies'] = 'References:\n%s\n' % ('\n'.join(
           '  %s:%s' % (
             dep['child_path'],
             path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
@@ -272,10 +290,10 @@ class BundleCLI(object):
     # It is possible for bundles that are not failed to have failure messages:
     # for example, if a bundle is killed in the database after running for too
     # long then succeeds afterwards, it will be in this state.
-    failure_message = ''
-    if info['state'] == State.FAILED and info['metadata'].get('failure_message'):
-      failure_message = '\nFailure message:\n  %s' % ('\n  '.join(
-        info['metadata']['failure_message'].split('\n')
+    fields['failure_message'] = ''
+    if info['state'] == State.FAILED and metadata['failure_message']:
+      fields['failure_message'] = 'Failure message:\n  %s\n' % ('\n  '.join(
+        metadata['failure_message'].split('\n')
       ))
     # Return the formatted summary of the bundle info.
     return '''
@@ -283,17 +301,9 @@ class BundleCLI(object):
 {description}
   UUID:  {uuid}
   Hash:  {data_hash}
-  State: {state}{hard_dependencies}{failure_message}
-    '''.strip().format(
-      bundle_type=info['bundle_type'],
-      name=(info['metadata'].get('name') or '<no name>'),
-      description=(info['metadata'].get('description') or '<no description>'),
-      uuid=info['uuid'],
-      data_hash=(info['data_hash'] or '<no hash>'),
-      state=info['state'],
-      hard_dependencies=hard_dependencies,
-      failure_message=failure_message,
-    )
+  State: {state}
+{stats}{hard_dependencies}{failure_message}
+    '''.format(**fields).strip()
 
   def do_ls_command(self, argv, parser):
     parser.add_argument(

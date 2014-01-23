@@ -34,7 +34,7 @@ class MakeBundle(NamedBundle):
         'parent_uuid': parent.uuid,
         'parent_path': parent_path,
       })
-    return cls({
+    return super(MakeBundle, cls).construct({
       'uuid': uuid,
       'bundle_type': cls.BUNDLE_TYPE,
       'command': None,
