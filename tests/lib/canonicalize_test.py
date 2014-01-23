@@ -86,13 +86,13 @@ class CanonicalizeTest(unittest.TestCase):
     with mock.patch('codalab.lib.canonicalize.get_spec_uuid', get_spec_uuid):
       test_model._bundle = type('MockBundle', (object,), {
         'state': State.CREATED,
-        'data_hash': test_data_hash,
+        'data_hash': None,
       })
       self.assertRaises(UsageError, lambda: canonicalize.get_target_path(
         bundle_store,
         test_model,
         target,
       ))
-      test_model._bundle.state = State.READY
+      test_model._bundle.data_hash = test_data_hash
       result = canonicalize.get_target_path(bundle_store, test_model, target)
       self.assertEqual(result, os.path.join(test_location, test_path))

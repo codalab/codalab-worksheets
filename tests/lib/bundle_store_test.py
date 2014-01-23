@@ -1,3 +1,4 @@
+import errno
 import mock
 import os
 import unittest
@@ -68,6 +69,13 @@ class BundleStoreTest(unittest.TestCase):
       self.assertEqual(dest_path, final_path)
       rename_called[0] = True
     mock_os.rename = rename
+
+    def utime(path, ts):
+      self.assertEqual(path, final_path)
+      self.assertIsNone(ts)
+      if new:
+        raise OSError(errno.ENOENT, 'Path does not exist: ' + path)
+    mock_os.utime = utime
 
     temp_dir = 'abloogywoogywu'
     temp_path = os.path.join(test_temp, temp_dir)
