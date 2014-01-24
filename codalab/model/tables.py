@@ -45,8 +45,8 @@ bundle_metadata = Table(
   sqlite_autoincrement=True,
 )
 
-dependency = Table(
-  'dependency',
+bundle_dependency = Table(
+  'bundle_dependency',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('child_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),

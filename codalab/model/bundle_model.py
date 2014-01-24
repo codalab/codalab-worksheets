@@ -5,6 +5,10 @@ from sqlalchemy import (
   and_,
   select,
 )
+from sqlalchemy.exc import (
+  OperationalError,
+  ProgrammingError,
+)
 
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
@@ -15,8 +19,8 @@ from codalab.common import (
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
   bundle as cl_bundle,
+  bundle_dependency as cl_bundle_dependency,
   bundle_metadata as cl_bundle_metadata,
-  dependency as cl_dependency,
   db_metadata,
 )
 
@@ -41,6 +45,15 @@ class BundleModel(object):
     '''
     Create all Codalab bundle tables if they do not already exist.
     '''
+    # TODO(skishore): This hack is a mini-migration that should stay here until
+    # the bundle dependency table has been renamed in all CodaLab deployments.
+    # After that point, it should be deleted.
+    with self.engine.begin() as connection:
+      try:
+        connection.execute('ALTER TABLE dependency RENAME TO bundle_dependency')
+      # sqlite throws an OperationalError, MySQL a ProgrammingError. Ugh.
+      except (OperationalError, ProgrammingError):
+        pass
     db_metadata.create_all(self.engine)
 
   def do_multirow_insert(self, connection, table, values):
@@ -92,9 +105,9 @@ class BundleModel(object):
     '''
     with self.engine.begin() as connection:
       rows = connection.execute(select([
-        cl_dependency.c.parent_uuid
+        cl_bundle_dependency.c.parent_uuid
       ]).where(
-        cl_dependency.c.child_uuid == uuid
+        cl_bundle_dependency.c.child_uuid == uuid
       )).fetchall()
     uuids = set([row.parent_uuid for row in rows])
     return self.batch_get_bundles(uuid=uuids)
@@ -108,12 +121,12 @@ class BundleModel(object):
     calls to delete_bundle_tree.
     '''
     if isinstance(uuid, (list, set, tuple)):
-      clause = cl_dependency.c.parent_uuid.in_(uuid)
+      clause = cl_bundle_dependency.c.parent_uuid.in_(uuid)
     else:
-      clause = (cl_dependency.c.parent_uuid == uuid)
+      clause = (cl_bundle_dependency.c.parent_uuid == uuid)
     with self.engine.begin() as connection:
       rows = connection.execute(select([
-        cl_dependency.c.child_uuid
+        cl_bundle_dependency.c.child_uuid
       ]).where(clause)).fetchall()
     uuids = set([row.child_uuid for row in rows])
     return self.batch_get_bundles(uuid=uuids)
@@ -145,28 +158,28 @@ class BundleModel(object):
       bundle_rows = connection.execute(
         cl_bundle.select().where(clause)
       ).fetchall()
-      uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
-      if not uuids:
+      if not bundle_rows:
         return []
+      uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
+      dependency_rows = connection.execute(cl_bundle_dependency.select().where(
+        cl_bundle_dependency.c.child_uuid.in_(uuids)
+      )).fetchall()
       metadata_rows = connection.execute(cl_bundle_metadata.select().where(
         cl_bundle_metadata.c.bundle_uuid.in_(uuids)
-      )).fetchall()
-      dependency_rows = connection.execute(cl_dependency.select().where(
-        cl_dependency.c.child_uuid.in_(uuids)
       )).fetchall()
     # Make a dictionary for each bundle with both data and metadata.
     bundle_values = {row.uuid: dict(row) for row in bundle_rows}
     for bundle_value in bundle_values.itervalues():
-      bundle_value['metadata'] = []
       bundle_value['dependencies'] = []
-    for metadata_row in metadata_rows:
-      if metadata_row.bundle_uuid not in bundle_values:
-        raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
-      bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
+      bundle_value['metadata'] = []
     for dep_row in dependency_rows:
       if dep_row.child_uuid not in bundle_values:
         raise IntegrityError('Got dependency %s without bundle' % (dep_row,))
       bundle_values[dep_row.child_uuid]['dependencies'].append(dep_row)
+    for metadata_row in metadata_rows:
+      if metadata_row.bundle_uuid not in bundle_values:
+        raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
+      bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
     # Construct and validate all of the retrieved bundles.
     sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
     bundles = [
@@ -212,12 +225,12 @@ class BundleModel(object):
     '''
     bundle.validate()
     bundle_value = bundle.to_dict()
-    metadata_values = bundle_value.pop('metadata')
     dependency_values = bundle_value.pop('dependencies')
+    metadata_values = bundle_value.pop('metadata')
     with self.engine.begin() as connection:
       result = connection.execute(cl_bundle.insert().values(bundle_value))
+      self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
       self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-      self.do_multirow_insert(connection, cl_dependency, dependency_values)
       bundle.id = result.lastrowid
 
   def update_bundle(self, bundle, update):
@@ -274,10 +287,10 @@ class BundleModel(object):
     with self.engine.begin() as connection:
       # We must delete bundles rows in the opposite order that we create them
       # to avoid foreign-key constraint failures.
-      connection.execute(cl_dependency.delete().where(
-        cl_dependency.c.child_uuid.in_(uuids)
-      ))
       connection.execute(cl_bundle_metadata.delete().where(
         cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+      ))
+      connection.execute(cl_bundle_dependency.delete().where(
+        cl_bundle_dependency.c.child_uuid.in_(uuids)
       ))
       connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
