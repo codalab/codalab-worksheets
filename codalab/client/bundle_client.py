@@ -11,6 +11,10 @@ There are a couple of implementations of this class:
   - LocalBundleClient - interacts directly with a BundleStore and BundleModel.
   - RemoteBundleClient - shells out to a BundleRPCServer to implement its API.
 '''
+# TODO: We should probably implement grep at some point. grep will take a
+# target (like the target passed to ls or cat) and a list of command-line args.
+# The RemoteBundleClient implementation of grep will have to use the FileServer
+# file-handle API to stream the results back.
 import time
 
 from codalab.common import State
@@ -60,7 +64,7 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  # Commands for browsing bundles: info, ls, cat, grep, and search.
+  # Commands for browsing bundles: info, ls, cat, search, and wait.
 
   def info(self, bundle_spec, parents=False, children=False):
     '''
@@ -96,28 +100,11 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  def grep(self, target, pattern):
-    '''
-    Grep the contents of the target bundle, directory, or file for the pattern.
-    '''
-    raise NotImplementedError
-
   def search(self, query=None):
     '''
     Run a search on bundle metadata and return data for all bundles that match.
     The data for each bundle is a dict with the same keys as a dict from info.
     '''
-    raise NotImplementedError
-
-  # Various utility commands for pulling bundles back out of the system.
-
-  def download(self, uuid, path):
-    '''
-    Download the contents of the given bundle to the given local path.
-    '''
-    # TODO(skishore): What are we going to do about dependencies here?
-    # We should probably realize them. This isn't too bad, because derived
-    # bundles will not include their dependencies in their final value.
     raise NotImplementedError
 
   def wait(self, bundle_spec):
