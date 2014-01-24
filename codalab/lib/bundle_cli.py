@@ -363,7 +363,7 @@ class BundleCLI(object):
     i = 0
     while not args.iterations or i < args.iterations:
       if i and not args.iterations:
-        time.sleep(60)
+        time.sleep(3)
       print 'Running CodaLab bundle worker iteration %s...\n' % (i,)
       worker.update_created_bundles()
       worker.update_staged_bundles()
