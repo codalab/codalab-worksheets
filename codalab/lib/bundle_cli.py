@@ -148,7 +148,7 @@ class BundleCLI(object):
     metadata_util.add_auto_argument(parser)
     args = parser.parse_args(argv)
     # Check that the upload path exists.
-    path_util.check_isvalid(args.path, 'upload')
+    path_util.check_isvalid(path_util.normalize(args.path), 'upload')
     # Pull out the upload bundle type from the arguments and validate it.
     if args.bundle_type not in UPLOADED_TYPES:
       raise UsageError('Invalid bundle type %s (options: [%s])' % (
