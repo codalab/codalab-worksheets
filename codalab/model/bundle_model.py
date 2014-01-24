@@ -21,6 +21,8 @@ from codalab.model.tables import (
   bundle as cl_bundle,
   bundle_dependency as cl_bundle_dependency,
   bundle_metadata as cl_bundle_metadata,
+  worksheet as cl_worksheet,
+  worksheet_item as cl_worksheet_item,
   db_metadata,
 )
 
@@ -70,9 +72,9 @@ class BundleModel(object):
     if values:
       connection.execute(table.insert(), values)
 
-  def make_bundle_clause(self, kwargs):
+  def make_kwargs_clause(self, table, kwargs):
     '''
-    Return a list of bundles given a dict mapping cl_bundle columns to values.
+    Return a list of bundles given a dict mapping table columns to values.
     If a value is a list, set, or tuple, produce an IN clause on that column.
     If a value is a LikeQuery, produce a LIKE clause on that column.
     '''
@@ -81,11 +83,11 @@ class BundleModel(object):
       if isinstance(value, (list, set, tuple)):
         if not value:
           return False
-        clauses.append(getattr(cl_bundle.c, key).in_(value))
+        clauses.append(getattr(table.c, key).in_(value))
       elif isinstance(value, LikeQuery):
-        clauses.append(getattr(cl_bundle.c, key).like(value))
+        clauses.append(getattr(table.c, key).like(value))
       else:
-        clauses.append(getattr(cl_bundle.c, key) == value)
+        clauses.append(getattr(table.c, key) == value)
     return and_(*clauses)
 
   def get_bundle(self, uuid):
@@ -153,7 +155,7 @@ class BundleModel(object):
     '''
     Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
     '''
-    clause = self.make_bundle_clause(kwargs)
+    clause = self.make_kwargs_clause(cl_bundle, kwargs)
     with self.engine.begin() as connection:
       bundle_rows = connection.execute(
         cl_bundle.select().where(clause)
@@ -207,7 +209,7 @@ class BundleModel(object):
       bundle_ids = set(bundle.id for bundle in bundles)
       clause = cl_bundle.c.id.in_(bundle_ids)
       if condition:
-        clause = and_(clause, self.make_bundle_clause(condition))
+        clause = and_(clause, self.make_kwargs_clause(cl_bundle, condition))
       with self.engine.begin() as connection:
         result = connection.execute(
           cl_bundle.update().where(clause).values(update)
@@ -294,3 +296,49 @@ class BundleModel(object):
         cl_bundle_dependency.c.child_uuid.in_(uuids)
       ))
       connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
+
+  #############################################################################
+  # Worksheet-related model methods follow!
+  #############################################################################
+
+  def get_worksheet(self, uuid):
+    worksheets = self.batch_get_worksheets(uuid=uuid)
+    if not worksheets:
+      raise UsageError('Could not find worksheet with uuid %s' % (uuid,))
+    elif len(worksheets) > 1:
+      raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
+    return worksheets[0]
+
+  def batch_get_worksheets(self, **kwargs):
+    clause = self.make_kwargs_clause(cl_worksheet, kwargs)
+    with self.engine.begin() as connection:
+      worksheet_rows = connection.execute(
+        cl_worksheet.select().where(clause)
+      ).fetchall()
+      if not worksheet_rows:
+        return []
+      uuids = set(row.uuid for row in worksheet_rows)
+      item_rows = connection.execute(cl_worksheet_item.select().where(
+        cl_worksheet_item.c.worksheet_uuid.in_(uuids)
+      )).fetchall()
+    # Make a dictionary for each worksheet with both its main row and its items.
+    worksheet_values = {row.uuid: dict(row) for row in worksheet_rows}
+    for worksheet_value in worksheet_value.itervalues():
+      worksheet_value['items'] = []
+    for item_row in sorted(item_rows, key=lambda item: item.id):
+      if item_row.worksheet_uuid not in worksheet_values:
+        raise IntegrityError('Got item %s without worksheet' % (item_row,))
+      worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
+    return Worksheet(worksheet_values)
+
+  def save_worksheet(self, worksheet):
+    '''
+    Save the given (empty) worksheet to the database. On success, set its id.
+    '''
+    message = 'save_worksheet called with non-empty worksheet: %s' % (worksheet,)
+    precondition(not worksheet.items, message)
+    worksheet.validate()
+    worksheet_value = worksheet.to_dict()
+    with self.engine.begin() as connection:
+      result = connection.execute(cl_worksheet.insert().values(worksheet_value))
+      worksheet.id = result.lastrowid
