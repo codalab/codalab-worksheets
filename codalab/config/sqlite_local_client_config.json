@@ -1,0 +1,12 @@
+{
+  "home": "~/.codalab",
+  "cli": {
+    "verbose": false
+  },
+  "client": {
+    "class": "LocalBundleClient"
+  },
+  "model": {
+    "class": "SQLiteModel"
+  }
+}
