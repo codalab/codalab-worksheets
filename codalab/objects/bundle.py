@@ -140,13 +140,16 @@ class Bundle(ORMObject):
     '''
     raise NotImplementedError
 
-  def run(self, bundle_store, parent_dict):
+  def run(self, bundle_store, parent_dict, temp_dir):
     '''
-    Perform the computation needed to construct this bundle and upload the result
-    to the given bundle store. Return a (data_hash, metadata) pair - that is,
-    return the result of the upload.
+    Perform the computation needed to construct this bundle within the temp_dir,
+    then upload the result to the bundle store. Return a (data_hash, metadata)
+    pair - that is, return the result of the upload.
 
-    parent_dict should be a dictionary mapping uuids -> bundles for each uuid
+    parent_dict will be a dictionary mapping uuids -> bundles for each uuid
     that this bundle depends on.
+
+    If this method raises a CalledProcessError, the contents of the temp_dir at
+    the time of the error will be uploaded as a partial result.
     '''
     raise NotImplementedError

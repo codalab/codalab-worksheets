@@ -158,14 +158,17 @@ class Worker(object):
       except Exception:
         # TODO(skishore): Add metadata updates: time / CPU of run.
         (type, error, tb) = sys.exc_info()
+        with self.profile('Uploading failed bundle...'):
+          (data_hash, metadata) = self.upload_failed_bundle(error, temp_dir)
         failure_message = '%s: %s' % (error.__class__.__name__, error)
-        if not isinstance(error, UsageError):
+        if data_hash:
+          suffix = 'The results of the failed execution were uploaded.'
+          failure_message = '%s\n%s' % (failure_message, suffix)
+        elif not isinstance(error, UsageError):
           failure_message = 'Traceback:\n%s\n%s' % (
             ''.join(traceback.format_tb(tb))[:-1],
             failure_message,
           )
-        with self.profile('Uploading failed bundle...'):
-          (data_hash, metadata) = self.upload_failed_bundle(error, temp_dir)
         metadata.update({'failure_message': failure_message})
         self.finalize_run(bundle, State.FAILED, data_hash, metadata)
         print '-- FAILED! --\n%s\n' % (failure_message,)
