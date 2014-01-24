@@ -48,12 +48,12 @@ class BundleModel(object):
     # TODO(skishore): This hack is a mini-migration that should stay here until
     # the bundle dependency table has been renamed in all CodaLab deployments.
     # After that point, it should be deleted.
-    with self.engine.begin() as connection:
-      try:
+    try:
+      with self.engine.begin() as connection:
         connection.execute('ALTER TABLE dependency RENAME TO bundle_dependency')
+    except (OperationalError, ProgrammingError):
       # sqlite throws an OperationalError, MySQL a ProgrammingError. Ugh.
-      except (OperationalError, ProgrammingError):
-        pass
+      pass
     db_metadata.create_all(self.engine)
 
   def do_multirow_insert(self, connection, table, values):
