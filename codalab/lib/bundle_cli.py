@@ -54,6 +54,7 @@ class BundleCLI(object):
     'new': 'Create a new worksheet and make it the current one.',
     'add': 'Append a bundle to a worksheet.',
     'work': 'Set the current worksheet.',
+    'print': 'Print the full-text contents of a worksheet.',
     'edit_worksheet': 'Rename a worksheet or open a full-text editor to edit it.',
     'list_worksheet': 'Show basic information for all worksheets.',
     'rm_worksheet': 'Delete a worksheet. Must specify a worksheet spec.',
@@ -78,6 +79,7 @@ class BundleCLI(object):
     'new',
     'add',
     'work',
+    'print',
   )
   # A list of commands for bundles that apply to worksheets with the -w flag.
   BOTH_COMMANDS = (
@@ -196,6 +198,7 @@ class BundleCLI(object):
         command, (max_length + indent - len(command))*' ', command, command)
 
   def do_upload_command(self, argv, parser):
+    worksheet_uuid = self.env_model.get_current_worksheet()
     help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
     parser.add_argument('bundle_type', help=help_text)
     parser.add_argument('path', help='path of the directory to upload')
@@ -219,9 +222,10 @@ class BundleCLI(object):
     # Type-check the bundle metadata BEFORE uploading the bundle data.
     # This optimization will avoid file copies on failed bundle creations.
     bundle_subclass.construct(data_hash='', metadata=metadata).validate()
-    print self.client.upload(args.bundle_type, args.path, metadata)
+    print self.client.upload(args.bundle_type, args.path, metadata, worksheet_uuid)
 
   def do_make_command(self, argv, parser):
+    worksheet_uuid = self.env_model.get_current_worksheet()
     help = '[<key>:][<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
     parser.add_argument('target', help=help, nargs='+')
     metadata_util.add_arguments(MakeBundle, set(), parser)
@@ -242,9 +246,10 @@ class BundleCLI(object):
           raise UsageError('Must specify keys when packaging multiple targets!')
       targets[key] = self.parse_target(target)
     metadata = metadata_util.request_missing_data(MakeBundle, args)
-    print self.client.make(targets, metadata)
+    print self.client.make(targets, metadata, worksheet_uuid)
 
   def do_run_command(self, argv, parser):
+    worksheet_uuid = self.env_model.get_current_worksheet()
     help = '[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
     parser.add_argument('program_target', help=help)
     parser.add_argument('input_target', help=help)
@@ -258,7 +263,7 @@ class BundleCLI(object):
     program_target = self.parse_target(args.program_target)
     input_target = self.parse_target(args.input_target)
     metadata = metadata_util.request_missing_data(RunBundle, args)
-    print self.client.run(program_target, input_target, args.command, metadata)
+    print self.client.run(program_target, input_target, args.command, metadata, worksheet_uuid)
 
   def do_edit_command(self, argv, parser):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
@@ -521,7 +526,6 @@ class BundleCLI(object):
       self.client.rename_worksheet(worksheet_info['uuid'], args.name)
     else:
       new_items = worksheet_util.request_new_items(worksheet_info)
-      # TODO(skishore): We really should persist these items here...
       self.client.update_worksheet(worksheet_info, new_items)
 
   def do_list_worksheet_command(self, argv, parser):
@@ -533,10 +537,26 @@ class BundleCLI(object):
     else:
       print 'No worksheets found.'
 
+  def do_print_command(self, argv, parser):
+    parser.add_argument(
+      'worksheet_spec',
+      help='identifier: [<uuid>|<name>]',
+      nargs='?',
+    )
+    args = parser.parse_args(argv)
+    if args.worksheet_spec:
+      worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+    else:
+      worksheet_info = self.get_current_worksheet_info()
+      if not worksheet_info:
+        raise UsageError('Specify a worksheet or switch to one with `cl work`.')
+    for line in worksheet_util.get_worksheet_lines(worksheet_info):
+      print line
+
   def do_rm_worksheet_command(self, argv, parser):
     parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
     args = parser.parse_args(argv)
-    uuid = self.client.delete_worksheet(args.worksheet_spec)
+    self.client.delete_worksheet(args.worksheet_spec)
 
   #############################################################################
   # LocalBundleClient-only commands follow!

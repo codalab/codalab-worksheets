@@ -59,7 +59,7 @@ class RemoteBundleClient(BundleClient):
     for command in self.COMMANDS:
       setattr(self, command, do_command(command))
 
-  def upload(self, bundle_type, path, metadata):
+  def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
     zip_path = zip_util.zip(path)
     with open(zip_path, 'rb') as source:
       remote_file_uuid = self.open_temp_file()
@@ -68,7 +68,7 @@ class RemoteBundleClient(BundleClient):
         # FileServer does not expose an API for forcibly flushing writes, so
         # we rely on closing the file to flush it.
         file_util.copy(source, dest, autoflush=False)
-    return self.upload_zip(bundle_type, remote_file_uuid, metadata)
+    return self.upload_zip(bundle_type, remote_file_uuid, metadata, worksheet_uuid)
 
   def cat(self, target):
     remote_file_uuid = self.open_target(target)

@@ -4,6 +4,9 @@ across multiple command-line client invocations in the same shell. In
 particular, we do NOT import sqlalchemy in this module, because that library
 is quite expensive to import.
 '''
+# TODO(skishore): If we want to support work contexts that are indexed by
+# keys other than the shell ppid, this model's get / set methods will just have
+# to take additional parameters for the key.
 import os
 import sqlite3
 
