@@ -354,17 +354,6 @@ class BundleModel(object):
       result = connection.execute(cl_worksheet.insert().values(worksheet_value))
       worksheet.id = result.lastrowid
 
-  def rename_worksheet(self, worksheet, name):
-    '''
-    Update the given worksheet's name.
-    '''
-    worksheet.name = name
-    worksheet.validate()
-    with self.engine.begin() as connection:
-      connection.execute(cl_worksheet.update().where(
-        cl_worksheet.c.uuid == worksheet.uuid
-      ).values({'name': name}))
-
   def add_worksheet_item(self, worksheet_uuid, item):
     '''
     Appends a new item to the end of the given worksheet. The item should be
@@ -409,3 +398,26 @@ class BundleModel(object):
       if result.rowcount < length:
         raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
       self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
+
+  def rename_worksheet(self, worksheet, name):
+    '''
+    Update the given worksheet's name.
+    '''
+    worksheet.name = name
+    worksheet.validate()
+    with self.engine.begin() as connection:
+      connection.execute(cl_worksheet.update().where(
+        cl_worksheet.c.uuid == worksheet.uuid
+      ).values({'name': name}))
+
+  def delete_worksheet(self, worksheet_uuid):
+    '''
+    Delete the worksheet with the given uuid.
+    '''
+    with self.engine.begin() as connection:
+      connection.execute(cl_worksheet_item.delete().where(
+        cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
+      ))
+      connection.execute(cl_worksheet.delete().where(
+        cl_worksheet.c.uuid == worksheet_uuid
+      ))

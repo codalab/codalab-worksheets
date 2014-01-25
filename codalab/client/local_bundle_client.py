@@ -142,12 +142,6 @@ class LocalBundleClient(BundleClient):
     self.model.save_worksheet(worksheet)
     return worksheet.uuid
 
-  def rename_worksheet(self, worksheet_spec, name):
-    uuid = self.get_worksheet_uuid(worksheet_spec)
-    worksheet = self.model.get_worksheet(uuid)
-    self.model.rename_worksheet(worksheet, name)
-    return uuid
-
   def worksheet_info(self, worksheet_spec):
     uuid = self.get_worksheet_uuid(worksheet_spec)
     worksheet = self.model.get_worksheet(uuid)
@@ -210,3 +204,14 @@ class LocalBundleClient(BundleClient):
     except UsageError:
       # Turn the model error into a more readable one using the object.
       raise UsageError('%s was updated concurrently!' % (worksheet,))
+
+  def rename_worksheet(self, worksheet_spec, name):
+    uuid = self.get_worksheet_uuid(worksheet_spec)
+    worksheet = self.model.get_worksheet(uuid)
+    self.model.rename_worksheet(worksheet, name)
+    return uuid
+
+  def delete_worksheet(self, worksheet_spec):
+    uuid = self.get_worksheet_uuid(worksheet_spec)
+    self.model.delete_worksheet(uuid)
+    return uuid

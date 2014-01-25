@@ -27,11 +27,12 @@ class RemoteBundleClient(BundleClient):
     'search',
     # Worksheet-related commands all have JSON-able inputs and outputs.
     'new_worksheet',
-    'rename_worksheet',
     'list_worksheets',
     'worksheet_info',
     'add_worksheet_item',
     'update_worksheet',
+    'rename_worksheet',
+    'delete_worksheet',
   )
   COMMANDS = CLIENT_COMMANDS + (
     'open_target',

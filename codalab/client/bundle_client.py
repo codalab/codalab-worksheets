@@ -169,3 +169,15 @@ class BundleClient(object):
     update the worksheet. Raise a UsageError if there was a concurrent update.
     '''
     raise NotImplementedError
+
+  def rename_worksheet(self, worksheet_spec, name):
+    '''
+    Update the specified worksheet to have the new name.
+    '''
+    raise NotImplementedError
+
+  def delete_worksheet(self, worksheet_spec):
+    '''
+    Delete the specified worksheet.
+    '''
+    raise NotImplementedError
