@@ -13,6 +13,19 @@ from codalab.common import UsageError
 BUNDLE_LINE_REGEX = re.compile('^(\[(.*)\])?\s*\{(.*)\}$')
 
 
+def get_worksheet_lines(worksheet_info):
+  '''
+  Generator that returns pretty-printed lines of text for the given worksheet.
+  '''
+  for (bundle_info, value) in worksheet_info['items']:
+    if bundle_info is None:
+      yield value
+    else:
+      if 'bundle_type' not in bundle_info:
+        yield '// The following bundle reference is broken:'
+      yield '[%s]{%s}' % (value, bundle_info['uuid'])
+
+
 def request_new_items(worksheet_info):
   '''
   Take a worksheet info dict. Return a list of new items provided in an editor.
@@ -25,13 +38,7 @@ def request_new_items(worksheet_info):
   '''.strip() % (worksheet_info['name'],)
   # Construct a form template with the current value of the worksheet.
   template_lines = header.split('\n')
-  for (bundle_info, value) in worksheet_info['items']:
-    if bundle_info is None:
-      template_lines.append(value)
-    else:
-      if 'bundle_type' not in bundle_info:
-        template_lines.append('// The following bundle reference is broken:')
-      template_lines.append('[%s]{%s}' % (value, bundle_info['uuid']))
+  template_lines.extend(get_worksheet_lines(worksheet_info))
   template = '\n'.join(template_lines)
   # Show the form to the user in their editor of choice and parse the result.
   editor = os.environ.get('EDITOR', 'vim')

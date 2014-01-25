@@ -54,6 +54,7 @@ class BundleCLI(object):
     'new': 'Create a new worksheet and make it the current one.',
     'add': 'Append a bundle to a worksheet.',
     'work': 'Set the current worksheet.',
+    'print': 'Print the full-text contents of a worksheet.',
     'edit_worksheet': 'Rename a worksheet or open a full-text editor to edit it.',
     'list_worksheet': 'Show basic information for all worksheets.',
     'rm_worksheet': 'Delete a worksheet. Must specify a worksheet spec.',
@@ -78,6 +79,7 @@ class BundleCLI(object):
     'new',
     'add',
     'work',
+    'print',
   )
   # A list of commands for bundles that apply to worksheets with the -w flag.
   BOTH_COMMANDS = (
@@ -524,7 +526,6 @@ class BundleCLI(object):
       self.client.rename_worksheet(worksheet_info['uuid'], args.name)
     else:
       new_items = worksheet_util.request_new_items(worksheet_info)
-      # TODO(skishore): We really should persist these items here...
       self.client.update_worksheet(worksheet_info, new_items)
 
   def do_list_worksheet_command(self, argv, parser):
@@ -536,10 +537,26 @@ class BundleCLI(object):
     else:
       print 'No worksheets found.'
 
+  def do_print_command(self, argv, parser):
+    parser.add_argument(
+      'worksheet_spec',
+      help='identifier: [<uuid>|<name>]',
+      nargs='?',
+    )
+    args = parser.parse_args(argv)
+    if args.worksheet_spec:
+      worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+    else:
+      worksheet_info = self.get_current_worksheet_info()
+      if not worksheet_info:
+        raise UsageError('Specify a worksheet or switch to one with `cl work`.')
+    for line in worksheet_util.get_worksheet_lines(worksheet_info):
+      print line
+
   def do_rm_worksheet_command(self, argv, parser):
     parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
     args = parser.parse_args(argv)
-    uuid = self.client.delete_worksheet(args.worksheet_spec)
+    self.client.delete_worksheet(args.worksheet_spec)
 
   #############################################################################
   # LocalBundleClient-only commands follow!

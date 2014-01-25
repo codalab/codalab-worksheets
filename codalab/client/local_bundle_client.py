@@ -228,9 +228,7 @@ class LocalBundleClient(BundleClient):
     uuid = self.get_worksheet_uuid(worksheet_spec)
     worksheet = self.model.get_worksheet(uuid)
     self.model.rename_worksheet(worksheet, name)
-    return uuid
 
   def delete_worksheet(self, worksheet_spec):
     uuid = self.get_worksheet_uuid(worksheet_spec)
     self.model.delete_worksheet(uuid)
-    return uuid
