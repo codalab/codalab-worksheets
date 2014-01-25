@@ -32,6 +32,7 @@ from codalab.lib import (
   metadata_util,
   path_util,
   spec_util,
+  worksheet_util,
 )
 from codalab.objects.worker import Worker
 
@@ -53,13 +54,14 @@ class BundleCLI(object):
     'new': 'Create a new worksheet and make it the current one.',
     'add': 'Append a bundle to a worksheet.',
     'work': 'Set the current worksheet.',
-    'rework': 'Pop open a full-text editor to curate a worksheet.',
+    'edit_worksheet': 'Pop open a full-text editor to edit a worksheet.',
+    'list_worksheet': 'Show basic information for all worksheets.',
     # Commands that can only be executed on a LocalBundleClient.
     'cleanup': 'Clean up the CodaLab bundle store.',
     'worker': 'Run the CodaLab bundle worker.',
     'reset': 'Delete the CodaLab bundle store and reset the database.',
   }
-  COMMON_COMMANDS = (
+  BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
@@ -75,8 +77,9 @@ class BundleCLI(object):
     'new',
     'add',
     'work',
-    'rework',
   )
+  # A list of commands for bundles that apply to worksheets with the -w flag.
+  BOTH_COMMANDS = ('edit', 'list')
 
   def __init__(self, client, env_model, verbose):
     self.client = client
@@ -100,6 +103,12 @@ class BundleCLI(object):
       def mock_formatter_class(*args, **kwargs):
         return formatter_class(max_help_position=30, *args, **kwargs)
       parser.formatter_class = mock_formatter_class
+
+  def get_whole_bundles(self, worksheet_info):
+    return [
+      bundle_info for (bundle_info, _) in worksheet_info['items']
+      if bundle_info and 'bundle_type' in bundle_info
+    ]
 
   def parse_target(self, target):
     return tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
@@ -132,6 +141,11 @@ class BundleCLI(object):
   def do_command(self, argv):
     if argv:
       (command, remaining_args) = (argv[0], argv[1:])
+      # Multiplex between `edit` and `edit -w` (which becomes edit_worksheet),
+      # and likewise between other commands for both bundles and worksheets.
+      if command in self.BOTH_COMMANDS and '-w' in remaining_args:
+        remaining_args = [arg for arg in remaining_args if arg != '-w']
+        command = command + '_worksheet'
     else:
       (command, remaining_args) = ('help', [])
     command_fn = getattr(self, 'do_%s_command' % (command,), None)
@@ -152,11 +166,11 @@ class BundleCLI(object):
 
   def do_help_command(self, argv, parser):
     if argv:
-      self.do_command([argv[0], '-h'])
+      self.do_command([argv[0], '-h'] + argv[1:])
     print 'usage: cl <command> <arguments>'
     max_length = max(
       len(command) for command in
-      itertools.chain(self.COMMON_COMMANDS, self.WORKSHEET_COMMANDS)
+      itertools.chain(self.BUNDLE_COMMANDS, self.WORKSHEET_COMMANDS)
     )
     indent = 2
     def print_command(command):
@@ -167,11 +181,14 @@ class BundleCLI(object):
         self.DESCRIPTIONS[command],
       )
     print '\nThe most commonly used codalab commands are:'
-    for command in self.COMMON_COMMANDS:
+    for command in self.BUNDLE_COMMANDS:
       print_command(command)
     print '\nCommands for using worksheets include:'
     for command in self.WORKSHEET_COMMANDS:
       print_command(command)
+    for command in self.BOTH_COMMANDS:
+      print '  %s%sUse `cl %s -w` to %s worksheets.' % (
+        command, (max_length + indent - len(command))*' ', command, command)
 
   def do_upload_command(self, argv, parser):
     help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
@@ -262,15 +279,44 @@ class BundleCLI(object):
     self.client.delete(args.bundle_spec, args.force)
 
   def do_list_command(self, argv, parser):
-    parser.parse_args(argv)
-    bundle_info_list = self.client.search()
+    parser.add_argument(
+      '-a', '--all',
+      action='store_true',
+      help='list all bundles, not just this worksheet',
+    )
+    parser.add_argument(
+      'worksheet_spec',
+      help='identifier: [<uuid>|<name>] (default: current worksheet)',
+      nargs='?',
+    )
+    args = parser.parse_args(argv)
+    if args.all and args.worksheet_spec:
+      raise UsageError("Can't use both --all and a worksheet spec!")
+    source = ''
+    if args.all:
+      bundle_info_list = self.client.search()
+    elif args.worksheet_spec:
+      worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+      bundle_info_list = self.get_whole_bundles(worksheet_info)
+      source = ' from worksheet %s' % (args.worksheet_spec,)
+    else:
+      (worksheet_uuid, worksheet_spec) = self.env_model.get_current_worksheet()
+      if not worksheet_uuid:
+        bundle_info_list = self.client.search()
+      else:
+        worksheet_info = self.client.worksheet_info(worksheet_uuid)
+        bundle_info_list = self.get_whole_bundles(worksheet_info)
+        source = ' from worksheet %s' % (worksheet_spec,)
     if bundle_info_list:
+      print 'Listing all bundles%s:\n' % (source,)
       columns = ('uuid', 'name', 'bundle_type', 'state')
       bundle_dicts = [
         {col: info.get(col, info['metadata'].get(col, '')) for col in columns}
         for info in bundle_info_list
       ]
       self.print_table(columns, bundle_dicts)
+    else:
+      print 'No bundles%s found.' % (source,)
 
   def do_info_command(self, argv, parser):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
@@ -397,9 +443,13 @@ class BundleCLI(object):
     parser.add_argument(
       'worksheet_spec',
       help='identifier: [<uuid>|<name>]',
-      #optional=True,
+      nargs='?',
     )
     args = parser.parse_args(argv)
+    if not args.worksheet_spec:
+      (args.worksheet_spec, _) = self.env_model.get_current_worksheet()
+      if not args.worksheet_spec:
+        raise UsageError('Specify a worksheet or switch to one with `cl work`.')
     self.client.add_worksheet_item(args.worksheet_spec, args.bundle_spec)
 
   def do_work_command(self, argv, parser):
@@ -422,20 +472,37 @@ class BundleCLI(object):
       self.env_model.clear_current_worksheet()
     else:
       (worksheet_uuid, worksheet_spec) = self.env_model.get_current_worksheet()
-      worksheet_dicts = self.client.list_worksheets()
       if worksheet_uuid:
         print 'Currently on worksheet %s. Use `cl work -x` to leave.' % (worksheet_spec,)
       else:
         print 'Not on any worksheet. Use `cl new` or `cl work` to join one.'
-      if worksheet_dicts:
-        print ''
-        self.print_table(('uuid', 'name'), worksheet_dicts)
 
-  def do_rework_command(self, argv, parser):
-    parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
+  def do_edit_worksheet_command(self, argv, parser):
+    parser.add_argument(
+      'worksheet_spec',
+      help='identifier: [<uuid>|<name>]',
+      nargs='?',
+    )
     args = parser.parse_args(argv)
-    info = self.client.worksheet_info(args.worksheet_spec)
-    print 'Editing Worksheet(uuid=%r, name=%r)...' % (info['uuid'], info['name'])
+    if args.worksheet_spec:
+      worksheet_spec = worksheet_label = args.worksheet_spec
+    else:
+      (worksheet_spec, worksheet_label) = self.env_model.get_current_worksheet()
+      if not worksheet_spec:
+        raise UsageError('Specify a worksheet or switch to one with `cl work`.')
+    info = self.client.worksheet_info(worksheet_spec)
+    new_items = worksheet_util.request_new_items(worksheet_label, info)
+    # TODO(skishore): We really should persist these items here...
+    self.client.update_worksheet(info, new_items)
+
+  def do_list_worksheet_command(self, argv, parser):
+    parser.parse_args(argv)
+    worksheet_dicts = self.client.list_worksheets()
+    if worksheet_dicts:
+      print 'Listing all worksheets:\n'
+      self.print_table(('uuid', 'name'), worksheet_dicts)
+    else:
+      print 'No worksheets found.'
 
   #############################################################################
   # LocalBundleClient-only commands follow!

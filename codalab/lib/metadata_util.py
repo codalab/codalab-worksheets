@@ -1,3 +1,12 @@
+'''
+metadata_util contains methods for dealing with command-line metadata input.
+
+The add_arguments function takes an ArgumentParser and adds arguments for
+the metadata for a given bundle type. After parsing these arguments, all
+of which are optional on the CLI but some of which are required for the
+bundle itself, call request_missing_metadata to pop up an editor to get the
+missing metadata values.
+'''
 import os
 import subprocess
 import tempfile

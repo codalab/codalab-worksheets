@@ -183,10 +183,17 @@ class LocalBundleClient(BundleClient):
     # database for each bundle the user has newly specified by name - bundles
     # that were already in the worksheet will be referred to by uuid, so
     # get_spec_uuid will be an in-memory call for these. This hit is acceptable.
-    canonical_items = [
-      (None if bundle_spec is None else self.get_spec_uuid(bundle_spec), value)
-      for (bundle_spec, value) in new_items
-    ]
+    canonical_items = []
+    for (bundle_spec, value) in new_items:
+      bundle_uuid = None if bundle_spec is None else self.get_spec_uuid(bundle_spec)
+      if bundle_uuid and value is None:
+        # The user has specified a new bundle but has not given it any help text.
+        # Produce some auto-generated help text here.
+        bundle = self.model.get_bundle(bundle_uuid)
+        value = bundle_spec
+        if getattr(bundle.metadata, 'description', None):
+          value = '%s: %s' % (value, bundle.metadata.description)
+      canonical_items.append((bundle_uuid, value or ''))
     worksheet_uuid = worksheet_info['uuid']
     last_item_id = worksheet_info['last_item_id']
     length = len(worksheet_info['items'])
