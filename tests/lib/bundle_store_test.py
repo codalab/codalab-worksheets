@@ -11,7 +11,6 @@ class BundleStoreTest(unittest.TestCase):
   test_root = '/tmp/codalab_tests'
 
   directories = [
-    test_root,
     os.path.join(test_root, BundleStore.DATA_SUBDIRECTORY),
     os.path.join(test_root, BundleStore.TEMP_SUBDIRECTORY),
   ]
