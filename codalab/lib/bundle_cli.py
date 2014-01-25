@@ -56,6 +56,7 @@ class BundleCLI(object):
     'work': 'Set the current worksheet.',
     'edit_worksheet': 'Rename a worksheet or open a full-text editor to edit it.',
     'list_worksheet': 'Show basic information for all worksheets.',
+    'rm_worksheet': 'Delete a worksheet. Must specify a worksheet spec.',
     # Commands that can only be executed on a LocalBundleClient.
     'cleanup': 'Clean up the CodaLab bundle store.',
     'worker': 'Run the CodaLab bundle worker.',
@@ -79,7 +80,11 @@ class BundleCLI(object):
     'work',
   )
   # A list of commands for bundles that apply to worksheets with the -w flag.
-  BOTH_COMMANDS = ('edit', 'list')
+  BOTH_COMMANDS = (
+    'edit',
+    'list',
+    'rm',
+  )
 
   def __init__(self, client, env_model, verbose):
     self.client = client
@@ -298,15 +303,14 @@ class BundleCLI(object):
     elif args.worksheet_spec:
       worksheet_info = self.client.worksheet_info(args.worksheet_spec)
       bundle_info_list = self.get_whole_bundles(worksheet_info)
-      source = ' from worksheet %s' % (args.worksheet_spec,)
+      source = ' from worksheet %s' % (worksheet_info['name'],)
     else:
-      (worksheet_uuid, worksheet_spec) = self.env_model.get_current_worksheet()
-      if not worksheet_uuid:
+      worksheet_info = self.get_current_worksheet_info()
+      if not worksheet_info:
         bundle_info_list = self.client.search()
       else:
-        worksheet_info = self.client.worksheet_info(worksheet_uuid)
         bundle_info_list = self.get_whole_bundles(worksheet_info)
-        source = ' from worksheet %s' % (worksheet_spec,)
+        source = ' from worksheet %s' % (worksheet_info['name'],)
     if bundle_info_list:
       print 'Listing all bundles%s:\n' % (source,)
       columns = ('uuid', 'name', 'bundle_type', 'state')
@@ -431,11 +435,26 @@ class BundleCLI(object):
   # CLI methods for worksheet-related commands follow!
   #############################################################################
 
+  def get_current_worksheet_info(self):
+    '''
+    Return the current worksheet's info, or None, if there is none.
+    '''
+    worksheet_uuid = self.env_model.get_current_worksheet()
+    if not worksheet_uuid:
+      return None
+    try:
+      return self.client.worksheet_info(worksheet_uuid)
+    except UsageError:
+      # This worksheet must have been deleted. Print an error and clear it.
+      print >> sys.stderr, 'Worksheet %s no longer exists!\n' % (worksheet_uuid,)
+      self.env_model.clear_current_worksheet()
+      return None
+
   def do_new_command(self, argv, parser):
     parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
     args = parser.parse_args(argv)
     uuid = self.client.new_worksheet(args.name)
-    self.env_model.set_current_worksheet(uuid, args.name)
+    self.env_model.set_current_worksheet(uuid)
     print 'Switched to worksheet %s.' % (args.name,)
 
   def do_add_command(self, argv, parser):
@@ -446,11 +465,13 @@ class BundleCLI(object):
       nargs='?',
     )
     args = parser.parse_args(argv)
-    if not args.worksheet_spec:
-      (args.worksheet_spec, _) = self.env_model.get_current_worksheet()
-      if not args.worksheet_spec:
+    if args.worksheet_spec:
+      worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+    else:
+      worksheet_info = self.get_current_worksheet_info()
+      if not worksheet_info:
         raise UsageError('Specify a worksheet or switch to one with `cl work`.')
-    self.client.add_worksheet_item(args.worksheet_spec, args.bundle_spec)
+    self.client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
 
   def do_work_command(self, argv, parser):
     parser.add_argument(
@@ -465,15 +486,16 @@ class BundleCLI(object):
     )
     args = parser.parse_args(argv)
     if args.worksheet_spec:
-      info = self.client.worksheet_info(args.worksheet_spec)
-      self.env_model.set_current_worksheet(info['uuid'], args.worksheet_spec)
+      worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+      self.env_model.set_current_worksheet(worksheet_info['uuid'])
       print 'Switched to worksheet %s.' % (args.worksheet_spec,)
     elif args.exit:
       self.env_model.clear_current_worksheet()
     else:
-      (worksheet_uuid, worksheet_spec) = self.env_model.get_current_worksheet()
-      if worksheet_uuid:
-        print 'Currently on worksheet %s. Use `cl work -x` to leave.' % (worksheet_spec,)
+      worksheet_info = self.get_current_worksheet_info()
+      if worksheet_info:
+        name = worksheet_info['name']
+        print 'Currently on worksheet %s. Use `cl work -x` to leave.' % (name,)
       else:
         print 'Not on any worksheet. Use `cl new` or `cl work` to join one.'
 
@@ -490,19 +512,17 @@ class BundleCLI(object):
     )
     args = parser.parse_args(argv)
     if args.worksheet_spec:
-      worksheet_spec = worksheet_label = args.worksheet_spec
+      worksheet_info = self.client.worksheet_info(args.worksheet_spec)
     else:
-      (worksheet_spec, worksheet_label) = self.env_model.get_current_worksheet()
-      if not worksheet_spec:
+      worksheet_info = self.get_current_worksheet_info()
+      if not worksheet_info:
         raise UsageError('Specify a worksheet or switch to one with `cl work`.')
     if args.name:
-      worksheet_uuid = self.client.rename_worksheet(worksheet_spec, args.name)
-      self.env_model.rename_worksheet(worksheet_uuid, args.name)
+      self.client.rename_worksheet(worksheet_info['uuid'], args.name)
     else:
-      info = self.client.worksheet_info(worksheet_spec)
-      new_items = worksheet_util.request_new_items(worksheet_label, info)
+      new_items = worksheet_util.request_new_items(worksheet_info)
       # TODO(skishore): We really should persist these items here...
-      self.client.update_worksheet(info, new_items)
+      self.client.update_worksheet(worksheet_info, new_items)
 
   def do_list_worksheet_command(self, argv, parser):
     parser.parse_args(argv)
@@ -512,6 +532,11 @@ class BundleCLI(object):
       self.print_table(('uuid', 'name'), worksheet_dicts)
     else:
       print 'No worksheets found.'
+
+  def do_rm_worksheet_command(self, argv, parser):
+    parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
+    args = parser.parse_args(argv)
+    uuid = self.client.delete_worksheet(args.worksheet_spec)
 
   #############################################################################
   # LocalBundleClient-only commands follow!

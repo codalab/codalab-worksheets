@@ -23,38 +23,32 @@ class EnvModel(object):
         id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
         ppid INTEGER NOT NULL,
         worksheet_uuid VARCHAR(63) NOT NULL,
-        worksheet_spec VARCHAR(255) NOT NULL,
         CONSTRAINT uix_1 UNIQUE(ppid)
       );
     ''')
 
   def get_current_worksheet(self):
     '''
-    Return a (worksheet_uuid, worksheet_spec) pair representing the
-    current worksheet, or (None, None) if there is none.
+    Return a worksheet_uuid for the current worksheet, or None if there is none.
 
-    This method uses the current parent-process id to return the same
-    result across multiple invocations in the same shell.
+    This method uses the current parent-process id to return the same result
+    across multiple invocations in the same shell.
     '''
     ppid = os.getppid()
     cursor = self.connection.cursor()
     cursor.execute('SELECT * FROM worksheets WHERE ppid = ?;', (ppid,))
     row = cursor.fetchone()
-    if row:
-      return (row[2], row[3])
-    return (None, None)
+    return row[2] if row else None
 
-  def set_current_worksheet(self, worksheet_uuid, worksheet_spec):
+  def set_current_worksheet(self, worksheet_uuid):
     '''
     Set the current worksheet for this ppid.
     '''
     ppid = os.getppid()
     with self.connection:
       self.connection.execute('''
-        INSERT OR REPLACE INTO worksheets
-          (ppid, worksheet_uuid, worksheet_spec)
-          VALUES (?, ?, ?);
-      ''', (ppid, worksheet_uuid, worksheet_spec))
+        INSERT OR REPLACE INTO worksheets (ppid, worksheet_uuid) VALUES (?, ?);
+      ''', (ppid, worksheet_uuid))
 
   def clear_current_worksheet(self):
     '''
@@ -63,12 +57,3 @@ class EnvModel(object):
     ppid = os.getppid()
     with self.connection:
       self.connection.execute('DELETE FROM worksheets WHERE ppid = ?;', (ppid,))
-
-  def rename_worksheet(self, worksheet_uuid, name):
-    '''
-    Update all worksheet_specs for the given worksheet_uuid to be the given name.
-    '''
-    with self.connection:
-      self.connection.execute('''
-        UPDATE worksheets SET worksheet_spec = ? WHERE worksheet_uuid = ?
-      ''', (name, worksheet_uuid))
