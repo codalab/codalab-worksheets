@@ -20,7 +20,6 @@ include any server configuration.
 See client_config.json and server_config.json for examples.
 '''
 import json
-import os
 
 from codalab.common import UsageError
 
@@ -42,7 +41,10 @@ class ConfigParser(object):
 
   @cached
   def home(self):
-    return os.path.normpath(os.path.expanduser(self.config['home']))
+    from codalab.lib import path_util
+    result = path_util.normalize(self.config['home'])
+    path_util.make_directory(result)
+    return result
 
   @cached
   def bundle_store(self):
