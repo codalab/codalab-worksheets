@@ -82,7 +82,7 @@ worksheet_item = Table(
     ForeignKey(bundle.c.uuid, ondelete='SET NULL'),
     nullable=True,
   ),
-  Column('value', Text, nullable=True),
+  Column('value', Text, nullable=False),
   Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
   Index('worksheet_item_bundle_uuid_index', 'bundle_uuid'),
   sqlite_autoincrement=True,

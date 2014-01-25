@@ -123,3 +123,41 @@ class BundleClient(object):
       period = min(backoff*period, max_period)
       info = self.info(bundle_spec)
     return info['state']
+
+  #############################################################################
+  # Worksheet-related client methods follow!
+  #############################################################################
+
+  def new_worksheet(self, name):
+    '''
+    Create a new worksheet with the given name and return its uuid.
+    '''
+    raise NotImplementedError
+
+  def worksheet_info(self, worksheet_spec):
+    '''
+    worksheet_spec should be either a worksheet uuid, a unique prefix of a uuid,
+    or a unique worksheet name. Return an info dict for this worksheet.
+
+    This dict will have the following keys:
+      uuid: the worksheet uuid
+      name: the worksheet name
+      items: an ordered list of (bundle_info, value) pairs, where bundle_info
+             is either a bundle info dict, an empty dict (if orphaned), or None
+      last_item_id: the last database id of any item in the list
+    '''
+    raise NotImplementedError
+
+  def add_worksheet_item(self, worksheet_spec, bundle_spec):
+    '''
+    Add the bundle specified by the bundle_spec to the worksheet specified by
+    the worksheet_spec.
+    '''
+    raise NotImplementedError
+
+  def update_worksheet(worksheet_info, new_items):
+    '''
+    Take a worksheet info dict and a list of new (bundle_spec, value) pairs and
+    update the worksheet. Raise a UsageError if there was a concurrent update.
+    '''
+    raise NotImplementedError

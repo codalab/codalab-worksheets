@@ -15,14 +15,15 @@ The base class provides one method, install_dependencies, that may be useful
 when implementing the run method.
 '''
 import os
-import re
-import uuid
 
 from codalab.common import (
   precondition,
   UsageError,
 )
-from codalab.lib import path_util
+from codalab.lib import (
+  path_util,
+  spec_util,
+)
 from codalab.model.orm_object import ORMObject
 from codalab.objects.dependency import Dependency
 from codalab.objects.metadata import Metadata
@@ -30,8 +31,6 @@ from codalab.objects.metadata import Metadata
 
 class Bundle(ORMObject):
   COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state')
-  UUID_REGEX = re.compile('^0x[0-9a-f]{32}\Z')
-  UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}\Z')
 
   # Bundle subclasses should have the following class-level attributes:
   #   - BUNDLE_TYPE: a string bundle type
@@ -43,25 +42,13 @@ class Bundle(ORMObject):
   def construct(cls, *args, **kwargs):
     raise NotImplementedError
 
-  @staticmethod
-  def generate_uuid():
-    return '0x%s' % (uuid.uuid4().hex,)
-
-  @classmethod
-  def check_uuid(cls, uuid):
-    '''
-    Raise a PreconditionViolation if the uuid does not conform to its regex.
-    '''
-    message = 'uuids must match %s, was %s' % (cls.UUID_REGEX.pattern, uuid)
-    precondition(cls.UUID_REGEX.match(uuid), message)
-
   def validate(self):
     '''
     Check a number of basic conditions that would indicate serious errors if
     they do not hold. Subclasses may override this method for further
     validation, but they should always call the super's method.
     '''
-    self.check_uuid(self.uuid)
+    spec_util.check_uuid(self.uuid)
     abstract_init = 'init-ed abstract bundle: %s' % (self.__class__.__name__,)
     precondition(self.BUNDLE_TYPE, abstract_init)
     type_mismatch = 'Mismatch: %s vs %s' % (self.bundle_type, self.BUNDLE_TYPE)
@@ -84,7 +71,7 @@ class Bundle(ORMObject):
       precondition(metadata is not None, 'No metadata: %s' % (row,))
       precondition(dependencies is not None, 'No dependencies: %s' % (row,))
       if 'uuid' not in row:
-        row['uuid'] = self.generate_uuid()
+        row['uuid'] = spec_util.generate_uuid()
     super(Bundle, self).update_in_memory(row)
     if metadata is not None:
       self.metadata = Metadata(self.METADATA_SPECS, metadata)

@@ -25,6 +25,7 @@ from codalab.model.tables import (
   worksheet_item as cl_worksheet_item,
   db_metadata,
 )
+from codalab.objects.worksheet import Worksheet
 
 
 class BundleModel(object):
@@ -342,3 +343,48 @@ class BundleModel(object):
     with self.engine.begin() as connection:
       result = connection.execute(cl_worksheet.insert().values(worksheet_value))
       worksheet.id = result.lastrowid
+
+  def add_worksheet_item(self, worksheet_uuid, item):
+    '''
+    Appends a new item to the end of the given worksheet. The item should be
+    a (bundle_uuid, value) pair, where the bundle_uuid may be None and the
+    value must be a string.
+    '''
+    (bundle_uuid, value) = item
+    item_value = {
+      'worksheet_uuid': worksheet_uuid,
+      'bundle_uuid': bundle_uuid,
+      'value': value,
+    }
+    with self.engine.begin() as connection:
+      connection.execute(cl_worksheet_item.insert().values(item_value))
+
+  def update_worksheet(self, worksheet_uuid, last_item_id, length, new_items):
+    '''
+    Updates the worksheet with the given uuid. If there were exactly
+    `last_length` items with database id less than `last_id`, replaces them all
+    with the items in new_items. Does NOT affect items in this worksheet with
+    database id greater than last_id.
+
+    Does NOT affect items that were added to the worksheet in between the
+    time it was retrieved and it was updated.
+
+    If this worksheet were updated between the time it was retrieved and
+    updated, this method will raise a UsageError.
+    '''
+    clause = and_(
+      cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
+      cl_worksheet_item.c.id < last_item_id,
+    )
+    new_item_values = [{
+      'worksheet_uuid': worksheet_uuid,
+      'bundle_uuid': bundle_uuid,
+      'value': value,
+    } for (bundle_uuid, value) in new_items]
+    with self.engine.begin() as connection:
+      result = connection.execute(cl_worksheet_item.delete().where(clause))
+      message = 'Found extra items for worksheet %s' % (worksheet_uuid,)
+      precondition(result.rowcount <= length, message)
+      if result.rowcount < length:
+        raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
+      self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
