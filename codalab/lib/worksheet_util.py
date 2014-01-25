@@ -29,6 +29,8 @@ def request_new_items(worksheet_info):
     if bundle_info is None:
       template_lines.append(value)
     else:
+      if 'bundle_type' not in bundle_info:
+        template_lines.append('// The following bundle reference is broken:')
       template_lines.append('[%s]{%s}' % (value, bundle_info['uuid']))
   template = '\n'.join(template_lines)
   # Show the form to the user in their editor of choice and parse the result.

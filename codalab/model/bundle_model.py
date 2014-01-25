@@ -303,6 +303,9 @@ class BundleModel(object):
   #############################################################################
 
   def get_worksheet(self, uuid):
+    '''
+    Get a worksheet given its uuid.
+    '''
     worksheets = self.batch_get_worksheets(uuid=uuid)
     if not worksheets:
       raise UsageError('Could not find worksheet with uuid %s' % (uuid,))
@@ -310,7 +313,21 @@ class BundleModel(object):
       raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
     return worksheets[0]
 
+  def get_child_worksheets(self, bundle_uuid):
+    '''
+    Return a list of worksheets that depend on the given bundle.
+    '''
+    with self.engine.begin() as connection:
+      rows = connection.execute(cl_worksheet_item.select().where(
+        cl_worksheet_item.c.bundle_uuid == bundle_uuid
+      )).fetchall()
+    uuids = set(row.worksheet_uuid for row in rows)
+    return self.batch_get_worksheets(uuid=uuids)
+
   def batch_get_worksheets(self, **kwargs):
+    '''
+    Get a list of worksheets, all of which satisfy the clause given by kwargs.
+    '''
     clause = self.make_kwargs_clause(cl_worksheet, kwargs)
     with self.engine.begin() as connection:
       worksheet_rows = connection.execute(
