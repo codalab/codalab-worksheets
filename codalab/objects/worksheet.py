@@ -32,18 +32,18 @@ class Worksheet(ORMObject):
   def update_in_memory(self, row, strict=False):
     items = row.pop('items', None)
     if strict:
-      precondition(items is not None, 'No metadata: %s' % (row,))
+      precondition(items is not None, 'No items: %s' % (row,))
       item_ids = [item['id'] for item in items]
       message = 'Worksheet items were not sorted: %s' % (items,)
       precondition(item_ids == sorted(set(item_ids)), message)
       if 'uuid' not in row:
-        row['uuid'] = self.generate_uuid()
+        row['uuid'] = spec_util.generate_uuid()
     super(Worksheet, self).update_in_memory(row)
     if items is not None:
       self.items = [(item['bundle_uuid'], item['value']) for item in items]
       self.last_item_id = items[-1]['id'] if items else -1
   
-  def to_info_dict(self):
+  def get_info_dict(self):
     return {
       'uuid': self.uuid,
       'name': self.name,

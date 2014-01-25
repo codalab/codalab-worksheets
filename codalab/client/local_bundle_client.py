@@ -138,7 +138,7 @@ class LocalBundleClient(BundleClient):
   #############################################################################
 
   def new_worksheet(self, name):
-    worksheet = Worksheet({'name': name})
+    worksheet = Worksheet({'name': name, 'items': []})
     self.model.save_worksheet(worksheet)
     return worksheet.uuid
 
@@ -155,8 +155,13 @@ class LocalBundleClient(BundleClient):
     )
     bundles = self.model.batch_get_bundles(uuid=uuids)
     bundle_dict = {bundle.uuid: self.get_bundle_info(bundle) for bundle in bundles}
+    # If a bundle uuid is orphaned, we still have to return the uuid in a dict.
     result['items'] = [
-      (bundle_dict.get(bundle_uuid, {}) if bundle_uuid is not None else None, value)
+      (
+           None if bundle_uuid is None else
+           bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}),
+        value,
+      )
       for (bundle_uuid, value) in result['items']
     ]
     return result
@@ -179,7 +184,7 @@ class LocalBundleClient(BundleClient):
     # that were already in the worksheet will be referred to by uuid, so
     # get_spec_uuid will be an in-memory call for these. This hit is acceptable.
     canonical_items = [
-      (self.get_spec_uuid(bundle_spec), value)
+      (None if bundle_spec is None else self.get_spec_uuid(bundle_spec), value)
       for (bundle_spec, value) in new_items
     ]
     worksheet_uuid = worksheet_info['uuid']

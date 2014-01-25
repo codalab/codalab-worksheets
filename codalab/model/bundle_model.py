@@ -324,13 +324,13 @@ class BundleModel(object):
       )).fetchall()
     # Make a dictionary for each worksheet with both its main row and its items.
     worksheet_values = {row.uuid: dict(row) for row in worksheet_rows}
-    for worksheet_value in worksheet_value.itervalues():
-      worksheet_value['items'] = []
+    for value in worksheet_values.itervalues():
+      value['items'] = []
     for item_row in sorted(item_rows, key=lambda item: item.id):
       if item_row.worksheet_uuid not in worksheet_values:
         raise IntegrityError('Got item %s without worksheet' % (item_row,))
       worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
-    return Worksheet(worksheet_values)
+    return [Worksheet(value) for value in worksheet_values.itervalues()]
 
   def save_worksheet(self, worksheet):
     '''
@@ -374,7 +374,7 @@ class BundleModel(object):
     '''
     clause = and_(
       cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
-      cl_worksheet_item.c.id < last_item_id,
+      cl_worksheet_item.c.id <= last_item_id,
     )
     new_item_values = [{
       'worksheet_uuid': worksheet_uuid,

@@ -74,14 +74,9 @@ worksheet_item = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
-  # A worksheet row may OPTIONALLY include a bundle uuid.
-  Column(
-    'bundle_uuid',
-    String(63),
-    # When a bundle is deleted, we break worksheet items that link to it.
-    ForeignKey(bundle.c.uuid, ondelete='SET NULL'),
-    nullable=True,
-  ),
+  # A worksheet row may OPTIONALLY include a bundle_uuid. This column is a logical
+  # foreign key on bundle.uuid, but it may be broken if bundles are deleted.
+  Column('bundle_uuid', String(63), nullable=True),
   Column('value', Text, nullable=False),
   Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
   Index('worksheet_item_bundle_uuid_index', 'bundle_uuid'),
