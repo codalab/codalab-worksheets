@@ -1,3 +1,9 @@
+'''
+EnvModel is a lightweight model for storing variables that are persisted
+across multiple command-line client invocations in the same shell. In
+particular, we do NOT import sqlalchemy in this module, because that library
+is quite expensive to import.
+'''
 import os
 import sqlite3
 
