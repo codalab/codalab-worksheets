@@ -9,6 +9,7 @@ from sqlalchemy.exc import (
   OperationalError,
   ProgrammingError,
 )
+from sqlalchemy.sql.expression import true
 
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
@@ -82,7 +83,7 @@ class BundleModel(object):
     If a value is a list, set, or tuple, produce an IN clause on that column.
     If a value is a LikeQuery, produce a LIKE clause on that column.
     '''
-    clauses = [True]
+    clauses = [true()]
     for (key, value) in kwargs.iteritems():
       if isinstance(value, (list, set, tuple)):
         if not value:
