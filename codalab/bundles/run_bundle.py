@@ -17,7 +17,10 @@ from codalab.common import (
   State,
   UsageError,
 )
-import codalab.lib.path_util as path_util
+from codalab.lib import (
+  path_util,
+  spec_util,
+)
 
 
 class RunBundle(NamedBundle):
@@ -34,7 +37,7 @@ class RunBundle(NamedBundle):
       raise UsageError('%s is not a named input!' % (input,))
     if not isinstance(command, basestring):
       raise UsageError('%r is not a valid command!' % (command,))
-    uuid = cls.generate_uuid()
+    uuid = spec_util.generate_uuid()
     # Support anonymous run bundles with names based on their uuid.
     if not metadata['name']:
       metadata['name'] = 'run-%s' % (uuid[:cls.NAME_LENGTH],)

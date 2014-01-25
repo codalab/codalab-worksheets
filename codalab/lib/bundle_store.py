@@ -37,9 +37,9 @@ class BundleStore(object):
 
   def make_directories(self):
     '''
-    Create the root, data, and temp directories for this BundleStore.
+    Create the data, and temp directories for this BundleStore.
     '''
-    for path in (self.codalab_home, self.data, self.temp):
+    for path in (self.data, self.temp):
       path_util.make_directory(path)
 
   def get_location(self, data_hash, relative=False):

@@ -6,8 +6,10 @@ from codalab.common import (
   State,
   UsageError,
 )
-from codalab.lib import canonicalize
-from codalab.objects.bundle import Bundle
+from codalab.lib import (
+  canonicalize,
+  spec_util,
+)
  
 
 class CanonicalizeTest(unittest.TestCase):
@@ -37,7 +39,7 @@ class CanonicalizeTest(unittest.TestCase):
     model = MockBundleModel()
 
     # Test that get_spec_uuid is idempotent on generated uuids.
-    uuid = Bundle.generate_uuid()
+    uuid = spec_util.generate_uuid()
     self.assertEqual(uuid, canonicalize.get_spec_uuid(model, uuid))
     # Test that get_spec_uuid returns the uuid of a uniquely named bundle.
     self.assertEqual(test_uuid, canonicalize.get_spec_uuid(model, unique_name))

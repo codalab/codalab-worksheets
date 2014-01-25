@@ -25,6 +25,13 @@ class RemoteBundleClient(BundleClient):
     'info',
     'ls',
     'search',
+    # Worksheet-related commands all have JSON-able inputs and outputs.
+    'new_worksheet',
+    'rename_worksheet',
+    'list_worksheets',
+    'worksheet_info',
+    'add_worksheet_item',
+    'update_worksheet',
   )
   COMMANDS = CLIENT_COMMANDS + (
     'open_target',

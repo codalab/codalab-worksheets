@@ -10,6 +10,7 @@ from codalab.common import (
   State,
   UsageError,
 )
+from codalab.lib import spec_util
 
 
 class MakeBundle(NamedBundle):
@@ -18,7 +19,7 @@ class MakeBundle(NamedBundle):
 
   @classmethod
   def construct(cls, targets, metadata):
-    uuid = cls.generate_uuid()
+    uuid = spec_util.generate_uuid()
     # Check that targets does not include both keyed and anonymous targets.
     if len(targets) > 1 and '' in targets:
       raise UsageError('Must specify keys when packaging multiple targets!')

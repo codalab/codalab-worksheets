@@ -5,6 +5,10 @@ from sqlalchemy import (
   and_,
   select,
 )
+from sqlalchemy.exc import (
+  OperationalError,
+  ProgrammingError,
+)
 
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
@@ -15,10 +19,13 @@ from codalab.common import (
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
   bundle as cl_bundle,
+  bundle_dependency as cl_bundle_dependency,
   bundle_metadata as cl_bundle_metadata,
-  dependency as cl_dependency,
+  worksheet as cl_worksheet,
+  worksheet_item as cl_worksheet_item,
   db_metadata,
 )
+from codalab.objects.worksheet import Worksheet
 
 
 class BundleModel(object):
@@ -41,6 +48,15 @@ class BundleModel(object):
     '''
     Create all Codalab bundle tables if they do not already exist.
     '''
+    # TODO(skishore): This hack is a mini-migration that should stay here until
+    # the bundle dependency table has been renamed in all CodaLab deployments.
+    # After that point, it should be deleted.
+    try:
+      with self.engine.begin() as connection:
+        connection.execute('ALTER TABLE dependency RENAME TO bundle_dependency')
+    except (OperationalError, ProgrammingError):
+      # sqlite throws an OperationalError, MySQL a ProgrammingError. Ugh.
+      pass
     db_metadata.create_all(self.engine)
 
   def do_multirow_insert(self, connection, table, values):
@@ -57,9 +73,9 @@ class BundleModel(object):
     if values:
       connection.execute(table.insert(), values)
 
-  def make_bundle_clause(self, kwargs):
+  def make_kwargs_clause(self, table, kwargs):
     '''
-    Return a list of bundles given a dict mapping cl_bundle columns to values.
+    Return a list of bundles given a dict mapping table columns to values.
     If a value is a list, set, or tuple, produce an IN clause on that column.
     If a value is a LikeQuery, produce a LIKE clause on that column.
     '''
@@ -68,11 +84,11 @@ class BundleModel(object):
       if isinstance(value, (list, set, tuple)):
         if not value:
           return False
-        clauses.append(getattr(cl_bundle.c, key).in_(value))
+        clauses.append(getattr(table.c, key).in_(value))
       elif isinstance(value, LikeQuery):
-        clauses.append(getattr(cl_bundle.c, key).like(value))
+        clauses.append(getattr(table.c, key).like(value))
       else:
-        clauses.append(getattr(cl_bundle.c, key) == value)
+        clauses.append(getattr(table.c, key) == value)
     return and_(*clauses)
 
   def get_bundle(self, uuid):
@@ -92,9 +108,9 @@ class BundleModel(object):
     '''
     with self.engine.begin() as connection:
       rows = connection.execute(select([
-        cl_dependency.c.parent_uuid
+        cl_bundle_dependency.c.parent_uuid
       ]).where(
-        cl_dependency.c.child_uuid == uuid
+        cl_bundle_dependency.c.child_uuid == uuid
       )).fetchall()
     uuids = set([row.parent_uuid for row in rows])
     return self.batch_get_bundles(uuid=uuids)
@@ -108,12 +124,12 @@ class BundleModel(object):
     calls to delete_bundle_tree.
     '''
     if isinstance(uuid, (list, set, tuple)):
-      clause = cl_dependency.c.parent_uuid.in_(uuid)
+      clause = cl_bundle_dependency.c.parent_uuid.in_(uuid)
     else:
-      clause = (cl_dependency.c.parent_uuid == uuid)
+      clause = (cl_bundle_dependency.c.parent_uuid == uuid)
     with self.engine.begin() as connection:
       rows = connection.execute(select([
-        cl_dependency.c.child_uuid
+        cl_bundle_dependency.c.child_uuid
       ]).where(clause)).fetchall()
     uuids = set([row.child_uuid for row in rows])
     return self.batch_get_bundles(uuid=uuids)
@@ -140,33 +156,33 @@ class BundleModel(object):
     '''
     Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
     '''
-    clause = self.make_bundle_clause(kwargs)
+    clause = self.make_kwargs_clause(cl_bundle, kwargs)
     with self.engine.begin() as connection:
       bundle_rows = connection.execute(
         cl_bundle.select().where(clause)
       ).fetchall()
-      uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
-      if not uuids:
+      if not bundle_rows:
         return []
+      uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
+      dependency_rows = connection.execute(cl_bundle_dependency.select().where(
+        cl_bundle_dependency.c.child_uuid.in_(uuids)
+      )).fetchall()
       metadata_rows = connection.execute(cl_bundle_metadata.select().where(
         cl_bundle_metadata.c.bundle_uuid.in_(uuids)
-      )).fetchall()
-      dependency_rows = connection.execute(cl_dependency.select().where(
-        cl_dependency.c.child_uuid.in_(uuids)
       )).fetchall()
     # Make a dictionary for each bundle with both data and metadata.
     bundle_values = {row.uuid: dict(row) for row in bundle_rows}
     for bundle_value in bundle_values.itervalues():
-      bundle_value['metadata'] = []
       bundle_value['dependencies'] = []
-    for metadata_row in metadata_rows:
-      if metadata_row.bundle_uuid not in bundle_values:
-        raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
-      bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
+      bundle_value['metadata'] = []
     for dep_row in dependency_rows:
       if dep_row.child_uuid not in bundle_values:
         raise IntegrityError('Got dependency %s without bundle' % (dep_row,))
       bundle_values[dep_row.child_uuid]['dependencies'].append(dep_row)
+    for metadata_row in metadata_rows:
+      if metadata_row.bundle_uuid not in bundle_values:
+        raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
+      bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
     # Construct and validate all of the retrieved bundles.
     sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
     bundles = [
@@ -194,7 +210,7 @@ class BundleModel(object):
       bundle_ids = set(bundle.id for bundle in bundles)
       clause = cl_bundle.c.id.in_(bundle_ids)
       if condition:
-        clause = and_(clause, self.make_bundle_clause(condition))
+        clause = and_(clause, self.make_kwargs_clause(cl_bundle, condition))
       with self.engine.begin() as connection:
         result = connection.execute(
           cl_bundle.update().where(clause).values(update)
@@ -212,12 +228,12 @@ class BundleModel(object):
     '''
     bundle.validate()
     bundle_value = bundle.to_dict()
-    metadata_values = bundle_value.pop('metadata')
     dependency_values = bundle_value.pop('dependencies')
+    metadata_values = bundle_value.pop('metadata')
     with self.engine.begin() as connection:
       result = connection.execute(cl_bundle.insert().values(bundle_value))
+      self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
       self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-      self.do_multirow_insert(connection, cl_dependency, dependency_values)
       bundle.id = result.lastrowid
 
   def update_bundle(self, bundle, update):
@@ -274,10 +290,122 @@ class BundleModel(object):
     with self.engine.begin() as connection:
       # We must delete bundles rows in the opposite order that we create them
       # to avoid foreign-key constraint failures.
-      connection.execute(cl_dependency.delete().where(
-        cl_dependency.c.child_uuid.in_(uuids)
-      ))
       connection.execute(cl_bundle_metadata.delete().where(
         cl_bundle_metadata.c.bundle_uuid.in_(uuids)
       ))
+      connection.execute(cl_bundle_dependency.delete().where(
+        cl_bundle_dependency.c.child_uuid.in_(uuids)
+      ))
       connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
+
+  #############################################################################
+  # Worksheet-related model methods follow!
+  #############################################################################
+
+  def get_worksheet(self, uuid):
+    worksheets = self.batch_get_worksheets(uuid=uuid)
+    if not worksheets:
+      raise UsageError('Could not find worksheet with uuid %s' % (uuid,))
+    elif len(worksheets) > 1:
+      raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
+    return worksheets[0]
+
+  def batch_get_worksheets(self, **kwargs):
+    clause = self.make_kwargs_clause(cl_worksheet, kwargs)
+    with self.engine.begin() as connection:
+      worksheet_rows = connection.execute(
+        cl_worksheet.select().where(clause)
+      ).fetchall()
+      if not worksheet_rows:
+        return []
+      uuids = set(row.uuid for row in worksheet_rows)
+      item_rows = connection.execute(cl_worksheet_item.select().where(
+        cl_worksheet_item.c.worksheet_uuid.in_(uuids)
+      )).fetchall()
+    # Make a dictionary for each worksheet with both its main row and its items.
+    worksheet_values = {row.uuid: dict(row) for row in worksheet_rows}
+    for value in worksheet_values.itervalues():
+      value['items'] = []
+    for item_row in sorted(item_rows, key=lambda item: item.id):
+      if item_row.worksheet_uuid not in worksheet_values:
+        raise IntegrityError('Got item %s without worksheet' % (item_row,))
+      worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
+    return [Worksheet(value) for value in worksheet_values.itervalues()]
+
+  def list_worksheets(self):
+    '''
+    Return a list of row dicts, one per worksheet. These dicts do NOT contain
+    worksheet items; this method is meant to make it easy for a user to see
+    the currently existing worksheets.
+    '''
+    with self.engine.begin() as connection:
+      rows = connection.execute(cl_worksheet.select()).fetchall()
+    return [dict(row) for row in sorted(rows, key=lambda row: row.id)]
+
+  def save_worksheet(self, worksheet):
+    '''
+    Save the given (empty) worksheet to the database. On success, set its id.
+    '''
+    message = 'save_worksheet called with non-empty worksheet: %s' % (worksheet,)
+    precondition(not worksheet.items, message)
+    worksheet.validate()
+    worksheet_value = worksheet.to_dict()
+    with self.engine.begin() as connection:
+      result = connection.execute(cl_worksheet.insert().values(worksheet_value))
+      worksheet.id = result.lastrowid
+
+  def rename_worksheet(self, worksheet, name):
+    '''
+    Update the given worksheet's name.
+    '''
+    worksheet.name = name
+    worksheet.validate()
+    with self.engine.begin() as connection:
+      connection.execute(cl_worksheet.update().where(
+        cl_worksheet.c.uuid == worksheet.uuid
+      ).values({'name': name}))
+
+  def add_worksheet_item(self, worksheet_uuid, item):
+    '''
+    Appends a new item to the end of the given worksheet. The item should be
+    a (bundle_uuid, value) pair, where the bundle_uuid may be None and the
+    value must be a string.
+    '''
+    (bundle_uuid, value) = item
+    item_value = {
+      'worksheet_uuid': worksheet_uuid,
+      'bundle_uuid': bundle_uuid,
+      'value': value,
+    }
+    with self.engine.begin() as connection:
+      connection.execute(cl_worksheet_item.insert().values(item_value))
+
+  def update_worksheet(self, worksheet_uuid, last_item_id, length, new_items):
+    '''
+    Updates the worksheet with the given uuid. If there were exactly
+    `last_length` items with database id less than `last_id`, replaces them all
+    with the items in new_items. Does NOT affect items in this worksheet with
+    database id greater than last_id.
+
+    Does NOT affect items that were added to the worksheet in between the
+    time it was retrieved and it was updated.
+
+    If this worksheet were updated between the time it was retrieved and
+    updated, this method will raise a UsageError.
+    '''
+    clause = and_(
+      cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
+      cl_worksheet_item.c.id <= last_item_id,
+    )
+    new_item_values = [{
+      'worksheet_uuid': worksheet_uuid,
+      'bundle_uuid': bundle_uuid,
+      'value': value,
+    } for (bundle_uuid, value) in new_items]
+    with self.engine.begin() as connection:
+      result = connection.execute(cl_worksheet_item.delete().where(clause))
+      message = 'Found extra items for worksheet %s' % (worksheet_uuid,)
+      precondition(result.rowcount <= length, message)
+      if result.rowcount < length:
+        raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
+      self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)

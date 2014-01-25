@@ -13,9 +13,10 @@ from codalab.common import (
   State,
   UsageError,
 )
-from codalab.objects.bundle import Bundle
-from codalab.bundles.uploaded_bundle import UploadedBundle
-from codalab.lib import path_util
+from codalab.lib import (
+  path_util,
+  spec_util,
+)
 from codalab.model.util import LikeQuery
 
 
@@ -25,19 +26,15 @@ def get_spec_uuid(model, bundle_spec):
   '''
   if not bundle_spec:
     raise UsageError('Tried to expand empty bundle_spec!')
-  if Bundle.UUID_REGEX.match(bundle_spec):
+  if spec_util.UUID_REGEX.match(bundle_spec):
     return bundle_spec
-  elif Bundle.UUID_PREFIX_REGEX.match(bundle_spec):
+  elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
     bundles = model.batch_get_bundles(uuid=LikeQuery(bundle_spec + '%'))
     message = "uuid starting with '%s'" % (bundle_spec,)
-  elif UploadedBundle.NAME_REGEX.match(bundle_spec):
+  else:
+    spec_util.check_name(bundle_spec)
     bundles = model.search_bundles(name=bundle_spec)
     message = "name '%s'" % (bundle_spec,)
-  else:
-    raise UsageError(
-      'Bundle names must match %s, was %s' %
-      (UploadedBundle.NAME_REGEX.pattern, bundle_spec)
-    )
   if not bundles:
     raise UsageError('No bundle found with %s' % (message,))
   elif len(bundles) > 1:
@@ -67,3 +64,28 @@ def get_target_path(bundle_store, model, target):
   result = path_util.TargetPath(final_path)
   result.target = target
   return result
+
+
+def get_worksheet_uuid(model, worksheet_spec):
+  '''
+  Resolve a string worksheet_spec to a unique worksheet uuid.
+  '''
+  if not worksheet_spec:
+    raise UsageError('Tried to expand empty worksheet_spec!')
+  if spec_util.UUID_REGEX.match(worksheet_spec):
+    return worksheet_spec
+  elif spec_util.UUID_PREFIX_REGEX.match(worksheet_spec):
+    worksheets = model.batch_get_worksheets(uuid=LikeQuery(worksheet_spec + '%'))
+    message = "uuid starting with '%s'" % (worksheet_spec,)
+  else:
+    spec_util.check_name(worksheet_spec)
+    worksheets = model.batch_get_worksheets(name=worksheet_spec)
+    message = "name '%s'" % (worksheet_spec,)
+  if not worksheets:
+    raise UsageError('No worksheet found with %s' % (message,))
+  elif len(worksheets) > 1:
+    raise UsageError(
+      'Found multiple worksheets with %s:%s' %
+      (message, ''.join('\n  %s' % (worksheet,) for worksheet in worksheets))
+    )
+  return worksheets[0].uuid

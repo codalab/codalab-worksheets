@@ -20,7 +20,6 @@ include any server configuration.
 See client_config.json and server_config.json for examples.
 '''
 import json
-import os
 
 from codalab.common import UsageError
 
@@ -42,7 +41,10 @@ class ConfigParser(object):
 
   @cached
   def home(self):
-    return os.path.normpath(os.path.expanduser(self.config['home']))
+    from codalab.lib import path_util
+    result = path_util.normalize(self.config['home'])
+    path_util.make_directory(result)
+    return result
 
   @cached
   def bundle_store(self):
@@ -54,8 +56,9 @@ class ConfigParser(object):
   def cli(self):
     verbose = self.config['cli']['verbose']
     client = self.client()
+    env_model = self.env_model()
     from codalab.lib.bundle_cli import BundleCLI
-    return BundleCLI(client, verbose)
+    return BundleCLI(client, env_model, verbose)
 
   @cached
   def client(self):
@@ -71,6 +74,12 @@ class ConfigParser(object):
       return RemoteBundleClient(address)
     else:
       raise UsageError('Unexpected client class: %s' % (client_class,))
+
+  @cached
+  def env_model(self):
+    home = self.home()
+    from codalab.model.env_model import EnvModel
+    return EnvModel(home)
 
   @cached
   def model(self):

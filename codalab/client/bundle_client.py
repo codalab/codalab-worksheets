@@ -4,13 +4,17 @@ the CodaLab bundle system.
 
 There are three categories of BundleClient commands:
   - Commands that create and edit bundles: upload, make, run and update.
-  - Commands for browsing bundles: info, ls, cat, grep, and search.
+  - Commands for browsing bundles: info, ls, cat, search, and wait.
   - Various utility commands for pulling bundles back out of the system.
 
 There are a couple of implementations of this class:
   - LocalBundleClient - interacts directly with a BundleStore and BundleModel.
   - RemoteBundleClient - shells out to a BundleRPCServer to implement its API.
 '''
+# TODO: We should probably implement grep at some point. grep will take a
+# target (like the target passed to ls or cat) and a list of command-line args.
+# The RemoteBundleClient implementation of grep will have to use the FileServer
+# file-handle API to stream the results back.
 import time
 
 from codalab.common import State
@@ -60,7 +64,7 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  # Commands for browsing bundles: info, ls, cat, grep, and search.
+  # Commands for browsing bundles: info, ls, cat, search, and wait.
 
   def info(self, bundle_spec, parents=False, children=False):
     '''
@@ -96,28 +100,11 @@ class BundleClient(object):
     '''
     raise NotImplementedError
 
-  def grep(self, target, pattern):
-    '''
-    Grep the contents of the target bundle, directory, or file for the pattern.
-    '''
-    raise NotImplementedError
-
   def search(self, query=None):
     '''
     Run a search on bundle metadata and return data for all bundles that match.
     The data for each bundle is a dict with the same keys as a dict from info.
     '''
-    raise NotImplementedError
-
-  # Various utility commands for pulling bundles back out of the system.
-
-  def download(self, uuid, path):
-    '''
-    Download the contents of the given bundle to the given local path.
-    '''
-    # TODO(skishore): What are we going to do about dependencies here?
-    # We should probably realize them. This isn't too bad, because derived
-    # bundles will not include their dependencies in their final value.
     raise NotImplementedError
 
   def wait(self, bundle_spec):
@@ -136,3 +123,49 @@ class BundleClient(object):
       period = min(backoff*period, max_period)
       info = self.info(bundle_spec)
     return info['state']
+
+  #############################################################################
+  # Worksheet-related client methods follow!
+  #############################################################################
+
+  def new_worksheet(self, name):
+    '''
+    Create a new worksheet with the given name and return its uuid.
+    '''
+    raise NotImplementedError
+
+  def list_worksheets(self):
+    '''
+    Return a list of worksheet row dicts. Does NOT include worksheet items.
+    '''
+    return self.model.list_worksheets()
+
+  def worksheet_info(self, worksheet_spec):
+    '''
+    worksheet_spec should be either a worksheet uuid, a unique prefix of a uuid,
+    or a unique worksheet name. Return an info dict for this worksheet.
+
+    This dict will have the following keys:
+      uuid: the worksheet uuid
+      name: the worksheet name
+      items: an list of (bundle_info, value) pairs, where bundle_info is either:
+              - a bundle info dict
+              - a dict mapping 'uuid' to a bundle_uuid, if the uuid is orphaned
+              - None (for non-bundle rows)
+      last_item_id: the last database id of any item in the list
+    '''
+    raise NotImplementedError
+
+  def add_worksheet_item(self, worksheet_spec, bundle_spec):
+    '''
+    Add the bundle specified by the bundle_spec to the worksheet specified by
+    the worksheet_spec.
+    '''
+    raise NotImplementedError
+
+  def update_worksheet(worksheet_info, new_items):
+    '''
+    Take a worksheet info dict and a list of new (bundle_spec, value) pairs and
+    update the worksheet. Raise a UsageError if there was a concurrent update.
+    '''
+    raise NotImplementedError

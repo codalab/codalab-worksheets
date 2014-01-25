@@ -45,13 +45,40 @@ bundle_metadata = Table(
   sqlite_autoincrement=True,
 )
 
-dependency = Table(
-  'dependency',
+bundle_dependency = Table(
+  'bundle_dependency',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('child_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
   Column('child_path', Text, nullable=False),
   Column('parent_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
   Column('parent_path', Text, nullable=False),
+  sqlite_autoincrement=True,
+)
+
+# The worksheet table does not have many columns now, but it will eventually
+# include columns for owner, group, permissions, etc.
+worksheet = Table(
+  'worksheet',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('uuid', String(63), nullable=False),
+  Column('name', String(255), nullable=False),
+  UniqueConstraint('uuid', name='uix_1'),
+  Index('worksheet_name_index', 'name'),
+  sqlite_autoincrement=True,
+)
+
+worksheet_item = Table(
+  'worksheet_item',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
+  # A worksheet row may OPTIONALLY include a bundle_uuid. This column is a logical
+  # foreign key on bundle.uuid, but it may be broken if bundles are deleted.
+  Column('bundle_uuid', String(63), nullable=True),
+  Column('value', Text, nullable=False),
+  Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
+  Index('worksheet_item_bundle_uuid_index', 'bundle_uuid'),
   sqlite_autoincrement=True,
 )
