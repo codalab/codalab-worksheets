@@ -80,7 +80,7 @@ class LocalBundleClient(BundleClient):
     if illegal_keys:
       raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-  def upload(self, bundle_type, path, metadata):
+  def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
     message = 'Invalid upload bundle_type: %s' % (bundle_type,)
     precondition(bundle_type in UPLOADED_TYPES, message)
     bundle_subclass = get_bundle_subclass(bundle_type)
@@ -90,9 +90,11 @@ class LocalBundleClient(BundleClient):
     metadata.update(bundle_store_metadata)
     bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
     self.model.save_bundle(bundle)
+    if worksheet_uuid:
+      self.add_worksheet_item(worksheet_uuid, bundle.uuid)
     return bundle.uuid
 
-  def make(self, targets, metadata):
+  def make(self, targets, metadata, worksheet_uuid=None):
     bundle_subclass = get_bundle_subclass('make')
     self.validate_user_metadata(bundle_subclass, metadata)
     targets = {
@@ -101,9 +103,11 @@ class LocalBundleClient(BundleClient):
     }
     bundle = bundle_subclass.construct(targets, metadata)
     self.model.save_bundle(bundle)
+    if worksheet_uuid:
+      self.add_worksheet_item(worksheet_uuid, bundle.uuid)
     return bundle.uuid
 
-  def run(self, program_target, input_target, command, metadata):
+  def run(self, program_target, input_target, command, metadata, worksheet_uuid=None):
     program_target = self.get_bundle_target(program_target)
     input_target = self.get_bundle_target(input_target)
     bundle_subclass = get_bundle_subclass('run')
@@ -111,6 +115,8 @@ class LocalBundleClient(BundleClient):
     bundle = bundle_subclass.construct(
       program_target, input_target, command, metadata)
     self.model.save_bundle(bundle)
+    if worksheet_uuid:
+      self.add_worksheet_item(worksheet_uuid, bundle.uuid)
     return bundle.uuid
 
   def edit(self, uuid, metadata):

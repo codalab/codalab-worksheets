@@ -196,6 +196,7 @@ class BundleCLI(object):
         command, (max_length + indent - len(command))*' ', command, command)
 
   def do_upload_command(self, argv, parser):
+    worksheet_uuid = self.env_model.get_current_worksheet()
     help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
     parser.add_argument('bundle_type', help=help_text)
     parser.add_argument('path', help='path of the directory to upload')
@@ -219,9 +220,10 @@ class BundleCLI(object):
     # Type-check the bundle metadata BEFORE uploading the bundle data.
     # This optimization will avoid file copies on failed bundle creations.
     bundle_subclass.construct(data_hash='', metadata=metadata).validate()
-    print self.client.upload(args.bundle_type, args.path, metadata)
+    print self.client.upload(args.bundle_type, args.path, metadata, worksheet_uuid)
 
   def do_make_command(self, argv, parser):
+    worksheet_uuid = self.env_model.get_current_worksheet()
     help = '[<key>:][<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
     parser.add_argument('target', help=help, nargs='+')
     metadata_util.add_arguments(MakeBundle, set(), parser)
@@ -242,9 +244,10 @@ class BundleCLI(object):
           raise UsageError('Must specify keys when packaging multiple targets!')
       targets[key] = self.parse_target(target)
     metadata = metadata_util.request_missing_data(MakeBundle, args)
-    print self.client.make(targets, metadata)
+    print self.client.make(targets, metadata, worksheet_uuid)
 
   def do_run_command(self, argv, parser):
+    worksheet_uuid = self.env_model.get_current_worksheet()
     help = '[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
     parser.add_argument('program_target', help=help)
     parser.add_argument('input_target', help=help)
@@ -258,7 +261,7 @@ class BundleCLI(object):
     program_target = self.parse_target(args.program_target)
     input_target = self.parse_target(args.input_target)
     metadata = metadata_util.request_missing_data(RunBundle, args)
-    print self.client.run(program_target, input_target, args.command, metadata)
+    print self.client.run(program_target, input_target, args.command, metadata, worksheet_uuid)
 
   def do_edit_command(self, argv, parser):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')

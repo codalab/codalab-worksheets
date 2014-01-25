@@ -33,7 +33,7 @@ class BundleRPCServer(FileServer):
     for command in self.SERVER_COMMANDS:
       self.register_function(getattr(self, command), command)
 
-  def upload_zip(self, bundle_type, file_uuid, metadata):
+  def upload_zip(self, bundle_type, file_uuid, metadata, worksheet_uuid=None):
     '''
     Unzip the zip in the temp file identified by the given file uuid and then
     upload the unzipped directory. Return the new bundle's id.
@@ -41,7 +41,7 @@ class BundleRPCServer(FileServer):
     zip_path = self.temp_file_paths.pop(file_uuid, None)
     precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
     path = zip_util.unzip(zip_path)
-    return self.client.upload(bundle_type, path, metadata)
+    return self.client.upload(bundle_type, path, metadata, worksheet_uuid)
 
   def open_target(self, target):
     '''
