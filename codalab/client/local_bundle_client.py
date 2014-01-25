@@ -52,6 +52,23 @@ class LocalBundleClient(BundleClient):
   def get_worksheet_uuid(self, worksheet_spec):
     return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
 
+  def expand_worksheet_item(self, item):
+    (bundle_spec, value) = item
+    if bundle_spec is None:
+      return (None, value or '')
+    try:
+      bundle_uuid = self.get_spec_uuid(bundle_spec)
+    except UsageError, e:
+      return (bundle_spec, str(e) if value is None else value)
+    if bundle_uuid != bundle_spec and value is None:
+      # The user specified a bundle for the first time without help text.
+      # Produce some auto-generated help text here.
+      bundle = self.model.get_bundle(bundle_uuid)
+      value = bundle_spec
+      if getattr(bundle.metadata, 'description', None):
+          value = '%s: %s' % (value, bundle.metadata.description)
+    return (bundle_uuid, value or '')
+
   def validate_user_metadata(self, bundle_subclass, metadata):
     '''
     Check that the user did not supply values for any auto-generated metadata.
@@ -185,21 +202,11 @@ class LocalBundleClient(BundleClient):
 
   def update_worksheet(self, worksheet_info, new_items):
     # Convert (bundle_spec, value) pairs into canonical (bundle_uuid, value) pairs.
-    # This step could make O(n) database calls! However, it will only hit the
+    # This step could take O(n) database calls! However, it will only hit the
     # database for each bundle the user has newly specified by name - bundles
     # that were already in the worksheet will be referred to by uuid, so
     # get_spec_uuid will be an in-memory call for these. This hit is acceptable.
-    canonical_items = []
-    for (bundle_spec, value) in new_items:
-      bundle_uuid = None if bundle_spec is None else self.get_spec_uuid(bundle_spec)
-      if bundle_uuid and value is None:
-        # The user has specified a new bundle but has not given it any help text.
-        # Produce some auto-generated help text here.
-        bundle = self.model.get_bundle(bundle_uuid)
-        value = bundle_spec
-        if getattr(bundle.metadata, 'description', None):
-          value = '%s: %s' % (value, bundle.metadata.description)
-      canonical_items.append((bundle_uuid, value or ''))
+    canonical_items = [self.expand_worksheet_item(item) for item in new_items]
     worksheet_uuid = worksheet_info['uuid']
     last_item_id = worksheet_info['last_item_id']
     length = len(worksheet_info['items'])
