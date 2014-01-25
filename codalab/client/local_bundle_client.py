@@ -109,6 +109,12 @@ class LocalBundleClient(BundleClient):
         bundle_spec,
         '\n  '.join(str(child) for child in children),
       ))
+    child_worksheets = self.model.get_child_worksheets(uuid)
+    if child_worksheets and not force:
+      raise UsageError('Worksheets depend on %s:\n  %s' % (
+        bundle_spec,
+        '\n  '.join(str(child) for child in child_worksheets),
+      ))
     self.model.delete_bundle_tree([uuid], force=force)
 
   def info(self, bundle_spec, parents=False, children=False):
