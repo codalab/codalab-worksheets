@@ -78,8 +78,9 @@ class BundleCLI(object):
     'rework',
   )
 
-  def __init__(self, client, verbose):
+  def __init__(self, client, env_model, verbose):
     self.client = client
+    self.env_model = env_model
     self.verbose = verbose
 
   def exit(self, message, error_code=1):
@@ -102,6 +103,22 @@ class BundleCLI(object):
 
   def parse_target(self, target):
     return tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
+
+  def print_table(self, columns, row_dicts):
+    '''
+    Pretty-print a list of columns from each row in the given list of dicts.
+    '''
+    rows = list(itertools.chain([columns], (
+      [row_dict.get(col, '') for col in columns] for row_dict in row_dicts
+    )))
+    lengths = [max(len(value) for value in col) for col in zip(*rows)]
+    for (i, row) in enumerate(rows):
+      row_strs = []
+      for (value, length) in zip(row, lengths):
+        row_strs.append(value + (length - len(value))*' ')
+      print '  '.join(row_strs)
+      if i == 0:
+        print (sum(lengths) + 2*(len(columns) - 1))*'-'
 
   def size_str(self, size):
     for unit in ('bytes', 'KB', 'MB', 'GB'):
@@ -249,18 +266,11 @@ class BundleCLI(object):
     bundle_info_list = self.client.search()
     if bundle_info_list:
       columns = ('uuid', 'name', 'bundle_type', 'state')
-      rows = list(itertools.chain([columns], (
-        [info.get(col, info['metadata'].get(col, '')) for col in columns]
+      bundle_dicts = [
+        {col: info.get(col, info['metadata'].get(col, '')) for col in columns}
         for info in bundle_info_list
-      )))
-      lengths = [max(len(value) for value in col) for col in zip(*rows)]
-      for (i, row) in enumerate(rows):
-        row_strs = []
-        for (value, length) in zip(row, lengths):
-          row_strs.append(value + (length - len(value))*' ')
-        print '  '.join(row_strs)
-        if i == 0:
-          print (sum(lengths) + 2*(len(columns) - 1))*'-'
+      ]
+      self.print_table(columns, bundle_dicts)
 
   def do_info_command(self, argv, parser):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
@@ -378,7 +388,9 @@ class BundleCLI(object):
   def do_new_command(self, argv, parser):
     parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
     args = parser.parse_args(argv)
-    print self.client.new_worksheet(args.name)
+    uuid = self.client.new_worksheet(args.name)
+    self.env_model.set_current_worksheet(uuid, args.name)
+    print 'Switched to worksheet %s.' % (args.name,)
 
   def do_add_command(self, argv, parser):
     parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
@@ -391,10 +403,33 @@ class BundleCLI(object):
     self.client.add_worksheet_item(args.worksheet_spec, args.bundle_spec)
 
   def do_work_command(self, argv, parser):
-    parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
+    parser.add_argument(
+      'worksheet_spec',
+      help='identifier: [<uuid>|<name>]',
+      nargs='?',
+    )
+    parser.add_argument(
+      '-x', '--exit',
+      action='store_true',
+      help='Leave the current worksheet.',
+    )
     args = parser.parse_args(argv)
-    info = self.client.worksheet_info(args.worksheet_spec)
-    print 'Worksheet(uuid=%r, name=%r)' % (info['uuid'], info['name'])
+    if args.worksheet_spec:
+      info = self.client.worksheet_info(args.worksheet_spec)
+      self.env_model.set_current_worksheet(info['uuid'], args.worksheet_spec)
+      print 'Switched to worksheet %s.' % (args.worksheet_spec,)
+    elif args.exit:
+      self.env_model.clear_current_worksheet()
+    else:
+      (worksheet_uuid, worksheet_spec) = self.env_model.get_current_worksheet()
+      worksheet_dicts = self.client.list_worksheets()
+      if worksheet_uuid:
+        print 'Currently on worksheet %s. Use `cl work -x` to leave.' % (worksheet_spec,)
+      else:
+        print 'Not on any worksheet. Use `cl new` or `cl work` to join one.'
+      if worksheet_dicts:
+        print ''
+        self.print_table(('uuid', 'name'), worksheet_dicts)
 
   def do_rework_command(self, argv, parser):
     parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')

@@ -4,7 +4,7 @@ the CodaLab bundle system.
 
 There are three categories of BundleClient commands:
   - Commands that create and edit bundles: upload, make, run and update.
-  - Commands for browsing bundles: info, ls, cat, grep, and search.
+  - Commands for browsing bundles: info, ls, cat, search, and wait.
   - Various utility commands for pulling bundles back out of the system.
 
 There are a couple of implementations of this class:
@@ -133,6 +133,12 @@ class BundleClient(object):
     Create a new worksheet with the given name and return its uuid.
     '''
     raise NotImplementedError
+
+  def list_worksheets(self):
+    '''
+    Return a list of worksheet row dicts. Does NOT include worksheet items.
+    '''
+    return self.model.list_worksheets()
 
   def worksheet_info(self, worksheet_spec):
     '''

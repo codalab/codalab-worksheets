@@ -332,6 +332,16 @@ class BundleModel(object):
       worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
     return [Worksheet(value) for value in worksheet_values.itervalues()]
 
+  def list_worksheets(self):
+    '''
+    Return a list of row dicts, one per worksheet. These dicts do NOT contain
+    worksheet items; this method is meant to make it easy for a user to see
+    the currently existing worksheets.
+    '''
+    with self.engine.begin() as connection:
+      rows = connection.execute(cl_worksheet.select()).fetchall()
+    return [dict(row) for row in sorted(rows, key=lambda row: row.id)]
+
   def save_worksheet(self, worksheet):
     '''
     Save the given (empty) worksheet to the database. On success, set its id.
