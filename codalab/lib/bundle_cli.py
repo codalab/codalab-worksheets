@@ -124,8 +124,15 @@ class BundleCLI(object):
           result.append(bundle_info)
     return result
 
-  def parse_target(self, target):
-    return tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
+  def parse_target(self, target, canonicalize=True):
+    result = tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
+    if canonicalize:
+      # If canonicalize is True, we should immediately invoke the bundle client
+      # to fully qualify the target's bundle_spec into a uuid.
+      (bundle_spec, path) = result
+      info = self.client.info(bundle_spec)
+      return (info['uuid'], path)
+    return result
 
   def print_table(self, columns, row_dicts):
     '''
@@ -251,7 +258,7 @@ class BundleCLI(object):
           raise UsageError('Duplicate key: %s' % (key,))
         else:
           raise UsageError('Must specify keys when packaging multiple targets!')
-      targets[key] = self.parse_target(target)
+      targets[key] = self.parse_target(target, canonicalize=True)
     metadata = metadata_util.request_missing_data(MakeBundle, args)
     print self.client.make(targets, metadata, worksheet_uuid)
 
@@ -267,8 +274,8 @@ class BundleCLI(object):
     metadata_util.add_arguments(RunBundle, set(), parser)
     metadata_util.add_auto_argument(parser)
     args = parser.parse_args(argv)
-    program_target = self.parse_target(args.program_target)
-    input_target = self.parse_target(args.input_target)
+    program_target = self.parse_target(args.program_target, canonicalize=True)
+    input_target = self.parse_target(args.input_target, canonicalize=True)
     metadata = metadata_util.request_missing_data(RunBundle, args)
     print self.client.run(program_target, input_target, args.command, metadata, worksheet_uuid)
 

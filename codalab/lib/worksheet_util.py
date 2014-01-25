@@ -50,7 +50,7 @@ def request_new_items(worksheet_info):
       lines = form.readlines()
   form_result = [line[:-1] if line.endswith('\n') else line for line in lines]
   if form_result == template_lines:
-    raise UsageError('No change made; aborting.')
+    raise UsageError('No change made; aborting')
   return parse_worksheet_form(form_result)
 
 
