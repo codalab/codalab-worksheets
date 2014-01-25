@@ -31,6 +31,7 @@ from codalab.common import (
 from codalab.lib import (
   metadata_util,
   path_util,
+  spec_util,
 )
 from codalab.objects.worker import Worker
 
@@ -43,11 +44,17 @@ class BundleCLI(object):
     'run': 'Create a bundle by running a program bundle on an input.',
     'edit': "Edit an existing bundle's metadata.",
     'rm': 'Delete a bundle and all bundles that depend on it.',
-    'list': 'Show basic information for all bundles.',
+    'list': 'Show basic information for all bundles [in a worksheet].',
     'info': 'Show detailed information for a single bundle.',
     'ls': 'List the contents of a bundle.',
     'cat': 'Print the contents of a file in a bundle.',
     'wait': 'Wait until a bundle is ready or failed, then print its state.',
+    # Worksheet-related commands.
+    'new': 'Create a new worksheet and make it the current one.',
+    'add': 'Append a bundle to a worksheet.',
+    'work': 'Set the current worksheet.',
+    'rework': 'Pop open a full-text editor to curate a worksheet.',
+    # Commands that can only be executed on a LocalBundleClient.
     'cleanup': 'Clean up the CodaLab bundle store.',
     'worker': 'Run the CodaLab bundle worker.',
     'reset': 'Delete the CodaLab bundle store and reset the database.',
@@ -63,6 +70,12 @@ class BundleCLI(object):
     'ls',
     'cat',
     'wait',
+  )
+  WORKSHEET_COMMANDS = (
+    'new',
+    'add',
+    'work',
+    'rework',
   )
 
   def __init__(self, client, verbose):
@@ -124,16 +137,24 @@ class BundleCLI(object):
     if argv:
       self.do_command([argv[0], '-h'])
     print 'usage: cl <command> <arguments>'
-    print '\nThe most commonly used codalab commands are:'
-    max_length = max(len(command) for command in self.DESCRIPTIONS)
+    max_length = max(
+      len(command) for command in
+      itertools.chain(self.COMMON_COMMANDS, self.WORKSHEET_COMMANDS)
+    )
     indent = 2
-    for command in self.COMMON_COMMANDS:
+    def print_command(command):
       print '%s%s%s%s' % (
         indent*' ',
         command,
         (indent + max_length - len(command))*' ',
         self.DESCRIPTIONS[command],
       )
+    print '\nThe most commonly used codalab commands are:'
+    for command in self.COMMON_COMMANDS:
+      print_command(command)
+    print '\nCommands for using worksheets include:'
+    for command in self.WORKSHEET_COMMANDS:
+      print_command(command)
 
   def do_upload_command(self, argv, parser):
     help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
@@ -349,6 +370,41 @@ class BundleCLI(object):
       print state
     else:
       self.exit(state)
+
+  #############################################################################
+  # CLI methods for worksheet-related commands follow!
+  #############################################################################
+
+  def do_new_command(self, argv, parser):
+    parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
+    args = parser.parse_args(argv)
+    print self.client.new_worksheet(args.name)
+
+  def do_add_command(self, argv, parser):
+    parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
+    parser.add_argument(
+      'worksheet_spec',
+      help='identifier: [<uuid>|<name>]',
+      #optional=True,
+    )
+    args = parser.parse_args(argv)
+    self.client.add_worksheet_item(args.worksheet_spec, args.bundle_spec)
+
+  def do_work_command(self, argv, parser):
+    parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
+    args = parser.parse_args(argv)
+    info = self.client.worksheet_info(args.worksheet_spec)
+    print 'Worksheet(uuid=%r, name=%r)' % (info['uuid'], info['name'])
+
+  def do_rework_command(self, argv, parser):
+    parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
+    args = parser.parse_args(argv)
+    info = self.client.worksheet_info(args.worksheet_spec)
+    print 'Editing Worksheet(uuid=%r, name=%r)...' % (info['uuid'], info['name'])
+
+  #############################################################################
+  # LocalBundleClient-only commands follow!
+  #############################################################################
 
   def do_cleanup_command(self, argv, parser):
     # This command only works if self.client is a LocalBundleClient.
