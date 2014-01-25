@@ -25,7 +25,10 @@ from codalab.model.tables import (
   worksheet_item as cl_worksheet_item,
   db_metadata,
 )
-from codalab.objects.worksheet import Worksheet
+from codalab.objects.worksheet import (
+  item_sort_key,
+  Worksheet,
+)
 
 
 class BundleModel(object):
@@ -343,7 +346,7 @@ class BundleModel(object):
     worksheet_values = {row.uuid: dict(row) for row in worksheet_rows}
     for value in worksheet_values.itervalues():
       value['items'] = []
-    for item_row in sorted(item_rows, key=lambda item: item.id):
+    for item_row in sorted(item_rows, key=item_sort_key):
       if item_row.worksheet_uuid not in worksheet_values:
         raise IntegrityError('Got item %s without worksheet' % (item_row,))
       worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
@@ -382,6 +385,7 @@ class BundleModel(object):
       'worksheet_uuid': worksheet_uuid,
       'bundle_uuid': bundle_uuid,
       'value': value,
+      'sort_key': None,
     }
     with self.engine.begin() as connection:
       connection.execute(cl_worksheet_item.insert().values(item_value))
@@ -403,11 +407,17 @@ class BundleModel(object):
       cl_worksheet_item.c.worksheet_uuid == worksheet_uuid,
       cl_worksheet_item.c.id <= last_item_id,
     )
+    # See codalab.objects.worksheet for an explanation of the sort_key protocol.
+    # We need to produce sort keys here that are strictly upper-bounded by the
+    # last known item id in this worksheet, and which monotonically increase.
+    # The expression last_item_id + i - len(new_items) works. It can produce
+    # negative sort keys, but that's fine.
     new_item_values = [{
       'worksheet_uuid': worksheet_uuid,
       'bundle_uuid': bundle_uuid,
       'value': value,
-    } for (bundle_uuid, value) in new_items]
+      'sort_key': (last_item_id + i - len(new_items)),
+    } for (i, (bundle_uuid, value)) in enumerate(new_items)]
     with self.engine.begin() as connection:
       result = connection.execute(cl_worksheet_item.delete().where(clause))
       message = 'Found extra items for worksheet %s' % (worksheet_uuid,)

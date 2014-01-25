@@ -78,6 +78,7 @@ worksheet_item = Table(
   # foreign key on bundle.uuid, but it may be broken if bundles are deleted.
   Column('bundle_uuid', String(63), nullable=True),
   Column('value', Text, nullable=False),
+  Column('sort_key', Integer, nullable=True),
   Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
   Index('worksheet_item_bundle_uuid_index', 'bundle_uuid'),
   sqlite_autoincrement=True,

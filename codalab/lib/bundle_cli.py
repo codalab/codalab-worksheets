@@ -111,11 +111,18 @@ class BundleCLI(object):
         return formatter_class(max_help_position=30, *args, **kwargs)
       parser.formatter_class = mock_formatter_class
 
-  def get_whole_bundles(self, worksheet_info):
-    return [
-      bundle_info for (bundle_info, _) in worksheet_info['items']
-      if bundle_info and 'bundle_type' in bundle_info
-    ]
+  def get_distinct_bundles(self, worksheet_info):
+    '''
+    Return list of info dicts of distinct, non-orphaned bundles in the worksheet.
+    '''
+    uuids_seen = set()
+    result = []
+    for (bundle_info, _) in worksheet_info['items']:
+      if bundle_info and 'bundle_type' in bundle_info:
+        if bundle_info['uuid'] not in uuids_seen:
+          uuids_seen.add(bundle_info['uuid'])
+          result.append(bundle_info)
+    return result
 
   def parse_target(self, target):
     return tuple(target.split(os.sep, 1)) if os.sep in target else (target, '')
@@ -307,14 +314,14 @@ class BundleCLI(object):
       bundle_info_list = self.client.search()
     elif args.worksheet_spec:
       worksheet_info = self.client.worksheet_info(args.worksheet_spec)
-      bundle_info_list = self.get_whole_bundles(worksheet_info)
+      bundle_info_list = self.get_distinct_bundles(worksheet_info)
       source = ' from worksheet %s' % (worksheet_info['name'],)
     else:
       worksheet_info = self.get_current_worksheet_info()
       if not worksheet_info:
         bundle_info_list = self.client.search()
       else:
-        bundle_info_list = self.get_whole_bundles(worksheet_info)
+        bundle_info_list = self.get_distinct_bundles(worksheet_info)
         source = ' from worksheet %s' % (worksheet_info['name'],)
     if bundle_info_list:
       print 'Listing all bundles%s:\n' % (source,)
