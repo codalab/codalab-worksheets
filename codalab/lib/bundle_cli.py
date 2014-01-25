@@ -582,7 +582,10 @@ class BundleCLI(object):
     i = 0
     while not args.iterations or i < args.iterations:
       if i and not args.iterations:
-        time.sleep(3)
+        # TODO(pliang): make this an option
+        # TODO(pliang): if last time we went through the loop, we processed
+        # bundles, then don't wait at all.
+        time.sleep(1)
       print 'Running CodaLab bundle worker iteration %s...\n' % (i,)
       worker.update_created_bundles()
       worker.update_staged_bundles()
