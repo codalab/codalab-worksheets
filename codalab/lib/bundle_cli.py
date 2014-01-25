@@ -54,7 +54,7 @@ class BundleCLI(object):
     'new': 'Create a new worksheet and make it the current one.',
     'add': 'Append a bundle to a worksheet.',
     'work': 'Set the current worksheet.',
-    'edit_worksheet': 'Pop open a full-text editor to edit a worksheet.',
+    'edit_worksheet': 'Rename a worksheet or open a full-text editor to edit it.',
     'list_worksheet': 'Show basic information for all worksheets.',
     # Commands that can only be executed on a LocalBundleClient.
     'cleanup': 'Clean up the CodaLab bundle store.',
@@ -483,6 +483,11 @@ class BundleCLI(object):
       help='identifier: [<uuid>|<name>]',
       nargs='?',
     )
+    parser.add_argument(
+      '--name',
+      help='new name: ' + spec_util.NAME_REGEX.pattern,
+      nargs='?',
+    )
     args = parser.parse_args(argv)
     if args.worksheet_spec:
       worksheet_spec = worksheet_label = args.worksheet_spec
@@ -490,10 +495,14 @@ class BundleCLI(object):
       (worksheet_spec, worksheet_label) = self.env_model.get_current_worksheet()
       if not worksheet_spec:
         raise UsageError('Specify a worksheet or switch to one with `cl work`.')
-    info = self.client.worksheet_info(worksheet_spec)
-    new_items = worksheet_util.request_new_items(worksheet_label, info)
-    # TODO(skishore): We really should persist these items here...
-    self.client.update_worksheet(info, new_items)
+    if args.name:
+      worksheet_uuid = self.client.rename_worksheet(worksheet_spec, args.name)
+      self.env_model.rename_worksheet(worksheet_uuid, args.name)
+    else:
+      info = self.client.worksheet_info(worksheet_spec)
+      new_items = worksheet_util.request_new_items(worksheet_label, info)
+      # TODO(skishore): We really should persist these items here...
+      self.client.update_worksheet(info, new_items)
 
   def do_list_worksheet_command(self, argv, parser):
     parser.parse_args(argv)

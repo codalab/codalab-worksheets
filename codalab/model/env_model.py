@@ -63,3 +63,12 @@ class EnvModel(object):
     ppid = os.getppid()
     with self.connection:
       self.connection.execute('DELETE FROM worksheets WHERE ppid = ?;', (ppid,))
+
+  def rename_worksheet(self, worksheet_uuid, name):
+    '''
+    Update all worksheet_specs for the given worksheet_uuid to be the given name.
+    '''
+    with self.connection:
+      self.connection.execute('''
+        UPDATE worksheets SET worksheet_spec = ? WHERE worksheet_uuid = ?
+      ''', (name, worksheet_uuid))

@@ -354,6 +354,17 @@ class BundleModel(object):
       result = connection.execute(cl_worksheet.insert().values(worksheet_value))
       worksheet.id = result.lastrowid
 
+  def rename_worksheet(self, worksheet, name):
+    '''
+    Update the given worksheet's name.
+    '''
+    worksheet.name = name
+    worksheet.validate()
+    with self.engine.begin() as connection:
+      connection.execute(cl_worksheet.update().where(
+        cl_worksheet.c.uuid == worksheet.uuid
+      ).values({'name': name}))
+
   def add_worksheet_item(self, worksheet_uuid, item):
     '''
     Appends a new item to the end of the given worksheet. The item should be

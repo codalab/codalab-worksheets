@@ -17,14 +17,11 @@ class Worksheet(ORMObject):
   def validate(self):
     '''
     Check a number of basic conditions that would indicate serious errors if
-    they do not hold. Right now, validation only checks this worksheet's uuid,
-    its name, and all of its items' bundle uuids.
+    they do not hold. Right now, validation only checks this worksheet's uuid
+    and its name.
     '''
     spec_util.check_uuid(self.uuid)
     spec_util.check_name(self.name)
-    for item in self.items:
-      if item.bundle_uuid is not None:
-        spec_util.check_uuid(item.bundle_uuid)
 
   def __repr__(self):
     return 'Worksheet(uuid=%r, name=%r)' % (self.uuid, self.name)
