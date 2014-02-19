@@ -4,6 +4,9 @@
 
 cl new simple-ml
 
+weka=weka
+vote=vote
+
 echo "Splitting data into training and test..."
 split=$(cl run $weka $vote 'program/split input output 4' --description "Splitting data into training and test" --auto)/output
 strippedTest=$(cl run $weka $split 'program/stripLabels input/test output' --description "Stripping labels" --auto)/output
