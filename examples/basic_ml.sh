@@ -4,10 +4,6 @@
 
 cl new simple-ml
 
-echo "Uploading program and data..."
-weka=$(cl upload program weka --name weka --description "Weka is a collection of machine learning algorithms for data mining tasks.  The algorithms can either be applied directly to a dataset or called from your own Java code. Weka contains tools for data pre-processing, classification, regression, clustering, association rules, and visualization.  It is also well-suited for developing new machine learning schemes." --tags machine_learning --auto)
-vote=$(cl upload dataset uci_arff/auto/vote --name vote --description "Congressional voting records" --tags machine_learning --auto)
-
 echo "Splitting data into training and test..."
 split=$(cl run $weka $vote 'program/split input output 4' --description "Splitting data into training and test" --auto)/output
 strippedTest=$(cl run $weka $split 'program/stripLabels input/test output' --description "Stripping labels" --auto)/output
