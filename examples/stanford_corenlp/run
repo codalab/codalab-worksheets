@@ -1,0 +1,20 @@
+#!/bin/bash
+
+# Main entry point
+
+if [ $# -lt 2 ]; then
+  echo "Usage: <input directory with raw text files> <output directory with XML annotations> [additional options]"
+  exit 1
+fi
+
+input=$1; shift
+output=$1; shift
+
+ls $input/* > input_files || exit 1
+wc -l input_files || exit 1
+java -cp `dirname $0`/stanford-corenlp-full-2013-06-20/\* -Xmx3g edu.stanford.nlp.pipeline.StanfordCoreNLP \
+  -annotators tokenize,ssplit,pos,lemma,ner,parse,dcoref \
+  -filelist input_files \
+  -outputDirectory $output
+  "$@" || exit 1
+rm input_files || exit 1

@@ -1,0 +1,14 @@
+#!/usr/bin/ruby
+
+if ARGV.size != 2
+  puts "Usage: #{$0} <csv file> <arff file>"
+  exit 1
+end
+
+input, output = ARGV
+
+runjava = File.dirname($0) + '/runjava'
+
+puts "Converting #{input} => #{output}"
+system "#{runjava} weka.core.converters.CSVLoader '#{input}' > '#{output}'" or exit 1
+# TODO: return proper exit code

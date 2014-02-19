@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# TODO: replace this with an nicer unified Python interface that unifies the
+# server and client.
+
+export CODALAB=`dirname $0`/../..
+export PYTHONPATH=$CODALAB
+exec $CODALAB/codalab_env/bin/python $CODALAB/codalab/bin/codalab_client.py $CODALAB/codalab/config/sqlite_client_config.json "$@"
