@@ -8,20 +8,20 @@ from codalab.common import State
 
 
 class UploadedBundle(NamedBundle):
-  @classmethod
-  def construct(cls, data_hash, metadata):
-    return super(UploadedBundle, cls).construct({
-      'bundle_type': cls.BUNDLE_TYPE,
-      'command': None,
-      'data_hash': data_hash,
-      'state': State.READY,
-      'metadata': metadata,
-      'dependencies': [],
-    })
+    @classmethod
+    def construct(cls, data_hash, metadata):
+        return super(UploadedBundle, cls).construct({
+          'bundle_type': cls.BUNDLE_TYPE,
+          'command': None,
+          'data_hash': data_hash,
+          'state': State.READY,
+          'metadata': metadata,
+          'dependencies': [],
+        })
 
-  def get_hard_dependencies(self):
-    # Uploaded bundles will never include symlinks to other bundles.
-    return []
+    def get_hard_dependencies(self):
+        # Uploaded bundles will never include symlinks to other bundles.
+        return []
 
-  def run(self, bundle_store, parent_dict):
-    assert(False), '%ss should never be run!' % (self.__class__.__name__,)
+    def run(self, bundle_store, parent_dict):
+        assert(False), '%ss should never be run!' % (self.__class__.__name__,)

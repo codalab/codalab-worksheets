@@ -9,11 +9,11 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 
 class ProgramBundle(UploadedBundle):
-  BUNDLE_TYPE = 'program'
-  METADATA_SPECS = list(UploadedBundle.METADATA_SPECS)
-  METADATA_SPECS.append(MetadataSpec(
-    'architectures',
-    set,
-    'viable architectures',
-    short_key='arch',
-  ))
+    BUNDLE_TYPE = 'program'
+    METADATA_SPECS = list(UploadedBundle.METADATA_SPECS)
+    METADATA_SPECS.append(MetadataSpec(
+      'architectures',
+      set,
+      'viable architectures',
+      short_key='arch',
+    ))

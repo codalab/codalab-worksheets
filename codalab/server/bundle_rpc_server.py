@@ -19,38 +19,38 @@ from codalab.server.file_server import FileServer
 
 
 class BundleRPCServer(FileServer):
-  SERVER_COMMANDS = (
-    'upload_zip',
-    'open_target',
-  )
+    SERVER_COMMANDS = (
+      'upload_zip',
+      'open_target',
+    )
 
-  def __init__(self, address, client):
-    self.client = client
-    FileServer.__init__(self, address, tempfile.gettempdir())
-    (_, self.port) = address
-    for command in RemoteBundleClient.CLIENT_COMMANDS:
-      self.register_function(getattr(self.client, command), command)
-    for command in self.SERVER_COMMANDS:
-      self.register_function(getattr(self, command), command)
+    def __init__(self, address, client):
+        self.client = client
+        FileServer.__init__(self, address, tempfile.gettempdir())
+        (_, self.port) = address
+        for command in RemoteBundleClient.CLIENT_COMMANDS:
+            self.register_function(getattr(self.client, command), command)
+        for command in self.SERVER_COMMANDS:
+            self.register_function(getattr(self, command), command)
 
-  def upload_zip(self, bundle_type, file_uuid, metadata, worksheet_uuid=None):
-    '''
-    Unzip the zip in the temp file identified by the given file uuid and then
-    upload the unzipped directory. Return the new bundle's id.
-    '''
-    zip_path = self.temp_file_paths.pop(file_uuid, None)
-    precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
-    path = zip_util.unzip(zip_path)
-    return self.client.upload(bundle_type, path, metadata, worksheet_uuid)
+    def upload_zip(self, bundle_type, file_uuid, metadata, worksheet_uuid=None):
+        '''
+        Unzip the zip in the temp file identified by the given file uuid and then
+        upload the unzipped directory. Return the new bundle's id.
+        '''
+        zip_path = self.temp_file_paths.pop(file_uuid, None)
+        precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
+        path = zip_util.unzip(zip_path)
+        return self.client.upload(bundle_type, path, metadata, worksheet_uuid)
 
-  def open_target(self, target):
-    '''
-    Open a read-only file handle to the given bundle target and return a file
-    uuid identifying it.
-    '''
-    path = self.client.get_target_path(target)
-    return self.open_file(path, 'rb')
+    def open_target(self, target):
+        '''
+        Open a read-only file handle to the given bundle target and return a file
+        uuid identifying it.
+        '''
+        path = self.client.get_target_path(target)
+        return self.open_file(path, 'rb')
 
-  def serve_forever(self):
-    print 'BundleRPCServer serving at port %s...' % (self.port,)
-    FileServer.serve_forever(self)
+    def serve_forever(self):
+        print 'BundleRPCServer serving at port %s...' % (self.port,)
+        FileServer.serve_forever(self)

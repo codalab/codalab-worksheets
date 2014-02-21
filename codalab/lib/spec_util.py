@@ -17,17 +17,17 @@ NAME_REGEX = re.compile('^[a-zA-Z_][a-zA-Z0-9_\.\-]*\Z')
 
 
 def generate_uuid():
-  return '0x%s' % (uuid.uuid4().hex,)
+    return '0x%s' % (uuid.uuid4().hex,)
 
 
 def check_uuid(uuid):
-  '''
-  Raise a PreconditionViolation if the uuid does not conform to its regex.
-  '''
-  message = 'uuids must match %s, was %s' % (UUID_REGEX.pattern, uuid)
-  precondition(UUID_REGEX.match(uuid), message)
+    '''
+    Raise a PreconditionViolation if the uuid does not conform to its regex.
+    '''
+    message = 'uuids must match %s, was %s' % (UUID_REGEX.pattern, uuid)
+    precondition(UUID_REGEX.match(uuid), message)
 
 
 def check_name(name):
-   if not NAME_REGEX.match(name):
-    raise UsageError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))
+    if not NAME_REGEX.match(name):
+        raise UsageError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))

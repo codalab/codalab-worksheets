@@ -25,80 +25,80 @@ from codalab.common import UsageError
 
 
 def cached(fn):
-  def inner(self):
-    if fn.__name__ not in self.cache:
-      self.cache[fn.__name__] = fn(self)
-    return self.cache[fn.__name__]
-  return inner
+    def inner(self):
+        if fn.__name__ not in self.cache:
+            self.cache[fn.__name__] = fn(self)
+        return self.cache[fn.__name__]
+    return inner
 
 
 class ConfigParser(object):
-  def __init__(self, path):
-    self.cache = {}
-    with open(path, 'rb') as config_file:
-      config_json = config_file.read()
-    self.config = json.loads(config_json)
+    def __init__(self, path):
+        self.cache = {}
+        with open(path, 'rb') as config_file:
+            config_json = config_file.read()
+        self.config = json.loads(config_json)
 
-  @cached
-  def home(self):
-    from codalab.lib import path_util
-    result = path_util.normalize(self.config['home'])
-    path_util.make_directory(result)
-    return result
+    @cached
+    def home(self):
+        from codalab.lib import path_util
+        result = path_util.normalize(self.config['home'])
+        path_util.make_directory(result)
+        return result
 
-  @cached
-  def bundle_store(self):
-    home = self.home()
-    from codalab.lib.bundle_store import BundleStore
-    return BundleStore(home)
+    @cached
+    def bundle_store(self):
+        home = self.home()
+        from codalab.lib.bundle_store import BundleStore
+        return BundleStore(home)
 
-  @cached
-  def cli(self):
-    verbose = self.config['cli']['verbose']
-    client = self.client()
-    env_model = self.env_model()
-    from codalab.lib.bundle_cli import BundleCLI
-    return BundleCLI(client, env_model, verbose)
+    @cached
+    def cli(self):
+        verbose = self.config['cli']['verbose']
+        client = self.client()
+        env_model = self.env_model()
+        from codalab.lib.bundle_cli import BundleCLI
+        return BundleCLI(client, env_model, verbose)
 
-  @cached
-  def client(self):
-    client_class = self.config['client']['class']
-    if client_class == 'LocalBundleClient':
-      bundle_store = self.bundle_store()
-      model = self.model()
-      from codalab.client.local_bundle_client import LocalBundleClient
-      return LocalBundleClient(bundle_store, model)
-    elif client_class == 'RemoteBundleClient':
-      address = self.config['client']['address']
-      from codalab.client.remote_bundle_client import RemoteBundleClient
-      return RemoteBundleClient(address)
-    else:
-      raise UsageError('Unexpected client class: %s' % (client_class,))
+    @cached
+    def client(self):
+        client_class = self.config['client']['class']
+        if client_class == 'LocalBundleClient':
+            bundle_store = self.bundle_store()
+            model = self.model()
+            from codalab.client.local_bundle_client import LocalBundleClient
+            return LocalBundleClient(bundle_store, model)
+        elif client_class == 'RemoteBundleClient':
+            address = self.config['client']['address']
+            from codalab.client.remote_bundle_client import RemoteBundleClient
+            return RemoteBundleClient(address)
+        else:
+            raise UsageError('Unexpected client class: %s' % (client_class,))
 
-  @cached
-  def env_model(self):
-    home = self.home()
-    from codalab.model.env_model import EnvModel
-    return EnvModel(home)
+    @cached
+    def env_model(self):
+        home = self.home()
+        from codalab.model.env_model import EnvModel
+        return EnvModel(home)
 
-  @cached
-  def model(self):
-    model_class = self.config['model']['class']
-    if model_class == 'MySQLModel':
-      arguments = ('username', 'password', 'address', 'database')
-      kwargs = {arg: self.config['model'][arg] for arg in arguments}
-      from codalab.model.mysql_model import MySQLModel
-      return MySQLModel(**kwargs)
-    if model_class == 'SQLiteModel':
-      home = self.home()
-      from codalab.model.sqlite_model import SQLiteModel
-      return SQLiteModel(home)
-    else:
-      raise UsageError('Unexpected model class: %s' % (model_class,))
+    @cached
+    def model(self):
+        model_class = self.config['model']['class']
+        if model_class == 'MySQLModel':
+            arguments = ('username', 'password', 'address', 'database')
+            kwargs = {arg: self.config['model'][arg] for arg in arguments}
+            from codalab.model.mysql_model import MySQLModel
+            return MySQLModel(**kwargs)
+        if model_class == 'SQLiteModel':
+            home = self.home()
+            from codalab.model.sqlite_model import SQLiteModel
+            return SQLiteModel(home)
+        else:
+            raise UsageError('Unexpected model class: %s' % (model_class,))
 
-  @cached
-  def rpc_server(self):
-    address = tuple(self.config['server']['address'])
-    client = self.client()
-    from codalab.server.bundle_rpc_server import BundleRPCServer
-    return BundleRPCServer(address, client)
+    @cached
+    def rpc_server(self):
+        address = tuple(self.config['server']['address'])
+        client = self.client()
+        from codalab.server.bundle_rpc_server import BundleRPCServer
+        return BundleRPCServer(address, client)

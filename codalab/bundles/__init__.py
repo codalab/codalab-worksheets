@@ -23,4 +23,4 @@ UPLOADED_TYPES = set(
 
 
 def get_bundle_subclass(bundle_type):
-  return BUNDLE_TYPE_MAP[bundle_type]
+    return BUNDLE_TYPE_MAP[bundle_type]
