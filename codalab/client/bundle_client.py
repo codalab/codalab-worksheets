@@ -131,6 +131,20 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
+    def remote(self, remote_server):
+        '''
+        Access the server config file and enable REMOTE server mode. Return
+        LOGIN credentials request or FAILED based on whether authentication
+        was successful.
+        '''
+
+    def local(self):
+        '''
+        Access the server config file and enable LOCAL server mode. Return SUCCESS
+        or FAILED based on whether LOCAL mode state was enabled. LOCAL mode is default
+        '''
+
+
 
     #############################################################################
     # Worksheet-related client methods follow!
