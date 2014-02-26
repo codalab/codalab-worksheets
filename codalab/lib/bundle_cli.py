@@ -50,6 +50,7 @@ class BundleCLI(object):
       'ls': 'List the contents of a bundle.',
       'cat': 'Print the contents of a file in a bundle.',
       'wait': 'Wait until a bundle is ready or failed, then print its state.',
+      'download': 'Download remote bundle from URL.',
       # Worksheet-related commands.
       'new': 'Create a new worksheet and make it the current one.',
       'add': 'Append a bundle to a worksheet.',
@@ -74,6 +75,7 @@ class BundleCLI(object):
       'ls',
       'cat',
       'wait',
+      'download',
     )
     WORKSHEET_COMMANDS = (
       'new',
@@ -449,6 +451,9 @@ class BundleCLI(object):
             print state
         else:
             self.exit(state)
+
+    def do_download_command(self, argv, parser):
+        print "This function has not been enabled."
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!

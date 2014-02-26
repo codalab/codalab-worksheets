@@ -124,6 +124,14 @@ class BundleClient(object):
             info = self.info(bundle_spec)
         return info['state']
 
+    def download(self, target):
+        '''
+        Download a bundle file over HTTP. Return PROGRESS or FAILED
+        based on whether it was downloaded successfully.
+        '''
+        raise NotImplementedError
+
+
     #############################################################################
     # Worksheet-related client methods follow!
     #############################################################################

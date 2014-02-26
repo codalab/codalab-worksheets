@@ -1,12 +1,12 @@
 from distutils.core import setup
 
 setup(
-    name='codalab_cli',
-    version='0.1.8',
+    name='codalab-cli',
+    version='0.1.9',
     author='Codalab, Shaunak Kishore, Justin Carden',
     author_email='jecarden@stanford.edu',
     packages=['codalab', 'codalab.bundles', 'codalab.client', 'codalab.config',
-              'codalab.lib','codalab.model','codalab.objects','codalab.server', 'codalab.examples'],
+              'codalab.lib','codalab.model','codalab.objects','codalab.server'],
     scripts=['codalab/bin/codalab_client.py','codalab/bin/codalab_server.py'],
     url='http://pypi.python.org/pypi/codalab/',
     license='LICENSE.txt',

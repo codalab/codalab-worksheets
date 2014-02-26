@@ -7,3 +7,4 @@ v0.1.5, 01.21.14 -- Fixed json parse issue in config.json
 v0.1.6, 01.21.14 -- Added data folder with install scripts
 v0.1.7, 01.21.14 -- Install script update
 v0.1.8, 01.29.14 -- Major Update
+v0.1.9, 02.26.14 -- Refactored examples, removed zip files
