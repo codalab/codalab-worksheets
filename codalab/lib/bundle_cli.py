@@ -52,7 +52,7 @@ class BundleCLI(object):
       'wait': 'Wait until a bundle is ready or failed, then print its state.',
       'download': 'Download remote bundle from URL.',
       'remote': 'Enable remote server mode',
-      'local': 'Enable local server mode'
+      'local': 'Enable local server mode',
       # Worksheet-related commands.
       'new': 'Create a new worksheet and make it the current one.',
       'add': 'Append a bundle to a worksheet.',
