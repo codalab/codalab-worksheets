@@ -484,10 +484,18 @@ class BundleCLI(object):
         print 'Switched to worksheet %s.' % (args.name,)
 
     def do_add_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
+        parser.add_argument(
+          'bundle_spec',
+          help='identifier: [<uuid>|<name>]',
+          nargs='?')
         parser.add_argument(
           'worksheet_spec',
           help='identifier: [<uuid>|<name>]',
+          nargs='?',
+        )
+        parser.add_argument(
+          '-m', '--message',
+          help='add a text element',
           nargs='?',
         )
         args = parser.parse_args(argv)
@@ -497,7 +505,10 @@ class BundleCLI(object):
             worksheet_info = self.get_current_worksheet_info()
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
-        self.client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
+        if args.bundle_spec:
+            self.client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
+        if args.message:
+            self.client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message)])
 
     def do_work_command(self, argv, parser):
         parser.add_argument(

@@ -1,6 +1,7 @@
 '''
-worksheet_util contains one public function, request_new_items, which pops
-up an editor to allow for full-text editing of a worksheet.
+worksheet_util contains the following public functions:
+- get_current_items: get the current items of a worksheet.
+- request_new_items: pops up an editor to allow for full-text editing of a worksheet.
 '''
 import os
 import re
@@ -26,15 +27,31 @@ def get_worksheet_lines(worksheet_info):
             yield '[%s]{%s}' % (value, bundle_info['uuid'])
 
 
+def get_current_items(worksheet_info):
+    '''
+    Return list of (bundle_uuid, value) pairs.
+    Note: worksheet_info['items'] contains (bundle_info, value)
+    '''
+    items = []
+    for (bundle_info, value) in worksheet_info['items']:
+        if bundle_info is None:
+            items.append((None, value))
+        else:
+            items.append((bundle_info['uuid'], value))
+    return items
+
+
 def request_new_items(worksheet_info):
     '''
-    Take a worksheet info dict. Return a list of new items provided in an editor.
+    Input: a worksheet info dict.
+    Popup an editor, populated with the current worksheet contents.
+    Return a list of new items that the user typed into the editor.
     '''
     header = '''
-  // Full-text editing for worksheet %s. This file is basically Markdown, except
-  // that // is used for comments and that lines of the form {bundle_spec} are
-  // resolved as links to CodaLab bundles. You can even preface the curly braces
-  // with bracketed help text, like so: [some explanatory text]{bundle_spec}
+// Full-text editing for worksheet %s. This file is basically Markdown, except
+// that is used for comments and that lines of the form {bundle_spec} are
+// resolved as links to CodaLab bundles. You can even preface the curly braces
+// with bracketed help text, like so: [some explanatory text]{bundle_spec}
     '''.strip() % (worksheet_info['name'],)
     # Construct a form template with the current value of the worksheet.
     template_lines = header.split('\n')
@@ -57,6 +74,7 @@ def request_new_items(worksheet_info):
 def parse_worksheet_form(form_result):
     '''
     Parse the result of a form template produced in request_missing_metadata.
+    Return a list of (bundle_uuid, value) pairs, where bundle_uuid could be None.
     '''
     result = []
     for line in form_result:
