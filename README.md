@@ -1,4 +1,4 @@
-# CodaLab Bundle Service and Comand-Line Interface
+# CodaLab Bundle Service and Comand-Line Interface [![Build Status](https://travis-ci.org/codalab/codalab-cli.png?branch=master)](https://travis-ci.org/codalab/codalab-cli)
 
 This repository provides the Python backend for operating on bundles (creating,
 running, uploading, etc.).  The API exposed is used by both the
