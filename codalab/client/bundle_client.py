@@ -134,7 +134,7 @@ class BundleClient(object):
     def get_home(self):
         raise NotImplementedError
 
-    def current_host(self):
+    def get_host(self):
         raise NotImplementedError
 
     def update_host(self):

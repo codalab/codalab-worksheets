@@ -468,14 +468,14 @@ class BundleCLI(object):
         config_file = ReadFile(file_access)
         print home
 
-    def do_get_host(self, argv, parser):
+    def do_get_host_command(self, argv, parser):
         home = Home()
         file_access = Normalize(home, "client_config.json")
         config_file = ReadFile(file_access)
         result = CurrentHost(config_file)
         print result
 
-    def do_update_host(self, argv, parser):
+    def do_update_host_command(self, argv, parser):
         parser.add_argument('target host')
         args = parser.parse_args(argv)
         home = Home()
@@ -484,7 +484,7 @@ class BundleCLI(object):
         UpdateHost(config_file, argv[0])
         print config_file
 
-    def do_update_verbosity(self, argv, parser):
+    def do_update_verbosity_command(self, argv, parser):
         parser.add_argument('verbosity')
         args = parser.parse_args(argv)
         home = Home()
