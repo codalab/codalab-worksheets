@@ -19,6 +19,13 @@ def ReadFile(target_file):
     result = json.load(target)
     return result
 
+def CurrentHost(config_file):
+    '''
+    A function that returns the current host.
+    '''
+    tmp = config_file['client']['class']
+    return tmp
+
 def UpdateHost(config_file, target_host):
     '''
     Function that updates the current client

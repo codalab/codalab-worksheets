@@ -36,7 +36,7 @@ from codalab.lib import (
 )
 
 from codalab.objects.worker import Worker
-from codalab.lib.host import *
+from codalab.lib.client_config_util import *
 
 
 class BundleCLI(object):
@@ -54,7 +54,7 @@ class BundleCLI(object):
       'wait': 'Wait until a bundle is ready or failed, then print its state.',
       'download': 'Download remote bundle from URL.',
       'get_home': 'Returns home directory',
-      'current_host': 'Returns current host',
+      'get_host': 'Returns current host',
       'update_host': 'Updates the current host',
       'update_verbosity': 'Updates the verbosity setting',
       # Worksheet-related commands.
@@ -83,7 +83,7 @@ class BundleCLI(object):
       'wait',
       'download',
       'get_home',
-      'curent_host',
+      'get_host',
       'update_host',
       'update_verbosity',
     )
@@ -466,14 +466,14 @@ class BundleCLI(object):
         home = Home()
         file_access = Normalize(home, "client_config.json")
         config_file = ReadFile(file_access)
-        return home
+        print home
 
-    def do_current_host(self, argv, parser):
+    def do_get_host(self, argv, parser):
         home = Home()
         file_access = Normalize(home, "client_config.json")
         config_file = ReadFile(file_access)
         result = CurrentHost(config_file)
-        return result
+        print result
 
     def do_update_host(self, argv, parser):
         parser.add_argument('target host')
@@ -482,7 +482,7 @@ class BundleCLI(object):
         file_access = Normalize(home, "client_config.json")
         config_file = ReadFile(file_access)
         UpdateHost(config_file, argv[0])
-        return config_file
+        print config_file
 
     def do_update_verbosity(self, argv, parser):
         parser.add_argument('verbosity')
@@ -490,7 +490,7 @@ class BundleCLI(object):
         home = Home()
         file_access = Normalize(home, "client_config.json")
         UpdateVerbosity(config_file, argv[0])
-        return config_file
+        print config_file
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!

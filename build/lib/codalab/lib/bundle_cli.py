@@ -53,8 +53,10 @@ class BundleCLI(object):
       'cat': 'Print the contents of a file in a bundle.',
       'wait': 'Wait until a bundle is ready or failed, then print its state.',
       'download': 'Download remote bundle from URL.',
-      'testing': 'Testing command',
       'get_home': 'Returns home directory',
+      'current_host': 'Returns current host',
+      'update_host': 'Updates the current host',
+      'update_verbosity': 'Updates the verbosity setting',
       # Worksheet-related commands.
       'new': 'Create a new worksheet and make it the current one.',
       'add': 'Append a bundle to a worksheet.',
@@ -80,8 +82,10 @@ class BundleCLI(object):
       'cat',
       'wait',
       'download',
-      'testing',
       'get_home',
+      'current_host',
+      'update_host',
+      'update_verbosity',
     )
     WORKSHEET_COMMANDS = (
       'new',
@@ -458,21 +462,35 @@ class BundleCLI(object):
         else:
             self.exit(state)
 
-    def do_testing_command(self, argv, parser):
-        print "This function has not been enabled."
-
     def do_get_home_command(self, argv, parser):
-        parser.add_argument('Verbosity')
-        args = parser.parse_args(argv[0])
         home = Home()
         file_access = Normalize(home, "client_config.json")
         config_file = ReadFile(file_access)
-        UpdateVerbosity(config_file, argv)
-        print home
-        print '------'
-        print file_access
-        print '------'
-        print config_file
+        return home
+
+    def do_current_host(self, argv, parser):
+        home = Home()
+        file_access = Normalize(home, "client_config.json")
+        config_file = ReadFile(file_access)
+        result = CurrentHost(config_file)
+        return result
+
+    def do_update_host(self, argv, parser):
+        parser.add_argument('target host')
+        args = parser.parse_args(argv)
+        home = Home()
+        file_access = Normalize(home, "client_config.json")
+        config_file = ReadFile(file_access)
+        UpdateHost(config_file, argv[0])
+        return config_file
+
+    def do_update_verbosity(self, argv, parser):
+        parser.add_argument('verbosity')
+        args = parser.parse_args(argv)
+        home = Home()
+        file_access = Normalize(home, "client_config.json")
+        UpdateVerbosity(config_file, argv[0])
+        return config_file
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!

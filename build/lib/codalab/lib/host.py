@@ -43,4 +43,3 @@ def UpdateVerbosity(config_file, target_verbosity):
 home = Home()
 file_access = Normalize(home, "client_config.json")
 config_file = ReadFile(file_access)
-

@@ -131,13 +131,16 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def testing(self):
-        '''
-        This is a general place-holder for testing commands.
-        '''
+    def get_home(self):
         raise NotImplementedError
 
-    def get_home(self):
+    def current_host(self):
+        raise NotImplementedError
+
+    def update_host(self):
+        raise NotImplementedError
+
+    def update_verbosity(self):
         raise NotImplementedError
 
 
