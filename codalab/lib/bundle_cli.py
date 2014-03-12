@@ -82,7 +82,6 @@ class BundleCLI(object):
       'cat',
       'wait',
       'download',
-      'testing',
       'get_home',
       'curent_host',
       'update_host',
