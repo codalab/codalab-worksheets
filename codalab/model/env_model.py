@@ -9,7 +9,18 @@ is quite expensive to import.
 # to take additional parameters for the key.
 import os
 import sqlite3
+import sys
 
+def _getppid():
+    '''
+    A platform-dependent getppid() function since os.getppid() is not supported in
+    Python before 3.2.
+    '''
+    if sys.platform == 'win32':
+        # TODO: Provide an implementation
+        return 1
+    else:
+        return os.getppid()
 
 class EnvModel(object):
     SQLITE_DB_FILE_NAME = 'env.db'
@@ -37,7 +48,7 @@ class EnvModel(object):
         This method uses the current parent-process id to return the same result
         across multiple invocations in the same shell.
         '''
-        ppid = os.getppid()
+        ppid = _getppid()
         cursor = self.connection.cursor()
         cursor.execute('SELECT * FROM worksheets WHERE ppid = ?;', (ppid,))
         row = cursor.fetchone()
@@ -47,7 +58,7 @@ class EnvModel(object):
         '''
         Set the current worksheet for this ppid.
         '''
-        ppid = os.getppid()
+        ppid = _getppid()
         with self.connection:
             self.connection.execute('''
               INSERT OR REPLACE INTO worksheets (ppid, worksheet_uuid) VALUES (?, ?);
@@ -57,6 +68,6 @@ class EnvModel(object):
         '''
         Clear the current worksheet setting for this ppid.
         '''
-        ppid = os.getppid()
+        ppid = _getppid()
         with self.connection:
             self.connection.execute('DELETE FROM worksheets WHERE ppid = ?;', (ppid,))

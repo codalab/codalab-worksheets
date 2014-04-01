@@ -16,7 +16,7 @@ class NamedBundle(Bundle):
       MetadataSpec('description', basestring, 'human-readable description'),
       MetadataSpec('tags', set, 'list of searchable tags', metavar='TAG'),
       MetadataSpec('created', int, '', generated=True),
-      MetadataSpec('data_size', int, '', generated=True),
+      MetadataSpec('data_size', long, '', generated=True),
       MetadataSpec('failure_message', basestring, '', generated=True),
     )
 

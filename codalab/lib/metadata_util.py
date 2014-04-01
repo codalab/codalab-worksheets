@@ -9,6 +9,7 @@ missing metadata values.
 '''
 import os
 import subprocess
+import sys
 import tempfile
 
 from codalab.common import UsageError
@@ -81,21 +82,24 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
             initial_value = ' '.join(initial_value or [])
         template_lines.append('%s: %s' % (spec.key.title(), initial_value))
     bundle_type = bundle_subclass.BUNDLE_TYPE
-    template_lines.append('\n'.join([
+    template_lines.append(os.linesep.join([
       '# Record metadata for the new %s, then save and quit.' % (bundle_type,),
       '# Leave the name blank to cancel the upload.',
     ]))
-    template = '\n\n'.join(template_lines)
+    template = (os.linesep + os.linesep).join(template_lines)
     # Show the form to the user in their editor of choice and parse the result.
-    editor = os.environ.get('EDITOR', 'vim')
-    with tempfile.NamedTemporaryFile(suffix='.sh') as form:
+    editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
+    tempfile_name = ''
+    with tempfile.NamedTemporaryFile(suffix='.sh', delete=False) as form:
         form.write(template)
         form.flush()
-        subprocess.call([editor, form.name])
-        with open(form.name, 'rb') as form:
+        tempfile_name = form.name
+    if os.path.isfile(tempfile_name):
+        subprocess.call([editor, tempfile_name])
+        with open(tempfile_name, 'rb') as form:
             form_result = form.readlines()
+        os.remove(tempfile_name)
     return parse_metadata_form(bundle_subclass, form_result)
-
 
 def parse_metadata_form(bundle_subclass, form_result):
     '''
