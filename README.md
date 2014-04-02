@@ -21,7 +21,13 @@ running, uploading, etc.).  The API exposed is used by both the
 
     cl worker  # Start up a worker in another shell
 
-3. Let's populate your CodaLab service actually with some initial content.
+3. Validate by running tests
+
+    pip install simplejson mock nose
+    
+    nosetests
+
+4. Let's populate your CodaLab service actually with some initial content.
 Normally, you would have the content on your local machine and just upload it
 to CodaLab.  Just to get some basic programs and datasets into your system, you
 will first run some scripts to download them to your local machine and then
