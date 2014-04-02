@@ -6,6 +6,7 @@ worksheet_util contains the following public functions:
 import os
 import re
 import subprocess
+import sys
 import tempfile
 
 from codalab.common import UsageError
@@ -56,15 +57,20 @@ def request_new_items(worksheet_info):
     # Construct a form template with the current value of the worksheet.
     template_lines = header.split('\n')
     template_lines.extend(get_worksheet_lines(worksheet_info))
-    template = '\n'.join(template_lines)
+    template = os.linesep.join(template_lines)
     # Show the form to the user in their editor of choice and parse the result.
-    editor = os.environ.get('EDITOR', 'vim')
-    with tempfile.NamedTemporaryFile(suffix='.c') as form:
+    editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
+    tempfile_name = ''
+    with tempfile.NamedTemporaryFile(suffix='.c', delete=False) as form:
         form.write(template)
         form.flush()
-        subprocess.call([editor, form.name])
-        with open(form.name, 'rb') as form:
+        tempfile_name = form.name
+    lines = template_lines
+    if os.path.isfile(tempfile_name):
+        subprocess.call([editor, tempfile_name])
+        with open(tempfile_name, 'rb') as form:
             lines = form.readlines()
+        os.remove(tempfile_name)
     form_result = [line[:-1] if line.endswith('\n') else line for line in lines]
     if form_result == template_lines:
         raise UsageError('No change made; aborting')

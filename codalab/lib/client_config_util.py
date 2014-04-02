@@ -15,8 +15,10 @@ def Normalize(path, file_name):
     return file_path
 
 def ReadFile(target_file):
-    target = open(target_file, 'r')
-    result = json.load(target)
+    result = {}
+    if os.path.isfile(target_file):
+        target = open(target_file, 'r')
+        result = json.load(target)
     return result
 
 def CurrentHost(config_file):
