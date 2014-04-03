@@ -39,7 +39,15 @@
 ehthumbs.db
 Thumbs.db
 
+# IDE files          #
+######################
+*.sln
+*.pyproj
+*.suo
+
 # Codalab-cli #
 ###############
 *MANIFEST
 dist/
+build/
+codalab_env/
