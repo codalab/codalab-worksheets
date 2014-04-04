@@ -30,10 +30,10 @@ bundle = Table(
   # The data_hash will be NULL if the bundle's value is still being computed.
   Column('data_hash', String(63), nullable=True),
   Column('state', String(63), nullable=False),
-  Column('owner_id', Integer, nullable=True),
+  #Column('owner_id', Integer, nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('bundle_data_hash_index', 'data_hash'),
-  Index('bundle_owner_index', 'owner_id'),
+  #Index('bundle_owner_index', 'owner_id'),
   sqlite_autoincrement=True,
 )
 
@@ -67,10 +67,10 @@ worksheet = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
-  Column('owner_id', Integer, nullable=True),
+  #Column('owner_id', Integer, nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('worksheet_name_index', 'name'),
-  Index('worksheet_owner_index', 'owner_id'),
+  #Index('worksheet_owner_index', 'owner_id'),
   sqlite_autoincrement=True,
 )
 
