@@ -14,6 +14,7 @@ from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
   canonicalize,
   path_util,
+  worksheet_util,
 )
 from codalab.objects.worksheet import Worksheet
 
@@ -54,9 +55,9 @@ class LocalBundleClient(BundleClient):
         return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
 
     def expand_worksheet_item(self, item):
-        (bundle_spec, value) = item
+        (bundle_spec, value, type) = item
         if bundle_spec is None:
-            return (None, value or '')
+            return (None, value or '', type or '')
         try:
             bundle_uuid = self.get_spec_uuid(bundle_spec)
         except UsageError, e:
@@ -68,7 +69,7 @@ class LocalBundleClient(BundleClient):
             value = bundle_spec
             if getattr(bundle.metadata, 'description', None):
                 value = '%s: %s' % (value, bundle.metadata.description)
-        return (bundle_uuid, value or '')
+        return (bundle_uuid, value or '', type or '')
 
     def validate_user_metadata(self, bundle_subclass, metadata):
         '''
@@ -173,7 +174,7 @@ class LocalBundleClient(BundleClient):
     #############################################################################
 
     def new_worksheet(self, name):
-        worksheet = Worksheet({'name': name, 'items': []})
+        worksheet = Worksheet({'name': name, 'items': [], 'owner_id': None})
         self.model.save_worksheet(worksheet)
         return worksheet.uuid
 
@@ -185,19 +186,22 @@ class LocalBundleClient(BundleClient):
         # bundle info dicts. However, we still make O(1) database calls because we
         # use the optimized batch_get_bundles multiget method.
         uuids = set(
-          bundle_uuid for (bundle_uuid, _) in result['items']
-          if bundle_uuid is not None
+            bundle_uuid for (bundle_uuid, _, _) in result['items']
+            if bundle_uuid is not None
         )
         bundles = self.model.batch_get_bundles(uuid=uuids)
         bundle_dict = {bundle.uuid: self.get_bundle_info(bundle) for bundle in bundles}
+
         # If a bundle uuid is orphaned, we still have to return the uuid in a dict.
+        items = []
         result['items'] = [
-          (
-               None if bundle_uuid is None else
-               bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}),
-            value,
-          )
-          for (bundle_uuid, value) in result['items']
+            (
+                    None if bundle_uuid is None else
+                    bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}),
+                    worksheet_util.expand_worksheet_item_info(worksheet_spec, value, type),
+                    type,
+            )
+            for (bundle_uuid, value, type) in result['items']
         ]
         return result
 
@@ -209,11 +213,11 @@ class LocalBundleClient(BundleClient):
         item_value = bundle_spec
         if getattr(bundle.metadata, 'description', None):
             item_value = '%s: %s' % (item_value, bundle.metadata.description)
-        item = (bundle.uuid, item_value)
+        item = (bundle.uuid, item_value, 'bundle')
         self.model.add_worksheet_item(worksheet_uuid, item)
 
     def update_worksheet(self, worksheet_info, new_items):
-        # Convert (bundle_spec, value) pairs into canonical (bundle_uuid, value) pairs.
+        # Convert (bundle_spec, value) pairs into canonical (bundle_uuid, value, type) pairs.
         # This step could take O(n) database calls! However, it will only hit the
         # database for each bundle the user has newly specified by name - bundles
         # that were already in the worksheet will be referred to by uuid, so

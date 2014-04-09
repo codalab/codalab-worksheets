@@ -378,13 +378,14 @@ class BundleModel(object):
     def add_worksheet_item(self, worksheet_uuid, item):
         '''
         Appends a new item to the end of the given worksheet. The item should be
-        a (bundle_uuid, value) pair, where the bundle_uuid may be None and the
+        a (bundle_uuid, value, type) pair, where the bundle_uuid may be None and the
         value must be a string.
         '''
-        (bundle_uuid, value) = item
+        (bundle_uuid, value, type) = item
         item_value = {
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
+          'type': type,
           'value': value,
           'sort_key': None,
         }
@@ -416,9 +417,10 @@ class BundleModel(object):
         new_item_values = [{
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
+          'type': type,
           'value': value,
           'sort_key': (last_item_id + i - len(new_items)),
-        } for (i, (bundle_uuid, value)) in enumerate(new_items)]
+        } for (i, (bundle_uuid, value, type)) in enumerate(new_items)]
         with self.engine.begin() as connection:
             result = connection.execute(cl_worksheet_item.delete().where(clause))
             message = 'Found extra items for worksheet %s' % (worksheet_uuid,)

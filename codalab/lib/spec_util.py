@@ -14,7 +14,7 @@ UUID_REGEX = re.compile('^0x[0-9a-f]{32}\Z')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}\Z')
 
 NAME_REGEX = re.compile('^[a-zA-Z_][a-zA-Z0-9_\.\-]*\Z')
-
+ID_REGEX = re.compile('^[0-9]+\Z')
 
 def generate_uuid():
     return '0x%s' % (uuid.uuid4().hex,)
@@ -31,3 +31,8 @@ def check_uuid(uuid):
 def check_name(name):
     if not NAME_REGEX.match(name):
         raise UsageError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))
+
+
+def check_id(owner_id):
+    if owner_id != None and not ID_REGEX.match(owner_id):
+        raise UsageError('IDs must match %s, was %s' % (ID_REGEX.pattern, name))
