@@ -9,7 +9,7 @@ running, uploading, etc.).  The API exposed is used by both the
 
 1. After cloning the repository, install the appropriate packages:
 
-    virtualenv codalab_env --no-site-packages
+    virtualenv -p /usr/bin/python2.7 codalab_env --no-site-packages
 
     codalab_env/bin/pip-2.7 install sqlalchemy
 
