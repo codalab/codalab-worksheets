@@ -24,7 +24,7 @@ class FileServer(SimpleXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
 
     def __init__(self, address, temp):
-        # Keep a a dictionary mapping file uuids to open file handles and a
+        # Keep a dictionary mapping file uuids to open file handles and a
         # dictionary mapping temporary file's file uuids to their absolute paths.
         self.file_handles = {}
         self.temp_file_paths = {}

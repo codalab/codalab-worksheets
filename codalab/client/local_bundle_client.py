@@ -20,6 +20,7 @@ from codalab.objects.worksheet import Worksheet
 
 class LocalBundleClient(BundleClient):
     def __init__(self, bundle_store, model):
+        self.address = 'local'
         self.bundle_store = bundle_store
         self.model = model
 

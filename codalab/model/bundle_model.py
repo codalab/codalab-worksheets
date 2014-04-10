@@ -50,7 +50,7 @@ class BundleModel(object):
 
     def create_tables(self):
         '''
-        Create all Codalab bundle tables if they do not already exist.
+        Create all CodaLab bundle tables if they do not already exist.
         '''
         # TODO(skishore): This hack is a mini-migration that should stay here until
         # the bundle dependency table has been renamed in all CodaLab deployments.

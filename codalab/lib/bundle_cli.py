@@ -36,15 +36,14 @@ from codalab.lib import (
 )
 
 from codalab.objects.worker import Worker
-from codalab.lib.client_config_util import *
-
 
 class BundleCLI(object):
     DESCRIPTIONS = {
       'help': 'Show a usage message for cl or for a particular command.',
-      'upload': 'Create a bundle by uploading an existing directory.',
-      'make': 'Create a bundle by packaging data from existing bundles.',
-      'run': 'Create a bundle by running a program bundle on an input.',
+      'status': 'Show current status.',
+      'upload': 'Create a bundle by uploading an existing file/directory.',
+      'make': 'Create a bundle out of existing bundles.',
+      'run': 'Create a bundle by running a program bundle on an input bundle.',
       'edit': "Edit an existing bundle's metadata.",
       'rm': 'Delete a bundle and all bundles that depend on it.',
       'list': 'Show basic information for all bundles [in a worksheet].',
@@ -53,14 +52,11 @@ class BundleCLI(object):
       'cat': 'Print the contents of a file in a bundle.',
       'wait': 'Wait until a bundle is ready or failed, then print its state.',
       'download': 'Download remote bundle from URL.',
-      'get_home': 'Returns home directory',
-      'get_host': 'Returns current host',
-      'update_host': 'Updates the current host',
-      'update_verbosity': 'Updates the verbosity setting',
+      'cp': 'Copy bundles across servers.',
       # Worksheet-related commands.
       'new': 'Create a new worksheet and make it the current one.',
       'add': 'Append a bundle to a worksheet.',
-      'work': 'Set the current worksheet.',
+      'work': 'Set the current address/worksheet.',
       'print': 'Print the full-text contents of a worksheet.',
       'edit_worksheet': 'Rename a worksheet or open a full-text editor to edit it.',
       'list_worksheet': 'Show basic information for all worksheets.',
@@ -69,6 +65,7 @@ class BundleCLI(object):
       'cleanup': 'Clean up the CodaLab bundle store.',
       'worker': 'Run the CodaLab bundle worker.',
       'reset': 'Delete the CodaLab bundle store and reset the database.',
+      'server': 'Start the server.',  # Note: this is not actually handled in BundleCLI
     }
     BUNDLE_COMMANDS = (
       'upload',
@@ -82,10 +79,7 @@ class BundleCLI(object):
       'cat',
       'wait',
       'download',
-      'get_home',
-      'get_host',
-      'update_host',
-      'update_verbosity',
+      'cp',
     )
     WORKSHEET_COMMANDS = (
       'new',
@@ -98,12 +92,12 @@ class BundleCLI(object):
       'edit',
       'list',
       'rm',
+      'cp',
     )
 
-    def __init__(self, client, env_model, verbose):
-        self.client = client
-        self.env_model = env_model
-        self.verbose = verbose
+    def __init__(self, manager):
+        self.manager = manager
+        self.verbose = manager.config['cli']['verbose']
 
     def exit(self, message, error_code=1):
         '''
@@ -142,7 +136,8 @@ class BundleCLI(object):
             # If canonicalize is True, we should immediately invoke the bundle client
             # to fully qualify the target's bundle_spec into a uuid.
             (bundle_spec, path) = result
-            info = self.client.info(bundle_spec)
+            client = self.manager.current_client()
+            info = client.info(bundle_spec)
             return (info['uuid'], path)
         return result
 
@@ -171,6 +166,31 @@ class BundleCLI(object):
     def time_str(self, ts):
         return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')
 
+    GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::]|[<uuid>|<name>]"
+    # Example: http://codalab.org::wine
+    # Return (client, spec)
+    def parse_spec(self, spec):
+        tokens = spec.split('::')
+        if len(tokens) == 1:
+            address = self.manager.session()['address']
+            spec = tokens[0]
+        else:
+            address = self.manager.apply_alias(tokens[0])
+            spec = tokens[1]
+        return (self.manager.client(address), spec)
+
+    def parse_client_worksheet_info(self, spec):
+        client, spec = self.parse_spec(spec)
+        return (client, client.worksheet_info(spec))
+        
+    def parse_client_bundle_info_list(self, spec):
+        client, spec = self.parse_spec(spec)
+        return (client, client.info(bundle_spec))
+        
+    #############################################################################
+    # CLI methods
+    #############################################################################
+
     def do_command(self, argv):
         if argv:
             (command, remaining_args) = (argv[0], argv[1:])
@@ -183,7 +203,7 @@ class BundleCLI(object):
             (command, remaining_args) = ('help', [])
         command_fn = getattr(self, 'do_%s_command' % (command,), None)
         if not command_fn:
-            self.exit("'%s' is not a codalab command. Try 'cl help'." % (command,))
+            self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
         parser = argparse.ArgumentParser(
           prog='cl %s' % (command,),
           description=self.DESCRIPTIONS[command],
@@ -213,18 +233,25 @@ class BundleCLI(object):
               (indent + max_length - len(command))*' ',
               self.DESCRIPTIONS[command],
             )
-        print '\nThe most commonly used codalab commands are:'
+        print '\nCommands for bundles:'
         for command in self.BUNDLE_COMMANDS:
             print_command(command)
-        print '\nCommands for using worksheets include:'
+        print '\nCommands for worksheets:'
         for command in self.WORKSHEET_COMMANDS:
             print_command(command)
         for command in self.BOTH_COMMANDS:
             print '  %s%sUse `cl %s -w` to %s worksheets.' % (
               command, (max_length + indent - len(command))*' ', command, command)
 
+    def do_status_command(self, argv, parser):
+        print "session: %s" % self.manager.session_name()
+        print "address: %s" % self.manager.session()['address']
+        worksheet_info = self.get_current_worksheet_info()
+        if worksheet_info:
+            print "worksheet: %s [%s]" % (worksheet_info['name'], worksheet_info['uuid'])
+
     def do_upload_command(self, argv, parser):
-        worksheet_uuid = self.env_model.get_current_worksheet()
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
         parser.add_argument('bundle_type', help=help_text)
         parser.add_argument('path', help='path of the directory to upload')
@@ -248,10 +275,10 @@ class BundleCLI(object):
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
         bundle_subclass.construct(data_hash='', metadata=metadata).validate()
-        print self.client.upload(args.bundle_type, args.path, metadata, worksheet_uuid)
+        print client.upload(args.bundle_type, args.path, metadata, worksheet_uuid)
 
     def do_make_command(self, argv, parser):
-        worksheet_uuid = self.env_model.get_current_worksheet()
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         help = '[<key>:][<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
         parser.add_argument('target', help=help, nargs='+')
         metadata_util.add_arguments(MakeBundle, set(), parser)
@@ -272,10 +299,10 @@ class BundleCLI(object):
                     raise UsageError('Must specify keys when packaging multiple targets!')
             targets[key] = self.parse_target(target, canonicalize=True)
         metadata = metadata_util.request_missing_data(MakeBundle, args)
-        print self.client.make(targets, metadata, worksheet_uuid)
+        print client.make(targets, metadata, worksheet_uuid)
 
     def do_run_command(self, argv, parser):
-        worksheet_uuid = self.env_model.get_current_worksheet()
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         help = '[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
         parser.add_argument('program_target', help=help)
         parser.add_argument('input_target', help=help)
@@ -289,12 +316,13 @@ class BundleCLI(object):
         program_target = self.parse_target(args.program_target, canonicalize=True)
         input_target = self.parse_target(args.input_target, canonicalize=True)
         metadata = metadata_util.request_missing_data(RunBundle, args)
-        print self.client.run(program_target, input_target, args.command, metadata, worksheet_uuid)
+        print client.run(program_target, input_target, args.command, metadata, worksheet_uuid)
 
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
-        info = self.client.info(args.bundle_spec)
+        client = self.manager.current_client()
+        info = client.info(args.bundle_spec)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
         new_metadata = metadata_util.request_missing_data(
           bundle_subclass,
@@ -302,7 +330,7 @@ class BundleCLI(object):
           info['metadata'],
         )
         if new_metadata != info['metadata']:
-            self.client.edit(info['uuid'], new_metadata)
+            client.edit(info['uuid'], new_metadata)
 
     def do_rm_command(self, argv, parser):
         parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
@@ -312,7 +340,8 @@ class BundleCLI(object):
           help='delete all downstream dependencies',
         )
         args = parser.parse_args(argv)
-        self.client.delete(args.bundle_spec, args.force)
+        client = self.manager.current_client()
+        client.delete(args.bundle_spec, args.force)
 
     def do_list_command(self, argv, parser):
         parser.add_argument(
@@ -322,7 +351,7 @@ class BundleCLI(object):
         )
         parser.add_argument(
           'worksheet_spec',
-          help='identifier: [<uuid>|<name>] (default: current worksheet)',
+          help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT,
           nargs='?',
         )
         args = parser.parse_args(argv)
@@ -330,20 +359,22 @@ class BundleCLI(object):
             raise UsageError("Can't use both --all and a worksheet spec!")
         source = ''
         if args.all:
-            bundle_info_list = self.client.search()
+            client = self.manager.current_client()
+            bundle_info_list = client.search()
         elif args.worksheet_spec:
-            worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+            client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
             bundle_info_list = self.get_distinct_bundles(worksheet_info)
             source = ' from worksheet %s' % (worksheet_info['name'],)
         else:
             worksheet_info = self.get_current_worksheet_info()
             if not worksheet_info:
-                bundle_info_list = self.client.search()
+                client = self.manager.current_client()
+                bundle_info_list = client.search()
             else:
                 bundle_info_list = self.get_distinct_bundles(worksheet_info)
                 source = ' from worksheet %s' % (worksheet_info['name'],)
         if bundle_info_list:
-            print 'Listing all bundles%s:\n' % (source,)
+            print 'Bundles%s:\n' % (source,)
             columns = ('uuid', 'name', 'bundle_type', 'state')
             bundle_dicts = [
               {col: info.get(col, info['metadata'].get(col, '')) for col in columns}
@@ -368,7 +399,8 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
         if args.parents and args.children:
             raise UsageError('Only one of -p and -c should be used at a time!')
-        info = self.client.info(args.bundle_spec, args.parents, args.children)
+        client = self.manager.current_client()
+        info = client.info(args.bundle_spec, args.parents, args.children)
         if args.parents:
             if info['parents']:
                 print '\n'.join(info['parents'])
@@ -438,7 +470,8 @@ class BundleCLI(object):
         )
         args = parser.parse_args(argv)
         target = self.parse_target(args.target)
-        (directories, files) = self.client.ls(target)
+        client = self.manager.current_client()
+        (directories, files) = client.ls(target)
         if directories:
             print '\n  '.join(['Directories:'] + list(directories))
         if files:
@@ -451,46 +484,18 @@ class BundleCLI(object):
         )
         args = parser.parse_args(argv)
         target = self.parse_target(args.target)
-        self.client.cat(target)
+        client = self.manager.current_client()
+        client.cat(target)
 
     def do_wait_command(self, argv, parser):
         parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
-        state = self.client.wait(args.bundle_spec)
+        client = self.manager.current_client()
+        state = client.wait(args.bundle_spec)
         if state == State.READY:
             print state
         else:
             self.exit(state)
-
-    def do_get_home_command(self, argv, parser):
-        home = Home()
-        file_access = Normalize(home, "client_config.json")
-        config_file = ReadFile(file_access)
-        print home
-
-    def do_get_host_command(self, argv, parser):
-        home = Home()
-        file_access = Normalize(home, "client_config.json")
-        config_file = ReadFile(file_access)
-        result = CurrentHost(config_file)
-        print result
-
-    def do_update_host_command(self, argv, parser):
-        parser.add_argument('target host')
-        args = parser.parse_args(argv)
-        home = Home()
-        file_access = Normalize(home, "client_config.json")
-        config_file = ReadFile(file_access)
-        UpdateHost(config_file, argv[0])
-        print config_file
-
-    def do_update_verbosity_command(self, argv, parser):
-        parser.add_argument('verbosity')
-        args = parser.parse_args(argv)
-        home = Home()
-        file_access = Normalize(home, "client_config.json")
-        UpdateVerbosity(config_file, argv[0])
-        print config_file
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
@@ -500,22 +505,23 @@ class BundleCLI(object):
         '''
         Return the current worksheet's info, or None, if there is none.
         '''
-        worksheet_uuid = self.env_model.get_current_worksheet()
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         if not worksheet_uuid:
             return None
         try:
-            return self.client.worksheet_info(worksheet_uuid)
+            return client.worksheet_info(worksheet_uuid)
         except UsageError:
             # This worksheet must have been deleted. Print an error and clear it.
             print >> sys.stderr, 'Worksheet %s no longer exists!\n' % (worksheet_uuid,)
-            self.env_model.clear_current_worksheet()
+            self.manager.set_current_worksheet_uuid(client, None)
             return None
 
     def do_new_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
         args = parser.parse_args(argv)
-        uuid = self.client.new_worksheet(args.name)
-        self.env_model.set_current_worksheet(uuid)
+        client = self.manager.current_client()
+        uuid = client.new_worksheet(args.name)
+        self.manager.set_current_worksheet_uuid(client, uuid)
         print 'Switched to worksheet %s.' % (args.name,)
 
     def do_add_command(self, argv, parser):
@@ -534,21 +540,22 @@ class BundleCLI(object):
           nargs='?',
         )
         args = parser.parse_args(argv)
+        client = self.manager.current_client()
         if args.worksheet_spec:
-            worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+            worksheet_info = client.worksheet_info(args.worksheet_spec)
         else:
             worksheet_info = self.get_current_worksheet_info()
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
         if args.bundle_spec:
-            self.client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
+            client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
         if args.message:
-            self.client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message)])
+            client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message)])
 
     def do_work_command(self, argv, parser):
         parser.add_argument(
           'worksheet_spec',
-          help='identifier: [<uuid>|<name>]',
+          help='identifier: [<address>/][<uuid>|<name>]',
           nargs='?',
         )
         parser.add_argument(
@@ -558,11 +565,11 @@ class BundleCLI(object):
         )
         args = parser.parse_args(argv)
         if args.worksheet_spec:
-            worksheet_info = self.client.worksheet_info(args.worksheet_spec)
-            self.env_model.set_current_worksheet(worksheet_info['uuid'])
+            client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
+            self.manager.set_current_worksheet_uuid(client, worksheet_info['uuid'])
             print 'Switched to worksheet %s.' % (args.worksheet_spec,)
         elif args.exit:
-            self.env_model.clear_current_worksheet()
+            self.manager.set_current_worksheet_uuid(self.manager.current_client(), None)
         else:
             worksheet_info = self.get_current_worksheet_info()
             if worksheet_info:
@@ -583,21 +590,23 @@ class BundleCLI(object):
           nargs='?',
         )
         args = parser.parse_args(argv)
+        client = self.manager.current_client()
         if args.worksheet_spec:
-            worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+            worksheet_info = client.worksheet_info(args.worksheet_spec)
         else:
             worksheet_info = self.get_current_worksheet_info()
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
         if args.name:
-            self.client.rename_worksheet(worksheet_info['uuid'], args.name)
+            client.rename_worksheet(worksheet_info['uuid'], args.name)
         else:
             new_items = worksheet_util.request_new_items(worksheet_info)
-            self.client.update_worksheet(worksheet_info, new_items)
+            client.update_worksheet(worksheet_info, new_items)
 
     def do_list_worksheet_command(self, argv, parser):
-        parser.parse_args(argv)
-        worksheet_dicts = self.client.list_worksheets()
+        args = parser.parse_args(argv)
+        client = self.manager.current_client()
+        worksheet_dicts = client.list_worksheets()
         if worksheet_dicts:
             print 'Listing all worksheets:\n'
             self.print_table(('uuid', 'name'), worksheet_dicts)
@@ -611,8 +620,9 @@ class BundleCLI(object):
           nargs='?',
         )
         args = parser.parse_args(argv)
+        client = self.manager.current_client()
         if args.worksheet_spec:
-            worksheet_info = self.client.worksheet_info(args.worksheet_spec)
+            worksheet_info = client.worksheet_info(args.worksheet_spec)
         else:
             worksheet_info = self.get_current_worksheet_info()
             if not worksheet_info:
@@ -623,22 +633,25 @@ class BundleCLI(object):
     def do_rm_worksheet_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
-        self.client.delete_worksheet(args.worksheet_spec)
+        client = self.manager.current_client()
+        client.delete_worksheet(args.worksheet_spec)
 
     #############################################################################
     # LocalBundleClient-only commands follow!
     #############################################################################
 
     def do_cleanup_command(self, argv, parser):
-        # This command only works if self.client is a LocalBundleClient.
+        # This command only works if client is a LocalBundleClient.
         parser.parse_args(argv)
-        self.client.bundle_store.full_cleanup(self.client.model)
+        client = self.manager.current_client()
+        client.bundle_store.full_cleanup(client.model)
 
     def do_worker_command(self, argv, parser):
-        # This command only works if self.client is a LocalBundleClient.
+        # This command only works if client is a LocalBundleClient.
         parser.add_argument('iterations', type=int, default=None, nargs='?')
         args = parser.parse_args(argv)
-        worker = Worker(self.client.bundle_store, self.client.model)
+        client = self.manager.current_client()
+        worker = Worker(client.bundle_store, client.model)
         i = 0
         while not args.iterations or i < args.iterations:
             if i and not args.iterations:
@@ -652,7 +665,7 @@ class BundleCLI(object):
             i += 1
 
     def do_reset_command(self, argv, parser):
-        # This command only works if self.client is a LocalBundleClient.
+        # This command only works if client is a LocalBundleClient.
         parser.add_argument(
           '--commit',
           action='store_true',
@@ -661,5 +674,6 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
         if not args.commit:
             raise UsageError('If you really want to delete all bundles, use --commit')
-        self.client.bundle_store._reset()
-        self.client.model._reset()
+        client = self.manager.current_client()
+        client.bundle_store._reset()
+        client.model._reset()

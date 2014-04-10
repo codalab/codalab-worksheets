@@ -1,8 +1,7 @@
 #!/bin/bash
 
-# TODO: replace this with an nicer unified Python interface that unifies the
-# server and client.
-
+# Just run codalab.py in the right environment so that the proper libraries get
+# loaded.
 export CODALAB=`dirname $0`/../..
 export PYTHONPATH=$CODALAB
-exec $CODALAB/codalab_env/bin/python $CODALAB/codalab/bin/codalab_client.py $CODALAB/codalab/config/sqlite_client_config.json "$@"
+exec $CODALAB/codalab_env/bin/python $CODALAB/codalab/bin/cl.py "$@"
