@@ -168,6 +168,8 @@ class BundleCLI(object):
         return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')
 
     GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::]|[<uuid>|<name>]"
+    TARGET_FORMAT = '[<key>:][<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
+
     # Example: http://codalab.org::wine
     # Return (client, spec)
     def parse_spec(self, spec):
@@ -280,8 +282,7 @@ class BundleCLI(object):
 
     def do_make_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        help = '[<key>:][<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
-        parser.add_argument('target', help=help, nargs='+')
+        parser.add_argument('target', help=self.TARGET_FORMAT, nargs='+')
         metadata_util.add_arguments(MakeBundle, set(), parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
@@ -304,9 +305,8 @@ class BundleCLI(object):
 
     def do_run_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        help = '[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,)
-        parser.add_argument('program_target', help=help)
-        parser.add_argument('input_target', help=help)
+        parser.add_argument('program_target', help=self.TARGET_FORMAT)
+        parser.add_argument('input_target', help=self.TARGET_FORMAT)
         parser.add_argument(
           'command',
           help='shell command with access to program, input, and output',
@@ -467,7 +467,7 @@ class BundleCLI(object):
     def do_ls_command(self, argv, parser):
         parser.add_argument(
           'target',
-          help='[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,),
+          help=self.TARGET_FORMAT
         )
         args = parser.parse_args(argv)
         target = self.parse_target(args.target)
@@ -481,7 +481,7 @@ class BundleCLI(object):
     def do_cat_command(self, argv, parser):
         parser.add_argument(
           'target',
-          help='[<uuid>|<name>][%s<subpath within bundle>]' % (os.sep,),
+          help=self.TARGET_FORMAT
         )
         args = parser.parse_args(argv)
         target = self.parse_target(args.target)
