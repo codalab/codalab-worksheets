@@ -108,13 +108,14 @@ class LocalBundleClient(BundleClient):
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
         return bundle.uuid
 
-    def run(self, program_target, input_target, command, metadata, worksheet_uuid=None):
-        program_target = self.get_bundle_target(program_target)
-        input_target = self.get_bundle_target(input_target)
+    def run(self, targets, command, metadata, worksheet_uuid=None):
         bundle_subclass = get_bundle_subclass('run')
         self.validate_user_metadata(bundle_subclass, metadata)
-        bundle = bundle_subclass.construct(
-          program_target, input_target, command, metadata)
+        targets = {
+          key: self.get_bundle_target(target)
+          for (key, target) in targets.iteritems()
+        }
+        bundle = bundle_subclass.construct(targets, command, metadata)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)

@@ -28,22 +28,18 @@ class RunBundle(NamedBundle):
     NAME_LENGTH = 8
 
     @classmethod
-    def construct(cls, program_target, input_target, command, metadata):
-        (program, program_path) = program_target
-        (input, input_path) = input_target
-        if not isinstance(program, ProgramBundle):
-            raise UsageError('%s is not a program!' % (program,))
-        if not isinstance(input, NamedBundle):
-            raise UsageError('%s is not a named input!' % (input,))
+    def construct(cls, targets, command, metadata):
+        uuid = spec_util.generate_uuid()
+        # Check that targets does not include both keyed and anonymous targets.
+        if len(targets) > 1 and '' in targets:
+            raise UsageError('Must specify keys when packaging multiple targets!')
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
-        uuid = spec_util.generate_uuid()
         # Support anonymous run bundles with names based on their uuid.
         if not metadata['name']:
             metadata['name'] = 'run-%s' % (uuid[:cls.NAME_LENGTH],)
         # List the dependencies of this bundle on its targets.
         dependencies = []
-        targets = {'program': program_target, 'input': input_target}
         for (child_path, (parent, parent_path)) in targets.iteritems():
             dependencies.append({
               'child_uuid': uuid,
@@ -74,9 +70,9 @@ class RunBundle(NamedBundle):
         with path_util.chdir(temp_dir):
             print 'Executing command: %s' % (command,)
             print 'In temp directory: %s' % (temp_dir,)
-            os.mkdir('output')
+            os.mkdir('output')  # Only stuff written to the output directory is copied back.
             with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
                 subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
-            os.unlink('program')
-            os.unlink('input')
+            #os.unlink('program')
+            #os.unlink('input')
         return bundle_store.upload(temp_dir, allow_symlinks=True)

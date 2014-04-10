@@ -13,6 +13,7 @@ import collections
 import datetime
 import itertools
 import os
+import re
 import sys
 import time
 
@@ -141,6 +142,27 @@ class BundleCLI(object):
             info = client.info(bundle_spec)
             return (info['uuid'], path)
         return result
+
+    def parse_key_targets(self, items):
+        '''
+        Items is a list of strings which are [<key>:]<target>
+        '''
+        targets = {}
+        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
+        for item in items:
+            if ':' in item:
+                (key, target) = item.split(':', 1)
+                if key == '': key = target  # Set default key
+            else:
+                # Provide syntactic sugar for a make bundle with a single anonymous target.
+                (key, target) = ('', item)
+            if key in targets:
+                if key:
+                    raise UsageError('Duplicate key: %s' % (key,))
+                else:
+                    raise UsageError('Must specify keys when packaging multiple targets!')
+            targets[key] = self.parse_target(target, canonicalize=True)
+        return targets
 
     def print_table(self, columns, row_dicts):
         '''
@@ -286,24 +308,34 @@ class BundleCLI(object):
         metadata_util.add_arguments(MakeBundle, set(), parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
-        targets = {}
-        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
-        for argument in args.target:
-            if ':' in argument:
-                (key, target) = argument.split(':', 1)
-            else:
-                # Provide syntactic sugar for a make bundle with a single anonymous target.
-                (key, target) = ('', argument)
-            if key in targets:
-                if key:
-                    raise UsageError('Duplicate key: %s' % (key,))
-                else:
-                    raise UsageError('Must specify keys when packaging multiple targets!')
-            targets[key] = self.parse_target(target, canonicalize=True)
+        targets = self.parse_key_targets(args.target)
         metadata = metadata_util.request_missing_data(MakeBundle, args)
         print client.make(targets, metadata, worksheet_uuid)
 
     def do_run_command(self, argv, parser):
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        parser.add_argument('target', help=self.TARGET_FORMAT, nargs='*')
+        parser.add_argument('command', help='Command-line')
+        metadata_util.add_arguments(RunBundle, set(), parser)
+        metadata_util.add_auto_argument(parser)
+        args = parser.parse_args(argv)
+        targets = self.parse_key_targets(args.target)
+        command = args.command
+        if False:
+            # Expand command = "@svmlight/run" => "svmlight:svmlight svmlight/run"
+            pattern = re.compile(r'^([^@]*)@([^@]+)@(.*)$')
+            while True:
+                m = pattern.match(command)
+                if not m: break
+                before, key, after = m
+                targets[key] = self.parse_target(key, canonicalize=True)  # key is the target
+                command = before + key + after
+        #print targets, command
+        metadata = metadata_util.request_missing_data(RunBundle, args)
+        print client.run(targets, command, metadata, worksheet_uuid)
+
+    # DEPRECATED - remove
+    def do_run_old_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         parser.add_argument('program_target', help=self.TARGET_FORMAT)
         parser.add_argument('input_target', help=self.TARGET_FORMAT)

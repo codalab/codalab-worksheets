@@ -48,13 +48,14 @@ class MetadataDefaults(object):
             absolute_path = path_util.normalize(args.path)
             return 'Upload %s' % (absolute_path,)
         elif bundle_subclass is MakeBundle:
-            return 'Package %s' % (', '.join(args.target))
+            return 'Make %s' % (', '.join(args.target))
         elif bundle_subclass is RunBundle:
-            return 'Run {program} on {input}: {command}'.format(
-              program=args.program_target,
-              input=args.input_target,
-              command=repr(args.command),
-            )
+            #return 'Run {program} on {input}: {command}'.format(
+            #  program=args.program_target,
+            #  input=args.input_target,
+            #  command=repr(args.command),
+            #)
+            return 'Run %s: %s' % (', '.join(args.target), repr(args.command))
         return ''
 
     @staticmethod

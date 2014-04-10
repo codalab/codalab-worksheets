@@ -46,4 +46,4 @@ For NLP:
     (cd examples/stanford_corenlp && ./download.sh)
     (cd examples/stanford_corenlp && ./upload.sh)
     (cd examples/lewis_carroll_poems && ./upload.sh)
-    cl run stanford_corenlp lewis_carroll_poems 'program/run input output' --auto
+    cl run program:stanford_corenlp input:lewis_carroll_poems 'program/run input output' --auto

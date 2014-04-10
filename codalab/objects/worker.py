@@ -135,7 +135,7 @@ class Worker(object):
                 self.run_bundle(bundle)
                 break
         else:
-            self.pretty_print('Failed to lock a bundle!')
+            if self.verbose >= 2: self.pretty_print('Failed to lock a bundle!')
         return len(bundles) > 0
 
     def run_bundle(self, bundle):
@@ -219,10 +219,7 @@ class Worker(object):
         iteration = 0
         while not num_iterations or iteration < num_iterations:
             # Sleep only if nothing happened.
-            changed = self.update_created_bundles()
-            if not changed:
-                time.sleep(sleep_time)
-                continue
+            self.update_created_bundles()
             changed = self.update_staged_bundles()
             if not changed:
                 time.sleep(sleep_time)
