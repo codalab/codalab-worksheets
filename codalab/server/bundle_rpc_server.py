@@ -53,5 +53,5 @@ class BundleRPCServer(FileServer):
         return self.open_file(path, 'rb')
 
     def serve_forever(self):
-        print 'BundleRPCServer serving to %s at port %s...' % ('all hosts' if self.host == '' else 'host ' + self.host, self.port)
+        print 'BundleRPCServer serving to %s at port %s...' % ('ALL hosts' if self.host == '' else 'host ' + self.host, self.port)
         FileServer.serve_forever(self)

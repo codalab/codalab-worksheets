@@ -65,7 +65,7 @@ class BundleCLI(object):
       'cleanup': 'Clean up the CodaLab bundle store.',
       'worker': 'Run the CodaLab bundle worker.',
       'reset': 'Delete the CodaLab bundle store and reset the database.',
-      'server': 'Start the server.',  # Note: this is not actually handled in BundleCLI
+      'server': 'Start an instance of the CodaLab server.',  # Note: this is not actually handled in BundleCLI
     }
     BUNDLE_COMMANDS = (
       'upload',
@@ -80,6 +80,7 @@ class BundleCLI(object):
       'wait',
       'download',
       'cp',
+      'server',
     )
     WORKSHEET_COMMANDS = (
       'new',
@@ -555,7 +556,7 @@ class BundleCLI(object):
     def do_work_command(self, argv, parser):
         parser.add_argument(
           'worksheet_spec',
-          help='identifier: [<address>/][<uuid>|<name>]',
+          help='identifier: %s' % self.GLOBAL_SPEC_FORMAT,
           nargs='?',
         )
         parser.add_argument(
@@ -649,20 +650,11 @@ class BundleCLI(object):
     def do_worker_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.
         parser.add_argument('iterations', type=int, default=None, nargs='?')
+        parser.add_argument('sleep', type=int, help='Number of seconds to wait between successive polls', default=1, nargs='?')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         worker = Worker(client.bundle_store, client.model)
-        i = 0
-        while not args.iterations or i < args.iterations:
-            if i and not args.iterations:
-                # TODO(pliang): make this an option
-                # TODO(pliang): if last time we went through the loop, we processed
-                # bundles, then don't wait at all.
-                time.sleep(1)
-            print 'Running CodaLab bundle worker iteration %s...\n' % (i,)
-            worker.update_created_bundles()
-            worker.update_staged_bundles()
-            i += 1
+        worker.run_loop(args.iterations, args.sleep)
 
     def do_reset_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.

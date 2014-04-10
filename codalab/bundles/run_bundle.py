@@ -69,6 +69,8 @@ class RunBundle(NamedBundle):
     def run(self, bundle_store, parent_dict, temp_dir):
         command = self.command
         self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=False)
+        # TODO: have a mode where we ssh into another machine to do this
+        # In that case, need to copy files around.
         with path_util.chdir(temp_dir):
             print 'Executing command: %s' % (command,)
             print 'In temp directory: %s' % (temp_dir,)

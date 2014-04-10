@@ -28,6 +28,7 @@ class Worker(object):
         self.bundle_store = bundle_store
         self.model = model
         self.profiling_depth = 0
+        self.verbose = 0
 
     def pretty_print(self, message):
         time_str = datetime.datetime.utcnow().isoformat()[:19].replace('T', ' ')
@@ -35,13 +36,14 @@ class Worker(object):
 
     @contextlib.contextmanager
     def profile(self, message):
-        self.pretty_print(message)
+        #self.pretty_print(message)
         self.profiling_depth += 1
         start_time = time.time()
-        yield
+        result = yield
         elapsed_time = time.time() - start_time
         self.profiling_depth -= 1
-        self.pretty_print('Done! Took %0.2fs.' % (elapsed_time,))
+        #if result: self.pretty_print('%s: %0.2fs.' % (message, elapsed_time,))
+        #self.pretty_print('Done! Took %0.2fs.' % (elapsed_time,))
 
     def update_bundle_states(self, bundles, new_state):
         '''
@@ -71,17 +73,19 @@ class Worker(object):
         Scan through CREATED bundles check their dependencies' statuses.
         If any parent is FAILED, move them to FAILED.
         If all parents are READY, move them to STAGED.
+        Return whether something happened
         '''
-        print '-- Updating CREATED bundles! --'
+        #print '-- Updating CREATED bundles! --'
         with self.profile('Getting CREATED bundles...'):
             bundles = self.model.batch_get_bundles(state=State.CREATED)
-            self.pretty_print('Got %s bundles.' % (len(bundles),))
+            if self.verbose >= 1 and len(bundles) > 0:
+                self.pretty_print('Updating %s created bundles.' % (len(bundles),))
         parent_uuids = set(
           dep.parent_uuid for bundle in bundles for dep in bundle.dependencies
         )
         with self.profile('Getting parents...'):
             parents = self.model.batch_get_bundles(uuid=parent_uuids)
-            self.pretty_print('Got %s bundles.' % (len(parents),))
+            #if len(bundles) > 0: self.pretty_print('Got %s bundles.' % (len(parents),))
         all_parent_states = {parent.uuid: parent.state for parent in parents}
         all_parent_uuids = set(all_parent_states)
         bundles_to_fail = []
@@ -108,19 +112,23 @@ class Worker(object):
                 update = {'state': State.FAILED, 'metadata': metadata_update}
                 self.model.update_bundle(bundle, update)
         self.update_bundle_states(bundles_to_stage, State.STAGED)
+        num_processed = len(bundles_to_fail) + len(bundles_to_stage)
         num_blocking = len(bundles) - len(bundles_to_fail) - len(bundles_to_stage)
-        self.pretty_print('%s bundles are still blocking.' % (num_blocking,))
-        print ''
+        if num_processed > 0:
+            self.pretty_print('%s bundles processed, %s bundles still blocking on parents.' % (num_processed, num_blocking,))
+            return True
+        return False
 
     def update_staged_bundles(self):
         '''
         If there are any STAGED bundles, pick one and try to lock it.
         If we get a lock, move the locked bundle to RUNNING and then run it.
         '''
-        print '-- Updating STAGED bundles! --'
+        #print '-- Updating STAGED bundles! --'
         with self.profile('Getting STAGED bundles...'):
             bundles = self.model.batch_get_bundles(state=State.STAGED)
-            self.pretty_print('Got %s bundles.' % (len(bundles),))
+            if self.verbose >= 1 and len(bundles) > 0:
+                self.pretty_print('Staging %s bundles.' % (len(bundles),))
         random.shuffle(bundles)
         for bundle in bundles:
             if self.update_bundle_states([bundle], State.RUNNING):
@@ -128,7 +136,7 @@ class Worker(object):
                 break
         else:
             self.pretty_print('Failed to lock a bundle!')
-        print ''
+        return len(bundles) > 0
 
     def run_bundle(self, bundle):
         '''
@@ -149,13 +157,13 @@ class Worker(object):
             temp_dir = tempfile.mkdtemp()
         # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
         with self.profile('Running bundle...'):
-            print '\n-- Run started! --\nRunning %s.' % (bundle,)
+            print '-- START RUN: %s' % (bundle,)
             try:
                 (data_hash, metadata) = bundle.run(
                   self.bundle_store, parent_dict, temp_dir)
-                self.finalize_run(bundle, State.READY, data_hash, metadata)
-                print 'Got data hash: %s\n-- Success! --\n' % (data_hash,)
+                state = State.READY
             except Exception:
+                # TODO(pliang): distinguish between internal CodaLab error and the program failing
                 # TODO(skishore): Add metadata updates: time / CPU of run.
                 (type, error, tb) = sys.exc_info()
                 with self.profile('Uploading failed bundle...'):
@@ -170,8 +178,9 @@ class Worker(object):
                       failure_message,
                     )
                 metadata.update({'failure_message': failure_message})
-                self.finalize_run(bundle, State.FAILED, data_hash, metadata)
-                print '-- FAILED! --\n%s\n' % (failure_message,)
+                state = State.FAILED
+            self.finalize_run(bundle, state, data_hash, metadata)
+            print '-- END RUN: %s [%s]' % (bundle, state)
         # Clean up after the run.
         with self.profile('Cleaning up temp directory...'):
             path_util.remove(temp_dir)
@@ -200,3 +209,23 @@ class Worker(object):
             update['metadata'] = metadata
         with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
             self.model.update_bundle(bundle, update)
+
+    def run_loop(self, num_iterations, sleep_time):
+        '''
+        Repeat forever (if iterations != None) or for a finite number of iterations.
+        Moves created bundles to staged and actually executes the staged bundles.
+        '''
+        self.pretty_print('Running worker loop (num_iterations = %s, sleep_time = %s)' % (num_iterations, sleep_time))
+        iteration = 0
+        while not num_iterations or iteration < num_iterations:
+            # Sleep only if nothing happened.
+            changed = self.update_created_bundles()
+            if not changed:
+                time.sleep(sleep_time)
+                continue
+            changed = self.update_staged_bundles()
+            if not changed:
+                time.sleep(sleep_time)
+                continue
+            # Advance counter only if something interesting happened
+            iteration += 1
