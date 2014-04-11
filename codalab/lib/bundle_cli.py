@@ -41,7 +41,7 @@ from codalab.objects.worker import Worker
 class BundleCLI(object):
     DESCRIPTIONS = {
       'help': 'Show a usage message for cl or for a particular command.',
-      'status': 'Show current status.',
+      'status': 'Show current client status.',
       'upload': 'Create a bundle by uploading an existing file/directory.',
       'make': 'Create a bundle out of existing bundles.',
       'run': 'Create a bundle by running a program bundle on an input bundle.',
@@ -69,6 +69,8 @@ class BundleCLI(object):
       'server': 'Start an instance of the CodaLab server.',  # Note: this is not actually handled in BundleCLI
     }
     BUNDLE_COMMANDS = (
+      'help',
+      'status',
       'upload',
       'make',
       'run',
