@@ -63,7 +63,7 @@ class Worker(object):
                   update={'state': new_state},
                   condition={'state': bundles[0].state},
                 )
-                if not success:
+                if not success and self.verbose >= 1:
                     self.pretty_print('WARNING: update failed!')
                 return success
         return True
