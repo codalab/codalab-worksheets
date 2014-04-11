@@ -212,6 +212,14 @@ class BundleCLI(object):
         client, spec = self.parse_spec(spec)
         return (client, client.info(bundle_spec))
         
+    def create_parser(self, command):
+        parser = argparse.ArgumentParser(
+          prog='cl %s' % (command,),
+          description=self.DESCRIPTIONS[command],
+        )
+        self.hack_formatter(parser)
+        return parser
+
     #############################################################################
     # CLI methods
     #############################################################################
@@ -229,11 +237,7 @@ class BundleCLI(object):
         command_fn = getattr(self, 'do_%s_command' % (command,), None)
         if not command_fn:
             self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
-        parser = argparse.ArgumentParser(
-          prog='cl %s' % (command,),
-          description=self.DESCRIPTIONS[command],
-        )
-        self.hack_formatter(parser)
+        parser = self.create_parser(command)
         if self.verbose:
             command_fn(remaining_args, parser)
         else:
@@ -316,40 +320,24 @@ class BundleCLI(object):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         parser.add_argument('target', help=self.TARGET_FORMAT, nargs='*')
         parser.add_argument('command', help='Command-line')
+        parser.add_argument('-b', '--block', action='store_true', help='Wait until run finishes')
         metadata_util.add_arguments(RunBundle, set(), parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
         targets = self.parse_key_targets(args.target)
         command = args.command
-        if False:
-            # Expand command = "@svmlight/run" => "svmlight:svmlight svmlight/run"
-            pattern = re.compile(r'^([^@]*)@([^@]+)@(.*)$')
-            while True:
-                m = pattern.match(command)
-                if not m: break
-                before, key, after = m
-                targets[key] = self.parse_target(key, canonicalize=True)  # key is the target
-                command = before + key + after
-        #print targets, command
         metadata = metadata_util.request_missing_data(RunBundle, args)
-        print client.run(targets, command, metadata, worksheet_uuid)
-
-    # DEPRECATED - remove
-    def do_run_old_command(self, argv, parser):
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        parser.add_argument('program_target', help=self.TARGET_FORMAT)
-        parser.add_argument('input_target', help=self.TARGET_FORMAT)
-        parser.add_argument(
-          'command',
-          help='shell command with access to program, input, and output',
-        )
-        metadata_util.add_arguments(RunBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
-        args = parser.parse_args(argv)
-        program_target = self.parse_target(args.program_target, canonicalize=True)
-        input_target = self.parse_target(args.input_target, canonicalize=True)
-        metadata = metadata_util.request_missing_data(RunBundle, args)
-        print client.run(program_target, input_target, args.command, metadata, worksheet_uuid)
+        uuid = client.run(targets, command, metadata, worksheet_uuid)
+        print uuid
+        if args.block:
+            # TODO: replace this with the tail command instead of wait
+            state = client.wait(uuid)
+            print "STATE: %s" % state
+            #self.do_info_command([uuid], self.create_parser('info'))
+            print "=== stdout"
+            self.do_cat_command([os.path.join(uuid, 'stdout')], self.create_parser('cat'))
+            print "=== stderr"
+            self.do_cat_command([os.path.join(uuid, 'stderr')], self.create_parser('cat'))
 
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
