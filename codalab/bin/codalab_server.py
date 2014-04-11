@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import sys
 
+# DEPRECATED
 from codalab.config.config_parser import ConfigParser
 
 

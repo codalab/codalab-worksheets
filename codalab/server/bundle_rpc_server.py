@@ -24,10 +24,11 @@ class BundleRPCServer(FileServer):
       'open_target',
     )
 
-    def __init__(self, address, client):
-        self.client = client
-        FileServer.__init__(self, address, tempfile.gettempdir())
-        (_, self.port) = address
+    def __init__(self, manager):
+        self.host = manager.config['server']['host']
+        self.port = manager.config['server']['port']
+        self.client = manager.client('local')
+        FileServer.__init__(self, (self.host, self.port), tempfile.gettempdir())
         for command in RemoteBundleClient.CLIENT_COMMANDS:
             self.register_function(getattr(self.client, command), command)
         for command in self.SERVER_COMMANDS:
@@ -52,5 +53,5 @@ class BundleRPCServer(FileServer):
         return self.open_file(path, 'rb')
 
     def serve_forever(self):
-        print 'BundleRPCServer serving at port %s...' % (self.port,)
+        print 'BundleRPCServer serving to %s at port %s...' % ('ALL hosts' if self.host == '' else 'host ' + self.host, self.port)
         FileServer.serve_forever(self)

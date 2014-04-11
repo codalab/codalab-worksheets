@@ -42,7 +42,10 @@ class RemoteBundleClient(BundleClient):
       'upload_zip',
     )
 
-    def __init__(self, address):
+    def __init__(self, address, token_info):
+        # TODO: put token_info into HTTP header
+        # TODO: add /bundleservice to the name?
+        self.address = address
         self.proxy = xmlrpclib.ServerProxy(address, allow_none=True)
         def do_command(command):
             def inner(*args, **kwargs):

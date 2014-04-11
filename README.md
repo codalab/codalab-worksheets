@@ -9,7 +9,7 @@ running, uploading, etc.).  The API exposed is used by both the
 
 1. After cloning the repository, install the appropriate packages:
 
-    virtualenv codalab_env --no-site-packages
+    virtualenv -p /usr/bin/python2.7 codalab_env --no-site-packages
 
     codalab_env/bin/pip-2.7 install sqlalchemy
 
@@ -46,4 +46,4 @@ For NLP:
     (cd examples/stanford_corenlp && ./download.sh)
     (cd examples/stanford_corenlp && ./upload.sh)
     (cd examples/lewis_carroll_poems && ./upload.sh)
-    cl run stanford_corenlp lewis_carroll_poems 'program/run input output' --auto
+    cl run program:stanford_corenlp input:lewis_carroll_poems 'program/run input output' --auto
