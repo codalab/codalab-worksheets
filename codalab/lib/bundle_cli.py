@@ -356,7 +356,7 @@ class BundleCLI(object):
             client.edit(info['uuid'], new_metadata)
 
     def do_rm_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
+        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]', nargs='+')
         parser.add_argument(
           '-f', '--force',
           action='store_true',
@@ -364,7 +364,8 @@ class BundleCLI(object):
         )
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        client.delete(args.bundle_spec, args.force)
+        for bundle_spec in args.bundle_spec:
+            client.delete(bundle_spec, args.force)
 
     def do_list_command(self, argv, parser):
         parser.add_argument(
