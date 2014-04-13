@@ -65,9 +65,10 @@ class CodaLabManager(object):
         if not os.path.exists(config_path):
             write_pretty_json({
                 'cli': {'verbose': False},
-                'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800},
+                'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800,
+                           'auth': {'class': 'MockAuthHandler'}},
                 'aliases': {
-                    'dev': 'https://qaintdev.cloudapp.net', # TODO: replace this with something official when it's ready
+                    'dev': 'https://qaintdev.cloudapp.net/bundleservice', # TODO: replace this with something official when it's ready
                     'localhost': 'http://localhost:2800',
                 },
             }, config_path)
