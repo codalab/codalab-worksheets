@@ -27,13 +27,11 @@ file that specifies enough information to construct some of these classes is
 still valid. For example, the config file for a remote client will not need to
 include any server configuration.
 '''
+import getpass
 import json
 import os
 import sys
-import base64
-import getpass
-import urllib
-import urllib2
+import time
 
 from codalab.common import UsageError
 
@@ -67,9 +65,10 @@ class CodaLabManager(object):
         if not os.path.exists(config_path):
             write_pretty_json({
                 'cli': {'verbose': False},
-                'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800},
+                'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800,
+                           'auth': {'class': 'MockAuthHandler'}},
                 'aliases': {
-                    'dev': 'https://qaintdev.cloudapp.net', # TODO: replace this with something official when it's ready
+                    'dev': 'https://qaintdev.cloudapp.net/bundleservice', # TODO: replace this with something official when it's ready
                     'localhost': 'http://localhost:2800',
                 },
             }, config_path)
@@ -149,6 +148,23 @@ class CodaLabManager(object):
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,))
 
+    @cached
+    def auth_handler(self):
+        '''
+        Returns a class to authenticate users on the server-side.  Called by the server.
+        '''
+        auth_config = self.config['server']['auth']
+        handler_class = auth_config['class']
+        if handler_class == 'OAuthHandler':
+            arguments = ('address', 'app_id', 'app_key')
+            kwargs = {arg: auth_config[arg] for arg in arguments}
+            from codalab.server.auth import OAuthHandler
+            return OAuthHandler(**kwargs)
+        if handler_class == 'MockAuthHandler':
+            from codalab.server.auth import MockAuthHandler
+            return MockAuthHandler()
+        raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (model_class,))
+
     def current_client(self): return self.client(self.session()['address'])
     def client(self, address):
         '''
@@ -164,62 +180,62 @@ class CodaLabManager(object):
             self.clients[address] = LocalBundleClient(bundle_store, model)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            # Authentication
-            # TODO: check if token expired
             auth = self.state['auth']
             if address not in auth:
                 self.authenticate(address)
-            self.clients[address] = RemoteBundleClient(address, auth[address]['token_info'])
+            self.clients[address] = RemoteBundleClient(address, lambda command: self.authenticate(address))
         return self.clients[address]
 
     def authenticate(self, address):
         '''
-        Authenticate with the given address.
-        Prompt user for password.
-        Save tokens to state.
+        Authenticate with the given address. This will prompt user for password
+        unless valid credentials are already available. Client state will be
+        updated if new tokens are generated.
+
+        Returns an access token.
         '''
-        # Get user information
-        if 'qaintdev' not in address:  # TODO: temporary hack to bypass authentication since it doesn't exist
-            auth = self.state['auth'][address] = {}
-            auth['username'] = 'pliang'
-            auth['token_info'] = {}
+        def _cache_token(token_info, username=None):
+            '''
+            Helper to update state with new token info and optional username.
+            Returns the latest access token.
+            '''
+            token_info['expires_at'] = time.time() + float(token_info['expires_in']) - 60.0
+            del token_info['expires_in']
+            auth['token_info'] = token_info
+            if username is not None:
+                auth['username'] = username
             self.save_state()
-            return
-        get_token_url = address + '/clients/token/'  # TODO: standardize on location of auth server with respect to bundle service
-        print 'Requesting access at %s' % get_token_url
+            return token_info['access_token']
+
+        # Check the cache for a valid token
+        from codalab.client.remote_bundle_client import RemoteBundleClient
+        auth_info = self.state['auth'].get(address, {})
+        if 'token_info' in auth_info:
+            token_info = auth_info['token_info']
+            expires_at = token_info.get('expires_at', 0.0)
+            if expires_at > time.time():
+                # Token is usable but check if it's nearing expiration
+                if expires_at >= (time.time() + 900.0):
+                    return token_info['access_token']
+                # Try to refresh token
+                remote_client = RemoteBundleClient(address, lambda command: None)
+                token_info = remote_client.login('refresh_token', 
+                                                 token_info['refresh_token'],
+                                                 auth_info['username'])
+                if token_info is not None:
+                    return _cache_token(token_info)
+
+        # If we get here, a valid token is not already available.
+        auth = self.state['auth'][address] = {}
+        print 'Requesting access at %s' % address
         print 'Username: ',
         username = sys.stdin.readline().rstrip()
         password = getpass.getpass()
-
-        # Get OAuth2 token using Resource Owner Password Credentials Grant 
-        appname = 'cli_client_{0}'.format(username)
-        headers = { 
-            'Authorization': 'Basic {0}'.format(base64.encodestring('%s:' % appname).replace('\n',''))
-        }
-        data = [
-            ('grant_type', 'password'),
-            ('username', username),
-            ('password', password)
-        ]
-        #print get_token_url
-        #print urllib.urlencode(data, True)
-        #print headers
-        request = urllib2.Request(get_token_url, urllib.urlencode(data, True), headers)
-        try:
-            response = urllib2.urlopen(request)
-            token_info = json.load(response)
-            print 'Token type: %s' % token_info['token_type']
-            print 'Access token %s' % token_info['access_token']
-            print 'Refresh token %s' % token_info['refresh_token']
-            print 'Expires in %s' % token_info['expires_in']
-            auth = self.state['auth'][address] = {}
-            auth['username'] = username
-            auth['token_info'] = token_info
-            self.save_state()
-        except urllib2.HTTPError as e:
-            print 'Couldn\'t authenticate.'
-            print e
-            sys.exit(1)
+        remote_client = RemoteBundleClient(address, lambda command: None)
+        token_info = remote_client.login('credentials', username, password)
+        if token_info is None:
+            raise UsageError("Invalid username or password")
+        return _cache_token(token_info, username)
 
     def get_current_worksheet_uuid(self):
         '''

@@ -10,28 +10,66 @@ all return a file uuid, which is like a Unix file descriptor.
 The other RPC methods on this server are read_file, write_file, and close_file.
 These methods take a file uuid in addition to their regular arguments, and they
 perform the requested operation on the file handle corresponding to that uuid.
+
+This RPC server also adds authentication capabilities. It exposes a login method
+which clients use to authenticate with the OAuth authorization server.
 '''
 import os
-from SimpleXMLRPCServer import SimpleXMLRPCServer
+from SimpleXMLRPCServer import (
+    SimpleXMLRPCServer,
+    SimpleXMLRPCRequestHandler,
+)
 import tempfile
 import uuid
 import xmlrpclib
 
 from codalab.lib import path_util
 
+class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
+    """
+    Simple XML-RPC request handler class which also reads authentication
+    information included in HTTP headers.
+    """
+
+    def decode_request_content(self, data):
+        '''
+        Overrides in order to capture Authorization header.
+        '''
+        token = None
+        if 'Authorization' in self.headers:
+            value = self.headers.get("Authorization", "")
+            token = value[8:] if value.startswith("Bearer: ") else ""
+        if self.server.auth_handler.validate_token(token):
+            return SimpleXMLRPCRequestHandler.decode_request_content(self, data)
+        else:
+            self.send_response(401, "Could not authenticate with OAuth")
+            self.send_header("WWW-Authenticate", "realm=\"https://www.codalab.org\"")
+            self.send_header("Content-length", "0")
+            self.end_headers()
+
+    def send_response(self, code, message=None):
+        '''
+        Overrides to capture end of request.
+        '''
+        # Clear current user
+        self.server.auth_handler.validate_token(None)
+        SimpleXMLRPCRequestHandler.send_response(self, code, message)
 
 class FileServer(SimpleXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
 
-    def __init__(self, address, temp):
+    def __init__(self, address, temp, auth_handler):
         # Keep a dictionary mapping file uuids to open file handles and a
         # dictionary mapping temporary file's file uuids to their absolute paths.
         self.file_handles = {}
         self.temp_file_paths = {}
         self.temp = temp
+        self.auth_handler = auth_handler
         # Register file-like RPC methods to allow for file transfer.
-        SimpleXMLRPCServer.__init__(self, address, allow_none=True)
-        for fn_name in ('open_temp_file', 'read_file', 'write_file', 'close_file'):
+
+        SimpleXMLRPCServer.__init__(self, address, allow_none=True,
+                                    requestHandler=AuthenticatedXMLRPCRequestHandler)
+        for fn_name in ('open_temp_file', 'read_file', 'write_file', 'close_file', 'login'):
             self.register_function(getattr(self, fn_name), fn_name)
 
     def open_file(self, path, mode):
@@ -75,3 +113,6 @@ class FileServer(SimpleXMLRPCServer):
         file_handle = self.file_handles.pop(file_uuid, None)
         if file_handle:
             file_handle.close()
+
+    def login(self, grant_type, username, key):
+        return self.auth_handler.generate_token(grant_type, username, key)

@@ -5,6 +5,7 @@ the FileServer operations exposed by the RPC server.
 '''
 import contextlib
 import sys
+import urllib
 import xmlrpclib
 
 from codalab.client.bundle_client import BundleClient
@@ -15,6 +16,42 @@ from codalab.lib import (
 )
 from codalab.server.rpc_file_handle import RPCFileHandle
 
+class AuthenticatedTransport(xmlrpclib.SafeTransport):
+    '''
+    Provides an implementation of xmlrpclib.Transport which injects an
+    Authorization header into HTTP requests to the remove server.
+    '''
+    def __init__(self, address, get_auth_token):
+        '''
+        address: the address of the remote server
+        get_auth_token: a function which yields the access token for
+          the Bearer authentication scheme.
+        '''
+        xmlrpclib.SafeTransport.__init__(self, use_datetime=0)
+        url_type, _ = urllib.splittype(address)
+        if url_type not in ("http", "https"):
+            raise IOError("unsupported XML-RPC protocol")
+        self._url_type = url_type
+        self._bearer_token = get_auth_token
+
+    def send_content(self, connection, request_body):
+        '''
+        Overrides Transport.send_content in order to inject Authorization header.
+        '''
+        _, command = xmlrpclib.loads(request_body)
+        token = self._bearer_token(command)
+        if token is not None and len(token) > 0:
+            connection.putheader("Authorization", "Bearer: {0}".format(token))
+        xmlrpclib.SafeTransport.send_content(self, connection, request_body)
+
+    def make_connection(self, host):
+        '''
+        Create a connection based on the communication scheme, http vs https.
+        '''
+        if self._url_type == "https":
+            return xmlrpclib.SafeTransport.make_connection(self, host)
+        else:
+            return xmlrpclib.Transport.make_connection(self, host)
 
 class RemoteBundleClient(BundleClient):
     CLIENT_COMMANDS = (
@@ -40,17 +77,22 @@ class RemoteBundleClient(BundleClient):
       'read_file',
       'close_file',
       'upload_zip',
+      'login',
     )
 
-    def __init__(self, address, token_info):
-        # TODO: put token_info into HTTP header
-        # TODO: add /bundleservice to the name?
+    def __init__(self, address, get_auth_token):
         self.address = address
-        self.proxy = xmlrpclib.ServerProxy(address, allow_none=True)
+        transport = AuthenticatedTransport(address, get_auth_token)
+        self.proxy = xmlrpclib.ServerProxy(address, transport=transport, allow_none=True)
         def do_command(command):
             def inner(*args, **kwargs):
                 try:
                     return getattr(self.proxy, command)(*args, **kwargs)
+                except xmlrpclib.ProtocolError, e:
+                    if e.errcode == 401:
+                        raise UsageError("Could not authenticate request.")
+                    else:
+                        raise
                 except xmlrpclib.Fault, e:
                     # Transform server-side UsageErrors into client-side UsageErrors.
                     if 'codalab.common.UsageError' in e.faultString:
