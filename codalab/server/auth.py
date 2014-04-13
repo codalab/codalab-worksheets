@@ -7,6 +7,8 @@ import urllib
 import urllib2
 from base64 import encodestring
 
+from codalab.common import UsageError
+
 class User(object):
     '''
     Defines a registered user with a unique name and a unique (int) identifier.
@@ -124,7 +126,7 @@ class OAuthHandler(object):
         If the grant fails because of invalid credentials, None is returned.
         '''
         if len(username) < self.min_username_length or len(key) < self.min_key_length:
-            raise ValueError("Bad request.")
+            raise UsageError("Invalid username or password.")
         if grant_type == 'credentials':
             return self._generate_new_token(username, key)
         if grant_type == 'refresh_token':
