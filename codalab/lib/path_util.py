@@ -207,7 +207,7 @@ def readFile(path, lines=0):
     check_isfile(path, 'readFile')
     with open(path, 'rb') as file_handle:
         if lines == 0:
-            return file_handle.read()
+            return file_handle.readlines()
         else:
             return list(itertools.islice(file_handle, lines))
 
