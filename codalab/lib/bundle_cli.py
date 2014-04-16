@@ -456,7 +456,7 @@ class BundleCLI(object):
             (directories, files) = client.ls(self.parse_target(bundle_spec))
 
             def wrap(string):
-                return '# ' + string + ' #'
+                return '** ' + string + ' **'
 
             print '\n' + wrap('Bundle Contents') + '\n'
 
@@ -469,9 +469,10 @@ class BundleCLI(object):
 
             for file in files:
                 new_path = os.path.join(bundle_spec, file)
-                print wrap(file)
-                client.cat(self.parse_target(new_path))
+                lines = client.head(self.parse_target(new_path))
 
+                print wrap(file)
+                print "".join(lines)
 
     def format_basic_info(self, info):
         metadata = collections.defaultdict(lambda: None, info['metadata'])

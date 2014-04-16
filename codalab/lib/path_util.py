@@ -200,6 +200,16 @@ def cat(path):
     with open(path, 'rb') as file_handle:
         file_util.copy(file_handle, sys.stdout)
 
+def readFile(path, lines=0):
+    '''
+    Return contents of file as string.
+    '''
+    check_isfile(path, 'readFile')
+    with open(path, 'rb') as file_handle:
+        if lines == 0:
+            return file_handle.read()
+        else:
+            return list(itertools.islice(file_handle, lines))
 
 def getmtime(path):
     '''
