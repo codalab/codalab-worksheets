@@ -159,7 +159,7 @@ class LocalBundleClient(BundleClient):
 
     def head(self, target, lines=10):
         path = self.get_target_path(target)
-        return path_util.readFile(path, lines)
+        return path_util.read_file(path, lines)
 
     def search(self, query=None):
         if query:
