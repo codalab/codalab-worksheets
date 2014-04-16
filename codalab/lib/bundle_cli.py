@@ -460,6 +460,7 @@ class BundleCLI(object):
 
             print '\n' + wrap('Bundle Contents') + '\n'
 
+            # Print contents of each top-level directory in bundle
             for dir in directories:
                 new_path = os.path.join(bundle_spec, dir)
                 # TODO note many server calls
@@ -467,6 +468,7 @@ class BundleCLI(object):
                 print wrap(dir + '/')
                 self.print_ls_output(ds, fs)
 
+            # Print first 10 lines of each top-level file in bundle
             for file in files:
                 new_path = os.path.join(bundle_spec, file)
                 lines = client.head(self.parse_target(new_path))
