@@ -184,7 +184,7 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def update_worksheet(worksheet_info, new_items):
+    def update_worksheet(self, worksheet_info, new_items):
         '''
         Take a worksheet info dict and a list of new (bundle_spec, value) pairs and
         update the worksheet. Raise a UsageError if there was a concurrent update.

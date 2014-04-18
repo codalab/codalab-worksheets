@@ -210,7 +210,7 @@ class BundleCLI(object):
         
     def parse_client_bundle_info_list(self, spec):
         client, spec = self.parse_spec(spec)
-        return (client, client.info(bundle_spec))
+        return (client, client.info(spec))
         
     #############################################################################
     # CLI methods
