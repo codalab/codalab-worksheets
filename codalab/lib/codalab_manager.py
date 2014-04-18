@@ -163,7 +163,7 @@ class CodaLabManager(object):
         if handler_class == 'MockAuthHandler':
             from codalab.server.auth import MockAuthHandler
             return MockAuthHandler()
-        raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (model_class,))
+        raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
 
     def current_client(self): return self.client(self.session()['address'])
     def client(self, address):
@@ -219,7 +219,7 @@ class CodaLabManager(object):
                     return token_info['access_token']
                 # Try to refresh token
                 remote_client = RemoteBundleClient(address, lambda command: None)
-                token_info = remote_client.login('refresh_token', 
+                token_info = remote_client.login('refresh_token',
                                                  token_info['refresh_token'],
                                                  auth_info['username'])
                 if token_info is not None:
