@@ -71,6 +71,15 @@ class RemoteBundleClient(BundleClient):
       'update_worksheet',
       'rename_worksheet',
       'delete_worksheet',
+      # Commands related to groups and permissions.
+      'list_groups',
+      'new_group',
+      'rm_group',
+      'group_info',
+      'add_user',
+      'rm_user',
+      'set_bundle_perm',
+      'set_worksheet_perm',
     )
     COMMANDS = CLIENT_COMMANDS + (
       'open_target',

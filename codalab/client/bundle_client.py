@@ -208,3 +208,55 @@ class BundleClient(object):
         Delete the specified worksheet.
         '''
         raise NotImplementedError
+
+    #############################################################################
+    # Commands related to groups and permissions.
+    #############################################################################
+
+    def list_groups(self):
+        '''
+        Returns a list of group row dicts. These are the groups of the current user.
+        '''
+        raise NotImplementedError
+
+    def new_group(self, name):
+        '''
+        Create a group.
+        '''
+        raise NotImplementedError
+
+    def rm_group(self, group_spec):
+        '''
+        Delete a group.
+        '''
+        raise NotImplementedError
+
+    def group_info(self, group_spec):
+        '''
+        Show details (including membership) about the specified group.
+        '''
+        raise NotImplementedError
+
+    def add_user(self, username, group_spec, is_admin=False):
+        '''
+        Add a user to a group.
+        '''
+        raise NotImplementedError
+
+    def rm_user(self, username, group_spec):
+        '''
+        Remove a user from a group.
+        '''
+        raise NotImplementedError
+
+    def set_bundle_perm(self, group_spec, bundle_spec, permission):
+        '''
+        Set permission for a group on a bundle.
+        '''
+        raise NotImplementedError
+
+    def set_worksheet_perm(self, group_spec, worksheet_spec, permission):
+        '''
+        Set permission for a group on a worksheet.
+        '''
+        raise NotImplementedError

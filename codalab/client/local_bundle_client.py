@@ -3,26 +3,36 @@ LocalBundleClient is BundleClient implementation that interacts directly with a
 BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from codalab.bundles import (
-  get_bundle_subclass,
-  UPLOADED_TYPES,
+    get_bundle_subclass,
+    UPLOADED_TYPES,
 )
 from codalab.common import (
-  precondition,
-  UsageError,
+    precondition,
+    UsageError,
+    AuthorizationError,
+    PermissionError,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
-  canonicalize,
-  path_util,
+    canonicalize,
+    path_util,
 )
 from codalab.objects.worksheet import Worksheet
+from codalab.objects.permission import Group
 
+def authentication_required(func):
+    def decorate(self, *args, **kwargs):
+        if self.auth_handler.current_user() is None:
+            raise AuthorizationError("Not authenticated")
+        return func(self, *args, **kwargs)
+    return decorate
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, bundle_store, model):
+    def __init__(self, bundle_store, model, auth_handler):
         self.address = 'local'
         self.bundle_store = bundle_store
         self.model = model
+        self.auth_handler = auth_handler
 
     def get_bundle_info(self, bundle, parents=None, children=None):
         hard_dependencies = bundle.get_hard_dependencies()
@@ -238,3 +248,43 @@ class LocalBundleClient(BundleClient):
     def delete_worksheet(self, worksheet_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
         self.model.delete_worksheet(uuid)
+
+    #############################################################################
+    # Commands related to groups and permissions follow!
+    #############################################################################
+
+    @authentication_required
+    def list_groups(self):
+        return self.model.list_groups(self.auth_handler.current_user().unique_id)
+
+    @authentication_required
+    def new_group(self, name):
+        group = Group({'name': name, 'user_defined': True, 'owner_id': self.auth_handler.current_user().unique_id})
+        self.model.create_group(group)
+        return group.to_dict()
+
+    @authentication_required
+    def rm_group(self, group_spec):
+        uuid = canonicalize.get_group_uuid(self.model, self.auth_handler.current_user().unique_id, group_spec)
+        self.model.delete_group(uuid)
+
+    @authentication_required
+    def group_info(self, group_spec):
+        pass
+
+    @authentication_required
+    def add_user(self, username, group_spec, is_admin=False):
+        pass
+
+    @authentication_required
+    def rm_user(self, username, group_spec):
+        pass
+
+    @authentication_required
+    def set_bundle_perm(self, group_spec, bundle_spec, permission):
+        pass
+
+    @authentication_required
+    def set_worksheet_perm(self, group_spec, worksheet_spec, permission):
+        pass
+

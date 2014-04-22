@@ -89,3 +89,29 @@ def get_worksheet_uuid(model, worksheet_spec):
           (message, ''.join('\n  %s' % (worksheet,) for worksheet in worksheets))
         )
     return worksheets[0].uuid
+
+
+def get_group_uuid(model, owner_id, group_spec):
+    '''
+    Resolve a string group_spec to a unique group uuid.
+    '''
+    if not group_spec:
+        raise UsageError('Tried to expand empty group_spec!')
+    if spec_util.UUID_REGEX.match(group_spec):
+        return group_spec
+    elif spec_util.UUID_PREFIX_REGEX.match(group_spec):
+        groups = model.batch_get_groups(owner_id=owner_id, uuid=LikeQuery(group_spec + '%'))
+        message = "uuid starting with '%s'" % (group_spec,)
+    else:
+        spec_util.check_name(group_spec)
+        groups = model.batch_get_groups(owner_id=owner_id, name=group_spec)
+        message = "name '%s'" % (group_spec,)
+    if not groups:
+        raise UsageError('No group found with %s' % (message,))
+    elif len(groups) > 1:
+        raise UsageError(
+          'Found multiple groups with %s:%s' %
+          (message, ''.join('\n  uuid=%s' % (group['uuid'],) for group in groups))
+        )
+    return groups[0]['uuid']
+

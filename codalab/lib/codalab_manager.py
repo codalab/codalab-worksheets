@@ -176,8 +176,9 @@ class CodaLabManager(object):
         if address == 'local':
             bundle_store = self.bundle_store()
             model = self.model()
+            auth_handler = self.auth_handler()
             from codalab.client.local_bundle_client import LocalBundleClient
-            self.clients[address] = LocalBundleClient(bundle_store, model)
+            self.clients[address] = LocalBundleClient(bundle_store, model, auth_handler)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
             auth = self.state['auth']

@@ -22,6 +22,7 @@ from codalab.model.tables import (
   bundle as cl_bundle,
   bundle_dependency as cl_bundle_dependency,
   bundle_metadata as cl_bundle_metadata,
+  group as cl_group,
   worksheet as cl_worksheet,
   worksheet_item as cl_worksheet_item,
   db_metadata,
@@ -448,4 +449,51 @@ class BundleModel(object):
             ))
             connection.execute(cl_worksheet.delete().where(
               cl_worksheet.c.uuid == worksheet_uuid
+            ))
+
+    #############################################################################
+    # Commands related to groups and permissions follow!
+    #############################################################################
+
+    def list_groups(self, owner_id):
+        '''
+        Return a list of row dicts --one per group-- for the given owner.
+        '''
+        with self.engine.begin() as connection:
+            rows = connection.execute(cl_group.select().where(
+                cl_group.c.owner_id == owner_id
+            )).fetchall()
+        return [dict(row) for row in sorted(rows, key=lambda row: row.id)]
+
+    def create_group(self, group):
+        '''
+        Create the group given.
+        '''
+        group.validate()
+        group_value = group.to_dict()
+        with self.engine.begin() as connection:
+            result = connection.execute(cl_group.insert().values(group_value))
+            group.id = result.lastrowid
+
+    def batch_get_groups(self, **kwargs):
+        '''
+        Get a list of groups, all of which satisfy the clause given by kwargs.
+        '''
+        clause = self.make_kwargs_clause(cl_group, kwargs)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+              cl_group.select().where(clause)
+            ).fetchall()
+            if not rows:
+                return []
+        values = {row.uuid: dict(row) for row in rows}
+        return [value for value in values.itervalues()]
+
+    def delete_group(self, uuid):
+        '''
+        Delete the group with the given uuid.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(cl_group.delete().where(
+              cl_group.c.uuid == uuid
             ))

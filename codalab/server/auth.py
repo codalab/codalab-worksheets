@@ -23,10 +23,10 @@ class MockAuthHandler(object):
     A mock handler, which makes it easy to run a server when no real
     authentication is required. The implementation is such that this
     handler will accept any combination of username and password, but
-    it will always resolve to the same user: User('anonymous', 0).
+    it will always resolve to the same user: User('root', 0).
     '''
     def __init__(self):
-        self._user = None
+        self._user = User('root', 0)
 
     def generate_token(self, grant_type, username, key):
         '''
@@ -41,10 +41,8 @@ class MockAuthHandler(object):
 
     def validate_token(self, token):
         '''
-        Always returns True. If token is None, sets the current user to None,
-        otherwise sets the current user to anonymous.
+        Always returns True. The specified token is ignored.
         '''
-        self._user = None if token is None else User('anonymous', 0)
         return True
 
     def current_user(self):
