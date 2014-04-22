@@ -63,7 +63,7 @@ class Worker(object):
                   update={'state': new_state},
                   condition={'state': bundles[0].state},
                 )
-                if not success:
+                if not success and self.verbose >= 1:
                     self.pretty_print('WARNING: update failed!')
                 return success
         return True
@@ -181,6 +181,7 @@ class Worker(object):
                 state = State.FAILED
             self.finalize_run(bundle, state, data_hash, metadata)
             print '-- END RUN: %s [%s]' % (bundle, state)
+            print ''
         # Clean up after the run.
         with self.profile('Cleaning up temp directory...'):
             path_util.remove(temp_dir)
