@@ -96,7 +96,13 @@ class BundleClient(object):
 
     def cat(self, target):
         '''
-        Print the contents of the target file at to stdout.
+        Print the contents of the target file to stdout.
+        '''
+        raise NotImplementedError
+
+    def head(self, target, lines):
+        '''
+        Return contents of target file as a list of lines.
         '''
         raise NotImplementedError
 
