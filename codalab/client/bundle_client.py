@@ -96,7 +96,13 @@ class BundleClient(object):
 
     def cat(self, target):
         '''
-        Print the contents of the target file at to stdout.
+        Print the contents of the target file to stdout.
+        '''
+        raise NotImplementedError
+
+    def head(self, target, lines):
+        '''
+        Return contents of target file as a list of lines.
         '''
         raise NotImplementedError
 
@@ -184,7 +190,7 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def update_worksheet(worksheet_info, new_items):
+    def update_worksheet(self, worksheet_info, new_items):
         '''
         Take a worksheet info dict and a list of new (bundle_spec, value) pairs and
         update the worksheet. Raise a UsageError if there was a concurrent update.
