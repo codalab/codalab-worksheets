@@ -114,10 +114,50 @@ class CodaLabManager(object):
         '''
         Return the current session name.
         '''
-        if sys.platform == 'win32':
-            return str(1)  # TODO: get some identifier of the shell
-        else:
-            return str(os.getppid())
+        if sys.platform == 'win32' and not hasattr(os, 'getppid'):
+
+            from ctypes.wintypes import DWORD, POINTER, ULONG, LONG
+            from ctypes import c_char, byref, sizeof, Structure, windll
+            from os import getpid
+
+            # See http://msdn2.microsoft.com/en-us/library/ms686701.aspx
+
+            TH32CS_SNAPPROCESS = 0x00000002
+            MAX_PATH = 260
+            class PROCESSENTRY32(Structure):
+                _fields_ = [('dwSize', DWORD),
+                            ('cntUsage', DWORD),
+                            ('th32ProcessID', DWORD),
+                            ('th32DefaultHeapID', POINTER(ULONG)),
+                            ('th32ModuleID', DWORD),
+                            ('cntThreads', DWORD),
+                            ('th32ParentProcessID', DWORD),
+                            ('pcPriClassBase', LONG),
+                            ('dwFlags', DWORD),
+                            ('szExeFile', c_char * MAX_PATH)]
+
+            def getppid():
+                '''
+                Returns the parent's process id.
+                '''
+                hProcessSnap = windll.kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
+                try:
+                    pid = getpid()
+                    pe32 = PROCESSENTRY32()
+                    pe32.dwSize = sizeof(PROCESSENTRY32)
+                    if windll.kernel32.Process32First(hProcessSnap, byref(pe32)) != 0:
+                        while True:
+                            if pid == pe32.th32ProcessID:
+                                return pe32.th32ParentProcessID
+                            if windll.kernel32.Process32Next(hProcessSnap, byref(pe32)) == 0:
+                                break
+                finally:
+                    windll.kernel32.CloseHandle(hProcessSnap)
+                return 0
+
+            os.getppid = getppid
+
+        return str(os.getppid())
 
     @cached
     def session(self):
