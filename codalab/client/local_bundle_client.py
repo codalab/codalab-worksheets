@@ -47,6 +47,14 @@ class LocalBundleClient(BundleClient):
     def get_target_path(self, target):
         return canonicalize.get_target_path(self.bundle_store, self.model, target)
 
+    def validate_target_path(self, target):
+        (bundle_spec, path) = target
+        target_path = self.get_target_path(target)
+        bundle_uuid = self.get_spec_uuid(bundle_spec)
+        bundle = self.model.get_bundle(bundle_uuid)
+        bundle_path = path_util.safe_join(self.bundle_store.data, bundle.data_hash)
+        path_util.check_under_path(target_path, bundle_path)
+
     def get_bundle_target(self, target):
         (bundle_spec, subpath) = target
         return (self.model.get_bundle(self.get_spec_uuid(bundle_spec)), subpath)
