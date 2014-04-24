@@ -10,9 +10,6 @@ all return a file uuid, which is like a Unix file descriptor.
 The other RPC methods on this server are read_file, write_file, and close_file.
 These methods take a file uuid in addition to their regular arguments, and they
 perform the requested operation on the file handle corresponding to that uuid.
-
-This RPC server also adds authentication capabilities. It exposes a login method
-which clients use to authenticate with the OAuth authorization server.
 '''
 import os
 from SimpleXMLRPCServer import (
@@ -69,7 +66,7 @@ class FileServer(SimpleXMLRPCServer):
 
         SimpleXMLRPCServer.__init__(self, address, allow_none=True,
                                     requestHandler=AuthenticatedXMLRPCRequestHandler)
-        for fn_name in ('open_temp_file', 'read_file', 'write_file', 'close_file', 'login'):
+        for fn_name in ('open_temp_file', 'read_file', 'write_file', 'close_file'):
             self.register_function(getattr(self, fn_name), fn_name)
 
     def open_file(self, path, mode):
@@ -113,6 +110,3 @@ class FileServer(SimpleXMLRPCServer):
         file_handle = self.file_handles.pop(file_uuid, None)
         if file_handle:
             file_handle.close()
-
-    def login(self, grant_type, username, key):
-        return self.auth_handler.generate_token(grant_type, username, key)

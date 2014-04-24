@@ -8,6 +8,7 @@ import sys
 import urllib
 import xmlrpclib
 
+from codalab.client import get_address_host
 from codalab.client.bundle_client import BundleClient
 from codalab.common import UsageError
 from codalab.lib import (
@@ -71,6 +72,8 @@ class RemoteBundleClient(BundleClient):
       'update_worksheet',
       'rename_worksheet',
       'delete_worksheet',
+      # Commands related to authentication.
+      'login',
       # Commands related to groups and permissions.
       'list_groups',
       'new_group',
@@ -87,13 +90,13 @@ class RemoteBundleClient(BundleClient):
       'read_file',
       'close_file',
       'upload_zip',
-      'login',
     )
 
     def __init__(self, address, get_auth_token):
         self.address = address
-        transport = AuthenticatedTransport(address, get_auth_token)
-        self.proxy = xmlrpclib.ServerProxy(address, transport=transport, allow_none=True)
+        host = get_address_host(address)
+        transport = AuthenticatedTransport(host, lambda cmd: None if cmd == 'login' else get_auth_token(self))
+        self.proxy = xmlrpclib.ServerProxy(host, transport=transport, allow_none=True)
         def do_command(command):
             def inner(*args, **kwargs):
                 try:

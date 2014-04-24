@@ -12,16 +12,50 @@ import tempfile
 from codalab.common import UsageError
 
 
-BUNDLE_LINE_REGEX = re.compile('^(\[(.*)\])?\s*\{(.*)\}$')
+BUNDLE_LINE_REGEX = '^(\[(.*)\])?\s*\{(.*)\}$'
+BUNDLE_DISPLAY_PREFIX = r'//'
+BUNDLE_DISPLAY_DIRECTIVE = BUNDLE_DISPLAY_PREFIX + r' display (table|default|inline)'
+BUNDLE_DISPLAY_FIELD = BUNDLE_DISPLAY_PREFIX + r' ([^\:]+): (image|metadata)/(.*)'
 
+def expand_worksheet_item_info(worksheet_info, value, type):
+    '''
+    Expands a worksheet item appropiately considering all bundle types.
+    '''
+    if type == 'directive':
+        data = {
+            'type': 'directive',
+            'name': None,
+            'path': None,
+            'value': None,
+        }
+        match_display = re.compile('.*' + BUNDLE_DISPLAY_DIRECTIVE + '.*', re.DOTALL).match(value)
+        if match_display:
+            return {
+                'type': 'directive',
+                'directive': 'display',
+                'display': match_display.group(1),
+                'markup': match_display.group(0),
+            }
+        else:
+            match_field = re.compile('.*' + BUNDLE_DISPLAY_FIELD + '.*', re.DOTALL).match(value)
+            if match_field:
+                return {
+                    'type': 'directive',
+                    'directive': match_field.group(2),
+                    'name': match_field.group(1),
+                    'path': match_field.group(3),
+                    'markup': match_field.group(0),
+                }
+        return data
+    return value
 
 def get_worksheet_lines(worksheet_info):
     '''
     Generator that returns pretty-printed lines of text for the given worksheet.
     '''
-    for (bundle_info, value) in worksheet_info['items']:
+    for (bundle_info, value, type) in worksheet_info['items']:
         if bundle_info is None:
-            yield value
+            yield value['markup'] if type == 'directive' else value
         else:
             if 'bundle_type' not in bundle_info:
                 yield '// The following bundle reference is broken:'
@@ -30,7 +64,7 @@ def get_worksheet_lines(worksheet_info):
 
 def get_current_items(worksheet_info):
     '''
-    Return list of (bundle_uuid, value) pairs.
+    Return list of (bundle_uuid, value, type) pairs.
     Note: worksheet_info['items'] contains (bundle_info, value)
     '''
     items = []
@@ -76,24 +110,46 @@ def request_new_items(worksheet_info):
         raise UsageError('No change made; aborting')
     return parse_worksheet_form(form_result)
 
+def match_comment_block(line):
+    # Some comments actually contain meaningful display information that should not be treated as ignored comments
+    matchDisplayDirective = re.compile('^' + BUNDLE_DISPLAY_DIRECTIVE + '$').match(line)
+    matchFieldDirective = re.compile('^' + BUNDLE_DISPLAY_FIELD + '$').match(line)
+    
+    return matchDisplayDirective or matchFieldDirective
+
+def parse_worksheet_form_bundle(match):
+    # Return a (bundle_uuid, value, type) pair out of the bundle line.
+    # Note that the value could be None (if there was no [])
+    value = match.group(2)
+    value = value if value is None else value.strip()
+    return (match.group(3).strip(), value, 'bundle')
+
+def parse_worksheet_form_display(match):
+    return (None, match.group(0), 'directive')
+
+parse_worksheet_parse_table = {
+    BUNDLE_LINE_REGEX: parse_worksheet_form_bundle,
+    BUNDLE_DISPLAY_DIRECTIVE: parse_worksheet_form_display,
+    BUNDLE_DISPLAY_FIELD: parse_worksheet_form_display,
+}
 
 def parse_worksheet_form(form_result):
     '''
     Parse the result of a form template produced in request_missing_metadata.
-    Return a list of (bundle_uuid, value) pairs, where bundle_uuid could be None.
+    Return a list of (bundle_uuid, value, type) pairs, where bundle_uuid could be None.
     '''
     result = []
+    markup_block = ''
     for line in form_result:
         line = line.strip()
-        if line[:2] == '//':
+        if line[:2] == '//' and not match_comment_block(line):
             continue
-        match = BUNDLE_LINE_REGEX.match(line)
-        if match:
-            # Parse a (bundle_uuid, value) pair out of the bundle line.
-            # Note that the value could be None (if there was no [])
-            value = match.group(2)
-            value = value if value is None else value.strip()
-            result.append((match.group(3).strip(), value))
-        else:
-            result.append((None, line))
+        current_result = (None, line, 'markup')
+        # Loop for each regexp and to check and apply a match
+        for line_parser in parse_worksheet_parse_table:
+            match = re.compile(line_parser).match(line)
+            if match:
+                current_result = parse_worksheet_parse_table[line_parser](match)
+                break
+        result.append(current_result)
     return result

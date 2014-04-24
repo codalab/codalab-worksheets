@@ -210,7 +210,31 @@ class BundleClient(object):
         raise NotImplementedError
 
     #############################################################################
-    # Commands related to groups and permissions.
+    # Commands for authentication
+    #############################################################################
+
+    def login(self, grant_type, username, key):
+        '''
+        Generate OAuth access token from username/password or from a refresh token.
+
+        grant_type: Type of grant requested: 'credentials' or 'refresh_token'.
+        username: Name of user to authenticate.
+        key: User's secret which is a password for the 'credentials' grant type
+            or a refresh token for the 'refresh_token' grant type.
+
+        If the grant succeeds, the method returns a dictionary of the form:
+        { 'token_type': 'Bearer',
+          'access_token': <token>,
+          'expires_in': <span in seconds>,
+          'refresh_token': <token> }
+        If the grant fails because of invalid credentials, None is returned.
+        '''
+        if not hasattr(self, 'auth_handler'):
+            raise NotImplementedError
+        return self.auth_handler.generate_token(grant_type, username, key)
+
+    #############################################################################
+    # Commands for groups and permissions.
     #############################################################################
 
     def list_groups(self):

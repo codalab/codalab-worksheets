@@ -67,10 +67,10 @@ worksheet = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
-  #Column('owner_id', Integer, nullable=True),
+  Column('owner_id', Integer, nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('worksheet_name_index', 'name'),
-  #Index('worksheet_owner_index', 'owner_id'),
+  Index('worksheet_owner_index', 'owner_id'),
   sqlite_autoincrement=True,
 )
 
@@ -82,6 +82,7 @@ worksheet_item = Table(
   # A worksheet row may OPTIONALLY include a bundle_uuid. This column is a logical
   # foreign key on bundle.uuid, but it may be broken if bundles are deleted.
   Column('bundle_uuid', String(63), nullable=True),
+  Column('type', String(20), nullable=False),
   Column('value', Text, nullable=False),
   Column('sort_key', Integer, nullable=True),
   Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),

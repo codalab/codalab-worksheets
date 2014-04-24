@@ -63,7 +63,7 @@ class OAuthHandler(object):
         self._address = address
         self._app_id = app_id
         self._app_key = app_key
-        self.min_username_length = 6
+        self.min_username_length = 1
         self.min_key_length = 6
         self._user = None
         self._access_token = None

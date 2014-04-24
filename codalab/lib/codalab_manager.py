@@ -33,6 +33,7 @@ import os
 import sys
 import time
 
+from codalab.client import is_local_address
 from codalab.common import UsageError
 
 def cached(fn):
@@ -213,25 +214,30 @@ class CodaLabManager(object):
         '''
         if address in self.clients:
             return self.clients[address]
-        if address == 'local':
+        if is_local_address(address):
             bundle_store = self.bundle_store()
             model = self.model()
             auth_handler = self.auth_handler()
             from codalab.client.local_bundle_client import LocalBundleClient
-            self.clients[address] = LocalBundleClient(bundle_store, model, auth_handler)
+            client = LocalBundleClient(address, bundle_store, model, auth_handler)
+            self.clients[address] = client
+            access_token = self._authenticate(client)
+            # Set current user
+            auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            auth = self.state['auth']
-            if address not in auth:
-                self.authenticate(address)
-            self.clients[address] = RemoteBundleClient(address, lambda command: self.authenticate(address))
-        return self.clients[address]
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client))
+            self.clients[address] = client
+            self._authenticate(client)
+        return client
 
-    def authenticate(self, address):
+    def _authenticate(self, client):
         '''
-        Authenticate with the given address. This will prompt user for password
+        Authenticate with the given client. This will prompt user for password
         unless valid credentials are already available. Client state will be
         updated if new tokens are generated.
+
+        client: The client pointing to the bundle service to authenticate with.
 
         Returns an access token.
         '''
@@ -249,7 +255,7 @@ class CodaLabManager(object):
             return token_info['access_token']
 
         # Check the cache for a valid token
-        from codalab.client.remote_bundle_client import RemoteBundleClient
+        address = client.address
         auth_info = self.state['auth'].get(address, {})
         if 'token_info' in auth_info:
             token_info = auth_info['token_info']
@@ -259,21 +265,27 @@ class CodaLabManager(object):
                 if expires_at >= (time.time() + 900.0):
                     return token_info['access_token']
                 # Try to refresh token
-                remote_client = RemoteBundleClient(address, lambda command: None)
-                token_info = remote_client.login('refresh_token',
-                                                 token_info['refresh_token'],
-                                                 auth_info['username'])
+                token_info = client.login('refresh_token',
+                                          token_info['refresh_token'],
+                                          auth_info['username'])
                 if token_info is not None:
                     return _cache_token(token_info)
 
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}
-        print 'Requesting access at %s' % address
-        print 'Username: ',
-        username = sys.stdin.readline().rstrip()
-        password = getpass.getpass()
-        remote_client = RemoteBundleClient(address, lambda command: None)
-        token_info = remote_client.login('credentials', username, password)
+        # For a local client with mock credentials, use the default username.
+        username = ''
+        if is_local_address(client.address):
+            from codalab.server.auth import MockAuthHandler
+            if type(self.auth_handler()) is MockAuthHandler:
+                username = 'root'
+                password = ''
+        if not username:
+            print 'Requesting access at %s' % address
+            print 'Username: ',
+            username = sys.stdin.readline().rstrip()
+            password = getpass.getpass()
+        token_info = client.login('credentials', username, password)
         if token_info is None:
             raise UsageError("Invalid username or password")
         return _cache_token(token_info, username)
@@ -299,7 +311,7 @@ class CodaLabManager(object):
         if worksheet_uuid:
             session['worksheet_uuid'] = worksheet_uuid
         else:
-            del session['worksheet_uuid']
+            if 'worksheet_uuid' in session: del session['worksheet_uuid']
         self.save_state()
 
     def save_state(self):
