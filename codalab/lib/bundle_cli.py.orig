@@ -625,7 +625,11 @@ class BundleCLI(object):
         if args.bundle_spec:
             client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
         if args.message:
-            client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message, None)])
+<<<<<<< HEAD
+            client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message)])
+=======
+            self.client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message, None)])
+>>>>>>> d5e18a8... Add support for worksheet directives
 
     def do_work_command(self, argv, parser):
         parser.add_argument(
