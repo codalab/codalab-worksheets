@@ -45,6 +45,19 @@ class MockAuthHandler(object):
         '''
         return True
 
+    def get_users_from_names(self, names):
+        '''
+        Resolves user names to corresponding User objects.
+
+        names: The set of names to resolve.
+
+        Returns a dictionary where keys are names input to this method and
+        values are either a User object or None if the name does not have
+        a matching user (either the user does not exist or exists but is
+        not active).
+        '''
+        user_dict = {name: None for name in names}
+
     def current_user(self):
         return self._user
 
@@ -74,6 +87,9 @@ class OAuthHandler(object):
 
     def _get_validation_url(self):
         return "{0}/clients/validation/".format(self._address)
+
+    def _get_user_info_url(self):
+        return "{0}/clients/info/".format(self._address)
 
     def _generate_new_token(self, username, password):
         '''
@@ -177,6 +193,37 @@ class OAuthHandler(object):
             return False # 'User credentials are not valid'
         else:
             return False # 'The token translation failed.'
+
+    def get_users_from_names(self, names):
+        '''
+        Resolves user names to corresponding User objects.
+
+        names: The set of names to resolve.
+
+        Returns a dictionary where keys are names input to this method and
+        values are either a User object or None if the name does not have
+        a matching user (either the user does not exist or exists but is
+        not active).
+        '''
+        if self._access_token is None or self._expires_at < time.time():
+            self._generate_app_token()
+        headers = {'Authorization': 'Bearer {0}'.format(self._access_token)}
+        request = urllib2.Request(self._get_user_info_url(),
+                                  urllib.urlencode([('names', names)], True),
+                                  headers)
+        response = urllib2.urlopen(request)
+        result = json.load(response)
+        status_code = result['code'] if 'code' in result else 500
+        user_dict = None
+        if status_code == 200:
+            user_dict = {}
+            for user in result['users']:
+                name = user['name']
+                if 'id' in user and user['active'] == True:
+                    user_dict[name] = User(user['id'], name)
+                else:
+                    user_dict[name] = None
+        return user_dict
 
     def current_user(self):
         '''
