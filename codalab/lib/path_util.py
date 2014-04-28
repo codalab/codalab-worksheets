@@ -116,7 +116,7 @@ def check_under_path(path, parent_path):
     Check that the path is under its parent path.
     '''
     if not os.path.realpath(path).startswith(os.path.realpath(parent_path)):
-        raise path_error('%s the path is invalid:' % (fn_name,), path)
+        raise path_error('Path not under %s' % (parent_path,), path)
 
 def check_for_symlinks(root, dirs_and_files=None):
     '''

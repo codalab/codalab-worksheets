@@ -70,10 +70,10 @@ def get_target_path(bundle_store, model, target):
         bundle_root = bundle_store.get_location(bundle.data_hash)
 
     final_path = path_util.safe_join(bundle_root, path)
+    path_util.check_under_path(final_path, bundle_root)
     result = path_util.TargetPath(final_path)
     result.target = target
     return result
-
 
 def get_worksheet_uuid(model, worksheet_spec):
     '''

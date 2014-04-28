@@ -50,7 +50,6 @@ class BundleRPCServer(FileServer):
         uuid identifying it.
         '''
         path = self.client.get_target_path(target)
-        self.client.validate_target_path(target)
         return self.open_file(path, 'rb')
 
     def serve_forever(self):
