@@ -15,6 +15,12 @@ class RPCFileHandle(object):
     def read(self, num_bytes=None):
         return self.proxy.read_file(self.file_uuid, num_bytes).data
 
+    def tail(self, num_lines=10):
+        return self.proxy.tail_file(self.file_uuid, num_lines).data
+
+    def readline(self):
+        return self.proxy.read_line_file(self.file_uuid).data
+
     def write(self, buffer):
         binary = xmlrpclib.Binary(buffer)
         self.proxy.write_file(self.file_uuid, binary)
