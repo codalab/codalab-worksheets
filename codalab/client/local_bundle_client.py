@@ -11,10 +11,11 @@ from codalab.bundles import (
     UPLOADED_TYPES,
 )
 from codalab.common import (
-    precondition,
-    State,
-    UsageError,
-    AuthorizationError,
+  precondition,
+  State,
+  Command,
+  UsageError,
+  AuthorizationError,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
@@ -172,7 +173,45 @@ class LocalBundleClient(BundleClient):
             self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
         return bundle.uuid
 
-    def update_bundle_metadata(self, uuid, metadata):
+    def kill(self, bundle_spec):
+        uuid = self.get_spec_uuid(bundle_spec)
+        bundle = self.model.get_bundle(uuid)
+        self.model.update_bundle(bundle, {'worker_command': Command.KILL});
+
+    def open_target(self, target):
+        (bundle_spec, subpath) = target
+        path = self.get_target_path(target)
+        path_util.check_isfile(path, 'open_target')
+        return open(path)
+
+    def tail_file(self, target):
+        (bundle_spec, subpath) = target
+        file_handle = self.open_target(target)
+
+        with contextlib.closing(file_handle):
+            # Print last 10 lines
+            tail = file_util.tail(file_handle)
+            print tail
+
+            def read_line():
+                return file_handle.readline()
+
+            return self.watch(bundle_spec, [read_line])
+
+    def tail_bundle(self, bundle_spec):
+        out = self.open_target((bundle_spec, 'stdout'))
+        err = self.open_target((bundle_spec, 'stderr'))
+
+        with contextlib.closing(out), contextlib.closing(err):
+
+            def out_line():
+                return out.readline()
+            def err_line():
+                return err.readline()
+
+            return self.watch(bundle_spec, [out_line, err_line])
+
+    def edit(self, uuid, metadata):
         bundle = self.model.get_bundle(uuid)
         self.validate_user_metadata(bundle, metadata)
         self.model.update_bundle(bundle, {'metadata': metadata})

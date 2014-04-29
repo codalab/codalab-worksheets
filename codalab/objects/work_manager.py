@@ -19,6 +19,7 @@ import os
 from codalab.common import (
   precondition,
   State,
+  Command,
   UsageError,
 )
 from codalab.lib import (
@@ -26,13 +27,24 @@ from codalab.lib import (
   path_util,
 )
 from codalab.bundles.run_bundle import RunBundle
+from codalab.objects import (
+  machine,
+  machine_types,
+  remote_machine,
+)
 
 class Worker(object):
-    def __init__(self, bundle_store, model):
+    def __init__(self, bundle_store, model, machine):
         self.bundle_store = bundle_store
         self.model = model
         self.profiling_depth = 0
         self.verbose = 0
+        # Local machine
+        #self.machine = machine_types.PoolMachine()
+        # Remote machine
+        # TODO fix this
+        self.machine = machine
+        #self.processes = {}
 
     def pretty_print(self, message):
         time_str = datetime.datetime.utcnow().isoformat()[:19].replace('T', ' ')
@@ -71,6 +83,62 @@ class Worker(object):
                     self.pretty_print('WARNING: update failed!')
                 return success
         return True
+
+    # TODO(dskovach) mark bundle as killed rather than failed
+    # Poll processes to see if bundles have finished running
+    def check_finished_bundles(self):
+        result = self.machine.poll()
+        if result:
+            self.finalize(result)
+
+    def run_bundle(self, bundle):
+        '''
+        Run the given bundle using an available Machine.
+        '''
+        # Check that we're running a bundle in the RUNNING state.
+        state_message = 'Unexpected bundle state: %s' % (bundle.state,)
+        precondition(bundle.state == State.RUNNING, state_message)
+        data_hash_message = 'Unexpected bundle data_hash: %s' % (bundle.data_hash,)
+        precondition(bundle.data_hash is None, data_hash_message)
+
+        # Compute a dict mapping parent_uuid -> parent for each dep of this bundle.
+        parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
+        parents = self.model.batch_get_bundles(uuid=parent_uuids)
+        parent_dict = {parent.uuid: parent for parent in parents}
+
+        # Run the bundle.
+        with self.profile('Running bundle...'):
+            print '-- START RUN: %s' % (bundle,)
+            return self.machine.run_bundle(bundle, self.bundle_store, parent_dict)
+
+    def check_killed_bundles(self):
+        bundles = self.model.batch_get_bundles(worker_command=Command.KILL)
+        for bundle in bundles:
+            uuid = bundle.uuid
+            result = self.machine.kill(uuid)
+            if not result:
+                self.pretty_print('Kill command for %s failed: bundle isn\'t running ' % uuid)
+            else:
+                self.finalize(result)
+            self.model.update_bundle(bundle, {'worker_command': None})
+
+    def finalize(self, result):
+        (bundle, success, temp_dir) = result
+
+        try:
+            (data_hash, metadata) = self.bundle_store.upload(temp_dir)
+        except Exception:
+            (data_hash, metadata) = (None, {})
+
+        if not success and data_hash:
+            print 'The results of the failed execution were uploaded.'
+
+        # Update data, remove temp_dir and process
+        state = State.READY if success else State.FAILED
+        self.finalize_model_data(bundle, state, data_hash, metadata)
+
+        # Remove temporary data
+        self.machine.finalize(bundle.uuid)
 
     def update_created_bundles(self):
         '''
@@ -117,7 +185,7 @@ class Worker(object):
                 self.model.update_bundle(bundle, update)
         self.update_bundle_states(bundles_to_stage, State.STAGED)
         num_processed = len(bundles_to_fail) + len(bundles_to_stage)
-        num_blocking = len(bundles) - len(bundles_to_fail) - len(bundles_to_stage)
+        num_blocking  = len(bundles) - num_processed
         if num_processed > 0:
             self.pretty_print('%s bundles processed, %s bundles still blocking on parents.' % (num_processed, num_blocking,))
             return True
@@ -134,87 +202,29 @@ class Worker(object):
             if self.verbose >= 1 and len(bundles) > 0:
                 self.pretty_print('Staging %s bundles.' % (len(bundles),))
         random.shuffle(bundles)
+        new_running_bundles = 0
         for bundle in bundles:
-            if self.update_bundle_states([bundle], State.RUNNING):
-                self.complete_bundle(bundle)
-                break
+            if not self.update_bundle_states([bundle], State.RUNNING):
+                self.pretty_print('WARNING: Bundle running, but state failed to update')
+            else:
+                if self.run_bundle(bundle):
+                    new_running_bundles += 1
+                else:
+                    # Restage
+                    self.update_bundle_states([bundle], State.STAGED)
+
+            #if self.update_bundle_states([bundle], State.RUNNING):
+            #    self.run_bundle(bundle)
+            #    break
         else:
             if self.verbose >= 2: self.pretty_print('Failed to lock a bundle!')
-        return len(bundles) > 0
+        return new_running_bundles > 0
 
-    def complete_bundle(self, bundle):
-        '''
-        Run the given bundle and then update its state to be either READY or FAILED.
-        If the bundle is now READY, its data_hash should be set.
-        '''
-        # Check that we're running a bundle in the RUNNING state.
-        state_message = 'Unexpected bundle state: %s' % (bundle.state,)
-        precondition(bundle.state == State.RUNNING, state_message)
-        data_hash_message = 'Unexpected bundle data_hash: %s' % (bundle.data_hash,)
-        precondition(bundle.data_hash is None, data_hash_message)
-        # Compute a dict mapping parent_uuid -> parent for each dep of this bundle.
-        parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
-        parents = self.model.batch_get_bundles(uuid=parent_uuids)
-        parent_dict = {parent.uuid: parent for parent in parents}
-
-        # Get temp directory
-        temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
-
-        # Complete the bundle. Mark it READY if it is successful and FAILED otherwise.
-        with self.profile('Completing bundle...'):
-            print '-- START RUN: %s' % (bundle,)
-            try:
-                start_time = time.time()
-                (data_hash, metadata) = bundle.complete(self.bundle_store, parent_dict, temp_dir)
-                end_time = time.time()
-                state = State.READY
-            except Exception:
-                end_time = time.time()
-                # TODO(pliang): distinguish between internal CodaLab error and the program failing
-                # TODO(skishore): Add metadata updates: time / CPU of run.
-                (type, error, tb) = sys.exc_info()
-                with self.profile('Uploading failed bundle...'):
-                    (data_hash, metadata) = self.upload_failed_bundle(error, temp_dir)
-                failure_message = '%s: %s' % (error.__class__.__name__, error)
-                if data_hash:
-                    suffix = 'The results of the failed execution were uploaded.'
-                    failure_message = '%s\n%s' % (failure_message, suffix)
-                elif not isinstance(error, UsageError):
-                    failure_message = 'Traceback:\n%s\n%s' % (
-                      ''.join(traceback.format_tb(tb))[:-1],
-                      failure_message,
-                    )
-                metadata.update({'failure_message': failure_message})
-                state = State.FAILED
-            if isinstance(bundle, RunBundle):
-                metadata.update({'time': end_time - start_time})
-            self.finalize_run(bundle, state, data_hash, metadata)
-            print '-- END RUN: %s [%s]' % (bundle, state)
-            print ''
-        # Clean up after the run.
-        with self.profile('Cleaning up temp directory...'):
-            if os.path.exists(temp_dir):
-                path_util.remove(temp_dir)
-
-    def upload_failed_bundle(self, error, temp_dir):
-        '''
-        Try to upload some data for a failed bundle run. Return a (data_hash, metadata)
-        pair if this fallback upload was successful, or (None, {}) if not.
-        '''
-        if isinstance(error, subprocess.CalledProcessError):
-            # The exception happened in the bundle's binary, not in our Python code.
-            # Right now, this is the only case in which we upload the failed bundle.
-            path_util.remove_symlinks(temp_dir)
-            try:
-                return self.bundle_store.upload(temp_dir)
-            except Exception:
-                pass
-        return (None, {})
-
-    def finalize_run(self, bundle, state, data_hash, metadata=None):
+    def finalize_model_data(self, bundle, state, data_hash, metadata=None):
         '''
         Update a bundle to the new state and data hash at the end of a run.
         '''
+        print '-- END RUN: %s [%s]' % (bundle, state)
         update = {'state': state, 'data_hash': data_hash}
         if metadata:
             update['metadata'] = metadata
@@ -229,11 +239,18 @@ class Worker(object):
         self.pretty_print('Running worker loop (num_iterations = %s, sleep_time = %s)' % (num_iterations, sleep_time))
         iteration = 0
         while not num_iterations or iteration < num_iterations:
-            # Sleep only if nothing happened.
+            # Check to see if any bundles should be killed
+            bool_killed = self.check_killed_bundles();
+            # Try to stage bundles
             self.update_created_bundles()
-            changed = self.update_staged_bundles()
-            if not changed:
+            # Try to run bundles with Ready parents
+            bool_run = self.update_staged_bundles()
+            # Check to see if any bundles are done running
+            bool_done = self.check_finished_bundles()
+
+            # Sleep only if nothing happened.
+            if not (bool_killed or bool_run or bool_done):
                 time.sleep(sleep_time)
-                continue
-            # Advance counter only if something interesting happened
-            iteration += 1
+            else:
+                # Advance counter only if something interesting happened
+                iteration += 1
