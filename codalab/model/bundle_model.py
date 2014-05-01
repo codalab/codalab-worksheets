@@ -2,34 +2,41 @@
 BundleModel is a wrapper around database calls to save and load bundle metadata.
 '''
 from sqlalchemy import (
-  and_,
-  select,
+    and_,
+    select,
+    union,
 )
 from sqlalchemy.exc import (
-  OperationalError,
-  ProgrammingError,
+    OperationalError,
+    ProgrammingError,
 )
-from sqlalchemy.sql.expression import true
+from sqlalchemy.sql.expression import (
+    label,
+    literal,
+    true,
+)
+
 
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
-  IntegrityError,
-  precondition,
-  UsageError,
+    IntegrityError,
+    precondition,
+    UsageError,
 )
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
-  bundle as cl_bundle,
-  bundle_dependency as cl_bundle_dependency,
-  bundle_metadata as cl_bundle_metadata,
-  group as cl_group,
-  worksheet as cl_worksheet,
-  worksheet_item as cl_worksheet_item,
-  db_metadata,
+    bundle as cl_bundle,
+    bundle_dependency as cl_bundle_dependency,
+    bundle_metadata as cl_bundle_metadata,
+    group as cl_group,
+    user_group as cl_user_group,
+    worksheet as cl_worksheet,
+    worksheet_item as cl_worksheet_item,
+    db_metadata,
 )
 from codalab.objects.worksheet import (
-  item_sort_key,
-  Worksheet,
+    item_sort_key,
+    Worksheet,
 )
 
 
@@ -491,6 +498,55 @@ class BundleModel(object):
         values = {row.uuid: dict(row) for row in rows}
         return [value for value in values.itervalues()]
 
+    def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
+        '''
+        Get a list of groups by querying the group table and/or the user_group table.
+        This method performs the general query:
+
+        q1 = select([...]).\
+                where(clause_from_spec_filters).\
+                where(clause_from_group_filters)
+        q2 = select([...]).\
+                where(clause_from_spec_filters).\
+                where(group.c.uuid == user_group.c.group_uuid).\
+                where(clause_from_user_group_filters)
+        q = union(s1, s2)
+        '''
+        fetch_cols1 = [cl_group.c.uuid, cl_group.c.name, cl_group.c.owner_id, cl_group.c.owner_id.label('user_id'), literal(True).label('is_admin')]
+        fetch_cols2 = list(fetch_cols1)[:3]
+        fetch_cols2.extend([cl_user_group.c.user_id, cl_user_group.c.is_admin])
+        q1 = None
+        q2 = None
+        if spec_filters:
+            spec_clause = self.make_kwargs_clause(cl_group, spec_filters)
+            q1 = select(fetch_cols1).where(spec_clause)
+            q2 = select(fetch_cols2).where(spec_clause).where(cl_group.c.uuid == cl_user_group.c.group_uuid)
+        if group_filters:
+            group_clause = self.make_kwargs_clause(cl_group, group_filters)
+            if q1 is None:
+                q1 = select(fetch_cols1)
+            q1 = q1.where(group_clause)
+        if user_group_filters:
+            user_group_clause = self.make_kwargs_clause(cl_user_group, user_group_filters)
+            if q2 is None:
+                q2 = select(fetch_cols2).where(cl_group.c.uuid == cl_user_group.c.group_uuid)
+            q2 = q2.where(user_group_clause)
+        # Figure out which query to run: q1, q2, union(q1,q2) or none. Query to execute will be in q1.
+        if q1 is None:
+            if q2 is None:
+                return []
+            q1 = q2
+        else:
+            if q2 is None: 
+                return []
+            q1 = union(q1, q2)
+        with self.engine.begin() as connection:
+            rows = connection.execute(q1).fetchall()
+            if not rows:
+                return []
+            values = {row.uuid: dict(row) for row in rows}
+            return [value for value in values.itervalues()]
+
     def delete_group(self, uuid):
         '''
         Delete the group with the given uuid.
@@ -499,3 +555,47 @@ class BundleModel(object):
             connection.execute(cl_group.delete().where(
               cl_group.c.uuid == uuid
             ))
+
+    def add_user_in_group(self, user_id, group_uuid, is_admin):
+        '''
+        Add user as a member of a group.
+        '''
+        row = {'group_uuid': group_uuid, 'user_id': user_id, 'is_admin': is_admin}
+        with self.engine.begin() as connection:
+            result = connection.execute(cl_user_group.insert().values(row))
+            row['id'] = result.lastrowid
+        return row
+
+    def delete_user_in_group(self, user_id, group_uuid):
+        '''
+        Add user as a member of a group.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(cl_user_group.delete().\
+                where(cl_user_group.c.user_id == user_id).\
+                where(cl_user_group.c.group_uuid == group_uuid)
+            )
+
+    def update_user_in_group(self, user_id, group_uuid, is_admin):
+        '''
+        Add user as a member of a group.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(cl_user_group.update().\
+                where(cl_user_group.c.user_id == user_id).\
+                where(cl_user_group.c.group_uuid == group_uuid).\
+                values({'is_admin': is_admin}))
+
+    def batch_get_user_in_group(self, **kwargs):
+        '''
+        Get a list of groups, all of which satisfy the clause given by kwargs.
+        '''
+        clause = self.make_kwargs_clause(cl_user_group, kwargs)
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+              cl_user_group.select().where(clause)
+            ).fetchall()
+            if not rows:
+                return []
+        return [dict(row) for row in rows]
+

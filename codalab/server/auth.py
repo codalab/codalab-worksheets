@@ -45,18 +45,25 @@ class MockAuthHandler(object):
         '''
         return True
 
-    def get_users_from_names(self, names):
+
+    def get_users(self, key_type, keys):
         '''
-        Resolves user names to corresponding User objects.
+        Resolves user names (key_type='names') or user IDs (key_type='ids') to
+        corresponding User objects.
 
-        names: The set of names to resolve.
+        key_type: The type of input keys: names or ids.
+        keys: The set of names/ids to resolve.
 
-        Returns a dictionary where keys are names input to this method and
-        values are either a User object or None if the name does not have
+        Returns a dictionary where keys are keys input to this method and
+        values are either a User object or None if the key does not have
         a matching user (either the user does not exist or exists but is
         not active).
         '''
-        user_dict = {name: None for name in names}
+        if key_type == 'names':
+            return {'name': self._user if key == 'root' else None for key in keys}
+        if key_type == 'ids':
+            return {'id': self._user if key == 0 else None for key in keys}
+        raise ValueError('Invalid key_type')
 
     def current_user(self):
         return self._user
@@ -139,9 +146,9 @@ class OAuthHandler(object):
           'refresh_token': <token> }
         If the grant fails because of invalid credentials, None is returned.
         '''
-        if len(username) < self.min_username_length or len(key) < self.min_key_length:
-            raise UsageError("Invalid username or password.")
         if grant_type == 'credentials':
+            if len(username) < self.min_username_length or len(key) < self.min_key_length:
+                raise UsageError("Invalid username or password.")
             return self._generate_new_token(username, key)
         if grant_type == 'refresh_token':
             return self._refresh_token(username, key)
@@ -194,22 +201,26 @@ class OAuthHandler(object):
         else:
             return False # 'The token translation failed.'
 
-    def get_users_from_names(self, names):
+    def get_users(self, key_type, keys):
         '''
-        Resolves user names to corresponding User objects.
+        Resolves user names (key_type='names') or user IDs (key_type='ids') to
+        corresponding User objects.
 
-        names: The set of names to resolve.
+        key_type: The type of input keys: names or ids.
+        keys: The set of names/ids to resolve.
 
-        Returns a dictionary where keys are names input to this method and
-        values are either a User object or None if the name does not have
+        Returns a dictionary where keys are keys input to this method and
+        values are either a User object or None if the key does not have
         a matching user (either the user does not exist or exists but is
         not active).
         '''
+        if key_type not in ('names', 'ids'):
+            raise ValueError('Invalid key_type')
         if self._access_token is None or self._expires_at < time.time():
             self._generate_app_token()
         headers = {'Authorization': 'Bearer {0}'.format(self._access_token)}
         request = urllib2.Request(self._get_user_info_url(),
-                                  urllib.urlencode([('names', names)], True),
+                                  urllib.urlencode([(key_type, keys)], True),
                                   headers)
         response = urllib2.urlopen(request)
         result = json.load(response)
@@ -217,12 +228,13 @@ class OAuthHandler(object):
         user_dict = None
         if status_code == 200:
             user_dict = {}
+            key_type_key = 'name' if key_type == 'names' else 'id'
             for user in result['users']:
-                name = user['name']
-                if 'id' in user and user['active'] == True:
-                    user_dict[name] = User(user['id'], name)
+                key = user[key_type_key]
+                if 'active' in user and user['active'] == True:
+                    user_dict[key] = User(user['name'], user['id'])
                 else:
-                    user_dict[name] = None
+                    user_dict[key] = None
         return user_dict
 
     def current_user(self):

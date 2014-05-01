@@ -55,7 +55,7 @@ def read_json_or_die(path):
         return json.loads(string)
     except ValueError:
         print "Invalid JSON in %s:\n%s" % (path, string)
-        sys.exit(1)
+        #sys.exit(1)
 
 class CodaLabManager(object):
     def __init__(self):
@@ -241,6 +241,8 @@ class CodaLabManager(object):
 
         Returns an access token.
         '''
+        address = client.address
+        auth = self.state['auth'].get(address, {})
         def _cache_token(token_info, username=None):
             '''
             Helper to update state with new token info and optional username.
@@ -255,10 +257,8 @@ class CodaLabManager(object):
             return token_info['access_token']
 
         # Check the cache for a valid token
-        address = client.address
-        auth_info = self.state['auth'].get(address, {})
-        if 'token_info' in auth_info:
-            token_info = auth_info['token_info']
+        if 'token_info' in auth:
+            token_info = auth['token_info']
             expires_at = token_info.get('expires_at', 0.0)
             if expires_at > time.time():
                 # Token is usable but check if it's nearing expiration
@@ -266,8 +266,8 @@ class CodaLabManager(object):
                     return token_info['access_token']
                 # Try to refresh token
                 token_info = client.login('refresh_token',
-                                          token_info['refresh_token'],
-                                          auth_info['username'])
+                                          auth['username'],
+                                          token_info['refresh_token'])
                 if token_info is not None:
                     return _cache_token(token_info)
 

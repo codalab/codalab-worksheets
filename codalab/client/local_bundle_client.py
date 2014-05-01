@@ -19,6 +19,7 @@ from codalab.lib import (
   worksheet_util,
 )
 from codalab.objects.worksheet import Worksheet
+from codalab.objects import permission
 from codalab.objects.permission import Group
 
 def authentication_required(func):
@@ -262,7 +263,10 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def list_groups(self):
-        return self.model.list_groups(self._current_user_id())
+        return self.model.batch_get_all_groups(
+            None, 
+            {'owner_id': self._current_user_id(), 'user_defined': True},
+            {'user_id': self._current_user_id() })
 
     @authentication_required
     def new_group(self, name):
@@ -272,23 +276,68 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def rm_group(self, group_spec):
-        uuid = canonicalize.get_group_uuid(self.model, self._current_user_id(), group_spec)
-        self.model.delete_group(uuid)
+        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        self.model.delete_group(group_info['uuid'])
+        return group_info
 
     @authentication_required
     def group_info(self, group_spec):
-        pass
-        #TODO
+        group_info = permission.unique_group_with_user(self.model, group_spec, self._current_user_id())
+        users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
+        user_ids = [int(group_info['owner_id'])]
+        user_ids.extend([int(u['user_id']) for u in users_in_group])
+        users = self.auth_handler.get_users('ids', user_ids)
+        members = []
+        roles = {}
+        for row in users_in_group:
+            roles[int(row['user_id'])] = 'co-owner' if row['is_admin'] == True else 'member'
+        roles[group_info['owner_id']] = 'owner'
+        for user_id in user_ids:
+            if user_id in users:
+                user = users[user_id]
+                members.append({'name': user.name, 'role': roles[user_id]})
+        group_info['members'] = members
+        return group_info
 
     @authentication_required
     def add_user(self, username, group_spec, is_admin=False):
-        print "Adding %s to %s with admin %s." % (username, group_spec, is_admin)
-        #TODO
+        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        users = self.auth_handler.get_users('names', [username])
+        user = users[username]
+        if user is None:
+            raise UsageError("%s is not a valid user." % (username,))
+        if user.unique_id == self._current_user_id():
+            raise UsageError("You cannot add yourself to a group.")
+        members = self.model.batch_get_user_in_group(user_id=user.unique_id, group_uuid=group_info['uuid'])
+        if len(members) > 0:
+            member = members[0]
+            if user.unique_id == group_info['owner_id']:
+                raise UsageError("You cannot modify the owner a group.")
+            if member['is_admin'] != is_admin:
+                self.model.update_user_in_group(user.unique_id, group_info['uuid'], is_admin)
+                member['operation'] = 'Modified'
+        else:
+            member = self.model.add_user_in_group(user.unique_id, group_info['uuid'], is_admin)
+            member['operation'] = 'Added'
+        member['name'] = username
+        return member
 
     @authentication_required
     def rm_user(self, username, group_spec):
-        print "Removing %s from %s." % (username, group_spec)
-        #TODO
+        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        users = self.auth_handler.get_users('names', [username])
+        user = users[username]
+        if user is None:
+            raise UsageError("%s is not a valid user." % (username,))
+        if user.unique_id == group_info['owner_id']:
+            raise UsageError("You cannot modify the owner a group.")
+        members = self.model.batch_get_user_in_group(user_id=user.unique_id, group_uuid=group_info['uuid'])
+        if len(members) > 0:
+            member = members[0]
+            self.model.delete_user_in_group(user.unique_id, group_info['uuid'])
+            member['name'] = username
+            return member
+        return None
 
     @authentication_required
     def set_worksheet_perm(self, group_spec, worksheet_spec, permission):

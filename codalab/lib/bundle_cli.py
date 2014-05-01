@@ -751,7 +751,15 @@ class BundleCLI(object):
         group_dicts = client.list_groups()
         if group_dicts:
             print 'Listing all groups:\n'
-            self.print_table(('name', 'uuid'), group_dicts)
+            for group_dict in group_dicts:
+                role = 'member'
+                if group_dict['is_admin'] == True:
+                    if group_dict['owner_id'] == group_dict['user_id']:
+                        role = 'owner'
+                    else:
+                        role = 'co-owner'
+                group_dict['role'] = role
+            self.print_table(('name', 'uuid', 'role'), group_dicts)
         else:
             print 'No groups found.'
 
@@ -767,14 +775,16 @@ class BundleCLI(object):
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        client.rm_group(args.group_spec)
+        group_dict = client.rm_group(args.group_spec)
+        print 'Deleted group %s (%s)\n' % (group_dict['name'], group_dict['uuid'])
 
     def do_group_info_command(self, argv, parser):
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        client.group_info(args.group_spec)
-        #TODO
+        group_dict = client.group_info(args.group_spec)
+        print 'Listing members of group %s (%s):\n' % (group_dict['name'], group_dict['uuid'])
+        self.print_table(('name', 'role'), group_dict['members'])
 
     def do_add_user_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
@@ -783,14 +793,25 @@ class BundleCLI(object):
                             help='grant admin privileges for the group')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        client.add_user(args.user_spec, args.group_spec, is_admin=args.admin)
+        user_info = client.add_user(args.user_spec, args.group_spec, is_admin=args.admin)
+        if 'operation' in user_info:
+            print '%s %s %s group %s' % (user_info['operation'],
+                                         user_info['name'],
+                                         'to' if user_info['operation'] == 'Added' else 'in',
+                                         user_info['group_uuid'])
+        else:
+            print '%s is already in group %s' % (user_info['name'], user_info['group_uuid'])
 
     def do_rm_user_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        client.rm_user(args.user_spec, args.group_spec)
+        user_info = client.rm_user(args.user_spec, args.group_spec)
+        if (user_info is None):
+            print "%s is not a member of group %s." % (user_info['name'], user_info['group_uuid'])
+        else:
+            print "Removed %s from group %s." % (user_info['name'], user_info['group_uuid'])
 
     def do_set_worksheet_perm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
