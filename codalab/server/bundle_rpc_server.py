@@ -27,7 +27,7 @@ class BundleRPCServer(FileServer):
     def __init__(self, manager):
         self.host = manager.config['server']['host']
         self.port = manager.config['server']['port']
-        self.client = manager.client('local')
+        self.client = manager.client('local', False)
         FileServer.__init__(self, (self.host, self.port), tempfile.gettempdir(), manager.auth_handler())
         for command in RemoteBundleClient.CLIENT_COMMANDS:
             self.register_function(getattr(self.client, command), command)

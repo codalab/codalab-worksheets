@@ -207,9 +207,10 @@ class CodaLabManager(object):
         raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
 
     def current_client(self): return self.client(self.session()['address'])
-    def client(self, address):
+    def client(self, address, is_cli=True):
         '''
-        Return a client given the address.  Note that this can either be called by the CLI or the server.
+        Return a client given the address.  Note that this can either be called
+        by the CLI (is_cli=True) or the server (is_cli=False).
         Cache the Client if necessary.
         '''
         if address in self.clients:
@@ -221,9 +222,10 @@ class CodaLabManager(object):
             from codalab.client.local_bundle_client import LocalBundleClient
             client = LocalBundleClient(address, bundle_store, model, auth_handler)
             self.clients[address] = client
-            access_token = self._authenticate(client)
-            # Set current user
-            auth_handler.validate_token(access_token)
+            if is_cli:
+                # Set current user
+                access_token = self._authenticate(client)
+                auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
             client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client))
