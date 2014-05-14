@@ -263,10 +263,19 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def list_groups(self):
-        return self.model.batch_get_all_groups(
-            None, 
+        group_dicts = self.model.batch_get_all_groups(
+            None,
             {'owner_id': self._current_user_id(), 'user_defined': True},
-            {'user_id': self._current_user_id() })
+            {'user_id': self._current_user_id()})
+        for group_dict in group_dicts:
+            role = 'member'
+            if group_dict['is_admin'] == True:
+                if group_dict['owner_id'] == group_dict['user_id']:
+                    role = 'owner'
+                else:
+                    role = 'co-owner'
+            group_dict['role'] = role
+        return group_dicts
 
     @authentication_required
     def new_group(self, name):
@@ -277,6 +286,8 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def rm_group(self, group_spec):
         group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        if group_info['owner_id'] != self._current_user_id():
+            raise UsageError('A group cannot be deleted by its co-owners.')
         self.model.delete_group(group_info['uuid'])
         return group_info
 
@@ -340,11 +351,11 @@ class LocalBundleClient(BundleClient):
         return None
 
     @authentication_required
-    def set_worksheet_perm(self, group_spec, worksheet_spec, permission):
+    def set_worksheet_perm(self, group_spec, worksheet_spec, permissions):
         pass
         #TODO
 
     @authentication_required
-    def set_bundle_perm(self, group_spec, bundle_spec, permission):
+    def set_bundle_perm(self, group_spec, bundle_spec, permissions):
         pass
 

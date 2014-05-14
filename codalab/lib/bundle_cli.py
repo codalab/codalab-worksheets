@@ -751,14 +751,6 @@ class BundleCLI(object):
         group_dicts = client.list_groups()
         if group_dicts:
             print 'Listing all groups:\n'
-            for group_dict in group_dicts:
-                role = 'member'
-                if group_dict['is_admin'] == True:
-                    if group_dict['owner_id'] == group_dict['user_id']:
-                        role = 'owner'
-                    else:
-                        role = 'co-owner'
-                group_dict['role'] = role
             self.print_table(('name', 'uuid', 'role'), group_dicts)
         else:
             print 'No groups found.'
@@ -808,7 +800,7 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         user_info = client.rm_user(args.user_spec, args.group_spec)
-        if (user_info is None):
+        if user_info is None:
             print "%s is not a member of group %s." % (user_info['name'], user_info['group_uuid'])
         else:
             print "Removed %s from group %s." % (user_info['name'], user_info['group_uuid'])
