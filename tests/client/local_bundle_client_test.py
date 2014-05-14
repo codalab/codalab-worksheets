@@ -156,9 +156,6 @@ class GroupsAndPermsTest(unittest.TestCase):
         _assert_group_count_for('user1', 0)
         _assert_group_count_for('user2', 0)
 
-    def setUp(self):
-        print "Setting up (instance)"
-
 
 
 
