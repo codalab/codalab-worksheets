@@ -147,10 +147,11 @@ class BundleClient(object):
             change = False
             for fn in fns:
                 result = fn()
-                if not result == '':
-                    stdout.write(result)
-                    stdout.flush()
+                while not result == '':
                     change = True
+                    stdout.write(result)
+                    result = fn()
+            stdout.flush()
             # Sleep if nothing happened
             if change == False:
                 time.sleep(period)
