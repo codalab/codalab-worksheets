@@ -27,6 +27,7 @@ from codalab.bundles.run_bundle import RunBundle
 from codalab.common import (
   precondition,
   State,
+  PermissionError,
   UsageError,
 )
 from codalab.lib import (
@@ -35,7 +36,10 @@ from codalab.lib import (
   spec_util,
   worksheet_util,
 )
-
+from codalab.model.tables import (
+    GROUP_OBJECT_PERMISSION_ALL,
+    GROUP_OBJECT_PERMISSION_READ,
+)
 from codalab.objects.worker import Worker
 
 class BundleCLI(object):
@@ -69,7 +73,6 @@ class BundleCLI(object):
       'group_info': 'Show detailed information for a group.',
       'add_user': 'Add a user to a group.',
       'rm_user': 'Remove a user from a group.',
-      'set_bundle_perm': 'Set a group\'s permissions for a bundle.',
       'set_worksheet_perm': 'Set a group\'s permissions for a worksheet.',
       # Commands that can only be executed on a LocalBundleClient.
       'cleanup': 'Clean up the CodaLab bundle store.',
@@ -112,7 +115,6 @@ class BundleCLI(object):
       'group_info',
       'add_user',
       'rm_user',
-      'set_bundle_perm',
       'set_worksheet_perm',
     )
 
@@ -258,6 +260,8 @@ class BundleCLI(object):
         else:
             try:
                 return command_fn(remaining_args, parser)
+            except PermissionError:
+                self.exit("You do not have sufficient permissions to execute this command.")
             except UsageError, e:
                 self.exit('%s: %s' % (e.__class__.__name__, e))
 
@@ -807,17 +811,21 @@ class BundleCLI(object):
 
     def do_set_worksheet_perm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
-        parser.add_argument('permission', help='permission: []') #TODO
-        parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
+        parser.add_argument('permission', help='permission: [none|(r)ead|(a)ll]')
+        parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-
-    def do_set_bundle_perm_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
-        parser.add_argument('permission', help='identifier: [<uuid>|<name>]') #TODO
-        parser.add_argument('group_spec', help='identifier: [<uuid>|<name>]')
-        args = parser.parse_args(argv)
-
+        result = client.set_worksheet_perm(args.worksheet_spec, args.permission, args.group_spec)
+        permission_code = result['permission']
+        permission_label = 'no'
+        if permission_code == GROUP_OBJECT_PERMISSION_READ:
+            permission_label = 'read'
+        elif permission_code == GROUP_OBJECT_PERMISSION_ALL:
+            permission_label = 'full'
+        print "Group %s (%s) has %s permission on worksheet %s (%s)." % \
+            (result['group_info']['name'], result['group_info']['uuid'],
+             permission_label,
+             result['worksheet'].name, result['worksheet'].uuid)
 
     #############################################################################
     # LocalBundleClient-only commands follow!

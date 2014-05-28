@@ -10,7 +10,6 @@ from codalab.common import (
   precondition,
   UsageError,
     AuthorizationError,
-    PermissionError,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
@@ -20,7 +19,12 @@ from codalab.lib import (
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
-from codalab.objects.permission import Group
+from codalab.objects.permission import (
+    check_has_full_permission,
+    check_has_read_permission,
+    Group,
+    parse_permission
+)
 
 def authentication_required(func):
     def decorate(self, *args, **kwargs):
@@ -35,6 +39,9 @@ class LocalBundleClient(BundleClient):
         self.bundle_store = bundle_store
         self.model = model
         self.auth_handler = auth_handler
+
+    def _current_user_id(self):
+        return self.auth_handler.current_user().unique_id
 
     def get_bundle_info(self, bundle, parents=None, children=None):
         hard_dependencies = bundle.get_hard_dependencies()
@@ -184,14 +191,23 @@ class LocalBundleClient(BundleClient):
     # Implementations of worksheet-related client methods follow!
     #############################################################################
 
+    @authentication_required
     def new_worksheet(self, name):
-        worksheet = Worksheet({'name': name, 'items': [], 'owner_id': None})
+        worksheet = Worksheet({'name': name, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
         return worksheet.uuid
+
+    def list_worksheets(self):
+        current_user = self.auth_handler.current_user()
+        if current_user is None:
+            return self.model.list_worksheets()
+        else:
+            return self.model.list_worksheets(current_user.unique_id)
 
     def worksheet_info(self, worksheet_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
+        check_has_read_permission(self.model, self._current_user_id(), worksheet)
         result = worksheet.get_info_dict()
         # We need to do some finicky stuff here to convert the bundle_uuids into
         # bundle info dicts. However, we still make O(1) database calls because we
@@ -204,7 +220,6 @@ class LocalBundleClient(BundleClient):
         bundle_dict = {bundle.uuid: self.get_bundle_info(bundle) for bundle in bundles}
 
         # If a bundle uuid is orphaned, we still have to return the uuid in a dict.
-        items = []
         result['items'] = [
           (
                None if bundle_uuid is None else
@@ -216,8 +231,11 @@ class LocalBundleClient(BundleClient):
         ]
         return result
 
+    @authentication_required
     def add_worksheet_item(self, worksheet_spec, bundle_spec):
         worksheet_uuid = self.get_worksheet_uuid(worksheet_spec)
+        worksheet = self.model.get_worksheet(worksheet_uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         bundle_uuid = self.get_spec_uuid(bundle_spec)
         bundle = self.model.get_bundle(bundle_uuid)
         # Compute a nice value for this item, using the description if it exists.
@@ -227,6 +245,7 @@ class LocalBundleClient(BundleClient):
         item = (bundle.uuid, item_value, 'bundle')
         self.model.add_worksheet_item(worksheet_uuid, item)
 
+    @authentication_required
     def update_worksheet(self, worksheet_info, new_items):
         # Convert (bundle_spec, value) pairs into canonical (bundle_uuid, value, type) pairs.
         # This step could take O(n) database calls! However, it will only hit the
@@ -238,6 +257,7 @@ class LocalBundleClient(BundleClient):
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         try:
             self.model.update_worksheet(
               worksheet_uuid, last_item_id, length, canonical_items)
@@ -245,21 +265,23 @@ class LocalBundleClient(BundleClient):
             # Turn the model error into a more readable one using the object.
             raise UsageError('%s was updated concurrently!' % (worksheet,))
 
+    @authentication_required
     def rename_worksheet(self, worksheet_spec, name):
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.rename_worksheet(worksheet, name)
 
+    @authentication_required
     def delete_worksheet(self, worksheet_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
+        worksheet = self.model.get_worksheet(uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.delete_worksheet(uuid)
 
     #############################################################################
     # Commands related to groups and permissions follow!
     #############################################################################
-
-    def _current_user_id(self):
-        return self.auth_handler.current_user().unique_id
 
     @authentication_required
     def list_groups(self):
@@ -280,8 +302,9 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def new_group(self, name):
         group = Group({'name': name, 'user_defined': True, 'owner_id': self._current_user_id()})
-        self.model.create_group(group)
-        return group.to_dict()
+        group.validate()
+        group_dict = self.model.create_group(group.to_dict())
+        return group_dict
 
     @authentication_required
     def rm_group(self, group_spec):
@@ -351,11 +374,23 @@ class LocalBundleClient(BundleClient):
         return None
 
     @authentication_required
-    def set_worksheet_perm(self, group_spec, worksheet_spec, permissions):
-        pass
-        #TODO
-
-    @authentication_required
-    def set_bundle_perm(self, group_spec, bundle_spec, permissions):
-        pass
-
+    def set_worksheet_perm(self, worksheet_spec, permission_name, group_spec):
+        uuid = self.get_worksheet_uuid(worksheet_spec)
+        worksheet = self.model.get_worksheet(uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
+        new_permission = parse_permission(permission_name)
+        group_info = permission.unique_group(self.model, group_spec)
+        old_permissions = self.model.get_permission(group_info['uuid'], worksheet.uuid)
+        if new_permission == 0:
+            if len(old_permissions) > 0:
+                self.model.delete_permission(group_info['uuid'], worksheet.uuid)
+        else:
+            if len(old_permissions) == 1:
+                self.model.update_permission(group_info['uuid'], worksheet.uuid, new_permission)
+            else:
+                if len(old_permissions) > 0:
+                    self.model.delete_permission(group_info['uuid'], worksheet.uuid)
+                self.model.add_permission(group_info['uuid'], worksheet.uuid, new_permission)
+        return {'worksheet': worksheet,
+                'group_info': group_info,
+                'permission': new_permission}

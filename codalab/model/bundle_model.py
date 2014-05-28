@@ -3,6 +3,7 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 '''
 from sqlalchemy import (
     and_,
+    or_,
     select,
     union,
 )
@@ -11,11 +12,9 @@ from sqlalchemy.exc import (
     ProgrammingError,
 )
 from sqlalchemy.sql.expression import (
-    label,
     literal,
     true,
 )
-
 
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
@@ -23,12 +22,17 @@ from codalab.common import (
     precondition,
     UsageError,
 )
+from codalab.lib import (
+    spec_util,
+)
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
     group as cl_group,
+    group_object_permission as cl_group_object_permission,
+    GROUP_OBJECT_PERMISSION_ALL,
     user_group as cl_user_group,
     worksheet as cl_worksheet,
     worksheet_item as cl_worksheet_item,
@@ -46,6 +50,7 @@ class BundleModel(object):
         Initialize a BundleModel with the given SQLAlchemy engine.
         '''
         self.engine = engine
+        self.public_group_uuid = ''
         self.create_tables()
 
     def _reset(self):
@@ -70,6 +75,7 @@ class BundleModel(object):
             # sqlite throws an OperationalError, MySQL a ProgrammingError. Ugh.
             pass
         db_metadata.create_all(self.engine)
+        self._create_default_groups()
 
     def do_multirow_insert(self, connection, table, values):
         '''
@@ -361,14 +367,38 @@ class BundleModel(object):
             worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.itervalues()]
 
-    def list_worksheets(self):
+    def list_worksheets(self, owner_id=None):
         '''
         Return a list of row dicts, one per worksheet. These dicts do NOT contain
         worksheet items; this method is meant to make it easy for a user to see
         the currently existing worksheets.
         '''
+        cols_to_select = [cl_worksheet.c.id,
+                          cl_worksheet.c.uuid,
+                          cl_worksheet.c.name,
+                          cl_worksheet.c.owner_id,
+                          cl_group_object_permission.c.permission]
+        if owner_id is None:
+            # query for public worksheets
+            stmt = select(cols_to_select).\
+                where(cl_worksheet.c.uuid == cl_group_object_permission.c.object_uuid).\
+                where(cl_group_object_permission.c.group_uuid == self.public_group_uuid)
+        else:
+            # query for worksheets owned by owner_id
+            cols1 = cols_to_select[:4]
+            cols1.extend([literal(GROUP_OBJECT_PERMISSION_ALL).label('permission')])
+            stmt1 = select(cols1).where(cl_worksheet.c.owner_id == owner_id)
+            # query for worksheets visible to owner_id or co-owned by owner_id
+            stmt2_groups = select([cl_user_group.c.group_uuid]).\
+                where(cl_user_group.c.user_id == owner_id)
+            stmt2 = select(cols_to_select).\
+                where(cl_worksheet.c.uuid == cl_group_object_permission.c.object_uuid).\
+                where(cl_group_object_permission.c.group_uuid.in_(stmt2_groups)).\
+                where(cl_worksheet.c.owner_id != owner_id)
+            stmt = union(stmt1, stmt2)
+
         with self.engine.begin() as connection:
-            rows = connection.execute(cl_worksheet.select()).fetchall()
+            rows = connection.execute(stmt.order_by(cl_worksheet.c.id)).fetchall()
         return [dict(row) for row in sorted(rows, key=lambda row: row.id)]
 
     def save_worksheet(self, worksheet):
@@ -464,6 +494,20 @@ class BundleModel(object):
     # Commands related to groups and permissions follow!
     #############################################################################
 
+    def _create_default_groups(self):
+        '''
+        Create system-defined groups. This is called by create_tables.
+        '''
+        groups = self.batch_get_groups(name='Public', user_defined=False)
+        if len(groups) == 0:
+            group_dict = self.create_group({'uuid': spec_util.generate_uuid(),
+                                            'name': 'Public',
+                                            'owner_id': None,
+                                            'user_defined': False})
+        else:
+            group_dict = groups[0]
+        self.public_group_uuid = group_dict['uuid']
+
     def list_groups(self, owner_id):
         '''
         Return a list of row dicts --one per group-- for the given owner.
@@ -474,15 +518,14 @@ class BundleModel(object):
             )).fetchall()
         return [dict(row) for row in sorted(rows, key=lambda row: row.id)]
 
-    def create_group(self, group):
+    def create_group(self, group_dict):
         '''
-        Create the group given.
+        Create the group specified by the given row dict.
         '''
-        group.validate()
-        group_value = group.to_dict()
         with self.engine.begin() as connection:
-            result = connection.execute(cl_group.insert().values(group_value))
-            group.id = result.lastrowid
+            result = connection.execute(cl_group.insert().values(group_dict))
+            group_dict['id'] = result.lastrowid
+        return group_dict
 
     def batch_get_groups(self, **kwargs):
         '''
@@ -537,7 +580,7 @@ class BundleModel(object):
                 return []
             q1 = q2
         else:
-            if q2 is None: 
+            if q2 is None:
                 return []
             q1 = union(q1, q2)
         with self.engine.begin() as connection:
@@ -598,4 +641,65 @@ class BundleModel(object):
             if not rows:
                 return []
         return [dict(row) for row in rows]
+
+    def add_permission(self, group_uuid, object_uuid, permission):
+        '''
+        Add specified permission for the given (group, object) pair.
+        '''
+        row = {'group_uuid': group_uuid, 'object_uuid': object_uuid, 'permission': permission}
+        with self.engine.begin() as connection:
+            result = connection.execute(cl_group_object_permission.insert().values(row))
+            row['id'] = result.lastrowid
+        return row
+
+    def get_permission(self, group_uuid, object_uuid):
+        '''
+        Get permissions for the given (group, object) pair.
+        '''
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([cl_group_object_permission]).\
+                where(cl_group_object_permission.c.group_uuid == group_uuid).\
+                where(cl_group_object_permission.c.object_uuid == object_uuid)
+            ).fetchall()
+            if not rows:
+                return {}
+            return {row.permission for row in rows}
+
+    def delete_permission(self, group_uuid, object_uuid):
+        '''
+        Delete permissions for the given (group, object) pair.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(cl_group_object_permission.delete().\
+                where(cl_group_object_permission.c.group_uuid == group_uuid).\
+                where(cl_group_object_permission.c.object_uuid == object_uuid)
+            )
+
+    def update_permission(self, group_uuid, object_uuid, permission):
+        '''
+        Update permission for the given (group, object) pair.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(cl_group_object_permission.update().\
+                where(cl_group_object_permission.c.group_uuid == group_uuid).\
+                where(cl_group_object_permission.c.object_uuid == object_uuid).\
+                values({'permission': permission}))
+
+    def batch_get_permissions(self, user_id, object_uuid):
+        '''
+        Gets the set of permissions granted to the given user on the given object.
+        '''
+        with self.engine.begin() as connection:
+            group_stmt = select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)
+            rows = connection.execute(
+              select([cl_group_object_permission]).\
+                where(cl_group_object_permission.c.object_uuid == object_uuid).\
+                where(
+                    or_(cl_group_object_permission.c.group_uuid.in_(group_stmt),
+                        cl_group_object_permission.c.group_uuid == self.public_group_uuid)).\
+                distinct()
+            ).fetchall()
+            if not rows:
+                return {}
+            return {row.permission for row in rows}
 

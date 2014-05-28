@@ -165,7 +165,7 @@ class BundleClient(object):
         '''
         Return a list of worksheet row dicts. Does NOT include worksheet items.
         '''
-        return self.model.list_worksheets()
+        raise NotImplementedError
 
     def worksheet_info(self, worksheet_spec):
         '''
@@ -273,13 +273,7 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def set_bundle_perm(self, group_spec, bundle_spec, permission):
-        '''
-        Set permission for a group on a bundle.
-        '''
-        raise NotImplementedError
-
-    def set_worksheet_perm(self, group_spec, worksheet_spec, permission):
+    def set_worksheet_perm(self, worksheet_spec, permission, group_spec):
         '''
         Set permission for a group on a worksheet.
         '''

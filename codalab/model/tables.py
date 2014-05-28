@@ -127,3 +127,8 @@ group_object_permission = Table(
   Column('permission', Integer, nullable=False),
   sqlite_autoincrement=True,
 )
+
+GROUP_OBJECT_PERMISSION_NONE = 0x00
+GROUP_OBJECT_PERMISSION_READ = 0x01
+GROUP_OBJECT_PERMISSION_ALL = 0x02
+

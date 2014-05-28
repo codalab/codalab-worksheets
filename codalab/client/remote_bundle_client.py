@@ -81,7 +81,6 @@ class RemoteBundleClient(BundleClient):
       'group_info',
       'add_user',
       'rm_user',
-      'set_bundle_perm',
       'set_worksheet_perm',
     )
     COMMANDS = CLIENT_COMMANDS + (

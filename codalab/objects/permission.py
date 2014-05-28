@@ -5,11 +5,18 @@ from codalab.model.orm_object import ORMObject
 from codalab.common import (
     precondition,
     UsageError,
+    PermissionError,
 )
 from codalab.lib import (
     spec_util,
 )
+from codalab.model.tables import (
+    GROUP_OBJECT_PERMISSION_ALL,
+    GROUP_OBJECT_PERMISSION_READ,
+    GROUP_OBJECT_PERMISSION_NONE
+)
 from codalab.model.util import LikeQuery
+
 
 class Group(ORMObject):
     '''
@@ -85,3 +92,35 @@ def search_groups_with_user(user_id):
 def unique_group_with_user(model, group_spec, user_id):
     return get_single_group(model, group_spec, search_groups_with_user(user_id))
 
+def unique_group(model, group_spec):
+    def srch_fn(model, **spec_filters):
+        return model.batch_get_groups(**spec_filters)
+    return get_single_group(model, group_spec, srch_fn)
+
+
+ALL_PERMISSIONS = {GROUP_OBJECT_PERMISSION_ALL, GROUP_OBJECT_PERMISSION_READ}
+
+def _check_permissions(model, user_id, target, permissions):
+    if target.owner_id == user_id:
+        available_perms = ALL_PERMISSIONS
+    else:
+        available_perms = model.batch_get_permissions(user_id, target.uuid)
+    for permission in permissions:
+        if permission in available_perms:
+            return
+    raise PermissionError()
+
+def check_has_read_permission(model, user_id, target):
+    _check_permissions(model, user_id, target, ALL_PERMISSIONS)
+
+def check_has_full_permission(model, user_id, target):
+    _check_permissions(model, user_id, target, {GROUP_OBJECT_PERMISSION_ALL})
+
+def parse_permission(permission_str):
+    if 'r' == permission_str or 'read' == permission_str:
+        return GROUP_OBJECT_PERMISSION_READ
+    if 'a' == permission_str or 'all' == permission_str:
+        return GROUP_OBJECT_PERMISSION_ALL
+    if 'none' == permission_str:
+        return GROUP_OBJECT_PERMISSION_NONE
+    raise UsageError("Invalid permission flag specified (%s)" % (permission_str))
