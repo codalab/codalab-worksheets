@@ -117,6 +117,9 @@ class BundleCLI(object):
       'rm_user',
       'set_worksheet_perm',
     )
+    OTHER_COMMANDS = (
+      'status',
+    )
 
     def __init__(self, manager):
         self.manager = manager
@@ -273,7 +276,8 @@ class BundleCLI(object):
           len(command) for command in
           itertools.chain(self.BUNDLE_COMMANDS,
                           self.WORKSHEET_COMMANDS,
-                          self.GROUP_AND_PERMISSION_COMMANDS)
+                          self.GROUP_AND_PERMISSION_COMMANDS,
+                          self.OTHER_COMMANDS)
         )
         indent = 2
         def print_command(command):
@@ -295,10 +299,17 @@ class BundleCLI(object):
         print '\nCommands for groups and permissions:'
         for command in self.GROUP_AND_PERMISSION_COMMANDS:
             print_command(command)
+        print '\nOther commands:'
+        for command in self.OTHER_COMMANDS:
+            print_command(command)
 
     def do_status_command(self, argv, parser):
         print "session: %s" % self.manager.session_name()
-        print "address: %s" % self.manager.session()['address']
+        address = self.manager.session()['address']
+        print "address: %s" % address
+        state = self.manager.state['auth'].get(address, {})
+        if 'username' in state:
+            print "username: %s" % state['username']
         worksheet_info = self.get_current_worksheet_info()
         if worksheet_info:
             print "worksheet: %s [%s]" % (worksheet_info['name'], worksheet_info['uuid'])
