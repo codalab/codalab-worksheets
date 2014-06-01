@@ -224,7 +224,7 @@ class LocalBundleClient(BundleClient):
           (
                None if bundle_uuid is None else
                bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}),
-                    worksheet_util.expand_worksheet_item_info(worksheet_spec, value, type),
+                    worksheet_util.expand_worksheet_item_info(value, type),
                     type,
           )
             for (bundle_uuid, value, type) in result['items']

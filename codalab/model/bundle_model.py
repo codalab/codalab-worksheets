@@ -370,8 +370,9 @@ class BundleModel(object):
     def list_worksheets(self, owner_id=None):
         '''
         Return a list of row dicts, one per worksheet. These dicts do NOT contain
-        worksheet items; this method is meant to make it easy for a user to see
-        the currently existing worksheets.
+        ALL worksheet items; this method is meant to make it easy for a user to see
+        the currently existing worksheets. Included worksheet items are those that
+        define metadata that one will likely want to see in a list view (e.g. title).
         '''
         cols_to_select = [cl_worksheet.c.id,
                           cl_worksheet.c.uuid,
@@ -399,7 +400,30 @@ class BundleModel(object):
 
         with self.engine.begin() as connection:
             rows = connection.execute(stmt.order_by(cl_worksheet.c.id)).fetchall()
-        return [dict(row) for row in sorted(rows, key=lambda row: row.id)]
+            if not rows:
+                return []
+            uuids = set(row.uuid for row in rows)
+            item_rows = connection.execute(
+                cl_worksheet_item.select().\
+                where(cl_worksheet_item.c.worksheet_uuid.in_(uuids)).\
+                where(or_(
+                    cl_worksheet_item.c.type == 'title',
+                    cl_worksheet_item.c.type == 'overview'))
+            ).fetchall()
+
+        row_dicts = [dict(row) for row in rows]
+        uuid_index_map = {}
+        for i in range(0, len(row_dicts)):
+            row_dict = row_dicts[i]
+            row_dict.update({'items': []})
+            uuid_index_map[row_dict['uuid']] = i
+        for item_row in item_rows:
+            idx = uuid_index_map.get(item_row.worksheet_uuid, -1)
+            if idx < 0:
+                raise IntegrityError('Got item %s without worksheet' % (item_row,))
+            row_dicts[idx]['items'].append(item_row)
+
+        return row_dicts
 
     def save_worksheet(self, worksheet):
         '''
