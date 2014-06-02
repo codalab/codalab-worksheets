@@ -339,6 +339,43 @@ class BundleCLI(object):
         bundle_subclass.construct(data_hash='', metadata=metadata).validate()
         print client.upload(args.bundle_type, args.path, metadata, worksheet_uuid)
 
+    def do_download_command(self, argv, parser):
+        parser.add_argument(
+          'bundle_spec',
+          help=self.TARGET_FORMAT
+        )
+        client = self.manager.current_client()
+        bundle_spec = parser.parse_args(argv).bundle_spec
+
+        path = client.download(bundle_spec)
+        # TODO(dskovach) Copy into local directory?
+        print path
+
+    def do_cp_command(self, argv, parser):
+        parser.add_argument(
+          'bundle_spec',
+          help=self.TARGET_FORMAT
+        )
+        parser.add_argument(
+          'worksheet_spec',
+          help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT,
+          nargs='?',
+        )
+        client = self.manager.current_client()
+        args = parser.parse_args(argv)
+
+        # Source bundle
+        bundle_spec = args.bundle_spec
+        (other_client, spec) = self.parse_spec(args.worksheet_spec)
+        worksheet = other_client.worksheet_info(spec)['uuid']
+
+        (source_path, info) = client.download(bundle_spec)
+
+        metadata_dict = info['metadata']
+        bundle_type = info['bundle_type']
+
+        print other_client.upload(bundle_type, source_path, metadata_dict, worksheet, True)
+
     def do_make_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         parser.add_argument('target', help=self.TARGET_FORMAT, nargs='+')

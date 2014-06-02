@@ -19,6 +19,7 @@ from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
   canonicalize,
   path_util,
+  file_util,
   worksheet_util,
 )
 from codalab.objects.worksheet import Worksheet
@@ -76,6 +77,11 @@ class LocalBundleClient(BundleClient):
     def get_bundle(self, bundle_spec):
         return self.model.get_bundle(self.get_spec_uuid(bundle_spec))
 
+    # Result is a (serializable) dict.
+    # Also called by RemoteBundleClient download method.
+    def get_bundle_spec_info(self, bundle_spec):
+        return self.get_bundle_info(self.get_bundle(bundle_spec))
+
     def get_worksheet_uuid(self, worksheet_spec):
         return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
 
@@ -107,14 +113,29 @@ class LocalBundleClient(BundleClient):
         if illegal_keys:
             raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
+    def download(self, bundle_spec):
+        path = self.get_target_path((bundle_spec, ""))
+        return (path, self.get_bundle_spec_info(bundle_spec))
+
+    def upload(self, bundle_type, path, metadata, worksheet_uuid=None,
+            reupload=False):
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
         precondition(bundle_type in UPLOADED_TYPES, message)
         bundle_subclass = get_bundle_subclass(bundle_type)
-        self.validate_user_metadata(bundle_subclass, metadata)
+
+        if not reupload:
+            self.validate_user_metadata(bundle_subclass, metadata)
         # Upload the given path and record additional metadata from the upload.
         (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
-        metadata.update(bundle_store_metadata)
+        if not reupload:
+            metadata.update(bundle_store_metadata)
+
+        # TODO(dskovach) not sure why this cast is needed
+        if reupload:
+            if ('data_size' in metadata and 
+                    not isinstance(metadata['data_size'], long)):
+                metadata['data_size'] = long(metadata['data_size'])
+
         bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
