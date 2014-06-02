@@ -36,10 +36,6 @@ from codalab.lib import (
   spec_util,
   worksheet_util,
 )
-from codalab.model.tables import (
-    GROUP_OBJECT_PERMISSION_ALL,
-    GROUP_OBJECT_PERMISSION_READ,
-)
 from codalab.objects.worker import Worker
 
 class BundleCLI(object):
@@ -829,6 +825,10 @@ class BundleCLI(object):
         result = client.set_worksheet_perm(args.worksheet_spec, args.permission, args.group_spec)
         permission_code = result['permission']
         permission_label = 'no'
+        from codalab.model.tables import (
+            GROUP_OBJECT_PERMISSION_ALL,
+            GROUP_OBJECT_PERMISSION_READ,
+        )
         if permission_code == GROUP_OBJECT_PERMISSION_READ:
             permission_label = 'read'
         elif permission_code == GROUP_OBJECT_PERMISSION_ALL:
