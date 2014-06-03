@@ -401,7 +401,7 @@ class BundleModel(object):
             stmt = union(stmt1, stmt2)
 
         with self.engine.begin() as connection:
-            rows = connection.execute(stmt.order_by(cl_worksheet.c.id)).fetchall()
+            rows = connection.execute(stmt).fetchall()
             if not rows:
                 return []
             uuids = set(row.uuid for row in rows)
@@ -413,7 +413,7 @@ class BundleModel(object):
                     cl_worksheet_item.c.type == 'overview'))
             ).fetchall()
 
-        row_dicts = [dict(row) for row in rows]
+        row_dicts = [dict(row) for row in sorted(rows, key=lambda item: item['id'])]
         uuid_index_map = {}
         for i in range(0, len(row_dicts)):
             row_dict = row_dicts[i]
