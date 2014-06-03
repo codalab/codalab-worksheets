@@ -336,7 +336,7 @@ class LocalBundleClient(BundleClient):
         return group_info
 
     @authentication_required
-    def add_user(self, username, group_spec, is_admin=False):
+    def add_user(self, username, group_spec, is_admin):
         group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
         users = self.auth_handler.get_users('names', [username])
         user = users[username]

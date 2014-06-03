@@ -796,7 +796,7 @@ class BundleCLI(object):
                             help='grant admin privileges for the group')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        user_info = client.add_user(args.user_spec, args.group_spec, is_admin=args.admin)
+        user_info = client.add_user(args.user_spec, args.group_spec, args.admin)
         if 'operation' in user_info:
             print '%s %s %s group %s' % (user_info['operation'],
                                          user_info['name'],

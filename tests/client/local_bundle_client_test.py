@@ -109,13 +109,13 @@ class GroupsAndPermsTest(unittest.TestCase):
         _assert_group_count_for('user1', 0)
         _assert_group_count_for('user2', 0)
         self.set_current_user('root', '')
-        self.client.add_user('user1', grp_name, is_admin=True)
+        self.client.add_user('user1', grp_name, True)
         _assert_group_count_for('root', 1)
         _assert_group_count_for('user1', 1)
         _assert_group_count_for('user2', 0)
         # user1 adds user2 as a regular member
         self.set_current_user('user1', '')
-        self.client.add_user('user2', g1['uuid'])
+        self.client.add_user('user2', g1['uuid'], False)
         _assert_group_count_for('root', 1)
         _assert_group_count_for('user1', 1)
         _assert_group_count_for('user2', 1)
@@ -134,7 +134,7 @@ class GroupsAndPermsTest(unittest.TestCase):
         # user2 is not allowed to add user4 to the group
         self.set_current_user('user2', '')
         with self.assertRaises(UsageError):
-            self.client.add_user('user4', g1['uuid'])
+            self.client.add_user('user4', g1['uuid'], False)
         # user2 can't delete the group
         self.set_current_user('user2', '')
         with self.assertRaises(UsageError):

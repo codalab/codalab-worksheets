@@ -261,7 +261,7 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def add_user(self, username, group_spec, is_admin=False):
+    def add_user(self, username, group_spec, is_admin):
         '''
         Add a user to a group.
         '''
