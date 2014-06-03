@@ -394,7 +394,9 @@ class BundleModel(object):
                 where(cl_user_group.c.user_id == owner_id)
             stmt2 = select(cols_to_select).\
                 where(cl_worksheet.c.uuid == cl_group_object_permission.c.object_uuid).\
-                where(cl_group_object_permission.c.group_uuid.in_(stmt2_groups)).\
+                where(or_(
+                    cl_group_object_permission.c.group_uuid.in_(stmt2_groups),
+                    cl_group_object_permission.c.group_uuid == self.public_group_uuid)).\
                 where(cl_worksheet.c.owner_id != owner_id)
             stmt = union(stmt1, stmt2)
 
