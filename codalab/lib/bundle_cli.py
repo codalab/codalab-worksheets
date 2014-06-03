@@ -69,7 +69,7 @@ class BundleCLI(object):
       'group_info': 'Show detailed information for a group.',
       'add_user': 'Add a user to a group.',
       'rm_user': 'Remove a user from a group.',
-      'set_worksheet_perm': 'Set a group\'s permissions for a worksheet.',
+      'set_perm': 'Set a group\'s permissions for a worksheet.',
       # Commands that can only be executed on a LocalBundleClient.
       'cleanup': 'Clean up the CodaLab bundle store.',
       'worker': 'Run the CodaLab bundle worker.',
@@ -111,7 +111,7 @@ class BundleCLI(object):
       'group_info',
       'add_user',
       'rm_user',
-      'set_worksheet_perm',
+      'set_perm',
     )
     OTHER_COMMANDS = (
       'status',
@@ -816,7 +816,7 @@ class BundleCLI(object):
         else:
             print "Removed %s from group %s." % (user_info['name'], user_info['group_uuid'])
 
-    def do_set_worksheet_perm_command(self, argv, parser):
+    def do_set_perm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
         parser.add_argument('permission', help='permission: [none|(r)ead|(a)ll]')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
