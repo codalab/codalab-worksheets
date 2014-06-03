@@ -10,7 +10,10 @@ import xmlrpclib
 
 from codalab.client import get_address_host
 from codalab.client.bundle_client import BundleClient
-from codalab.common import UsageError
+from codalab.common import (
+    PermissionError,
+    UsageError
+)
 from codalab.lib import (
   file_util,
   zip_util,
@@ -110,6 +113,8 @@ class RemoteBundleClient(BundleClient):
                     if 'codalab.common.UsageError' in e.faultString:
                         index = e.faultString.find(':')
                         raise UsageError(e.faultString[index + 1:])
+                    elif 'codalab.common.PermissionError' in e.faultString:
+                        raise PermissionError()
                     else:
                         raise
             return inner
