@@ -836,7 +836,7 @@ class BundleCLI(object):
         print "Group %s (%s) has %s permission on worksheet %s (%s)." % \
             (result['group_info']['name'], result['group_info']['uuid'],
              permission_label,
-             result['worksheet'].name, result['worksheet'].uuid)
+             result['worksheet']['name'], result['worksheet']['uuid'])
 
     #############################################################################
     # LocalBundleClient-only commands follow!

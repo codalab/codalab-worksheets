@@ -421,7 +421,7 @@ class BundleModel(object):
             idx = uuid_index_map.get(item_row.worksheet_uuid, -1)
             if idx < 0:
                 raise IntegrityError('Got item %s without worksheet' % (item_row,))
-            row_dicts[idx]['items'].append(item_row)
+            row_dicts[idx]['items'].append(dict(item_row))
 
         return row_dicts
 
@@ -712,17 +712,21 @@ class BundleModel(object):
     def batch_get_permissions(self, user_id, object_uuid):
         '''
         Gets the set of permissions granted to the given user on the given object.
+        Use user_id = None to check the set of permissions of an anonymous user.
         '''
         with self.engine.begin() as connection:
-            group_stmt = select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)
-            rows = connection.execute(
-              select([cl_group_object_permission]).\
-                where(cl_group_object_permission.c.object_uuid == object_uuid).\
-                where(
-                    or_(cl_group_object_permission.c.group_uuid.in_(group_stmt),
-                        cl_group_object_permission.c.group_uuid == self.public_group_uuid)).\
-                distinct()
-            ).fetchall()
+            if user_id is None:
+                stmt = select([cl_group_object_permission]).\
+                       where(cl_group_object_permission.c.object_uuid == object_uuid).\
+                       where(cl_group_object_permission.c.group_uuid == self.public_group_uuid)
+            else:
+                group_stmt = select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)
+                stmt = select([cl_group_object_permission]).\
+                       where(cl_group_object_permission.c.object_uuid == object_uuid).\
+                       where(
+                        or_(cl_group_object_permission.c.group_uuid.in_(group_stmt),
+                            cl_group_object_permission.c.group_uuid == self.public_group_uuid))
+            rows = connection.execute(stmt.distinct()).fetchall()
             if not rows:
                 return {}
             return {row.permission for row in rows}

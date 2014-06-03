@@ -207,7 +207,9 @@ class LocalBundleClient(BundleClient):
     def worksheet_info(self, worksheet_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
-        check_has_read_permission(self.model, self._current_user_id(), worksheet)
+        current_user = self.auth_handler.current_user()
+        current_user_id = None if current_user is None else current_user.unique_id
+        check_has_read_permission(self.model, current_user_id, worksheet)
         result = worksheet.get_info_dict()
         # We need to do some finicky stuff here to convert the bundle_uuids into
         # bundle info dicts. However, we still make O(1) database calls because we
