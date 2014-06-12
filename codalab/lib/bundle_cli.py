@@ -15,7 +15,6 @@ import itertools
 import os
 import re
 import sys
-import time
 
 from codalab.bundles import (
   get_bundle_subclass,
@@ -63,13 +62,13 @@ class BundleCLI(object):
       'list_worksheet': 'Show basic information for all worksheets.',
       'rm_worksheet': 'Delete a worksheet. Must specify a worksheet spec.',
       # Commands related to groups and permissions.
-      'list_groups': 'Show groups to which you belong.',
-      'new_group': 'Create a new group.',
-      'rm_group': 'Delete a group.',
-      'group_info': 'Show detailed information for a group.',
-      'add_user': 'Add a user to a group.',
-      'rm_user': 'Remove a user from a group.',
-      'set_perm': 'Set a group\'s permissions for a worksheet.',
+      'list-groups': 'Show groups to which you belong.',
+      'new-group': 'Create a new group.',
+      'rm-group': 'Delete a group.',
+      'group-info': 'Show detailed information for a group.',
+      'add-user': 'Add a user to a group.',
+      'rm-user': 'Remove a user from a group.',
+      'set-perm': 'Set a group\'s permissions for a worksheet.',
       # Commands that can only be executed on a LocalBundleClient.
       'cleanup': 'Clean up the CodaLab bundle store.',
       'worker': 'Run the CodaLab bundle worker.',
@@ -105,17 +104,37 @@ class BundleCLI(object):
       'cp',
     )
     GROUP_AND_PERMISSION_COMMANDS = (
-      'list_groups',
-      'new_group',
-      'rm_group',
-      'group_info',
-      'add_user',
-      'rm_user',
-      'set_perm',
+      'list-groups',
+      'new-group',
+      'rm-group',
+      'group-info',
+      'add-user',
+      'rm-user',
+      'set-perm',
     )
     OTHER_COMMANDS = (
       'status',
     )
+
+    # Each command name maps to a function which executes the command.
+    # The name of the function is typically built from the name of the
+    # command, according to the convention:
+    #
+    #    do_<command_name>_command".
+    #
+    # For cases where command_name would not yield a valid Python identifier,
+    # command_name can be substituted with the name registered in the
+    # following dictionary. A key is a user-facing command name and its value
+    # is the name to include in the rule to build the function name.
+    COMMAND_FUNCTION_NAMES = {
+      'list-groups': 'list_groups',
+      'new-group': 'new_group',
+      'rm-group': 'rm_group',
+      'group-info': 'group_info',
+      'add-user': 'add_user',
+      'rm-user': 'rm_user',
+      'set-perm': 'set_perm',
+    }
 
     def __init__(self, manager):
         self.manager = manager
@@ -246,7 +265,10 @@ class BundleCLI(object):
                 command = command + '_worksheet'
         else:
             (command, remaining_args) = ('help', [])
-        command_fn = getattr(self, 'do_%s_command' % (command,), None)
+        cmd_name = command
+        if cmd_name in self.COMMAND_FUNCTION_NAMES:
+            cmd_name = self.COMMAND_FUNCTION_NAMES[cmd_name]
+        command_fn = getattr(self, 'do_%s_command' % (cmd_name,), None)
         if not command_fn:
             self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
         parser = argparse.ArgumentParser(
