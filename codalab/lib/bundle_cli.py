@@ -71,6 +71,7 @@ class BundleCLI(object):
       'add-user': 'Add a user to a group.',
       'rm-user': 'Remove a user from a group.',
       'set-perm': 'Set a group\'s permissions for a worksheet.',
+      'cp_worksheet': 'Copy all bundles from one worksheet to another.',
       # Commands that can only be executed on a LocalBundleClient.
       'cleanup': 'Clean up the CodaLab bundle store.',
       'worker': 'Run the CodaLab bundle worker.',
@@ -347,7 +348,7 @@ class BundleCLI(object):
         client = self.manager.current_client()
         bundle_spec = parser.parse_args(argv).bundle_spec
 
-        path = client.download(bundle_spec)
+        (path, info) = client.download(bundle_spec)
         # TODO(dskovach) Copy into local directory?
         print path
 
@@ -806,6 +807,39 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         client.delete_worksheet(args.worksheet_spec)
+
+    def do_cp_worksheet_command(self, argv, parser):
+        parser.add_argument(
+          'worksheet_source',
+          help='identifier: [<uuid>|<name>]',
+          nargs='?',
+        )
+        parser.add_argument(
+          'worksheet_target',
+          help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT,
+          nargs='?',
+        )
+        client = self.manager.current_client()
+
+        args = parser.parse_args(argv)
+        source = args.worksheet_source
+        target = args.worksheet_target
+
+        (other_client, spec) = self.parse_spec(target)
+        target_worksheet = other_client.worksheet_info(spec)['uuid']
+
+        bundle_tuples = worksheet_util.get_current_items(client.worksheet_info(source));
+
+        for (bundle_uuid, bundle) in bundle_tuples:
+            (source_path, info) = client.download(str(bundle_uuid))
+
+            metadata_dict = info['metadata']
+            bundle_type = info['bundle_type']
+
+            other_client.upload(bundle_type, source_path, metadata_dict, target_worksheet, True)
+
+        print 'uploaded ', len(bundle_tuples), ' bundles.'
+
 
     #############################################################################
     # CLI methods for commands related to groups and permissions follow!
