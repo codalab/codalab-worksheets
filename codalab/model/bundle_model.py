@@ -524,12 +524,21 @@ class BundleModel(object):
         '''
         Create system-defined groups. This is called by create_tables.
         '''
-        groups = self.batch_get_groups(name='Public', user_defined=False)
+        groups = self.batch_get_groups(name='public', user_defined=False)
         if len(groups) == 0:
-            group_dict = self.create_group({'uuid': spec_util.generate_uuid(),
-                                            'name': 'Public',
-                                            'owner_id': None,
-                                            'user_defined': False})
+            groups = self.batch_get_groups(name='Public', user_defined=False)
+            if len(groups) == 0:
+                group_dict = self.create_group({'uuid': spec_util.generate_uuid(),
+                                                'name': 'public',
+                                                'owner_id': None,
+                                                'user_defined': False})
+            else:
+                # if there was a group named Public, then rename it.
+                group_dict = groups[0]
+                with self.engine.begin() as connection:
+                    connection.execute(cl_group.update().where(
+                      cl_group.c.uuid == group_dict['uuid']
+                    ).values({'name': 'public'}))
         else:
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
