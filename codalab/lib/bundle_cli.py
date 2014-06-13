@@ -50,6 +50,8 @@ class BundleCLI(object):
       'info': 'Show detailed information for a single bundle.',
       'ls': 'List the contents of a bundle.',
       'cat': 'Print the contents of a file in a bundle.',
+      'tail': 'Watch the contents of a file in a bundle.',
+      'block': 'Watch the contents of stdout and stderr while bundle is running.',
       'wait': 'Wait until a bundle is ready or failed, then print its state.',
       'download': 'Download remote bundle from URL.',
       'cp': 'Copy bundles across servers.',
@@ -85,6 +87,7 @@ class BundleCLI(object):
       'info',
       'ls',
       'cat',
+      'tail',
       'wait',
       'download',
       'cp',
@@ -619,11 +622,27 @@ class BundleCLI(object):
         client = self.manager.current_client()
         client.cat(target)
 
+    def do_tail_command(self, argv, parser):
+        parser.add_argument(
+          'target',
+          help=self.TARGET_FORMAT
+        )
+        args = parser.parse_args(argv)
+        target = self.parse_target(args.target)
+        client = self.manager.current_client()
+        (bundle_spec, path) = target
+
+        if path == '':
+          state = client.tail_bundle(bundle_spec)
+        else:
+          state = client.tail_file(target)
+        print 'Bundle state: ', state
+
     def do_wait_command(self, argv, parser):
         parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        state = client.wait(args.bundle_spec)
+        state = client.watch(args.bundle_spec, [])
         if state == State.READY:
             print state
         else:

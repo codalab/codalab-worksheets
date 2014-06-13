@@ -20,7 +20,10 @@ from codalab.common import (
   State,
   UsageError,
 )
-from codalab.lib import path_util
+from codalab.lib import (
+  canonicalize,
+  path_util,
+)
 
 
 class Worker(object):
@@ -152,9 +155,10 @@ class Worker(object):
         parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
         parents = self.model.batch_get_bundles(uuid=parent_uuids)
         parent_dict = {parent.uuid: parent for parent in parents}
-        # Create a scratch directory to run the bundle in.
-        with self.profile('Creating temp directory...'):
-            temp_dir = tempfile.mkdtemp()
+
+        # Get temp directory
+        temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
+
         # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
         with self.profile('Running bundle...'):
             print '-- START RUN: %s' % (bundle,)

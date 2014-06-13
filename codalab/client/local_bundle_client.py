@@ -2,12 +2,16 @@
 LocalBundleClient is BundleClient implementation that interacts directly with a
 BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
+from time import sleep
+import contextlib
+
 from codalab.bundles import (
   get_bundle_subclass,
   UPLOADED_TYPES,
 )
 from codalab.common import (
   precondition,
+  State,
   UsageError,
     AuthorizationError,
 )
@@ -68,6 +72,9 @@ class LocalBundleClient(BundleClient):
     def get_bundle_target(self, target):
         (bundle_spec, subpath) = target
         return (self.model.get_bundle(self.get_spec_uuid(bundle_spec)), subpath)
+
+    def get_bundle(self, bundle_spec):
+        return self.model.get_bundle(self.get_spec_uuid(bundle_spec))
 
     def get_worksheet_uuid(self, worksheet_spec):
         return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
@@ -136,9 +143,43 @@ class LocalBundleClient(BundleClient):
         }
         bundle = bundle_subclass.construct(targets, command, metadata)
         self.model.save_bundle(bundle)
+        self.bundle_store.make_temp_location(bundle.uuid)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
         return bundle.uuid
+
+    def open_target(self, target):
+        (bundle_spec, subpath) = target
+        path = self.get_target_path(target)
+        path_util.check_isfile(path, 'open_target')
+        return open(path)
+
+    def tail_file(self, target):
+        (bundle_spec, subpath) = target
+        file_handle = self.open_target(target)
+
+        with contextlib.closing(file_handle):
+            # Print last 10 lines
+            tail = file_util.tail(file_handle)
+            print tail
+
+            def read_line():
+                return file_handle.readline()
+
+            return self.watch(bundle_spec, [read_line])
+
+    def tail_bundle(self, bundle_spec):
+        out = self.open_target((bundle_spec, 'stdout'))
+        err = self.open_target((bundle_spec, 'stderr'))
+
+        with contextlib.closing(out), contextlib.closing(err):
+
+            def out_line():
+                return out.readline()
+            def err_line():
+                return err.readline()
+
+            return self.watch(bundle_spec, [out_line, err_line])
 
     def edit(self, uuid, metadata):
         bundle = self.model.get_bundle(uuid)
@@ -222,6 +263,7 @@ class LocalBundleClient(BundleClient):
         bundle_dict = {bundle.uuid: self.get_bundle_info(bundle) for bundle in bundles}
 
         # If a bundle uuid is orphaned, we still have to return the uuid in a dict.
+        items = []
         result['items'] = [
           (
                None if bundle_uuid is None else

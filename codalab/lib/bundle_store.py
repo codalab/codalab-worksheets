@@ -50,6 +50,19 @@ class BundleStore(object):
             return data_hash
         return os.path.join(self.data, data_hash)
 
+    def get_temp_location(self, identifier):
+        '''
+        Returns the on-disk location of the temporary bundle directory.
+        '''
+        return os.path.join(self.temp, identifier)
+
+    def make_temp_location(self, identifier):
+        '''
+        Creates directory with given name under TEMP_SUBDIRECTORY
+        '''
+        path_util.make_directory(self.get_temp_location(identifier));
+
+
     def upload(self, path, allow_symlinks=False):
         '''
         Copy the contents of the directory at path into the data subdirectory,
