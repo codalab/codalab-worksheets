@@ -509,6 +509,9 @@ class BundleModel(object):
         Delete the worksheet with the given uuid.
         '''
         with self.engine.begin() as connection:
+            connection.execute(cl_group_object_permission.delete().\
+                where(cl_group_object_permission.c.object_uuid == worksheet_uuid)
+            )
             connection.execute(cl_worksheet_item.delete().where(
               cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
             ))
@@ -630,6 +633,12 @@ class BundleModel(object):
         Delete the group with the given uuid.
         '''
         with self.engine.begin() as connection:
+            connection.execute(cl_group_object_permission.delete().\
+                where(cl_group_object_permission.c.group_uuid == uuid)
+            )
+            connection.execute(cl_user_group.delete().\
+                where(cl_user_group.c.group_uuid == uuid)
+            )
             connection.execute(cl_group.delete().where(
               cl_group.c.uuid == uuid
             ))
