@@ -64,7 +64,6 @@ class FileServer(SimpleXMLRPCServer):
       'tail_file',
       'write_file',
       'close_file',
-      'login',
     )
 
     def __init__(self, address, temp, auth_handler):
