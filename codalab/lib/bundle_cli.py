@@ -119,26 +119,6 @@ class BundleCLI(object):
       'status',
     )
 
-    # Each command name maps to a function which executes the command.
-    # The name of the function is typically built from the name of the
-    # command, according to the convention:
-    #
-    #    do_<command_name>_command".
-    #
-    # For cases where command_name would not yield a valid Python identifier,
-    # command_name can be substituted with the name registered in the
-    # following dictionary. A key is a user-facing command name and its value
-    # is the name to include in the rule to build the function name.
-    COMMAND_FUNCTION_NAMES = {
-      'list-groups': 'list_groups',
-      'new-group': 'new_group',
-      'rm-group': 'rm_group',
-      'group-info': 'group_info',
-      'add-user': 'add_user',
-      'rm-user': 'rm_user',
-      'set-perm': 'set_perm',
-    }
-
     def __init__(self, manager):
         self.manager = manager
         self.verbose = manager.config['cli']['verbose']
@@ -268,10 +248,7 @@ class BundleCLI(object):
                 command = command + '_worksheet'
         else:
             (command, remaining_args) = ('help', [])
-        cmd_name = command
-        if cmd_name in self.COMMAND_FUNCTION_NAMES:
-            cmd_name = self.COMMAND_FUNCTION_NAMES[cmd_name]
-        command_fn = getattr(self, 'do_%s_command' % (cmd_name,), None)
+        command_fn = getattr(self, 'do_%s_command' % (command.replace('-', '_'),), None)
         if not command_fn:
             self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
         parser = argparse.ArgumentParser(
@@ -633,9 +610,9 @@ class BundleCLI(object):
         (bundle_spec, path) = target
 
         if path == '':
-          state = client.tail_bundle(bundle_spec)
+            state = client.tail_bundle(bundle_spec)
         else:
-          state = client.tail_file(target)
+            state = client.tail_file(target)
         print 'Bundle state: ', state
 
     def do_wait_command(self, argv, parser):
