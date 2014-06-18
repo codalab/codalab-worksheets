@@ -194,7 +194,7 @@ class BundleClient(object):
         '''
         Return a list of worksheet row dicts. Does NOT include worksheet items.
         '''
-        return self.model.list_worksheets()
+        raise NotImplementedError
 
     def worksheet_info(self, worksheet_spec):
         '''
@@ -235,5 +235,75 @@ class BundleClient(object):
     def delete_worksheet(self, worksheet_spec):
         '''
         Delete the specified worksheet.
+        '''
+        raise NotImplementedError
+
+    #############################################################################
+    # Commands for authentication
+    #############################################################################
+
+    def login(self, grant_type, username, key):
+        '''
+        Generate OAuth access token from username/password or from a refresh token.
+
+        grant_type: Type of grant requested: 'credentials' or 'refresh_token'.
+        username: Name of user to authenticate.
+        key: User's secret which is a password for the 'credentials' grant type
+            or a refresh token for the 'refresh_token' grant type.
+
+        If the grant succeeds, the method returns a dictionary of the form:
+        { 'token_type': 'Bearer',
+          'access_token': <token>,
+          'expires_in': <span in seconds>,
+          'refresh_token': <token> }
+        If the grant fails because of invalid credentials, None is returned.
+        '''
+        if not hasattr(self, 'auth_handler'):
+            raise NotImplementedError
+        return self.auth_handler.generate_token(grant_type, username, key)
+
+    #############################################################################
+    # Commands for groups and permissions.
+    #############################################################################
+
+    def list_groups(self):
+        '''
+        Returns a list of group row dicts. These are the groups of the current user.
+        '''
+        raise NotImplementedError
+
+    def new_group(self, name):
+        '''
+        Create a group.
+        '''
+        raise NotImplementedError
+
+    def rm_group(self, group_spec):
+        '''
+        Delete a group.
+        '''
+        raise NotImplementedError
+
+    def group_info(self, group_spec):
+        '''
+        Show details (including membership) about the specified group.
+        '''
+        raise NotImplementedError
+
+    def add_user(self, username, group_spec, is_admin):
+        '''
+        Add a user to a group.
+        '''
+        raise NotImplementedError
+
+    def rm_user(self, username, group_spec):
+        '''
+        Remove a user from a group.
+        '''
+        raise NotImplementedError
+
+    def set_worksheet_perm(self, worksheet_spec, permission, group_spec):
+        '''
+        Set permission for a group on a worksheet.
         '''
         raise NotImplementedError

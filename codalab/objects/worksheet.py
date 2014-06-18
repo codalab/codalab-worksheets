@@ -54,6 +54,7 @@ class Worksheet(ORMObject):
     def get_info_dict(self):
         return {
           'uuid': self.uuid,
+          'owner_id': self.owner_id,
           'name': self.name,
           'items': self.items,
           'last_item_id': self.last_item_id,

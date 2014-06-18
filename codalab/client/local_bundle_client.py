@@ -13,22 +13,39 @@ from codalab.common import (
   precondition,
   State,
   UsageError,
+    AuthorizationError,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
   canonicalize,
   path_util,
-  file_util,
   worksheet_util,
 )
 from codalab.objects.worksheet import Worksheet
+from codalab.objects import permission
+from codalab.objects.permission import (
+    check_has_full_permission,
+    check_has_read_permission,
+    Group,
+    parse_permission
+)
 
+def authentication_required(func):
+    def decorate(self, *args, **kwargs):
+        if self.auth_handler.current_user() is None:
+            raise AuthorizationError("Not authenticated")
+        return func(self, *args, **kwargs)
+    return decorate
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, bundle_store, model):
-        self.address = 'local'
+    def __init__(self, address, bundle_store, model, auth_handler):
+        self.address = address
         self.bundle_store = bundle_store
         self.model = model
+        self.auth_handler = auth_handler
+
+    def _current_user_id(self):
+        return self.auth_handler.current_user().unique_id
 
     def get_bundle_info(self, bundle, parents=None, children=None):
         hard_dependencies = bundle.get_hard_dependencies()
@@ -215,14 +232,25 @@ class LocalBundleClient(BundleClient):
     # Implementations of worksheet-related client methods follow!
     #############################################################################
 
+    @authentication_required
     def new_worksheet(self, name):
-        worksheet = Worksheet({'name': name, 'items': [], 'owner_id': None})
+        worksheet = Worksheet({'name': name, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
         return worksheet.uuid
+
+    def list_worksheets(self):
+        current_user = self.auth_handler.current_user()
+        if current_user is None:
+            return self.model.list_worksheets()
+        else:
+            return self.model.list_worksheets(current_user.unique_id)
 
     def worksheet_info(self, worksheet_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
+        current_user = self.auth_handler.current_user()
+        current_user_id = None if current_user is None else current_user.unique_id
+        check_has_read_permission(self.model, current_user_id, worksheet)
         result = worksheet.get_info_dict()
         # We need to do some finicky stuff here to convert the bundle_uuids into
         # bundle info dicts. However, we still make O(1) database calls because we
@@ -240,15 +268,18 @@ class LocalBundleClient(BundleClient):
           (
                None if bundle_uuid is None else
                bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}),
-                    worksheet_util.expand_worksheet_item_info(worksheet_spec, value, type),
+                    worksheet_util.expand_worksheet_item_info(value, type),
                     type,
           )
             for (bundle_uuid, value, type) in result['items']
         ]
         return result
 
+    @authentication_required
     def add_worksheet_item(self, worksheet_spec, bundle_spec):
         worksheet_uuid = self.get_worksheet_uuid(worksheet_spec)
+        worksheet = self.model.get_worksheet(worksheet_uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         bundle_uuid = self.get_spec_uuid(bundle_spec)
         bundle = self.model.get_bundle(bundle_uuid)
         # Compute a nice value for this item, using the description if it exists.
@@ -258,6 +289,7 @@ class LocalBundleClient(BundleClient):
         item = (bundle.uuid, item_value, 'bundle')
         self.model.add_worksheet_item(worksheet_uuid, item)
 
+    @authentication_required
     def update_worksheet(self, worksheet_info, new_items):
         # Convert (bundle_spec, value) pairs into canonical (bundle_uuid, value, type) pairs.
         # This step could take O(n) database calls! However, it will only hit the
@@ -269,6 +301,7 @@ class LocalBundleClient(BundleClient):
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         try:
             self.model.update_worksheet(
               worksheet_uuid, last_item_id, length, canonical_items)
@@ -276,11 +309,132 @@ class LocalBundleClient(BundleClient):
             # Turn the model error into a more readable one using the object.
             raise UsageError('%s was updated concurrently!' % (worksheet,))
 
+    @authentication_required
     def rename_worksheet(self, worksheet_spec, name):
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.rename_worksheet(worksheet, name)
 
+    @authentication_required
     def delete_worksheet(self, worksheet_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
+        worksheet = self.model.get_worksheet(uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.delete_worksheet(uuid)
+
+    #############################################################################
+    # Commands related to groups and permissions follow!
+    #############################################################################
+
+    @authentication_required
+    def list_groups(self):
+        group_dicts = self.model.batch_get_all_groups(
+            None,
+            {'owner_id': self._current_user_id(), 'user_defined': True},
+            {'user_id': self._current_user_id()})
+        for group_dict in group_dicts:
+            role = 'member'
+            if group_dict['is_admin'] == True:
+                if group_dict['owner_id'] == group_dict['user_id']:
+                    role = 'owner'
+                else:
+                    role = 'co-owner'
+            group_dict['role'] = role
+        return group_dicts
+
+    @authentication_required
+    def new_group(self, name):
+        group = Group({'name': name, 'user_defined': True, 'owner_id': self._current_user_id()})
+        group.validate()
+        group_dict = self.model.create_group(group.to_dict())
+        return group_dict
+
+    @authentication_required
+    def rm_group(self, group_spec):
+        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        if group_info['owner_id'] != self._current_user_id():
+            raise UsageError('A group cannot be deleted by its co-owners.')
+        self.model.delete_group(group_info['uuid'])
+        return group_info
+
+    @authentication_required
+    def group_info(self, group_spec):
+        group_info = permission.unique_group_with_user(self.model, group_spec, self._current_user_id())
+        users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
+        user_ids = [int(group_info['owner_id'])]
+        user_ids.extend([int(u['user_id']) for u in users_in_group])
+        users = self.auth_handler.get_users('ids', user_ids)
+        members = []
+        roles = {}
+        for row in users_in_group:
+            roles[int(row['user_id'])] = 'co-owner' if row['is_admin'] == True else 'member'
+        roles[group_info['owner_id']] = 'owner'
+        for user_id in user_ids:
+            if user_id in users:
+                user = users[user_id]
+                members.append({'name': user.name, 'role': roles[user_id]})
+        group_info['members'] = members
+        return group_info
+
+    @authentication_required
+    def add_user(self, username, group_spec, is_admin):
+        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        users = self.auth_handler.get_users('names', [username])
+        user = users[username]
+        if user is None:
+            raise UsageError("%s is not a valid user." % (username,))
+        if user.unique_id == self._current_user_id():
+            raise UsageError("You cannot add yourself to a group.")
+        members = self.model.batch_get_user_in_group(user_id=user.unique_id, group_uuid=group_info['uuid'])
+        if len(members) > 0:
+            member = members[0]
+            if user.unique_id == group_info['owner_id']:
+                raise UsageError("You cannot modify the owner a group.")
+            if member['is_admin'] != is_admin:
+                self.model.update_user_in_group(user.unique_id, group_info['uuid'], is_admin)
+                member['operation'] = 'Modified'
+        else:
+            member = self.model.add_user_in_group(user.unique_id, group_info['uuid'], is_admin)
+            member['operation'] = 'Added'
+        member['name'] = username
+        return member
+
+    @authentication_required
+    def rm_user(self, username, group_spec):
+        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        users = self.auth_handler.get_users('names', [username])
+        user = users[username]
+        if user is None:
+            raise UsageError("%s is not a valid user." % (username,))
+        if user.unique_id == group_info['owner_id']:
+            raise UsageError("You cannot modify the owner a group.")
+        members = self.model.batch_get_user_in_group(user_id=user.unique_id, group_uuid=group_info['uuid'])
+        if len(members) > 0:
+            member = members[0]
+            self.model.delete_user_in_group(user.unique_id, group_info['uuid'])
+            member['name'] = username
+            return member
+        return None
+
+    @authentication_required
+    def set_worksheet_perm(self, worksheet_spec, permission_name, group_spec):
+        uuid = self.get_worksheet_uuid(worksheet_spec)
+        worksheet = self.model.get_worksheet(uuid)
+        check_has_full_permission(self.model, self._current_user_id(), worksheet)
+        new_permission = parse_permission(permission_name)
+        group_info = permission.unique_group(self.model, group_spec)
+        old_permissions = self.model.get_permission(group_info['uuid'], worksheet.uuid)
+        if new_permission == 0:
+            if len(old_permissions) > 0:
+                self.model.delete_permission(group_info['uuid'], worksheet.uuid)
+        else:
+            if len(old_permissions) == 1:
+                self.model.update_permission(group_info['uuid'], worksheet.uuid, new_permission)
+            else:
+                if len(old_permissions) > 0:
+                    self.model.delete_permission(group_info['uuid'], worksheet.uuid)
+                self.model.add_permission(group_info['uuid'], worksheet.uuid, new_permission)
+        return {'worksheet': worksheet,
+                'group_info': group_info,
+                'permission': new_permission}

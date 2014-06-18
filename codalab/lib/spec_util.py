@@ -34,5 +34,6 @@ def check_name(name):
 
 
 def check_id(owner_id):
-    if owner_id != None and not ID_REGEX.match(owner_id):
-        raise UsageError('IDs must match %s, was %s' % (ID_REGEX.pattern, name))
+    if owner_id != None and type(owner_id) != int:
+        raise UsageError('ID must be an integer.')
+
