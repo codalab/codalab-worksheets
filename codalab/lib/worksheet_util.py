@@ -165,8 +165,8 @@ def parse_worksheet_form(form_result):
         # Loop for each regexp and to check and apply a match
         for line_parser in parse_worksheet_parse_table:
             match = parse_worksheet_parse_table_exprs[line_parser].match(line)
-        if match:
-            current_result = parse_worksheet_parse_table[line_parser](match)
-            break
+            if match:
+                current_result = parse_worksheet_parse_table[line_parser](match)
+                break
         result.append(current_result)
     return result
