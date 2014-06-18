@@ -410,7 +410,7 @@ class BundleModel(object):
                 where(cl_worksheet_item.c.worksheet_uuid.in_(uuids)).\
                 where(or_(
                     cl_worksheet_item.c.type == 'title',
-                    cl_worksheet_item.c.type == 'overview'))
+                    cl_worksheet_item.c.type == 'description'))
             ).fetchall()
 
         row_dicts = [dict(row) for row in sorted(rows, key=lambda item: item['id'])]

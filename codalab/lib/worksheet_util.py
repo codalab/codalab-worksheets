@@ -17,14 +17,14 @@ BUNDLE_DISPLAY_PREFIX = r'//'
 BUNDLE_DISPLAY_DIRECTIVE = BUNDLE_DISPLAY_PREFIX + r' display (table|default|inline)'
 BUNDLE_DISPLAY_FIELD = BUNDLE_DISPLAY_PREFIX + r' ([^\:]+): (image|metadata)/(.*)'
 WORKSHEET_TITLE_FIELD = BUNDLE_DISPLAY_PREFIX + r'\s*title:\s*(.*)'
-WORKSHEET_OVERVIEW_FIELD = BUNDLE_DISPLAY_PREFIX + r'\s*overview:\s*(.*)'
+WORKSHEET_DESCRIPTION_FIELD = BUNDLE_DISPLAY_PREFIX + r'\s*description:\s*(.*)'
 
 MATCH_DISPLAY_EXPR = re.compile('.*' + BUNDLE_DISPLAY_DIRECTIVE + '.*', re.DOTALL)
 MATCH_FIELD_EXPR = re.compile('.*' + BUNDLE_DISPLAY_FIELD + '.*', re.DOTALL)
 MATCH_DISPLAY_DIRECTIVE_EXPR = re.compile('^' + BUNDLE_DISPLAY_DIRECTIVE + '$')
 MATCH_FIELD_DIRECTIVE_EXPR = re.compile('^' + BUNDLE_DISPLAY_FIELD + '$')
 MATCH_TITLE_DIRECTIVE_EXPR = re.compile('^' + WORKSHEET_TITLE_FIELD + '$')
-MATCH_OVERVIEW_DIRECTIVE_EXPR = re.compile('^' + WORKSHEET_OVERVIEW_FIELD + '$')
+MATCH_DESCRIPTION_DIRECTIVE_EXPR = re.compile('^' + WORKSHEET_DESCRIPTION_FIELD + '$')
 
 def expand_worksheet_item_info(value, type):
     '''
@@ -65,7 +65,7 @@ def get_worksheet_lines(worksheet_info):
     for (bundle_info, value, type) in worksheet_info['items']:
         if type == 'directive':
             yield value['markup']
-        elif type in ('title', 'overview'):
+        elif type in ('title', 'description'):
             yield '// {0}: {1}'.format(type, value)
         elif bundle_info is None:
             yield value
@@ -128,7 +128,7 @@ def match_comment_block(line):
     return MATCH_DISPLAY_DIRECTIVE_EXPR.match(line) or \
            MATCH_FIELD_DIRECTIVE_EXPR.match(line) or \
            MATCH_TITLE_DIRECTIVE_EXPR.match(line) or \
-           MATCH_OVERVIEW_DIRECTIVE_EXPR.match(line)
+           MATCH_DESCRIPTION_DIRECTIVE_EXPR.match(line)
 
 def parse_worksheet_form_bundle(match):
     # Return a (bundle_uuid, value, type) pair out of the bundle line.
@@ -145,7 +145,7 @@ parse_worksheet_parse_table = {
     BUNDLE_DISPLAY_DIRECTIVE: parse_worksheet_form_display,
     BUNDLE_DISPLAY_FIELD: parse_worksheet_form_display,
     WORKSHEET_TITLE_FIELD: (lambda m: (None, m.group(1), 'title')),
-    WORKSHEET_OVERVIEW_FIELD: (lambda m: (None, m.group(1), 'overview')),
+    WORKSHEET_DESCRIPTION_FIELD: (lambda m: (None, m.group(1), 'description')),
 }
 parse_worksheet_parse_table_exprs = {
     k: re.compile(k) for k in parse_worksheet_parse_table
@@ -157,7 +157,6 @@ def parse_worksheet_form(form_result):
     Return a list of (bundle_uuid, value, type) tuples, where bundle_uuid could be None.
     '''
     result = []
-    markup_block = ''
     for line in form_result:
         line = line.strip()
         if line[:2] == '//' and not match_comment_block(line):
@@ -167,7 +166,7 @@ def parse_worksheet_form(form_result):
         for line_parser in parse_worksheet_parse_table:
             match = parse_worksheet_parse_table_exprs[line_parser].match(line)
         if match:
-                current_result = parse_worksheet_parse_table[line_parser](match)
-                break
+            current_result = parse_worksheet_parse_table[line_parser](match)
+            break
         result.append(current_result)
     return result
