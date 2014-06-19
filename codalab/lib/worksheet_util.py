@@ -13,11 +13,11 @@ from codalab.common import UsageError
 
 
 BUNDLE_LINE_REGEX = '^(\[(.*)\])?\s*\{(.*)\}$'
-BUNDLE_DISPLAY_PREFIX = r'//'
-BUNDLE_DISPLAY_DIRECTIVE = BUNDLE_DISPLAY_PREFIX + r' display (table|default|inline)'
-BUNDLE_DISPLAY_FIELD = BUNDLE_DISPLAY_PREFIX + r' ([^\:]+): (image|metadata)/(.*)'
-WORKSHEET_TITLE_FIELD = BUNDLE_DISPLAY_PREFIX + r'\s*title:\s*(.*)'
-WORKSHEET_DESCRIPTION_FIELD = BUNDLE_DISPLAY_PREFIX + r'\s*description:\s*(.*)'
+DIRECTIVE_PREFIX = r'%'
+BUNDLE_DISPLAY_DIRECTIVE = DIRECTIVE_PREFIX + r' display (table|default|inline)'
+BUNDLE_DISPLAY_FIELD = DIRECTIVE_PREFIX + r' ([^\:]+): (image|metadata)/(.*)'
+WORKSHEET_TITLE_FIELD = DIRECTIVE_PREFIX + r'\s*title:\s*(.*)'
+WORKSHEET_DESCRIPTION_FIELD = DIRECTIVE_PREFIX + r'\s*description:\s*(.*)'
 
 MATCH_DISPLAY_EXPR = re.compile('.*' + BUNDLE_DISPLAY_DIRECTIVE + '.*', re.DOTALL)
 MATCH_FIELD_EXPR = re.compile('.*' + BUNDLE_DISPLAY_FIELD + '.*', re.DOTALL)
@@ -66,7 +66,7 @@ def get_worksheet_lines(worksheet_info):
         if type == 'directive':
             yield value['markup']
         elif type in ('title', 'description'):
-            yield '// {0}: {1}'.format(type, value)
+            yield '% {0}: {1}'.format(type, value)
         elif bundle_info is None:
             yield value
         else:
@@ -123,13 +123,6 @@ def request_new_items(worksheet_info):
         raise UsageError('No change made; aborting')
     return parse_worksheet_form(form_result)
 
-def match_comment_block(line):
-    # Some comments actually contain meaningful display information that should not be treated as ignored comments
-    return MATCH_DISPLAY_DIRECTIVE_EXPR.match(line) or \
-           MATCH_FIELD_DIRECTIVE_EXPR.match(line) or \
-           MATCH_TITLE_DIRECTIVE_EXPR.match(line) or \
-           MATCH_DESCRIPTION_DIRECTIVE_EXPR.match(line)
-
 def parse_worksheet_form_bundle(match):
     # Return a (bundle_uuid, value, type) pair out of the bundle line.
     # Note that the value could be None (if there was no [])
@@ -159,7 +152,7 @@ def parse_worksheet_form(form_result):
     result = []
     for line in form_result:
         line = line.strip()
-        if line[:2] == '//' and not match_comment_block(line):
+        if line[:2] == '//':
             continue
         current_result = (None, line, 'markup')
         # Loop for each regexp and to check and apply a match
