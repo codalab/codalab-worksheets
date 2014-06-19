@@ -147,7 +147,7 @@ class BundleCLI(object):
         '''
         uuids_seen = set()
         result = []
-        for (bundle_info, _) in worksheet_info['items']:
+        for (bundle_info, _, _) in worksheet_info['items']:
             if bundle_info and 'bundle_type' in bundle_info:
                 if bundle_info['uuid'] not in uuids_seen:
                     uuids_seen.add(bundle_info['uuid'])
