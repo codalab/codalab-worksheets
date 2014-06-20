@@ -16,6 +16,7 @@ There are a couple of implementations of this class:
 # The RemoteBundleClient implementation of grep will have to use the FileServer
 # file-handle API to stream the results back.
 import time
+from sys import stdout
 
 from codalab.common import State
 
@@ -96,7 +97,25 @@ class BundleClient(object):
 
     def cat(self, target):
         '''
-        Print the contents of the target file at to stdout.
+        Print the contents of the target file to stdout.
+        '''
+        raise NotImplementedError
+
+    def head(self, target, lines):
+        '''
+        Return contents of target file as a list of lines.
+        '''
+        raise NotImplementedError
+
+    def tail_file(self, target):
+        '''
+        Watch the tail of target file at stdout.
+        '''
+        raise NotImplementedError
+
+    def tail_bundle(self, bundle_spec):
+        '''
+        Watch the tail of stdout and stderr at stdout.
         '''
         raise NotImplementedError
 
@@ -107,10 +126,12 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def wait(self, bundle_spec):
+    def watch(self, bundle_spec, fns):
         '''
-        Block on the execution of the given bundle. Return READY or FAILED
-        based on whether it was computed successfully.
+        Block on the execution of the given bundle.
+        fns should be a list of functions that return strings.
+        Periodically execute fns and print output.
+        Return READY or FAILED based on whether it was computed successfully.
         '''
         # Constants for a simple exponential backoff routine that will decrease the
         # frequency at which we check this bundle's state from 1s to 1m.
@@ -119,9 +140,22 @@ class BundleClient(object):
         max_period = 60.0
         info = self.info(bundle_spec)
         while info['state'] not in (State.READY, State.FAILED):
-            time.sleep(period)
-            period = min(backoff*period, max_period)
+            # Update bundle info
             info = self.info(bundle_spec)
+
+            # Call update functions
+            change = False
+            for fn in fns:
+                result = fn()
+                if not result == '':
+                    stdout.write(result)
+                    stdout.flush()
+                    change = True
+            # Sleep if nothing happened
+            if change == False:
+                time.sleep(period)
+                period = min(backoff*period, max_period)
+
         return info['state']
 
     def download(self, target):

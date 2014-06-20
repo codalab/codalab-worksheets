@@ -51,6 +51,8 @@ class BundleCLI(object):
       'info': 'Show detailed information for a single bundle.',
       'ls': 'List the contents of a bundle.',
       'cat': 'Print the contents of a file in a bundle.',
+      'tail': 'Watch the contents of a file in a bundle.',
+      'block': 'Watch the contents of stdout and stderr while bundle is running.',
       'wait': 'Wait until a bundle is ready or failed, then print its state.',
       'download': 'Download remote bundle from URL.',
       'cp': 'Copy bundles across servers.',
@@ -80,6 +82,7 @@ class BundleCLI(object):
       'info',
       'ls',
       'cat',
+      'tail',
       'wait',
       'download',
       'cp',
@@ -413,26 +416,65 @@ class BundleCLI(object):
         parser.add_argument(
           '-p', '--parents',
           action='store_true',
-          help="print a list of this bundle's parents",
+          help="print only a list of this bundle's parents",
         )
         parser.add_argument(
           '-c', '--children',
           action='store_true',
-          help="print a list of this bundle's children",
+          help="print only a list of this bundle's children",
+        )
+        parser.add_argument(
+          '-v', '--verbose',
+          action='store_true',
+          help="print top-level contents of bundle"
         )
         args = parser.parse_args(argv)
         if args.parents and args.children:
             raise UsageError('Only one of -p and -c should be used at a time!')
+
         client = self.manager.current_client()
-        info = client.info(args.bundle_spec, args.parents, args.children)
-        if args.parents:
-            if info['parents']:
-                print '\n'.join(info['parents'])
-        elif args.children:
+        bundle_spec = args.bundle_spec
+
+        info = client.info(bundle_spec, parents=True, children=args.children)
+
+        def wrap2(string):
+            return '** ' + string + ' **'
+        def wrap1(string):
+            return '* ' + string + ' *'
+
+        if info['parents']:
+            print wrap2('Parents')
+            print '\n'.join(info['parents']) + '\n'
+
+        if args.children:
             if info['children']:
                 print '\n'.join(info['children'])
-        else:
-            print self.format_basic_info(info)
+        elif not args.parents:
+            print wrap2('Info')
+            print self.format_basic_info(info) + '\n'
+        
+        # Verbose output
+        if args.verbose:
+            (directories, files) = client.ls(self.parse_target(bundle_spec))
+
+
+            print wrap2('Bundle Contents')
+
+            # Print contents of each top-level directory in bundle
+            for dir in directories:
+                new_path = os.path.join(bundle_spec, dir)
+                # TODO note many server calls
+                (ds, fs) = client.ls(self.parse_target(new_path))
+                print wrap1(dir + '/')
+                self.print_ls_output(ds, fs)
+
+            # Print first 10 lines of each top-level file in bundle
+            for file in files:
+                new_path = os.path.join(bundle_spec, file)
+                lines = client.head(self.parse_target(new_path))
+
+                print wrap1(file)
+                print "".join(lines)
 
     def format_basic_info(self, info):
         metadata = collections.defaultdict(lambda: None, info['metadata'])
@@ -496,6 +538,9 @@ class BundleCLI(object):
         target = self.parse_target(args.target)
         client = self.manager.current_client()
         (directories, files) = client.ls(target)
+        self.print_ls_output(directories, files)
+
+    def print_ls_output(self, directories, files):
         if directories:
             print '\n  '.join(['Directories:'] + list(directories))
         if files:
@@ -511,11 +556,27 @@ class BundleCLI(object):
         client = self.manager.current_client()
         client.cat(target)
 
+    def do_tail_command(self, argv, parser):
+        parser.add_argument(
+          'target',
+          help=self.TARGET_FORMAT
+        )
+        args = parser.parse_args(argv)
+        target = self.parse_target(args.target)
+        client = self.manager.current_client()
+        (bundle_spec, path) = target
+
+        if path == '':
+          state = client.tail_bundle(bundle_spec)
+        else:
+          state = client.tail_file(target)
+        print 'Bundle state: ', state
+
     def do_wait_command(self, argv, parser):
         parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
-        state = client.wait(args.bundle_spec)
+        state = client.watch(args.bundle_spec, [])
         if state == State.READY:
             print state
         else:
@@ -574,7 +635,7 @@ class BundleCLI(object):
         if args.bundle_spec:
             client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
         if args.message:
-            client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message)])
+            client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message, None)])
 
     def do_work_command(self, argv, parser):
         parser.add_argument(
@@ -651,7 +712,9 @@ class BundleCLI(object):
             worksheet_info = self.get_current_worksheet_info()
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
-        for line in worksheet_util.get_worksheet_lines(worksheet_info):
+        raw_lines = worksheet_util.get_worksheet_lines(worksheet_info)
+        templetized_lines = raw_lines
+        for line in templetized_lines:
             print line
 
     def do_rm_worksheet_command(self, argv, parser):

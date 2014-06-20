@@ -44,6 +44,11 @@ def get_spec_uuid(model, bundle_spec):
         )
     return bundles[0].uuid
 
+def get_current_location(bundle_store, uuid):
+    '''
+    Return the on-disk location of currently running target.
+    '''
+    return bundle_store.get_temp_location(uuid)
 
 def get_target_path(bundle_store, model, target):
     '''
@@ -57,14 +62,18 @@ def get_target_path(bundle_store, model, target):
         precondition(bundle.state != State.READY, message)
         if bundle.state == State.FAILED:
             raise UsageError('%s failed unrecoverably' % (bundle,))
+        elif bundle.state == State.RUNNING:
+            bundle_root = get_current_location(bundle_store, uuid)
         else:
-            raise UsageError('%s has not yet been executed' % (bundle,))
-    bundle_root = bundle_store.get_location(bundle.data_hash)
+            raise UsageError('%s isn\'t running yet!' % (bundle,))
+    else:
+        bundle_root = bundle_store.get_location(bundle.data_hash)
+
     final_path = path_util.safe_join(bundle_root, path)
+    path_util.check_under_path(final_path, bundle_root)
     result = path_util.TargetPath(final_path)
     result.target = target
     return result
-
 
 def get_worksheet_uuid(model, worksheet_spec):
     '''

@@ -22,7 +22,7 @@ def item_sort_key(item):
 
 
 class Worksheet(ORMObject):
-    COLUMNS = ('uuid', 'name')
+    COLUMNS = ('uuid', 'name', 'owner_id')
 
     def validate(self):
         '''
@@ -32,6 +32,7 @@ class Worksheet(ORMObject):
         '''
         spec_util.check_uuid(self.uuid)
         spec_util.check_name(self.name)
+        spec_util.check_id(self.owner_id)
 
     def __repr__(self):
         return 'Worksheet(uuid=%r, name=%r)' % (self.uuid, self.name)
@@ -47,7 +48,7 @@ class Worksheet(ORMObject):
                 row['uuid'] = spec_util.generate_uuid()
         super(Worksheet, self).update_in_memory(row)
         if items is not None:
-            self.items = [(item['bundle_uuid'], item['value']) for item in items]
+            self.items = [(item['bundle_uuid'], item['value'], item['type']) for item in items]
             self.last_item_id = max(item['id'] for item in items) if items else -1
 
     def get_info_dict(self):

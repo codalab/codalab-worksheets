@@ -23,7 +23,10 @@ import tempfile
 import uuid
 import xmlrpclib
 
-from codalab.lib import path_util
+from codalab.lib import (
+  path_util,
+  file_util,
+)
 
 class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
     """
@@ -57,6 +60,15 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
 
 class FileServer(SimpleXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
+    COMMANDS =  (
+      'open_temp_file',
+      'read_file',
+      'read_line_file',
+      'tail_file',
+      'write_file',
+      'close_file',
+      'login',
+    )
 
     def __init__(self, address, temp, auth_handler):
         # Keep a dictionary mapping file uuids to open file handles and a
@@ -69,7 +81,7 @@ class FileServer(SimpleXMLRPCServer):
 
         SimpleXMLRPCServer.__init__(self, address, allow_none=True,
                                     requestHandler=AuthenticatedXMLRPCRequestHandler)
-        for fn_name in ('open_temp_file', 'read_file', 'write_file', 'close_file', 'login'):
+        for fn_name in self.COMMANDS:
             self.register_function(getattr(self, fn_name), fn_name)
 
     def open_file(self, path, mode):
@@ -98,6 +110,22 @@ class FileServer(SimpleXMLRPCServer):
         '''
         file_handle = self.file_handles[file_uuid]
         return xmlrpclib.Binary(file_handle.read(num_bytes))
+
+    def read_line_file(self, file_uuid):
+        '''
+        Read one line from the given file uuid. Return an empty buffer
+        if and only if this file handle is at EOF.
+        '''
+        file_handle = self.file_handles[file_uuid]
+        return xmlrpclib.Binary(file_handle.readline());
+
+    def tail_file(self, file_uuid, num_lines=10):
+        '''
+        Read the last num_lines lines from the given file uuid.
+        Return an empty buffer if and only if this file handle is at EOF.
+        '''
+        file_handle = self.file_handles[file_uuid]
+        return xmlrpclib.Binary(file_util.tail(file_handle));
 
     def write_file(self, file_uuid, buffer):
         '''

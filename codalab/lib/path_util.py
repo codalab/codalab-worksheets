@@ -111,6 +111,12 @@ def check_isfile(path, fn_name):
     if os.path.isdir(path):
         raise path_error('%s got directory:' % (fn_name,), path)
 
+def check_under_path(path, parent_path):
+    '''
+    Check that the path is under its parent path.
+    '''
+    if not os.path.realpath(path).startswith(os.path.realpath(parent_path)):
+        raise path_error('Path not under %s' % (parent_path,), path)
 
 def check_for_symlinks(root, dirs_and_files=None):
     '''
@@ -200,6 +206,16 @@ def cat(path):
     with open(path, 'rb') as file_handle:
         file_util.copy(file_handle, sys.stdout)
 
+def read_file(path, lines=None):
+    '''
+    Return contents of file as string.
+    '''
+    check_isfile(path, 'read_file')
+    with open(path, 'rb') as file_handle:
+        if lines == None:
+            return file_handle.readlines()
+        else:
+            return list(itertools.islice(file_handle, lines))
 
 def getmtime(path):
     '''

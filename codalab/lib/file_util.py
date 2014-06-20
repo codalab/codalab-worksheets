@@ -22,3 +22,6 @@ def copy(source, dest, autoflush=True):
         if autoflush:
             dest.flush()
     print ''
+
+def tail(source, num_lines=10):
+    return "\n".join(source.read().splitlines()[-10:])

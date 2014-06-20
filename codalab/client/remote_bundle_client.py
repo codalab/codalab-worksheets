@@ -61,6 +61,7 @@ class RemoteBundleClient(BundleClient):
       'delete',
       'info',
       'ls',
+      'head',
       'search',
       # Worksheet-related commands all have JSON-able inputs and outputs.
       'new_worksheet',
@@ -115,8 +116,39 @@ class RemoteBundleClient(BundleClient):
                 file_util.copy(source, dest, autoflush=False)
         return self.upload_zip(bundle_type, remote_file_uuid, metadata, worksheet_uuid)
 
-    def cat(self, target):
+    def open_file(self, target):
         remote_file_uuid = self.open_target(target)
-        source = RPCFileHandle(remote_file_uuid, self.proxy)
+        return RPCFileHandle(remote_file_uuid, self.proxy)
+
+    def tail_file(self, target):
+        (bundle_spec, subpath) = target
+        file_handle = self.open_file(target)
+
+        with contextlib.closing(file_handle):
+            # Print last 10 lines
+            tail = file_handle.tail()
+            print tail
+
+            def read_line():
+                return file_handle.readline()
+
+            return self.watch(bundle_spec, [read_line])
+
+    def tail_bundle(self, bundle_spec):
+        out = self.open_file((bundle_spec, 'stdout'))
+        err = self.open_file((bundle_spec, 'stderr'))
+
+        with contextlib.closing(out), contextlib.closing(err):
+
+            def out_line():
+                return out.readline()
+            def err_line():
+                return err.readline()
+
+            return self.watch(bundle_spec, [out_line, err_line])
+
+
+    def cat(self, target):
+        source = self.open_file(target)
         with contextlib.closing(source):
             file_util.copy(source, sys.stdout)
