@@ -348,8 +348,10 @@ class BundleCLI(object):
         client = self.manager.current_client()
         bundle_spec = parser.parse_args(argv).bundle_spec
 
+        # Get local path
         (path, info) = client.download(bundle_spec)
 
+        # Copy into local directory
         bundle_name = info['metadata']['name']
         final_path = os.path.join(os.getcwd(), bundle_name)
         if os.path.exists(final_path):
@@ -382,7 +384,7 @@ class BundleCLI(object):
         bundle_type = info['bundle_type']
         uuid = info['uuid']
 
-        print other_client.upload(bundle_type, source_path, metadata_dict, worksheet, reupload_uuid=uuid)
+        print other_client.cp_upload(bundle_type, source_path, metadata_dict, uuid, worksheet)
 
     def do_make_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()

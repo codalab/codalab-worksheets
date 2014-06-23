@@ -117,27 +117,32 @@ class LocalBundleClient(BundleClient):
         path = self.get_target_path((bundle_spec, ""))
         return (path, self.get_bundle_spec_info(bundle_spec))
 
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None,
-            reupload_uuid=None):
+    def cp_upload(self, bundle_type, path, metadata, uuid, worksheet_uuid=None):
+        bundle_subclass = get_bundle_subclass(bundle_type)
+        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
+        # TODO(dskovach) not sure why this cast is needed
+        if ('data_size' in metadata and 
+                not isinstance(metadata['data_size'], long)):
+            metadata['data_size'] = long(metadata['data_size'])
+
+        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata, uuid=uuid)
+        return self.insert_bundle(bundle, worksheet_uuid)
+
+    def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
         precondition(bundle_type in UPLOADED_TYPES, message)
         bundle_subclass = get_bundle_subclass(bundle_type)
 
-        if not reupload_uuid:
-            self.validate_user_metadata(bundle_subclass, metadata)
+        self.validate_user_metadata(bundle_subclass, metadata)
         # Upload the given path and record additional metadata from the upload.
         (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
-        if not reupload_uuid:
-            metadata.update(bundle_store_metadata)
+        metadata.update(bundle_store_metadata)
 
-        # TODO(dskovach) not sure why this cast is needed
-        if reupload_uuid:
-            if ('data_size' in metadata and 
-                    not isinstance(metadata['data_size'], long)):
-                metadata['data_size'] = long(metadata['data_size'])
+        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
+        return self.insert_bundle(bundle, worksheet_uuid)
 
-        data_row = {'data_hash': data_hash, 'metadata': metadata};
-        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata, uuid=reupload_uuid)
+    # Called by upload, cp_upload
+    def insert_bundle(self, bundle, worksheet_uuid):
         self.model.save_bundle(bundle)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
