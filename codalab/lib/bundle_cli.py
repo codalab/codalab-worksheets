@@ -374,8 +374,9 @@ class BundleCLI(object):
 
         metadata_dict = info['metadata']
         bundle_type = info['bundle_type']
+        uuid = info['uuid']
 
-        print other_client.upload(bundle_type, source_path, metadata_dict, worksheet, True)
+        print other_client.upload(bundle_type, source_path, metadata_dict, worksheet, reupload_uuid=uuid)
 
     def do_make_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()

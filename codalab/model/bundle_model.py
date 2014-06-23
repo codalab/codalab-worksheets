@@ -248,11 +248,15 @@ class BundleModel(object):
         bundle_value = bundle.to_dict()
         dependency_values = bundle_value.pop('dependencies')
         metadata_values = bundle_value.pop('metadata')
-        with self.engine.begin() as connection:
-            result = connection.execute(cl_bundle.insert().values(bundle_value))
-            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-            bundle.id = result.lastrowid
+
+        # Check to see if bundle is already present, as in a local 'cl cp'
+        if not self.batch_get_bundles(uuid=bundle.uuid):
+            with self.engine.begin() as connection:
+                result = connection.execute(cl_bundle.insert().values(bundle_value))
+                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+                bundle.id = result.lastrowid
+
 
     def update_bundle(self, bundle, update):
         '''

@@ -118,25 +118,26 @@ class LocalBundleClient(BundleClient):
         return (path, self.get_bundle_spec_info(bundle_spec))
 
     def upload(self, bundle_type, path, metadata, worksheet_uuid=None,
-            reupload=False):
+            reupload_uuid=None):
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
         precondition(bundle_type in UPLOADED_TYPES, message)
         bundle_subclass = get_bundle_subclass(bundle_type)
 
-        if not reupload:
+        if not reupload_uuid:
             self.validate_user_metadata(bundle_subclass, metadata)
         # Upload the given path and record additional metadata from the upload.
         (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
-        if not reupload:
+        if not reupload_uuid:
             metadata.update(bundle_store_metadata)
 
         # TODO(dskovach) not sure why this cast is needed
-        if reupload:
+        if reupload_uuid:
             if ('data_size' in metadata and 
                     not isinstance(metadata['data_size'], long)):
                 metadata['data_size'] = long(metadata['data_size'])
 
-        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
+        data_row = {'data_hash': data_hash, 'metadata': metadata};
+        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata, uuid=reupload_uuid)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
