@@ -349,8 +349,14 @@ class BundleCLI(object):
         bundle_spec = parser.parse_args(argv).bundle_spec
 
         (path, info) = client.download(bundle_spec)
-        # TODO(dskovach) Copy into local directory?
-        print path
+
+        bundle_name = info['metadata']['name']
+        final_path = os.path.join(os.getcwd(), bundle_name)
+        if os.path.exists(final_path):
+            print 'Local directory', bundle_name, 'already exists. Bundle is available at:'
+            print path
+        else:
+            path_util.copy(path, final_path)
 
     def do_cp_command(self, argv, parser):
         parser.add_argument(
