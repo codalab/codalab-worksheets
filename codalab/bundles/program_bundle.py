@@ -1,5 +1,5 @@
 '''
-ProgramBundle is Bundle type that inherits from UploadedBundle but that adds a
+ProgramBundle is a Bundle type that inherits from UploadedBundle and adds a
 new metadata key, architectures.
 
 When a RunBundle is constructed, its program_target must be in a ProgramBundle.
