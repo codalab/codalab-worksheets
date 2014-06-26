@@ -229,7 +229,7 @@ class LocalBundleClient(BundleClient):
             ))
         self.model.delete_bundle_tree([uuid], force=force)
 
-    def info(self, bundle_spec, parents=False, children=False):
+    def info(self, bundle_spec, parents=None, children=None):
         uuid = self.get_spec_uuid(bundle_spec)
         bundle = self.model.get_bundle(uuid)
         parents = self.model.get_parents(uuid) if parents else None

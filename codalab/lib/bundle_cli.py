@@ -345,17 +345,25 @@ class BundleCLI(object):
           'bundle_spec',
           help=self.TARGET_FORMAT
         )
+        parser.add_argument(
+          '-o', '--output-dir',
+          help='Directory to download file.  By default, the bundle name is used.',
+        )
         client = self.manager.current_client()
-        bundle_spec = parser.parse_args(argv).bundle_spec
+        args = parser.parse_args(argv)
+        bundle_spec = args.bundle_spec
 
-        # Get local path
+        # Download. Returns local path for file, bundle info
         (path, info) = client.download(bundle_spec)
 
         # Copy into local directory
-        bundle_name = info['metadata']['name']
-        final_path = os.path.join(os.getcwd(), bundle_name)
+        if args.output_dir:
+          local_dir = args.output_dir
+        else:
+          local_dir = info['metadata']['name']
+        final_path = os.path.join(os.getcwd(), local_dir)
         if os.path.exists(final_path):
-            print 'Local directory', bundle_name, 'already exists. Bundle is available at:'
+            print 'Local directory', local_dir, 'already exists. Bundle is available at:'
             print path
         else:
             path_util.copy(path, final_path)
