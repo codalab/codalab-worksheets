@@ -358,9 +358,9 @@ class BundleCLI(object):
 
         # Copy into local directory
         if args.output_dir:
-          local_dir = args.output_dir
+            local_dir = args.output_dir
         else:
-          local_dir = info['metadata']['name']
+            local_dir = info['metadata']['name']
         final_path = os.path.join(os.getcwd(), local_dir)
         if os.path.exists(final_path):
             print 'Local directory', local_dir, 'already exists. Bundle is available at:'

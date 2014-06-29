@@ -24,7 +24,7 @@ from codalab.common import State
 class BundleClient(object):
     # Commands for creating/editing bundles: upload, make, run, edit, and delete.
 
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None, reupload=False):
+    def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
         '''
         Create a new bundle with a copy of the directory at the given path in the
         local filesystem. Return its uuid. If the path leads to a file, the new
