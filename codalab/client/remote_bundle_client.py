@@ -3,9 +3,11 @@ RemoteBundleClient is a BundleClient implementation that shells out to a
 BundleRPCServer for each command. Filesystem operations are implemented using
 the FileServer operations exposed by the RPC server.
 '''
+import os
 import contextlib
 import sys
 import urllib
+import tempfile
 import xmlrpclib
 
 from codalab.client import get_address_host
@@ -85,6 +87,7 @@ class RemoteBundleClient(BundleClient):
       'add_user',
       'rm_user',
       'set_worksheet_perm',
+      'get_bundle_spec_info'
     )
     COMMANDS = CLIENT_COMMANDS + (
       'open_target',
@@ -92,6 +95,7 @@ class RemoteBundleClient(BundleClient):
       'read_file',
       'close_file',
       'upload_zip',
+      'download_zip',
     )
 
     def __init__(self, address, get_auth_token):
@@ -121,7 +125,20 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
+    def download(self, bundle_spec):
+        # TODO(dskovach) is this call to close needed?
+        (fd, dest_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
+        os.close(fd)
+        source_uuid = self.download_zip(bundle_spec)
+        source = RPCFileHandle(source_uuid, self.proxy)
+        with open(dest_path, 'wb') as dest:
+            with contextlib.closing(source):
+                file_util.copy(source, dest, autoflush=False)
+        path = zip_util.unzip(dest_path)
+        return (path, self.get_bundle_spec_info(bundle_spec))
+
+    def upload(self, bundle_type, path, metadata, worksheet_uuid=None,
+            reupload=False):
         zip_path = zip_util.zip(path)
         with open(zip_path, 'rb') as source:
             remote_file_uuid = self.open_temp_file()
@@ -130,7 +147,8 @@ class RemoteBundleClient(BundleClient):
                 # FileServer does not expose an API for forcibly flushing writes, so
                 # we rely on closing the file to flush it.
                 file_util.copy(source, dest, autoflush=False)
-        return self.upload_zip(bundle_type, remote_file_uuid, metadata, worksheet_uuid)
+        return self.upload_zip(bundle_type, remote_file_uuid, metadata,
+                worksheet_uuid, reupload)
 
     def open_file(self, target):
         remote_file_uuid = self.open_target(target)
