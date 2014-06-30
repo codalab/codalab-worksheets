@@ -9,15 +9,18 @@ from codalab.common import State
 
 class UploadedBundle(NamedBundle):
     @classmethod
-    def construct(cls, data_hash, metadata):
-        return super(UploadedBundle, cls).construct({
+    def construct(cls, data_hash, metadata, uuid=None):
+        row = {
           'bundle_type': cls.BUNDLE_TYPE,
           'command': None,
           'data_hash': data_hash,
           'state': State.READY,
           'metadata': metadata,
           'dependencies': [],
-        })
+        }
+        if uuid:
+            row['uuid'] = uuid
+        return super(UploadedBundle, cls).construct(row)
 
     def get_hard_dependencies(self):
         # Uploaded bundles will never include symlinks to other bundles.

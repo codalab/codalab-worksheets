@@ -23,29 +23,55 @@ class MockAuthHandler(object):
     A mock handler, which makes it easy to run a server when no real
     authentication is required. The implementation is such that this
     handler will accept any combination of username and password, but
-    it will always resolve to the same user: User('anonymous', 0).
+    it will always resolve to the same user: User('root', 0).
     '''
-    def __init__(self):
-        self._user = None
+    def __init__(self, users=None):
+        if users is None:
+            users = [User('root', 0)]
+        self._user = users[0]
+        self._users_by_name = {user.name: user for user in users}
+        self._users_by_id = {user.unique_id: user for user in users}
 
     def generate_token(self, grant_type, username, key):
         '''
         Always returns token information.
         '''
-        return {
-            'token_type': 'Bearer',
-            'access_token': '__mock_token__',
-            'expires_in': 3600 * 24 * 365,
-            'refresh_token': '__mock_token__',
-        }
+        if username in self._users_by_name:
+            self._user = self._users_by_name[username]
+            return {
+                'token_type': 'Bearer',
+                'access_token': '__mock_token__',
+                'expires_in': 3600 * 24 * 365,
+                'refresh_token': '__mock_token__',
+            }
+        else:
+            return None
 
     def validate_token(self, token):
         '''
-        Always returns True. If token is None, sets the current user to None,
-        otherwise sets the current user to anonymous.
+        Always returns True. The specified token is ignored.
         '''
-        self._user = None if token is None else User('anonymous', 0)
         return True
+
+
+    def get_users(self, key_type, keys):
+        '''
+        Resolves user names (key_type='names') or user IDs (key_type='ids') to
+        corresponding User objects.
+
+        key_type: The type of input keys: names or ids.
+        keys: The set of names/ids to resolve.
+
+        Returns a dictionary where keys are keys input to this method and
+        values are either a User object or None if the key does not have
+        a matching user (either the user does not exist or exists but is
+        not active).
+        '''
+        if key_type == 'names':
+            return {key: self._users_by_name.get(key, None) for key in keys}
+        if key_type == 'ids':
+            return {key: self._users_by_id.get(key, None) for key in keys}
+        raise ValueError('Invalid key_type')
 
     def current_user(self):
         return self._user
@@ -65,7 +91,7 @@ class OAuthHandler(object):
         self._address = address
         self._app_id = app_id
         self._app_key = app_key
-        self.min_username_length = 6
+        self.min_username_length = 1
         self.min_key_length = 6
         self._user = None
         self._access_token = None
@@ -76,6 +102,9 @@ class OAuthHandler(object):
 
     def _get_validation_url(self):
         return "{0}/clients/validation/".format(self._address)
+
+    def _get_user_info_url(self):
+        return "{0}/clients/info/".format(self._address)
 
     def _generate_new_token(self, username, password):
         '''
@@ -125,9 +154,9 @@ class OAuthHandler(object):
           'refresh_token': <token> }
         If the grant fails because of invalid credentials, None is returned.
         '''
-        if len(username) < self.min_username_length or len(key) < self.min_key_length:
-            raise UsageError("Invalid username or password.")
         if grant_type == 'credentials':
+            if len(username) < self.min_username_length or len(key) < self.min_key_length:
+                raise UsageError("Invalid username or password.")
             return self._generate_new_token(username, key)
         if grant_type == 'refresh_token':
             return self._refresh_token(username, key)
@@ -179,6 +208,42 @@ class OAuthHandler(object):
             return False # 'User credentials are not valid'
         else:
             return False # 'The token translation failed.'
+
+    def get_users(self, key_type, keys):
+        '''
+        Resolves user names (key_type='names') or user IDs (key_type='ids') to
+        corresponding User objects.
+
+        key_type: The type of input keys: names or ids.
+        keys: The set of names/ids to resolve.
+
+        Returns a dictionary where keys are keys input to this method and
+        values are either a User object or None if the key does not have
+        a matching user (either the user does not exist or exists but is
+        not active).
+        '''
+        if key_type not in ('names', 'ids'):
+            raise ValueError('Invalid key_type')
+        if self._access_token is None or self._expires_at < time.time():
+            self._generate_app_token()
+        headers = {'Authorization': 'Bearer {0}'.format(self._access_token)}
+        request = urllib2.Request(self._get_user_info_url(),
+                                  urllib.urlencode([(key_type, keys)], True),
+                                  headers)
+        response = urllib2.urlopen(request)
+        result = json.load(response)
+        status_code = result['code'] if 'code' in result else 500
+        user_dict = None
+        if status_code == 200:
+            user_dict = {}
+            key_type_key = 'name' if key_type == 'names' else 'id'
+            for user in result['users']:
+                key = user[key_type_key]
+                if 'active' in user and user['active'] == True:
+                    user_dict[key] = User(user['name'], user['id'])
+                else:
+                    user_dict[key] = None
+        return user_dict
 
     def current_user(self):
         '''

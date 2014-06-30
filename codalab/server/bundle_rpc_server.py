@@ -21,20 +21,22 @@ from codalab.server.file_server import FileServer
 class BundleRPCServer(FileServer):
     SERVER_COMMANDS = (
       'upload_zip',
+      'download_zip',
       'open_target',
     )
 
     def __init__(self, manager):
         self.host = manager.config['server']['host']
         self.port = manager.config['server']['port']
-        self.client = manager.client('local')
+        self.client = manager.client('local', False)
         FileServer.__init__(self, (self.host, self.port), tempfile.gettempdir(), manager.auth_handler())
         for command in RemoteBundleClient.CLIENT_COMMANDS:
             self.register_function(getattr(self.client, command), command)
         for command in self.SERVER_COMMANDS:
             self.register_function(getattr(self, command), command)
 
-    def upload_zip(self, bundle_type, file_uuid, metadata, worksheet_uuid=None):
+    def upload_zip(self, bundle_type, file_uuid, metadata, worksheet_uuid=None,
+            reupload=False):
         '''
         Unzip the zip in the temp file identified by the given file uuid and then
         upload the unzipped directory. Return the new bundle's id.
@@ -42,7 +44,12 @@ class BundleRPCServer(FileServer):
         zip_path = self.temp_file_paths.pop(file_uuid, None)
         precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
         path = zip_util.unzip(zip_path)
-        return self.client.upload(bundle_type, path, metadata, worksheet_uuid)
+        return self.client.upload(bundle_type, path, metadata, worksheet_uuid, reupload=reupload)
+
+    def download_zip(self, bundle_spec):
+        path = self.client.get_target_path((bundle_spec, ""))
+        zip_path = zip_util.zip(path)
+        return self.open_file(zip_path, 'rb')
 
     def open_target(self, target):
         '''

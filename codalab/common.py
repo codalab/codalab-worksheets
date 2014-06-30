@@ -30,6 +30,17 @@ class UsageError(ValueError):
     which the command-line client suppresses output.
     '''
 
+class AuthorizationError(UsageError):
+    '''
+    Raised when access to a resource is refused because authentication is required
+    and has not been provided. Similar to HTTP status 401.
+    '''
+
+class PermissionError(UsageError):
+    '''
+    Raised when access to a resource is refused because the user does not have
+    necessary permissions. Similar to HTTP status 403.
+    '''
 
 class State(object):
     '''
