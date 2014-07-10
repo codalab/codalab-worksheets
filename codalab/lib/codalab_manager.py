@@ -35,6 +35,7 @@ import time
 
 from codalab.client import is_local_address
 from codalab.common import UsageError
+from codalab.objects.worksheet import Worksheet
 
 def cached(fn):
     def inner(self):
@@ -211,6 +212,7 @@ class CodaLabManager(object):
         '''
         Return a client given the address.  Note that this can either be called
         by the CLI (is_cli=True) or the server (is_cli=False).
+        If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
         if address in self.clients:
@@ -276,7 +278,7 @@ class CodaLabManager(object):
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}
         # For a local client with mock credentials, use the default username.
-        username = ''
+        username = None
         if is_local_address(client.address):
             from codalab.server.auth import MockAuthHandler
             if type(self.auth_handler()) is MockAuthHandler:
@@ -302,6 +304,13 @@ class CodaLabManager(object):
         session = self.session()
         client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
+        # Switch to default worksheet if not on a current worksheet, creating it if necessary.
+        if not worksheet_uuid:
+            try:
+                worksheet_info = client.get_worksheet_info(Worksheet.DEFAULT_WORKSHEET_NAME) 
+                worksheet_uuid = worksheet_info['uuid']
+            except UsageError:
+                worksheet_uuid = client.new_worksheet(Worksheet.DEFAULT_WORKSHEET_NAME)
         return (client, worksheet_uuid)
 
     def set_current_worksheet_uuid(self, client, worksheet_uuid):

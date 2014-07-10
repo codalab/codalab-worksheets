@@ -1,6 +1,7 @@
 '''
 canonicalize provides helpers that convert ambiguous inputs to canonical forms:
-  get_spec_uuid: bundle_spec [<uuid>|<name>] -> uuid
+  get_bundle_uuid: bundle_spec (which is <uuid>|<name>) -> uuid
+  get_worksheet_uuid: worksheet_spec -> uuid
   get_target_path: target (bundle_spec, subpath) -> filesystem path
 
 These methods are only available if we have direct access to the bundle system.
@@ -19,30 +20,48 @@ from codalab.lib import (
 )
 from codalab.model.util import LikeQuery
 
-
-def get_spec_uuid(model, bundle_spec):
+def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     '''
-    Resolve a string bundle_spec to a unique bundle uuid.
+    Resolve a string bundle_spec to a bundle uuid.
+    Types of specifications:
+    - uuid: should be unique.
+    - name[^[<index>]: there might be many uuids with this name.
+    - ^[<index>], where index is the i-th (1-based) most recent element on the current worksheet.
     '''
+    last_index = 1  # By default, take the last one
     if not bundle_spec:
         raise UsageError('Tried to expand empty bundle_spec!')
     if spec_util.UUID_REGEX.match(bundle_spec):
         return bundle_spec
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
-        bundles = model.batch_get_bundles(uuid=LikeQuery(bundle_spec + '%'))
+        bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%')}, max_results=1)
         message = "uuid starting with '%s'" % (bundle_spec,)
     else:
-        spec_util.check_name(bundle_spec)
-        bundles = model.search_bundles(name=bundle_spec)
+        m = spec_util.NAME_HISTORY_REGEX.match(bundle_spec)  # run^3: 3rd to last run
+        if m:
+            bundle_spec = m.group(1)
+            last_index = int(m.group(2)) if m.group(2) != '' else 1
+        else:
+            m = spec_util.HISTORY_REGEX.match(bundle_spec)  # ^3: 3rd to last run in this worksheet
+            if m:
+                bundle_spec = None
+                last_index = int(m.group(1)) if m.group(1) != '' else 1
+
+        if bundle_spec:
+            spec_util.check_name(bundle_spec)
+        bundle_uuids = model.get_bundle_uuids({
+            'name': LikeQuery(bundle_spec + '%') if bundle_spec else None,
+            'worksheet_uuid': worksheet_uuid
+        }, max_results=last_index)
         message = "name '%s'" % (bundle_spec,)
-    if not bundles:
+    if not bundle_uuids:
+        # If fail to find something in the worksheet, then backoff to global
+        if worksheet_uuid: return get_bundle_uuid(model, None, bundle_spec)
         raise UsageError('No bundle found with %s' % (message,))
-    elif len(bundles) > 1:
-        raise UsageError(
-          'Found multiple bundles with %s:%s' %
-          (message, ''.join('\n  %s' % (bundle,) for bundle in bundles))
-        )
-    return bundles[0].uuid
+    # Take the last bundle
+    if last_index <= 0 or last_index > len(bundle_uuids):
+        raise UsageError('Index %d out of range, only %d bundles matched' % (last_index, len(bundle_uuids)))
+    return bundle_uuids[last_index - 1]
 
 def get_current_location(bundle_store, uuid):
     '''
@@ -52,23 +71,25 @@ def get_current_location(bundle_store, uuid):
 
 def get_target_path(bundle_store, model, target):
     '''
-    Return the on-disk location of the target (bundle_spec, path) pair.
+    Return the on-disk location of the target (bundle_uuid, subpath) pair.
     '''
-    (bundle_spec, path) = target
-    uuid = get_spec_uuid(model, bundle_spec)
+    (uuid, path) = target
     bundle = model.get_bundle(uuid)
     if not bundle.data_hash:
-        message = 'Unexpected: %s is ready but it has no data hash!' % (bundle,)
-        precondition(bundle.state != State.READY, message)
-        if bundle.state == State.FAILED:
-            raise UsageError('%s failed unrecoverably' % (bundle,))
-        elif bundle.state == State.RUNNING:
-            bundle_root = get_current_location(bundle_store, uuid)
-        else:
-            raise UsageError('%s isn\'t running yet!' % (bundle,))
+        # Note that the bundle might not be done, but return the location anyway
+        bundle_root = get_current_location(bundle_store, uuid)
+    #    message = 'Unexpected: %s is ready but it has no data hash!' % (bundle,)
+    #    precondition(bundle.state != State.READY, message)
+    #    if bundle.state == State.FAILED:
+    #        #raise UsageError('%s failed unrecoverably' % (bundle,))
+    #        return None
+    #    elif bundle.state == State.RUNNING:
+    #        bundle_root = get_current_location(bundle_store, uuid)
+    #    else:
+    #        #raise UsageError('%s isn\'t running yet!' % (bundle,))
+    #        return None
     else:
         bundle_root = bundle_store.get_location(bundle.data_hash)
-
     final_path = path_util.safe_join(bundle_root, path)
     path_util.check_under_path(final_path, bundle_root)
     result = path_util.TargetPath(final_path)

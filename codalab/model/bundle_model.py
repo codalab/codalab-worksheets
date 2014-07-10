@@ -91,6 +91,16 @@ class BundleModel(object):
         if values:
             connection.execute(table.insert(), values)
 
+    def make_clause(self, key, value):
+        if isinstance(value, (list, set, tuple)):
+            if not value:
+                return False
+            return key.in_(value)
+        elif isinstance(value, LikeQuery):
+            return key.like(value)
+        else:
+            return key == value
+
     def make_kwargs_clause(self, table, kwargs):
         '''
         Return a list of bundles given a dict mapping table columns to values.
@@ -99,14 +109,7 @@ class BundleModel(object):
         '''
         clauses = [true()]
         for (key, value) in kwargs.iteritems():
-            if isinstance(value, (list, set, tuple)):
-                if not value:
-                    return False
-                clauses.append(getattr(table.c, key).in_(value))
-            elif isinstance(value, LikeQuery):
-                clauses.append(getattr(table.c, key).like(value))
-            else:
-                clauses.append(getattr(table.c, key) == value)
+            clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
     def get_bundle(self, uuid):
@@ -152,23 +155,48 @@ class BundleModel(object):
         uuids = set([row.child_uuid for row in rows])
         return self.batch_get_bundles(uuid=uuids)
 
-    def search_bundles(self, **kwargs):
+    def get_bundle_uuids(self, conditions, max_results):
         '''
-        Returns a list of bundles that match the given metadata search.
+        Returns a list of bundle_uuids that have match the conditions.
+        Possible conditions:
+        - uuid: could be just a prefix
+        - home_worksheet_uuid:
+        - name (exists in bundle_metadata)
+        - parent: dependent (exists in bundle_dependency)
+        - child: downstream influence (exists in bundle_dependency)
+        - worksheet_uuid (exists in worksheet_uuid)
+        Return in reverse order.
         '''
-        if len(kwargs) != 1:
-            raise NotImplementedError('Complex searches have not been implemented.')
-        [(key, value)] = kwargs.items()
-        clause = and_(
-          cl_bundle_metadata.c.metadata_key == key,
-          cl_bundle_metadata.c.metadata_value == value,
-        )
+        # TODO: handle matching other conditions
+        if 'uuid' in conditions:
+            # Match the uuid only
+            clause = self.make_clause(cl_bundle.c.uuid, conditions['uuid'])
+            query = cl_bundle.select([cl_bundle.c.uuid]).where(clause)
+        elif 'name' in conditions:
+            # Select name
+            if conditions.get('name'):
+                clause = and_(
+                  cl_bundle_metadata.c.metadata_key == 'name',
+                  self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name'])
+                )
+            else:
+                clause = true()
+            if conditions['worksheet_uuid']:
+                # Select things on the given worksheet
+                clause = and_(clause, self.make_clause(cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']))
+                clause = and_(clause, cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid)
+                query = select([cl_bundle_metadata.c.bundle_uuid, cl_worksheet_item.c.id]).distinct().where(clause)
+                query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
+            else:
+                # Select from all bundles
+                query = select([cl_bundle.c.uuid]).where(clause)
+                query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
+
+        #print query, query.compile().params
         with self.engine.begin() as connection:
-            metadata_rows = connection.execute(select([
-              cl_bundle_metadata.c.bundle_uuid,
-            ]).where(clause)).fetchall()
-        uuids = set([row.bundle_uuid for row in metadata_rows])
-        return self.batch_get_bundles(uuid=uuids)
+            rows = connection.execute(query).fetchall()
+        #for row in rows: print row
+        return [row[0] for row in rows]
 
     def batch_get_bundles(self, **kwargs):
         '''
@@ -304,7 +332,7 @@ class BundleModel(object):
         '''
         children = self.get_children(uuid=uuids)
         if children:
-            precondition(force, 'Bundles depend on %s:\n  %s' % (
+            precondition(force, 'The following bundles depend on %s:\n  %s' % (
               self.get_bundle(uuids[0]),
               '\n  '.join(str(child) for child in children),
             ))
@@ -688,6 +716,7 @@ class BundleModel(object):
             ).fetchall()
             if not rows:
                 return []
+        print 'GET', rows
         return [dict(row) for row in rows]
 
     def add_permission(self, group_uuid, object_uuid, permission):

@@ -59,20 +59,23 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
         else:
             return xmlrpclib.Transport.make_connection(self, host)
 
+############################################################
+
 class RemoteBundleClient(BundleClient):
+    # Implemented by a nested copy of a LocalBundleClient.
     CLIENT_COMMANDS = (
-      'make',
-      'run',
-      'edit',
-      'delete',
-      'info',
-      'ls',
-      'head',
-      'search',
+      'make_bundle',
+      'run_bundle',
+      'update_bundle_metadata',
+      'delete_bundle',
+      'get_bundle_uuid',
+      'get_bundle_info',
+      'get_target_info',
+      'head_target',
       # Worksheet-related commands all have JSON-able inputs and outputs.
       'new_worksheet',
       'list_worksheets',
-      'worksheet_info',
+      'get_worksheet_info',
       'add_worksheet_item',
       'update_worksheet',
       'rename_worksheet',
@@ -87,16 +90,24 @@ class RemoteBundleClient(BundleClient):
       'add_user',
       'rm_user',
       'set_worksheet_perm',
-      'get_bundle_spec_info'
     )
-    COMMANDS = CLIENT_COMMANDS + (
-      'open_target',
+    # Implemented by the BundleRPCServer.
+    SERVER_COMMANDS = (
+      'upload_zip',
+      'download_target_zip',
+      'open_target_uuid',
+    )
+    # Implemented by the FileServer (superclass of BundleRPCServer).
+    FILE_COMMANDS = (
       'open_temp_file',
       'read_file',
+      'readline_file',
+      'tell_file',
+      'seek_file',
+      'write_file',
       'close_file',
-      'upload_zip',
-      'download_zip',
     )
+    COMMANDS = CLIENT_COMMANDS + SERVER_COMMANDS + FILE_COMMANDS
 
     def __init__(self, address, get_auth_token):
         self.address = address
@@ -106,6 +117,7 @@ class RemoteBundleClient(BundleClient):
         def do_command(command):
             def inner(*args, **kwargs):
                 try:
+                    print 'remote_bundle_client: %s %s %s' % (command, args, kwargs)
                     return getattr(self.proxy, command)(*args, **kwargs)
                 except xmlrpclib.ProtocolError, e:
                     if e.errcode == 401:
@@ -125,20 +137,7 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def download(self, bundle_spec):
-        # TODO(dskovach) is this call to close needed?
-        (fd, dest_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
-        os.close(fd)
-        source_uuid = self.download_zip(bundle_spec)
-        source = RPCFileHandle(source_uuid, self.proxy)
-        with open(dest_path, 'wb') as dest:
-            with contextlib.closing(source):
-                file_util.copy(source, dest, autoflush=False)
-        path = zip_util.unzip(dest_path)
-        return (path, self.get_bundle_spec_info(bundle_spec))
-
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None,
-            reupload=False):
+    def upload_bundle(self, bundle_type, path, metadata, worksheet_uuid=None, check_validity=True):
         zip_path = zip_util.zip(path)
         with open(zip_path, 'rb') as source:
             remote_file_uuid = self.open_temp_file()
@@ -148,41 +147,26 @@ class RemoteBundleClient(BundleClient):
                 # we rely on closing the file to flush it.
                 file_util.copy(source, dest, autoflush=False)
         return self.upload_zip(bundle_type, remote_file_uuid, metadata,
-                worksheet_uuid, reupload)
+                worksheet_uuid, check_validity)
 
-    def open_file(self, target):
-        remote_file_uuid = self.open_target(target)
-        return RPCFileHandle(remote_file_uuid, self.proxy)
-
-    def tail_file(self, target):
-        (bundle_spec, subpath) = target
-        file_handle = self.open_file(target)
-
-        with contextlib.closing(file_handle):
-            # Print last 10 lines
-            tail = file_handle.tail()
-            print tail
-
-            def read_line():
-                return file_handle.readline()
-
-            return self.watch(bundle_spec, [read_line])
-
-    def tail_bundle(self, bundle_spec):
-        out = self.open_file((bundle_spec, 'stdout'))
-        err = self.open_file((bundle_spec, 'stderr'))
-
-        with contextlib.closing(out), contextlib.closing(err):
-
-            def out_line():
-                return out.readline()
-            def err_line():
-                return err.readline()
-
-            return self.watch(bundle_spec, [out_line, err_line])
-
-
-    def cat(self, target):
-        source = self.open_file(target)
+    def cat_target(self, target, out):
+        source = self.open_target(target)
         with contextlib.closing(source):
-            file_util.copy(source, sys.stdout)
+            file_util.copy(source, out)
+
+    def open_target(self, target):
+        remote_file_uuid = self.open_target_uuid(target)
+        if remote_file_uuid:
+            return RPCFileHandle(remote_file_uuid, self.proxy)
+        return None
+
+    def download_target(self, target):
+        (fd, dest_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
+        os.close(fd)
+        source_uuid = self.download_target_zip(target)
+        source = RPCFileHandle(source_uuid, self.proxy)
+        with open(dest_path, 'wb') as dest:
+            with contextlib.closing(source):
+                file_util.copy(source, dest, autoflush=False)
+        path = zip_util.unzip(dest_path)
+        return path

@@ -76,16 +76,16 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
     # Construct a form template with the required keys, prefilled with the
     # command-line metadata options.
     template_lines = []
+    bundle_type = bundle_subclass.BUNDLE_TYPE
+    template_lines.append(os.linesep.join([
+      '// Enter metadata for the new %s bundle, then save and quit.' % (bundle_type,),
+      '// To cancel the upload, delete the name.',
+    ]))
     for spec in bundle_subclass.get_user_defined_metadata():
         initial_value = initial_metadata.get(spec.key) or ''
         if spec.type == set:
             initial_value = ' '.join(initial_value or [])
-        template_lines.append('%s: %s' % (spec.key.title(), initial_value))
-    bundle_type = bundle_subclass.BUNDLE_TYPE
-    template_lines.append(os.linesep.join([
-      '# Record metadata for the new %s, then save and quit.' % (bundle_type,),
-      '# Leave the name blank to cancel the upload.',
-    ]))
+        template_lines.append('%s: %s' % (spec.key, initial_value))
     template = (os.linesep + os.linesep).join(template_lines)
     # Show the form to the user in their editor of choice and parse the result.
     editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
@@ -110,11 +110,12 @@ def parse_metadata_form(bundle_subclass, form_result):
     result = {}
     for line in form_result:
         line = line.strip()
-        if line and not line.startswith('#'):
+        if line and not line.startswith('//'):
             if ':' not in line:
+                # TODO: don't delete everything; go back to the editor
                 raise UsageError('Malformatted line (no colon): %s' % (line,))
             (metadata_key, remainder) = line.split(':', 1)
-            metadata_key = metadata_key.lower()
+            # TODO: handle multiple lines
             if metadata_key not in metadata_types:
                 raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
             metadata_type = metadata_types[metadata_key]

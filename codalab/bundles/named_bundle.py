@@ -1,8 +1,9 @@
 '''
 NameBundle is an abstract Bundle supertype that all other bundle types subclass.
 It requires name, description, and tags metadata for all of its subclasses.
+TODO: merge into bundle.py.
 '''
-import time
+import time, re
 
 from codalab.common import UsageError
 from codalab.lib import spec_util
@@ -11,6 +12,8 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 
 class NamedBundle(Bundle):
+    NAME_LENGTH = 32
+
     METADATA_SPECS = (
       MetadataSpec('name', basestring, 'name: %s' % (spec_util.NAME_REGEX.pattern,)),
       MetadataSpec('description', basestring, 'human-readable description'),
@@ -42,3 +45,6 @@ class NamedBundle(Bundle):
           str(self.uuid),
           str(self.metadata.name),
         )
+
+    def simple_str(self):
+        return self.metadata.name + '[' + self.uuid + ']'

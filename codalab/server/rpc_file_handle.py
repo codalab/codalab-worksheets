@@ -15,11 +15,14 @@ class RPCFileHandle(object):
     def read(self, num_bytes=None):
         return self.proxy.read_file(self.file_uuid, num_bytes).data
 
-    def tail(self, num_lines=10):
-        return self.proxy.tail_file(self.file_uuid, num_lines).data
+    def seek(self, offset, whence):
+        return self.proxy.seek_file(self.file_uuid, offset, whence)
+
+    def tell(self):
+        return self.proxy.tell_file(self.file_uuid)
 
     def readline(self):
-        return self.proxy.read_line_file(self.file_uuid).data
+        return self.proxy.readline_file(self.file_uuid).data
 
     def write(self, buffer):
         binary = xmlrpclib.Binary(buffer)

@@ -4,6 +4,7 @@ BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from time import sleep
 import contextlib
+import os
 
 from codalab.bundles import (
   get_bundle_subclass,
@@ -48,7 +49,10 @@ class LocalBundleClient(BundleClient):
     def _current_user_id(self):
         return self.auth_handler.current_user().unique_id
 
-    def get_bundle_info(self, bundle, parents=None, children=None):
+    def _bundle_to_bundle_info(self, bundle, children=None):
+        '''
+        Helper: Convert bundle to bundle_info.
+        '''
         hard_dependencies = bundle.get_hard_dependencies()
         result = {
           'bundle_type': bundle.bundle_type,
@@ -56,41 +60,37 @@ class LocalBundleClient(BundleClient):
           'metadata': bundle.metadata.to_dict(),
           'state': bundle.state,
           'uuid': bundle.uuid,
+          'dependencies': [dep.to_dict() for dep in bundle.dependencies],
           'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
         }
-        if parents is not None:
-            result['parents'] = [str(parent) for parent in parents]
         if children is not None:
-            result['children'] = [str(child) for child in children]
+            result['children'] = [child.simple_str() for child in children]
         return result
 
-    def get_spec_uuid(self, bundle_spec):
-        return canonicalize.get_spec_uuid(self.model, bundle_spec)
+    def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
+        return canonicalize.get_bundle_uuid(self.model, worksheet_uuid, bundle_spec)
 
+    def get_bundle_uuids(self, worksheet_uuid, bundle_spec):
+        return canonicalize.get_bundle_uuids(self.model, worksheet_uuid, bundle_spec)
+
+    # Helper
     def get_target_path(self, target):
         return canonicalize.get_target_path(self.bundle_store, self.model, target)
 
+    # Helper
     def get_bundle_target(self, target):
-        (bundle_spec, subpath) = target
-        return (self.model.get_bundle(self.get_spec_uuid(bundle_spec)), subpath)
-
-    def get_bundle(self, bundle_spec):
-        return self.model.get_bundle(self.get_spec_uuid(bundle_spec))
-
-    # Result is a (serializable) dict.
-    # Also called by RemoteBundleClient download method.
-    def get_bundle_spec_info(self, bundle_spec):
-        return self.get_bundle_info(self.get_bundle(bundle_spec))
+        (bundle_uuid, subpath) = target
+        return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, worksheet_spec):
         return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
 
-    def expand_worksheet_item(self, item):
+    def expand_worksheet_item(self, worksheet_uuid, item):
         (bundle_spec, value, type) = item
         if bundle_spec is None:
             return (None, value or '', type or '')
         try:
-            bundle_uuid = self.get_spec_uuid(bundle_spec)
+            bundle_uuid = self.get_bundle_uuid(worksheet_uuid, bundle_spec)
         except UsageError, e:
             return (bundle_spec, str(e) if value is None else value)
         if bundle_uuid != bundle_spec and value is None:
@@ -99,7 +99,7 @@ class LocalBundleClient(BundleClient):
             bundle = self.model.get_bundle(bundle_uuid)
             value = bundle_spec
             if getattr(bundle.metadata, 'description', None):
-                value = '%s: %s' % (value, bundle.metadata.description)
+                value = bundle.metadata.name
         return (bundle_uuid, value or '', type or '')
 
     def validate_user_metadata(self, bundle_subclass, metadata):
@@ -107,33 +107,19 @@ class LocalBundleClient(BundleClient):
         Check that the user did not supply values for any auto-generated metadata.
         Raise a UsageError with the offending keys if they are.
         '''
-        legal_keys = set(spec.key for spec in
-          bundle_subclass.get_user_defined_metadata())
+        legal_keys = set(spec.key for spec in bundle_subclass.get_user_defined_metadata())
         illegal_keys = [key for key in metadata if key not in legal_keys]
         if illegal_keys:
             raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-    def download(self, bundle_spec):
-        path = self.get_target_path((bundle_spec, ""))
-        return (path, self.get_bundle_spec_info(bundle_spec))
-
-    def cp_upload(self, bundle_type, path, metadata, uuid, worksheet_uuid=None):
-        bundle_subclass = get_bundle_subclass(bundle_type)
-        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
-        # TODO(dskovach) not sure why this cast is needed
-        if ('data_size' in metadata and 
-                not isinstance(metadata['data_size'], long)):
-            metadata['data_size'] = long(metadata['data_size'])
-
-        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata, uuid=uuid)
-        return self.insert_bundle(bundle, worksheet_uuid)
-
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
+    def upload_bundle(self, bundle_type, path, metadata, worksheet_uuid=None, check_validity=True):
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
-        precondition(bundle_type in UPLOADED_TYPES, message)
+        if check_validity:
+            precondition(bundle_type in UPLOADED_TYPES, message)
         bundle_subclass = get_bundle_subclass(bundle_type)
 
-        self.validate_user_metadata(bundle_subclass, metadata)
+        if check_validity:
+            self.validate_user_metadata(bundle_subclass, metadata)
         # Upload the given path and record additional metadata from the upload.
         (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
         metadata.update(bundle_store_metadata)
@@ -141,14 +127,14 @@ class LocalBundleClient(BundleClient):
         bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
         return self.insert_bundle(bundle, worksheet_uuid)
 
-    # Called by upload, cp_upload
+    # Helper: called by upload, cp_upload
     def insert_bundle(self, bundle, worksheet_uuid):
         self.model.save_bundle(bundle)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
         return bundle.uuid
 
-    def make(self, targets, metadata, worksheet_uuid=None):
+    def make_bundle(self, targets, metadata, worksheet_uuid=None):
         bundle_subclass = get_bundle_subclass('make')
         self.validate_user_metadata(bundle_subclass, metadata)
         targets = {
@@ -161,7 +147,7 @@ class LocalBundleClient(BundleClient):
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
         return bundle.uuid
 
-    def run(self, targets, command, metadata, worksheet_uuid=None):
+    def run_bundle(self, targets, command, metadata, worksheet_uuid=None):
         bundle_subclass = get_bundle_subclass('run')
         self.validate_user_metadata(bundle_subclass, metadata)
         targets = {
@@ -175,85 +161,56 @@ class LocalBundleClient(BundleClient):
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
         return bundle.uuid
 
-    def open_target(self, target):
-        (bundle_spec, subpath) = target
-        path = self.get_target_path(target)
-        path_util.check_isfile(path, 'open_target')
-        return open(path)
-
-    def tail_file(self, target):
-        (bundle_spec, subpath) = target
-        file_handle = self.open_target(target)
-
-        with contextlib.closing(file_handle):
-            # Print last 10 lines
-            tail = file_util.tail(file_handle)
-            print tail
-
-            def read_line():
-                return file_handle.readline()
-
-            return self.watch(bundle_spec, [read_line])
-
-    def tail_bundle(self, bundle_spec):
-        out = self.open_target((bundle_spec, 'stdout'))
-        err = self.open_target((bundle_spec, 'stderr'))
-
-        with contextlib.closing(out), contextlib.closing(err):
-
-            def out_line():
-                return out.readline()
-            def err_line():
-                return err.readline()
-
-            return self.watch(bundle_spec, [out_line, err_line])
-
-    def edit(self, uuid, metadata):
+    def update_bundle_metadata(self, uuid, metadata):
         bundle = self.model.get_bundle(uuid)
         self.validate_user_metadata(bundle, metadata)
         self.model.update_bundle(bundle, {'metadata': metadata})
 
-    def delete(self, bundle_spec, force=False):
-        uuid = self.get_spec_uuid(bundle_spec)
+    def delete_bundle(self, uuid, force=False):
         children = self.model.get_children(uuid)
         if children and not force:
-            raise UsageError('Bundles depend on %s:\n  %s' % (
-              bundle_spec,
-              '\n  '.join(str(child) for child in children),
+            raise UsageError('The following bundles depend on %s:\n  %s' % (
+              uuid,
+              '\n  '.join(child.simple_str() for child in children),
             ))
         child_worksheets = self.model.get_child_worksheets(uuid)
         if child_worksheets and not force:
-            raise UsageError('Worksheets depend on %s:\n  %s' % (
-              bundle_spec,
-              '\n  '.join(str(child) for child in child_worksheets),
+            raise UsageError('The following worksheets depend on %s:\n  %s' % (
+              uuid,
+              '\n  '.join(child.simple_str() for child in child_worksheets),
             ))
         self.model.delete_bundle_tree([uuid], force=force)
 
-    def info(self, bundle_spec, parents=None, children=None):
-        uuid = self.get_spec_uuid(bundle_spec)
+    def get_bundle_info(self, uuid, get_children=False):
+        '''
+        Return information about the bundle.
+        get_children: whether we want to return information about the children too.
+        '''
         bundle = self.model.get_bundle(uuid)
-        parents = self.model.get_parents(uuid) if parents else None
-        children = self.model.get_children(uuid) if children else None
-        return self.get_bundle_info(bundle, parents=parents, children=children)
+        children = self.model.get_children(uuid) if get_children else None
+        return self._bundle_to_bundle_info(bundle, children=children)
 
-    def ls(self, target):
+    # Return information about an individual target inside the bundle.
+
+    def get_target_info(self, target, depth):
         path = self.get_target_path(target)
-        return path_util.ls(path)
+        return path_util.get_info(path, depth)
 
-    def cat(self, target):
+    def cat_target(self, target, out):
         path = self.get_target_path(target)
-        path_util.cat(path)
+        path_util.cat(path, out)
 
-    def head(self, target, lines=10):
+    def head_target(self, target, num_lines):
         path = self.get_target_path(target)
-        return path_util.read_file(path, lines)
+        return path_util.read_lines(path, num_lines)
 
-    def search(self, query=None):
-        if query:
-            bundles = self.model.search_bundles(**query)
-        else:
-            bundles = self.model.batch_get_bundles()
-        return [self.get_bundle_info(bundle) for bundle in bundles]
+    def open_target(self, target):
+        path = self.get_target_path(target)
+        return open(path) if path and os.path.exists(path) else None
+
+    def download_target(self, target):
+        # Don't need to download anything because it's already local.
+        return self.get_target_path(target)
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!
@@ -272,7 +229,7 @@ class LocalBundleClient(BundleClient):
         else:
             return self.model.list_worksheets(current_user.unique_id)
 
-    def worksheet_info(self, worksheet_spec):
+    def get_worksheet_info(self, worksheet_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
         current_user = self.auth_handler.current_user()
@@ -287,7 +244,7 @@ class LocalBundleClient(BundleClient):
           if bundle_uuid is not None
         )
         bundles = self.model.batch_get_bundles(uuid=uuids)
-        bundle_dict = {bundle.uuid: self.get_bundle_info(bundle) for bundle in bundles}
+        bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
 
         # If a bundle uuid is orphaned, we still have to return the uuid in a dict.
         items = []
@@ -307,12 +264,12 @@ class LocalBundleClient(BundleClient):
         worksheet_uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(worksheet_uuid)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
-        bundle_uuid = self.get_spec_uuid(bundle_spec)
+        bundle_uuid = self.get_bundle_uuid(worksheet_uuid, bundle_spec)
         bundle = self.model.get_bundle(bundle_uuid)
         # Compute a nice value for this item, using the description if it exists.
         item_value = bundle_spec
         if getattr(bundle.metadata, 'description', None):
-            item_value = '%s: %s' % (item_value, bundle.metadata.description)
+            item_value = bundle.metadata.name
         item = (bundle.uuid, item_value, 'bundle')
         self.model.add_worksheet_item(worksheet_uuid, item)
 
@@ -322,9 +279,9 @@ class LocalBundleClient(BundleClient):
         # This step could take O(n) database calls! However, it will only hit the
         # database for each bundle the user has newly specified by name - bundles
         # that were already in the worksheet will be referred to by uuid, so
-        # get_spec_uuid will be an in-memory call for these. This hit is acceptable.
-        canonical_items = [self.expand_worksheet_item(item) for item in new_items]
+        # get_bundle_uuid will be an in-memory call for these. This hit is acceptable.
         worksheet_uuid = worksheet_info['uuid']
+        canonical_items = [self.expand_worksheet_item(worksheet_uuid, item) for item in new_items]
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid)
@@ -389,13 +346,13 @@ class LocalBundleClient(BundleClient):
     def group_info(self, group_spec):
         group_info = permission.unique_group_with_user(self.model, group_spec, self._current_user_id())
         users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
-        user_ids = [int(group_info['owner_id'])]
-        user_ids.extend([int(u['user_id']) for u in users_in_group])
+        user_ids = [group_info['owner_id']]
+        user_ids.extend([u['user_id'] for u in users_in_group])
         users = self.auth_handler.get_users('ids', user_ids)
         members = []
         roles = {}
         for row in users_in_group:
-            roles[int(row['user_id'])] = 'co-owner' if row['is_admin'] == True else 'member'
+            roles[row['user_id']] = 'co-owner' if row['is_admin'] == True else 'member'
         roles[group_info['owner_id']] = 'owner'
         for user_id in user_ids:
             if user_id in users:

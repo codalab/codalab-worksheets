@@ -23,6 +23,7 @@ def item_sort_key(item):
 
 class Worksheet(ORMObject):
     COLUMNS = ('uuid', 'name', 'owner_id')
+    DEFAULT_WORKSHEET_NAME = 'default'
 
     def validate(self):
         '''
@@ -36,6 +37,9 @@ class Worksheet(ORMObject):
 
     def __repr__(self):
         return 'Worksheet(uuid=%r, name=%r)' % (self.uuid, self.name)
+
+    def simple_str(self):
+        return '%s(%s)' % (self.name, self.uuid)
 
     def update_in_memory(self, row, strict=False):
         items = row.pop('items', None)

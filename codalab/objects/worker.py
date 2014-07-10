@@ -14,6 +14,7 @@ import sys
 import time
 import tempfile
 import traceback
+import os
 
 from codalab.common import (
   precondition,
@@ -188,7 +189,8 @@ class Worker(object):
             print ''
         # Clean up after the run.
         with self.profile('Cleaning up temp directory...'):
-            path_util.remove(temp_dir)
+            if os.path.exists(temp_dir):
+                path_util.remove(temp_dir)
 
     def upload_failed_bundle(self, error, temp_dir):
         '''

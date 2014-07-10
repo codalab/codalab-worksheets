@@ -197,25 +197,24 @@ def recursive_ls(path):
 # Functions to read files to compute hashes, write results to stdout, etc.
 ################################################################################
 
-
-def cat(path):
+def cat(path, out):
     '''
-    Copy data from the file at the given path to stdout.
+    Copy data from the file at the given path to the file descriptor |out|.
     '''
     check_isfile(path, 'cat')
     with open(path, 'rb') as file_handle:
-        file_util.copy(file_handle, sys.stdout)
+        file_util.copy(file_handle, out)
 
-def read_file(path, lines=None):
+def read_lines(path, num_lines=None):
     '''
-    Return contents of file as string.
+    Return list of lines (up to num_lines).
     '''
-    check_isfile(path, 'read_file')
+    check_isfile(path, 'read_lines')
     with open(path, 'rb') as file_handle:
-        if lines == None:
+        if num_lines == None:
             return file_handle.readlines()
         else:
-            return list(itertools.islice(file_handle, lines))
+            return list(itertools.islice(file_handle, num_lines))
 
 def getmtime(path):
     '''
@@ -234,6 +233,23 @@ def get_size(path, dirs_and_files=None):
     dirs_and_files = dirs_and_files or recursive_ls(path)
     return sum(long(os.lstat(path).st_size) for path in itertools.chain(*dirs_and_files))
 
+def get_info(path, depth):
+    '''
+    Return a hash containing properties of the path:
+        type: one of {'file', 'directory'}
+        size: size of all files
+        contents: list of files
+    '''
+    result = {}
+    result['name'] = os.path.basename(path)
+    if os.path.isfile(path):
+        result['type'] = 'file'
+        result['size'] = get_size(path)
+    elif os.path.isdir(path):
+        result['type'] = 'directory'
+        if depth > 0:
+            result['contents'] = [get_info(os.path.join(path, file_name), depth-1) for file_name in os.listdir(path)]
+    return result
 
 def hash_directory(path, dirs_and_files=None):
     '''
@@ -289,7 +305,6 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
-
 def copy(source_path, dest_path):
     if os.path.islink(source_path):
         link_target = os.readlink(source_path)
@@ -314,7 +329,7 @@ def make_directory(path):
 
 def remove(path):
     '''
-    Removethe given path, whether it is a directory, file, or link.
+    Remove the given path, whether it is a directory, file, or link.
     '''
     check_isvalid(path, 'remove')
     if os.path.islink(path):

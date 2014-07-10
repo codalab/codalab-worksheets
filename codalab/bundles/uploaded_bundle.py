@@ -23,7 +23,7 @@ class UploadedBundle(NamedBundle):
         return super(UploadedBundle, cls).construct(row)
 
     def get_hard_dependencies(self):
-        # Uploaded bundles will never include symlinks to other bundles.
+        # Uploaded bundles don't have any dependencies on other bundles at all.
         return []
 
     def run(self, bundle_store, parent_dict):

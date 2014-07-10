@@ -20,6 +20,7 @@ import tempfile
 import uuid
 import xmlrpclib
 
+from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.lib import (
   path_util,
   file_util,
@@ -57,14 +58,6 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
 
 class FileServer(SimpleXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
-    COMMANDS =  (
-      'open_temp_file',
-      'read_file',
-      'read_line_file',
-      'tail_file',
-      'write_file',
-      'close_file',
-    )
 
     def __init__(self, address, temp, auth_handler):
         # Keep a dictionary mapping file uuids to open file handles and a
@@ -77,17 +70,23 @@ class FileServer(SimpleXMLRPCServer):
 
         SimpleXMLRPCServer.__init__(self, address, allow_none=True,
                                     requestHandler=AuthenticatedXMLRPCRequestHandler)
-        for fn_name in self.COMMANDS:
-            self.register_function(getattr(self, fn_name), fn_name)
+        def wrap(command, func):
+            def inner(*args, **kwargs):
+                print "file_server: %s %s" % (command, args)
+                return func(*args, **kwargs)
+            return inner
+        for command in RemoteBundleClient.FILE_COMMANDS:
+            self.register_function(wrap(command, getattr(self, command)), command)
 
     def open_file(self, path, mode):
         '''
         Open a file handle to the given path and return a uuid identifying it.
         '''
-        path_util.check_isfile(path, 'open_file')
-        file_uuid = uuid.uuid4().hex
-        self.file_handles[file_uuid] = open(path, mode)
-        return file_uuid
+        if os.path.exists(path):
+            file_uuid = uuid.uuid4().hex
+            self.file_handles[file_uuid] = open(path, mode)
+            return file_uuid
+        return None
 
     def open_temp_file(self):
         '''
@@ -107,7 +106,7 @@ class FileServer(SimpleXMLRPCServer):
         file_handle = self.file_handles[file_uuid]
         return xmlrpclib.Binary(file_handle.read(num_bytes))
 
-    def read_line_file(self, file_uuid):
+    def readline_file(self, file_uuid):
         '''
         Read one line from the given file uuid. Return an empty buffer
         if and only if this file handle is at EOF.
@@ -115,13 +114,19 @@ class FileServer(SimpleXMLRPCServer):
         file_handle = self.file_handles[file_uuid]
         return xmlrpclib.Binary(file_handle.readline());
 
-    def tail_file(self, file_uuid, num_lines=10):
+    def seek_file(self, file_uuid, offset, whence):
         '''
-        Read the last num_lines lines from the given file uuid.
-        Return an empty buffer if and only if this file handle is at EOF.
+        Go to the desired position.
         '''
         file_handle = self.file_handles[file_uuid]
-        return xmlrpclib.Binary(file_util.tail(file_handle));
+        return file_handle.seek(offset, whence)
+
+    def tell_file(self, file_uuid):
+        '''
+        Return the current file position.
+        '''
+        file_handle = self.file_handles[file_uuid]
+        return file_handle.tell()
 
     def write_file(self, file_uuid, buffer):
         '''

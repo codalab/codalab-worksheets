@@ -15,7 +15,6 @@ from codalab.lib import spec_util
 
 class MakeBundle(NamedBundle):
     BUNDLE_TYPE = 'make'
-    NAME_LENGTH = 8
 
     @classmethod
     def construct(cls, targets, metadata):
@@ -25,7 +24,9 @@ class MakeBundle(NamedBundle):
             raise UsageError('Must specify keys when packaging multiple targets!')
         # Support anonymous make bundles with names based on their uuid.
         if not metadata['name']:
-            metadata['name'] = 'make-%s' % (uuid[:cls.NAME_LENGTH],)
+            name = ' '.join(key + ':' + bundle.metadata.name for (key, (bundle, subpath)) in targets.iteritems())
+            print name
+            metadata['name'] = spec_util.create_default_name(cls.BUNDLE_TYPE, str(name))
         # List the dependencies of this bundle on its targets.
         dependencies = []
         for (child_path, (parent, parent_path)) in targets.iteritems():

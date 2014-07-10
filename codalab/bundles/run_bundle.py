@@ -10,6 +10,7 @@ and ./stderr. The ./output directory may also be used to store output files.
 '''
 import os
 import subprocess
+import re
 
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.bundles.program_bundle import ProgramBundle
@@ -25,7 +26,6 @@ from codalab.lib import (
 
 class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
-    NAME_LENGTH = 8
 
     @classmethod
     def construct(cls, targets, command, metadata):
@@ -35,9 +35,9 @@ class RunBundle(NamedBundle):
             raise UsageError('Must specify keys when packaging multiple targets!')
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
-        # Support anonymous run bundles with names based on their uuid.
+        # Support anonymous run bundles with names based on their commands
         if not metadata['name']:
-            metadata['name'] = 'run-%s' % (uuid[:cls.NAME_LENGTH],)
+            metadata['name'] = spec_util.create_default_name(cls.BUNDLE_TYPE, command)
         # List the dependencies of this bundle on its targets.
         dependencies = []
         for (child_path, (parent, parent_path)) in targets.iteritems():

@@ -18,7 +18,8 @@ from codalab.lib import path_util
 class MetadataDefaults(object):
     @staticmethod
     def get_anonymous_name(bundle_subclass):
-        return 'anonymous-' + bundle_subclass.BUNDLE_TYPE
+        #return 'anonymous-' + bundle_subclass.BUNDLE_TYPE
+        return '(none)'
 
     @staticmethod
     def get_default(spec, bundle_subclass, args):
@@ -38,8 +39,8 @@ class MetadataDefaults(object):
             absolute_path = path_util.normalize(args.path)
             return os.path.basename(absolute_path)
         elif bundle_subclass is MakeBundle:
-            if len(args.target) == 1 and ':' not in args.target[0]:
-                return os.path.basename(args.target[0])
+            if len(args.target_spec) == 1 and ':' not in args.target_spec[0]:
+                return os.path.basename(args.target_spec[0])
         return MetadataDefaults.get_anonymous_name(bundle_subclass)
 
     @staticmethod
@@ -48,14 +49,9 @@ class MetadataDefaults(object):
             absolute_path = path_util.normalize(args.path)
             return 'Upload %s' % (absolute_path,)
         elif bundle_subclass is MakeBundle:
-            return 'Make %s' % (', '.join(args.target))
+            return 'Make {%s}' % (', '.join(args.target_spec))
         elif bundle_subclass is RunBundle:
-            #return 'Run {program} on {input}: {command}'.format(
-            #  program=args.program_target,
-            #  input=args.input_target,
-            #  command=repr(args.command),
-            #)
-            return 'Run %s: %s' % (', '.join(args.target), repr(args.command))
+            return 'Run {%s}[%s]' % (', '.join(args.target_spec), args.command)
         return ''
 
     @staticmethod
