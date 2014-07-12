@@ -160,8 +160,8 @@ class Worker(object):
         # Get temp directory
         temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
 
-        # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
-        with self.profile('Creating bundle...'):
+        # Complete the bundle. Mark it READY if it is successful and FAILED otherwise.
+        with self.profile('Completing bundle...'):
             print '-- START RUN: %s' % (bundle,)
             try:
                 (data_hash, metadata) = bundle.complete(self.bundle_store, parent_dict, temp_dir)

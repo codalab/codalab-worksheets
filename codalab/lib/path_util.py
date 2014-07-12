@@ -306,6 +306,10 @@ def hash_file_contents(path):
 ################################################################################
 
 def copy(source_path, dest_path):
+    # TODO: copytree doesn't preserve permissions, so we're making a system call;
+    # fix this, or at least quote it properly.
+    os.system("cp -a '%s' '%s'" % (source_path, dest_path))
+    return
     if os.path.islink(source_path):
         link_target = os.readlink(source_path)
         os.symlink(link_target, dest_path)
