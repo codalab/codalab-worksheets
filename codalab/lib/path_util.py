@@ -51,7 +51,7 @@ def path_error(message, path):
     '''
     if isinstance(path, TargetPath):
         path = safe_join(*path.target)
-    return UsageError(' '.join((message, path)))
+    return UsageError(message + ': ' + path)
 
 
 @contextlib.contextmanager
@@ -126,7 +126,7 @@ def check_for_symlinks(root, dirs_and_files=None):
     for path in itertools.chain(directories, files):
         if os.path.islink(path):
             relative_path = get_relative_path(root, path)
-            raise path_error('Found symlink %s under path:' % (relative_path,), root)
+            raise ('Found symlink %s under path:' % (relative_path,), root)
 
 
 ################################################################################
@@ -332,12 +332,15 @@ def remove(path):
     Remove the given path, whether it is a directory, file, or link.
     '''
     check_isvalid(path, 'remove')
+    #print 'REMOVE', path
     if os.path.islink(path):
         os.unlink(path)
     elif os.path.isdir(path):
         shutil.rmtree(path)
     else:
         os.remove(path)
+    if os.path.exists(path):
+        print 'Failed to remove %s' % path
 
 
 def remove_symlinks(root, dirs_and_files=None):

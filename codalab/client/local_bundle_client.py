@@ -40,11 +40,12 @@ def authentication_required(func):
     return decorate
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, auth_handler):
+    def __init__(self, address, bundle_store, model, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
         self.auth_handler = auth_handler
+        self.verbose = verbose
 
     def _current_user_id(self):
         return self.auth_handler.current_user().unique_id
@@ -54,12 +55,14 @@ class LocalBundleClient(BundleClient):
         Helper: Convert bundle to bundle_info.
         '''
         hard_dependencies = bundle.get_hard_dependencies()
+        # See tables.py
         result = {
-          'bundle_type': bundle.bundle_type,
-          'data_hash': bundle.data_hash,
-          'metadata': bundle.metadata.to_dict(),
-          'state': bundle.state,
           'uuid': bundle.uuid,
+          'bundle_type': bundle.bundle_type,
+          'command': bundle.command,
+          'data_hash': bundle.data_hash,
+          'state': bundle.state,
+          'metadata': bundle.metadata.to_dict(),
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
           'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
         }
@@ -83,7 +86,14 @@ class LocalBundleClient(BundleClient):
         return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, worksheet_spec):
-        return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
+        # Create default worksheet if necessary
+        if worksheet_spec == Worksheet.DEFAULT_WORKSHEET_NAME:
+            try:
+                return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
+            except UsageError:
+                return self.new_worksheet(worksheet_spec)
+        else:
+            return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
 
     def expand_worksheet_item(self, worksheet_uuid, item):
         (bundle_spec, value, type) = item
@@ -92,7 +102,7 @@ class LocalBundleClient(BundleClient):
         try:
             bundle_uuid = self.get_bundle_uuid(worksheet_uuid, bundle_spec)
         except UsageError, e:
-            return (bundle_spec, str(e) if value is None else value)
+            return (bundle_spec, str(e) if value is None else value, '')
         if bundle_uuid != bundle_spec and value is None:
             # The user specified a bundle for the first time without help text.
             # Produce some auto-generated help text here.
@@ -112,51 +122,36 @@ class LocalBundleClient(BundleClient):
         if illegal_keys:
             raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-    def upload_bundle(self, bundle_type, path, metadata, worksheet_uuid=None, check_validity=True):
+    def upload_bundle(self, bundle_type, path, construct_args, worksheet_uuid):
+        existing = 'uuid' in construct_args
+        metadata = construct_args['metadata']
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
-        if check_validity:
+        if not existing:
             precondition(bundle_type in UPLOADED_TYPES, message)
         bundle_subclass = get_bundle_subclass(bundle_type)
-
-        if check_validity:
+        if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
+
         # Upload the given path and record additional metadata from the upload.
         (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
         metadata.update(bundle_store_metadata)
+        # TODO: check that if the data hash already exists, it's the same as before.
+        construct_args['data_hash'] = data_hash
 
-        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
-        return self.insert_bundle(bundle, worksheet_uuid)
-
-    # Helper: called by upload, cp_upload
-    def insert_bundle(self, bundle, worksheet_uuid):
+        bundle = bundle_subclass.construct(**construct_args)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
         return bundle.uuid
 
-    def make_bundle(self, targets, metadata, worksheet_uuid=None):
-        bundle_subclass = get_bundle_subclass('make')
+    def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
+        '''
+        For both make and run bundles.
+        '''
+        bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
-        targets = {
-          key: self.get_bundle_target(target)
-          for (key, target) in targets.iteritems()
-        }
-        bundle = bundle_subclass.construct(targets, metadata)
+        bundle = bundle_subclass.construct(targets=targets, command=command, metadata=metadata)
         self.model.save_bundle(bundle)
-        if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, bundle.uuid)
-        return bundle.uuid
-
-    def run_bundle(self, targets, command, metadata, worksheet_uuid=None):
-        bundle_subclass = get_bundle_subclass('run')
-        self.validate_user_metadata(bundle_subclass, metadata)
-        targets = {
-          key: self.get_bundle_target(target)
-          for (key, target) in targets.iteritems()
-        }
-        bundle = bundle_subclass.construct(targets, command, metadata)
-        self.model.save_bundle(bundle)
-        self.bundle_store.make_temp_location(bundle.uuid)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, bundle.uuid)
         return bundle.uuid
@@ -204,13 +199,15 @@ class LocalBundleClient(BundleClient):
         path = self.get_target_path(target)
         return path_util.read_lines(path, num_lines)
 
-    def open_target(self, target):
+    def open_target_handle(self, target):
         path = self.get_target_path(target)
         return open(path) if path and os.path.exists(path) else None
+    def close_target_handle(self, handle):
+        handle.close()
 
     def download_target(self, target):
         # Don't need to download anything because it's already local.
-        return self.get_target_path(target)
+        return (self.get_target_path(target), None)
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!

@@ -14,6 +14,7 @@ import tempfile
 
 from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
+from codalab.lib import path_util
 
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
@@ -98,7 +99,7 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
         subprocess.call([editor, tempfile_name])
         with open(tempfile_name, 'rb') as form:
             form_result = form.readlines()
-        os.remove(tempfile_name)
+        path_util.remove(tempfile_name)
     return parse_metadata_form(bundle_subclass, form_result)
 
 def parse_metadata_form(bundle_subclass, form_result):

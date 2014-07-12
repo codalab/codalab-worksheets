@@ -66,9 +66,9 @@ class CodaLabManager(object):
         config_path = self.config_path()
         if not os.path.exists(config_path):
             write_pretty_json({
-                'cli': {'verbose': False},
+                'cli': {'verbose': 1},
                 'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800,
-                           'auth': {'class': 'MockAuthHandler'}},
+                    'auth': {'class': 'MockAuthHandler'}, 'verbose': 1},
                 'aliases': {
                     'dev': 'https://qaintdev.cloudapp.net/bundleservice', # TODO: replace this with something official when it's ready
                     'localhost': 'http://localhost:2800',
@@ -116,6 +116,7 @@ class CodaLabManager(object):
         '''
         Return the current session name.
         '''
+        # TODO: move this to another file (say, windows_util.py)
         if sys.platform == 'win32' and not hasattr(os, 'getppid'):
 
             from ctypes.wintypes import DWORD, POINTER, ULONG, LONG
@@ -159,6 +160,7 @@ class CodaLabManager(object):
 
             os.getppid = getppid
 
+        #print "SESSION_NAME: ", str(os.getppid())
         return str(os.getppid())
 
     @cached
@@ -169,7 +171,8 @@ class CodaLabManager(object):
         sessions = self.state['sessions']
         name = self.session_name()
         if name not in sessions:
-            sessions[name] = {'address': 'local'}  # Default: use local
+            # Default: use local
+            sessions[name] = {'address': 'local'}
         return sessions[name]
 
     @cached
@@ -222,7 +225,7 @@ class CodaLabManager(object):
             model = self.model()
             auth_handler = self.auth_handler()
             from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, auth_handler)
+            client = LocalBundleClient(address, bundle_store, model, auth_handler, self.cli_verbose)
             self.clients[address] = client
             if is_cli:
                 # Set current user
@@ -230,10 +233,12 @@ class CodaLabManager(object):
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client))
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose())
             self.clients[address] = client
             self._authenticate(client)
         return client
+
+    def cli_verbose(self): return self.config['cli']['verbose']
 
     def _authenticate(self, client):
         '''
@@ -303,14 +308,7 @@ class CodaLabManager(object):
         '''
         session = self.session()
         client = self.client(session['address'])
-        worksheet_uuid = session.get('worksheet_uuid', None)
-        # Switch to default worksheet if not on a current worksheet, creating it if necessary.
-        if not worksheet_uuid:
-            try:
-                worksheet_info = client.get_worksheet_info(Worksheet.DEFAULT_WORKSHEET_NAME) 
-                worksheet_uuid = worksheet_info['uuid']
-            except UsageError:
-                worksheet_uuid = client.new_worksheet(Worksheet.DEFAULT_WORKSHEET_NAME)
+        worksheet_uuid = session.get('worksheet_uuid', Worksheet.DEFAULT_WORKSHEET_NAME)
         return (client, worksheet_uuid)
 
     def set_current_worksheet_uuid(self, client, worksheet_uuid):

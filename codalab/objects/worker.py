@@ -136,13 +136,13 @@ class Worker(object):
         random.shuffle(bundles)
         for bundle in bundles:
             if self.update_bundle_states([bundle], State.RUNNING):
-                self.run_bundle(bundle)
+                self.complete_bundle(bundle)
                 break
         else:
             if self.verbose >= 2: self.pretty_print('Failed to lock a bundle!')
         return len(bundles) > 0
 
-    def run_bundle(self, bundle):
+    def complete_bundle(self, bundle):
         '''
         Run the given bundle and then update its state to be either READY or FAILED.
         If the bundle is now READY, its data_hash should be set.
@@ -161,11 +161,10 @@ class Worker(object):
         temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
 
         # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
-        with self.profile('Running bundle...'):
+        with self.profile('Creating bundle...'):
             print '-- START RUN: %s' % (bundle,)
             try:
-                (data_hash, metadata) = bundle.run(
-                  self.bundle_store, parent_dict, temp_dir)
+                (data_hash, metadata) = bundle.complete(self.bundle_store, parent_dict, temp_dir)
                 state = State.READY
             except Exception:
                 # TODO(pliang): distinguish between internal CodaLab error and the program failing

@@ -2,8 +2,12 @@
 zip_util provides helpers that:
   a) zip a directory on the local filesystem and return the zip file
   b) unzip a zip file and extract the zipped directory
+
+The zip files here are not arbitrary: they contain one designated
+file/directory.  In other words, zip files represent unnamed file/directories.
+
+To zip/unzip, we use the standard temp files.
 '''
-# TODO(skishore): Clean up temp file management here and in BundleStore.
 import os
 import shutil
 import tempfile
@@ -45,14 +49,15 @@ def zip(path):
     return zip_path
 
 
-def unzip(zip_path):
+def unzip(zip_path, temp_path):
     '''
     Take an absolute path to a zip file and return the path to a file or
     directory containing its unzipped contents.
+    The returned contents should live in temp_path.
     '''
     path_util.check_isfile(zip_path, 'unzip_directory')
-    temp_path = tempfile.mkdtemp()
     temp_subpath = os.path.join(temp_path, ZIP_SUBPATH)
+
     zip_file = ZipFile(zip_path, 'r')
     names = zip_file.namelist()
     if any(not name.startswith(ZIP_SUBPATH) for name in names):

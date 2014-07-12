@@ -24,7 +24,7 @@ from codalab.common import State
 class BundleClient(object):
     # Commands for creating/editing bundles: upload, make, run, edit, and delete.
 
-    def upload_bundle(self, bundle_type, path, metadata, worksheet_uuid=None, check_validity=True):
+    def upload_bundle(self, bundle_type, path, construct_args, worksheet_uuid):
         '''
         Create a new bundle with a copy of the directory at the given path in the
         local filesystem. Return its uuid. If the path leads to a file, the new
@@ -32,19 +32,11 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def make_bundle(self, targets, metadata):
+    def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
         '''
         Create a new bundle with dependencies on the given targets. Return its uuid.
-        targets should be a dict mapping target keys to (bundle_spec, path) pairs.
+        targets should be a dict mapping target keys to (bundle_uuid, path) pairs.
         Each of the targets will by symlinked into the new bundle at its key.
-        '''
-        raise NotImplementedError
-
-    def run_bundle(self, program_target, input_target, command, metadata):
-        '''
-        Run the given program bundle, create bundle of output, and return its uuid.
-        The program and input targets are (bundle_spec, path) pairs that are
-        symlinked in as dependencies during runtime.
         '''
         raise NotImplementedError
 
@@ -110,7 +102,8 @@ class BundleClient(object):
     def download_target(self, target):
         '''
         Download a target. Return the local path to where target has been
-        downloaded.
+        downloaded and whether the path is temporary (returner controls it
+        and is responsible for deleting it).
         '''
         raise NotImplementedError
 

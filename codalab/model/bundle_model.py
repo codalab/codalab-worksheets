@@ -65,15 +65,6 @@ class BundleModel(object):
         '''
         Create all CodaLab bundle tables if they do not already exist.
         '''
-        # TODO(skishore): This hack is a mini-migration that should stay here until
-        # the bundle dependency table has been renamed in all CodaLab deployments.
-        # After that point, it should be deleted.
-        try:
-            with self.engine.begin() as connection:
-                connection.execute('ALTER TABLE dependency RENAME TO bundle_dependency')
-        except (OperationalError, ProgrammingError):
-            # sqlite throws an OperationalError, MySQL a ProgrammingError. Ugh.
-            pass
         db_metadata.create_all(self.engine)
         self._create_default_groups()
 
@@ -171,7 +162,7 @@ class BundleModel(object):
         if 'uuid' in conditions:
             # Match the uuid only
             clause = self.make_clause(cl_bundle.c.uuid, conditions['uuid'])
-            query = cl_bundle.select([cl_bundle.c.uuid]).where(clause)
+            query = select([cl_bundle.c.uuid]).where(clause)
         elif 'name' in conditions:
             # Select name
             if conditions.get('name'):
@@ -192,7 +183,7 @@ class BundleModel(object):
                 query = select([cl_bundle.c.uuid]).where(clause)
                 query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
 
-        #print query, query.compile().params
+        #print 'QUERY', query, query.compile().params
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
         #for row in rows: print row
@@ -330,6 +321,7 @@ class BundleModel(object):
 
         If force is False, there should be no descendents of the given bundles.
         '''
+
         children = self.get_children(uuid=uuids)
         if children:
             precondition(force, 'The following bundles depend on %s:\n  %s' % (
@@ -340,13 +332,18 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             # We must delete bundles rows in the opposite order that we create them
             # to avoid foreign-key constraint failures.
+            connection.execute(cl_worksheet_item.delete().where(
+                cl_worksheet_item.c.bundle_uuid.in_(uuids)
+            ))
             connection.execute(cl_bundle_metadata.delete().where(
-              cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+                cl_bundle_metadata.c.bundle_uuid.in_(uuids)
             ))
             connection.execute(cl_bundle_dependency.delete().where(
-              cl_bundle_dependency.c.child_uuid.in_(uuids)
+                cl_bundle_dependency.c.child_uuid.in_(uuids)
             ))
-            connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
+            connection.execute(cl_bundle.delete().where(
+                cl_bundle.c.uuid.in_(uuids)
+            ))
 
     #############################################################################
     # Worksheet-related model methods follow!
@@ -559,6 +556,7 @@ class BundleModel(object):
         '''
         Create system-defined groups. This is called by create_tables.
         '''
+        # TODO: remove Public altogether and get rid of renaming.
         groups = self.batch_get_groups(name='public', user_defined=False)
         if len(groups) == 0:
             groups = self.batch_get_groups(name='Public', user_defined=False)

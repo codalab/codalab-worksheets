@@ -20,10 +20,6 @@ def copy(source, dest, autoflush=True, print_status=False):
         if autoflush:
             dest.flush()
         if print_status:
-            print ("\r%s bytes" % n),
+            print ("\r%s KB" % (n / 1024)),
             sys.stdout.flush()
     if print_status: print ''
-
-def tail(source, num_lines):
-    # TODO: this is super inefficient!
-    return "\n".join(source.read().splitlines()[-num_lines:])

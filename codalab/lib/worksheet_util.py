@@ -10,7 +10,7 @@ import sys
 import tempfile
 
 from codalab.common import UsageError
-
+from codalab.lib import path_util
 
 BUNDLE_LINE_REGEX = '^(\[(.*)\])?\s*\{(.*)\}$'
 DIRECTIVE_PREFIX = r'%'
@@ -117,7 +117,7 @@ def request_new_items(worksheet_info):
         subprocess.call([editor, tempfile_name])
         with open(tempfile_name, 'rb') as form:
             lines = form.readlines()
-        os.remove(tempfile_name)
+        path_util.remove(tempfile_name)
     form_result = [line[:-1] if line.endswith('\n') else line for line in lines]
     if form_result == template_lines:
         raise UsageError('No change made; aborting')

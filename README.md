@@ -29,7 +29,7 @@ this functionality.
 
 4. Set your path to include CodaLab for convenience (add this line to your .bashrc):
 
-    export PATH=$PWD/codalab/bin
+    export PATH=$PATH:$PWD/codalab/bin
 
 Now you are ready to start using CodaLab!
 

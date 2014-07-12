@@ -28,8 +28,8 @@ class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
 
     @classmethod
-    def construct(cls, targets, command, metadata):
-        uuid = spec_util.generate_uuid()
+    def construct(cls, targets, command, metadata, uuid=None, data_hash=None):
+        if not uuid: uuid = spec_util.generate_uuid()
         # Check that targets does not include both keyed and anonymous targets.
         if len(targets) > 1 and '' in targets:
             raise UsageError('Must specify keys when packaging multiple targets!')
@@ -40,18 +40,18 @@ class RunBundle(NamedBundle):
             metadata['name'] = spec_util.create_default_name(cls.BUNDLE_TYPE, command)
         # List the dependencies of this bundle on its targets.
         dependencies = []
-        for (child_path, (parent, parent_path)) in targets.iteritems():
+        for (child_path, (parent_uuid, parent_path)) in targets.iteritems():
             dependencies.append({
               'child_uuid': uuid,
               'child_path': child_path,
-              'parent_uuid': parent.uuid,
+              'parent_uuid': parent_uuid,
               'parent_path': parent_path,
             })
         return super(RunBundle, cls).construct({
           'uuid': uuid,
           'bundle_type': cls.BUNDLE_TYPE,
           'command': command,
-          'data_hash': None,
+          'data_hash': data_hash,
           'state': State.CREATED,
           'metadata': metadata,
           'dependencies': dependencies,
@@ -62,9 +62,10 @@ class RunBundle(NamedBundle):
         # executed, but they are deleted once the run is complete.
         return []
 
-    def run(self, bundle_store, parent_dict, temp_dir):
+    def complete(self, bundle_store, parent_dict, temp_dir):
         command = self.command
-        self.install_dependencies(bundle_store, parent_dict, temp_dir, rel=False)
+        path_util.make_directory(temp_dir)
+        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=False)
         # TODO: have a mode where we ssh into another machine to do this
         # In that case, need to copy files around.
         with path_util.chdir(temp_dir):

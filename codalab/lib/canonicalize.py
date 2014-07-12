@@ -76,22 +76,16 @@ def get_target_path(bundle_store, model, target):
     (uuid, path) = target
     bundle = model.get_bundle(uuid)
     if not bundle.data_hash:
-        # Note that the bundle might not be done, but return the location anyway
+        # Note that the bundle might not be done, but return the location anyway to the temporary directory
         bundle_root = get_current_location(bundle_store, uuid)
-    #    message = 'Unexpected: %s is ready but it has no data hash!' % (bundle,)
-    #    precondition(bundle.state != State.READY, message)
-    #    if bundle.state == State.FAILED:
-    #        #raise UsageError('%s failed unrecoverably' % (bundle,))
-    #        return None
-    #    elif bundle.state == State.RUNNING:
-    #        bundle_root = get_current_location(bundle_store, uuid)
-    #    else:
-    #        #raise UsageError('%s isn\'t running yet!' % (bundle,))
-    #        return None
     else:
         bundle_root = bundle_store.get_location(bundle.data_hash)
     final_path = path_util.safe_join(bundle_root, path)
+
+    # This is a bit restrictive because it means we can't follow symlinks to
+    # other bundles arbitrarily, but it's safer.
     path_util.check_under_path(final_path, bundle_root)
+
     result = path_util.TargetPath(final_path)
     result.target = target
     return result

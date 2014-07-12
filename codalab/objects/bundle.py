@@ -93,15 +93,12 @@ class Bundle(ORMObject):
         '''
         return [spec for spec in cls.METADATA_SPECS if not spec.generated]
 
-    def install_dependencies(self, bundle_store, parent_dict, dest_path, rel):
+    def install_dependencies(self, bundle_store, parent_dict, dest_path, relative_symlinks):
         '''
         Symlink this bundle's dependencies into the directory at dest_path.
         The caller is responsible for cleaning up this directory.
-        rel: whether to use relative symlinks
+        rel: whether to use relative symlinks (for make bundles, but not for run bundles)
         '''
-        # TODO: remove this so we don't have symlinks, because when the bundle
-        # is copied elsewhere, these links don't make sense?
-        path_util.make_directory(dest_path)
         precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
         for dep in self.dependencies:
             parent = parent_dict[dep.parent_uuid]
@@ -114,7 +111,7 @@ class Bundle(ORMObject):
                 parent_spec = getattr(parent.metadata, 'name', parent.uuid)
                 target_text = path_util.safe_join(parent_spec, dep.parent_path)
                 raise UsageError('Target not found: %s' % (target_text,))
-            if rel:
+            if relative_symlinks:
                 # Create a symlink that points to the dependency's relative target.
                 target = path_util.safe_join(
                   (os.pardir if dep.child_path else ''),
@@ -131,7 +128,7 @@ class Bundle(ORMObject):
         '''
         raise NotImplementedError
 
-    def run(self, bundle_store, parent_dict, temp_dir):
+    def complete(self, bundle_store, parent_dict, temp_dir):
         '''
         Perform the computation needed to construct this bundle within the temp_dir,
         then upload the result to the bundle store. Return a (data_hash, metadata)
