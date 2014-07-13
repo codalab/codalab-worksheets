@@ -308,7 +308,9 @@ class CodaLabManager(object):
         '''
         session = self.session()
         client = self.client(session['address'])
-        worksheet_uuid = session.get('worksheet_uuid', Worksheet.DEFAULT_WORKSHEET_NAME)
+        worksheet_uuid = session.get('worksheet_uuid', None)
+        if not worksheet_uuid:
+            worksheet_uuid = client.get_worksheet_uuid(Worksheet.DEFAULT_WORKSHEET_NAME)
         return (client, worksheet_uuid)
 
     def set_current_worksheet_uuid(self, client, worksheet_uuid):

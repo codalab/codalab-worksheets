@@ -180,6 +180,7 @@ class BundleModel(object):
                 query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
             else:
                 # Select from all bundles
+                clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)
                 query = select([cl_bundle.c.uuid]).where(clause)
                 query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
 
@@ -781,4 +782,3 @@ class BundleModel(object):
             if not rows:
                 return {}
             return {row.permission for row in rows}
-

@@ -7,21 +7,21 @@ import contextlib
 import os
 
 from codalab.bundles import (
-  get_bundle_subclass,
-  UPLOADED_TYPES,
+    get_bundle_subclass,
+    UPLOADED_TYPES,
 )
 from codalab.common import (
-  precondition,
-  State,
-  UsageError,
+    precondition,
+    State,
+    UsageError,
     AuthorizationError,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
-  canonicalize,
-  path_util,
-  file_util,
-  worksheet_util,
+    canonicalize,
+    path_util,
+    file_util,
+    worksheet_util,
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
@@ -122,8 +122,33 @@ class LocalBundleClient(BundleClient):
         if illegal_keys:
             raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-    def upload_bundle(self, bundle_type, path, construct_args, worksheet_uuid):
-        existing = 'uuid' in construct_args
+    def bundle_info_to_construct_args(self, info):
+        # Convert info (see bundle_model) to the actual information to construct
+        # the bundle.  This is a bit ad-hoc.  Future: would be nice to have a more
+        # uniform way of serializing bundle information.
+        bundle_type = info['bundle_type']
+        #print 'CONVERT', bundle_type, info
+        if bundle_type == 'program' or bundle_type == 'dataset':
+            construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
+                              'data_hash': info['data_hash']}
+        elif bundle_type == 'make' or bundle_type == 'run':
+            targets = { item['child_path'] : (item['child_uuid'], item['child_path'])
+                        for item in info['dependencies'] }
+            construct_args = {'targets': targets, 'command': info['command'],
+                              'metadata': info['metadata'], 'uuid': info['uuid'],
+                              'data_hash': info['data_hash']}
+        else:
+            raise UsageError('Invalid bundle_type: %s' % bundle_type)
+        return construct_args
+
+    def upload_bundle(self, path, info, worksheet_uuid):
+        bundle_type = info['bundle_type']
+        if 'uuid' in info:
+            existing = True
+            construct_args = self.bundle_info_to_construct_args(info)
+        else:
+            existing = False
+            construct_args = {'metadata': info['metadata']}
         metadata = construct_args['metadata']
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
         if not existing:
@@ -209,6 +234,70 @@ class LocalBundleClient(BundleClient):
         # Don't need to download anything because it's already local.
         return (self.get_target_path(target), None)
 
+    def mimic(self,
+              old_input_bundle_uuid, new_input_bundle_uuid,
+              old_output_bundle_uuid, new_output_bundle_name,
+              worksheet_uuid, depth, stop_early):
+        # Look at ancestors of old_output_bundle_uuid until we arrive
+        # at old_input_bundle_uuid and/or reached some depth.
+        infos = {}  # uuid -> bundle info
+        bundle_infos = []  # These are the ones that we need to generate
+        bundle_uuids = set([old_output_bundle_uuid])
+        for _ in range(depth):
+            #print bundle_uuids
+            new_bundle_uuids = set()
+            for bundle_uuid in bundle_uuids:
+                info = infos[bundle_uuid] = self.get_bundle_info(bundle_uuid)
+                for dep in info['dependencies']:
+                    new_bundle_uuids.add(dep['parent_uuid'])
+            bundle_uuids = new_bundle_uuids
+            if stop_early and old_input_bundle_uuid in bundle_uuids: break
+
+        # Now go recursively create the bundles.
+        old_to_new = {}
+        old_to_new[old_input_bundle_uuid] = new_input_bundle_uuid
+        def recurse(old_bundle_uuid): # Return the corresponding new version if applicable
+            if old_bundle_uuid in old_to_new:
+                #print old_bundle_uuid, 'cached'
+                return old_to_new[old_bundle_uuid]
+
+            # Don't have any more information
+            if old_bundle_uuid not in infos:
+                #print old_bundle_uuid, 'no information'
+                return old_bundle_uuid
+
+            info = infos[old_bundle_uuid]
+            new_dependencies = [{
+                'parent_uuid': recurse(dep['parent_uuid']),
+                'parent_path': dep['parent_path'],
+                'child_uuid': dep['child_uuid'],  # This is just a placeholder to do the equality test
+                'child_path': dep['child_path']
+            } for dep in info['dependencies']]
+            # Nothing has changed
+            if new_dependencies == info['dependencies']:
+                #print old_bundle_uuid, 'nothing changed'
+                return old_bundle_uuid
+
+            # Create a new bundle
+            targets = {}
+            for dep in new_dependencies:
+                targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
+            metadata = info['metadata']
+            if old_bundle_uuid == old_output_bundle_uuid:
+                metadata['name'] = new_output_bundle_name
+            else:
+                metadata['name'] = new_output_bundle_name + '-' + info['metadata']['name']
+            metadata.pop('data_size')
+            metadata.pop('created')
+            #print targets
+            new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
+                targets, info['command'], info['metadata'], worksheet_uuid)
+
+            old_to_new[old_bundle_uuid] = new_bundle_uuid
+            return new_bundle_uuid
+
+        return recurse(old_output_bundle_uuid)
+
     #############################################################################
     # Implementations of worksheet-related client methods follow!
     #############################################################################
@@ -257,17 +346,12 @@ class LocalBundleClient(BundleClient):
         return result
 
     @authentication_required
-    def add_worksheet_item(self, worksheet_spec, bundle_spec):
+    def add_worksheet_item(self, worksheet_spec, bundle_uuid):
         worksheet_uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(worksheet_uuid)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
-        bundle_uuid = self.get_bundle_uuid(worksheet_uuid, bundle_spec)
         bundle = self.model.get_bundle(bundle_uuid)
-        # Compute a nice value for this item, using the description if it exists.
-        item_value = bundle_spec
-        if getattr(bundle.metadata, 'description', None):
-            item_value = bundle.metadata.name
-        item = (bundle.uuid, item_value, 'bundle')
+        item = (bundle.uuid, bundle.metadata.name, 'bundle')
         self.model.add_worksheet_item(worksheet_uuid, item)
 
     @authentication_required

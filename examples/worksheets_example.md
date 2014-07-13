@@ -1,5 +1,7 @@
 # Worksheets
 
+NOTE: this document is out of date.
+
 Codalab Worksheets provide a light-weight method for creating multi-stage experiment that a user wants to perform (e.g., running and evaluating a machine learning algorithm) that is independent from your main Codalab Bundle collection. In other words, Worksheets operate sort of like Git Branches.
 
 

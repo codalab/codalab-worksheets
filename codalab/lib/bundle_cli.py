@@ -35,6 +35,7 @@ from codalab.lib import (
   path_util,
   spec_util,
   worksheet_util,
+  canonicalize
 )
 from codalab.objects.worker import Worker
 from codalab.objects.worksheet import Worksheet
@@ -53,6 +54,8 @@ class BundleCLI(object):
       'wait': 'Wait until a bundle finishes.',
       'download': 'Download bundle from an instance.',
       'cp': 'Copy bundles across instances.',
+      'mimic': 'Creates a set of bundles based on analogy with another set.',
+      'macro': 'Use mimicry to simulate macros.',
       # Commands for worksheets.
       'new': 'Create a new worksheet and make it the current one.',
       'add': 'Append a bundle to a worksheet.',
@@ -262,7 +265,7 @@ class BundleCLI(object):
         if not command_fn:
             self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
         parser = self.create_parser(command)
-        if self.verbose:
+        if self.verbose >= 2:
             command_fn(remaining_args, parser)
         else:
             try:
@@ -341,7 +344,7 @@ class BundleCLI(object):
         # This optimization will avoid file copies on failed bundle creations.
         bundle_subclass.construct(data_hash='', metadata=metadata).validate()
 
-        print client.upload_bundle(args.bundle_type, args.path, {'metadata': metadata}, worksheet_uuid)
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid)
 
     def do_download_command(self, argv, parser):
         parser.add_argument(
@@ -395,30 +398,8 @@ class BundleCLI(object):
         info = client.get_bundle_info(bundle_uuid)
 
         # TODO: copy all the hard dependencies
-        bundle_type = info['bundle_type']
-        construct_args = self.bundle_info_to_construct_args(bundle_type, info)
-        print dest_client.upload_bundle(bundle_type, source_path, construct_args, new_worksheet_uuid)
+        print dest_client.upload_bundle(source_path, info, new_worksheet_uuid)
         if temp_path: path_util.remove(temp_path)
-
-    # Consider moving this to a more general place.
-    def bundle_info_to_construct_args(self, bundle_type, info):
-        # Go from info to the actual information to construct the bundle.
-        # This is a bit ad-hoc.  Future: would be nice to have a more uniform way of
-        # serializing bundle information.
-        #print 'CONVERT', bundle_type, info
-        if bundle_type == 'program' or bundle_type == 'dataset':
-            construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
-                              'data_hash': info['data_hash']}
-        elif bundle_type == 'make' or bundle_type == 'run':
-            targets = { item['child_path'] : (item['child_uuid'], item['child_path'])
-                        for item in info['dependencies'] }
-            construct_args = {'targets': targets, 'command': info['command'],
-                              'metadata': info['metadata'], 'uuid': info['uuid'],
-                              'data_hash': info['data_hash']}
-        else:
-            raise UsageError('Invalid bundle_type: %s' % bundle_type)
-        return construct_args
-
 
     def do_make_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -715,6 +696,83 @@ state:       {state}
             if handle: self.close_target_handle(handle)
         return info['state']
 
+    def do_mimic_command(self, argv, parser):
+        parser.add_argument(
+          'old_input_bundle_spec',
+          help=self.BUNDLE_SPEC_FORMAT
+        )
+        parser.add_argument(
+          'new_input_bundle_spec',
+          help=self.BUNDLE_SPEC_FORMAT
+        )
+        parser.add_argument(
+          'old_output_bundle_spec',
+          help=self.BUNDLE_SPEC_FORMAT
+        )
+        parser.add_argument(
+          'new_output_bundle_name',
+          help='name of the new bundle'
+        )
+        parser.add_argument(
+          '-d', '--depth',
+          type=int,
+          default=10,
+          help="number of parents to look back from the old output in search of the old input"
+        )
+        parser.add_argument(
+          '-s', '--stop-early',
+          action='store_true',
+          default=False,
+          help="stop traversing parents when we found old-input"
+        )
+        args = parser.parse_args(argv)
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        old_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_input_bundle_spec)
+        new_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.new_input_bundle_spec)
+        old_output_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_output_bundle_spec)
+        print client.mimic(
+            old_input_bundle_uuid, new_input_bundle_uuid, \
+            old_output_bundle_uuid, args.new_output_bundle_name, \
+            worksheet_uuid, args.depth, args.stop_early)
+
+    def do_macro_command(self, argv, parser):
+        '''
+        Just like do_mimic_command.
+        '''
+        parser.add_argument(
+          'macro_name',
+          help='name of the macro (look for <name>-in and <name>-out bundles)',
+        )
+        parser.add_argument(
+          'new_input_bundle_spec',
+          help=self.BUNDLE_SPEC_FORMAT
+        )
+        parser.add_argument(
+          'new_output_bundle_name',
+          help='name of the new bundle'
+        )
+        parser.add_argument(
+          '-d', '--depth',
+          type=int,
+          default=10,
+          help="number of parents to look back from the old output in search of the old input"
+        )
+        parser.add_argument(
+          '-s', '--stop-early',
+          action='store_true',
+          default=False,
+          help="stop traversing parents when we found old-input"
+        )
+        args = parser.parse_args(argv)
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        old_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.macro_name + '-in')
+        new_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.new_input_bundle_spec)
+        old_output_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.macro_name + '-out')
+        print client.mimic(
+            old_input_bundle_uuid, new_input_bundle_uuid, \
+            old_output_bundle_uuid, args.new_output_bundle_name, \
+            worksheet_uuid, args.depth, args.stop_early)
+    
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################
@@ -770,9 +828,12 @@ state:       {state}
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
         if args.bundle_spec:
-            client.add_worksheet_item(worksheet_info['uuid'], args.bundle_spec)
+            worksheet_uuid = worksheet_info['uuid']
+            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
+            client.add_worksheet_item(worksheet_uuid, bundle_uuid)
         if args.message:
-            client.update_worksheet(worksheet_info, worksheet_util.get_current_items(worksheet_info) + [(None, args.message, None)])
+            new_items = worksheet_util.get_current_items(worksheet_info) + [(None, args.message, None)]
+            client.update_worksheet(worksheet_info, new_items)
 
     def do_work_command(self, argv, parser):
         parser.add_argument(
@@ -877,16 +938,16 @@ state:       {state}
         # Things to copy
         bundle_tuples = worksheet_util.get_current_items(client.get_worksheet_info(args.source_worksheet_spec));
 
-        # TODO: copy the non-bundles too
-        for (bundle_uuid, bundle) in bundle_tuples:
+        for (bundle_uuid, bundle, type) in bundle_tuples:
+            # TODO: copy the non-bundles too
             if bundle_uuid == None: continue
+            # Hope that client is local, so it's not too expensive.
             source_path, temp_path = client.download_target((bundle_uuid, ''))
             #print 'source', bundle_uuid, bundle, source_path
             info = client.get_bundle_info(bundle_uuid)
 
             bundle_type = info['bundle_type']
-            construct_args = self.bundle_info_to_construct_args(bundle_type, info)
-            print dest_client.upload_bundle(bundle_type, source_path, construct_args, dest_worksheet_uuid)
+            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid)
             if temp_path: path_util.remove(temp_path)
 
         print 'Copied %s bundles to %s.' % (len(bundle_tuples), dest_worksheet_uuid)

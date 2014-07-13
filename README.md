@@ -59,17 +59,25 @@ To print out a help message, simply type:
     
 To upload a bundle into the system:
 
-    echo -e "foo\nbar\nbaz" > a.txt  # Create the bundle in the current directory
-    cl upload dataset a.txt          # This will prompt you for information
-    cl ls                            # Should show the new bundle that you uploaded
-    cl info a.txt                    # Show info about the last bundle
+    # Create the bundle in the current directory
+    echo -e "foo\nbar\nbaz" > a.txt
+    # This will upload (still local) the dataset into CodaLab, prompting you for information
+    cl upload dataset a.txt
+    # List the bundles you've uploaded; should show the new bundle that you uploaded
+    cl ls
+    # Show info about the bundle
+    cl info -v a.txt
 
 To run a command on this bundle:
 
-    cl run :a.txt 'sort a.txt > output/b.txt' --name sort # Creates a job to be run
-    cl worker                                             # Start up a worker in another shell, it should run sort
-    cl cat sort/output/b.txt                              # Display the result of the run
-    cl download sort                                      # Download that bundle to the current directory
+    # Creates a job to be run that sorts the lines
+    cl run input:a.txt 'sort input > output/sorted.txt' --name sort_run
+    # Start up a worker in another shell, it should run sort
+    cl worker
+    # Output the result of the run
+    cl cat sort_run/output/sorted.txt
+    # Download that bundle to the current directory
+    cl download sort -o a.txt.sorted
 
 ## Remote Usage
 

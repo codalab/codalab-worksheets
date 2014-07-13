@@ -72,7 +72,7 @@ def get_worksheet_lines(worksheet_info):
         else:
             if 'bundle_type' not in bundle_info:
                 yield '// The following bundle reference is broken:'
-            yield '[%s]{%s}' % (value, bundle_info['uuid'])
+            yield '[%s]{%s}' % (bundle_info['metadata']['name'], bundle_info['uuid'])
 
 
 def get_current_items(worksheet_info):
@@ -83,9 +83,9 @@ def get_current_items(worksheet_info):
     items = []
     for (bundle_info, value, type) in worksheet_info['items']:
         if bundle_info is None:
-            items.append((None, value))
+            items.append((None, value, type))
         else:
-            items.append((bundle_info['uuid'], value))
+            items.append((bundle_info['uuid'], value, type))
     return items
 
 
@@ -96,10 +96,9 @@ def request_new_items(worksheet_info):
     Return a list of new items that the user typed into the editor.
     '''
     header = '''
-// Full-text editing for worksheet %s. This file is basically Markdown, except
-// that is used for comments and that lines of the form {bundle_spec} are
-// resolved as links to CodaLab bundles. You can even preface the curly braces
-// with bracketed help text, like so: [some explanatory text]{bundle_spec}
+// Markdown editing for worksheet %s.  The coments (//) are simply instructions
+// to you and not part of the actual worksheet.  Enter lines like {bundle_spec}
+// to refer to bundles; these are resolved to actual bundles.
     '''.strip() % (worksheet_info['name'],)
     # Construct a form template with the current value of the worksheet.
     template_lines = header.split('\n')
@@ -126,6 +125,7 @@ def request_new_items(worksheet_info):
 def parse_worksheet_form_bundle(match):
     # Return a (bundle_uuid, value, type) pair out of the bundle line.
     # Note that the value could be None (if there was no [])
+    # Note: interpret the value as a directive since we're no longer using it as general text.
     value = match.group(2)
     value = value if value is None else value.strip()
     return (match.group(3).strip(), value, 'bundle')
