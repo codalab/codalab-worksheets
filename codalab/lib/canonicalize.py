@@ -28,7 +28,6 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     - name[^[<index>]: there might be many uuids with this name.
     - ^[<index>], where index is the i-th (1-based) most recent element on the current worksheet.
     '''
-    last_index = 1  # By default, take the last one
     if not bundle_spec:
         raise UsageError('Tried to expand empty bundle_spec!')
     if spec_util.UUID_REGEX.match(bundle_spec):
@@ -37,23 +36,40 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
         bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%')}, max_results=1)
         message = "uuid starting with '%s'" % (bundle_spec,)
     else:
-        m = spec_util.NAME_HISTORY_REGEX.match(bundle_spec)  # run^3: 3rd to last run
-        if m:
-            bundle_spec = m.group(1)
-            last_index = int(m.group(2)) if m.group(2) != '' else 1
-        else:
-            m = spec_util.HISTORY_REGEX.match(bundle_spec)  # ^3: 3rd to last run in this worksheet
+        def match(bundle_spec):
+            m = spec_util.NAME_PATTERN_REGEX.match(bundle_spec)  # run: bundle whose name starts with foo
+            if m:
+                bundle_spec = m.group(1)
+                last_index = 1
+                return (bundle_spec, last_index)
+            m = spec_util.NAME_PATTERN_HISTORY_REGEX.match(bundle_spec)  # foo^3: 3rd to last bundle whose name starts with foo
+            if m:
+                bundle_spec = m.group(1)
+                last_index = int(m.group(2)) if m.group(2) != '' else 1
+                return (bundle_spec, last_index)
+            m = spec_util.HISTORY_REGEX.match(bundle_spec)  # ^3: 3rd to last bundle whose name starts with foo in this worksheet
             if m:
                 bundle_spec = None
                 last_index = int(m.group(1)) if m.group(1) != '' else 1
+                return (bundle_spec, last_index)
+            raise UsageError('Invalid bundle_spec: %s' % bundle_spec)
+        bundle_spec, last_index = match(bundle_spec)
 
+        # TODO: replace this with more general regular expressions, but don't
+        # want it to be cumbersome.
         if bundle_spec:
-            spec_util.check_name(bundle_spec)
+            if bundle_spec.endswith('$'):
+                bundle_spec_query = bundle_spec[0:-1]
+            else:
+                bundle_spec_query = LikeQuery(bundle_spec + '%') 
+        else:
+            bundle_spec_query = None
+        #print bundle_spec_query, last_index
         bundle_uuids = model.get_bundle_uuids({
-            'name': LikeQuery(bundle_spec + '%') if bundle_spec else None,
+            'name': bundle_spec_query,
             'worksheet_uuid': worksheet_uuid
         }, max_results=last_index)
-        message = "name '%s'" % (bundle_spec,)
+        message = "name pattern '%s'" % (bundle_spec,)
     if not bundle_uuids:
         # If fail to find something in the worksheet, then backoff to global
         if worksheet_uuid: return get_bundle_uuid(model, None, bundle_spec)

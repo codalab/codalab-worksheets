@@ -135,7 +135,9 @@ Let us create our first run bundle:
 The first two arguments specify the dependencies and the third is the command.
 Note that `cl run` doesn't actually run anything; it just creates the run
 bundle and returns immediately.  You can see by doing `cl ls` that it's been
-created, but it's state is `created`, not `ready`.
+created, but it's state is `created`, not `ready`.  (You can add `-t` or
+`--tail` to make `cl run` block and print out stdout/stderr, more like how you
+would normally run a program.)
 
 Look inside the bundle:
 
@@ -166,17 +168,62 @@ We can look at individual targets inside the bundle:
 
     cl cat sort-run/output/sorted.txt
 
+To make things more convenient, we can define a bundle that points to a target:
+
+    cl make sort-run/output/sorted.txt --name sorted-a.txt -a
+    cl cat sorted-a.txt
+
 We can also download the results to local disk:
 
-    cl download sort-run/output/sorted.txt -o a.txt.sorted
+    cl download sorted-a.txt
 
 If you messed up somewhere, you can always remove a bundle:
 
     cl rm sort-run
 
+### Macros
+
+Once we produce a run, we might want to do it again with slightly different
+settings (e.g., sort another example).  CodaLab macros allow you to do this,
+although understanding this concept requires us to take a step back.
+
+In CodaLab, bundles form a directed acyclic graph (DAG), where nodes are
+bundles and a directed edge from A to B means that B depends on A.  Imagine we
+have created some runs that produces some output bundle O from some input
+bundle I; I is an ancestor of O in the DAG.  Now suppose we have a new input
+bundle I', how can we produce the analogous O'.  The *mimic* command does
+exactly this.
+
+First, recall that we have created `a.txt` (I) and `sort-run` (O).  Let us
+create another bundle and upload it:
+
+    echo -e "6\n3\n8" > b.txt
+    cl upload dataset b.txt -a
+
+Now we can apply the same thing to `b.txt` that we did to `a.txt`:
+
+    cl mimic a.txt b.txt sorted-a.txt sorted-b.txt
+
+We can check that `b.txt.sorted` contains the desired sorted result:
+
+    cl cat sorted-b.txt
+
+Normally, we define macros as abstract entities.  Here, notice that we've
+started instead by creating a concrete example, and then used analogy to
+reapply this.  A positive side-effect is that every macro automatically comes
+with an example of how it is used!
+
+If `a.txt` was called `sort-in` and `sorted-a.txt` was called `sort-out`, then
+we can use the following syntactic sugar:
+
+    cl macro sort b.txt sorted-b.txt
+
+In Codalab, macros are not defined ahead of time, but are constructed on the
+fly from the bundle DAG.
+
 ### Worksheet basics
 
-So far, every bundle we've creatd has been added to the `default` worksheet.
+So far, every bundle we've created has been added to the `default` worksheet.
 Recall that a worksheet is like a directory, but we can do much more.  We can edit
 the worksheet:
 
@@ -240,7 +287,7 @@ There are finally a number of other ways to
 - Prefix of UUID (`0x3739`): matches all bundles whose UUIDs start with this
   prefix.
 - Name prefix (`foo`): matches all bundles whose names start with the
-  given prefix.
+  given prefix (`foo$` enforces exact match).
 - Ordering (`^, ^2, ^3`): returns the first, second, and third last bundles on
   the current worksheet.
 - Named ordering (`foo^, foo^2, foo^3`): returns the first, second, and third

@@ -126,7 +126,7 @@ def check_for_symlinks(root, dirs_and_files=None):
     for path in itertools.chain(directories, files):
         if os.path.islink(path):
             relative_path = get_relative_path(root, path)
-            raise ('Found symlink %s under path:' % (relative_path,), root)
+            raise UsageError('Found symlink %s under path:' % (relative_path,), root)
 
 
 ################################################################################
@@ -305,18 +305,35 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
-def copy(source_path, dest_path):
-    # TODO: copytree doesn't preserve permissions, so we're making a system call;
-    # fix this, or at least quote it properly.
-    os.system("cp -a '%s' '%s'" % (source_path, dest_path))
-    return
-    if os.path.islink(source_path):
-        link_target = os.readlink(source_path)
-        os.symlink(link_target, dest_path)
-    elif os.path.isdir(source_path):
-        shutil.copytree(source_path, dest_path, symlinks=True)
+def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
+    '''
+    source_path can be a list of files, in which case we need to create a
+    directory first.  Assume dest_path doesn't exist.
+    '''
+    if os.path.exists(dest_path):
+        raise path_error('already exists', dest_path)
+
+    if isinstance(source_path, list):
+        os.mkdir(dest_path)
+        source = ' '.join(source_path)
     else:
-        shutil.copyfile(source_path, dest_path)
+        source = source_path
+
+    # TODO: implement exclude_names
+    command = "cp -pr%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
+    if os.system(command) != 0:
+        raise path_error('Unable to copy %s to %s' % (source_path, dest_path))
+
+    # TODO: copytree doesn't preserve permissions, so we're making a system call;
+    # fix this.
+
+    #if os.path.islink(source_path):
+    #    link_target = os.readlink(source_path)
+    #    os.symlink(link_target, dest_path)
+    #elif os.path.isdir(source_path):
+    #    shutil.copytree(source_path, dest_path, symlinks=True)
+    #else:
+    #    shutil.copyfile(source_path, dest_path)
 
 
 def make_directory(path):

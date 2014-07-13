@@ -20,20 +20,25 @@ from codalab.lib import path_util
 ZIP_SUBPATH = 'zip_subpath'
 
 
-def zip(path):
+def zip(path, exclude_names=[]):
     '''
     Take a path to a file or directory and return the path to a zip archive
     containing its contents.
     '''
-    absolute_path = path_util.normalize(path)
-    path_util.check_isvalid(absolute_path, 'zip_directory')
+    if isinstance(path, list):
+        for p in path:
+            absolute_path = path_util.normalize(p)
+            path_util.check_isvalid(absolute_path, 'zip_directory')
+    else:
+        absolute_path = path_util.normalize(path)
+        path_util.check_isvalid(absolute_path, 'zip_directory')
     # Recursively copy the directory into a temp directory.
     temp_path = tempfile.mkdtemp()
     temp_subpath = os.path.join(temp_path, ZIP_SUBPATH)
 
     # TODO: this is inefficient; do the zipping from the original source
     # directly.
-    path_util.copy(absolute_path, temp_subpath)
+    path_util.copy(absolute_path, temp_subpath, follow_symlinks=True, exclude_names=exclude_names)
 
     # TODO: These methods of zipping don't preserve permissions, so using a
     # system call for now (only works in Linux)

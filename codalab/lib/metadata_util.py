@@ -52,7 +52,7 @@ def add_auto_argument(parser):
     )
 
 
-def request_missing_data(bundle_subclass, args, initial_metadata=None):
+def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
     '''
     For any metadata arguments that were not supplied through the command line,
     pop up an editor and request that data from the user.
@@ -104,7 +104,7 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
 
 def parse_metadata_form(bundle_subclass, form_result):
     '''
-    Parse the result of a form template produced in request_missing_metadata.
+    Parse the result of a form template produced out request_missing_metadata.
     '''
     metadata_specs = bundle_subclass.get_user_defined_metadata()
     metadata_types = {spec.key: spec.type for spec in metadata_specs}

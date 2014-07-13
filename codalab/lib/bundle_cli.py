@@ -323,7 +323,8 @@ class BundleCLI(object):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
         parser.add_argument('bundle_type', help=help_text)
-        parser.add_argument('path', help='path of the directory to upload')
+        parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='+')
+
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
         metadata_util.add_arguments(UploadedBundle, metadata_keys, parser)
@@ -332,18 +333,25 @@ class BundleCLI(object):
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
+
         # Check that the upload path exists.
-        path_util.check_isvalid(path_util.normalize(args.path), 'upload')
+        for path in args.path:
+            path_util.check_isvalid(path_util.normalize(path), 'upload')
+
         # Pull out the upload bundle type from the arguments and validate it.
         if args.bundle_type not in UPLOADED_TYPES:
             raise UsageError('Invalid bundle type %s (options: [%s])' % (
               args.bundle_type, '|'.join(sorted(UPLOADED_TYPES)),
             ))
         bundle_subclass = get_bundle_subclass(args.bundle_type)
-        metadata = metadata_util.request_missing_data(bundle_subclass, args)
+        metadata = metadata_util.request_missing_metadata(bundle_subclass, args)
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
         bundle_subclass.construct(data_hash='', metadata=metadata).validate()
+
+        # If only one path, strip away the list so that we make a bundle that
+        # is this path rather than contains it.
+        if len(args.path) == 1: args.path = args.path[0]
 
         print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid)
 
@@ -375,7 +383,7 @@ class BundleCLI(object):
             print 'Local directory', local_dir, 'already exists. Bundle is available at:'
             print local_path
         else:
-            path_util.copy(local_path, final_path)
+            path_util.copy(local_path, final_path, follow_symlinks=True)
             if temp_path: path_util.remove(temp_path)
 
     def do_cp_command(self, argv, parser):
@@ -400,6 +408,7 @@ class BundleCLI(object):
         (dest_client, dest_spec) = self.parse_spec(args.worksheet_spec)
         dest_worksheet_uuid = dest_client.get_worksheet_info(dest_spec)['uuid']
 
+        # Copy!
         self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
 
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid):
@@ -439,7 +448,7 @@ class BundleCLI(object):
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
         targets = self.parse_key_targets(args.target_spec)
-        metadata = metadata_util.request_missing_data(MakeBundle, args)
+        metadata = metadata_util.request_missing_metadata(MakeBundle, args)
         print client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
     def do_run_command(self, argv, parser):
@@ -453,7 +462,7 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
         targets = self.parse_key_targets(args.target_spec)
         command = args.command
-        metadata = metadata_util.request_missing_data(RunBundle, args)
+        metadata = metadata_util.request_missing_metadata(RunBundle, args)
         uuid = client.derive_bundle('run', targets, command, metadata, worksheet_uuid)
         print uuid
         if args.wait:
@@ -470,7 +479,7 @@ class BundleCLI(object):
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
-        new_metadata = metadata_util.request_missing_data(
+        new_metadata = metadata_util.request_missing_metadata(
           bundle_subclass,
           args,
           info['metadata'],

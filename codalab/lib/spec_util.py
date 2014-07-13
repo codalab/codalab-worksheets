@@ -9,11 +9,12 @@ from codalab.common import (
   UsageError,
 )
 
-UUID_REGEX = re.compile('^0x[0-9a-f]{32}\Z')
-UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}\Z')
+UUID_REGEX = re.compile('^0x[0-9a-f]{32}$')
+UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
 
-NAME_REGEX = re.compile('^[a-zA-Z_][a-zA-Z0-9_\.\-]*\Z')
-NAME_HISTORY_REGEX = re.compile('^([a-zA-Z_][a-zA-Z0-9_\.\-]*)\^([0-9]*)$')
+NAME_REGEX = re.compile('^[a-zA-Z_][a-zA-Z0-9_\.\-]*$')  # Names must match this
+NAME_PATTERN_REGEX = re.compile('^([a-zA-Z_][a-zA-Z0-9_\.\-]*\\$?)$')  # Name pattern
+NAME_HISTORY_REGEX = re.compile('^([a-zA-Z_][a-zA-Z0-9_\.\-]*\$?)\^([0-9]*)$')
 HISTORY_REGEX = re.compile('^\^([0-9]*)$')
 ID_REGEX = re.compile('^[0-9]+\Z')
 NOT_NAME_CHAR_REGEX = re.compile('[^a-zA-Z0-9_\.\-]')

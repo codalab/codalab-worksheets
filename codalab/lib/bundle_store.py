@@ -71,12 +71,18 @@ class BundleStore(object):
         Return a (data_hash, metadata) pair, where the metadata is a dict mapping
         keys to precomputed statistics about the new data directory.
         '''
-        absolute_path = path_util.normalize(path)
-        path_util.check_isvalid(absolute_path, 'upload')
+        if isinstance(path, list):
+            absolute_path = [path_util.normalize(p) for p in path]
+            for p in absolute_path: path_util.check_isvalid(p, 'upload')
+        else:
+            absolute_path = path_util.normalize(path)
+            path_util.check_isvalid(absolute_path, 'upload')
+
         # Recursively copy the directory into a new BundleStore temp directory.
         temp_directory = uuid.uuid4().hex
         temp_path = os.path.join(self.temp, temp_directory)
-        path_util.copy(absolute_path, temp_path)
+        path_util.copy(absolute_path, temp_path, follow_symlinks=True)
+
         # Multiplex between uploading a directory and uploading a file here.
         # All other path_util calls will use these lists of directories and files.
         if os.path.isdir(temp_path):
@@ -85,9 +91,6 @@ class BundleStore(object):
             dirs_and_files = ([], [temp_path])
         if not allow_symlinks:
             path_util.check_for_symlinks(temp_path, dirs_and_files)
-
-        # Commented out: preserve the permissions instead
-        #path_util.set_permissions(temp_path, 0o755, dirs_and_files)
 
         # Hash the contents of the temporary directory, and then if there is no
         # data with this hash value, move this directory into the data directory.

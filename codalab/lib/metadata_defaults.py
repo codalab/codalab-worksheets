@@ -36,8 +36,11 @@ class MetadataDefaults(object):
     @staticmethod
     def get_default_name(bundle_subclass, args):
         if hasattr(args, 'path'):
-            absolute_path = path_util.normalize(args.path)
-            return os.path.basename(absolute_path)
+            items = []
+            for path in args.path:
+                absolute_path = path_util.normalize(path)
+                items.append(os.path.basename(absolute_path))
+            return '-'.join(items)
         elif bundle_subclass is MakeBundle:
             if len(args.target_spec) == 1 and ':' not in args.target_spec[0]:
                 return os.path.basename(args.target_spec[0])
@@ -46,8 +49,8 @@ class MetadataDefaults(object):
     @staticmethod
     def get_default_description(bundle_subclass, args):
         if bundle_subclass.BUNDLE_TYPE in UPLOADED_TYPES:
-            absolute_path = path_util.normalize(args.path)
-            return 'Upload %s' % (absolute_path,)
+            description = ' '.join(path_util.normalize(path) for path in args.path)
+            return 'Upload %s' % (description,)
         elif bundle_subclass is MakeBundle:
             return 'Make {%s}' % (', '.join(args.target_spec))
         elif bundle_subclass is RunBundle:
