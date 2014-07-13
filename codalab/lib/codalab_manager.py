@@ -98,9 +98,10 @@ class CodaLabManager(object):
         from codalab.lib import path_util
         # Default to this directory in the user's home directory.
         # In the future, allow customization based on.
-        result = path_util.normalize("~/.codalab")
-        path_util.make_directory(result)
-        return result
+        home = os.getenv('CODALAB_HOME', '~/.codalab')
+        home = path_util.normalize(home)
+        path_util.make_directory(home)
+        return home
 
     @cached
     def bundle_store(self):

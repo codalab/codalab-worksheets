@@ -59,6 +59,9 @@ class Metadata(object):
             # If the key is Unicode text (which is the case if it was extracted from a
             # database), cast it to a string. This operation encodes it with UTF-8.
             key = str(maybe_unicode_key)
+            if key not in metadata_spec_dict:
+                print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
+                continue  # Somewhat dangerous since we might lose information
             spec = metadata_spec_dict[key]
             if spec.type == set:
                 metadata_dict[key].add(value)

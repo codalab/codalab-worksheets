@@ -2,7 +2,10 @@
 Codalab CLI
 ===========
 
-CodaLab is a unified web-based platform that allows researchers to share and interact with code, data, and experiments, and to participate in online competitions. CodaLab's mission is to facilitate empirical research in fields such as machine learning, medical imaging, and natural language processing.
+CodaLab is a unified web-based platform that allows researchers to share and
+interact with code, data, and experiments, and to participate in online
+competitions. CodaLab's mission is to facilitate empirical research in fields
+such as machine learning, medical imaging, and natural language processing.
 
 This package contains the Codalab CLI.
 For more information see:

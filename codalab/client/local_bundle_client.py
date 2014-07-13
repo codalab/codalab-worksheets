@@ -193,12 +193,14 @@ class LocalBundleClient(BundleClient):
               uuid,
               '\n  '.join(child.simple_str() for child in children),
             ))
-        child_worksheets = self.model.get_child_worksheets(uuid)
-        if child_worksheets and not force:
-            raise UsageError('The following worksheets depend on %s:\n  %s' % (
-              uuid,
-              '\n  '.join(child.simple_str() for child in child_worksheets),
-            ))
+        # Don't need to worry about worksheet dependencies; there are always
+        # worksheet dependencies.
+        #child_worksheets = self.model.get_child_worksheets(uuid)
+        #if child_worksheets and not force:
+        #    raise UsageError('The following worksheets depend on %s:\n  %s' % (
+        #      uuid,
+        #      '\n  '.join(child.simple_str() for child in child_worksheets),
+        #    ))
         self.model.delete_bundle_tree([uuid], force=force)
 
     def get_bundle_info(self, uuid, get_children=False):

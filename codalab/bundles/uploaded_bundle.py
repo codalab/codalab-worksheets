@@ -5,9 +5,12 @@ just a bundle store data hash and a metadata dict, and never need to be run.
 '''
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.common import State
-
+from codalab.objects.metadata_spec import MetadataSpec
 
 class UploadedBundle(NamedBundle):
+    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    METADATA_SPECS.append(MetadataSpec('license', set, 'which license this program/data is released under', short_key='license'))
+
     @classmethod
     def construct(cls, data_hash, metadata, uuid=None):
         row = {

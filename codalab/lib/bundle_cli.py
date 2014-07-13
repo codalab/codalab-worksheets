@@ -238,6 +238,7 @@ class BundleCLI(object):
         else:
             address = self.manager.apply_alias(tokens[0])
             spec = tokens[1]
+        if spec == '': spec = Worksheet.DEFAULT_WORKSHEET_NAME
         return (self.manager.client(address), spec)
 
     def parse_client_worksheet_info(self, spec):
@@ -316,7 +317,7 @@ class BundleCLI(object):
             print "username: %s" % state['username']
         worksheet_info = self.get_current_worksheet_info()
         if worksheet_info:
-            print "worksheet: %s [%s]" % (worksheet_info['name'], worksheet_info['uuid'])
+            print "worksheet: %s(%s)" % (worksheet_info['name'], worksheet_info['uuid'])
 
     def do_upload_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -387,19 +388,49 @@ class BundleCLI(object):
           help='%s (copy to this worksheet)' % self.WORKSHEET_SPEC_FORMAT,
         )
         args = parser.parse_args(argv)
-        # Source bundle
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
+
+        # Source bundle
+        (source_client, source_spec) = self.parse_spec(args.bundle_spec)
+        # worksheet_uuid is only applicable if we're on the source client
+        if source_client != client: worksheet_uuid = None
+        source_bundle_uuid = source_client.get_bundle_uuid(worksheet_uuid, source_spec)
+
         # Destination worksheet
-        (dest_client, spec) = self.parse_spec(args.worksheet_spec)
-        new_worksheet_uuid = dest_client.get_worksheet_info(spec)['uuid']
+        (dest_client, dest_spec) = self.parse_spec(args.worksheet_spec)
+        dest_worksheet_uuid = dest_client.get_worksheet_info(dest_spec)['uuid']
 
-        source_path, temp_path = client.download_target((bundle_uuid, ''))
-        info = client.get_bundle_info(bundle_uuid)
+        self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
 
-        # TODO: copy all the hard dependencies
-        print dest_client.upload_bundle(source_path, info, new_worksheet_uuid)
-        if temp_path: path_util.remove(temp_path)
+    def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid):
+        '''
+        Helper function that supports cp and wcp.
+        Copies the source bundle to the target worksheet.
+        Goes between two clients by downloading and then uploading, which is
+        not the most efficient.  Usually one of the source or destination
+        clients will be local, so it's not too expensive.
+        '''
+        # TODO: copy all the hard dependencies (for make bundles)
+
+        # Check if the bundle already exists on the destination, then don't copy it
+        # (although metadata could be different)
+        bundle = None
+        try:
+            bundle = dest_client.get_bundle_info(source_bundle_uuid)
+        except:
+            pass
+
+        if not bundle:
+            # Download from source
+            source_path, temp_path = source_client.download_target((source_bundle_uuid, ''))
+            info = source_client.get_bundle_info(source_bundle_uuid)
+
+            # Upload to dest
+            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid)
+            if temp_path: path_util.remove(temp_path)
+        else:
+            # Just need to add it to the worksheet
+            dest_client.add_worksheet_item(dest_worksheet_uuid, source_bundle_uuid)
 
     def do_make_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -465,30 +496,18 @@ class BundleCLI(object):
 
     def do_ls_command(self, argv, parser):
         parser.add_argument(
-          '-a', '--all',
-          action='store_true',
-          help='list all bundles, not just this worksheet',
-        )
-        parser.add_argument(
           'worksheet_spec',
           help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT,
           nargs='?',
         )
         args = parser.parse_args(argv)
-        if args.all and args.worksheet_spec:
-            raise UsageError("Can't use both --all and a worksheet spec!")
-        source = ''
-        if args.all:
-            client = self.manager.current_client()
-            bundle_info_list = client.get_bundle_uuids()
-        elif args.worksheet_spec:
+        if args.worksheet_spec:
             client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
-            bundle_info_list = self.get_worksheet_bundles(worksheet_info)
         else:
             worksheet_info = self.get_current_worksheet_info()
-            bundle_info_list = self.get_worksheet_bundles(worksheet_info)
-        if bundle_info_list:
-            #print 'Bundles%s:\n' % (source,)
+        bundle_info_list = self.get_worksheet_bundles(worksheet_info)
+        if len(bundle_info_list) > 0:
+            print 'Worksheet: %s' % self.worksheet_str(worksheet_info)
             columns = ('uuid', 'name', 'bundle_type', 'state')
             bundle_dicts = [
               {col: info.get(col, info['metadata'].get(col, '')) for col in columns}
@@ -796,13 +815,18 @@ state:       {state}
         #    else:
         #        return get_worksheet_info(Worksheet.DEFAULT_WORKSHEET_NAME)
 
+    def worksheet_str(self, worksheet_info):
+        return '%s::%s(%s)' % (self.manager.session()['address'], worksheet_info['name'], worksheet_info['uuid'])
+
     def do_new_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         uuid = client.new_worksheet(args.name)
         self.manager.set_current_worksheet_uuid(client, uuid)
-        print 'Switched to worksheet %s.' % (args.name,)
+        info = client.get_worksheet_info
+        worksheet_info = client.get_worksheet_info(args.worksheet_spec)
+        print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     def do_add_command(self, argv, parser):
         parser.add_argument(
@@ -846,15 +870,14 @@ state:       {state}
             client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
             if worksheet_info:
                 self.manager.set_current_worksheet_uuid(client, worksheet_info['uuid'])
-                print 'Switched to worksheet %s.' % (args.worksheet_spec,)
+                print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
             else:
                 self.manager.set_current_worksheet_uuid(client, None)
                 print 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
         else:
             worksheet_info = self.get_current_worksheet_info()
             if worksheet_info:
-                name = worksheet_info['name']
-                print 'Currently on worksheet %s.' % (name,)
+                print 'Currently on worksheet %s.' % (self.worksheet_str(worksheet_info))
             else:
                 print 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
 
@@ -929,26 +952,23 @@ state:       {state}
           help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT,
           nargs='?',
         )
-        client = self.manager.current_client()
-
         args = parser.parse_args(argv)
-        # Destination
-        (dest_client, spec) = self.parse_spec(args.dest_worksheet_spec)
-        dest_worksheet_uuid = dest_client.get_worksheet_info(spec)['uuid']
-        # Things to copy
-        bundle_tuples = worksheet_util.get_current_items(client.get_worksheet_info(args.source_worksheet_spec));
 
-        for (bundle_uuid, bundle, type) in bundle_tuples:
-            # TODO: copy the non-bundles too
-            if bundle_uuid == None: continue
-            # Hope that client is local, so it's not too expensive.
-            source_path, temp_path = client.download_target((bundle_uuid, ''))
-            #print 'source', bundle_uuid, bundle, source_path
-            info = client.get_bundle_info(bundle_uuid)
+        # Source worksheet
+        (source_client, source_spec) = self.parse_spec(args.source_worksheet_spec)
+        bundle_tuples = worksheet_util.get_current_items(source_client.get_worksheet_info(source_spec))
 
-            bundle_type = info['bundle_type']
-            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid)
-            if temp_path: path_util.remove(temp_path)
+        # Destination worksheet
+        (dest_client, dest_spec) = self.parse_spec(args.dest_worksheet_spec)
+        dest_worksheet_uuid = dest_client.get_worksheet_info(dest_spec)['uuid']
+
+        for (source_bundle_uuid, value, type) in bundle_tuples:
+            if source_bundle_uuid != None:
+                # Copy bundle
+                self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
+            else:
+                # Copy non-bundle
+                dest_client.add_worksheet_item((source_bundle_uuid, value, type))
 
         print 'Copied %s bundles to %s.' % (len(bundle_tuples), dest_worksheet_uuid)
 

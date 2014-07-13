@@ -22,4 +22,26 @@ Bundles will consist primarily of the following:
 - Vision datasets
 - Tutorials
 
-[To be completed...]
+Note: these will no longer be necessary once we have a CodaLab instance
+running.
+
+Let us populate your CodaLab service actually with some initial content.
+Normally, you would have the content on your local machine and just upload it
+to CodaLab.  Just to get some basic programs and datasets into your system, you
+will first run some scripts to download them to your local machine and then
+upload them into the CodaLab instance running on your local machine.
+
+For machine learning:
+
+    (cd weka && ./download.sh)
+    (cd weka && ./upload.sh)
+    (cd uci_arff && ./download.sh)
+    (cd uci_arff && ./upload.sh)
+    ./basic_ml.sh  # Run basic ML pipeline
+
+For NLP:
+
+    (cd stanford_corenlp && ./download.sh)
+    (cd stanford_corenlp && ./upload.sh)
+    (cd lewis_carroll_poems && ./upload.sh)
+    cl run program:stanford_corenlp input:lewis_carroll_poems 'program/run input output' --auto

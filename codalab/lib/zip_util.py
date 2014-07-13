@@ -53,7 +53,8 @@ def zip(path):
     # Clean up the temporary directory and return the zip file's path.
 
     zip_path = temp_path + '.zip'
-    os.system("cd %s && zip -qr %s %s" % (temp_path, zip_path, ZIP_SUBPATH))
+    if os.system("cd %s && zip -qr %s %s" % (temp_path, zip_path, ZIP_SUBPATH)) != 0:
+        raise UsageError('zip failed')
 
     path_util.remove(temp_path)
     return zip_path
@@ -69,7 +70,8 @@ def unzip(zip_path, temp_path):
     temp_subpath = os.path.join(temp_path, ZIP_SUBPATH)
 
     # TODO(pliang): ZipFile doesn't preserve permissions, so do hack
-    os.system("cd %s && unzip -q %s" % (temp_path, zip_path))
+    if os.system("cd %s && unzip -q %s" % (temp_path, zip_path)) != 0:
+        raise UsageError('unzip failed')
     if not os.path.exists(temp_subpath):
         raise UsageError('Zip file %s missing %s' % zip_path, ZIP_SUBPATH)
 

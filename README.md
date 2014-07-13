@@ -1,115 +1,342 @@
-# CodaLab Bundle Service and Comand-Line Interface [![Build Status](https://travis-ci.org/codalab/codalab-cli.png?branch=master)](https://travis-ci.org/codalab/codalab-cli)
+# CodaLab Bundle Service [![Build Status](https://travis-ci.org/codalab/codalab-cli.png?branch=master)](https://travis-ci.org/codalab/codalab-cli)
+
+The goal of CodaLab is to faciliate transparent, reproducible, and
+collaborative research in computation- and data-intensive areas such as machine
+learning.  Think Git for experiments.  This repository contains the code for
+the CodaLab Bundle Service provides the foundation on which the [CodaLab
+website](https://github.com/codalab/codalab) is built.
 
 The CodaLab Bundle Service allows users to create *bundles*, which are
 immutable directories containing either code or data.  Bundles are either
 uploaded or created from other bundles by executing generic code in an
 experimental workflow.  When the latter happens, all the provenance information
-is preserved.  Think: Git for experiments.  In addition, users can create
-*worksheets*, which interleave bundles with free-form textual descriptions,
-allowing one to easily document an experiment.
+is preserved.  In addition, users can create *worksheets*, which interleave
+bundles with free-form textual descriptions, allowing one to easily describe an
+experiment.
 
 This package also contains a command-line interface `cl` that provides flexible
-access to the CodaLab Bundle Service.  The CodaLab
-[website](https://github.com/codalab/codalab) provides a graphical interface to
-this functionality.
+access to the CodaLab Bundle Service.  The [CodaLab
+website](https://github.com/codalab/codalab) provides a graphical interface to
+the service, as well as supporting competitions.
 
 ## Installation
 
-1. Clone the repository:
+1. Clone the CodaLab repository:
 
-    git clone https://github.com/codalab/codalab-cli
+        git clone https://github.com/codalab/codalab-cli
+        cd codalab-cli
 
-2. Setup a Python virtual environment:
+2. Setup a Python virtual environment (you need to have virtualenv installed):
 
-    virtualenv -p /usr/bin/python2.7 codalab_env --no-site-packages
+        virtualenv -p /usr/bin/python2.7 codalab_env --no-site-packages
 
-3. Install dependencies into that virtual environment:
+3. Install Python dependencies into that virtual environment:
 
-    codalab_env/bin/pip-2.7 install sqlalchemy
+        codalab_env/bin/pip-2.7 install sqlalchemy paramiko
 
-4. Set your path to include CodaLab for convenience (add this line to your .bashrc):
+4. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
 
-    export PATH=$PATH:$PWD/codalab/bin
+        export PATH=$PATH:<your path>/codalab-cli/codalab/bin
 
 Now you are ready to start using CodaLab!
 
 ## Filesystem analogy
 
-It's helpful to keep the following analogy in mind:
+CodaLab is structured much like a classic operating system, so it's useful to
+keep the following analogy in mind:
 
-    CodaLab bundle = operating system file
+- shell = CodaLab session (usually identified by the process ID of the shell)
+- drive = CodaLab instance (e.g., `http://localhost:2800`)
+- directory = CodaLab worksheet (e.g., `default`)
+- file = CodaLab bundle (e.g., `stanford-corenlp`)
+- line in a file = CodaLab target (e.g., `stanford-corenlp/src`)
 
-    CodaLab worksheet = operating system directory
+There are some differences:
 
-    CodaLab instance = operating system drive
-
-Some differences:
-
-- The contents of bundles are immutable.
+- The contents of bundles are immutable (metadata is mutable).
 - A worksheet contains bundles in a user-specified order interleaved with text.
-- Each bundle are owned by exactly one worksheet, but can appear in many
-  worksheets (as symlinks).
-- CodaLab instances can be remote.
+- Each bundle maintains its provenance.
+- Permissions are coarse.
 
 ## Basic Local Usage
 
-To print out a help message, simply type:
+### Orienting oneself
+
+Print out the list of available commands:
 
     cl
-    
-To upload a bundle into the system:
 
-    # Create the bundle in the current directory
+Print out options for each command (e.g., upload):
+
+    cl upload -h
+
+Each shell is associated with a CodaLab session.  To get the status of the
+current session (like running `pwd`):
+
+    cl status
+
+You can change your CodaLab settings here:
+
+    ~/.codalab/config.json
+
+Now let's walk through a simple example to demonstrate the capabilities of
+CodaLab.  The goal is to sort a file.
+   
+### Uploading bundles
+
+Uploading means transferring information from the filesystem into a CodaLab
+instance.  The CodaLab instance could be running locally.
+
+To see how this works, let's create an example dataset bundle to upload:
+
     echo -e "foo\nbar\nbaz" > a.txt
-    # This will upload (still local) the dataset into CodaLab, prompting you for information
+
+Upload the dataset into CodaLab.  (This will ask you to fill out the metadata
+in a text editor.  You can add `-a` or `--auto` to use defaults, but it is
+highly encouraged to fill out the information.)
+
     cl upload dataset a.txt
-    # List the bundles you've uploaded; should show the new bundle that you uploaded
+
+This will print out a 32-character UUID which uniquely identifies the Bundle.
+Forever.  You can't edit the contents since bundles are immutable, but you can
+go back and edit the metadata:
+
+    cl edit a.txt
+
+List the bundles you've uploaded.  This should show the new bundle that you
+uploaded.
+
     cl ls
-    # Show info about the bundle
+
+You can see the statistics about the bundle:
+
     cl info -v a.txt
 
-To run a command on this bundle:
+If `a.txt` had been a directory, then you could specify *targets* inside a
+bundle (e.g., `a.txt/file1`).
 
-    # Creates a job to be run that sorts the lines
-    cl run input:a.txt 'sort input > output/sorted.txt' --name sort_run
-    # Start up a worker in another shell, it should run sort
+Let's now create and upload the sorting program:
+
+    echo -e "import sys\nfor line in sorted(sys.stdin.readlines()): print line," > sort.py
+    cl upload program sort.py --auto
+
+### Creating runs
+
+One can upload program and dataset bundles, but the interesting part is that
+new bundles can be generated by running bundles.  A *run* bundle consists of a
+set of dependencies on existing bundles and an arbitrary *command* to execute.
+When CodaLab runs this command behind the scenes, it makes sure the
+dependencies are put into the right place.
+
+Let us create our first run bundle:
+
+    cl run :sort.py input:a.txt 'python sort.py < input > output/sorted.txt' --name sort-run -a
+
+The first two arguments specify the dependencies and the third is the command.
+Note that `cl run` doesn't actually run anything; it just creates the run
+bundle and returns immediately.  You can see by doing `cl ls` that it's been
+created, but it's state is `created`, not `ready`.
+
+Look inside the bundle:
+
+    cl info sort-run
+
+You'll see that like any bundle, it consists of a set of files and directories.
+Under *provenance*, you will see two files (*keys*), `sort.py` and `input`,
+which point to the *targets* `sort.py` and `a.txt`.  (When we wrote `:sort.py`,
+`sort.py` was used as both the key and to identify the target.)
+
+Note that runs don't have to have dependencies.  Here's a trivial run that doesn't:
+
+    cl run 'echo hello' -a
+
+Now let's actually excute this run bundle.  In general, a CodaLab instance
+would already have workers constantly executing run bundles, but we're running
+locally, so we have to start up our own worker.  Run this in another shell:
+
     cl worker
-    # Output the result of the run
-    cl cat sort_run/output/sorted.txt
-    # Download that bundle to the current directory
-    cl download sort -o a.txt.sorted
 
-## Remote Usage
+(See `~/.codalab/config.json` to customize the worker.)  You should see that this
+shell immediately executes the run.  In our original shell, we can check that
+the run completed successfully.
 
-[TODO: copying between instances]
+    cl info -v sort-run
 
-## Populating 
+We can look at individual targets inside the bundle:
 
-Let's populate your CodaLab service actually with some initial content.
-Normally, you would have the content on your local machine and just upload it
-to CodaLab.  Just to get some basic programs and datasets into your system, you
-will first run some scripts to download them to your local machine and then
-upload them into the CodaLab instance running on your local machine.
+    cl cat sort-run/output/sorted.txt
 
-For machine learning:
+We can also download the results to local disk:
 
-    (cd examples/weka && ./download.sh)
-    (cd examples/weka && ./upload.sh)
-    (cd examples/uci_arff && ./download.sh)
-    (cd examples/uci_arff && ./upload.sh)
-    (cd examples && ./basic_ml.sh)  # Run basic ML pipeline
+    cl download sort-run/output/sorted.txt -o a.txt.sorted
 
-For NLP:
+If you messed up somewhere, you can always remove a bundle:
 
-    (cd examples/stanford_corenlp && ./download.sh)
-    (cd examples/stanford_corenlp && ./upload.sh)
-    (cd examples/lewis_carroll_poems && ./upload.sh)
-    cl run program:stanford_corenlp input:lewis_carroll_poems 'program/run input output' --auto
+    cl rm sort-run
 
+### Worksheet basics
 
-3. Validate by running tests
+So far, every bundle we've creatd has been added to the `default` worksheet.
+Recall that a worksheet is like a directory, but we can do much more.  We can edit
+the worksheet:
+
+    cl wedit
+
+In this editor, we can enter arbitrary text interleaved with the bundles that
+we have created so far.  Try adding some text, saving, and exiting the editor.
+Then we can display the contents of this worksheet in a more rendered fashion.
+
+    cl print
+
+We can add another worksheet by doing:
+
+    cl new scratch
+
+We can see that the worksheet is empty:
+
+    cl ls
+
+And that we have two worksheets (`default` and `scratch`):
+
+    cl wls
+
+We are current on `scratch`.  We can switch to the other one (analogous to
+switching directories using `cd`):
+
+    cl work default
+    cl work scratch
+
+We can add items to a worksheet:
+
+    cl add -m "Here's a simple bundle:"
+    cl add a.txt
+    cl print
+
+Another way to add bundles to a worksheet is to use `cl wedit` and entering additional lines:
+
+    {a.txt}
+
+If you save, exit, and open up the worksheet again, you'll see that the
+reference has been resolved.  In general, editing the worksheet with a text
+editor gives you a lot of flexibility for organizing bundles.
+
+To remove the worksheet (and you will need to switch off it):
+
+    cl wrm scratch
+
+Note that the bundles are not deleted.
+
+### Referring to bundles
+
+So far, we have referred to bundles by their names, which have been unique.  In
+a large CodaLab system with many users, names are not unique, not even within
+the same worksheet.  A *bundle_spec* refers to the string that identifies a
+bundle, importantly given the context (instance, current worksheet).
+
+There are finally a number of other ways to 
+
+- UUID (`0x3739691aef9f4b07932dc68f7db82de2`): this should match at most one
+  bundle.
+- Prefix of UUID (`0x3739`): matches all bundles whose UUIDs start with this
+  prefix.
+- Name prefix (`foo`): matches all bundles whose names start with the
+  given prefix.
+- Ordering (`^, ^2, ^3`): returns the first, second, and third last bundles on
+  the current worksheet.
+- Named ordering (`foo^, foo^2, foo^3`): returns the first, second, and third
+  last bundles with the given name on the current worksheet.
+
+Each of the above produces some number of bundles.  Exactly one is chosen
+based on the following rules (in order of precedence):
+
+1. Bundles in the current worksheet are preferred to those not.
+2. Later bundles are preferred.
+
+### Customizing worksheets
+
+## Working remotely
+
+So far, we have been doing everything locally, but one advantage of CodaLab is
+to have a centralized instance so that both the data and the computational
+resources can be shared and scaled.
+
+To start off, we can create a CodaLab instance by simply running the following
+in another shell:
+
+    cl server
+
+By default, the server is running at `http://localhost:2800`.  You can change
+this in `~/.codalab/config.json`.
+
+Now we can connect to this server by switching both the worksheet (directory)
+and the instance (drive):
+
+    cl work http://localhost:2800::default
+
+In this case, any commands you do will be equivalent to before since the
+CodaLab server is backed by the same database.  The only difference is that all
+calls go through the web server, so you can potentially access this server from
+another machine.  By default, `localhost` is aliased to `http://localhost:2800`,
+so we could have also typed:
+
+    cl work localhost::default
+
+To switch back to `local` mode, type:
+
+    cl work local
+
+To make things more interesting, let us create a separate CodaLab instance:
+
+    export CODALAB_HOME=~/.codalab2
+    cl ls
+
+You should see that there's nothing there because we are now accessing the new
+CodaLab, which is backed by a different database (normally, these would be on
+different machines).  We can copy bundles between CodaLab instances by doing:
+
+    cl cp localhost::a.txt local
+
+Now there are two physical copies of the bundle `a.txt`, and they have the same
+bundle UUID.  We can create a bundle and copy it in the other direction too:
+
+    echo hello > hello.txt
+    cl upload dataset hello.txt -a
+    cl cp hello.txt localhost
+
+To summarize, `~/.codalab` and `~/.codalab2` correspond to two databases.  In
+each CodaLab session, the `local` instance points directly to one database, and
+`localhost` just points to some URL, which is backed by one database, which in
+theory can be the same, but in practice is usually different.
+
+## Authentication
+
+[TODO]
+
+# For developers
+
+Here are some helpful links:
+
+- [CodaLab instance](http://codalab.org/)
+- [GitHub site](http://codalab.github.io/codalab/)
+- [GitHub repository](https://github.com/codalab/codalab)
+- [Codalab Wiki](https://github.com/codalab/codalab/wiki)
+
+## Code Design
+
+Bundle hierarchy:
+
+    Bundle
+      NamedBundle
+        UploadedBundle
+          ProgramBundle
+          DatsaetBundle
+        MakeBundle [DerivedBundle]
+        RunBundle [DerivedBundle]
+
+## Tests
+
+To run test on the code, type:
 
     pip install simplejson mock nose
     
     nosetests
-
