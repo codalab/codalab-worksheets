@@ -62,18 +62,20 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
           spec.key: getattr(args, metadata_key_to_argument(spec.key,))
           for spec in bundle_subclass.get_user_defined_metadata()
         }
-        # A special-case: if the user specified all required metadata on the command
-        # line, do NOT show the editor. This allows for programmatic bundle creation.
-        if not any(value is None for value in initial_metadata.values()):
-            return initial_metadata
+
     # Fill in default values for all unsupplied metadata keys.
+    new_initial_metadata = {}
     for spec in bundle_subclass.get_user_defined_metadata():
-        if not initial_metadata[spec.key]:
+        new_initial_metadata[spec.key] = initial_metadata.get(spec.key)
+        if not new_initial_metadata[spec.key]:
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)
-            initial_metadata[spec.key] = default
+            new_initial_metadata[spec.key] = default
+    initial_metadata = new_initial_metadata
+
     # If the --auto flag was used, skip showing the editor.
     if getattr(args, 'auto', False):
         return filter_anonymous_name(bundle_subclass, initial_metadata)
+
     # Construct a form template with the required keys, prefilled with the
     # command-line metadata options.
     template_lines = []
@@ -88,6 +90,7 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
             initial_value = ' '.join(initial_value or [])
         template_lines.append('%s: %s' % (spec.key, initial_value))
     template = (os.linesep + os.linesep).join(template_lines)
+
     # Show the form to the user in their editor of choice and parse the result.
     editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
     tempfile_name = ''

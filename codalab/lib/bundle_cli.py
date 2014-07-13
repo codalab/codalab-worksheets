@@ -324,6 +324,7 @@ class BundleCLI(object):
         help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
         parser.add_argument('bundle_type', help=help_text)
         parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='+')
+        parser.add_argument('-b', '--base', help='Inherit the metadata from this bundle specification.')
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
@@ -344,7 +345,13 @@ class BundleCLI(object):
               args.bundle_type, '|'.join(sorted(UPLOADED_TYPES)),
             ))
         bundle_subclass = get_bundle_subclass(args.bundle_type)
-        metadata = metadata_util.request_missing_metadata(bundle_subclass, args)
+        # Get metadata
+        metadata = None
+        if args.base:
+            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.base)
+            info = client.get_bundle_info(bundle_uuid)
+            metadata = info['metadata']
+        metadata = metadata_util.request_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
         bundle_subclass.construct(data_hash='', metadata=metadata).validate()
@@ -353,6 +360,7 @@ class BundleCLI(object):
         # is this path rather than contains it.
         if len(args.path) == 1: args.path = args.path[0]
 
+        # Finally, once everything has been checked, then call the client to upload.
         print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid)
 
     def do_download_command(self, argv, parser):
