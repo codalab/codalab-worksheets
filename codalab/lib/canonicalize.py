@@ -34,6 +34,7 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
         return bundle_spec
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
         bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%')}, max_results=1)
+        last_index = 1
         message = "uuid starting with '%s'" % (bundle_spec,)
     else:
         def match(bundle_spec):

@@ -43,6 +43,9 @@ from codalab.objects.worksheet import (
     Worksheet,
 )
 
+import re
+
+CONDITION_REGEX = re.compile('^(\w+)=(.*)$')
 
 class BundleModel(object):
     def __init__(self, engine):
@@ -146,18 +149,18 @@ class BundleModel(object):
         uuids = set([row.child_uuid for row in rows])
         return self.batch_get_bundles(uuid=uuids)
 
-    def get_bundle_uuids(self, conditions, max_results):
+    def get_bundle_uuids(self, conditions, max_results, count):
         '''
         Returns a list of bundle_uuids that have match the conditions.
-        Possible conditions:
+        Possible conditions (not all supported right now):
         - uuid: could be just a prefix
-        - home_worksheet_uuid:
         - name (exists in bundle_metadata)
         - parent: dependent (exists in bundle_dependency)
         - child: downstream influence (exists in bundle_dependency)
         - worksheet_uuid (exists in worksheet_uuid)
         Return in reverse order.
         '''
+        # TODO: implement 'count'
         # TODO: handle matching other conditions
         if 'uuid' in conditions:
             # Match the uuid only
@@ -165,24 +168,49 @@ class BundleModel(object):
             query = select([cl_bundle.c.uuid]).where(clause)
         elif 'name' in conditions:
             # Select name
-            if conditions.get('name'):
-                clause = and_(
-                  cl_bundle_metadata.c.metadata_key == 'name',
-                  self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name'])
-                )
-            else:
-                clause = true()
+            clause = and_(
+              cl_bundle_metadata.c.metadata_key == 'name',
+              self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name'])
+            )
             if conditions['worksheet_uuid']:
                 # Select things on the given worksheet
                 clause = and_(clause, self.make_clause(cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']))
-                clause = and_(clause, cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid)
+                clause = and_(clause, cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
                 query = select([cl_bundle_metadata.c.bundle_uuid, cl_worksheet_item.c.id]).distinct().where(clause)
                 query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
             else:
                 # Select from all bundles
-                clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)
+                clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
                 query = select([cl_bundle.c.uuid]).where(clause)
                 query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
+        elif '*' in conditions:
+            # Search any field: uuid, command, other metadata
+            # Each keyword is either a string (just search everywhere) or
+            # key=value, which is more targeted, and results in exact match.
+            clauses = []
+            for keyword in conditions['*']:
+                m = CONDITION_REGEX.match(keyword)
+                if m:
+                    key, value = m.group(1), m.group(2)
+                    if key == 'bundle_type' or key == 'type':
+                        clause = (cl_bundle.c.bundle_type == value)
+                    elif key == 'state':
+                        clause = (cl_bundle.c.state == value)
+                    else:
+                        clause = and_(
+                            cl_bundle_metadata.c.metadata_key == key,
+                            cl_bundle_metadata.c.metadata_value == value
+                        )
+                else:
+                    clause = []
+                    clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
+                    clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
+                    clause.append(cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'))
+                    clause = or_(*clause)
+                clauses.append(clause)
+            clause = and_(*clauses)
+            clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+            query = select([cl_bundle.c.uuid]).distinct().where(clause).limit(max_results)
 
         #print 'QUERY', query, query.compile().params
         with self.engine.begin() as connection:

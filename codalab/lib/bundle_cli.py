@@ -48,6 +48,7 @@ class BundleCLI(object):
       'run': 'Create a bundle by running a program bundle on an input bundle.',
       'edit': "Edit an existing bundle's metadata.",
       'rm': 'Delete a bundle (and all bundles that depend on it).',
+      'search': 'Search for bundles in the system',
       'ls': 'List bundles in a worksheet.',
       'info': 'Show detailed information for a bundle.',
       'cat': 'Print the contents of a file/directory in a bundle.',
@@ -152,12 +153,9 @@ class BundleCLI(object):
         '''
         Return list of info dicts of distinct, non-orphaned bundles in the worksheet.
         '''
-        #uuids_seen = set()
         result = []
         for (bundle_info, _, _) in worksheet_info['items']:
-            if bundle_info and 'bundle_type' in bundle_info:
-                #if bundle_info['uuid'] not in uuids_seen:
-                #uuids_seen.add(bundle_info['uuid'])
+            if bundle_info:
                 result.append(bundle_info)
         return result
 
@@ -532,20 +530,57 @@ class BundleCLI(object):
         for bundle_uuid in bundle_uuids:
             client.delete_bundle(bundle_uuid, args.force)
 
+    def do_search_command(self, argv, parser):
+        parser.add_argument(
+          'keywords',
+          help='keywords to search for',
+          nargs='+',
+        )
+        parser.add_argument(
+          '-c', '--count',
+          help='just count',
+          action='store_true'
+        )
+        parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
+        args = parser.parse_args(argv)
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, max_results=20, count=args.count)
+        if args.uuid_only:
+            bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
+        else:
+            bundle_infos = client.get_bundle_infos(bundle_uuids)
+            bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids]
+
+        if len(bundle_info_list) > 0:
+            self.print_bundle_info_list(bundle_info_list, uuid_only=args.uuid_only)
+        else:
+            if not args.uuid_only:
+                print 'No search results for keywords: %s' % args.keywords
+
     def do_ls_command(self, argv, parser):
         parser.add_argument(
           'worksheet_spec',
           help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT,
           nargs='?',
         )
+        parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
-        if args.worksheet_spec:
-            client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
-        else:
-            worksheet_info = self.get_current_worksheet_info()
+        client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
         bundle_info_list = self.get_worksheet_bundles(worksheet_info)
         if len(bundle_info_list) > 0:
-            print 'Worksheet: %s' % self.worksheet_str(worksheet_info)
+            if not args.uuid_only:
+                print 'Worksheet: %s' % self.worksheet_str(worksheet_info)
+            self.print_bundle_info_list(bundle_info_list, args.uuid_only)
+        else:
+            if not args.uuid_only:
+                print 'Worksheet %s(%s) is empty.' % (worksheet_info['name'], worksheet_info['uuid'])
+
+    # Helper
+    def print_bundle_info_list(self, bundle_info_list, uuid_only):
+        if uuid_only:
+            for bundle_info in bundle_info_list:
+                print bundle_info['uuid']
+        else:
             columns = ('uuid', 'name', 'bundle_type', 'data_size', 'state')
             post_funcs = {'data_size': lambda x : self.size_str(x)}
             justify = {'data_size': 1}
@@ -554,8 +589,6 @@ class BundleCLI(object):
               for info in bundle_info_list
             ]
             self.print_table(columns, bundle_dicts, post_funcs=post_funcs, justify=justify)
-        else:
-            print 'Worksheet %s(%s) is empty.' % (worksheet_info['name'], worksheet_info['uuid'])
 
     def do_info_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)

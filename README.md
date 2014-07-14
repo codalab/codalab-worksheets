@@ -26,15 +26,11 @@ the service, as well as supporting competitions.
         git clone https://github.com/codalab/codalab-cli
         cd codalab-cli
 
-2. Setup a Python virtual environment (you need to have virtualenv installed):
+2. Run the setup script (will install things into a Python virtual environment):
 
-        virtualenv -p /usr/bin/python2.7 codalab_env --no-site-packages
+        ./setup.sh
 
-3. Install Python dependencies into that virtual environment:
-
-        codalab_env/bin/pip-2.7 install sqlalchemy paramiko
-
-4. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
+3. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
 
         export PATH=$PATH:<your path>/codalab-cli/codalab/bin
 

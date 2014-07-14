@@ -73,8 +73,11 @@ class LocalBundleClient(BundleClient):
     def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
         return canonicalize.get_bundle_uuid(self.model, worksheet_uuid, bundle_spec)
 
-    def get_bundle_uuids(self, worksheet_uuid, bundle_spec):
-        return canonicalize.get_bundle_uuids(self.model, worksheet_uuid, bundle_spec)
+    def search_bundle_uuids(self, worksheet_uuid, keywords, max_results, count):
+        return self.model.get_bundle_uuids({
+            '*': keywords,
+            'worksheet_uuid': worksheet_uuid
+        }, max_results=max_results, count=count)
 
     # Helper
     def get_target_path(self, target):
@@ -194,6 +197,12 @@ class LocalBundleClient(BundleClient):
         bundle = self.model.get_bundle(uuid)
         children = self.model.get_children(uuid) if get_children else None
         return self._bundle_to_bundle_info(bundle, children=children)
+
+    def get_bundle_infos(self, uuids):
+        # TODO: move get_children logic into this.
+        bundles = self.model.batch_get_bundles(uuid=uuids)
+        bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
+        return bundle_dict
 
     # Return information about an individual target inside the bundle.
 
