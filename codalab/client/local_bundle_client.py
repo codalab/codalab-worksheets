@@ -95,23 +95,6 @@ class LocalBundleClient(BundleClient):
         else:
             return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
 
-    def expand_worksheet_item(self, worksheet_uuid, item):
-        (bundle_spec, value, type) = item
-        if bundle_spec is None:
-            return (None, value or '', type or '')
-        try:
-            bundle_uuid = self.get_bundle_uuid(worksheet_uuid, bundle_spec)
-        except UsageError, e:
-            return (bundle_spec, str(e) if value is None else value, '')
-        if bundle_uuid != bundle_spec and value is None:
-            # The user specified a bundle for the first time without help text.
-            # Produce some auto-generated help text here.
-            bundle = self.model.get_bundle(bundle_uuid)
-            value = bundle_spec
-            if getattr(bundle.metadata, 'description', None):
-                value = bundle.metadata.name
-        return (bundle_uuid, value or '', type or '')
-
     def validate_user_metadata(self, bundle_subclass, metadata):
         '''
         Check that the user did not supply values for any auto-generated metadata.
@@ -289,6 +272,7 @@ class LocalBundleClient(BundleClient):
                 metadata['name'] = new_output_bundle_name
             else:
                 metadata['name'] = new_output_bundle_name + '-' + info['metadata']['name']
+            # TODO: pop all the automatically generated pairs automatically
             metadata.pop('data_size')
             metadata.pop('created')
             #print targets
@@ -318,34 +302,43 @@ class LocalBundleClient(BundleClient):
             return self.model.list_worksheets(current_user.unique_id)
 
     def get_worksheet_info(self, worksheet_spec):
+        '''
+        The returned info object contains items which are (bundle_info, value_object, type).
+        '''
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
         current_user = self.auth_handler.current_user()
         current_user_id = None if current_user is None else current_user.unique_id
         check_has_read_permission(self.model, current_user_id, worksheet)
+
+        # Create the info by starting out with the metadata.
+        # The items here are (bundle_uuid, value, type).
         result = worksheet.get_info_dict()
+        result['items'] = self._convert_items_from_db(result['items'])
+        return result
+
+    def _convert_items_from_db(self, items):
+        '''
+        (bundle_uuid, value, type) -> (bundle_info, value_obj, type)
+        '''
         # We need to do some finicky stuff here to convert the bundle_uuids into
-        # bundle info dicts. However, we still make O(1) database calls because we
+        # bundle_info dicts. However, we still make O(1) database calls because we
         # use the optimized batch_get_bundles multiget method.
         uuids = set(
-            bundle_uuid for (bundle_uuid, _, _) in result['items']
-          if bundle_uuid is not None
+            bundle_uuid for (bundle_uuid, value, type) in items
+            if bundle_uuid is not None
         )
         bundles = self.model.batch_get_bundles(uuid=uuids)
         bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
 
-        # If a bundle uuid is orphaned, we still have to return the uuid in a dict.
-        items = []
-        result['items'] = [
-          (
-               None if bundle_uuid is None else
-               bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}),
-                    worksheet_util.expand_worksheet_item_info(value, type),
-                    type,
-          )
-            for (bundle_uuid, value, type) in result['items']
-        ]
-        return result
+        # Go through the items and substitute the components
+        new_items = []
+        for (bundle_uuid, value, type) in items:
+            bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
+            value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
+            new_items.append((bundle_info, value_obj, type))
+        return new_items
+
 
     @authentication_required
     def add_worksheet_item(self, worksheet_spec, bundle_uuid):
@@ -358,20 +351,19 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def update_worksheet(self, worksheet_info, new_items):
-        # Convert (bundle_spec, value) pairs into canonical (bundle_uuid, value, type) pairs.
+        # Convert (bundle_spec, value, type) pairs into canonical (bundle_uuid, value, type) pairs.
         # This step could take O(n) database calls! However, it will only hit the
         # database for each bundle the user has newly specified by name - bundles
         # that were already in the worksheet will be referred to by uuid, so
         # get_bundle_uuid will be an in-memory call for these. This hit is acceptable.
         worksheet_uuid = worksheet_info['uuid']
-        canonical_items = [self.expand_worksheet_item(worksheet_uuid, item) for item in new_items]
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         try:
-            self.model.update_worksheet(
-              worksheet_uuid, last_item_id, length, canonical_items)
+            new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
+            self.model.update_worksheet(worksheet_uuid, last_item_id, length, new_items)
         except UsageError:
             # Turn the model error into a more readable one using the object.
             raise UsageError('%s was updated concurrently!' % (worksheet,))

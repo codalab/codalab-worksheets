@@ -195,23 +195,40 @@ class BundleCLI(object):
             targets[key] = self.parse_target(target)
         return targets
 
-    def print_table(self, columns, row_dicts):
+    def print_table(self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''):
         '''
         Pretty-print a list of columns from each row in the given list of dicts.
         '''
-        rows = list(itertools.chain([columns], (
-          [row_dict.get(col, '') for col in columns] for row_dict in row_dicts
-        )))
+        # Get the contents of the table
+        rows = [columns]
+        for row_dict in row_dicts:
+            row = []
+            for col in columns:
+                cell = row_dict.get(col)
+                func = post_funcs.get(col)
+                if func: cell = func(cell)
+                row.append(cell)
+            rows.append(row)
+
+        # Display the table
         lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
         for (i, row) in enumerate(rows):
             row_strs = []
-            for (value, length) in zip(row, lengths):
-                row_strs.append(str(value) + (length - len(str(value)))*' ')
-            print '  '.join(row_strs)
+            for (j, value) in enumerate(row):
+                length = lengths[j]
+                padding = (length - len(str(value))) * ' '
+                if justify.get(columns[j], -1) < 0:
+                    row_strs.append(str(value) + padding)
+                else:
+                    row_strs.append(padding + str(value))
+                # TODO: center
+            if show_header or i > 0:
+                print indent + '  '.join(row_strs)
             if i == 0:
-                print (sum(lengths) + 2*(len(columns) - 1))*'-'
+                print indent + (sum(lengths) + 2*(len(columns) - 1)) * '-'
 
     def size_str(self, size):
+        if size == None: return None
         for unit in ('', 'K', 'M', 'G'):
             if size < 1024:
                 return '%d%s' % (size, unit)
@@ -242,7 +259,11 @@ class BundleCLI(object):
         return (self.manager.client(address), spec)
 
     def parse_client_worksheet_info(self, spec):
-        client, spec = self.parse_spec(spec)
+        if not spec:
+            client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+            spec = worksheet_uuid
+        else:
+            client, spec = self.parse_spec(spec)
         return (client, client.get_worksheet_info(spec if spec else Worksheet.DEFAULT_WORKSHEET_NAME))
 
     def create_parser(self, command):
@@ -525,12 +546,14 @@ class BundleCLI(object):
         bundle_info_list = self.get_worksheet_bundles(worksheet_info)
         if len(bundle_info_list) > 0:
             print 'Worksheet: %s' % self.worksheet_str(worksheet_info)
-            columns = ('uuid', 'name', 'bundle_type', 'state')
+            columns = ('uuid', 'name', 'bundle_type', 'data_size', 'state')
+            post_funcs = {'data_size': lambda x : self.size_str(x)}
+            justify = {'data_size': 1}
             bundle_dicts = [
-              {col: info.get(col, info['metadata'].get(col, '')) for col in columns}
+              {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
               for info in bundle_info_list
             ]
-            self.print_table(columns, bundle_dicts)
+            self.print_table(columns, bundle_dicts, post_funcs=post_funcs, justify=justify)
         else:
             print 'Worksheet %s(%s) is empty.' % (worksheet_info['name'], worksheet_info['uuid'])
 
@@ -657,9 +680,12 @@ state:       {state}
         if info['type'] == 'file':
             client.cat_target(target, sys.stdout)
         if info['type'] == 'directory':
-            contents = [{'name': x['name'], 'size': "%7s" % (self.size_str(x['size']) if x['type'] == 'file' else 'dir')} for x in info['contents']]
+            contents = [
+                {'name': x['name'], 'size': self.size_str(x['size']) if x['type'] == 'file' else 'dir'}
+                for x in info['contents']
+            ]
             contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'size'), contents)
+            self.print_table(('name', 'size'), contents, justify={'size':1})
         return info
 
     def do_wait_command(self, argv, parser):
@@ -738,38 +764,12 @@ state:       {state}
           help=self.BUNDLE_SPEC_FORMAT
         )
         parser.add_argument(
-          'new_input_bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
-        )
-        parser.add_argument(
           'old_output_bundle_spec',
           help=self.BUNDLE_SPEC_FORMAT
         )
-        parser.add_argument(
-          'new_output_bundle_name',
-          help='name of the new bundle'
-        )
-        parser.add_argument(
-          '-d', '--depth',
-          type=int,
-          default=10,
-          help="number of parents to look back from the old output in search of the old input"
-        )
-        parser.add_argument(
-          '-s', '--stop-early',
-          action='store_true',
-          default=False,
-          help="stop traversing parents when we found old-input"
-        )
+        self.add_mimic_macro_args(parser)
         args = parser.parse_args(argv)
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        old_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_input_bundle_spec)
-        new_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.new_input_bundle_spec)
-        old_output_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_output_bundle_spec)
-        print client.mimic(
-            old_input_bundle_uuid, new_input_bundle_uuid, \
-            old_output_bundle_uuid, args.new_output_bundle_name, \
-            worksheet_uuid, args.depth, args.stop_early)
+        return self.create_macro(args)
 
     def do_macro_command(self, argv, parser):
         '''
@@ -779,6 +779,13 @@ state:       {state}
           'macro_name',
           help='name of the macro (look for <name>-in and <name>-out bundles)',
         )
+        self.add_mimic_macro_args(parser)
+        args = parser.parse_args(argv)
+        args.old_input_bundle_spec = args.macro_name + '-in'
+        args.old_output_bundle_spec = args.macro_name + '-out'
+        return self.create_macro(args)
+
+    def add_mimic_macro_args(self, parser):
         parser.add_argument(
           'new_input_bundle_spec',
           help=self.BUNDLE_SPEC_FORMAT
@@ -799,16 +806,17 @@ state:       {state}
           default=False,
           help="stop traversing parents when we found old-input"
         )
-        args = parser.parse_args(argv)
+    
+    def create_macro(self, args):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        old_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.macro_name + '-in')
+        old_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_input_bundle_spec)
         new_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.new_input_bundle_spec)
-        old_output_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.macro_name + '-out')
+        old_output_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_output_bundle_spec)
         print client.mimic(
             old_input_bundle_uuid, new_input_bundle_uuid, \
             old_output_bundle_uuid, args.new_output_bundle_name, \
             worksheet_uuid, args.depth, args.stop_early)
-    
+
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################
@@ -820,30 +828,20 @@ state:       {state}
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         return client.get_worksheet_info(worksheet_uuid)
 
-        # Try to resolve worksheet_spec, defaulting if necessary.
-        #try:
-        #except: UsageError:
-        #    if self.verbose >= 1:
-        #        print "Can't switch to %s, using %s instead" % (worksheet_spec, Worksheet.DEFAULT_WORKSHEET_NAME)
-        #    # Can't switch to worksheet_spec, go to default
-        #    if worksheet_spec == Worksheet.DEFAULT_WORKSHEET_NAME:
-        #        # If want default and it doesn't exist, just create it
-        #        uuid = client.new_worksheet(Worksheet.DEFAULT_WORKSHEET_NAME)
-        #    else:
-        #        return get_worksheet_info(Worksheet.DEFAULT_WORKSHEET_NAME)
-
     def worksheet_str(self, worksheet_info):
         return '%s::%s(%s)' % (self.manager.session()['address'], worksheet_info['name'], worksheet_info['uuid'])
 
     def do_new_command(self, argv, parser):
+        # TODO: This command is a bit dangerous because we easily can create a
+        # worksheet with the same name.  Need a way to organize worksheets by a
+        # given user.
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         uuid = client.new_worksheet(args.name)
         self.manager.set_current_worksheet_uuid(client, uuid)
-        info = client.get_worksheet_info
-        worksheet_info = client.get_worksheet_info(args.worksheet_spec)
-        print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
+        worksheet_info = client.get_worksheet_info(uuid)
+        print 'Created and switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     def do_add_command(self, argv, parser):
         parser.add_argument(
@@ -873,7 +871,7 @@ state:       {state}
             bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
             client.add_worksheet_item(worksheet_uuid, bundle_uuid)
         if args.message:
-            new_items = worksheet_util.get_current_items(worksheet_info) + [(None, args.message, None)]
+            new_items = worksheet_util.get_current_items(worksheet_info) + [(None, args.message, worksheet_util.TYPE_MARKUP)]
             client.update_worksheet(worksheet_info, new_items)
 
     def do_work_command(self, argv, parser):
@@ -901,7 +899,7 @@ state:       {state}
     def do_wedit_command(self, argv, parser):
         parser.add_argument(
           'worksheet_spec',
-          help='identifier: [<uuid>|<name>]',
+          help=self.GLOBAL_SPEC_FORMAT,
           nargs='?',
         )
         parser.add_argument(
@@ -910,19 +908,56 @@ state:       {state}
           nargs='?',
         )
         args = parser.parse_args(argv)
-        client = self.manager.current_client()
-        if args.worksheet_spec:
-            worksheet_info = client.get_worksheet_info(args.worksheet_spec)
-        else:
-            worksheet_info = self.get_current_worksheet_info()
-            if not worksheet_info:
-                raise UsageError('Specify a worksheet or switch to one with `cl work`.')
+        client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
         if args.name:
             client.rename_worksheet(worksheet_info['uuid'], args.name)
         else:
-            new_items = worksheet_util.request_new_items(worksheet_info)
+            new_items = worksheet_util.request_new_items(worksheet_info, client)
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
+
+    def lookup_targets(self, client, value):
+        if isinstance(value, tuple):
+            # TODO: look inside
+            bundle_uuid, subpath = value
+            contents = client.head_target((bundle_uuid, subpath), 10)
+            if contents == None: return None
+            return contents[0]
+        return value
+            
+    def do_print_command(self, argv, parser):
+        parser.add_argument(
+          'worksheet_spec',
+          help=self.GLOBAL_SPEC_FORMAT,
+          nargs='?',
+        )
+        parser.add_argument(
+          '-r', '--raw',
+          action='store_true',
+          help="print out the raw contents"
+        )
+        args = parser.parse_args(argv)
+        client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
+        if args.raw:
+            lines = worksheet_util.get_worksheet_lines(worksheet_info)
+            for line in lines:
+                print line
+        else:
+            interpreted = worksheet_util.interpret_items(worksheet_info['items'])
+            print '[', interpreted.get('title'), ']'
+            is_last_newline = False
+            for mode, data in interpreted['items']:
+                is_newline = (data == '')
+                if mode == 'inline' or mode == 'markup':
+                    if not (is_newline and is_last_newline):
+                        print data
+                elif mode == 'record' or mode == 'table':
+                    header, contents = data
+                    contents = [{key : self.lookup_targets(client, value) for key, value in row.items()} for row in contents]
+                    self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
+                else:
+                    raise UsageError('Invalid mode: %s' % mode)
+                is_last_newline = is_newline
 
     def do_wls_command(self, argv, parser):
         args = parser.parse_args(argv)
@@ -932,25 +967,6 @@ state:       {state}
             self.print_table(('uuid', 'name'), worksheet_dicts)
         else:
             print 'No worksheets found.'
-
-    def do_print_command(self, argv, parser):
-        parser.add_argument(
-          'worksheet_spec',
-          help='identifier: [<uuid>|<name>]',
-          nargs='?',
-        )
-        args = parser.parse_args(argv)
-        client = self.manager.current_client()
-        if args.worksheet_spec:
-            worksheet_info = client.get_worksheet_info(args.worksheet_spec)
-        else:
-            worksheet_info = self.get_current_worksheet_info()
-            if not worksheet_info:
-                raise UsageError('Specify a worksheet or switch to one with `cl work`.')
-        raw_lines = worksheet_util.get_worksheet_lines(worksheet_info)
-        templetized_lines = raw_lines
-        for line in templetized_lines:
-            print line
 
     def do_wrm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
@@ -979,13 +995,13 @@ state:       {state}
         (dest_client, dest_spec) = self.parse_spec(args.dest_worksheet_spec)
         dest_worksheet_uuid = dest_client.get_worksheet_info(dest_spec)['uuid']
 
-        for (source_bundle_uuid, value, type) in bundle_tuples:
-            if source_bundle_uuid != None:
+        for (source_bundle_info, value_obj, type) in bundle_tuples:
+            if source_bundle_info != None:
                 # Copy bundle
-                self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
+                self.copy_bundle(source_client, source_bundle_info, dest_client, dest_worksheet_uuid)
             else:
                 # Copy non-bundle
-                dest_client.add_worksheet_item((source_bundle_uuid, value, type))
+                dest_client.add_worksheet_item((source_bundle_info, value, type))
 
         print 'Copied %s bundles to %s.' % (len(bundle_tuples), dest_worksheet_uuid)
 

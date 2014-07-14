@@ -209,7 +209,8 @@ def read_lines(path, num_lines=None):
     '''
     Return list of lines (up to num_lines).
     '''
-    check_isfile(path, 'read_lines')
+    if not os.path.isfile(path): return None
+    #check_isfile(path, 'read_lines')
     with open(path, 'rb') as file_handle:
         if num_lines == None:
             return file_handle.readlines()

@@ -202,7 +202,7 @@ create another bundle and upload it:
 
 Now we can apply the same thing to `b.txt` that we did to `a.txt`:
 
-    cl mimic a.txt b.txt sorted-a.txt sorted-b.txt
+    cl mimic a.txt sorted-a.txt b.txt sorted-b.txt
 
 We can check that `b.txt.sorted` contains the desired sorted result:
 
@@ -299,7 +299,9 @@ based on the following rules (in order of precedence):
 1. Bundles in the current worksheet are preferred to those not.
 2. Later bundles are preferred.
 
-### Customizing worksheets
+### Displaying worksheets
+
+[TODO]
 
 ## Working remotely
 
@@ -360,6 +362,8 @@ theory can be the same, but in practice is usually different.
 [TODO]
 
 # For developers
+
+[TODO]
 
 Here are some helpful links:
 

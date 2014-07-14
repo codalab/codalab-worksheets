@@ -20,7 +20,6 @@ from codalab.model.orm_object import ORMObject
 def item_sort_key(item):
     return item['id'] if item['sort_key'] is None else item['sort_key']
 
-
 class Worksheet(ORMObject):
     COLUMNS = ('uuid', 'name', 'owner_id')
     DEFAULT_WORKSHEET_NAME = 'default'

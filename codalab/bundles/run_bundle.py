@@ -23,9 +23,10 @@ from codalab.lib import (
   spec_util,
 )
 
-
 class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
+    
+    # TODO: add fields for time, memory, disk usage.
 
     @classmethod
     def construct(cls, targets, command, metadata, uuid=None, data_hash=None):
