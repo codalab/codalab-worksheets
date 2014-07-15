@@ -152,7 +152,7 @@ class LocalBundleClient(BundleClient):
         bundle = bundle_subclass.construct(**construct_args)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, bundle.uuid)
+            self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
         return bundle.uuid
 
     def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
@@ -164,7 +164,7 @@ class LocalBundleClient(BundleClient):
         bundle = bundle_subclass.construct(targets=targets, command=command, metadata=metadata)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, bundle.uuid)
+            self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
         return bundle.uuid
 
     def update_bundle_metadata(self, uuid, metadata):
@@ -350,12 +350,9 @@ class LocalBundleClient(BundleClient):
 
 
     @authentication_required
-    def add_worksheet_item(self, worksheet_spec, bundle_uuid):
-        worksheet_uuid = self.get_worksheet_uuid(worksheet_spec)
+    def add_worksheet_item(self, worksheet_uuid, item):
         worksheet = self.model.get_worksheet(worksheet_uuid)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
-        bundle = self.model.get_bundle(bundle_uuid)
-        item = (bundle.uuid, bundle.metadata.name, 'bundle')
         self.model.add_worksheet_item(worksheet_uuid, item)
 
     @authentication_required

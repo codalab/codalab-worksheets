@@ -19,6 +19,7 @@ from codalab.lib import (
   spec_util,
 )
 from codalab.model.util import LikeQuery
+import datetime
 
 def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     '''
@@ -28,8 +29,9 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     - name[^[<index>]: there might be many uuids with this name.
     - ^[<index>], where index is the i-th (1-based) most recent element on the current worksheet.
     '''
+    orig_bundle_spec = bundle_spec
     if not bundle_spec:
-        raise UsageError('Tried to expand empty bundle_spec!')
+        raise ('Tried to expand empty bundle_spec!')
     if spec_util.UUID_REGEX.match(bundle_spec):
         return bundle_spec
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
@@ -73,7 +75,7 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
         message = "name pattern '%s'" % (bundle_spec,)
     if not bundle_uuids:
         # If fail to find something in the worksheet, then backoff to global
-        if worksheet_uuid: return get_bundle_uuid(model, None, bundle_spec)
+        if worksheet_uuid: return get_bundle_uuid(model, None, orig_bundle_spec)
         raise UsageError('No bundle found with %s' % (message,))
     # Take the last bundle
     if last_index <= 0 or last_index > len(bundle_uuids):
@@ -130,3 +132,13 @@ def get_worksheet_uuid(model, worksheet_spec):
           (message, ''.join('\n  %s' % (worksheet,) for worksheet in worksheets))
         )
     return worksheets[0].uuid
+
+def size_str(size):
+    if size == None: return None
+    for unit in ('', 'K', 'M', 'G'):
+        if size < 1024:
+            return '%d%s' % (size, unit)
+        size /= 1024
+
+def time_str(ts):
+    return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')

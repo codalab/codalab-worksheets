@@ -1,6 +1,5 @@
 '''
 worksheet_util contains the following public functions:
-- get_current_items: get the current items of a worksheet.
 - request_new_items: pops up an editor to allow for full-text editing of a worksheet.
 
 A worksheet contains a list of items, where each item includes
@@ -45,7 +44,7 @@ import sys
 import tempfile
 
 from codalab.common import UsageError
-from codalab.lib import path_util
+from codalab.lib import path_util, canonicalize
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -116,18 +115,6 @@ def get_worksheet_lines(worksheet_info):
             value = tokens_to_string(value_obj)
             value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
             yield value
-
-def get_current_items(worksheet_info):
-    '''
-    Return list of full items.
-    '''
-    items = []
-    for item in worksheet_info['items']:
-        (bundle_info, value_obj, type) = item
-        if type == TYPE_BUNDLE:
-            items.append(item)
-    return items
-
 
 def request_new_items(worksheet_info, client):
     '''
@@ -221,7 +208,10 @@ def interpret_items(items):
     '''
     result = {}
     schemas = {}
-    schemas['default'] = current_schema = [canonicalize_schema_item([x]) for x in ['uuid', 'name', 'bundle_type', 'state']]
+    schemas['default'] = current_schema = [
+        canonicalize_schema_item(x)
+        for x in [['uuid'], ['name'], ['bundle_type'], ['data_size', 'data_size', canonicalize.size_str], ['state']]
+    ]
     current_display = ('record', 'default')
     new_items = []
     bundle_infos = []

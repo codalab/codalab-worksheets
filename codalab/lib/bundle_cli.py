@@ -10,7 +10,6 @@ This function takes an argument list and an ArgumentParser and does the action.
 '''
 import argparse
 import collections
-import datetime
 import itertools
 import os
 import re
@@ -224,16 +223,6 @@ class BundleCLI(object):
                 print indent + '  '.join(row_strs)
             if i == 0:
                 print indent + (sum(lengths) + 2*(len(columns) - 1)) * '-'
-
-    def size_str(self, size):
-        if size == None: return None
-        for unit in ('', 'K', 'M', 'G'):
-            if size < 1024:
-                return '%d%s' % (size, unit)
-            size /= 1024
-
-    def time_str(self, ts):
-        return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')
 
     GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::]|(<uuid>|<name>)"
     TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
@@ -466,7 +455,7 @@ class BundleCLI(object):
             if temp_path: path_util.remove(temp_path)
         else:
             # Just need to add it to the worksheet
-            dest_client.add_worksheet_item(dest_worksheet_uuid, source_bundle_uuid)
+            dest_client.add_worksheet_item(dest_worksheet_uuid, (source_bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
 
     def do_make_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -582,7 +571,7 @@ class BundleCLI(object):
                 print bundle_info['uuid']
         else:
             columns = ('uuid', 'name', 'bundle_type', 'data_size', 'state')
-            post_funcs = {'data_size': lambda x : self.size_str(x)}
+            post_funcs = {'data_size': canonicalize.size_str}
             justify = {'data_size': 1}
             bundle_dicts = [
               {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
@@ -644,9 +633,9 @@ class BundleCLI(object):
         # Format statistics about this bundle - creation time, runtime, size, etc.
         stats = []
         if 'created' in metadata:
-            stats.append('created:     %s' % (self.time_str(metadata['created']),))
+            stats.append('created:     %s' % (canonicalize.time_str(metadata['created']),))
         if 'data_size' in metadata:
-            stats.append('size:        %s' % (self.size_str(metadata['data_size']),))
+            stats.append('size:        %s' % (canonicalize.size_str(metadata['data_size']),))
         #fields['stats'] = 'Stats:\n  %s\n' % ('\n  '.join(stats),) if stats else ''
         fields['stats'] = '%s\n' % ('\n'.join(stats),) if stats else ''
         # Compute a nicely-formatted list of hard dependencies. Since this type of
@@ -714,7 +703,7 @@ state:       {state}
             client.cat_target(target, sys.stdout)
         if info['type'] == 'directory':
             contents = [
-                {'name': x['name'], 'size': self.size_str(x['size']) if x['type'] == 'file' else 'dir'}
+                {'name': x['name'], 'size': canonicalize.size_str(x['size']) if x['type'] == 'file' else 'dir'}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
@@ -899,13 +888,12 @@ state:       {state}
             worksheet_info = self.get_current_worksheet_info()
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
+        worksheet_uuid = worksheet_info['uuid']
         if args.bundle_spec:
-            worksheet_uuid = worksheet_info['uuid']
             bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
-            client.add_worksheet_item(worksheet_uuid, bundle_uuid)
+            client.add_worksheet_item(worksheet_uuid, (bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
         if args.message:
-            new_items = worksheet_util.get_current_items(worksheet_info) + [(None, args.message, worksheet_util.TYPE_MARKUP)]
-            client.update_worksheet(worksheet_info, new_items)
+            client.add_worksheet_item(worksheet_uuid, (None, args.message, worksheet_util.TYPE_MARKUP))
 
     def do_work_command(self, argv, parser):
         parser.add_argument(
@@ -949,13 +937,30 @@ state:       {state}
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
+    def parse_yaml(self, contents):
+        info = {}
+        for line in contents:
+            # a: b
+            key, value = line.strip().split(': ')
+            info[key] = value
+        return info
+
     def lookup_targets(self, client, value):
+        # TODO: make this more efficient
         if isinstance(value, tuple):
-            # TODO: look inside
             bundle_uuid, subpath = value
-            contents = client.head_target((bundle_uuid, subpath), 10)
-            if contents == None: return None
-            return contents[0]
+            if ':' in subpath:
+                subpath, key = subpath.split(':')
+                contents = client.head_target((bundle_uuid, subpath), 50)
+                if contents == None: return ''
+                info = self.parse_yaml(contents)
+                return info.get(key, '')
+            else:
+                if subpath == '.': subpath = ''
+                contents = client.head_target((bundle_uuid, subpath), 1)
+                if contents == None: return ''
+                return contents[0].strip()
+                
         return value
             
     def do_print_command(self, argv, parser):
@@ -977,13 +982,16 @@ state:       {state}
                 print line
         else:
             interpreted = worksheet_util.interpret_items(worksheet_info['items'])
-            print '[', interpreted.get('title'), ']'
+            print '[[', interpreted.get('title'), ']]'
             is_last_newline = False
             for mode, data in interpreted['items']:
                 is_newline = (data == '')
                 if mode == 'inline' or mode == 'markup':
                     if not (is_newline and is_last_newline):
-                        print data
+                        if mode == 'inline':
+                            print '[' + self.lookup_targets(client, data) + ']'
+                        else:
+                            print data
                 elif mode == 'record' or mode == 'table':
                     header, contents = data
                     contents = [{key : self.lookup_targets(client, value) for key, value in row.items()} for row in contents]
@@ -1022,21 +1030,22 @@ state:       {state}
 
         # Source worksheet
         (source_client, source_spec) = self.parse_spec(args.source_worksheet_spec)
-        bundle_tuples = worksheet_util.get_current_items(source_client.get_worksheet_info(source_spec))
+        items = source_client.get_worksheet_info(source_spec)['items']
 
         # Destination worksheet
         (dest_client, dest_spec) = self.parse_spec(args.dest_worksheet_spec)
         dest_worksheet_uuid = dest_client.get_worksheet_info(dest_spec)['uuid']
 
-        for (source_bundle_info, value_obj, type) in bundle_tuples:
+        for item in items:
+            (source_bundle_info, value_obj, type) = item
             if source_bundle_info != None:
                 # Copy bundle
-                self.copy_bundle(source_client, source_bundle_info, dest_client, dest_worksheet_uuid)
+                self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid)
             else:
                 # Copy non-bundle
-                dest_client.add_worksheet_item((source_bundle_info, value, type))
+                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.convert_item_to_db(item))
 
-        print 'Copied %s bundles to %s.' % (len(bundle_tuples), dest_worksheet_uuid)
+        print 'Copied %s worksheet items to %s.' % (len(items), dest_worksheet_uuid)
 
 
     #############################################################################

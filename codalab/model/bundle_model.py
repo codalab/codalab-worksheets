@@ -149,7 +149,7 @@ class BundleModel(object):
         uuids = set([row.child_uuid for row in rows])
         return self.batch_get_bundles(uuid=uuids)
 
-    def get_bundle_uuids(self, conditions, max_results, count):
+    def get_bundle_uuids(self, conditions, max_results, count=False):
         '''
         Returns a list of bundle_uuids that have match the conditions.
         Possible conditions (not all supported right now):
@@ -168,10 +168,13 @@ class BundleModel(object):
             query = select([cl_bundle.c.uuid]).where(clause)
         elif 'name' in conditions:
             # Select name
-            clause = and_(
-              cl_bundle_metadata.c.metadata_key == 'name',
-              self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name'])
-            )
+            if conditions['name']:
+                clause = and_(
+                  cl_bundle_metadata.c.metadata_key == 'name',
+                  self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name'])
+                )
+            else:
+                clause = true()
             if conditions['worksheet_uuid']:
                 # Select things on the given worksheet
                 clause = and_(clause, self.make_clause(cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']))
@@ -179,6 +182,8 @@ class BundleModel(object):
                 query = select([cl_bundle_metadata.c.bundle_uuid, cl_worksheet_item.c.id]).distinct().where(clause)
                 query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
             else:
+                if not conditions['name']:
+                    raise UsageError('Nothing is specified')
                 # Select from all bundles
                 clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
                 query = select([cl_bundle.c.uuid]).where(clause)
@@ -236,6 +241,7 @@ class BundleModel(object):
             metadata_rows = connection.execute(cl_bundle_metadata.select().where(
               cl_bundle_metadata.c.bundle_uuid.in_(uuids)
             )).fetchall()
+
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: dict(row) for row in bundle_rows}
         for bundle_value in bundle_values.itervalues():
@@ -249,6 +255,7 @@ class BundleModel(object):
             if metadata_row.bundle_uuid not in bundle_values:
                 raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
+
         # Construct and validate all of the retrieved bundles.
         sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
         bundles = [
@@ -504,6 +511,7 @@ class BundleModel(object):
         value must be a string.
         '''
         (bundle_uuid, value, type) = item
+        if value == None: value = ''  # TODO: change the schema to allow nulls
         item_value = {
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
