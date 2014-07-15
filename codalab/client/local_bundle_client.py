@@ -103,7 +103,9 @@ class LocalBundleClient(BundleClient):
         Check that the user did not supply values for any auto-generated metadata.
         Raise a UsageError with the offending keys if they are.
         '''
-        legal_keys = set(spec.key for spec in bundle_subclass.get_user_defined_metadata())
+        #legal_keys = set(spec.key for spec in bundle_subclass.get_user_defined_metadata())
+        # Allow generated keys as well 
+        legal_keys = set(spec.key for spec in bundle_subclass.METADATA_SPECS)
         illegal_keys = [key for key in metadata if key not in legal_keys]
         if illegal_keys:
             raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
