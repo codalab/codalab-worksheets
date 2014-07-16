@@ -59,7 +59,7 @@ class Bundle(ORMObject):
             dep.validate()
 
     def __repr__(self):
-        return '%s(uuid=%r, name=%r)' % (
+        return '%s(uuid=%r)' % (
           self.__class__.__name__,
           str(self.uuid),
         )
@@ -93,12 +93,13 @@ class Bundle(ORMObject):
         '''
         return [spec for spec in cls.METADATA_SPECS if not spec.generated]
 
-    def install_dependencies(self, bundle_store, parent_dict, path, rel):
+    def install_dependencies(self, bundle_store, parent_dict, dest_path, relative_symlinks):
         '''
-        Symlink this bundle's dependencies into the directory at path.
+        Symlink this bundle's dependencies into the directory at dest_path.
         The caller is responsible for cleaning up this directory.
+        rel: whether to use relative symlinks (for make bundles, but not for run bundles)
         '''
-        precondition(os.path.isabs(path), '%s is a relative path!' % (path,))
+        precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
         for dep in self.dependencies:
             parent = parent_dict[dep.parent_uuid]
             # Compute an absolute target and check that the dependency exists.
@@ -110,14 +111,14 @@ class Bundle(ORMObject):
                 parent_spec = getattr(parent.metadata, 'name', parent.uuid)
                 target_text = path_util.safe_join(parent_spec, dep.parent_path)
                 raise UsageError('Target not found: %s' % (target_text,))
-            if rel:
+            if relative_symlinks:
                 # Create a symlink that points to the dependency's relative target.
                 target = path_util.safe_join(
                   (os.pardir if dep.child_path else ''),
                   bundle_store.get_location(parent.data_hash, relative=True),
                   dep.parent_path,
                 )
-            link_path = path_util.safe_join(path, dep.child_path)
+            link_path = path_util.safe_join(dest_path, dep.child_path)
             os.symlink(target, link_path)
 
     def get_hard_dependencies(self):
@@ -127,7 +128,7 @@ class Bundle(ORMObject):
         '''
         raise NotImplementedError
 
-    def run(self, bundle_store, parent_dict, temp_dir):
+    def complete(self, bundle_store, parent_dict, temp_dir):
         '''
         Perform the computation needed to construct this bundle within the temp_dir,
         then upload the result to the bundle store. Return a (data_hash, metadata)

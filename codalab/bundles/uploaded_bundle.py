@@ -5,9 +5,12 @@ just a bundle store data hash and a metadata dict, and never need to be run.
 '''
 from codalab.bundles.named_bundle import NamedBundle
 from codalab.common import State
-
+from codalab.objects.metadata_spec import MetadataSpec
 
 class UploadedBundle(NamedBundle):
+    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    METADATA_SPECS.append(MetadataSpec('license', set, 'which license this program/data is released under', short_key='license'))
+
     @classmethod
     def construct(cls, data_hash, metadata, uuid=None):
         row = {
@@ -23,7 +26,7 @@ class UploadedBundle(NamedBundle):
         return super(UploadedBundle, cls).construct(row)
 
     def get_hard_dependencies(self):
-        # Uploaded bundles will never include symlinks to other bundles.
+        # Uploaded bundles don't have any dependencies on other bundles at all.
         return []
 
     def run(self, bundle_store, parent_dict):

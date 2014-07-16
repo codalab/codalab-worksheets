@@ -20,6 +20,7 @@ import tempfile
 import uuid
 import xmlrpclib
 
+from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.lib import (
   path_util,
   file_util,
@@ -57,37 +58,38 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
 
 class FileServer(SimpleXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
-    COMMANDS =  (
-      'open_temp_file',
-      'read_file',
-      'read_line_file',
-      'tail_file',
-      'write_file',
-      'close_file',
-    )
 
     def __init__(self, address, temp, auth_handler):
         # Keep a dictionary mapping file uuids to open file handles and a
         # dictionary mapping temporary file's file uuids to their absolute paths.
+        self.file_paths = {}
         self.file_handles = {}
-        self.temp_file_paths = {}
         self.temp = temp
         self.auth_handler = auth_handler
         # Register file-like RPC methods to allow for file transfer.
 
         SimpleXMLRPCServer.__init__(self, address, allow_none=True,
-                                    requestHandler=AuthenticatedXMLRPCRequestHandler)
-        for fn_name in self.COMMANDS:
-            self.register_function(getattr(self, fn_name), fn_name)
+                                    requestHandler=AuthenticatedXMLRPCRequestHandler,
+                                    logRequests=(self.verbose >= 1))
+        def wrap(command, func):
+            def inner(*args, **kwargs):
+                if self.verbose >= 1:
+                    print "file_server: %s %s" % (command, args)
+                return func(*args, **kwargs)
+            return inner
+        for command in RemoteBundleClient.FILE_COMMANDS:
+            self.register_function(wrap(command, getattr(self, command)), command)
 
     def open_file(self, path, mode):
         '''
         Open a file handle to the given path and return a uuid identifying it.
         '''
-        path_util.check_isfile(path, 'open_file')
-        file_uuid = uuid.uuid4().hex
-        self.file_handles[file_uuid] = open(path, mode)
-        return file_uuid
+        if os.path.exists(path):
+            file_uuid = uuid.uuid4().hex
+            self.file_paths[file_uuid] = path
+            self.file_handles[file_uuid] = open(path, mode)
+            return file_uuid
+        return None
 
     def open_temp_file(self):
         '''
@@ -95,9 +97,7 @@ class FileServer(SimpleXMLRPCServer):
         '''
         (fd, path) = tempfile.mkstemp(dir=self.temp)
         os.close(fd)
-        file_uuid = self.open_file(path, 'wb')
-        self.temp_file_paths[file_uuid] = path
-        return file_uuid
+        return self.open_file(path, 'wb')
 
     def read_file(self, file_uuid, num_bytes=None):
         '''
@@ -107,7 +107,7 @@ class FileServer(SimpleXMLRPCServer):
         file_handle = self.file_handles[file_uuid]
         return xmlrpclib.Binary(file_handle.read(num_bytes))
 
-    def read_line_file(self, file_uuid):
+    def readline_file(self, file_uuid):
         '''
         Read one line from the given file uuid. Return an empty buffer
         if and only if this file handle is at EOF.
@@ -115,13 +115,19 @@ class FileServer(SimpleXMLRPCServer):
         file_handle = self.file_handles[file_uuid]
         return xmlrpclib.Binary(file_handle.readline());
 
-    def tail_file(self, file_uuid, num_lines=10):
+    def seek_file(self, file_uuid, offset, whence):
         '''
-        Read the last num_lines lines from the given file uuid.
-        Return an empty buffer if and only if this file handle is at EOF.
+        Go to the desired position.
         '''
         file_handle = self.file_handles[file_uuid]
-        return xmlrpclib.Binary(file_util.tail(file_handle));
+        return file_handle.seek(offset, whence)
+
+    def tell_file(self, file_uuid):
+        '''
+        Return the current file position.
+        '''
+        file_handle = self.file_handles[file_uuid]
+        return file_handle.tell()
 
     def write_file(self, file_uuid, buffer):
         '''
@@ -134,6 +140,14 @@ class FileServer(SimpleXMLRPCServer):
         '''
         Close the given file uuid.
         '''
+        file_handle = self.file_handles[file_uuid]
+        file_handle.close()
+
+    def finalize_file(self, file_uuid, delete):
+        '''
+        Remove the record from the file server.
+        '''
+        path = self.file_paths.pop(file_uuid)
         file_handle = self.file_handles.pop(file_uuid, None)
-        if file_handle:
-            file_handle.close()
+        if delete and path: path_util.remove(path)
+        #print "SHOULD BE SMALL:", self.file_paths, self.file_handles

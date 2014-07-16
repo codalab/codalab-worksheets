@@ -1,6 +1,7 @@
 '''
 canonicalize provides helpers that convert ambiguous inputs to canonical forms:
-  get_spec_uuid: bundle_spec [<uuid>|<name>] -> uuid
+  get_bundle_uuid: bundle_spec (which is <uuid>|<name>) -> uuid
+  get_worksheet_uuid: worksheet_spec -> uuid
   get_target_path: target (bundle_spec, subpath) -> filesystem path
 
 These methods are only available if we have direct access to the bundle system.
@@ -18,31 +19,68 @@ from codalab.lib import (
   spec_util,
 )
 from codalab.model.util import LikeQuery
+import datetime
 
-
-def get_spec_uuid(model, bundle_spec):
+def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     '''
-    Resolve a string bundle_spec to a unique bundle uuid.
+    Resolve a string bundle_spec to a bundle uuid.
+    Types of specifications:
+    - uuid: should be unique.
+    - name[^[<index>]: there might be many uuids with this name.
+    - ^[<index>], where index is the i-th (1-based) most recent element on the current worksheet.
     '''
+    orig_bundle_spec = bundle_spec
     if not bundle_spec:
-        raise UsageError('Tried to expand empty bundle_spec!')
+        raise ('Tried to expand empty bundle_spec!')
     if spec_util.UUID_REGEX.match(bundle_spec):
         return bundle_spec
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
-        bundles = model.batch_get_bundles(uuid=LikeQuery(bundle_spec + '%'))
+        bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%')}, max_results=1)
+        last_index = 1
         message = "uuid starting with '%s'" % (bundle_spec,)
     else:
-        spec_util.check_name(bundle_spec)
-        bundles = model.search_bundles(name=bundle_spec)
-        message = "name '%s'" % (bundle_spec,)
-    if not bundles:
+        def match(bundle_spec):
+            m = spec_util.NAME_PATTERN_REGEX.match(bundle_spec)  # run: bundle whose name starts with foo
+            if m:
+                bundle_spec = m.group(1)
+                last_index = 1
+                return (bundle_spec, last_index)
+            m = spec_util.NAME_PATTERN_HISTORY_REGEX.match(bundle_spec)  # foo^3: 3rd to last bundle whose name starts with foo
+            if m:
+                bundle_spec = m.group(1)
+                last_index = int(m.group(2)) if m.group(2) != '' else 1
+                return (bundle_spec, last_index)
+            m = spec_util.HISTORY_REGEX.match(bundle_spec)  # ^3: 3rd to last bundle whose name starts with foo in this worksheet
+            if m:
+                bundle_spec = None
+                last_index = int(m.group(1)) if m.group(1) != '' else 1
+                return (bundle_spec, last_index)
+            raise UsageError('Invalid bundle_spec: %s' % bundle_spec)
+        bundle_spec, last_index = match(bundle_spec)
+
+        # TODO: replace this with more general regular expressions, but don't
+        # want it to be cumbersome.
+        if bundle_spec:
+            if bundle_spec.endswith('$'):
+                bundle_spec_query = bundle_spec[0:-1]
+            else:
+                bundle_spec_query = LikeQuery(bundle_spec + '%') 
+        else:
+            bundle_spec_query = None
+        #print bundle_spec_query, last_index
+        bundle_uuids = model.get_bundle_uuids({
+            'name': bundle_spec_query,
+            'worksheet_uuid': worksheet_uuid
+        }, max_results=last_index)
+        message = "name pattern '%s'" % (bundle_spec,)
+    if not bundle_uuids:
+        # If fail to find something in the worksheet, then backoff to global
+        if worksheet_uuid: return get_bundle_uuid(model, None, orig_bundle_spec)
         raise UsageError('No bundle found with %s' % (message,))
-    elif len(bundles) > 1:
-        raise UsageError(
-          'Found multiple bundles with %s:%s' %
-          (message, ''.join('\n  %s' % (bundle,) for bundle in bundles))
-        )
-    return bundles[0].uuid
+    # Take the last bundle
+    if last_index <= 0 or last_index > len(bundle_uuids):
+        raise UsageError('Index %d out of range, only %d bundles matched' % (last_index, len(bundle_uuids)))
+    return bundle_uuids[last_index - 1]
 
 def get_current_location(bundle_store, uuid):
     '''
@@ -52,25 +90,21 @@ def get_current_location(bundle_store, uuid):
 
 def get_target_path(bundle_store, model, target):
     '''
-    Return the on-disk location of the target (bundle_spec, path) pair.
+    Return the on-disk location of the target (bundle_uuid, subpath) pair.
     '''
-    (bundle_spec, path) = target
-    uuid = get_spec_uuid(model, bundle_spec)
+    (uuid, path) = target
     bundle = model.get_bundle(uuid)
     if not bundle.data_hash:
-        message = 'Unexpected: %s is ready but it has no data hash!' % (bundle,)
-        precondition(bundle.state != State.READY, message)
-        if bundle.state == State.FAILED:
-            raise UsageError('%s failed unrecoverably' % (bundle,))
-        elif bundle.state == State.RUNNING:
-            bundle_root = get_current_location(bundle_store, uuid)
-        else:
-            raise UsageError('%s isn\'t running yet!' % (bundle,))
+        # Note that the bundle might not be done, but return the location anyway to the temporary directory
+        bundle_root = get_current_location(bundle_store, uuid)
     else:
         bundle_root = bundle_store.get_location(bundle.data_hash)
-
     final_path = path_util.safe_join(bundle_root, path)
+
+    # This is a bit restrictive because it means we can't follow symlinks to
+    # other bundles arbitrarily, but it's safer.
     path_util.check_under_path(final_path, bundle_root)
+
     result = path_util.TargetPath(final_path)
     result.target = target
     return result
@@ -98,3 +132,13 @@ def get_worksheet_uuid(model, worksheet_spec):
           (message, ''.join('\n  %s' % (worksheet,) for worksheet in worksheets))
         )
     return worksheets[0].uuid
+
+def size_str(size):
+    if size == None: return None
+    for unit in ('', 'K', 'M', 'G'):
+        if size < 1024:
+            return '%d%s' % (size, unit)
+        size /= 1024
+
+def time_str(ts):
+    return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')

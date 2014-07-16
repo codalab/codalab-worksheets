@@ -7,49 +7,54 @@ in RemoteBundleClient.CLIENT_COMMANDS) are simply passed to the internal client.
 
 Other methods, like upload and cat, are more complicated because they perform
 filesystem operations. BundleRPCServer supports variants of these methods:
-  upload_zip: used to implement RemoteBundleClient.upload
+  upload_bundle_zip: used to implement RemoteBundleClient.upload
   open_target: used to implement RemoteBundleClient.cat
+
+Important: each call to open_temp_file, open_target, open_target_zip should
+have a matching call to finalize_file.
 '''
 import tempfile
 
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.common import precondition
-from codalab.lib import zip_util
+from codalab.lib import zip_util, path_util
 from codalab.server.file_server import FileServer
 
 
 class BundleRPCServer(FileServer):
-    SERVER_COMMANDS = (
-      'upload_zip',
-      'download_zip',
-      'open_target',
-    )
-
     def __init__(self, manager):
         self.host = manager.config['server']['host']
         self.port = manager.config['server']['port']
+        self.verbose = manager.config['server']['verbose']
+        # This server is backed by a LocalBundleClient that processes client commands
         self.client = manager.client('local', False)
-        FileServer.__init__(self, (self.host, self.port), tempfile.gettempdir(), manager.auth_handler())
+        tempdir = tempfile.gettempdir()  # Consider using CodaLab's temp directory
+        FileServer.__init__(self, (self.host, self.port), tempdir, manager.auth_handler())
+        def wrap(command, func):
+            def inner(*args, **kwargs):
+                if self.verbose >= 1:
+                    print "bundle_rpc_server: %s %s" % (command, args)
+                return func(*args, **kwargs)
+            return inner
         for command in RemoteBundleClient.CLIENT_COMMANDS:
-            self.register_function(getattr(self.client, command), command)
-        for command in self.SERVER_COMMANDS:
-            self.register_function(getattr(self, command), command)
+            self.register_function(wrap(command, getattr(self.client, command)), command)
+        for command in RemoteBundleClient.SERVER_COMMANDS:
+            self.register_function(wrap(command, getattr(self, command)), command)
 
-    def upload_zip(self, bundle_type, file_uuid, metadata, worksheet_uuid=None,
-            reupload=False):
+    def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid):
         '''
         Unzip the zip in the temp file identified by the given file uuid and then
         upload the unzipped directory. Return the new bundle's id.
+        Note: delete the file_uuid file, because it's temporary!
         '''
-        zip_path = self.temp_file_paths.pop(file_uuid, None)
+        zip_path = self.file_paths[file_uuid]  # Note: cheat and look at file_server's data
         precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
-        path = zip_util.unzip(zip_path)
-        return self.client.upload(bundle_type, path, metadata, worksheet_uuid, reupload=reupload)
-
-    def download_zip(self, bundle_spec):
-        path = self.client.get_target_path((bundle_spec, ""))
-        zip_path = zip_util.zip(path)
-        return self.open_file(zip_path, 'rb')
+        container_path = tempfile.mkdtemp()  # Make temporary directory
+        path = zip_util.unzip(zip_path, container_path)  # Unzip
+        result = self.client.upload_bundle(path, construct_args, worksheet_uuid)
+        path_util.remove(container_path)  # Remove temporary directory
+        self.finalize_file(file_uuid, True)  # Remove temporary zip
+        return result
 
     def open_target(self, target):
         '''
@@ -58,6 +63,11 @@ class BundleRPCServer(FileServer):
         '''
         path = self.client.get_target_path(target)
         return self.open_file(path, 'rb')
+
+    def open_target_zip(self, target):
+        path = self.client.get_target_path(target)
+        zip_path = zip_util.zip(path)  # Create temporary zip file
+        return self.open_file(zip_path, 'rb')
 
     def serve_forever(self):
         print 'BundleRPCServer serving to %s at port %s...' % ('ALL hosts' if self.host == '' else 'host ' + self.host, self.port)

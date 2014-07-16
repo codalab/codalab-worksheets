@@ -24,28 +24,22 @@ class MockAuthHandler(object):
     authentication is required. The implementation is such that this
     handler will accept any combination of username and password, but
     it will always resolve to the same user: User('root', 0).
+    Note: any username resolves to the same user id (0).
     '''
-    def __init__(self, users=None):
-        if users is None:
-            users = [User('root', 0)]
-        self._user = users[0]
-        self._users_by_name = {user.name: user for user in users}
-        self._users_by_id = {user.unique_id: user for user in users}
+    def __init__(self):
+        self._user = User('root', 0)
 
     def generate_token(self, grant_type, username, key):
         '''
         Always returns token information.
         '''
-        if username in self._users_by_name:
-            self._user = self._users_by_name[username]
-            return {
-                'token_type': 'Bearer',
-                'access_token': '__mock_token__',
-                'expires_in': 3600 * 24 * 365,
-                'refresh_token': '__mock_token__',
-            }
-        else:
-            return None
+        self._user = User(username, 0)
+        return {
+            'token_type': 'Bearer',
+            'access_token': '__mock_token__',
+            'expires_in': 3600 * 24 * 365,
+            'refresh_token': '__mock_token__',
+        }
 
     def validate_token(self, token):
         '''
@@ -68,9 +62,9 @@ class MockAuthHandler(object):
         not active).
         '''
         if key_type == 'names':
-            return {key: self._users_by_name.get(key, None) for key in keys}
+            return {key: User(key, 0) for key in keys}
         if key_type == 'ids':
-            return {key: self._users_by_id.get(key, None) for key in keys}
+            return {key: User(key, 0) for key in keys}
         raise ValueError('Invalid key_type')
 
     def current_user(self):
@@ -250,7 +244,3 @@ class OAuthHandler(object):
         Returns the current user as set by validate_token.
         '''
         return self._user
-
-
-
-

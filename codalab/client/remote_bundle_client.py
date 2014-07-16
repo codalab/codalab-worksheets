@@ -18,6 +18,7 @@ from codalab.common import (
 )
 from codalab.lib import (
   file_util,
+  path_util,
   zip_util,
 )
 from codalab.server.rpc_file_handle import RPCFileHandle
@@ -59,20 +60,25 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
         else:
             return xmlrpclib.Transport.make_connection(self, host)
 
+############################################################
+
 class RemoteBundleClient(BundleClient):
+    # Implemented by a nested copy of a LocalBundleClient.
     CLIENT_COMMANDS = (
-      'make',
-      'run',
-      'edit',
-      'delete',
-      'info',
-      'ls',
-      'head',
-      'search',
+      'derive_bundle',
+      'update_bundle_metadata',
+      'delete_bundle',
+      'get_bundle_uuid',
+      'search_bundle_uuids',
+      'get_bundle_info',
+      'get_bundle_infos',
+      'get_target_info',
+      'head_target',
+      'mimic',
       # Worksheet-related commands all have JSON-able inputs and outputs.
       'new_worksheet',
       'list_worksheets',
-      'worksheet_info',
+      'get_worksheet_info',
       'add_worksheet_item',
       'update_worksheet',
       'rename_worksheet',
@@ -87,25 +93,37 @@ class RemoteBundleClient(BundleClient):
       'add_user',
       'rm_user',
       'set_worksheet_perm',
-      'get_bundle_spec_info'
     )
-    COMMANDS = CLIENT_COMMANDS + (
-      'open_target',
-      'open_temp_file',
+    # Implemented by the BundleRPCServer.
+    SERVER_COMMANDS = (
+      'upload_bundle_zip',
+      'open_target',  # Limited access to files (read)
+      'open_target_zip',  # Limited access to files (read)
+    )
+    # Implemented by the FileServer (superclass of BundleRPCServer).
+    FILE_COMMANDS = (
+      'open_temp_file',  # Limited access to files (write)
       'read_file',
+      'readline_file',
+      'tell_file',
+      'seek_file',
+      'write_file',
       'close_file',
-      'upload_zip',
-      'download_zip',
+      'finalize_file',
     )
+    COMMANDS = CLIENT_COMMANDS + SERVER_COMMANDS + FILE_COMMANDS
 
-    def __init__(self, address, get_auth_token):
+    def __init__(self, address, get_auth_token, verbose):
         self.address = address
+        self.verbose = verbose
         host = get_address_host(address)
         transport = AuthenticatedTransport(host, lambda cmd: None if cmd == 'login' else get_auth_token(self))
         self.proxy = xmlrpclib.ServerProxy(host, transport=transport, allow_none=True)
         def do_command(command):
             def inner(*args, **kwargs):
                 try:
+                    if self.verbose >= 2:
+                        print 'remote_bundle_client: %s %s %s' % (command, args, kwargs)
                     return getattr(self.proxy, command)(*args, **kwargs)
                 except xmlrpclib.ProtocolError, e:
                     if e.errcode == 401:
@@ -125,64 +143,50 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def download(self, bundle_spec):
-        # TODO(dskovach) is this call to close needed?
-        (fd, dest_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
-        os.close(fd)
-        source_uuid = self.download_zip(bundle_spec)
-        source = RPCFileHandle(source_uuid, self.proxy)
-        with open(dest_path, 'wb') as dest:
-            with contextlib.closing(source):
-                file_util.copy(source, dest, autoflush=False)
-        path = zip_util.unzip(dest_path)
-        return (path, self.get_bundle_spec_info(bundle_spec))
-
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None,
-            reupload=False):
+    def upload_bundle(self, path, info, worksheet_uuid):
+        # First, zip path up (temporary local zip file).
         zip_path = zip_util.zip(path)
+        # Copy it up to the server (temporary remote zip file)
         with open(zip_path, 'rb') as source:
             remote_file_uuid = self.open_temp_file()
             dest = RPCFileHandle(remote_file_uuid, self.proxy)
-            with contextlib.closing(dest):
-                # FileServer does not expose an API for forcibly flushing writes, so
-                # we rely on closing the file to flush it.
-                file_util.copy(source, dest, autoflush=False)
-        return self.upload_zip(bundle_type, remote_file_uuid, metadata,
-                worksheet_uuid, reupload)
+            # FileServer does not expose an API for forcibly flushing writes, so
+            # we rely on closing the file to flush it.
+            file_util.copy(source, dest, autoflush=False, print_status=True)
+            dest.close()
+        # Finally, install the zip file (this will be in charge of deleting that zip file).
+        result = self.upload_bundle_zip(remote_file_uuid, info, worksheet_uuid)
+        path_util.remove(zip_path)  # Remove local zip
+        return result
 
-    def open_file(self, target):
+    def open_target_handle(self, target):
         remote_file_uuid = self.open_target(target)
-        return RPCFileHandle(remote_file_uuid, self.proxy)
+        if remote_file_uuid:
+            return RPCFileHandle(remote_file_uuid, self.proxy)
+        return None
+    def close_target_handle(self, handle):
+        handle.close()
+        self.finalize_file(handle.uuid, False)
 
-    def tail_file(self, target):
-        (bundle_spec, subpath) = target
-        file_handle = self.open_file(target)
+    def cat_target(self, target, out):
+        source = self.open_target_handle(target)
+        if not source: return
+        file_util.copy(source, out)
+        self.close_target_handle(source)
 
-        with contextlib.closing(file_handle):
-            # Print last 10 lines
-            tail = file_handle.tail()
-            print tail
+    def download_target(self, target):
+        # Create remote zip file, download to local zip file
+        (fd, zip_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
+        os.close(fd)
+        source_uuid = self.open_target_zip(target)
+        source = RPCFileHandle(source_uuid, self.proxy)
+        with open(zip_path, 'wb') as dest:
+            with contextlib.closing(source):
+                file_util.copy(source, dest, autoflush=False, print_status=True)
+        self.finalize_file(source_uuid, True)  # Delete remote zip file
 
-            def read_line():
-                return file_handle.readline()
-
-            return self.watch(bundle_spec, [read_line])
-
-    def tail_bundle(self, bundle_spec):
-        out = self.open_file((bundle_spec, 'stdout'))
-        err = self.open_file((bundle_spec, 'stderr'))
-
-        with contextlib.closing(out), contextlib.closing(err):
-
-            def out_line():
-                return out.readline()
-            def err_line():
-                return err.readline()
-
-            return self.watch(bundle_spec, [out_line, err_line])
-
-
-    def cat(self, target):
-        source = self.open_file(target)
-        with contextlib.closing(source):
-            file_util.copy(source, sys.stdout)
+        # Unpack the local zip file
+        container_path = tempfile.mkdtemp()
+        result_path = zip_util.unzip(zip_path, container_path)
+        path_util.remove(zip_path)  # Delete local zip file
+        return (result_path, container_path)

@@ -14,6 +14,7 @@ import sys
 import time
 import tempfile
 import traceback
+import os
 
 from codalab.common import (
   precondition,
@@ -66,7 +67,7 @@ class Worker(object):
                   update={'state': new_state},
                   condition={'state': bundles[0].state},
                 )
-                if not success:
+                if not success and self.verbose >= 1:
                     self.pretty_print('WARNING: update failed!')
                 return success
         return True
@@ -135,13 +136,13 @@ class Worker(object):
         random.shuffle(bundles)
         for bundle in bundles:
             if self.update_bundle_states([bundle], State.RUNNING):
-                self.run_bundle(bundle)
+                self.complete_bundle(bundle)
                 break
         else:
             if self.verbose >= 2: self.pretty_print('Failed to lock a bundle!')
         return len(bundles) > 0
 
-    def run_bundle(self, bundle):
+    def complete_bundle(self, bundle):
         '''
         Run the given bundle and then update its state to be either READY or FAILED.
         If the bundle is now READY, its data_hash should be set.
@@ -159,12 +160,11 @@ class Worker(object):
         # Get temp directory
         temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
 
-        # Run the bundle. Mark it READY if it is successful and FAILED otherwise.
-        with self.profile('Running bundle...'):
+        # Complete the bundle. Mark it READY if it is successful and FAILED otherwise.
+        with self.profile('Completing bundle...'):
             print '-- START RUN: %s' % (bundle,)
             try:
-                (data_hash, metadata) = bundle.run(
-                  self.bundle_store, parent_dict, temp_dir)
+                (data_hash, metadata) = bundle.complete(self.bundle_store, parent_dict, temp_dir)
                 state = State.READY
             except Exception:
                 # TODO(pliang): distinguish between internal CodaLab error and the program failing
@@ -185,9 +185,11 @@ class Worker(object):
                 state = State.FAILED
             self.finalize_run(bundle, state, data_hash, metadata)
             print '-- END RUN: %s [%s]' % (bundle, state)
+            print ''
         # Clean up after the run.
         with self.profile('Cleaning up temp directory...'):
-            path_util.remove(temp_dir)
+            if os.path.exists(temp_dir):
+                path_util.remove(temp_dir)
 
     def upload_failed_bundle(self, error, temp_dir):
         '''

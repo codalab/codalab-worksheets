@@ -43,6 +43,9 @@ from codalab.objects.worksheet import (
     Worksheet,
 )
 
+import re
+
+CONDITION_REGEX = re.compile('^(\w+)=(.*)$')
 
 class BundleModel(object):
     def __init__(self, engine):
@@ -65,15 +68,6 @@ class BundleModel(object):
         '''
         Create all CodaLab bundle tables if they do not already exist.
         '''
-        # TODO(skishore): This hack is a mini-migration that should stay here until
-        # the bundle dependency table has been renamed in all CodaLab deployments.
-        # After that point, it should be deleted.
-        try:
-            with self.engine.begin() as connection:
-                connection.execute('ALTER TABLE dependency RENAME TO bundle_dependency')
-        except (OperationalError, ProgrammingError):
-            # sqlite throws an OperationalError, MySQL a ProgrammingError. Ugh.
-            pass
         db_metadata.create_all(self.engine)
         self._create_default_groups()
 
@@ -91,6 +85,16 @@ class BundleModel(object):
         if values:
             connection.execute(table.insert(), values)
 
+    def make_clause(self, key, value):
+        if isinstance(value, (list, set, tuple)):
+            if not value:
+                return False
+            return key.in_(value)
+        elif isinstance(value, LikeQuery):
+            return key.like(value)
+        else:
+            return key == value
+
     def make_kwargs_clause(self, table, kwargs):
         '''
         Return a list of bundles given a dict mapping table columns to values.
@@ -99,14 +103,7 @@ class BundleModel(object):
         '''
         clauses = [true()]
         for (key, value) in kwargs.iteritems():
-            if isinstance(value, (list, set, tuple)):
-                if not value:
-                    return False
-                clauses.append(getattr(table.c, key).in_(value))
-            elif isinstance(value, LikeQuery):
-                clauses.append(getattr(table.c, key).like(value))
-            else:
-                clauses.append(getattr(table.c, key) == value)
+            clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
     def get_bundle(self, uuid):
@@ -152,23 +149,79 @@ class BundleModel(object):
         uuids = set([row.child_uuid for row in rows])
         return self.batch_get_bundles(uuid=uuids)
 
-    def search_bundles(self, **kwargs):
+    def get_bundle_uuids(self, conditions, max_results, count=False):
         '''
-        Returns a list of bundles that match the given metadata search.
+        Returns a list of bundle_uuids that have match the conditions.
+        Possible conditions (not all supported right now):
+        - uuid: could be just a prefix
+        - name (exists in bundle_metadata)
+        - parent: dependent (exists in bundle_dependency)
+        - child: downstream influence (exists in bundle_dependency)
+        - worksheet_uuid (exists in worksheet_uuid)
+        Return in reverse order.
         '''
-        if len(kwargs) != 1:
-            raise NotImplementedError('Complex searches have not been implemented.')
-        [(key, value)] = kwargs.items()
-        clause = and_(
-          cl_bundle_metadata.c.metadata_key == key,
-          cl_bundle_metadata.c.metadata_value == value,
-        )
+        # TODO: implement 'count'
+        # TODO: handle matching other conditions
+        if 'uuid' in conditions:
+            # Match the uuid only
+            clause = self.make_clause(cl_bundle.c.uuid, conditions['uuid'])
+            query = select([cl_bundle.c.uuid]).where(clause)
+        elif 'name' in conditions:
+            # Select name
+            if conditions['name']:
+                clause = and_(
+                  cl_bundle_metadata.c.metadata_key == 'name',
+                  self.make_clause(cl_bundle_metadata.c.metadata_value, conditions['name'])
+                )
+            else:
+                clause = true()
+            if conditions['worksheet_uuid']:
+                # Select things on the given worksheet
+                clause = and_(clause, self.make_clause(cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']))
+                clause = and_(clause, cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+                query = select([cl_bundle_metadata.c.bundle_uuid, cl_worksheet_item.c.id]).distinct().where(clause)
+                query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
+            else:
+                if not conditions['name']:
+                    raise UsageError('Nothing is specified')
+                # Select from all bundles
+                clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+                query = select([cl_bundle.c.uuid]).where(clause)
+                query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
+        elif '*' in conditions:
+            # Search any field: uuid, command, other metadata
+            # Each keyword is either a string (just search everywhere) or
+            # key=value, which is more targeted, and results in exact match.
+            clauses = []
+            for keyword in conditions['*']:
+                m = CONDITION_REGEX.match(keyword)
+                if m:
+                    key, value = m.group(1), m.group(2)
+                    if key == 'bundle_type' or key == 'type':
+                        clause = (cl_bundle.c.bundle_type == value)
+                    elif key == 'state':
+                        clause = (cl_bundle.c.state == value)
+                    else:
+                        clause = and_(
+                            cl_bundle_metadata.c.metadata_key == key,
+                            cl_bundle_metadata.c.metadata_value == value
+                        )
+                else:
+                    clause = []
+                    clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
+                    clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
+                    clause.append(cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'))
+                    clause = or_(*clause)
+                clauses.append(clause)
+            clause = and_(*clauses)
+            clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
+            query = select([cl_bundle.c.uuid]).distinct().where(clause).limit(max_results)
+
+        #print 'QUERY', query, query.compile().params
         with self.engine.begin() as connection:
-            metadata_rows = connection.execute(select([
-              cl_bundle_metadata.c.bundle_uuid,
-            ]).where(clause)).fetchall()
-        uuids = set([row.bundle_uuid for row in metadata_rows])
-        return self.batch_get_bundles(uuid=uuids)
+            rows = connection.execute(query).fetchall()
+        #for row in rows: print row
+        return [row[0] for row in rows]
 
     def batch_get_bundles(self, **kwargs):
         '''
@@ -188,6 +241,7 @@ class BundleModel(object):
             metadata_rows = connection.execute(cl_bundle_metadata.select().where(
               cl_bundle_metadata.c.bundle_uuid.in_(uuids)
             )).fetchall()
+
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: dict(row) for row in bundle_rows}
         for bundle_value in bundle_values.itervalues():
@@ -201,6 +255,7 @@ class BundleModel(object):
             if metadata_row.bundle_uuid not in bundle_values:
                 raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
+
         # Construct and validate all of the retrieved bundles.
         sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
         bundles = [
@@ -302,9 +357,10 @@ class BundleModel(object):
 
         If force is False, there should be no descendents of the given bundles.
         '''
+
         children = self.get_children(uuid=uuids)
         if children:
-            precondition(force, 'Bundles depend on %s:\n  %s' % (
+            precondition(force, 'The following bundles depend on %s:\n  %s' % (
               self.get_bundle(uuids[0]),
               '\n  '.join(str(child) for child in children),
             ))
@@ -312,13 +368,18 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             # We must delete bundles rows in the opposite order that we create them
             # to avoid foreign-key constraint failures.
+            connection.execute(cl_worksheet_item.delete().where(
+                cl_worksheet_item.c.bundle_uuid.in_(uuids)
+            ))
             connection.execute(cl_bundle_metadata.delete().where(
-              cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+                cl_bundle_metadata.c.bundle_uuid.in_(uuids)
             ))
             connection.execute(cl_bundle_dependency.delete().where(
-              cl_bundle_dependency.c.child_uuid.in_(uuids)
+                cl_bundle_dependency.c.child_uuid.in_(uuids)
             ))
-            connection.execute(cl_bundle.delete().where(cl_bundle.c.uuid.in_(uuids)))
+            connection.execute(cl_bundle.delete().where(
+                cl_bundle.c.uuid.in_(uuids)
+            ))
 
     #############################################################################
     # Worksheet-related model methods follow!
@@ -450,6 +511,7 @@ class BundleModel(object):
         value must be a string.
         '''
         (bundle_uuid, value, type) = item
+        if value == None: value = ''  # TODO: change the schema to allow nulls
         item_value = {
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
@@ -531,6 +593,7 @@ class BundleModel(object):
         '''
         Create system-defined groups. This is called by create_tables.
         '''
+        # TODO: remove Public altogether and get rid of renaming.
         groups = self.batch_get_groups(name='public', user_defined=False)
         if len(groups) == 0:
             groups = self.batch_get_groups(name='Public', user_defined=False)
@@ -688,6 +751,7 @@ class BundleModel(object):
             ).fetchall()
             if not rows:
                 return []
+        print 'GET', rows
         return [dict(row) for row in rows]
 
     def add_permission(self, group_uuid, object_uuid, permission):
@@ -754,4 +818,3 @@ class BundleModel(object):
             if not rows:
                 return {}
             return {row.permission for row in rows}
-

@@ -24,7 +24,7 @@ from codalab.common import State
 class BundleClient(object):
     # Commands for creating/editing bundles: upload, make, run, edit, and delete.
 
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
+    def upload_bundle(self, bundle_type, path, construct_args, worksheet_uuid):
         '''
         Create a new bundle with a copy of the directory at the given path in the
         local filesystem. Return its uuid. If the path leads to a file, the new
@@ -32,29 +32,21 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def make(self, targets, metadata):
+    def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
         '''
         Create a new bundle with dependencies on the given targets. Return its uuid.
-        targets should be a dict mapping target keys to (bundle_spec, path) pairs.
+        targets should be a dict mapping target keys to (bundle_uuid, path) pairs.
         Each of the targets will by symlinked into the new bundle at its key.
         '''
         raise NotImplementedError
 
-    def run(self, program_target, input_target, command, metadata):
-        '''
-        Run the given program bundle, create bundle of output, and return its uuid.
-        The program and input targets are (bundle_spec, path) pairs that are
-        symlinked in as dependencies during runtime.
-        '''
-        raise NotImplementedError
-
-    def edit(self, uuid, metadata):
+    def update_bundle_metadata(self, uuid, metadata):
         '''
         Update the bundle with the given uuid with the new metadata.
         '''
         raise NotImplementedError
 
-    def delete(self, bundle_spec, force=False):
+    def delete_bundle(self, bundle_spec, force=False):
         '''
         bundle_spec should be either a bundle uuid, a unique prefix of a uuid, or
         a unique bundle name.
@@ -67,7 +59,7 @@ class BundleClient(object):
 
     # Commands for browsing bundles: info, ls, cat, search, and wait.
 
-    def info(self, bundle_spec, parents=False, children=False):
+    def get_bundle_info(self, bundle_uuid, parents=False, children=False):
         '''
         Return a dict containing detailed information about a given bundle:
           bundle_type: one of (program, dataset, macro, make, run)
@@ -88,97 +80,32 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def ls(self, target):
+    def get_target_info(self, target, depth):
         '''
-        Return (list of directories, list of files) located underneath the target.
-        The target should be a (bundle_spec, path) pair.
+        Return information about the given target (bundle_uuid, subpath).
+        Recurse up to the given depth.
         '''
         raise NotImplementedError
 
-    def cat(self, target):
+    def cat_target(self, target):
         '''
         Print the contents of the target file to stdout.
         '''
         raise NotImplementedError
 
-    def head(self, target, lines):
+    def head_target(self, target, num_lines):
         '''
         Return contents of target file as a list of lines.
         '''
         raise NotImplementedError
 
-    def tail_file(self, target):
+    def download_target(self, target):
         '''
-        Watch the tail of target file at stdout.
-        '''
-        raise NotImplementedError
-
-    def tail_bundle(self, bundle_spec):
-        '''
-        Watch the tail of stdout and stderr at stdout.
+        Download a target. Return the local path to where target has been
+        downloaded and whether the path is temporary (returner controls it
+        and is responsible for deleting it).
         '''
         raise NotImplementedError
-
-    def search(self, query=None):
-        '''
-        Run a search on bundle metadata and return data for all bundles that match.
-        The data for each bundle is a dict with the same keys as a dict from info.
-        '''
-        raise NotImplementedError
-
-    def watch(self, bundle_spec, fns):
-        '''
-        Block on the execution of the given bundle.
-        fns should be a list of functions that return strings.
-        Periodically execute fns and print output.
-        Return READY or FAILED based on whether it was computed successfully.
-        '''
-        # Constants for a simple exponential backoff routine that will decrease the
-        # frequency at which we check this bundle's state from 1s to 1m.
-        period = 1.0
-        backoff = 1.1
-        max_period = 60.0
-        info = self.info(bundle_spec)
-        while info['state'] not in (State.READY, State.FAILED):
-            # Update bundle info
-            info = self.info(bundle_spec)
-
-            # Call update functions
-            change = False
-            for fn in fns:
-                result = fn()
-                while not result == '':
-                    change = True
-                    stdout.write(result)
-                    result = fn()
-            stdout.flush()
-            # Sleep if nothing happened
-            if change == False:
-                time.sleep(period)
-                period = min(backoff*period, max_period)
-
-        return info['state']
-
-    def download(self, target):
-        '''
-        Download a bundle file over HTTP. Return PROGRESS or FAILED
-        based on whether it was downloaded successfully.
-        '''
-        raise NotImplementedError
-
-    def get_home(self):
-        raise NotImplementedError
-
-    def get_host(self):
-        raise NotImplementedError
-
-    def update_host(self):
-        raise NotImplementedError
-
-    def update_verbosity(self):
-        raise NotImplementedError
-
-
 
     #############################################################################
     # Worksheet-related client methods follow!
@@ -196,7 +123,7 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def worksheet_info(self, worksheet_spec):
+    def get_worksheet_info(self, worksheet_spec):
         '''
         worksheet_spec should be either a worksheet uuid, a unique prefix of a uuid,
         or a unique worksheet name. Return an info dict for this worksheet.

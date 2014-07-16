@@ -4,23 +4,24 @@ BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from time import sleep
 import contextlib
+import os
 
 from codalab.bundles import (
-  get_bundle_subclass,
-  UPLOADED_TYPES,
+    get_bundle_subclass,
+    UPLOADED_TYPES,
 )
 from codalab.common import (
-  precondition,
-  State,
-  UsageError,
+    precondition,
+    State,
+    UsageError,
     AuthorizationError,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
-  canonicalize,
-  path_util,
-  file_util,
-  worksheet_util,
+    canonicalize,
+    path_util,
+    file_util,
+    worksheet_util,
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
@@ -39,221 +40,260 @@ def authentication_required(func):
     return decorate
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, auth_handler):
+    def __init__(self, address, bundle_store, model, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
         self.auth_handler = auth_handler
+        self.verbose = verbose
 
     def _current_user_id(self):
         return self.auth_handler.current_user().unique_id
 
-    def get_bundle_info(self, bundle, parents=None, children=None):
+    def _bundle_to_bundle_info(self, bundle, children=None):
+        '''
+        Helper: Convert bundle to bundle_info.
+        '''
         hard_dependencies = bundle.get_hard_dependencies()
+        # See tables.py
         result = {
-          'bundle_type': bundle.bundle_type,
-          'data_hash': bundle.data_hash,
-          'metadata': bundle.metadata.to_dict(),
-          'state': bundle.state,
           'uuid': bundle.uuid,
+          'bundle_type': bundle.bundle_type,
+          'command': bundle.command,
+          'data_hash': bundle.data_hash,
+          'state': bundle.state,
+          'metadata': bundle.metadata.to_dict(),
+          'dependencies': [dep.to_dict() for dep in bundle.dependencies],
           'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
         }
-        if parents is not None:
-            result['parents'] = [str(parent) for parent in parents]
         if children is not None:
-            result['children'] = [str(child) for child in children]
+            result['children'] = [child.simple_str() for child in children]
         return result
 
-    def get_spec_uuid(self, bundle_spec):
-        return canonicalize.get_spec_uuid(self.model, bundle_spec)
+    def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
+        return canonicalize.get_bundle_uuid(self.model, worksheet_uuid, bundle_spec)
 
+    def search_bundle_uuids(self, worksheet_uuid, keywords, max_results, count):
+        return self.model.get_bundle_uuids({
+            '*': keywords,
+            'worksheet_uuid': worksheet_uuid
+        }, max_results=max_results, count=count)
+
+    # Helper
     def get_target_path(self, target):
         return canonicalize.get_target_path(self.bundle_store, self.model, target)
 
+    # Helper
     def get_bundle_target(self, target):
-        (bundle_spec, subpath) = target
-        return (self.model.get_bundle(self.get_spec_uuid(bundle_spec)), subpath)
-
-    def get_bundle(self, bundle_spec):
-        return self.model.get_bundle(self.get_spec_uuid(bundle_spec))
-
-    # Result is a (serializable) dict.
-    # Also called by RemoteBundleClient download method.
-    def get_bundle_spec_info(self, bundle_spec):
-        return self.get_bundle_info(self.get_bundle(bundle_spec))
+        (bundle_uuid, subpath) = target
+        return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, worksheet_spec):
-        return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
-
-    def expand_worksheet_item(self, item):
-        (bundle_spec, value, type) = item
-        if bundle_spec is None:
-            return (None, value or '', type or '')
-        try:
-            bundle_uuid = self.get_spec_uuid(bundle_spec)
-        except UsageError, e:
-            return (bundle_spec, str(e) if value is None else value)
-        if bundle_uuid != bundle_spec and value is None:
-            # The user specified a bundle for the first time without help text.
-            # Produce some auto-generated help text here.
-            bundle = self.model.get_bundle(bundle_uuid)
-            value = bundle_spec
-            if getattr(bundle.metadata, 'description', None):
-                value = '%s: %s' % (value, bundle.metadata.description)
-        return (bundle_uuid, value or '', type or '')
+        # Create default worksheet if necessary
+        if worksheet_spec == Worksheet.DEFAULT_WORKSHEET_NAME:
+            try:
+                return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
+            except UsageError:
+                return self.new_worksheet(worksheet_spec)
+        else:
+            return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
 
     def validate_user_metadata(self, bundle_subclass, metadata):
         '''
         Check that the user did not supply values for any auto-generated metadata.
         Raise a UsageError with the offending keys if they are.
         '''
-        legal_keys = set(spec.key for spec in
-          bundle_subclass.get_user_defined_metadata())
+        #legal_keys = set(spec.key for spec in bundle_subclass.get_user_defined_metadata())
+        # Allow generated keys as well 
+        legal_keys = set(spec.key for spec in bundle_subclass.METADATA_SPECS)
         illegal_keys = [key for key in metadata if key not in legal_keys]
         if illegal_keys:
             raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-    def download(self, bundle_spec):
-        path = self.get_target_path((bundle_spec, ""))
-        return (path, self.get_bundle_spec_info(bundle_spec))
+    def bundle_info_to_construct_args(self, info):
+        # Convert info (see bundle_model) to the actual information to construct
+        # the bundle.  This is a bit ad-hoc.  Future: would be nice to have a more
+        # uniform way of serializing bundle information.
+        bundle_type = info['bundle_type']
+        #print 'CONVERT', bundle_type, info
+        if bundle_type == 'program' or bundle_type == 'dataset':
+            construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
+                              'data_hash': info['data_hash']}
+        elif bundle_type == 'make' or bundle_type == 'run':
+            targets = { item['child_path'] : (item['child_uuid'], item['child_path'])
+                        for item in info['dependencies'] }
+            construct_args = {'targets': targets, 'command': info['command'],
+                              'metadata': info['metadata'], 'uuid': info['uuid'],
+                              'data_hash': info['data_hash']}
+        else:
+            raise UsageError('Invalid bundle_type: %s' % bundle_type)
+        return construct_args
 
-    def cp_upload(self, bundle_type, path, metadata, uuid, worksheet_uuid=None):
-        bundle_subclass = get_bundle_subclass(bundle_type)
-        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
-        # TODO(dskovach) not sure why this cast is needed
-        if ('data_size' in metadata and 
-                not isinstance(metadata['data_size'], long)):
-            metadata['data_size'] = long(metadata['data_size'])
-
-        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata, uuid=uuid)
-        return self.insert_bundle(bundle, worksheet_uuid)
-
-    def upload(self, bundle_type, path, metadata, worksheet_uuid=None):
+    def upload_bundle(self, path, info, worksheet_uuid):
+        bundle_type = info['bundle_type']
+        if 'uuid' in info:
+            existing = True
+            construct_args = self.bundle_info_to_construct_args(info)
+        else:
+            existing = False
+            construct_args = {'metadata': info['metadata']}
+        metadata = construct_args['metadata']
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
-        precondition(bundle_type in UPLOADED_TYPES, message)
+        if not existing:
+            precondition(bundle_type in UPLOADED_TYPES, message)
         bundle_subclass = get_bundle_subclass(bundle_type)
+        if not existing:
+            self.validate_user_metadata(bundle_subclass, metadata)
 
-        self.validate_user_metadata(bundle_subclass, metadata)
         # Upload the given path and record additional metadata from the upload.
         (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
         metadata.update(bundle_store_metadata)
+        # TODO: check that if the data hash already exists, it's the same as before.
+        construct_args['data_hash'] = data_hash
 
-        bundle = bundle_subclass.construct(data_hash=data_hash, metadata=metadata)
-        return self.insert_bundle(bundle, worksheet_uuid)
-
-    # Called by upload, cp_upload
-    def insert_bundle(self, bundle, worksheet_uuid):
+        bundle = bundle_subclass.construct(**construct_args)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, bundle.uuid)
+            self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
         return bundle.uuid
 
-    def make(self, targets, metadata, worksheet_uuid=None):
-        bundle_subclass = get_bundle_subclass('make')
+    def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
+        '''
+        For both make and run bundles.
+        '''
+        bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
-        targets = {
-          key: self.get_bundle_target(target)
-          for (key, target) in targets.iteritems()
-        }
-        bundle = bundle_subclass.construct(targets, metadata)
+        bundle = bundle_subclass.construct(targets=targets, command=command, metadata=metadata)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, bundle.uuid)
+            self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
         return bundle.uuid
 
-    def run(self, targets, command, metadata, worksheet_uuid=None):
-        bundle_subclass = get_bundle_subclass('run')
-        self.validate_user_metadata(bundle_subclass, metadata)
-        targets = {
-          key: self.get_bundle_target(target)
-          for (key, target) in targets.iteritems()
-        }
-        bundle = bundle_subclass.construct(targets, command, metadata)
-        self.model.save_bundle(bundle)
-        self.bundle_store.make_temp_location(bundle.uuid)
-        if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, bundle.uuid)
-        return bundle.uuid
-
-    def open_target(self, target):
-        (bundle_spec, subpath) = target
-        path = self.get_target_path(target)
-        path_util.check_isfile(path, 'open_target')
-        return open(path)
-
-    def tail_file(self, target):
-        (bundle_spec, subpath) = target
-        file_handle = self.open_target(target)
-
-        with contextlib.closing(file_handle):
-            # Print last 10 lines
-            tail = file_util.tail(file_handle)
-            print tail
-
-            def read_line():
-                return file_handle.readline()
-
-            return self.watch(bundle_spec, [read_line])
-
-    def tail_bundle(self, bundle_spec):
-        out = self.open_target((bundle_spec, 'stdout'))
-        err = self.open_target((bundle_spec, 'stderr'))
-
-        with contextlib.closing(out), contextlib.closing(err):
-
-            def out_line():
-                return out.readline()
-            def err_line():
-                return err.readline()
-
-            return self.watch(bundle_spec, [out_line, err_line])
-
-    def edit(self, uuid, metadata):
+    def update_bundle_metadata(self, uuid, metadata):
         bundle = self.model.get_bundle(uuid)
         self.validate_user_metadata(bundle, metadata)
         self.model.update_bundle(bundle, {'metadata': metadata})
 
-    def delete(self, bundle_spec, force=False):
-        uuid = self.get_spec_uuid(bundle_spec)
+    def delete_bundle(self, uuid, force=False):
         children = self.model.get_children(uuid)
         if children and not force:
-            raise UsageError('Bundles depend on %s:\n  %s' % (
-              bundle_spec,
-              '\n  '.join(str(child) for child in children),
+            raise UsageError('The following bundles depend on %s:\n  %s' % (
+              uuid,
+              '\n  '.join(child.simple_str() for child in children),
             ))
-        child_worksheets = self.model.get_child_worksheets(uuid)
-        if child_worksheets and not force:
-            raise UsageError('Worksheets depend on %s:\n  %s' % (
-              bundle_spec,
-              '\n  '.join(str(child) for child in child_worksheets),
-            ))
+        # Don't need to worry about worksheet dependencies; there are always
+        # worksheet dependencies.
+        #child_worksheets = self.model.get_child_worksheets(uuid)
+        #if child_worksheets and not force:
+        #    raise UsageError('The following worksheets depend on %s:\n  %s' % (
+        #      uuid,
+        #      '\n  '.join(child.simple_str() for child in child_worksheets),
+        #    ))
         self.model.delete_bundle_tree([uuid], force=force)
 
-    def info(self, bundle_spec, parents=None, children=None):
-        uuid = self.get_spec_uuid(bundle_spec)
+    def get_bundle_info(self, uuid, get_children=False):
+        '''
+        Return information about the bundle.
+        get_children: whether we want to return information about the children too.
+        '''
         bundle = self.model.get_bundle(uuid)
-        parents = self.model.get_parents(uuid) if parents else None
-        children = self.model.get_children(uuid) if children else None
-        return self.get_bundle_info(bundle, parents=parents, children=children)
+        children = self.model.get_children(uuid) if get_children else None
+        return self._bundle_to_bundle_info(bundle, children=children)
 
-    def ls(self, target):
+    def get_bundle_infos(self, uuids):
+        # TODO: move get_children logic into this.
+        bundles = self.model.batch_get_bundles(uuid=uuids)
+        bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
+        return bundle_dict
+
+    # Return information about an individual target inside the bundle.
+
+    def get_target_info(self, target, depth):
         path = self.get_target_path(target)
-        return path_util.ls(path)
+        return path_util.get_info(path, depth)
 
-    def cat(self, target):
+    def cat_target(self, target, out):
         path = self.get_target_path(target)
-        path_util.cat(path)
+        path_util.cat(path, out)
 
-    def head(self, target, lines=10):
+    def head_target(self, target, num_lines):
         path = self.get_target_path(target)
-        return path_util.read_file(path, lines)
+        return path_util.read_lines(path, num_lines)
 
-    def search(self, query=None):
-        if query:
-            bundles = self.model.search_bundles(**query)
-        else:
-            bundles = self.model.batch_get_bundles()
-        return [self.get_bundle_info(bundle) for bundle in bundles]
+    def open_target_handle(self, target):
+        path = self.get_target_path(target)
+        return open(path) if path and os.path.exists(path) else None
+    def close_target_handle(self, handle):
+        handle.close()
+
+    def download_target(self, target):
+        # Don't need to download anything because it's already local.
+        return (self.get_target_path(target), None)
+
+    def mimic(self,
+              old_input_bundle_uuid, new_input_bundle_uuid,
+              old_output_bundle_uuid, new_output_bundle_name,
+              worksheet_uuid, depth, stop_early):
+        # Look at ancestors of old_output_bundle_uuid until we arrive
+        # at old_input_bundle_uuid and/or reached some depth.
+        infos = {}  # uuid -> bundle info
+        bundle_infos = []  # These are the ones that we need to generate
+        bundle_uuids = set([old_output_bundle_uuid])
+        for _ in range(depth):
+            #print bundle_uuids
+            new_bundle_uuids = set()
+            for bundle_uuid in bundle_uuids:
+                info = infos[bundle_uuid] = self.get_bundle_info(bundle_uuid)
+                for dep in info['dependencies']:
+                    new_bundle_uuids.add(dep['parent_uuid'])
+            bundle_uuids = new_bundle_uuids
+            if stop_early and old_input_bundle_uuid in bundle_uuids: break
+
+        # Now go recursively create the bundles.
+        old_to_new = {}
+        old_to_new[old_input_bundle_uuid] = new_input_bundle_uuid
+        def recurse(old_bundle_uuid): # Return the corresponding new version if applicable
+            if old_bundle_uuid in old_to_new:
+                #print old_bundle_uuid, 'cached'
+                return old_to_new[old_bundle_uuid]
+
+            # Don't have any more information
+            if old_bundle_uuid not in infos:
+                #print old_bundle_uuid, 'no information'
+                return old_bundle_uuid
+
+            info = infos[old_bundle_uuid]
+            new_dependencies = [{
+                'parent_uuid': recurse(dep['parent_uuid']),
+                'parent_path': dep['parent_path'],
+                'child_uuid': dep['child_uuid'],  # This is just a placeholder to do the equality test
+                'child_path': dep['child_path']
+            } for dep in info['dependencies']]
+            # Nothing has changed
+            if new_dependencies == info['dependencies']:
+                #print old_bundle_uuid, 'nothing changed'
+                return old_bundle_uuid
+
+            # Create a new bundle
+            targets = {}
+            for dep in new_dependencies:
+                targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
+            metadata = info['metadata']
+            if old_bundle_uuid == old_output_bundle_uuid:
+                metadata['name'] = new_output_bundle_name
+            else:
+                metadata['name'] = new_output_bundle_name + '-' + info['metadata']['name']
+            # TODO: pop all the automatically generated pairs automatically
+            metadata.pop('data_size')
+            metadata.pop('created')
+            #print targets
+            new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
+                targets, info['command'], info['metadata'], worksheet_uuid)
+
+            old_to_new[old_bundle_uuid] = new_bundle_uuid
+            return new_bundle_uuid
+
+        return recurse(old_output_bundle_uuid)
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!
@@ -272,66 +312,66 @@ class LocalBundleClient(BundleClient):
         else:
             return self.model.list_worksheets(current_user.unique_id)
 
-    def worksheet_info(self, worksheet_spec):
+    def get_worksheet_info(self, worksheet_spec):
+        '''
+        The returned info object contains items which are (bundle_info, value_object, type).
+        '''
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
         current_user = self.auth_handler.current_user()
         current_user_id = None if current_user is None else current_user.unique_id
         check_has_read_permission(self.model, current_user_id, worksheet)
-        result = worksheet.get_info_dict()
-        # We need to do some finicky stuff here to convert the bundle_uuids into
-        # bundle info dicts. However, we still make O(1) database calls because we
-        # use the optimized batch_get_bundles multiget method.
-        uuids = set(
-            bundle_uuid for (bundle_uuid, _, _) in result['items']
-          if bundle_uuid is not None
-        )
-        bundles = self.model.batch_get_bundles(uuid=uuids)
-        bundle_dict = {bundle.uuid: self.get_bundle_info(bundle) for bundle in bundles}
 
-        # If a bundle uuid is orphaned, we still have to return the uuid in a dict.
-        items = []
-        result['items'] = [
-          (
-               None if bundle_uuid is None else
-               bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}),
-                    worksheet_util.expand_worksheet_item_info(value, type),
-                    type,
-          )
-            for (bundle_uuid, value, type) in result['items']
-        ]
+        # Create the info by starting out with the metadata.
+        # The items here are (bundle_uuid, value, type).
+        result = worksheet.get_info_dict()
+        result['items'] = self._convert_items_from_db(result['items'])
         return result
 
+    def _convert_items_from_db(self, items):
+        '''
+        (bundle_uuid, value, type) -> (bundle_info, value_obj, type)
+        '''
+        # We need to do some finicky stuff here to convert the bundle_uuids into
+        # bundle_info dicts. However, we still make O(1) database calls because we
+        # use the optimized batch_get_bundles multiget method.
+        uuids = set(
+            bundle_uuid for (bundle_uuid, value, type) in items
+            if bundle_uuid is not None
+        )
+        bundles = self.model.batch_get_bundles(uuid=uuids)
+        bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
+
+        # Go through the items and substitute the components
+        new_items = []
+        for (bundle_uuid, value, type) in items:
+            bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
+            value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
+            new_items.append((bundle_info, value_obj, type))
+        return new_items
+
+
     @authentication_required
-    def add_worksheet_item(self, worksheet_spec, bundle_spec):
-        worksheet_uuid = self.get_worksheet_uuid(worksheet_spec)
+    def add_worksheet_item(self, worksheet_uuid, item):
         worksheet = self.model.get_worksheet(worksheet_uuid)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
-        bundle_uuid = self.get_spec_uuid(bundle_spec)
-        bundle = self.model.get_bundle(bundle_uuid)
-        # Compute a nice value for this item, using the description if it exists.
-        item_value = bundle_spec
-        if getattr(bundle.metadata, 'description', None):
-            item_value = '%s: %s' % (item_value, bundle.metadata.description)
-        item = (bundle.uuid, item_value, 'bundle')
         self.model.add_worksheet_item(worksheet_uuid, item)
 
     @authentication_required
     def update_worksheet(self, worksheet_info, new_items):
-        # Convert (bundle_spec, value) pairs into canonical (bundle_uuid, value, type) pairs.
+        # Convert (bundle_spec, value, type) pairs into canonical (bundle_uuid, value, type) pairs.
         # This step could take O(n) database calls! However, it will only hit the
         # database for each bundle the user has newly specified by name - bundles
         # that were already in the worksheet will be referred to by uuid, so
-        # get_spec_uuid will be an in-memory call for these. This hit is acceptable.
-        canonical_items = [self.expand_worksheet_item(item) for item in new_items]
+        # get_bundle_uuid will be an in-memory call for these. This hit is acceptable.
         worksheet_uuid = worksheet_info['uuid']
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         try:
-            self.model.update_worksheet(
-              worksheet_uuid, last_item_id, length, canonical_items)
+            new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
+            self.model.update_worksheet(worksheet_uuid, last_item_id, length, new_items)
         except UsageError:
             # Turn the model error into a more readable one using the object.
             raise UsageError('%s was updated concurrently!' % (worksheet,))
@@ -389,13 +429,13 @@ class LocalBundleClient(BundleClient):
     def group_info(self, group_spec):
         group_info = permission.unique_group_with_user(self.model, group_spec, self._current_user_id())
         users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
-        user_ids = [int(group_info['owner_id'])]
-        user_ids.extend([int(u['user_id']) for u in users_in_group])
+        user_ids = [group_info['owner_id']]
+        user_ids.extend([u['user_id'] for u in users_in_group])
         users = self.auth_handler.get_users('ids', user_ids)
         members = []
         roles = {}
         for row in users_in_group:
-            roles[int(row['user_id'])] = 'co-owner' if row['is_admin'] == True else 'member'
+            roles[row['user_id']] = 'co-owner' if row['is_admin'] == True else 'member'
         roles[group_info['owner_id']] = 'owner'
         for user_id in user_ids:
             if user_id in users:

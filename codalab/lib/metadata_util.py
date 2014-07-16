@@ -14,6 +14,7 @@ import tempfile
 
 from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
+from codalab.lib import path_util
 
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
@@ -51,7 +52,7 @@ def add_auto_argument(parser):
     )
 
 
-def request_missing_data(bundle_subclass, args, initial_metadata=None):
+def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
     '''
     For any metadata arguments that were not supplied through the command line,
     pop up an editor and request that data from the user.
@@ -61,32 +62,35 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
           spec.key: getattr(args, metadata_key_to_argument(spec.key,))
           for spec in bundle_subclass.get_user_defined_metadata()
         }
-        # A special-case: if the user specified all required metadata on the command
-        # line, do NOT show the editor. This allows for programmatic bundle creation.
-        if not any(value is None for value in initial_metadata.values()):
-            return initial_metadata
+
     # Fill in default values for all unsupplied metadata keys.
+    new_initial_metadata = {}
     for spec in bundle_subclass.get_user_defined_metadata():
-        if not initial_metadata[spec.key]:
+        new_initial_metadata[spec.key] = initial_metadata.get(spec.key)
+        if not new_initial_metadata[spec.key]:
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)
-            initial_metadata[spec.key] = default
+            new_initial_metadata[spec.key] = default
+    initial_metadata = new_initial_metadata
+
     # If the --auto flag was used, skip showing the editor.
     if getattr(args, 'auto', False):
         return filter_anonymous_name(bundle_subclass, initial_metadata)
+
     # Construct a form template with the required keys, prefilled with the
     # command-line metadata options.
     template_lines = []
+    bundle_type = bundle_subclass.BUNDLE_TYPE
+    template_lines.append(os.linesep.join([
+      '// Enter metadata for the new %s bundle, then save and quit.' % (bundle_type,),
+      '// To cancel the upload, delete the name.',
+    ]))
     for spec in bundle_subclass.get_user_defined_metadata():
         initial_value = initial_metadata.get(spec.key) or ''
         if spec.type == set:
             initial_value = ' '.join(initial_value or [])
-        template_lines.append('%s: %s' % (spec.key.title(), initial_value))
-    bundle_type = bundle_subclass.BUNDLE_TYPE
-    template_lines.append(os.linesep.join([
-      '# Record metadata for the new %s, then save and quit.' % (bundle_type,),
-      '# Leave the name blank to cancel the upload.',
-    ]))
+        template_lines.append('%s: %s' % (spec.key, initial_value))
     template = (os.linesep + os.linesep).join(template_lines)
+
     # Show the form to the user in their editor of choice and parse the result.
     editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
     tempfile_name = ''
@@ -98,23 +102,24 @@ def request_missing_data(bundle_subclass, args, initial_metadata=None):
         subprocess.call([editor, tempfile_name])
         with open(tempfile_name, 'rb') as form:
             form_result = form.readlines()
-        os.remove(tempfile_name)
+        path_util.remove(tempfile_name)
     return parse_metadata_form(bundle_subclass, form_result)
 
 def parse_metadata_form(bundle_subclass, form_result):
     '''
-    Parse the result of a form template produced in request_missing_metadata.
+    Parse the result of a form template produced out request_missing_metadata.
     '''
     metadata_specs = bundle_subclass.get_user_defined_metadata()
     metadata_types = {spec.key: spec.type for spec in metadata_specs}
     result = {}
     for line in form_result:
         line = line.strip()
-        if line and not line.startswith('#'):
+        if line and not line.startswith('//'):
             if ':' not in line:
+                # TODO: don't delete everything; go back to the editor
                 raise UsageError('Malformatted line (no colon): %s' % (line,))
             (metadata_key, remainder) = line.split(':', 1)
-            metadata_key = metadata_key.lower()
+            # TODO: handle multiple lines
             if metadata_key not in metadata_types:
                 raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
             metadata_type = metadata_types[metadata_key]

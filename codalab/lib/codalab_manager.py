@@ -35,6 +35,7 @@ import time
 
 from codalab.client import is_local_address
 from codalab.common import UsageError
+from codalab.objects.worksheet import Worksheet
 
 def cached(fn):
     def inner(self):
@@ -65,9 +66,9 @@ class CodaLabManager(object):
         config_path = self.config_path()
         if not os.path.exists(config_path):
             write_pretty_json({
-                'cli': {'verbose': False},
+                'cli': {'verbose': 1},
                 'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800,
-                           'auth': {'class': 'MockAuthHandler'}},
+                    'auth': {'class': 'MockAuthHandler'}, 'verbose': 1},
                 'aliases': {
                     'dev': 'https://qaintdev.cloudapp.net/bundleservice', # TODO: replace this with something official when it's ready
                     'localhost': 'http://localhost:2800',
@@ -97,9 +98,10 @@ class CodaLabManager(object):
         from codalab.lib import path_util
         # Default to this directory in the user's home directory.
         # In the future, allow customization based on.
-        result = path_util.normalize("~/.codalab")
-        path_util.make_directory(result)
-        return result
+        home = os.getenv('CODALAB_HOME', '~/.codalab')
+        home = path_util.normalize(home)
+        path_util.make_directory(home)
+        return home
 
     @cached
     def bundle_store(self):
@@ -115,6 +117,7 @@ class CodaLabManager(object):
         '''
         Return the current session name.
         '''
+        # TODO: move this to another file (say, windows_util.py)
         if sys.platform == 'win32' and not hasattr(os, 'getppid'):
 
             from ctypes.wintypes import DWORD, POINTER, ULONG, LONG
@@ -158,6 +161,7 @@ class CodaLabManager(object):
 
             os.getppid = getppid
 
+        #print "SESSION_NAME: ", str(os.getppid())
         return str(os.getppid())
 
     @cached
@@ -168,7 +172,8 @@ class CodaLabManager(object):
         sessions = self.state['sessions']
         name = self.session_name()
         if name not in sessions:
-            sessions[name] = {'address': 'local'}  # Default: use local
+            # Default: use local
+            sessions[name] = {'address': 'local'}
         return sessions[name]
 
     @cached
@@ -211,6 +216,7 @@ class CodaLabManager(object):
         '''
         Return a client given the address.  Note that this can either be called
         by the CLI (is_cli=True) or the server (is_cli=False).
+        If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
         if address in self.clients:
@@ -220,7 +226,7 @@ class CodaLabManager(object):
             model = self.model()
             auth_handler = self.auth_handler()
             from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, auth_handler)
+            client = LocalBundleClient(address, bundle_store, model, auth_handler, self.cli_verbose)
             self.clients[address] = client
             if is_cli:
                 # Set current user
@@ -228,10 +234,12 @@ class CodaLabManager(object):
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client))
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose())
             self.clients[address] = client
             self._authenticate(client)
         return client
+
+    def cli_verbose(self): return self.config['cli']['verbose']
 
     def _authenticate(self, client):
         '''
@@ -276,7 +284,7 @@ class CodaLabManager(object):
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}
         # For a local client with mock credentials, use the default username.
-        username = ''
+        username = None
         if is_local_address(client.address):
             from codalab.server.auth import MockAuthHandler
             if type(self.auth_handler()) is MockAuthHandler:
@@ -302,6 +310,8 @@ class CodaLabManager(object):
         session = self.session()
         client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
+        if not worksheet_uuid:
+            worksheet_uuid = client.get_worksheet_uuid(Worksheet.DEFAULT_WORKSHEET_NAME)
         return (client, worksheet_uuid)
 
     def set_current_worksheet_uuid(self, client, worksheet_uuid):

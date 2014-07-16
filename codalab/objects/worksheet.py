@@ -20,9 +20,9 @@ from codalab.model.orm_object import ORMObject
 def item_sort_key(item):
     return item['id'] if item['sort_key'] is None else item['sort_key']
 
-
 class Worksheet(ORMObject):
     COLUMNS = ('uuid', 'name', 'owner_id')
+    DEFAULT_WORKSHEET_NAME = 'home'
 
     def validate(self):
         '''
@@ -36,6 +36,9 @@ class Worksheet(ORMObject):
 
     def __repr__(self):
         return 'Worksheet(uuid=%r, name=%r)' % (self.uuid, self.name)
+
+    def simple_str(self):
+        return '%s(%s)' % (self.name, self.uuid)
 
     def update_in_memory(self, row, strict=False):
         items = row.pop('items', None)
