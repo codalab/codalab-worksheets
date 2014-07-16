@@ -609,15 +609,16 @@ class BundleCLI(object):
         # Verbose output
         if args.verbose:
             print 'contents:'
-            info = self.print_target_info((bundle_uuid, ''))
+            info = self.print_target_info((bundle_uuid, ''), decorate=True)
             # Print first 10 lines of stdin and stdout
             contents = info.get('contents')
             if contents:
                 for item in contents:
                     if item['name'] not in ['stdout', 'stderr']: continue
                     print wrap1(item['name'])
-                    for line in client.head_target((bundle_uuid, item['name']), 10):
-                        print line,
+                    self.print_target_info((bundle_uuid, item['name']), decorate=True)
+                    #for line in client.head_target((bundle_uuid, item['name']), 10):
+                        #print line,
 
     def format_basic_info(self, info):
         metadata = collections.defaultdict(lambda: None, info['metadata'])
@@ -628,6 +629,7 @@ class BundleCLI(object):
           'data_hash': info['data_hash'] or '<no hash>',
           'state': info['state'],
           'name': metadata['name'] or '<no name>',
+          'command': info.get('command', '<none>'),
           'description': metadata['description'] or '<no description>',
         }
         # Format statistics about this bundle - creation time, runtime, size, etc.
@@ -679,6 +681,7 @@ type:        {bundle_type}
 name:        {name}
 uuid:        {uuid}
 data_hash:   {data_hash}
+command:     {command}
 state:       {state}
 {stats}description: {description}
 {hard_dependencies}{dependencies}{failure_message}
@@ -691,23 +694,27 @@ state:       {state}
         )
         args = parser.parse_args(argv)
         target = self.parse_target(args.target_spec)
-        self.print_target_info(target)
+        self.print_target_info(target, decorate=False)
 
     # Helper: shared between info and cat
-    def print_target_info(self, target):
+    def print_target_info(self, target, decorate):
         client = self.manager.current_client()
         info = client.get_target_info(target, 1)
         if 'type' not in info:
             self.exit('Target doesn\'t exist: %s/%s' % target)
         if info['type'] == 'file':
-            client.cat_target(target, sys.stdout)
+            if decorate:
+                for line in client.head_target(target, 10):
+                    print '  ' + line,
+            else:
+                client.cat_target(target, sys.stdout)
         if info['type'] == 'directory':
             contents = [
                 {'name': x['name'], 'size': canonicalize.size_str(x['size']) if x['type'] == 'file' else 'dir'}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'size'), contents, justify={'size':1})
+            self.print_table(('name', 'size'), contents, justify={'size':1}, indent='  ' if decorate else '')
         return info
 
     def do_wait_command(self, argv, parser):
@@ -777,7 +784,7 @@ state:       {state}
                 time.sleep(period)
                 period = min(backoff*period, max_period)
         for handle in handles:
-            if handle: self.close_target_handle(handle)
+            if handle: client.close_target_handle(handle)
         return info['state']
 
     def do_mimic_command(self, argv, parser):
@@ -986,10 +993,12 @@ state:       {state}
             is_last_newline = False
             for mode, data in interpreted['items']:
                 is_newline = (data == '')
-                if mode == 'inline' or mode == 'markup':
+                if mode == 'inline' or mode == 'markup' or mode == 'contents':
                     if not (is_newline and is_last_newline):
                         if mode == 'inline':
                             print '[' + self.lookup_targets(client, data) + ']'
+                        elif mode == 'contents':
+                            self.print_target_info(data, decorate=True)
                         else:
                             print data
                 elif mode == 'record' or mode == 'table':

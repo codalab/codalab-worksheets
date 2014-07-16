@@ -24,6 +24,7 @@ Types of directives:
 %% this is a comment
 % display hidden
 % display inline <genpath (e.g., output/stats/errorRate)>
+% display contents <genpath (e.g., output/stats/things)>
 % display image <genpath (e.g., output/graph.png)>
 % display html <genpath (e.g., output/test.html)>
 % display record <schema name>
@@ -202,7 +203,7 @@ def canonicalize_schema_item(args):
 def interpret_items(items):
     '''
     Return a list of items, where each item is either:
-    - ('markup'|'inline', string)
+    - ('markup'|'inline'|'contents', string)
     - ('record'|'table', (col1, col2), [{col1:value1, col2:value2}, ...])
     - ('image'|'html', genpath)
     '''
@@ -222,7 +223,7 @@ def interpret_items(items):
         args = current_display[1:]
         if mode == 'hidden':
             pass
-        elif mode == 'inline':
+        elif mode == 'inline' or mode == 'contents':
             for bundle_info in bundle_infos:
                 new_items.append((mode, interpret_genpath(bundle_info, args[0])))
         elif mode == 'image':
@@ -234,7 +235,7 @@ def interpret_items(items):
             # key1: value1
             # key2: value2
             # ...
-            schema = schemas[args[0]]
+            schema = schemas[args[0] if len(args) > 0 else 'default']
             for bundle_info in bundle_infos:
                 header = ('key', 'value')
                 rows = []
@@ -246,7 +247,7 @@ def interpret_items(items):
             # key1       key2
             # b1_value1  b1_value2
             # b2_value1  b2_value2
-            schema = schemas[args[0]]
+            schema = schemas[args[0] if len(args) > 0 else 'default']
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
