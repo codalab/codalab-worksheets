@@ -66,6 +66,8 @@ class LocalBundleClient(BundleClient):
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
           'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
         }
+        for dep in result['dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
+        for dep in result['hard_dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
         if children is not None:
             result['children'] = [child.simple_str() for child in children]
         return result
@@ -273,6 +275,7 @@ class LocalBundleClient(BundleClient):
             if new_dependencies == info['dependencies']:
                 #print old_bundle_uuid, 'nothing changed'
                 return old_bundle_uuid
+            old_bundle_name = info['metadata']['name']
 
             # Create a new bundle
             targets = {}
@@ -289,6 +292,8 @@ class LocalBundleClient(BundleClient):
             #print targets
             new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
                 targets, info['command'], info['metadata'], worksheet_uuid)
+
+            print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
 
             old_to_new[old_bundle_uuid] = new_bundle_uuid
             return new_bundle_uuid

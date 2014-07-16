@@ -599,7 +599,7 @@ class BundleCLI(object):
 
         def wrap1(string): return '-- ' + string
 
-        print self.format_basic_info(info)
+        print self.format_basic_info(client, info)
 
         if args.children and info['children']:
             print 'children:'
@@ -620,7 +620,7 @@ class BundleCLI(object):
                     #for line in client.head_target((bundle_uuid, item['name']), 10):
                         #print line,
 
-    def format_basic_info(self, info):
+    def format_basic_info(self, client, info):
         metadata = collections.defaultdict(lambda: None, info['metadata'])
         # Format some simple fields of the basic info string.
         fields = {
@@ -632,39 +632,38 @@ class BundleCLI(object):
           'command': info.get('command', '<none>'),
           'description': metadata['description'] or '<no description>',
         }
+
         # Format statistics about this bundle - creation time, runtime, size, etc.
         stats = []
         if 'created' in metadata:
             stats.append('created:     %s' % (canonicalize.time_str(metadata['created']),))
         if 'data_size' in metadata:
             stats.append('size:        %s' % (canonicalize.size_str(metadata['data_size']),))
-        #fields['stats'] = 'Stats:\n  %s\n' % ('\n  '.join(stats),) if stats else ''
         fields['stats'] = '%s\n' % ('\n'.join(stats),) if stats else ''
+
         # Compute a nicely-formatted list of hard dependencies. Since this type of
         # dependency is realized within this bundle as a symlink to another bundle,
         # label these dependencies as 'references' in the UI.
         fields['hard_dependencies'] = ''
         fields['dependencies'] = ''
+
+        def display_dependencies(label, deps):
+            lines = []
+            for dep in sorted(deps, key=lambda dep: dep['child_path']):
+                child = dep['child_path']
+                parent = path_util.safe_join(dep['parent_name'] + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
+                lines.append('  %s: %s' % (child, parent))
+            return '%s:\n%s\n' % (label, '\n'.join(lines))
+             
         if info['hard_dependencies']:
             deps = info['hard_dependencies']
             if len(deps) == 1 and not deps[0]['child_path']:
-                fields['hard_dependencies'] = 'dependency:\n  %s\n' % (
-                  path_util.safe_join(deps[0]['parent_uuid'], deps[0]['parent_path']),)
+                fields['hard_dependencies'] = display_dependencies('hard_dependency', deps)
             else:
-                fields['hard_dependencies'] = 'dependencies:\n%s\n' % ('\n'.join(
-                  '  %s:%s' % (
-                    dep['child_path'],
-                    path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
-                  ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
-                ))
+                fields['hard_dependencies'] = display_dependencies('hard_dependencies', deps)
         elif info['dependencies']:
             deps = info['dependencies']
-            fields['dependencies'] = 'provenance:\n%s\n' % ('\n'.join(
-              '  %s:%s' % (
-                dep['child_path'],
-                path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
-              ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
-            ))
+            fields['dependencies'] = display_dependencies('dependencies', deps)
              
         # Compute a nicely-formatted failure message, if this bundle failed.
         # It is possible for bundles that are not failed to have failure messages:
@@ -989,7 +988,8 @@ state:       {state}
                 print line
         else:
             interpreted = worksheet_util.interpret_items(worksheet_info['items'])
-            print '[[', interpreted.get('title'), ']]'
+            title = interpreted.get('title')
+            if title: print '[[', title, ']]'
             is_last_newline = False
             for mode, data in interpreted['items']:
                 is_newline = (data == '')

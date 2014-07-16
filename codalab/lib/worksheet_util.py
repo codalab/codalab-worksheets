@@ -1,5 +1,6 @@
 '''
 worksheet_util contains the following public functions:
+- interpret_items: returns a structure that interprets all the directives in the worksheet item.
 - request_new_items: pops up an editor to allow for full-text editing of a worksheet.
 
 A worksheet contains a list of items, where each item includes
@@ -106,11 +107,12 @@ def get_worksheet_lines(worksheet_info):
             yield value_obj
         elif type == TYPE_BUNDLE:
             metadata = bundle_info['metadata']
-            # TODO: put more information
-            description = metadata['name']
-            description += ' ' + bundle_info['bundle_type']
+            description = bundle_info['bundle_type']
+            description += ' ' + metadata['name']
+            deps = interpret_genpath(bundle_info, 'dependencies')
+            if deps: description += ' <- ' + deps
             command = bundle_info.get('command')
-            if command: description += ': ' + command
+            if command: description += ' : ' + command
             yield '[%s]{%s}' % (description, bundle_info['uuid'])
         elif type == TYPE_DIRECTIVE:
             value = tokens_to_string(value_obj)
@@ -188,6 +190,8 @@ def interpret_genpath(bundle_info, genpath):
     value = bundle_info.get(genpath, None)
     if not value: value = bundle_info['metadata'].get(genpath, None)
     if not value: value = (bundle_info['uuid'], genpath)
+    if genpath == 'dependencies' or genpath == 'hard_dependencies':  # TODO: unify
+        return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
     return value
 
 def canonicalize_schema_item(args):
@@ -211,9 +215,10 @@ def interpret_items(items):
     schemas = {}
     schemas['default'] = current_schema = [
         canonicalize_schema_item(x)
-        for x in [['uuid'], ['name'], ['bundle_type'], ['data_size', 'data_size', canonicalize.size_str], ['state']]
+        #for x in [['uuid'], ['name'], ['bundle_type'], ['dependencies'], ['data_size', 'data_size', canonicalize.size_str], ['state']]
+        for x in [['name'], ['bundle_type'], ['dependencies'], ['command'], ['data_size', 'data_size', canonicalize.size_str], ['state']]
     ]
-    current_display = ('record', 'default')
+    current_display = ('table', 'default')
     new_items = []
     bundle_infos = []
     def flush():

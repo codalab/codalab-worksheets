@@ -81,7 +81,8 @@ class BundleStore(object):
         # Recursively copy the directory into a new BundleStore temp directory.
         temp_directory = uuid.uuid4().hex
         temp_path = os.path.join(self.temp, temp_directory)
-        path_util.copy(absolute_path, temp_path, follow_symlinks=True)
+        #print 'COPY', absolute_path, os.path.exists(absolute_path), temp_path, os.path.exists(self.temp)
+        path_util.copy(absolute_path, temp_path, follow_symlinks=False)
 
         # Multiplex between uploading a directory and uploading a file here.
         # All other path_util calls will use these lists of directories and files.

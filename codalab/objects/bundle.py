@@ -118,7 +118,9 @@ class Bundle(ORMObject):
                   bundle_store.get_location(parent.data_hash, relative=True),
                   dep.parent_path,
                 )
+            #print 'dest_path', dest_path, os.path.exists(dest_path)
             link_path = path_util.safe_join(dest_path, dep.child_path)
+            #print 'LINK', target, link_path
             os.symlink(target, link_path)
 
     def get_hard_dependencies(self):
