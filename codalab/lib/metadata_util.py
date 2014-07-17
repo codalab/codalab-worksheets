@@ -74,7 +74,7 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
 
     # If the --auto flag was used, skip showing the editor.
     if getattr(args, 'auto', False):
-        return filter_anonymous_name(bundle_subclass, initial_metadata)
+        return initial_metadata
 
     # Construct a form template with the required keys, prefilled with the
     # command-line metadata options.
@@ -88,13 +88,15 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
         initial_value = initial_metadata.get(spec.key) or ''
         if spec.type == set:
             initial_value = ' '.join(initial_value or [])
+        template_lines.append('')
+        template_lines.append('// %s' % spec.description)
         template_lines.append('%s: %s' % (spec.key, initial_value))
-    template = (os.linesep + os.linesep).join(template_lines)
+    template = os.linesep.join(template_lines)
 
     # Show the form to the user in their editor of choice and parse the result.
     editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
     tempfile_name = ''
-    with tempfile.NamedTemporaryFile(suffix='.sh', delete=False) as form:
+    with tempfile.NamedTemporaryFile(suffix='.c', delete=False) as form:
         form.write(template)
         form.flush()
         tempfile_name = form.name
@@ -116,7 +118,7 @@ def parse_metadata_form(bundle_subclass, form_result):
         line = line.strip()
         if line and not line.startswith('//'):
             if ':' not in line:
-                # TODO: don't delete everything; go back to the editor
+                # TODO: don't delete everything; go back to the editor and show the error message
                 raise UsageError('Malformatted line (no colon): %s' % (line,))
             (metadata_key, remainder) = line.split(':', 1)
             # TODO: handle multiple lines
@@ -129,15 +131,4 @@ def parse_metadata_form(bundle_subclass, form_result):
                 result[metadata_key] = remainder.strip()
     if 'name' not in result:
         raise UsageError('No name specified; aborting')
-    return filter_anonymous_name(bundle_subclass, result)
-
-
-def filter_anonymous_name(bundle_subclass, metadata):
-    '''
-    If the user left an anonymous name for this bundle, wipe it out and let the
-    bundle subclass's constructor choose a name instead.
-    '''
-    anonymous_name = MetadataDefaults.get_anonymous_name(bundle_subclass)
-    if metadata.get('name') == anonymous_name:
-        metadata['name'] = None
-    return metadata
+    return result

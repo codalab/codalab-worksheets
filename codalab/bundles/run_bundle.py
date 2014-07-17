@@ -22,12 +22,16 @@ from codalab.lib import (
   path_util,
   spec_util,
 )
+from codalab.objects.metadata_spec import MetadataSpec
 
 class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
+    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    # TODO: replace set with basestring
+    METADATA_SPECS.append(MetadataSpec('allowed_time', set, 'amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('allowed_memory', set, 'amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('allowed_disk', set, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
     
-    # TODO: add fields for time, memory, disk usage.
-
     @classmethod
     def construct(cls, targets, command, metadata, uuid=None, data_hash=None):
         if not uuid: uuid = spec_util.generate_uuid()
@@ -36,9 +40,7 @@ class RunBundle(NamedBundle):
             raise UsageError('Must specify keys when packaging multiple targets!')
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
-        # Support anonymous run bundles with names based on their commands
-        if not metadata['name']:
-            metadata['name'] = spec_util.create_default_name(cls.BUNDLE_TYPE, command)
+
         # List the dependencies of this bundle on its targets.
         dependencies = []
         for (child_path, (parent_uuid, parent_path)) in targets.iteritems():

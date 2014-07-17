@@ -85,46 +85,51 @@ class BundleCLI(object):
     }
 
     BUNDLE_COMMANDS = (
-      'upload',
-      'make',
-      'run',
-      'edit',
-      'rm',
-      'ls',
-      'info',
-      'cat',
-      'wait',
-      'download',
-      'cp',
+        'upload',
+        'make',
+        'run',
+        'edit',
+        'rm',
+        'ls',
+        'info',
+        'cat',
+        'wait',
+        'download',
+        'cp',
     )
 
     WORKSHEET_COMMANDS = (
-      'new',
-      'add',
-      'work',
-      'print',
-      'wedit',
-      'wrm',
-      'wls',
-      'wcp',
+        'new',
+        'add',
+        'work',
+        'print',
+        'wedit',
+        'wrm',
+        'wls',
+        'wcp',
     )
 
     GROUP_AND_PERMISSION_COMMANDS = (
-      'list-groups',
-      'new-group',
-      'rm-group',
-      'group-info',
-      'add-user',
-      'rm-user',
-      'set-perm',
+        'list-groups',
+        'new-group',
+        'rm-group',
+        'group-info',
+        'add-user',
+        'rm-user',
+        'set-perm',
     )
 
     OTHER_COMMANDS = (
-      'help',
-      'status',
-      'worker',
-      'server',
+        'help',
+        'status',
+        'worker',
+        'server',
     )
+
+    SHORTCUTS = {
+        'up': 'upload',
+        'down': 'download',
+    }
 
     def __init__(self, manager):
         self.manager = manager
@@ -270,6 +275,8 @@ class BundleCLI(object):
             (command, remaining_args) = (argv[0], argv[1:])
         else:
             (command, remaining_args) = ('help', [])
+        command = self.SHORTCUTS.get(command, command)
+
         command_fn = getattr(self, 'do_%s_command' % (command.replace('-', '_'),), None)
         if not command_fn:
             self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
@@ -342,6 +349,10 @@ class BundleCLI(object):
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
+
+        # Expand shortcuts
+        if args.bundle_type == 'd': args.bundle_type = 'dataset'
+        if args.bundle_type == 'p': args.bundle_type = 'program'
 
         # Check that the upload path exists.
         for path in args.path:
@@ -467,6 +478,22 @@ class BundleCLI(object):
         metadata = metadata_util.request_missing_metadata(MakeBundle, args)
         print client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
+    def desugar_command(self, target_spec, command):
+        '''
+        Desugar command into target_spec and command.
+        Example: %corenlp%/run %a.txt% => [1:corenlp, 2:a.txt], 1/run 2
+        '''
+        pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
+        buf = ''
+        while True:
+            m = pattern.match(command)
+            if not m: break
+            i = str(len(target_spec)+1)
+            target_spec.append(i + ':' + m.group(2))
+            buf += m.group(1) + i
+            command = m.group(3)
+        return (target_spec, buf + command)
+
     def do_run_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
@@ -476,6 +503,7 @@ class BundleCLI(object):
         metadata_util.add_arguments(RunBundle, set(), parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
+        args.target_spec, args.command = self.desugar_command(args.target_spec, args.command)
         targets = self.parse_key_targets(args.target_spec)
         command = args.command
         metadata = metadata_util.request_missing_metadata(RunBundle, args)

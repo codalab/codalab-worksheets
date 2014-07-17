@@ -12,22 +12,20 @@ import platform
 from codalab.bundles import UPLOADED_TYPES
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.run_bundle import RunBundle
-from codalab.lib import path_util
-
+from codalab.bundles.uploaded_bundle import UploadedBundle
+from codalab.lib import path_util, spec_util
+from codalab.common import UsageError
 
 class MetadataDefaults(object):
-    @staticmethod
-    def get_anonymous_name(bundle_subclass):
-        #return 'anonymous-' + bundle_subclass.BUNDLE_TYPE
-        return '(none)'
-
     @staticmethod
     def get_default(spec, bundle_subclass, args):
         fn_name = 'get_default_%s' % (spec.key,)
         fn = getattr(MetadataDefaults, fn_name, None)
         if fn:
             return fn(bundle_subclass, args)
+
         result = spec.get_constructor()()
+
         # We need to return a list instead of a set because command-line values for
         # set metadata objects must be JSON-able. When the metadata is marshalled
         # into the database, it will be converted into a set.
@@ -35,16 +33,22 @@ class MetadataDefaults(object):
 
     @staticmethod
     def get_default_name(bundle_subclass, args):
-        if hasattr(args, 'path'):
+        if issubclass(bundle_subclass, UploadedBundle):
             items = []
             for path in args.path:
                 absolute_path = path_util.normalize(path)
                 items.append(os.path.basename(absolute_path))
             return '-'.join(items)
         elif bundle_subclass is MakeBundle:
-            if len(args.target_spec) == 1 and ':' not in args.target_spec[0]:
+            if len(args.target_spec) == 1 and ':' not in args.target_spec[0]:  # direct link
                 return os.path.basename(args.target_spec[0])
-        return MetadataDefaults.get_anonymous_name(bundle_subclass)
+            else:  # multiple targets
+                name = ' '.join(key for (key, (uuid, subpath)) in targets.iteritems())
+                return spec_util.create_default_name(cls.BUNDLE_TYPE, str(name))
+        elif bundle_subclass is RunBundle:
+            return spec_util.create_default_name(bundle_subclass.BUNDLE_TYPE, args.command)
+        else:
+            raise UsageError("Unhandled class: %s" % bundle_subclass)
 
     @staticmethod
     def get_default_description(bundle_subclass, args):

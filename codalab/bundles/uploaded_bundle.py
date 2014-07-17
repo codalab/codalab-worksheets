@@ -9,7 +9,8 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 class UploadedBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
-    METADATA_SPECS.append(MetadataSpec('license', set, 'which license this program/data is released under', short_key='license'))
+    METADATA_SPECS.append(MetadataSpec('license', basestring, 'which license this program/data is released under'))
+    METADATA_SPECS.append(MetadataSpec('source_url', basestring, 'where this data came from'))
 
     @classmethod
     def construct(cls, data_hash, metadata, uuid=None):

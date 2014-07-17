@@ -21,10 +21,7 @@ class MakeBundle(NamedBundle):
         # Check that targets does not include both keyed and anonymous targets.
         if len(targets) > 1 and '' in targets:
             raise UsageError('Must specify keys when packaging multiple targets!')
-        # Support anonymous make bundles with names based on their uuid.
-        if not metadata['name']:
-            name = ' '.join(key for (key, (uuid, subpath)) in targets.iteritems())
-            metadata['name'] = spec_util.create_default_name(cls.BUNDLE_TYPE, str(name))
+
         # List the dependencies of this bundle on its targets.
         dependencies = []
         for (child_path, (parent_uuid, parent_path)) in targets.iteritems():
