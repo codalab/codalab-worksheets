@@ -321,9 +321,9 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
         source = source_path
 
     # TODO: implement exclude_names
-    command = "cp -pr%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
+    command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
     if os.system(command) != 0:
-        raise path_error('Unable to copy %s to %s' % (source_path, dest_path))
+        raise path_error('Unable to copy %s to' % source_path, dest_path)
 
     # TODO: copytree doesn't preserve permissions, so we're making a system call;
     # fix this.

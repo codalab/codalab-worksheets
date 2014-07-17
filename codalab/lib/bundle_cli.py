@@ -483,10 +483,10 @@ class BundleCLI(object):
         print uuid
         if args.wait:
             state = self.follow_targets(uuid, [])
-            self.do_info_command([uuid], self.create_parser('info'))
+            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
         if args.tail:
             state = self.follow_targets(uuid, ['stdout', 'stderr'])
-            self.do_info_command([uuid], self.create_parser('info'))
+            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
 
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
