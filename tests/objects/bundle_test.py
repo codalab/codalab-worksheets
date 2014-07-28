@@ -1,4 +1,4 @@
-import simplejson as json
+import json
 import unittest
 
 from codalab.model.tables import bundle as cl_bundle

@@ -21,9 +21,9 @@ class GroupsAndPermsTest(unittest.TestCase):
         path_util.make_directory(cls.test_root)
         cls.bundle_store = BundleStore(cls.test_root)
         cls.model = SQLiteModel(cls.test_root)
-        users = [User('root', 0), User('user1', 1), User('user2', 2), User('user4', 4)]
+        users = [User('root', '0'), User('user1', '1'), User('user2', '2'), User('user4', '4')]
         cls.auth_handler = MockAuthHandler(users)
-        cls.client = LocalBundleClient('local', cls.bundle_store, cls.model, cls.auth_handler)
+        cls.client = LocalBundleClient('local', cls.bundle_store, cls.model, cls.auth_handler, verbose=1)
 
     @classmethod
     def tearDownClass(cls):
@@ -155,7 +155,3 @@ class GroupsAndPermsTest(unittest.TestCase):
         _assert_group_count_for('root', 0)
         _assert_group_count_for('user1', 0)
         _assert_group_count_for('user2', 0)
-
-
-
-

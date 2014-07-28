@@ -80,6 +80,7 @@ worksheet_item = Table(
   Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
   # A worksheet row may OPTIONALLY include a bundle_uuid. This column is a logical
   # foreign key on bundle.uuid, but it may be broken if bundles are deleted.
+  # TODO: add worksheet_uuid
   Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=True),
   Column('value', Text, nullable=False),  # Should change to True
   Column('type', String(20), nullable=False),
@@ -96,7 +97,7 @@ group = Table(
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
   Column('user_defined', Boolean),
-  Column('owner_id', Integer, nullable=True),
+  Column('owner_id', Integer, nullable=True),  # TODO: make this String (to match user_id)
   UniqueConstraint('uuid', name='uix_1'),
   Index('group_name_index', 'name'),
   Index('group_owner_id_index', 'owner_id'),

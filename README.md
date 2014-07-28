@@ -21,16 +21,20 @@ the service, as well as supporting competitions.
 
 ## Installation
 
-1. Clone the CodaLab repository:
+1. Make sure you have the dependencies (Python 2.7 and virtualenv).  If you're running Ubuntu:
+
+        sudo apt-get install python2.7 python2.7-dev python-virtualenv
+    
+2. Clone the CodaLab repository:
 
         git clone https://github.com/codalab/codalab-cli
         cd codalab-cli
 
-2. Run the setup script (will install things into a Python virtual environment):
+3. Run the setup script (will install things into a Python virtual environment):
 
         ./setup.sh
 
-3. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
+4. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
 
         export PATH=$PATH:<your path>/codalab-cli/codalab/bin
 
@@ -382,8 +386,10 @@ Bundle hierarchy:
 
 ## Tests
 
-To run test on the code, type:
+To run tests on the code, first install the libraries for testing:
 
-    pip install simplejson mock nose
+    codalab_env/bin/pip install mock nose
     
-    nosetests
+Then run all the tests:
+
+    codalab_env/bin/nosetests

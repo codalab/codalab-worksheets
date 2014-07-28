@@ -610,22 +610,12 @@ class BundleModel(object):
         '''
         Create system-defined groups. This is called by create_tables.
         '''
-        # TODO: remove Public altogether and get rid of renaming.
         groups = self.batch_get_groups(name='public', user_defined=False)
         if len(groups) == 0:
-            groups = self.batch_get_groups(name='Public', user_defined=False)
-            if len(groups) == 0:
-                group_dict = self.create_group({'uuid': spec_util.generate_uuid(),
-                                                'name': 'public',
-                                                'owner_id': None,
-                                                'user_defined': False})
-            else:
-                # if there was a group named Public, then rename it.
-                group_dict = groups[0]
-                with self.engine.begin() as connection:
-                    connection.execute(cl_group.update().where(
-                      cl_group.c.uuid == group_dict['uuid']
-                    ).values({'name': 'public'}))
+            group_dict = self.create_group({'uuid': spec_util.generate_uuid(),
+                                            'name': 'public',
+                                            'owner_id': None,
+                                            'user_defined': False})
         else:
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
@@ -709,7 +699,14 @@ class BundleModel(object):
             rows = connection.execute(q1).fetchall()
             if not rows:
                 return []
-            values = {row.uuid: dict(row) for row in rows}
+            for i, row in enumerate(rows):
+                row = dict(row)
+                # TODO: remove these conversions once database schema is changed from int to str
+                row['user_id'] = str(row['user_id'])
+                row['owner_id'] = str(row['owner_id'])
+                rows[i] = row
+                print row
+            values = {row['uuid']: dict(row) for row in rows}
             return [value for value in values.itervalues()]
 
     def delete_group(self, uuid):
@@ -768,7 +765,7 @@ class BundleModel(object):
             ).fetchall()
             if not rows:
                 return []
-        print 'GET', rows
+        #print 'GET', rows
         return [dict(row) for row in rows]
 
     def add_permission(self, group_uuid, object_uuid, permission):
