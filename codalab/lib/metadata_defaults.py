@@ -29,7 +29,7 @@ class MetadataDefaults(object):
         # We need to return a list instead of a set because command-line values for
         # set metadata objects must be JSON-able. When the metadata is marshalled
         # into the database, it will be converted into a set.
-        return list(result) if type(result) == set else []
+        return list(result) if type(result) == set else result
 
     @staticmethod
     def get_default_name(bundle_subclass, args):

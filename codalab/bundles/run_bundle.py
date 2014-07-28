@@ -27,10 +27,9 @@ from codalab.objects.metadata_spec import MetadataSpec
 class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
-    # TODO: replace set with basestring
-    METADATA_SPECS.append(MetadataSpec('allowed_time', set, 'amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run'))
-    METADATA_SPECS.append(MetadataSpec('allowed_memory', set, 'amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run'))
-    METADATA_SPECS.append(MetadataSpec('allowed_disk', set, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('allowed_time', basestring, 'amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('allowed_memory', basestring, 'amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('allowed_disk', basestring, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
     
     @classmethod
     def construct(cls, targets, command, metadata, uuid=None, data_hash=None):
