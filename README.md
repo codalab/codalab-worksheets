@@ -181,6 +181,16 @@ If you messed up somewhere, you can always remove a bundle:
 
     cl rm sort-run
 
+#### Sugar
+
+You can also include the bundle references in your run command, which might be more natural:
+
+    cl run :sort.py input:a.txt 'python %sort.py% < %a.txt% > output/sorted.txt' --name sort-run -a
+
+This is equivalent to running:
+
+    cl run 1:sort.py 2:a.txt 'python 1 < 2 > output/sorted.txt' --name sort-run -a
+
 ### Macros
 
 Once we produce a run, we might want to do it again with slightly different
@@ -372,7 +382,7 @@ Here are some helpful links:
 - [GitHub repository](https://github.com/codalab/codalab)
 - [Codalab Wiki](https://github.com/codalab/codalab/wiki)
 
-## Code Design
+## Code design
 
 Bundle hierarchy:
 
@@ -384,7 +394,7 @@ Bundle hierarchy:
         MakeBundle [DerivedBundle]
         RunBundle [DerivedBundle]
 
-## Tests
+## Unit tests
 
 To run tests on the code, first install the libraries for testing:
 
