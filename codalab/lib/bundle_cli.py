@@ -564,15 +564,20 @@ class BundleCLI(object):
         parser.add_argument(
           '-f', '--force',
           action='store_true',
-          help='delete all downstream dependencies',
+          help='delete bundle (DANGEROUS - breaking dependencies!)',
+        )
+        parser.add_argument(
+          '-r', '--recursive',
+          action='store_true',
+          help='delete all bundles downstream that depend on this bundle',
         )
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
         bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
-        for bundle_uuid in bundle_uuids:
-            client.delete_bundle(bundle_uuid, args.force)
+        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive)
+        for uuid in deleted_uuids: print uuid
 
     def do_search_command(self, argv, parser):
         parser.add_argument(

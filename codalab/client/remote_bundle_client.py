@@ -67,7 +67,7 @@ class RemoteBundleClient(BundleClient):
     CLIENT_COMMANDS = (
       'derive_bundle',
       'update_bundle_metadata',
-      'delete_bundle',
+      'delete_bundles',
       'get_bundle_uuid',
       'search_bundle_uuids',
       'get_bundle_info',

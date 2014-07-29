@@ -4,7 +4,7 @@ BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from time import sleep
 import contextlib
-import os
+import os, sys
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -176,22 +176,21 @@ class LocalBundleClient(BundleClient):
         self.validate_user_metadata(bundle, metadata)
         self.model.update_bundle(bundle, {'metadata': metadata})
 
-    def delete_bundle(self, uuid, force=False):
-        children = self.model.get_children(uuid)
-        if children and not force:
-            raise UsageError('The following bundles depend on %s:\n  %s' % (
-              uuid,
-              '\n  '.join(child.simple_str() for child in children),
-            ))
-        # Don't need to worry about worksheet dependencies; there are always
-        # worksheet dependencies.
-        #child_worksheets = self.model.get_child_worksheets(uuid)
-        #if child_worksheets and not force:
-        #    raise UsageError('The following worksheets depend on %s:\n  %s' % (
-        #      uuid,
-        #      '\n  '.join(child.simple_str() for child in child_worksheets),
-        #    ))
-        self.model.delete_bundle_tree([uuid], force=force)
+    def delete_bundles(self, uuids, force, recursive):
+        if recursive:
+            relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
+        else:
+            # Check if any children exist.  If so, then we only delete uuids if force = True.
+            relevant_uuids = self.model.get_self_and_descendants(uuids, depth=1)
+            if (not force) and set(uuids) != set(relevant_uuids):
+                relevant = self.model.batch_get_bundles(uuid=relevant_uuids - set(uuids))
+                raise UsageError('Can\'t delete because the following bundles depend on %s:\n  %s' % (
+                  uuids,
+                  '\n  '.join(bundle.simple_str() for bundle in relevant),
+                ))
+            relevant_uuids = uuids
+        self.model.delete_bundles(relevant_uuids)
+        return relevant_uuids
 
     def get_bundle_info(self, uuid, get_children=False):
         '''
@@ -199,7 +198,11 @@ class LocalBundleClient(BundleClient):
         get_children: whether we want to return information about the children too.
         '''
         bundle = self.model.get_bundle(uuid)
-        children = self.model.get_children(uuid) if get_children else None
+        if get_children:
+            children_uuids = self.model.get_children_uuids(uuid)
+            children = self.model.batch_get_bundles(uuid=children_uuids)
+        else:
+            children = None
         return self._bundle_to_bundle_info(bundle, children=children)
 
     def get_bundle_infos(self, uuids):

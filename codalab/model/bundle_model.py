@@ -149,13 +149,11 @@ class BundleModel(object):
         uuids = set([row.parent_uuid for row in rows])
         return self.batch_get_bundles(uuid=uuids)
 
-    def get_children(self, uuid):
+    def get_children_uuids(self, uuid):
         '''
         Get all bundles that depend on the bundle with the given uuid.
-
-        uuid may also be a list, set, or tuple, in which case we return all bundles
-        that depend on any bundle in that collection. This mode is used to optimize
-        calls to delete_bundle_tree.
+        uuid may also be a list, set, or tuple, in which case we return all
+        bundles that depend on any bundle in that collection.
         '''
         if isinstance(uuid, (list, set, tuple)):
             clause = cl_bundle_dependency.c.parent_uuid.in_(uuid)
@@ -165,8 +163,21 @@ class BundleModel(object):
             rows = connection.execute(select([
               cl_bundle_dependency.c.child_uuid
             ]).where(clause)).fetchall()
-        uuids = set([row.child_uuid for row in rows])
-        return self.batch_get_bundles(uuid=uuids)
+        return set([row.child_uuid for row in rows])
+
+    def get_self_and_descendants(self, uuids, depth):
+        '''
+        Get all bundles that depend on bundles with the given uuids.
+        depth = 1 gets only children
+        '''
+        frontier = set(uuids)
+        visited = set(frontier)
+        while len(frontier) > 0 and depth > 0:
+            new_frontier = self.get_children_uuids(frontier)
+            frontier = new_frontier - visited
+            visited.update(frontier)
+            depth -= 1
+        return visited
 
     def get_bundle_uuids(self, conditions, max_results, count=False):
         '''
@@ -369,21 +380,10 @@ class BundleModel(object):
                 connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
 
-    def delete_bundle_tree(self, uuids, force=False):
+    def delete_bundles(self, uuids):
         '''
-        Delete bundles with the given uuids and all bundles that are (direct or
-        indirect) descendents of them.
-
-        If force is False, there should be no descendents of the given bundles.
+        Delete bundles with the given uuids.
         '''
-
-        children = self.get_children(uuid=uuids)
-        if children:
-            precondition(force, 'The following bundles depend on %s:\n  %s' % (
-              self.get_bundle(uuids[0]),
-              '\n  '.join(str(child) for child in children),
-            ))
-            self.delete_bundle_tree([child.uuid for child in children], force=True)
         with self.engine.begin() as connection:
             # We must delete bundles rows in the opposite order that we create them
             # to avoid foreign-key constraint failures.
