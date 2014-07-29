@@ -43,8 +43,8 @@ class MetadataDefaults(object):
             if len(args.target_spec) == 1 and ':' not in args.target_spec[0]:  # direct link
                 return os.path.basename(args.target_spec[0])
             else:  # multiple targets
-                name = ' '.join(key for (key, (uuid, subpath)) in targets.iteritems())
-                return spec_util.create_default_name(cls.BUNDLE_TYPE, str(name))
+                name = ' '.join(args.target_spec)
+                return spec_util.create_default_name(bundle_subclass.BUNDLE_TYPE, str(name))
         elif bundle_subclass is RunBundle:
             return spec_util.create_default_name(bundle_subclass.BUNDLE_TYPE, args.command)
         else:

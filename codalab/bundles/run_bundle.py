@@ -65,17 +65,20 @@ class RunBundle(NamedBundle):
         return []
 
     def complete(self, bundle_store, parent_dict, temp_dir):
-        command = self.command
-        path_util.make_directory(temp_dir)
-        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=False)
         # TODO: have a mode where we ssh into another machine to do this
         # In that case, need to copy files around.
+        command = self.command
+        path_util.make_directory(temp_dir)
+
+        # Unlike make, need to use absolute symlinks to be able to run the program
+        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=False)
         with path_util.chdir(temp_dir):
             print 'Executing command: %s' % (command,)
             print 'In temp directory: %s' % (temp_dir,)
             os.mkdir('output')  # Only stuff written to the output directory is copied back.
             with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
                 subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
-            #os.unlink('program')
-            #os.unlink('input')
+
+        # Re-install the dependencies as relative dependencies
+        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
         return bundle_store.upload(temp_dir, allow_symlinks=True)
