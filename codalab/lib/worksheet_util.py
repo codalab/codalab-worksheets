@@ -187,12 +187,18 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     return result
 
 def interpret_genpath(bundle_info, genpath):
+    # TODO: unify the two genpaths?
+    if genpath == 'dependencies' or genpath == 'hard_dependencies':
+        return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
+
+    # Only return the pair if genpath might be referring to a file.
+    if genpath == 'stdout' or genpath == 'stderr' or genpath.startswith('output'):
+        return (bundle_info['uuid'], genpath)
+
+    # Either bundle info or metadata
     value = bundle_info.get(genpath, None)
     if not value: value = bundle_info['metadata'].get(genpath, None)
-    if not value: value = (bundle_info['uuid'], genpath)
-    if genpath == 'dependencies' or genpath == 'hard_dependencies':  # TODO: unify
-        return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
-    return value
+    return value or ''
 
 def canonicalize_schema_item(args):
     if len(args) == 1:
@@ -203,6 +209,13 @@ def canonicalize_schema_item(args):
         return (args[0], args[1], args[2])
     else:
         raise UsageError('Invalid number of arguments: %s' % value_obj)
+
+def apply_func(func, arg):
+    try:
+        return func(arg)
+    except:
+        # Can't apply the function, so just return the arg.
+        return arg 
 
 def interpret_items(items):
     '''
@@ -245,7 +258,7 @@ def interpret_items(items):
                 header = ('key', 'value')
                 rows = []
                 for (name, genpath, post) in schema:
-                    rows.append({'key': name + ':', 'value': post(interpret_genpath(bundle_info, genpath))})
+                    rows.append({'key': name + ':', 'value': apply_func(post, interpret_genpath(bundle_info, genpath))})
                 new_items.append((mode, (header, rows)))
         elif mode == 'table':
             # display table schema =>
@@ -256,7 +269,7 @@ def interpret_items(items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
-                rows.append({name : post(interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
+                rows.append({name : apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append((mode, (header, rows)))
         else:
             raise UsageError('Unknown display mode: %s' % mode)
