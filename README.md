@@ -327,6 +327,10 @@ in another shell:
 By default, the server is running at `http://localhost:2800`.  You can change
 this in `~/.codalab/config.json`.
 
+For security reasons, the server is only accessible from localhost.  To make
+the server accessible from anywhere, under "server" / "host" in
+`~/.codalab/config.json`, change "localhost" to "".
+
 Now we can connect to this server by switching both the worksheet (directory)
 and the instance (drive):
 
