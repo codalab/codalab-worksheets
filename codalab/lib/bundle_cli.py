@@ -437,7 +437,7 @@ class BundleCLI(object):
             print 'Local directory', local_dir, 'already exists. Bundle is available at:'
             print local_path
         else:
-            path_util.copy(local_path, final_path, follow_symlinks=True)
+            path_util.copy(local_path, final_path, follow_symlinks=False)
             if temp_path: path_util.remove(temp_path)
 
     def do_cp_command(self, argv, parser):

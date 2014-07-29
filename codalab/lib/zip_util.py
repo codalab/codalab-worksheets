@@ -38,7 +38,7 @@ def zip(path, exclude_names=[]):
 
     # TODO: this is inefficient; do the zipping from the original source
     # directly.
-    path_util.copy(absolute_path, temp_subpath, follow_symlinks=True, exclude_names=exclude_names)
+    path_util.copy(absolute_path, temp_subpath, follow_symlinks=False, exclude_names=exclude_names)
 
     # TODO: These methods of zipping don't preserve permissions, so using a
     # system call for now (only works in Linux)
@@ -58,7 +58,7 @@ def zip(path, exclude_names=[]):
     # Clean up the temporary directory and return the zip file's path.
 
     zip_path = temp_path + '.zip'
-    if os.system("cd %s && zip -qr %s %s" % (temp_path, zip_path, ZIP_SUBPATH)) != 0:
+    if os.system("cd %s && zip -qr --symlinks %s %s" % (temp_path, zip_path, ZIP_SUBPATH)) != 0:
         raise UsageError('zip failed')
 
     path_util.remove(temp_path)
