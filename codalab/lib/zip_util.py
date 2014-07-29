@@ -74,11 +74,14 @@ def unzip(zip_path, temp_path):
     path_util.check_isfile(zip_path, 'unzip_directory')
     temp_subpath = os.path.join(temp_path, ZIP_SUBPATH)
 
-    # TODO(pliang): ZipFile doesn't preserve permissions, so do hack
+    # TODO(pliang): ZipFile doesn't preserve permissions, so must resort to
+    # system calls (only works in Linux).
     if os.system("cd %s && unzip -q %s" % (temp_path, zip_path)) != 0:
         raise UsageError('unzip failed')
-    if not os.path.exists(temp_subpath):
-        raise UsageError('Zip file %s missing %s' % (zip_path, ZIP_SUBPATH))
+    # Corner case: note that the temp_subpath might not 'exist' because it is a
+    # symlink (which is broken until it's put in the right place).
+    if not os.path.exists(temp_subpath) and not os.path.islink(temp_subpath):
+        raise UsageError('Zip file %s missing %s (%s doesn\'t exist)' % (zip_path, ZIP_SUBPATH, temp_subpath))
 
     #zip_file = ZipFile(zip_path, 'r')
     #names = zip_file.namelist()
