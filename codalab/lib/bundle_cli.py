@@ -769,9 +769,13 @@ state:       {state}
                     print '  ' + line,
             else:
                 client.cat_target(target, sys.stdout)
+        def size(x):
+            t = x.get('type', 'missing')
+            if t == 'file': return canonicalize.size_str(x['size'])
+            return t
         if info['type'] == 'directory':
             contents = [
-                {'name': x['name'], 'size': canonicalize.size_str(x['size']) if x['type'] == 'file' else 'dir'}
+                {'name': x['name'], 'size': size(x)}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
