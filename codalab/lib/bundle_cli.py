@@ -76,6 +76,7 @@ class BundleCLI(object):
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
+      'alias': 'Manage CodaLab instance aliases.',
       'worker': 'Run the CodaLab bundle worker.',
       # Internal commands wihch are used for debugging.
       'cleanup': 'Clean up the CodaLab bundle store.',
@@ -122,6 +123,7 @@ class BundleCLI(object):
     OTHER_COMMANDS = (
         'help',
         'status',
+        'alias',
         'worker',
         'server',
     )
@@ -333,6 +335,30 @@ class BundleCLI(object):
         worksheet_info = self.get_current_worksheet_info()
         if worksheet_info:
             print "worksheet: %s(%s)" % (worksheet_info['name'], worksheet_info['uuid'])
+
+    def do_alias_command(self, argv, parser):
+        '''
+        Show, add, modify, delete aliases (mappings from names to instances).
+        Only modifies the CLI configuration, doesn't need a BundleClient.
+        '''
+        parser.add_argument('key', help='name of the alias (e.g., cloud)', nargs='?')
+        parser.add_argument('value', help='Instance to map the alias to (e.g., http://codalab.org:2800)', nargs='?')
+        parser.add_argument('-r', '--remove', help='Remove this alias', action='store_true')
+        args = parser.parse_args(argv)
+        aliases = self.manager.config['aliases']
+        if args.key:
+            value = aliases.get(args.key)
+            if args.remove:
+                del aliases[args.key]
+                self.manager.save_config()
+            elif args.value:
+                aliases[args.key] = args.value
+                self.manager.save_config()
+            else:
+                print args.key + ': ' + (value if value else '(none)')
+        else:
+            for key, value in aliases.items():
+                print key + ': ' + value
 
     def do_upload_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()

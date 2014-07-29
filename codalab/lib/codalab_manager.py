@@ -326,5 +326,8 @@ class CodaLabManager(object):
             if 'worksheet_uuid' in session: del session['worksheet_uuid']
         self.save_state()
 
+    def save_config(self):
+        write_pretty_json(self.config, self.config_path())
+
     def save_state(self):
         write_pretty_json(self.state, self.state_path())
