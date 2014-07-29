@@ -587,7 +587,7 @@ class BundleCLI(object):
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, max_results=20, count=args.count)
+        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, 20, args.count)
         if args.uuid_only:
             bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
         else:
