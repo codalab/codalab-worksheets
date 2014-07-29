@@ -2,7 +2,7 @@
 file_util provides helpers for dealing with file handles in robust,
 memory-efficent ways.
 '''
-BUFFER_SIZE = 0x40000
+BUFFER_SIZE = 2 * 1024 * 1024
 
 import sys
 

@@ -484,6 +484,8 @@ class BundleCLI(object):
             pass
 
         if not bundle:
+            print "Copying %s(%s)..." % (source_bundle_uuid, source_client.get_bundle_info(source_bundle_uuid)['metadata']['name'])
+
             # Download from source
             source_path, temp_path = source_client.download_target((source_bundle_uuid, ''))
             info = source_client.get_bundle_info(source_bundle_uuid)
