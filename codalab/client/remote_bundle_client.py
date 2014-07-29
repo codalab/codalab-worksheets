@@ -166,7 +166,7 @@ class RemoteBundleClient(BundleClient):
         return None
     def close_target_handle(self, handle):
         handle.close()
-        self.finalize_file(handle.uuid, False)
+        self.finalize_file(handle.file_uuid, False)
 
     def cat_target(self, target, out):
         source = self.open_target_handle(target)
