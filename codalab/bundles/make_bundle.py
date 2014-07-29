@@ -16,7 +16,7 @@ class MakeBundle(NamedBundle):
     BUNDLE_TYPE = 'make'
 
     @classmethod
-    def construct(cls, targets, command, metadata, uuid=None, data_hash=None):
+    def construct(cls, targets, command, metadata, uuid=None, data_hash=None, state=State.CREATED):
         if not uuid: uuid = spec_util.generate_uuid()
         # Check that targets does not include both keyed and anonymous targets.
         if len(targets) > 1 and '' in targets:
@@ -36,7 +36,7 @@ class MakeBundle(NamedBundle):
           'bundle_type': cls.BUNDLE_TYPE,
           'command': command,
           'data_hash': data_hash,
-          'state': State.CREATED,
+          'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
         })

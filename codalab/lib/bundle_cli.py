@@ -326,6 +326,7 @@ class BundleCLI(object):
             print_command(command)
 
     def do_status_command(self, argv, parser):
+        print "codalab_home: %s" % self.manager.codalab_home()
         print "session: %s" % self.manager.session_name()
         address = self.manager.session()['address']
         print "address: %s" % address
@@ -581,7 +582,7 @@ class BundleCLI(object):
         )
         parser.add_argument(
           '-c', '--count',
-          help='just count',
+          help='just count number of bundles',
           action='store_true'
         )
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
@@ -705,7 +706,7 @@ class BundleCLI(object):
             lines = []
             for dep in sorted(deps, key=lambda dep: dep['child_path']):
                 child = dep['child_path']
-                parent = path_util.safe_join(dep['parent_name'] + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
+                parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))
             return '%s:\n%s\n' % (label, '\n'.join(lines))
              

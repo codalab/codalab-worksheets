@@ -132,6 +132,8 @@ class BundleModel(object):
             )).fetchall()
             if len(rows) > 1:
                 raise IntegrityError('Bundle %s has more than one name: %s' % (uuid, rows))
+            if len(rows) == 0:  # uuid might not be in the database (broken links are possible)
+                return None
             return rows[0][0]
 
     def get_parents(self, uuid):

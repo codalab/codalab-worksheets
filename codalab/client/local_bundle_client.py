@@ -122,11 +122,11 @@ class LocalBundleClient(BundleClient):
             construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash']}
         elif bundle_type == 'make' or bundle_type == 'run':
-            targets = { item['child_path'] : (item['child_uuid'], item['child_path'])
+            targets = { item['child_path'] : (item['parent_uuid'], item['parent_path'])
                         for item in info['dependencies'] }
             construct_args = {'targets': targets, 'command': info['command'],
                               'metadata': info['metadata'], 'uuid': info['uuid'],
-                              'data_hash': info['data_hash']}
+                              'data_hash': info['data_hash'], 'state': info['state']}
         else:
             raise UsageError('Invalid bundle_type: %s' % bundle_type)
         return construct_args
