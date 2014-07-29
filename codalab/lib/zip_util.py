@@ -78,7 +78,7 @@ def unzip(zip_path, temp_path):
     if os.system("cd %s && unzip -q %s" % (temp_path, zip_path)) != 0:
         raise UsageError('unzip failed')
     if not os.path.exists(temp_subpath):
-        raise UsageError('Zip file %s missing %s' % zip_path, ZIP_SUBPATH)
+        raise UsageError('Zip file %s missing %s' % (zip_path, ZIP_SUBPATH))
 
     #zip_file = ZipFile(zip_path, 'r')
     #names = zip_file.namelist()

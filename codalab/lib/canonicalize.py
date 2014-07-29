@@ -101,9 +101,9 @@ def get_target_path(bundle_store, model, target):
         bundle_root = bundle_store.get_location(bundle.data_hash)
     final_path = path_util.safe_join(bundle_root, path)
 
-    # This is a bit restrictive because it means we can't follow symlinks to
-    # other bundles arbitrarily, but it's safer.
-    path_util.check_under_path(final_path, bundle_root)
+    # This is too restrictive because it means we can't follow any of the
+    # components of a make bundle.
+    #path_util.check_under_path(final_path, bundle_root)
 
     result = path_util.TargetPath(final_path)
     result.target = target
