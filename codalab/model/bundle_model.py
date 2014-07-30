@@ -4,6 +4,7 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 from sqlalchemy import (
     and_,
     or_,
+    not_,
     select,
     union,
 )
@@ -223,6 +224,7 @@ class BundleModel(object):
             # Each keyword is either a string (just search everywhere) or
             # key=value, which is more targeted, and results in exact match.
             clauses = []
+
             for keyword in conditions['*']:
                 m = CONDITION_REGEX.match(keyword)
                 if m:
@@ -231,17 +233,24 @@ class BundleModel(object):
                         clause = (cl_bundle.c.bundle_type == value)
                     elif key == 'state':
                         clause = (cl_bundle.c.state == value)
+                    elif key == 'limit':
+                        max_results = int(value)
                     else:
                         clause = and_(
                             cl_bundle_metadata.c.metadata_key == key,
                             cl_bundle_metadata.c.metadata_value == value
                         )
                 else:
-                    clause = []
-                    clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
-                    clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
-                    clause.append(cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'))
-                    clause = or_(*clause)
+                    if keyword == 'orphan':
+                        # Get bundles with homes (those in worksheets), and then take the complement.
+                        with_homes = select([cl_bundle.c.uuid]).where(cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
+                        clause = not_(cl_bundle.c.uuid.in_(with_homes))
+                    else:
+                        clause = []
+                        clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
+                        clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
+                        clause.append(cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'))
+                        clause = or_(*clause)
                 clauses.append(clause)
             clause = and_(*clauses)
             clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
