@@ -46,7 +46,7 @@ import sys
 import tempfile
 
 from codalab.common import UsageError
-from codalab.lib import path_util, canonicalize
+from codalab.lib import path_util, canonicalize, formatting
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -228,8 +228,7 @@ def interpret_items(items):
     schemas = {}
     schemas['default'] = current_schema = [
         canonicalize_schema_item(x)
-        #for x in [['uuid'], ['name'], ['bundle_type'], ['dependencies'], ['data_size', 'data_size', canonicalize.size_str], ['state']]
-        for x in [['name'], ['bundle_type'], ['dependencies'], ['command'], ['data_size', 'data_size', canonicalize.size_str], ['state']]
+        for x in [['name'], ['bundle_type'], ['dependencies'], ['command'], ['data_size', 'data_size', formatting.size_str], ['state']]
     ]
     current_display = ('table', 'default')
     new_items = []

@@ -19,7 +19,6 @@ from codalab.lib import (
   spec_util,
 )
 from codalab.model.util import LikeQuery
-import datetime
 
 def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     '''
@@ -131,13 +130,3 @@ def get_worksheet_uuid(model, worksheet_spec):
           (message, ''.join('\n  %s' % (worksheet,) for worksheet in worksheets))
         )
     return worksheets[0].uuid
-
-def size_str(size):
-    if size == None: return None
-    for unit in ('', 'K', 'M', 'G'):
-        if size < 1024:
-            return '%d%s' % (size, unit)
-        size /= 1024
-
-def time_str(ts):
-    return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')

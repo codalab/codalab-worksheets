@@ -34,7 +34,8 @@ from codalab.lib import (
   path_util,
   spec_util,
   worksheet_util,
-  canonicalize
+  canonicalize,
+  formatting
 )
 from codalab.objects.worker import Worker
 from codalab.objects.worksheet import Worksheet
@@ -550,19 +551,31 @@ class BundleCLI(object):
 
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
+        parser.add_argument(
+          '--name',
+          help='new name: ' + spec_util.NAME_REGEX.pattern,
+          nargs='?',
+        )
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
-        new_metadata = metadata_util.request_missing_metadata(
-          bundle_subclass,
-          args,
-          info['metadata'],
-        )
-        if new_metadata != info['metadata']:
+        if args.name:
+            # Just change the name
+            new_metadata = info['metadata']
+            new_metadata['name'] = args.name
             client.update_bundle_metadata(bundle_uuid, new_metadata)
-            print "Saved metadata for bundle %s." % (bundle_uuid)
+        else:
+            # Prompt user for all information
+            new_metadata = metadata_util.request_missing_metadata(
+              bundle_subclass,
+              args,
+              info['metadata'],
+            )
+            if new_metadata != info['metadata']:
+                client.update_bundle_metadata(bundle_uuid, new_metadata)
+                print "Saved metadata for bundle %s." % (bundle_uuid)
 
     def do_rm_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
@@ -636,7 +649,7 @@ class BundleCLI(object):
                 print bundle_info['uuid']
         else:
             columns = ('uuid', 'name', 'bundle_type', 'data_size', 'state')
-            post_funcs = {'data_size': canonicalize.size_str}
+            post_funcs = {'data_size': formatting.size_str}
             justify = {'data_size': 1}
             bundle_dicts = [
               {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
@@ -701,9 +714,9 @@ class BundleCLI(object):
         # Format statistics about this bundle - creation time, runtime, size, etc.
         stats = []
         if 'created' in metadata:
-            stats.append('created:     %s' % (canonicalize.time_str(metadata['created']),))
+            stats.append('created:     %s' % (formatting.time_str(metadata['created']),))
         if 'data_size' in metadata:
-            stats.append('size:        %s' % (canonicalize.size_str(metadata['data_size']),))
+            stats.append('size:        %s' % (formatting.size_str(metadata['data_size']),))
         fields['stats'] = '%s\n' % ('\n'.join(stats),) if stats else ''
 
         # Compute a nicely-formatted list of hard dependencies. Since this type of
@@ -774,7 +787,7 @@ state:       {state}
                 client.cat_target(target, sys.stdout)
         def size(x):
             t = x.get('type', 'MISSING')
-            if t == 'file': return canonicalize.size_str(x['size'])
+            if t == 'file': return formatting.size_str(x['size'])
             if t == 'directory': return 'dir'
             return t
         if info['type'] == 'directory':
