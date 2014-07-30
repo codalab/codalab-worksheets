@@ -736,7 +736,7 @@ class BundleCLI(object):
         # long then succeeds afterwards, it will be in this state.
         fields['failure_message'] = ''
         if info['state'] == State.FAILED and metadata['failure_message']:
-            fields['failure_message'] = 'Failure message:\n  %s\n' % ('\n  '.join(
+            fields['failure_message'] = 'failure_message:\n  %s\n' % ('\n  '.join(
               metadata['failure_message'].split('\n')
             ))
         # Return the formatted summary of the bundle info.

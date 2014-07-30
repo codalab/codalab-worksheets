@@ -354,7 +354,6 @@ def remove(path):
     Remove the given path, whether it is a directory, file, or link.
     '''
     check_isvalid(path, 'remove')
-    #print 'REMOVE', path
     if os.path.islink(path):
         os.unlink(path)
     elif os.path.isdir(path):

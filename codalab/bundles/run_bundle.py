@@ -79,6 +79,11 @@ class RunBundle(NamedBundle):
             with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
                 subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
 
+        # Delete everything except the important files
+        for f in os.listdir(temp_dir):
+            if f in ['output', 'stdout', 'stderr']: continue
+            path_util.remove(os.path.join(temp_dir, f))
+
         # Re-install the dependencies as relative dependencies
         self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
         return bundle_store.upload(temp_dir, allow_symlinks=True)

@@ -119,8 +119,6 @@ class Bundle(ORMObject):
                   dep.parent_path,
                 )
             link_path = path_util.safe_join(dest_path, dep.child_path)
-            # Remove if already exists (happens if we're re-installing the dependencies
-            if os.path.exists(link_path): os.unlink(link_path)
             os.symlink(target, link_path)
 
     def get_hard_dependencies(self):

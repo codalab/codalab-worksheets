@@ -161,8 +161,7 @@ class CodaLabManager(object):
 
             os.getppid = getppid
 
-        #print "SESSION_NAME: ", str(os.getppid())
-        return str(os.getppid())
+        return os.getenv('CODALAB_SESSION', str(os.getppid()))
 
     @cached
     def session(self):
