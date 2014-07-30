@@ -58,16 +58,15 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
             raise UsageError('Invalid bundle_spec: %s' % bundle_spec)
         bundle_spec, last_index = match(bundle_spec)
 
-        # TODO: replace this with more general regular expressions, but don't
-        # want it to be cumbersome.
         if bundle_spec:
-            if bundle_spec.endswith('$'):
-                bundle_spec_query = bundle_spec[0:-1]
+            if '%' in bundle_spec:
+                bundle_spec_query = LikeQuery(bundle_spec) 
             else:
-                bundle_spec_query = LikeQuery(bundle_spec + '%') 
+                bundle_spec_query = bundle_spec
         else:
             bundle_spec_query = None
         #print bundle_spec_query, last_index
+
         bundle_uuids = model.get_bundle_uuids({
             'name': bundle_spec_query,
             'worksheet_uuid': worksheet_uuid
