@@ -118,9 +118,7 @@ class Bundle(ORMObject):
                   bundle_store.get_location(parent.data_hash, relative=True),
                   dep.parent_path,
                 )
-            #print 'dest_path', dest_path, os.path.exists(dest_path)
             link_path = path_util.safe_join(dest_path, dep.child_path)
-            #print 'LINK', target, link_path
             # Remove if already exists (happens if we're re-installing the dependencies
             if os.path.exists(link_path): os.unlink(link_path)
             os.symlink(target, link_path)

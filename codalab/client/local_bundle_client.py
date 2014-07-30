@@ -231,8 +231,10 @@ class LocalBundleClient(BundleClient):
     def close_target_handle(self, handle):
         handle.close()
 
-    def download_target(self, target):
+    def download_target(self, target, follow_symlinks):
         # Don't need to download anything because it's already local.
+        # Note that we can't really enforce follow_symlinks, but this is okay,
+        # because we will follow them when we copy it from the target path.
         return (self.get_target_path(target), None)
 
     def mimic(self,

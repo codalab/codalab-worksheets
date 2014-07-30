@@ -22,4 +22,4 @@ def copy(source, dest, autoflush=True, print_status=False):
         if print_status:
             print ("\r%s KB" % (n / 1024)),
             sys.stdout.flush()
-    if print_status: print ''
+    if print_status: print ("\r%s KB" % (n / 1024))

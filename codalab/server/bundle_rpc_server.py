@@ -64,9 +64,9 @@ class BundleRPCServer(FileServer):
         path = self.client.get_target_path(target)
         return self.open_file(path, 'rb')
 
-    def open_target_zip(self, target):
+    def open_target_zip(self, target, follow_symlinks):
         path = self.client.get_target_path(target)
-        zip_path = zip_util.zip(path)  # Create temporary zip file
+        zip_path = zip_util.zip(path, follow_symlinks=follow_symlinks)  # Create temporary zip file
         return self.open_file(zip_path, 'rb')
 
     def serve_forever(self):

@@ -20,7 +20,7 @@ from codalab.lib import path_util
 ZIP_SUBPATH = 'zip_subpath'
 
 
-def zip(path, exclude_names=[]):
+def zip(path, follow_symlinks, exclude_names=[]):
     '''
     Take a path to a file or directory and return the path to a zip archive
     containing its contents.
@@ -38,7 +38,7 @@ def zip(path, exclude_names=[]):
 
     # TODO: this is inefficient; do the zipping from the original source
     # directly.
-    path_util.copy(absolute_path, temp_subpath, follow_symlinks=False, exclude_names=exclude_names)
+    path_util.copy(absolute_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_names=exclude_names)
 
     # TODO: These methods of zipping don't preserve permissions, so using a
     # system call for now (only works in Linux)
@@ -58,7 +58,9 @@ def zip(path, exclude_names=[]):
     # Clean up the temporary directory and return the zip file's path.
 
     zip_path = temp_path + '.zip'
-    if os.system("cd %s && zip -qr --symlinks %s %s" % (temp_path, zip_path, ZIP_SUBPATH)) != 0:
+    opts = '-qr'
+    if not follow_symlinks: opts += ' --symlinks'
+    if os.system("cd %s && zip %s %s %s" % (temp_path, opts, zip_path, ZIP_SUBPATH)) != 0:
         raise UsageError('zip failed')
 
     path_util.remove(temp_path)

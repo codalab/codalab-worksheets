@@ -97,7 +97,7 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def download_target(self, target):
+    def download_target(self, target, follow_symlinks):
         '''
         Download a target. Return the local path to where target has been
         downloaded and whether the path is temporary (returner controls it

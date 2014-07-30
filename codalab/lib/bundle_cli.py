@@ -424,7 +424,7 @@ class BundleCLI(object):
         bundle_uuid, subpath = target
 
         # Download first to a local location path.
-        local_path, temp_path = client.download_target(target)
+        local_path, temp_path = client.download_target(target, True)
 
         # Copy into desired directory.
         info = client.get_bundle_info(bundle_uuid)
@@ -437,7 +437,7 @@ class BundleCLI(object):
             print 'Local directory', local_dir, 'already exists. Bundle is available at:'
             print local_path
         else:
-            path_util.copy(local_path, final_path, follow_symlinks=False)
+            path_util.copy(local_path, final_path, follow_symlinks=True)
             if temp_path: path_util.remove(temp_path)
 
     def do_cp_command(self, argv, parser):
@@ -483,17 +483,20 @@ class BundleCLI(object):
         except:
             pass
 
+        source_desc = "%s(%s)" % (source_bundle_uuid, source_client.get_bundle_info(source_bundle_uuid)['metadata']['name'])
         if not bundle:
-            print "Copying %s(%s)..." % (source_bundle_uuid, source_client.get_bundle_info(source_bundle_uuid)['metadata']['name'])
+            print "Copying %s..." % source_desc 
 
             # Download from source
-            source_path, temp_path = source_client.download_target((source_bundle_uuid, ''))
+            source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
             info = source_client.get_bundle_info(source_bundle_uuid)
 
             # Upload to dest
             print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid)
             if temp_path: path_util.remove(temp_path)
         else:
+            print "%s already exists, skipping" % source_desc 
+
             # Just need to add it to the worksheet
             dest_client.add_worksheet_item(dest_worksheet_uuid, (source_bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
 
