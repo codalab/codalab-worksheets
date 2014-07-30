@@ -717,6 +717,8 @@ class BundleCLI(object):
             stats.append('created:     %s' % (formatting.time_str(metadata['created']),))
         if 'data_size' in metadata:
             stats.append('size:        %s' % (formatting.size_str(metadata['data_size']),))
+        if 'time' in metadata:
+            stats.append('time:        %s' % (formatting.duration_str(metadata['time']),))
         fields['stats'] = '%s\n' % ('\n'.join(stats),) if stats else ''
 
         # Compute a nicely-formatted list of hard dependencies. Since this type of

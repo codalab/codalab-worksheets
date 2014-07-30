@@ -164,9 +164,12 @@ class Worker(object):
         with self.profile('Completing bundle...'):
             print '-- START RUN: %s' % (bundle,)
             try:
+                start_time = time.time()
                 (data_hash, metadata) = bundle.complete(self.bundle_store, parent_dict, temp_dir)
+                end_time = time.time()
                 state = State.READY
             except Exception:
+                end_time = time.time()
                 # TODO(pliang): distinguish between internal CodaLab error and the program failing
                 # TODO(skishore): Add metadata updates: time / CPU of run.
                 (type, error, tb) = sys.exc_info()
@@ -183,6 +186,7 @@ class Worker(object):
                     )
                 metadata.update({'failure_message': failure_message})
                 state = State.FAILED
+            metadata.update({'time': end_time - start_time})
             self.finalize_run(bundle, state, data_hash, metadata)
             print '-- END RUN: %s [%s]' % (bundle, state)
             print ''
