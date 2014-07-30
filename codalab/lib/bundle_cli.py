@@ -662,7 +662,7 @@ class BundleCLI(object):
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid, args.children)
 
-        def wrap1(string): return '-- ' + string
+        def wrap(string): return '=== ' + string + ' ==='
 
         print self.format_basic_info(client, info)
 
@@ -673,14 +673,14 @@ class BundleCLI(object):
 
         # Verbose output
         if args.verbose:
-            print 'contents:'
+            print wrap('contents')
             info = self.print_target_info((bundle_uuid, ''), decorate=True)
-            # Print first 10 lines of stdin and stdout
+            # Print first 10 lines of stdout and stderr
             contents = info.get('contents')
             if contents:
                 for item in contents:
                     if item['name'] not in ['stdout', 'stderr']: continue
-                    print wrap1(item['name'])
+                    print wrap(item['name'])
                     self.print_target_info((bundle_uuid, item['name']), decorate=True)
                     #for line in client.head_target((bundle_uuid, item['name']), 10):
                         #print line,
@@ -769,12 +769,13 @@ state:       {state}
         if info['type'] == 'file':
             if decorate:
                 for line in client.head_target(target, 10):
-                    print '  ' + line,
+                    print line,
             else:
                 client.cat_target(target, sys.stdout)
         def size(x):
-            t = x.get('type', 'missing')
+            t = x.get('type', 'MISSING')
             if t == 'file': return canonicalize.size_str(x['size'])
+            if t == 'directory': return 'dir'
             return t
         if info['type'] == 'directory':
             contents = [
@@ -782,7 +783,7 @@ state:       {state}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'size'), contents, justify={'size':1}, indent='  ' if decorate else '')
+            self.print_table(('name', 'size'), contents, justify={'size':1}, indent='')
         return info
 
     def do_wait_command(self, argv, parser):
