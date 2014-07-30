@@ -852,7 +852,13 @@ state:       {state}
                 time.sleep(period)
                 period = min(backoff*period, max_period)
         for handle in handles:
-            if handle: client.close_target_handle(handle)
+            if not handle: continue
+            # Read the remainder of the file
+            while True:
+                result = handle.readline()
+                if result == '': break
+                sys.stdout.write(result)
+            client.close_target_handle(handle)
         return info['state']
 
     def do_mimic_command(self, argv, parser):
