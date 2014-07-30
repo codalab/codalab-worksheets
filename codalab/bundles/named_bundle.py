@@ -47,4 +47,4 @@ class NamedBundle(Bundle):
         )
 
     def simple_str(self):
-        return self.metadata.name + '[' + self.uuid + ']'
+        return self.metadata.name + '(' + self.uuid + ')'

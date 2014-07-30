@@ -177,20 +177,21 @@ class LocalBundleClient(BundleClient):
         self.model.update_bundle(bundle, {'metadata': metadata})
 
     def delete_bundles(self, uuids, force, recursive):
+        uuids = set(uuids)
         if recursive:
             relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         else:
             # Check if any children exist.  If so, then we only delete uuids if force = True.
             relevant_uuids = self.model.get_self_and_descendants(uuids, depth=1)
-            if (not force) and set(uuids) != set(relevant_uuids):
-                relevant = self.model.batch_get_bundles(uuid=relevant_uuids - set(uuids))
+            if (not force) and uuids != relevant_uuids:
+                relevant = self.model.batch_get_bundles(uuid=(relevant_uuids - uuids))
                 raise UsageError('Can\'t delete because the following bundles depend on %s:\n  %s' % (
                   uuids,
                   '\n  '.join(bundle.simple_str() for bundle in relevant),
                 ))
             relevant_uuids = uuids
         self.model.delete_bundles(relevant_uuids)
-        return relevant_uuids
+        return list(relevant_uuids)
 
     def get_bundle_info(self, uuid, get_children=False):
         '''
