@@ -4,7 +4,7 @@ BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from time import sleep
 import contextlib
-import os
+import os, sys
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -66,6 +66,8 @@ class LocalBundleClient(BundleClient):
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
           'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
         }
+        for dep in result['dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
+        for dep in result['hard_dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
         if children is not None:
             result['children'] = [child.simple_str() for child in children]
         return result
@@ -120,16 +122,16 @@ class LocalBundleClient(BundleClient):
             construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash']}
         elif bundle_type == 'make' or bundle_type == 'run':
-            targets = { item['child_path'] : (item['child_uuid'], item['child_path'])
+            targets = { item['child_path'] : (item['parent_uuid'], item['parent_path'])
                         for item in info['dependencies'] }
             construct_args = {'targets': targets, 'command': info['command'],
                               'metadata': info['metadata'], 'uuid': info['uuid'],
-                              'data_hash': info['data_hash']}
+                              'data_hash': info['data_hash'], 'state': info['state']}
         else:
             raise UsageError('Invalid bundle_type: %s' % bundle_type)
         return construct_args
 
-    def upload_bundle(self, path, info, worksheet_uuid):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
         bundle_type = info['bundle_type']
         if 'uuid' in info:
             existing = True
@@ -146,7 +148,7 @@ class LocalBundleClient(BundleClient):
             self.validate_user_metadata(bundle_subclass, metadata)
 
         # Upload the given path and record additional metadata from the upload.
-        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
+        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
         metadata.update(bundle_store_metadata)
         # TODO: check that if the data hash already exists, it's the same as before.
         construct_args['data_hash'] = data_hash
@@ -174,22 +176,22 @@ class LocalBundleClient(BundleClient):
         self.validate_user_metadata(bundle, metadata)
         self.model.update_bundle(bundle, {'metadata': metadata})
 
-    def delete_bundle(self, uuid, force=False):
-        children = self.model.get_children(uuid)
-        if children and not force:
-            raise UsageError('The following bundles depend on %s:\n  %s' % (
-              uuid,
-              '\n  '.join(child.simple_str() for child in children),
-            ))
-        # Don't need to worry about worksheet dependencies; there are always
-        # worksheet dependencies.
-        #child_worksheets = self.model.get_child_worksheets(uuid)
-        #if child_worksheets and not force:
-        #    raise UsageError('The following worksheets depend on %s:\n  %s' % (
-        #      uuid,
-        #      '\n  '.join(child.simple_str() for child in child_worksheets),
-        #    ))
-        self.model.delete_bundle_tree([uuid], force=force)
+    def delete_bundles(self, uuids, force, recursive):
+        uuids = set(uuids)
+        if recursive:
+            relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
+        else:
+            # Check if any children exist.  If so, then we only delete uuids if force = True.
+            relevant_uuids = self.model.get_self_and_descendants(uuids, depth=1)
+            if (not force) and uuids != relevant_uuids:
+                relevant = self.model.batch_get_bundles(uuid=(relevant_uuids - uuids))
+                raise UsageError('Can\'t delete because the following bundles depend on %s:\n  %s' % (
+                  uuids,
+                  '\n  '.join(bundle.simple_str() for bundle in relevant),
+                ))
+            relevant_uuids = uuids
+        self.model.delete_bundles(relevant_uuids)
+        return list(relevant_uuids)
 
     def get_bundle_info(self, uuid, get_children=False):
         '''
@@ -197,7 +199,11 @@ class LocalBundleClient(BundleClient):
         get_children: whether we want to return information about the children too.
         '''
         bundle = self.model.get_bundle(uuid)
-        children = self.model.get_children(uuid) if get_children else None
+        if get_children:
+            children_uuids = self.model.get_children_uuids(uuid)
+            children = self.model.batch_get_bundles(uuid=children_uuids)
+        else:
+            children = None
         return self._bundle_to_bundle_info(bundle, children=children)
 
     def get_bundle_infos(self, uuids):
@@ -226,32 +232,40 @@ class LocalBundleClient(BundleClient):
     def close_target_handle(self, handle):
         handle.close()
 
-    def download_target(self, target):
+    def download_target(self, target, follow_symlinks):
         # Don't need to download anything because it's already local.
+        # Note that we can't really enforce follow_symlinks, but this is okay,
+        # because we will follow them when we copy it from the target path.
         return (self.get_target_path(target), None)
 
-    def mimic(self,
-              old_input_bundle_uuid, new_input_bundle_uuid,
-              old_output_bundle_uuid, new_output_bundle_name,
-              worksheet_uuid, depth, stop_early):
-        # Look at ancestors of old_output_bundle_uuid until we arrive
-        # at old_input_bundle_uuid and/or reached some depth.
+    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth):
+        '''
+        old_inputs: list of bundle uuids
+        old_output: bundle uuid that we produced
+        new_inputs: list of bundle uuids that are analogous to old_inputs
+        new_output_name: name of the bundle to create to be analogous to old_output
+        worksheet_uuid: add newly created bundles to this worksheet
+        depth: how far to do a BFS up
+        '''
+        # Build the graph: Look at ancestors of old_output_bundle_uuid until we
+        # arrive at old_input_bundle_uuid and/or reached some depth.
         infos = {}  # uuid -> bundle info
         bundle_infos = []  # These are the ones that we need to generate
-        bundle_uuids = set([old_output_bundle_uuid])
+        bundle_uuids = set([old_output])
         for _ in range(depth):
             #print bundle_uuids
             new_bundle_uuids = set()
             for bundle_uuid in bundle_uuids:
+                if bundle_uuid in infos: continue  # Already visited
                 info = infos[bundle_uuid] = self.get_bundle_info(bundle_uuid)
                 for dep in info['dependencies']:
                     new_bundle_uuids.add(dep['parent_uuid'])
             bundle_uuids = new_bundle_uuids
-            if stop_early and old_input_bundle_uuid in bundle_uuids: break
 
         # Now go recursively create the bundles.
         old_to_new = {}
-        old_to_new[old_input_bundle_uuid] = new_input_bundle_uuid
+        for old, new in zip(old_inputs, new_inputs):
+            old_to_new[old] = new
         def recurse(old_bundle_uuid): # Return the corresponding new version if applicable
             if old_bundle_uuid in old_to_new:
                 #print old_bundle_uuid, 'cached'
@@ -273,27 +287,33 @@ class LocalBundleClient(BundleClient):
             if new_dependencies == info['dependencies']:
                 #print old_bundle_uuid, 'nothing changed'
                 return old_bundle_uuid
+            old_bundle_name = info['metadata']['name']
 
             # Create a new bundle
             targets = {}
             for dep in new_dependencies:
                 targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
             metadata = info['metadata']
-            if old_bundle_uuid == old_output_bundle_uuid:
-                metadata['name'] = new_output_bundle_name
-            else:
-                metadata['name'] = new_output_bundle_name + '-' + info['metadata']['name']
-            # TODO: pop all the automatically generated pairs automatically
-            metadata.pop('data_size')
-            metadata.pop('created')
-            #print targets
+            if old_bundle_uuid == old_output:
+                metadata['name'] = new_output_name
+            else:  # Just make up a name heuristically
+                metadata['name'] = new_output_name + '-' + info['metadata']['name']
+
+            # Remove all the automatically generated keys
+            cls = get_bundle_subclass(info['bundle_type'])
+            for spec in cls.METADATA_SPECS:
+                if spec.generated and spec.key in metadata:
+                    metadata.pop(spec.key)
+
             new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
                 targets, info['command'], info['metadata'], worksheet_uuid)
+
+            print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
 
             old_to_new[old_bundle_uuid] = new_bundle_uuid
             return new_bundle_uuid
 
-        return recurse(old_output_bundle_uuid)
+        return recurse(old_output)
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!

@@ -46,14 +46,12 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def delete_bundle(self, bundle_spec, force=False):
+    def delete_bundles(self, bundle_uuids, force, recursive):
         '''
-        bundle_spec should be either a bundle uuid, a unique prefix of a uuid, or
-        a unique bundle name.
-
-        Delete this bundle. If force is True, delete all its (direct and indirect)
-        descendents too. If force is False, and if this bundle has any downstream
-        dependencies, this method will raise a UsageError.
+        Delete the given bundles.
+        If recursive is True, delete all its (direct and indirect) descendents too.
+        If recursive is False, and if this bundle has any downstream dependencies, this method will raise a UsageError.
+        If force is True, just delete the bundle(s) even if it means breaking dependencies.
         '''
         raise NotImplementedError
 
@@ -99,7 +97,7 @@ class BundleClient(object):
         '''
         raise NotImplementedError
 
-    def download_target(self, target):
+    def download_target(self, target, follow_symlinks):
         '''
         Download a target. Return the local path to where target has been
         downloaded and whether the path is temporary (returner controls it

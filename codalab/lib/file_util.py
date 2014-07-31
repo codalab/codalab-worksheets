@@ -2,9 +2,10 @@
 file_util provides helpers for dealing with file handles in robust,
 memory-efficent ways.
 '''
-BUFFER_SIZE = 0x40000
+BUFFER_SIZE = 2 * 1024 * 1024
 
 import sys
+import formatting
 
 def copy(source, dest, autoflush=True, print_status=False):
     '''
@@ -20,6 +21,7 @@ def copy(source, dest, autoflush=True, print_status=False):
         if autoflush:
             dest.flush()
         if print_status:
-            print ("\r%s KB" % (n / 1024)),
+            print "\rCopied %s" % formatting.size_str(n),
             sys.stdout.flush()
-    if print_status: print ''
+    if print_status:
+        print "\rCopied %s" % formatting.size_str(n)

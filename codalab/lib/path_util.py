@@ -78,6 +78,7 @@ def normalize(path):
     Return the absolute path of the location specified by the given path.
     This path is returned in a "canonical form", without ~'s, .'s, ..'s.
     '''
+    if path == '-': return '/dev/stdin'
     return os.path.abspath(os.path.expanduser(path))
 
 
@@ -311,6 +312,9 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
     source_path can be a list of files, in which case we need to create a
     directory first.  Assume dest_path doesn't exist.
     '''
+    # TODO: implement exclude_names
+    # TODO: copytree doesn't preserve permissions, so we're making a system
+    # call (only works in Linux).
     if os.path.exists(dest_path):
         raise path_error('already exists', dest_path)
 
@@ -320,13 +324,13 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
     else:
         source = source_path
 
-    # TODO: implement exclude_names
-    command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
-    if os.system(command) != 0:
-        raise path_error('Unable to copy %s to' % source_path, dest_path)
-
-    # TODO: copytree doesn't preserve permissions, so we're making a system call;
-    # fix this.
+    if source_path == '/dev/stdin':
+        with open(dest_path, 'wb') as dest:
+            file_util.copy(sys.stdin, dest, autoflush=False, print_status=True)
+    else:
+        command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
+        if os.system(command) != 0:
+            raise path_error('Unable to copy %s to' % source_path, dest_path)
 
     #if os.path.islink(source_path):
     #    link_target = os.readlink(source_path)
@@ -354,7 +358,6 @@ def remove(path):
     Remove the given path, whether it is a directory, file, or link.
     '''
     check_isvalid(path, 'remove')
-    #print 'REMOVE', path
     if os.path.islink(path):
         os.unlink(path)
     elif os.path.isdir(path):

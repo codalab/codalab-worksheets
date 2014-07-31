@@ -25,7 +25,7 @@ from codalab.lib import (
   canonicalize,
   path_util,
 )
-
+from codalab.bundles.run_bundle import RunBundle
 
 class Worker(object):
     def __init__(self, bundle_store, model):
@@ -87,9 +87,9 @@ class Worker(object):
         parent_uuids = set(
           dep.parent_uuid for bundle in bundles for dep in bundle.dependencies
         )
+
         with self.profile('Getting parents...'):
             parents = self.model.batch_get_bundles(uuid=parent_uuids)
-            #if len(bundles) > 0: self.pretty_print('Got %s bundles.' % (len(parents),))
         all_parent_states = {parent.uuid: parent.state for parent in parents}
         all_parent_uuids = set(all_parent_states)
         bundles_to_fail = []
@@ -97,9 +97,8 @@ class Worker(object):
         for bundle in bundles:
             parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
             missing_uuids = parent_uuids - all_parent_uuids
-            if missing_uuids:
-                bundles_to_fail.append(
-                  (bundle, 'Missing parent bundles: %s' % (', '.join(missing_uuids),)))
+            # If uuid doesn't exist, then don't process this bundle yet (the dependency might show up later)
+            if missing_uuids: continue
             parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
             failed_uuids = [
               uuid for (uuid, state) in parent_states.iteritems()
@@ -110,6 +109,7 @@ class Worker(object):
                   (bundle, 'Parent bundles failed: %s' % (', '.join(failed_uuids),)))
             elif all(state == State.READY for state in parent_states.itervalues()):
                 bundles_to_stage.append(bundle)
+
         with self.profile('Failing %s bundles...' % (len(bundles_to_fail),)):
             for (bundle, failure_message) in bundles_to_fail:
                 metadata_update = {'failure_message': failure_message}
@@ -164,9 +164,12 @@ class Worker(object):
         with self.profile('Completing bundle...'):
             print '-- START RUN: %s' % (bundle,)
             try:
+                start_time = time.time()
                 (data_hash, metadata) = bundle.complete(self.bundle_store, parent_dict, temp_dir)
+                end_time = time.time()
                 state = State.READY
             except Exception:
+                end_time = time.time()
                 # TODO(pliang): distinguish between internal CodaLab error and the program failing
                 # TODO(skishore): Add metadata updates: time / CPU of run.
                 (type, error, tb) = sys.exc_info()
@@ -183,6 +186,8 @@ class Worker(object):
                     )
                 metadata.update({'failure_message': failure_message})
                 state = State.FAILED
+            if isinstance(bundle, RunBundle):
+                metadata.update({'time': end_time - start_time})
             self.finalize_run(bundle, state, data_hash, metadata)
             print '-- END RUN: %s [%s]' % (bundle, state)
             print ''

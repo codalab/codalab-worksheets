@@ -32,8 +32,8 @@ class Group(ORMObject):
         '''
         spec_util.check_uuid(self.uuid)
         spec_util.check_name(self.name)
-        precondition(type(self.owner_id) == int and self.owner_id >= 0, 'Invalid value: owner_id.')
-        precondition(type(self.user_defined) == bool, 'Invalid value: user_defined.')
+        precondition(isinstance(self.owner_id, basestring), 'Invalid value: owner_id.')
+        precondition(isinstance(self.user_defined, bool), 'Invalid value: user_defined.')
 
     def __repr__(self):
         return 'Group(uuid=%r, name=%r)' % (self.uuid, self.name)
@@ -101,7 +101,7 @@ def unique_group(model, group_spec):
 ALL_PERMISSIONS = {GROUP_OBJECT_PERMISSION_ALL, GROUP_OBJECT_PERMISSION_READ}
 
 def _check_permissions(model, user_id, target, permissions):
-    if target.owner_id == user_id:
+    if str(target.owner_id) == user_id:
         available_perms = ALL_PERMISSIONS
     else:
         available_perms = model.batch_get_permissions(user_id, target.uuid)

@@ -1,7 +1,6 @@
 #!/bin/bash
 
-# Just run codalab.py in the right environment so that the proper libraries get
-# loaded.
+# Run cl.py in the right environment so that the proper libraries get loaded.
 export CODALAB=`dirname $0`/../..
 export PYTHONPATH=$CODALAB
 exec $CODALAB/codalab_env/bin/python $CODALAB/codalab/bin/cl.py "$@"

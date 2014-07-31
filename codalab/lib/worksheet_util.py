@@ -1,5 +1,6 @@
 '''
 worksheet_util contains the following public functions:
+- interpret_items: returns a structure that interprets all the directives in the worksheet item.
 - request_new_items: pops up an editor to allow for full-text editing of a worksheet.
 
 A worksheet contains a list of items, where each item includes
@@ -24,6 +25,7 @@ Types of directives:
 %% this is a comment
 % display hidden
 % display inline <genpath (e.g., output/stats/errorRate)>
+% display contents <genpath (e.g., output/stats/things)>
 % display image <genpath (e.g., output/graph.png)>
 % display html <genpath (e.g., output/test.html)>
 % display record <schema name>
@@ -44,7 +46,7 @@ import sys
 import tempfile
 
 from codalab.common import UsageError
-from codalab.lib import path_util, canonicalize
+from codalab.lib import path_util, canonicalize, formatting
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -105,11 +107,12 @@ def get_worksheet_lines(worksheet_info):
             yield value_obj
         elif type == TYPE_BUNDLE:
             metadata = bundle_info['metadata']
-            # TODO: put more information
-            description = metadata['name']
-            description += ' ' + bundle_info['bundle_type']
+            description = bundle_info['bundle_type']
+            description += ' ' + metadata['name']
+            deps = interpret_genpath(bundle_info, 'dependencies')
+            if deps: description += ' <- ' + deps
             command = bundle_info.get('command')
-            if command: description += ': ' + command
+            if command: description += ' : ' + command
             yield '[%s]{%s}' % (description, bundle_info['uuid'])
         elif type == TYPE_DIRECTIVE:
             value = tokens_to_string(value_obj)
@@ -184,10 +187,18 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     return result
 
 def interpret_genpath(bundle_info, genpath):
+    # TODO: unify the two genpaths?
+    if genpath == 'dependencies' or genpath == 'hard_dependencies':
+        return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
+
+    # Only return the pair if genpath might be referring to a file.
+    if genpath == 'stdout' or genpath == 'stderr' or genpath.startswith('output'):
+        return (bundle_info['uuid'], genpath)
+
+    # Either bundle info or metadata
     value = bundle_info.get(genpath, None)
     if not value: value = bundle_info['metadata'].get(genpath, None)
-    if not value: value = (bundle_info['uuid'], genpath)
-    return value
+    return value or ''
 
 def canonicalize_schema_item(args):
     if len(args) == 1:
@@ -199,10 +210,17 @@ def canonicalize_schema_item(args):
     else:
         raise UsageError('Invalid number of arguments: %s' % value_obj)
 
+def apply_func(func, arg):
+    try:
+        return func(arg)
+    except:
+        # Can't apply the function, so just return the arg.
+        return arg 
+
 def interpret_items(items):
     '''
     Return a list of items, where each item is either:
-    - ('markup'|'inline', string)
+    - ('markup'|'inline'|'contents', string)
     - ('record'|'table', (col1, col2), [{col1:value1, col2:value2}, ...])
     - ('image'|'html', genpath)
     '''
@@ -210,9 +228,9 @@ def interpret_items(items):
     schemas = {}
     schemas['default'] = current_schema = [
         canonicalize_schema_item(x)
-        for x in [['uuid'], ['name'], ['bundle_type'], ['data_size', 'data_size', canonicalize.size_str], ['state']]
+        for x in [['name'], ['bundle_type'], ['dependencies'], ['command'], ['data_size', 'data_size', formatting.size_str], ['state']]
     ]
-    current_display = ('record', 'default')
+    current_display = ('table', 'default')
     new_items = []
     bundle_infos = []
     def flush():
@@ -222,7 +240,7 @@ def interpret_items(items):
         args = current_display[1:]
         if mode == 'hidden':
             pass
-        elif mode == 'inline':
+        elif mode == 'inline' or mode == 'contents':
             for bundle_info in bundle_infos:
                 new_items.append((mode, interpret_genpath(bundle_info, args[0])))
         elif mode == 'image':
@@ -234,23 +252,23 @@ def interpret_items(items):
             # key1: value1
             # key2: value2
             # ...
-            schema = schemas[args[0]]
+            schema = schemas[args[0] if len(args) > 0 else 'default']
             for bundle_info in bundle_infos:
                 header = ('key', 'value')
                 rows = []
                 for (name, genpath, post) in schema:
-                    rows.append({'key': name + ':', 'value': post(interpret_genpath(bundle_info, genpath))})
+                    rows.append({'key': name + ':', 'value': apply_func(post, interpret_genpath(bundle_info, genpath))})
                 new_items.append((mode, (header, rows)))
         elif mode == 'table':
             # display table schema =>
             # key1       key2
             # b1_value1  b1_value2
             # b2_value1  b2_value2
-            schema = schemas[args[0]]
+            schema = schemas[args[0] if len(args) > 0 else 'default']
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
-                rows.append({name : post(interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
+                rows.append({name : apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append((mode, (header, rows)))
         else:
             raise UsageError('Unknown display mode: %s' % mode)

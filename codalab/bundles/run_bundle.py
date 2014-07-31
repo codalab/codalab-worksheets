@@ -22,23 +22,27 @@ from codalab.lib import (
   path_util,
   spec_util,
 )
+from codalab.objects.metadata_spec import MetadataSpec
 
 class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
-    
-    # TODO: add fields for time, memory, disk usage.
+    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    METADATA_SPECS.append(MetadataSpec('allowed_time', basestring, 'amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('allowed_memory', basestring, 'amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('allowed_disk', basestring, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
 
+    METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True))
+    METADATA_SPECS.append(MetadataSpec('memory', long, 'amount of memory (bytes) used by this run', generated=True))
+    
     @classmethod
-    def construct(cls, targets, command, metadata, uuid=None, data_hash=None):
+    def construct(cls, targets, command, metadata, uuid=None, data_hash=None, state=State.CREATED):
         if not uuid: uuid = spec_util.generate_uuid()
         # Check that targets does not include both keyed and anonymous targets.
         if len(targets) > 1 and '' in targets:
             raise UsageError('Must specify keys when packaging multiple targets!')
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
-        # Support anonymous run bundles with names based on their commands
-        if not metadata['name']:
-            metadata['name'] = spec_util.create_default_name(cls.BUNDLE_TYPE, command)
+
         # List the dependencies of this bundle on its targets.
         dependencies = []
         for (child_path, (parent_uuid, parent_path)) in targets.iteritems():
@@ -53,7 +57,7 @@ class RunBundle(NamedBundle):
           'bundle_type': cls.BUNDLE_TYPE,
           'command': command,
           'data_hash': data_hash,
-          'state': State.CREATED,
+          'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
         })
@@ -64,17 +68,21 @@ class RunBundle(NamedBundle):
         return []
 
     def complete(self, bundle_store, parent_dict, temp_dir):
-        command = self.command
-        path_util.make_directory(temp_dir)
-        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=False)
         # TODO: have a mode where we ssh into another machine to do this
         # In that case, need to copy files around.
+        command = self.command
+        path_util.make_directory(temp_dir)
+
+        # Unlike make, need to use absolute symlinks to be able to run the program
+        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=False)
+
         with path_util.chdir(temp_dir):
             print 'Executing command: %s' % (command,)
             print 'In temp directory: %s' % (temp_dir,)
-            os.mkdir('output')  # Only stuff written to the output directory is copied back.
             with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
                 subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
-            #os.unlink('program')
-            #os.unlink('input')
-        return bundle_store.upload(temp_dir, allow_symlinks=True)
+
+        # Re-install the dependencies as relative dependencies
+        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
+
+        return bundle_store.upload(temp_dir)

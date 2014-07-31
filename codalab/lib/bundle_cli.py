@@ -34,7 +34,8 @@ from codalab.lib import (
   path_util,
   spec_util,
   worksheet_util,
-  canonicalize
+  canonicalize,
+  formatting
 )
 from codalab.objects.worker import Worker
 from codalab.objects.worksheet import Worksheet
@@ -76,6 +77,7 @@ class BundleCLI(object):
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
+      'alias': 'Manage CodaLab instance aliases.',
       'worker': 'Run the CodaLab bundle worker.',
       # Internal commands wihch are used for debugging.
       'cleanup': 'Clean up the CodaLab bundle store.',
@@ -85,46 +87,52 @@ class BundleCLI(object):
     }
 
     BUNDLE_COMMANDS = (
-      'upload',
-      'make',
-      'run',
-      'edit',
-      'rm',
-      'ls',
-      'info',
-      'cat',
-      'wait',
-      'download',
-      'cp',
+        'upload',
+        'make',
+        'run',
+        'edit',
+        'rm',
+        'ls',
+        'info',
+        'cat',
+        'wait',
+        'download',
+        'cp',
     )
 
     WORKSHEET_COMMANDS = (
-      'new',
-      'add',
-      'work',
-      'print',
-      'wedit',
-      'wrm',
-      'wls',
-      'wcp',
+        'new',
+        'add',
+        'work',
+        'print',
+        'wedit',
+        'wrm',
+        'wls',
+        'wcp',
     )
 
     GROUP_AND_PERMISSION_COMMANDS = (
-      'list-groups',
-      'new-group',
-      'rm-group',
-      'group-info',
-      'add-user',
-      'rm-user',
-      'set-perm',
+        'list-groups',
+        'new-group',
+        'rm-group',
+        'group-info',
+        'add-user',
+        'rm-user',
+        'set-perm',
     )
 
     OTHER_COMMANDS = (
-      'help',
-      'status',
-      'worker',
-      'server',
+        'help',
+        'status',
+        'alias',
+        'worker',
+        'server',
     )
+
+    SHORTCUTS = {
+        'up': 'upload',
+        'down': 'download',
+    }
 
     def __init__(self, manager):
         self.manager = manager
@@ -270,6 +278,8 @@ class BundleCLI(object):
             (command, remaining_args) = (argv[0], argv[1:])
         else:
             (command, remaining_args) = ('help', [])
+        command = self.SHORTCUTS.get(command, command)
+
         command_fn = getattr(self, 'do_%s_command' % (command.replace('-', '_'),), None)
         if not command_fn:
             self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
@@ -317,6 +327,7 @@ class BundleCLI(object):
             print_command(command)
 
     def do_status_command(self, argv, parser):
+        print "codalab_home: %s" % self.manager.codalab_home()
         print "session: %s" % self.manager.session_name()
         address = self.manager.session()['address']
         print "address: %s" % address
@@ -326,6 +337,30 @@ class BundleCLI(object):
         worksheet_info = self.get_current_worksheet_info()
         if worksheet_info:
             print "worksheet: %s(%s)" % (worksheet_info['name'], worksheet_info['uuid'])
+
+    def do_alias_command(self, argv, parser):
+        '''
+        Show, add, modify, delete aliases (mappings from names to instances).
+        Only modifies the CLI configuration, doesn't need a BundleClient.
+        '''
+        parser.add_argument('key', help='name of the alias (e.g., cloud)', nargs='?')
+        parser.add_argument('value', help='Instance to map the alias to (e.g., http://codalab.org:2800)', nargs='?')
+        parser.add_argument('-r', '--remove', help='Remove this alias', action='store_true')
+        args = parser.parse_args(argv)
+        aliases = self.manager.config['aliases']
+        if args.key:
+            value = aliases.get(args.key)
+            if args.remove:
+                del aliases[args.key]
+                self.manager.save_config()
+            elif args.value:
+                aliases[args.key] = args.value
+                self.manager.save_config()
+            else:
+                print args.key + ': ' + (value if value else '(none)')
+        else:
+            for key, value in aliases.items():
+                print key + ': ' + value
 
     def do_upload_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -342,6 +377,10 @@ class BundleCLI(object):
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
+
+        # Expand shortcuts
+        if args.bundle_type == 'd': args.bundle_type = 'dataset'
+        if args.bundle_type == 'p': args.bundle_type = 'program'
 
         # Check that the upload path exists.
         for path in args.path:
@@ -369,7 +408,8 @@ class BundleCLI(object):
         if len(args.path) == 1: args.path = args.path[0]
 
         # Finally, once everything has been checked, then call the client to upload.
-        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid)
+        # Follow symlinks so we don't end up with broken symlinks.
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, follow_symlinks=True)
 
     def do_download_command(self, argv, parser):
         parser.add_argument(
@@ -386,7 +426,7 @@ class BundleCLI(object):
         bundle_uuid, subpath = target
 
         # Download first to a local location path.
-        local_path, temp_path = client.download_target(target)
+        local_path, temp_path = client.download_target(target, True)
 
         # Copy into desired directory.
         info = client.get_bundle_info(bundle_uuid)
@@ -445,15 +485,20 @@ class BundleCLI(object):
         except:
             pass
 
+        source_desc = "%s(%s)" % (source_bundle_uuid, source_client.get_bundle_info(source_bundle_uuid)['metadata']['name'])
         if not bundle:
+            print "Copying %s..." % source_desc 
+
             # Download from source
-            source_path, temp_path = source_client.download_target((source_bundle_uuid, ''))
+            source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
             info = source_client.get_bundle_info(source_bundle_uuid)
 
             # Upload to dest
-            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid)
+            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
             if temp_path: path_util.remove(temp_path)
         else:
+            print "%s already exists, skipping" % source_desc 
+
             # Just need to add it to the worksheet
             dest_client.add_worksheet_item(dest_worksheet_uuid, (source_bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
 
@@ -467,20 +512,28 @@ class BundleCLI(object):
         metadata = metadata_util.request_missing_metadata(MakeBundle, args)
         print client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
-    def do_run_command(self, argv, parser):
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
-        parser.add_argument('command', help='Command-line')
+    def desugar_command(self, target_spec, command):
+        '''
+        Desugar command into target_spec and command.
+        Example: %corenlp%/run %a.txt% => [1:corenlp, 2:a.txt], 1/run 2
+        '''
+        pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
+        buf = ''
+        while True:
+            m = pattern.match(command)
+            if not m: break
+            i = str(len(target_spec)+1)
+            target_spec.append(i + ':' + m.group(2))
+            buf += m.group(1) + i
+            command = m.group(3)
+        return (target_spec, buf + command)
+
+    # After running a bundle, we can wait for it, possibly observing it's output.
+    # These functions are shared across run and mimic.
+    def add_wait_args(self, parser):
         parser.add_argument('-w', '--wait', action='store_true', help='Wait until run finishes')
-        parser.add_argument('-t', '--tail', action='store_true', help='Wait until run finishes, writing output')
-        metadata_util.add_arguments(RunBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
-        args = parser.parse_args(argv)
-        targets = self.parse_key_targets(args.target_spec)
-        command = args.command
-        metadata = metadata_util.request_missing_metadata(RunBundle, args)
-        uuid = client.derive_bundle('run', targets, command, metadata, worksheet_uuid)
-        print uuid
+        parser.add_argument('-t', '--tail', action='store_true', help='Wait until run finishes, displaying output')
+    def wait(self, args, uuid):
         if args.wait:
             state = self.follow_targets(uuid, [])
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
@@ -488,36 +541,70 @@ class BundleCLI(object):
             state = self.follow_targets(uuid, ['stdout', 'stderr'])
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
 
+    def do_run_command(self, argv, parser):
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
+        parser.add_argument('command', help='Command-line')
+        self.add_wait_args(parser)
+        metadata_util.add_arguments(RunBundle, set(), parser)
+        metadata_util.add_auto_argument(parser)
+        args = parser.parse_args(argv)
+        args.target_spec, args.command = self.desugar_command(args.target_spec, args.command)
+        targets = self.parse_key_targets(args.target_spec)
+        command = args.command
+        metadata = metadata_util.request_missing_metadata(RunBundle, args)
+        uuid = client.derive_bundle('run', targets, command, metadata, worksheet_uuid)
+        print uuid
+        self.wait(args, uuid)
+
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
+        parser.add_argument(
+          '-n',
+          '--name',
+          help='new name: ' + spec_util.NAME_REGEX.pattern,
+          nargs='?',
+        )
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
-        new_metadata = metadata_util.request_missing_metadata(
-          bundle_subclass,
-          args,
-          info['metadata'],
-        )
-        if new_metadata != info['metadata']:
+        if args.name:
+            # Just change the name
+            new_metadata = info['metadata']
+            new_metadata['name'] = args.name
             client.update_bundle_metadata(bundle_uuid, new_metadata)
-            print "Saved metadata for bundle %s." % (bundle_uuid)
+        else:
+            # Prompt user for all information
+            new_metadata = metadata_util.request_missing_metadata(
+              bundle_subclass,
+              args,
+              info['metadata'],
+            )
+            if new_metadata != info['metadata']:
+                client.update_bundle_metadata(bundle_uuid, new_metadata)
+                print "Saved metadata for bundle %s." % (bundle_uuid)
 
     def do_rm_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument(
           '-f', '--force',
           action='store_true',
-          help='delete all downstream dependencies',
+          help='delete bundle (DANGEROUS - breaking dependencies!)',
+        )
+        parser.add_argument(
+          '-r', '--recursive',
+          action='store_true',
+          help='delete all bundles downstream that depend on this bundle',
         )
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
         bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
-        for bundle_uuid in bundle_uuids:
-            client.delete_bundle(bundle_uuid, args.force)
+        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive)
+        for uuid in deleted_uuids: print uuid
 
     def do_search_command(self, argv, parser):
         parser.add_argument(
@@ -527,13 +614,13 @@ class BundleCLI(object):
         )
         parser.add_argument(
           '-c', '--count',
-          help='just count',
+          help='just count number of bundles',
           action='store_true'
         )
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, max_results=20, count=args.count)
+        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, 20, args.count)
         if args.uuid_only:
             bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
         else:
@@ -571,7 +658,7 @@ class BundleCLI(object):
                 print bundle_info['uuid']
         else:
             columns = ('uuid', 'name', 'bundle_type', 'data_size', 'state')
-            post_funcs = {'data_size': canonicalize.size_str}
+            post_funcs = {'data_size': formatting.size_str}
             justify = {'data_size': 1}
             bundle_dicts = [
               {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
@@ -597,9 +684,9 @@ class BundleCLI(object):
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid, args.children)
 
-        def wrap1(string): return '-- ' + string
+        def wrap(string): return '=== ' + string + ' ==='
 
-        print self.format_basic_info(info)
+        print self.format_basic_info(client, info)
 
         if args.children and info['children']:
             print 'children:'
@@ -608,18 +695,19 @@ class BundleCLI(object):
 
         # Verbose output
         if args.verbose:
-            print 'contents:'
-            info = self.print_target_info((bundle_uuid, ''))
-            # Print first 10 lines of stdin and stdout
+            print wrap('contents')
+            info = self.print_target_info((bundle_uuid, ''), decorate=True)
+            # Print first 10 lines of stdout and stderr
             contents = info.get('contents')
             if contents:
                 for item in contents:
                     if item['name'] not in ['stdout', 'stderr']: continue
-                    print wrap1(item['name'])
-                    for line in client.head_target((bundle_uuid, item['name']), 10):
-                        print line,
+                    print wrap(item['name'])
+                    self.print_target_info((bundle_uuid, item['name']), decorate=True)
+                    #for line in client.head_target((bundle_uuid, item['name']), 10):
+                        #print line,
 
-    def format_basic_info(self, info):
+    def format_basic_info(self, client, info):
         metadata = collections.defaultdict(lambda: None, info['metadata'])
         # Format some simple fields of the basic info string.
         fields = {
@@ -628,41 +716,43 @@ class BundleCLI(object):
           'data_hash': info['data_hash'] or '<no hash>',
           'state': info['state'],
           'name': metadata['name'] or '<no name>',
+          'command': info.get('command', '<none>'),
           'description': metadata['description'] or '<no description>',
         }
+
         # Format statistics about this bundle - creation time, runtime, size, etc.
         stats = []
         if 'created' in metadata:
-            stats.append('created:     %s' % (canonicalize.time_str(metadata['created']),))
+            stats.append('created:     %s' % (formatting.time_str(metadata['created']),))
         if 'data_size' in metadata:
-            stats.append('size:        %s' % (canonicalize.size_str(metadata['data_size']),))
-        #fields['stats'] = 'Stats:\n  %s\n' % ('\n  '.join(stats),) if stats else ''
+            stats.append('size:        %s' % (formatting.size_str(metadata['data_size']),))
+        if 'time' in metadata:
+            stats.append('time:        %s' % (formatting.duration_str(metadata['time']),))
         fields['stats'] = '%s\n' % ('\n'.join(stats),) if stats else ''
+
         # Compute a nicely-formatted list of hard dependencies. Since this type of
         # dependency is realized within this bundle as a symlink to another bundle,
         # label these dependencies as 'references' in the UI.
         fields['hard_dependencies'] = ''
         fields['dependencies'] = ''
+
+        def display_dependencies(label, deps):
+            lines = []
+            for dep in sorted(deps, key=lambda dep: dep['child_path']):
+                child = dep['child_path']
+                parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
+                lines.append('  %s: %s' % (child, parent))
+            return '%s:\n%s\n' % (label, '\n'.join(lines))
+             
         if info['hard_dependencies']:
             deps = info['hard_dependencies']
             if len(deps) == 1 and not deps[0]['child_path']:
-                fields['hard_dependencies'] = 'dependency:\n  %s\n' % (
-                  path_util.safe_join(deps[0]['parent_uuid'], deps[0]['parent_path']),)
+                fields['hard_dependencies'] = display_dependencies('hard_dependency', deps)
             else:
-                fields['hard_dependencies'] = 'dependencies:\n%s\n' % ('\n'.join(
-                  '  %s:%s' % (
-                    dep['child_path'],
-                    path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
-                  ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
-                ))
+                fields['hard_dependencies'] = display_dependencies('hard_dependencies', deps)
         elif info['dependencies']:
             deps = info['dependencies']
-            fields['dependencies'] = 'provenance:\n%s\n' % ('\n'.join(
-              '  %s:%s' % (
-                dep['child_path'],
-                path_util.safe_join(dep['parent_uuid'], dep['parent_path']),
-              ) for dep in sorted(deps, key=lambda dep: dep['child_path'])
-            ))
+            fields['dependencies'] = display_dependencies('dependencies', deps)
              
         # Compute a nicely-formatted failure message, if this bundle failed.
         # It is possible for bundles that are not failed to have failure messages:
@@ -670,7 +760,7 @@ class BundleCLI(object):
         # long then succeeds afterwards, it will be in this state.
         fields['failure_message'] = ''
         if info['state'] == State.FAILED and metadata['failure_message']:
-            fields['failure_message'] = 'Failure message:\n  %s\n' % ('\n  '.join(
+            fields['failure_message'] = 'failure_message:\n  %s\n' % ('\n  '.join(
               metadata['failure_message'].split('\n')
             ))
         # Return the formatted summary of the bundle info.
@@ -679,6 +769,7 @@ type:        {bundle_type}
 name:        {name}
 uuid:        {uuid}
 data_hash:   {data_hash}
+command:     {command}
 state:       {state}
 {stats}description: {description}
 {hard_dependencies}{dependencies}{failure_message}
@@ -691,23 +782,32 @@ state:       {state}
         )
         args = parser.parse_args(argv)
         target = self.parse_target(args.target_spec)
-        self.print_target_info(target)
+        self.print_target_info(target, decorate=False)
 
     # Helper: shared between info and cat
-    def print_target_info(self, target):
+    def print_target_info(self, target, decorate):
         client = self.manager.current_client()
         info = client.get_target_info(target, 1)
         if 'type' not in info:
             self.exit('Target doesn\'t exist: %s/%s' % target)
         if info['type'] == 'file':
-            client.cat_target(target, sys.stdout)
+            if decorate:
+                for line in client.head_target(target, 10):
+                    print line,
+            else:
+                client.cat_target(target, sys.stdout)
+        def size(x):
+            t = x.get('type', 'MISSING')
+            if t == 'file': return formatting.size_str(x['size'])
+            if t == 'directory': return 'dir'
+            return t
         if info['type'] == 'directory':
             contents = [
-                {'name': x['name'], 'size': canonicalize.size_str(x['size']) if x['type'] == 'file' else 'dir'}
+                {'name': x['name'], 'size': size(x)}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'size'), contents, justify={'size':1})
+            self.print_table(('name', 'size'), contents, justify={'size':1}, indent='')
         return info
 
     def do_wait_command(self, argv, parser):
@@ -777,21 +877,24 @@ state:       {state}
                 time.sleep(period)
                 period = min(backoff*period, max_period)
         for handle in handles:
-            if handle: self.close_target_handle(handle)
+            if not handle: continue
+            # Read the remainder of the file
+            while True:
+                result = handle.readline()
+                if result == '': break
+                sys.stdout.write(result)
+            client.close_target_handle(handle)
         return info['state']
 
     def do_mimic_command(self, argv, parser):
         parser.add_argument(
-          'old_input_bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
+          'bundle_spec',
+          help="old_input_1 ... old_input_n old_output new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
+          nargs='+'
         )
-        parser.add_argument(
-          'old_output_bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
-        )
-        self.add_mimic_macro_args(parser)
+        self.add_mimic_args(parser)
         args = parser.parse_args(argv)
-        return self.create_macro(args)
+        self.mimic(args)
 
     def do_macro_command(self, argv, parser):
         '''
@@ -801,17 +904,23 @@ state:       {state}
           'macro_name',
           help='name of the macro (look for <name>-in and <name>-out bundles)',
         )
-        self.add_mimic_macro_args(parser)
-        args = parser.parse_args(argv)
-        args.old_input_bundle_spec = args.macro_name + '-in'
-        args.old_output_bundle_spec = args.macro_name + '-out'
-        return self.create_macro(args)
-
-    def add_mimic_macro_args(self, parser):
         parser.add_argument(
-          'new_input_bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
+          'bundle_spec',
+          help="new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
+          nargs='+'
         )
+        self.add_mimic_args(parser)
+        args = parser.parse_args(argv)
+        # Reduce to the mimic case
+        if len(args.bundle_spec) == 1:
+            args.bundle_spec = [args.macro_name + '-in'] + \
+                               [args.macro_name + '-out'] + args.bundle_spec
+        else:
+            args.bundle_spec = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundle_spec))] + \
+                               [args.macro_name + '-out'] + args.bundle_spec
+        self.mimic(args)
+
+    def add_mimic_args(self, parser):
         parser.add_argument(
           'new_output_bundle_name',
           help='name of the new bundle'
@@ -822,22 +931,26 @@ state:       {state}
           default=10,
           help="number of parents to look back from the old output in search of the old input"
         )
-        parser.add_argument(
-          '-s', '--stop-early',
-          action='store_true',
-          default=False,
-          help="stop traversing parents when we found old-input"
-        )
+        self.add_wait_args(parser)
     
-    def create_macro(self, args):
+    def mimic(self, args):
+        '''
+        Use args.bundle_spec to generate a mimic call to the BundleClient.
+        '''
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        old_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_input_bundle_spec)
-        new_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.new_input_bundle_spec)
-        old_output_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_output_bundle_spec)
-        print client.mimic(
-            old_input_bundle_uuid, new_input_bundle_uuid, \
-            old_output_bundle_uuid, args.new_output_bundle_name, \
-            worksheet_uuid, args.depth, args.stop_early)
+        if len(args.bundle_spec) % 2 != 1:
+            raise UsageError('Should have an odd number of arguments, but got %s' % args.bundle_spec)
+
+        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, spec) for spec in args.bundle_spec]
+        # old_input_1 ... old_input_n old_output new_input_1 ... new_input_n
+        n = len(bundle_uuids) / 2
+        old_inputs = bundle_uuids[0:n]
+        old_output = bundle_uuids[n]
+        new_inputs = bundle_uuids[n+1:]
+        new_uuid = client.mimic(
+            old_inputs, old_output, new_inputs, args.new_output_bundle_name,
+            worksheet_uuid, args.depth)
+        self.wait(args, new_uuid)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
@@ -869,10 +982,11 @@ state:       {state}
         parser.add_argument(
           'bundle_spec',
           help=self.BUNDLE_SPEC_FORMAT,
-          nargs='?')
+          nargs='*')
         parser.add_argument(
-          'worksheet_spec',
-          help=self.WORKSHEET_SPEC_FORMAT,
+          '-w',
+          '--worksheet_spec',
+          help='add to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT,
           nargs='?',
         )
         parser.add_argument(
@@ -889,8 +1003,8 @@ state:       {state}
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
         worksheet_uuid = worksheet_info['uuid']
-        if args.bundle_spec:
-            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
+        for spec in args.bundle_spec:
+            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, spec)
             client.add_worksheet_item(worksheet_uuid, (bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
         if args.message:
             client.add_worksheet_item(worksheet_uuid, (None, args.message, worksheet_util.TYPE_MARKUP))
@@ -982,14 +1096,17 @@ state:       {state}
                 print line
         else:
             interpreted = worksheet_util.interpret_items(worksheet_info['items'])
-            print '[[', interpreted.get('title'), ']]'
+            title = interpreted.get('title')
+            if title: print '[[', title, ']]'
             is_last_newline = False
             for mode, data in interpreted['items']:
                 is_newline = (data == '')
-                if mode == 'inline' or mode == 'markup':
+                if mode == 'inline' or mode == 'markup' or mode == 'contents':
                     if not (is_newline and is_last_newline):
                         if mode == 'inline':
                             print '[' + self.lookup_targets(client, data) + ']'
+                        elif mode == 'contents':
+                            self.print_target_info(data, decorate=True)
                         else:
                             print data
                 elif mode == 'record' or mode == 'table':

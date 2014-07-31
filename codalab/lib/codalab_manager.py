@@ -161,8 +161,7 @@ class CodaLabManager(object):
 
             os.getppid = getppid
 
-        #print "SESSION_NAME: ", str(os.getppid())
-        return str(os.getppid())
+        return os.getenv('CODALAB_SESSION', str(os.getppid()))
 
     @cached
     def session(self):
@@ -325,6 +324,9 @@ class CodaLabManager(object):
         else:
             if 'worksheet_uuid' in session: del session['worksheet_uuid']
         self.save_state()
+
+    def save_config(self):
+        write_pretty_json(self.config, self.config_path())
 
     def save_state(self):
         write_pretty_json(self.state, self.state_path())

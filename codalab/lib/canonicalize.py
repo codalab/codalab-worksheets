@@ -19,7 +19,6 @@ from codalab.lib import (
   spec_util,
 )
 from codalab.model.util import LikeQuery
-import datetime
 
 def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     '''
@@ -58,16 +57,15 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
             raise UsageError('Invalid bundle_spec: %s' % bundle_spec)
         bundle_spec, last_index = match(bundle_spec)
 
-        # TODO: replace this with more general regular expressions, but don't
-        # want it to be cumbersome.
         if bundle_spec:
-            if bundle_spec.endswith('$'):
-                bundle_spec_query = bundle_spec[0:-1]
+            if '%' in bundle_spec:
+                bundle_spec_query = LikeQuery(bundle_spec) 
             else:
-                bundle_spec_query = LikeQuery(bundle_spec + '%') 
+                bundle_spec_query = bundle_spec
         else:
             bundle_spec_query = None
         #print bundle_spec_query, last_index
+
         bundle_uuids = model.get_bundle_uuids({
             'name': bundle_spec_query,
             'worksheet_uuid': worksheet_uuid
@@ -101,9 +99,9 @@ def get_target_path(bundle_store, model, target):
         bundle_root = bundle_store.get_location(bundle.data_hash)
     final_path = path_util.safe_join(bundle_root, path)
 
-    # This is a bit restrictive because it means we can't follow symlinks to
-    # other bundles arbitrarily, but it's safer.
-    path_util.check_under_path(final_path, bundle_root)
+    # This is too restrictive because it means we can't follow any of the
+    # components of a make bundle.
+    #path_util.check_under_path(final_path, bundle_root)
 
     result = path_util.TargetPath(final_path)
     result.target = target
@@ -132,13 +130,3 @@ def get_worksheet_uuid(model, worksheet_spec):
           (message, ''.join('\n  %s' % (worksheet,) for worksheet in worksheets))
         )
     return worksheets[0].uuid
-
-def size_str(size):
-    if size == None: return None
-    for unit in ('', 'K', 'M', 'G'):
-        if size < 1024:
-            return '%d%s' % (size, unit)
-        size /= 1024
-
-def time_str(ts):
-    return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')

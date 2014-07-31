@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import sys
 
+# Main entry point for CodaLab.
+# Run 'cl' rather than this script.
+
 from codalab.lib.codalab_manager import CodaLabManager
 
 if __name__ == '__main__':

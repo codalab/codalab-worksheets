@@ -23,17 +23,22 @@ class MockAuthHandler(object):
     A mock handler, which makes it easy to run a server when no real
     authentication is required. The implementation is such that this
     handler will accept any combination of username and password, but
-    it will always resolve to the same user: User('root', 0).
+    it will always resolve to the same user: User('root', '0').
     Note: any username resolves to the same user id (0).
     '''
-    def __init__(self):
-        self._user = User('root', 0)
+    def __init__(self, users=None):
+        if users == None: users = [User('root', '0')]
+        self.users = users
+        self._user = users[0]
 
     def generate_token(self, grant_type, username, key):
         '''
         Always returns token information.
         '''
-        self._user = User(username, 0)
+        matches = [user for user in self.users if user.name == username]
+        if len(matches) == 0:
+            return None
+        self._user = matches[0]
         return {
             'token_type': 'Bearer',
             'access_token': '__mock_token__',
@@ -61,10 +66,11 @@ class MockAuthHandler(object):
         a matching user (either the user does not exist or exists but is
         not active).
         '''
+        def get_one(l): return l[0] if len(l) > 0 else None
         if key_type == 'names':
-            return {key: User(key, 0) for key in keys}
+            return {key : get_one([user for user in self.users if key == user.name]) for key in keys}
         if key_type == 'ids':
-            return {key: User(key, 0) for key in keys}
+            return {key : get_one([user for user in self.users if key == user.unique_id]) for key in keys}
         raise ValueError('Invalid key_type')
 
     def current_user(self):
@@ -196,7 +202,7 @@ class OAuthHandler(object):
         result = json.load(response)
         status_code = result['code'] if 'code' in result else 500
         if status_code == 200:
-            self._user = User(result['user']['name'], int(result['user']['id']))
+            self._user = User(result['user']['name'], result['user']['id'])
             return True
         elif status_code == 403 or status_code == 404:
             return False # 'User credentials are not valid'

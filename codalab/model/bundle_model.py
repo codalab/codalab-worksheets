@@ -4,6 +4,7 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 from sqlalchemy import (
     and_,
     or_,
+    not_,
     select,
     union,
 )
@@ -117,6 +118,25 @@ class BundleModel(object):
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
 
+    # TODO: integrate with get_bundle, but we need more custom logic for
+    # selecting out parts of the bundle.
+    def get_name(self, uuid):
+        '''
+        Return the name of the bundle with given uuid.
+        '''
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([
+              cl_bundle_metadata.c.metadata_value
+            ]).where(
+              and_(cl_bundle_metadata.c.metadata_key == 'name',
+                   cl_bundle_metadata.c.bundle_uuid == uuid)
+            )).fetchall()
+            if len(rows) > 1:
+                raise IntegrityError('Bundle %s has more than one name: %s' % (uuid, rows))
+            if len(rows) == 0:  # uuid might not be in the database (broken links are possible)
+                return None
+            return rows[0][0]
+
     def get_parents(self, uuid):
         '''
         Get all bundles that the bundle with the given uuid depends on.
@@ -130,13 +150,11 @@ class BundleModel(object):
         uuids = set([row.parent_uuid for row in rows])
         return self.batch_get_bundles(uuid=uuids)
 
-    def get_children(self, uuid):
+    def get_children_uuids(self, uuid):
         '''
         Get all bundles that depend on the bundle with the given uuid.
-
-        uuid may also be a list, set, or tuple, in which case we return all bundles
-        that depend on any bundle in that collection. This mode is used to optimize
-        calls to delete_bundle_tree.
+        uuid may also be a list, set, or tuple, in which case we return all
+        bundles that depend on any bundle in that collection.
         '''
         if isinstance(uuid, (list, set, tuple)):
             clause = cl_bundle_dependency.c.parent_uuid.in_(uuid)
@@ -146,8 +164,21 @@ class BundleModel(object):
             rows = connection.execute(select([
               cl_bundle_dependency.c.child_uuid
             ]).where(clause)).fetchall()
-        uuids = set([row.child_uuid for row in rows])
-        return self.batch_get_bundles(uuid=uuids)
+        return set([row.child_uuid for row in rows])
+
+    def get_self_and_descendants(self, uuids, depth):
+        '''
+        Get all bundles that depend on bundles with the given uuids.
+        depth = 1 gets only children
+        '''
+        frontier = set(uuids)
+        visited = set(frontier)
+        while len(frontier) > 0 and depth > 0:
+            new_frontier = self.get_children_uuids(frontier)
+            frontier = new_frontier - visited
+            visited.update(frontier)
+            depth -= 1
+        return visited
 
     def get_bundle_uuids(self, conditions, max_results, count=False):
         '''
@@ -193,6 +224,7 @@ class BundleModel(object):
             # Each keyword is either a string (just search everywhere) or
             # key=value, which is more targeted, and results in exact match.
             clauses = []
+
             for keyword in conditions['*']:
                 m = CONDITION_REGEX.match(keyword)
                 if m:
@@ -201,17 +233,24 @@ class BundleModel(object):
                         clause = (cl_bundle.c.bundle_type == value)
                     elif key == 'state':
                         clause = (cl_bundle.c.state == value)
+                    elif key == 'limit':
+                        max_results = int(value)
                     else:
                         clause = and_(
                             cl_bundle_metadata.c.metadata_key == key,
                             cl_bundle_metadata.c.metadata_value == value
                         )
                 else:
-                    clause = []
-                    clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
-                    clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
-                    clause.append(cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'))
-                    clause = or_(*clause)
+                    if keyword == 'orphan':
+                        # Get bundles with homes (those in worksheets), and then take the complement.
+                        with_homes = select([cl_bundle.c.uuid]).where(cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
+                        clause = not_(cl_bundle.c.uuid.in_(with_homes))
+                    else:
+                        clause = []
+                        clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
+                        clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
+                        clause.append(cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'))
+                        clause = or_(*clause)
                 clauses.append(clause)
             clause = and_(*clauses)
             clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
@@ -350,21 +389,10 @@ class BundleModel(object):
                 connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
 
-    def delete_bundle_tree(self, uuids, force=False):
+    def delete_bundles(self, uuids):
         '''
-        Delete bundles with the given uuids and all bundles that are (direct or
-        indirect) descendents of them.
-
-        If force is False, there should be no descendents of the given bundles.
+        Delete bundles with the given uuids.
         '''
-
-        children = self.get_children(uuid=uuids)
-        if children:
-            precondition(force, 'The following bundles depend on %s:\n  %s' % (
-              self.get_bundle(uuids[0]),
-              '\n  '.join(str(child) for child in children),
-            ))
-            self.delete_bundle_tree([child.uuid for child in children], force=True)
         with self.engine.begin() as connection:
             # We must delete bundles rows in the opposite order that we create them
             # to avoid foreign-key constraint failures.
@@ -593,22 +621,12 @@ class BundleModel(object):
         '''
         Create system-defined groups. This is called by create_tables.
         '''
-        # TODO: remove Public altogether and get rid of renaming.
         groups = self.batch_get_groups(name='public', user_defined=False)
         if len(groups) == 0:
-            groups = self.batch_get_groups(name='Public', user_defined=False)
-            if len(groups) == 0:
-                group_dict = self.create_group({'uuid': spec_util.generate_uuid(),
-                                                'name': 'public',
-                                                'owner_id': None,
-                                                'user_defined': False})
-            else:
-                # if there was a group named Public, then rename it.
-                group_dict = groups[0]
-                with self.engine.begin() as connection:
-                    connection.execute(cl_group.update().where(
-                      cl_group.c.uuid == group_dict['uuid']
-                    ).values({'name': 'public'}))
+            group_dict = self.create_group({'uuid': spec_util.generate_uuid(),
+                                            'name': 'public',
+                                            'owner_id': None,
+                                            'user_defined': False})
         else:
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
@@ -692,7 +710,14 @@ class BundleModel(object):
             rows = connection.execute(q1).fetchall()
             if not rows:
                 return []
-            values = {row.uuid: dict(row) for row in rows}
+            for i, row in enumerate(rows):
+                row = dict(row)
+                # TODO: remove these conversions once database schema is changed from int to str
+                row['user_id'] = str(row['user_id'])
+                row['owner_id'] = str(row['owner_id'])
+                rows[i] = row
+                print row
+            values = {row['uuid']: dict(row) for row in rows}
             return [value for value in values.itervalues()]
 
     def delete_group(self, uuid):
@@ -751,7 +776,7 @@ class BundleModel(object):
             ).fetchall()
             if not rows:
                 return []
-        print 'GET', rows
+        #print 'GET', rows
         return [dict(row) for row in rows]
 
     def add_permission(self, group_uuid, object_uuid, permission):

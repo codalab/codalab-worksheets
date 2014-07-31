@@ -97,7 +97,7 @@ class Bundle(ORMObject):
         '''
         Symlink this bundle's dependencies into the directory at dest_path.
         The caller is responsible for cleaning up this directory.
-        rel: whether to use relative symlinks (for make bundles, but not for run bundles)
+        rel: whether to use relative symlinks
         '''
         precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
         for dep in self.dependencies:
@@ -119,6 +119,10 @@ class Bundle(ORMObject):
                   dep.parent_path,
                 )
             link_path = path_util.safe_join(dest_path, dep.child_path)
+
+            # If the dependency already exists, remove it (this happens when we are reinstalling)
+            if os.path.exists(link_path): path_util.remove(link_path)
+
             os.symlink(target, link_path)
 
     def get_hard_dependencies(self):

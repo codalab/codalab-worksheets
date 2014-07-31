@@ -20,7 +20,7 @@ from codalab.lib import path_util
 ZIP_SUBPATH = 'zip_subpath'
 
 
-def zip(path, exclude_names=[]):
+def zip(path, follow_symlinks, exclude_names=[]):
     '''
     Take a path to a file or directory and return the path to a zip archive
     containing its contents.
@@ -38,7 +38,7 @@ def zip(path, exclude_names=[]):
 
     # TODO: this is inefficient; do the zipping from the original source
     # directly.
-    path_util.copy(absolute_path, temp_subpath, follow_symlinks=True, exclude_names=exclude_names)
+    path_util.copy(absolute_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_names=exclude_names)
 
     # TODO: These methods of zipping don't preserve permissions, so using a
     # system call for now (only works in Linux)
@@ -58,7 +58,9 @@ def zip(path, exclude_names=[]):
     # Clean up the temporary directory and return the zip file's path.
 
     zip_path = temp_path + '.zip'
-    if os.system("cd %s && zip -qr %s %s" % (temp_path, zip_path, ZIP_SUBPATH)) != 0:
+    opts = '-qr'
+    if not follow_symlinks: opts += ' --symlinks'
+    if os.system("cd %s && zip %s %s %s" % (temp_path, opts, zip_path, ZIP_SUBPATH)) != 0:
         raise UsageError('zip failed')
 
     path_util.remove(temp_path)
@@ -74,11 +76,14 @@ def unzip(zip_path, temp_path):
     path_util.check_isfile(zip_path, 'unzip_directory')
     temp_subpath = os.path.join(temp_path, ZIP_SUBPATH)
 
-    # TODO(pliang): ZipFile doesn't preserve permissions, so do hack
+    # TODO(pliang): ZipFile doesn't preserve permissions, so must resort to
+    # system calls (only works in Linux).
     if os.system("cd %s && unzip -q %s" % (temp_path, zip_path)) != 0:
         raise UsageError('unzip failed')
-    if not os.path.exists(temp_subpath):
-        raise UsageError('Zip file %s missing %s' % zip_path, ZIP_SUBPATH)
+    # Corner case: note that the temp_subpath might not 'exist' because it is a
+    # symlink (which is broken until it's put in the right place).
+    if not os.path.exists(temp_subpath) and not os.path.islink(temp_subpath):
+        raise UsageError('Zip file %s missing %s (%s doesn\'t exist)' % (zip_path, ZIP_SUBPATH, temp_subpath))
 
     #zip_file = ZipFile(zip_path, 'r')
     #names = zip_file.namelist()

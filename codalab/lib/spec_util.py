@@ -13,7 +13,7 @@ UUID_REGEX = re.compile('^0x[0-9a-f]{32}$')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
 
 NAME_STR = '[a-zA-Z_][a-zA-Z0-9_\.\-]*'
-NAME_PATTERN_STR = NAME_STR + '\\$?'
+NAME_PATTERN_STR = '[%a-zA-Z0-9_\.\-]+'  # Allow % for matching wildcard (SQL syntax)
 
 NAME_REGEX = re.compile('^' + NAME_STR + '$')  # Names (exact match)
 NAME_PATTERN_REGEX = re.compile('^(' + NAME_PATTERN_STR + ')$')  # Name pattern (loose match)
@@ -25,14 +25,12 @@ NOT_NAME_CHAR_REGEX = re.compile('[^a-zA-Z0-9_\.\-]')
 def generate_uuid():
     return '0x%s' % (uuid.uuid4().hex,)
 
-
 def check_uuid(uuid):
     '''
     Raise a PreconditionViolation if the uuid does not conform to its regex.
     '''
     message = 'uuids must match %s, was %s' % (UUID_REGEX.pattern, uuid)
     precondition(UUID_REGEX.match(uuid), message)
-
 
 def check_name(name):
     if not NAME_REGEX.match(name):

@@ -21,16 +21,20 @@ the service, as well as supporting competitions.
 
 ## Installation
 
-1. Clone the CodaLab repository:
+1. Make sure you have the dependencies (Python 2.7 and virtualenv).  If you're running Ubuntu:
+
+        sudo apt-get install python2.7 python2.7-dev python-virtualenv
+    
+2. Clone the CodaLab repository:
 
         git clone https://github.com/codalab/codalab-cli
         cd codalab-cli
 
-2. Run the setup script (will install things into a Python virtual environment):
+3. Run the setup script (will install things into a Python virtual environment):
 
         ./setup.sh
 
-3. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
+4. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
 
         export PATH=$PATH:<your path>/codalab-cli/codalab/bin
 
@@ -114,7 +118,7 @@ bundle (e.g., `a.txt/file1`).
 Let's now create and upload the sorting program:
 
     echo -e "import sys\nfor line in sorted(sys.stdin.readlines()): print line," > sort.py
-    cl upload program sort.py --auto
+    cl upload program sort.py -a
 
 ### Creating runs
 
@@ -126,7 +130,7 @@ dependencies are put into the right place.
 
 Let us create our first run bundle:
 
-    cl run :sort.py input:a.txt 'python sort.py < input > output/sorted.txt' --name sort-run -a
+    cl run :sort.py input:a.txt 'python sort.py < input > output' --name sort-run -a
 
 The first two arguments specify the dependencies and the third is the command.
 Note that `cl run` doesn't actually run anything; it just creates the run
@@ -162,20 +166,35 @@ the run completed successfully.
 
 We can look at individual targets inside the bundle:
 
-    cl cat sort-run/output/sorted.txt
+    cl cat sort-run/output
 
 To make things more convenient, we can define a bundle that points to a target:
 
-    cl make sort-run/output/sorted.txt --name sorted-a.txt -a
-    cl cat sorted-a.txt
+    cl make sort-run/output --name a-sorted.txt -a
+    cl cat a-sorted.txt
 
 We can also download the results to local disk:
 
-    cl download sorted-a.txt
+    cl download a-sorted.txt
 
 If you messed up somewhere, you can always remove a bundle:
 
     cl rm sort-run
+
+You'll see that the above command threw an error, because `a-sorted.txt`
+depends on `sort-run`.  To delete both bundles, you can remove recursively:
+
+    cl rm -r sort-run
+
+#### Sugar
+
+You can also include the bundle references in your run command, which might be more natural:
+
+    cl run :sort.py input:a.txt 'python %sort.py% < %a.txt% > output' --name sort-run -a
+
+This is equivalent to running:
+
+    cl run 1:sort.py 2:a.txt 'python 1 < 2 > output' --name sort-run -a
 
 ### Macros
 
@@ -198,21 +217,26 @@ create another bundle and upload it:
 
 Now we can apply the same thing to `b.txt` that we did to `a.txt`:
 
-    cl mimic a.txt sorted-a.txt b.txt sorted-b.txt
+    cl mimic a.txt a-sorted.txt b.txt b-sorted.txt
 
 We can check that `b.txt.sorted` contains the desired sorted result:
 
-    cl cat sorted-b.txt
+    cl cat b-sorted.txt
 
 Normally, we define macros as abstract entities.  Here, notice that we've
 started instead by creating a concrete example, and then used analogy to
 reapply this.  A positive side-effect is that every macro automatically comes
 with an example of how it is used!
 
-If `a.txt` was called `sort-in` and `sorted-a.txt` was called `sort-out`, then
-we can use the following syntactic sugar:
+We can make the notion of a macro even more explicit.  Let's rename `a.txt` to
+`sort-in` and `a-sorted.txt` to `sort-out`:
 
-    cl macro sort b.txt sorted-b.txt
+    cl edit a.txt --name sort-in
+    cl edit a-sorted.txt --name sort-out
+
+Then we can use the following syntactic sugar:
+
+    cl macro sort b.txt b-sorted.txt
 
 In Codalab, macros are not defined ahead of time, but are constructed on the
 fly from the bundle DAG.
@@ -252,12 +276,12 @@ switching directories using `cd`):
 We can add items to a worksheet:
 
     cl add -m "Here's a simple bundle:"
-    cl add a.txt
+    cl add sort.py
     cl print
 
 Another way to add bundles to a worksheet is to use `cl wedit` and entering additional lines:
 
-    {a.txt}
+    {sort.py}
 
 If you save, exit, and open up the worksheet again, you'll see that the
 reference has been resolved.  In general, editing the worksheet with a text
@@ -282,8 +306,9 @@ There are finally a number of other ways to
   bundle.
 - Prefix of UUID (`0x3739`): matches all bundles whose UUIDs start with this
   prefix.
-- Name prefix (`foo`): matches all bundles whose names start with the
-  given prefix (`foo$` enforces exact match).
+- Name prefix (`foo`): matches all bundles with the given name.
+  You can use `foo%` to match bundles that begin with `foo` or `%foo%` to match
+  bundles that contain `foo` (SQL LIKE syntax).
 - Ordering (`^, ^2, ^3`): returns the first, second, and third last bundles on
   the current worksheet.
 - Named ordering (`foo^, foo^2, foo^3`): returns the first, second, and third
@@ -312,6 +337,10 @@ in another shell:
 
 By default, the server is running at `http://localhost:2800`.  You can change
 this in `~/.codalab/config.json`.
+
+For security reasons, the server is only accessible from localhost.  To make
+the server accessible from anywhere, under "server" / "host" in
+`~/.codalab/config.json`, change "localhost" to "".
 
 Now we can connect to this server by switching both the worksheet (directory)
 and the instance (drive):
@@ -368,7 +397,7 @@ Here are some helpful links:
 - [GitHub repository](https://github.com/codalab/codalab)
 - [Codalab Wiki](https://github.com/codalab/codalab/wiki)
 
-## Code Design
+## Code design
 
 Bundle hierarchy:
 
@@ -380,10 +409,12 @@ Bundle hierarchy:
         MakeBundle [DerivedBundle]
         RunBundle [DerivedBundle]
 
-## Tests
+## Unit tests
 
-To run test on the code, type:
+To run tests on the code, first install the libraries for testing:
 
-    pip install simplejson mock nose
+    codalab_env/bin/pip install mock nose
     
-    nosetests
+Then run all the tests:
+
+    codalab_env/bin/nosetests

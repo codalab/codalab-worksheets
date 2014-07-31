@@ -35,7 +35,7 @@ class BundleStoreTest(unittest.TestCase):
   @mock.patch('codalab.lib.bundle_store.uuid')
   @mock.patch('codalab.lib.bundle_store.path_util')
   def run_upload_trial(self, mock_path_util, mock_uuid,
-                       mock_os, new, allow_symlinks):
+                       mock_os, new):
     '''
     Test that upload takes the following actions, in order:
       - Copies the bundle into the temp directory
@@ -44,7 +44,6 @@ class BundleStoreTest(unittest.TestCase):
       - Moves the directory into data (if new) or deletes it (if old)
     '''
     check_isvalid_called = [False]
-    check_for_symlinks_called = [False]
     rename_called = [False]
 
     mock_os.path = mock.Mock()
@@ -97,13 +96,6 @@ class BundleStoreTest(unittest.TestCase):
       return test_dirs_and_files
     mock_path_util.recursive_ls = recursive_ls
     
-    def check_for_symlinks(path, dirs_and_files=None):
-      if dirs_and_files is not None:
-        self.assertEqual(dirs_and_files, test_dirs_and_files)
-      self.assertEqual(path, temp_path)
-      check_for_symlinks_called[0] = True
-    mock_path_util.check_for_symlinks = check_for_symlinks
-
     def set_permissions(path, permissions, dirs_and_files=None):
       if dirs_and_files is not None:
         self.assertEqual(dirs_and_files, test_dirs_and_files)
@@ -126,11 +118,8 @@ class BundleStoreTest(unittest.TestCase):
 
     bundle_store = MockBundleStore(test_root)
     self.assertFalse(check_isvalid_called[0])
-    self.assertFalse(check_for_symlinks_called[0])
-    bundle_store.upload(
-      unnormalized_bundle_path, allow_symlinks=allow_symlinks)
+    bundle_store.upload(unnormalized_bundle_path)
     self.assertTrue(check_isvalid_called[0])
-    self.assertEqual(check_for_symlinks_called[0], not allow_symlinks)
     if new:
       self.assertTrue(rename_called[0])
     else:
@@ -138,9 +127,7 @@ class BundleStoreTest(unittest.TestCase):
       mock_path_util.remove.assert_called_with(temp_path)
 
   def test_new_upload(self):
-    self.run_upload_trial(new=True, allow_symlinks=True)
-    self.run_upload_trial(new=True, allow_symlinks=False)
+    self.run_upload_trial(new=True)
 
   def test_old_upload(self):
-    self.run_upload_trial(new=False, allow_symlinks=True)
-    self.run_upload_trial(new=False, allow_symlinks=False)
+    self.run_upload_trial(new=False)

@@ -15,9 +15,9 @@ class NamedBundle(Bundle):
     NAME_LENGTH = 32
 
     METADATA_SPECS = (
-      MetadataSpec('name', basestring, 'name: %s' % (spec_util.NAME_REGEX.pattern,)),
-      MetadataSpec('description', basestring, 'human-readable description'),
-      MetadataSpec('tags', set, 'list of searchable tags', metavar='TAG'),
+      MetadataSpec('name', basestring, 'short variable name (not necessarily unique); must conform to ' + spec_util.NAME_REGEX.pattern, short_key='n'),
+      MetadataSpec('description', basestring, 'full description of the bundle'),
+      MetadataSpec('tags', set, 'space-separated list of tags used for search (e.g., machine-learning)', metavar='TAG'),
       MetadataSpec('created', int, '', generated=True),
       MetadataSpec('data_size', long, '', generated=True),
       MetadataSpec('failure_message', basestring, '', generated=True),
@@ -36,8 +36,9 @@ class NamedBundle(Bundle):
         if not self.metadata.name:
             raise UsageError('%ss must have non-empty names' % (bundle_type,))
         spec_util.check_name(self.metadata.name)
-        if not self.metadata.description:
-            raise UsageError('%ss must have non-empty descriptions' % (bundle_type,))
+        # Too strict
+        #if not self.metadata.description:
+        #    raise UsageError('%ss must have non-empty descriptions' % (bundle_type,))
 
     def __repr__(self):
         return '%s(uuid=%r, name=%r)' % (
@@ -47,4 +48,4 @@ class NamedBundle(Bundle):
         )
 
     def simple_str(self):
-        return self.metadata.name + '[' + self.uuid + ']'
+        return self.metadata.name + '(' + self.uuid + ')'

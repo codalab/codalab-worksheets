@@ -67,7 +67,7 @@ class RemoteBundleClient(BundleClient):
     CLIENT_COMMANDS = (
       'derive_bundle',
       'update_bundle_metadata',
-      'delete_bundle',
+      'delete_bundles',
       'get_bundle_uuid',
       'search_bundle_uuids',
       'get_bundle_info',
@@ -145,7 +145,7 @@ class RemoteBundleClient(BundleClient):
 
     def upload_bundle(self, path, info, worksheet_uuid):
         # First, zip path up (temporary local zip file).
-        zip_path = zip_util.zip(path)
+        zip_path = zip_util.zip(path, follow_symlinks=False)
         # Copy it up to the server (temporary remote zip file)
         with open(zip_path, 'rb') as source:
             remote_file_uuid = self.open_temp_file()
@@ -166,7 +166,7 @@ class RemoteBundleClient(BundleClient):
         return None
     def close_target_handle(self, handle):
         handle.close()
-        self.finalize_file(handle.uuid, False)
+        self.finalize_file(handle.file_uuid, False)
 
     def cat_target(self, target, out):
         source = self.open_target_handle(target)
@@ -174,11 +174,11 @@ class RemoteBundleClient(BundleClient):
         file_util.copy(source, out)
         self.close_target_handle(source)
 
-    def download_target(self, target):
+    def download_target(self, target, follow_symlinks):
         # Create remote zip file, download to local zip file
         (fd, zip_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
         os.close(fd)
-        source_uuid = self.open_target_zip(target)
+        source_uuid = self.open_target_zip(target, follow_symlinks)
         source = RPCFileHandle(source_uuid, self.proxy)
         with open(zip_path, 'wb') as dest:
             with contextlib.closing(source):
