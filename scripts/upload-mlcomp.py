@@ -22,7 +22,7 @@ for path in sys.argv[1:]:
     if not os.getenv('CODALAB_SESSION'):
         os.environ['CODALAB_SESSION'] = str(os.getppid())
     print 'session:', os.getenv('CODALAB_SESSION')
-    cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags %s --description \"%s\" --auto" % \
+    cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags mlcomp %s --description \"%s\" --auto" % \
         (bundle_type, path, info['name'], tags, info['description'].replace('"', '\\"'))
     print cmd
     os.system(cmd)
