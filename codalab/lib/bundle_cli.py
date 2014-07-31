@@ -528,12 +528,24 @@ class BundleCLI(object):
             command = m.group(3)
         return (target_spec, buf + command)
 
+    # After running a bundle, we can wait for it, possibly observing it's output.
+    # These functions are shared across run and mimic.
+    def add_wait_args(self, parser):
+        parser.add_argument('-w', '--wait', action='store_true', help='Wait until run finishes')
+        parser.add_argument('-t', '--tail', action='store_true', help='Wait until run finishes, displaying output')
+    def wait(self, args, uuid):
+        if args.wait:
+            state = self.follow_targets(uuid, [])
+            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+        if args.tail:
+            state = self.follow_targets(uuid, ['stdout', 'stderr'])
+            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+
     def do_run_command(self, argv, parser):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
         parser.add_argument('command', help='Command-line')
-        parser.add_argument('-w', '--wait', action='store_true', help='Wait until run finishes')
-        parser.add_argument('-t', '--tail', action='store_true', help='Wait until run finishes, writing output')
+        self.add_wait_args(parser)
         metadata_util.add_arguments(RunBundle, set(), parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
@@ -543,12 +555,7 @@ class BundleCLI(object):
         metadata = metadata_util.request_missing_metadata(RunBundle, args)
         uuid = client.derive_bundle('run', targets, command, metadata, worksheet_uuid)
         print uuid
-        if args.wait:
-            state = self.follow_targets(uuid, [])
-            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
-        if args.tail:
-            state = self.follow_targets(uuid, ['stdout', 'stderr'])
-            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+        self.wait(args, uuid)
 
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
@@ -885,9 +892,9 @@ state:       {state}
           help="old_input_1 ... old_input_n old_output new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
           nargs='+'
         )
-        self.add_mimic_macro_args(parser)
+        self.add_mimic_args(parser)
         args = parser.parse_args(argv)
-        return self.create_macro(args)
+        self.mimic(args)
 
     def do_macro_command(self, argv, parser):
         '''
@@ -902,7 +909,7 @@ state:       {state}
           help="new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
           nargs='+'
         )
-        self.add_mimic_macro_args(parser)
+        self.add_mimic_args(parser)
         args = parser.parse_args(argv)
         # Reduce to the mimic case
         if len(args.bundle_spec) == 1:
@@ -911,9 +918,9 @@ state:       {state}
         else:
             args.bundle_spec = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundle_spec))] + \
                                [args.macro_name + '-out'] + args.bundle_spec
-        return self.create_macro(args)
+        self.mimic(args)
 
-    def add_mimic_macro_args(self, parser):
+    def add_mimic_args(self, parser):
         parser.add_argument(
           'new_output_bundle_name',
           help='name of the new bundle'
@@ -924,8 +931,12 @@ state:       {state}
           default=10,
           help="number of parents to look back from the old output in search of the old input"
         )
+        self.add_wait_args(parser)
     
-    def create_macro(self, args):
+    def mimic(self, args):
+        '''
+        Use args.bundle_spec to generate a mimic call to the BundleClient.
+        '''
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         if len(args.bundle_spec) % 2 != 1:
             raise UsageError('Should have an odd number of arguments, but got %s' % args.bundle_spec)
@@ -936,9 +947,10 @@ state:       {state}
         old_inputs = bundle_uuids[0:n]
         old_output = bundle_uuids[n]
         new_inputs = bundle_uuids[n+1:]
-        print client.mimic(
+        new_uuid = client.mimic(
             old_inputs, old_output, new_inputs, args.new_output_bundle_name,
             worksheet_uuid, args.depth)
+        self.wait(args, new_uuid)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!

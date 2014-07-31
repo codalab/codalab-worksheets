@@ -299,7 +299,7 @@ class LocalBundleClient(BundleClient):
             else:  # Just make up a name heuristically
                 metadata['name'] = new_output_name + '-' + info['metadata']['name']
 
-            # Pop all the automatically generated keys
+            # Remove all the automatically generated keys
             cls = get_bundle_subclass(info['bundle_type'])
             for spec in cls.METADATA_SPECS:
                 if spec.generated and spec.key in metadata:

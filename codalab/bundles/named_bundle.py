@@ -36,8 +36,9 @@ class NamedBundle(Bundle):
         if not self.metadata.name:
             raise UsageError('%ss must have non-empty names' % (bundle_type,))
         spec_util.check_name(self.metadata.name)
-        if not self.metadata.description:
-            raise UsageError('%ss must have non-empty descriptions' % (bundle_type,))
+        # Too strict
+        #if not self.metadata.description:
+        #    raise UsageError('%ss must have non-empty descriptions' % (bundle_type,))
 
     def __repr__(self):
         return '%s(uuid=%r, name=%r)' % (

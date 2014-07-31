@@ -55,10 +55,11 @@ class MetadataDefaults(object):
         if bundle_subclass.BUNDLE_TYPE in UPLOADED_TYPES:
             description = ' '.join(path_util.normalize(path) for path in args.path)
             return 'Upload %s' % (description,)
-        elif bundle_subclass is MakeBundle:
-            return 'Make {%s}' % (', '.join(args.target_spec))
-        elif bundle_subclass is RunBundle:
-            return 'Run {%s}[%s]' % (', '.join(args.target_spec), args.command)
+        # This is almost redundant with other metadata, so it can just be re-generated.
+        #elif bundle_subclass is MakeBundle:
+        #    return 'Make {%s}' % (', '.join(args.target_spec))
+        #elif bundle_subclass is RunBundle:
+        #    return 'Run {%s}[%s]' % (', '.join(args.target_spec), args.command)
         return ''
 
     @staticmethod
