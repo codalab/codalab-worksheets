@@ -93,10 +93,3 @@ class CanonicalizeTest(unittest.TestCase):
       test_model._bundle.data_hash = test_data_hash
       result = canonicalize.get_target_path(bundle_store, test_model, target)
       self.assertEqual(result, os.path.join(test_location, test_path))
-      # Test for invalid path (file not contained in bundle)
-      self.assertRaises(UsageError, lambda: canonicalize.get_target_path(
-        bundle_store,
-        test_model,
-        (test_uuid, os.path.join("..", "..", test_path)),
-      ))
-
