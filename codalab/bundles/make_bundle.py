@@ -56,4 +56,4 @@ class MakeBundle(NamedBundle):
             temp_dir = os.path.join(temp_dir, 'anonymous_link')
 
         self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
-        return bundle_store.upload(temp_dir, allow_symlinks=True)
+        return bundle_store.upload(temp_dir)

@@ -20,9 +20,9 @@ for path in sys.argv[1:]:
         raise 'Weird info: %s' % info
  
     if not os.getenv('CODALAB_SESSION'):
-        os.putenv('CODALAB_SESSION', str(os.getppid()))
-    print os.getenv('CODALAB_SESSION')
-    cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags %s --description '%s' --auto" % \
-        (bundle_type, path, info['name'], tags, info['description'])
+        os.environ['CODALAB_SESSION'] = str(os.getppid())
+    print 'session:', os.getenv('CODALAB_SESSION')
+    cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags %s --description \"%s\" --auto" % \
+        (bundle_type, path, info['name'], tags, info['description'].replace('"', '\\"'))
     print cmd
     os.system(cmd)

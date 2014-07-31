@@ -85,4 +85,4 @@ class RunBundle(NamedBundle):
         # Re-install the dependencies as relative dependencies
         self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
 
-        return bundle_store.upload(temp_dir, allow_symlinks=True)
+        return bundle_store.upload(temp_dir)

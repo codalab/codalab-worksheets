@@ -25,7 +25,7 @@ from codalab.lib import (
   canonicalize,
   path_util,
 )
-
+from codalab.bundles.run_bundle import RunBundle
 
 class Worker(object):
     def __init__(self, bundle_store, model):
@@ -186,7 +186,8 @@ class Worker(object):
                     )
                 metadata.update({'failure_message': failure_message})
                 state = State.FAILED
-            metadata.update({'time': end_time - start_time})
+            if isinstance(bundle, RunBundle):
+                metadata.update({'time': end_time - start_time})
             self.finalize_run(bundle, state, data_hash, metadata)
             print '-- END RUN: %s [%s]' % (bundle, state)
             print ''

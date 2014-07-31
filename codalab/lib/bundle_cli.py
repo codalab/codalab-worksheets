@@ -553,6 +553,7 @@ class BundleCLI(object):
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
         parser.add_argument(
+          '-n',
           '--name',
           help='new name: ' + spec_util.NAME_REGEX.pattern,
           nargs='?',
