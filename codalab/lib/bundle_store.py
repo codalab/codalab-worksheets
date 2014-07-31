@@ -63,7 +63,7 @@ class BundleStore(object):
         path_util.make_directory(self.get_temp_location(identifier));
 
 
-    def upload(self, path, allow_symlinks=True):
+    def upload(self, path, follow_symlinks, allow_symlinks=True):
         '''
         Copy the contents of the directory at path into the data subdirectory,
         in a subfolder named by a hash of the contents of the new data directory.
@@ -82,7 +82,7 @@ class BundleStore(object):
         temp_directory = uuid.uuid4().hex
         temp_path = os.path.join(self.temp, temp_directory)
         #print 'COPY', absolute_path, temp_path
-        path_util.copy(absolute_path, temp_path, follow_symlinks=False)
+        path_util.copy(absolute_path, temp_path, follow_symlinks=follow_symlinks)
 
         # Multiplex between uploading a directory and uploading a file here.
         # All other path_util calls will use these lists of directories and files.

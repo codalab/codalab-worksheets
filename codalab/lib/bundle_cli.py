@@ -408,7 +408,8 @@ class BundleCLI(object):
         if len(args.path) == 1: args.path = args.path[0]
 
         # Finally, once everything has been checked, then call the client to upload.
-        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid)
+        # Follow symlinks so we don't end up with broken symlinks.
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, follow_symlinks=True)
 
     def do_download_command(self, argv, parser):
         parser.add_argument(
@@ -493,7 +494,7 @@ class BundleCLI(object):
             info = source_client.get_bundle_info(source_bundle_uuid)
 
             # Upload to dest
-            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid)
+            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
             if temp_path: path_util.remove(temp_path)
         else:
             print "%s already exists, skipping" % source_desc 

@@ -19,7 +19,9 @@ for path in sys.argv[1:]:
     else:
         raise 'Weird info: %s' % info
  
-    os.putenv('CODALAB_SESSION', str(os.getppid()))
+    if not os.getenv('CODALAB_SESSION'):
+        os.putenv('CODALAB_SESSION', str(os.getppid()))
+    print os.getenv('CODALAB_SESSION')
     cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags %s --description '%s' --auto" % \
         (bundle_type, path, info['name'], tags, info['description'])
     print cmd

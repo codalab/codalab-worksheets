@@ -131,7 +131,7 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Invalid bundle_type: %s' % bundle_type)
         return construct_args
 
-    def upload_bundle(self, path, info, worksheet_uuid):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
         bundle_type = info['bundle_type']
         if 'uuid' in info:
             existing = True
@@ -148,7 +148,7 @@ class LocalBundleClient(BundleClient):
             self.validate_user_metadata(bundle_subclass, metadata)
 
         # Upload the given path and record additional metadata from the upload.
-        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path)
+        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
         metadata.update(bundle_store_metadata)
         # TODO: check that if the data hash already exists, it's the same as before.
         construct_args['data_hash'] = data_hash
