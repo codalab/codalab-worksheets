@@ -32,8 +32,8 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
         if spec.key not in metadata_keys:
             metadata_keys.add(spec.key)
             parser.add_argument(
-              '--%s' % (spec.short_key,),
-              '--%s' % (spec.short_key,),
+              '-%s' % (spec.short_key,),
+              '--%s' % (spec.key,),
               dest=metadata_key_to_argument(spec.key,),
               help=(spec.description + help_suffix),
               metavar=spec.metavar,
