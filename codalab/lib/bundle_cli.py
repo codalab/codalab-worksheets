@@ -968,10 +968,11 @@ state:       {state}
         parser.add_argument(
           'bundle_spec',
           help=self.BUNDLE_SPEC_FORMAT,
-          nargs='?')
+          nargs='*')
         parser.add_argument(
-          'worksheet_spec',
-          help=self.WORKSHEET_SPEC_FORMAT,
+          '-w',
+          '--worksheet_spec',
+          help='add to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT,
           nargs='?',
         )
         parser.add_argument(
@@ -988,8 +989,8 @@ state:       {state}
             if not worksheet_info:
                 raise UsageError('Specify a worksheet or switch to one with `cl work`.')
         worksheet_uuid = worksheet_info['uuid']
-        if args.bundle_spec:
-            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
+        for spec in args.bundle_spec:
+            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, spec)
             client.add_worksheet_item(worksheet_uuid, (bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
         if args.message:
             client.add_worksheet_item(worksheet_uuid, (None, args.message, worksheet_util.TYPE_MARKUP))
