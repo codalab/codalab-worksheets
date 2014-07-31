@@ -238,28 +238,34 @@ class LocalBundleClient(BundleClient):
         # because we will follow them when we copy it from the target path.
         return (self.get_target_path(target), None)
 
-    def mimic(self,
-              old_input_bundle_uuid, new_input_bundle_uuid,
-              old_output_bundle_uuid, new_output_bundle_name,
-              worksheet_uuid, depth, stop_early):
-        # Look at ancestors of old_output_bundle_uuid until we arrive
-        # at old_input_bundle_uuid and/or reached some depth.
+    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth):
+        '''
+        old_inputs: list of bundle uuids
+        old_output: bundle uuid that we produced
+        new_inputs: list of bundle uuids that are analogous to old_inputs
+        new_output_name: name of the bundle to create to be analogous to old_output
+        worksheet_uuid: add newly created bundles to this worksheet
+        depth: how far to do a BFS up
+        '''
+        # Build the graph: Look at ancestors of old_output_bundle_uuid until we
+        # arrive at old_input_bundle_uuid and/or reached some depth.
         infos = {}  # uuid -> bundle info
         bundle_infos = []  # These are the ones that we need to generate
-        bundle_uuids = set([old_output_bundle_uuid])
+        bundle_uuids = set([old_output])
         for _ in range(depth):
             #print bundle_uuids
             new_bundle_uuids = set()
             for bundle_uuid in bundle_uuids:
+                if bundle_uuid in infos: continue  # Already visited
                 info = infos[bundle_uuid] = self.get_bundle_info(bundle_uuid)
                 for dep in info['dependencies']:
                     new_bundle_uuids.add(dep['parent_uuid'])
             bundle_uuids = new_bundle_uuids
-            if stop_early and old_input_bundle_uuid in bundle_uuids: break
 
         # Now go recursively create the bundles.
         old_to_new = {}
-        old_to_new[old_input_bundle_uuid] = new_input_bundle_uuid
+        for old, new in zip(old_inputs, new_inputs):
+            old_to_new[old] = new
         def recurse(old_bundle_uuid): # Return the corresponding new version if applicable
             if old_bundle_uuid in old_to_new:
                 #print old_bundle_uuid, 'cached'
@@ -288,14 +294,17 @@ class LocalBundleClient(BundleClient):
             for dep in new_dependencies:
                 targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
             metadata = info['metadata']
-            if old_bundle_uuid == old_output_bundle_uuid:
-                metadata['name'] = new_output_bundle_name
-            else:
-                metadata['name'] = new_output_bundle_name + '-' + info['metadata']['name']
-            # TODO: pop all the automatically generated pairs automatically
-            metadata.pop('data_size')
-            metadata.pop('created')
-            #print targets
+            if old_bundle_uuid == old_output:
+                metadata['name'] = new_output_name
+            else:  # Just make up a name heuristically
+                metadata['name'] = new_output_name + '-' + info['metadata']['name']
+
+            # Pop all the automatically generated keys
+            cls = get_bundle_subclass(info['bundle_type'])
+            for spec in cls.METADATA_SPECS:
+                if spec.generated and spec.key in metadata:
+                    metadata.pop(spec.key)
+
             new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
                 targets, info['command'], info['metadata'], worksheet_uuid)
 
@@ -304,7 +313,7 @@ class LocalBundleClient(BundleClient):
             old_to_new[old_bundle_uuid] = new_bundle_uuid
             return new_bundle_uuid
 
-        return recurse(old_output_bundle_uuid)
+        return recurse(old_output)
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!

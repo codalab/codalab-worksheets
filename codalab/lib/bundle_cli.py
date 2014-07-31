@@ -879,12 +879,9 @@ state:       {state}
 
     def do_mimic_command(self, argv, parser):
         parser.add_argument(
-          'old_input_bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
-        )
-        parser.add_argument(
-          'old_output_bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
+          'bundle_spec',
+          help="old_input_1 ... old_input_n old_output new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
+          nargs='+'
         )
         self.add_mimic_macro_args(parser)
         args = parser.parse_args(argv)
@@ -898,17 +895,23 @@ state:       {state}
           'macro_name',
           help='name of the macro (look for <name>-in and <name>-out bundles)',
         )
+        parser.add_argument(
+          'bundle_spec',
+          help="new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
+          nargs='+'
+        )
         self.add_mimic_macro_args(parser)
         args = parser.parse_args(argv)
-        args.old_input_bundle_spec = args.macro_name + '-in'
-        args.old_output_bundle_spec = args.macro_name + '-out'
+        # Reduce to the mimic case
+        if len(args.bundle_spec) == 1:
+            args.bundle_spec = [args.macro_name + '-in'] + \
+                               [args.macro_name + '-out'] + args.bundle_spec
+        else:
+            args.bundle_spec = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundle_spec))] + \
+                               [args.macro_name + '-out'] + args.bundle_spec
         return self.create_macro(args)
 
     def add_mimic_macro_args(self, parser):
-        parser.add_argument(
-          'new_input_bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
-        )
         parser.add_argument(
           'new_output_bundle_name',
           help='name of the new bundle'
@@ -919,22 +922,21 @@ state:       {state}
           default=10,
           help="number of parents to look back from the old output in search of the old input"
         )
-        parser.add_argument(
-          '-s', '--stop-early',
-          action='store_true',
-          default=False,
-          help="stop traversing parents when we found old-input"
-        )
     
     def create_macro(self, args):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        old_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_input_bundle_spec)
-        new_input_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.new_input_bundle_spec)
-        old_output_bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.old_output_bundle_spec)
+        if len(args.bundle_spec) % 2 != 1:
+            raise UsageError('Should have an odd number of arguments, but got %s' % args.bundle_spec)
+
+        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, spec) for spec in args.bundle_spec]
+        # old_input_1 ... old_input_n old_output new_input_1 ... new_input_n
+        n = len(bundle_uuids) / 2
+        old_inputs = bundle_uuids[0:n]
+        old_output = bundle_uuids[n]
+        new_inputs = bundle_uuids[n+1:]
         print client.mimic(
-            old_input_bundle_uuid, new_input_bundle_uuid, \
-            old_output_bundle_uuid, args.new_output_bundle_name, \
-            worksheet_uuid, args.depth, args.stop_early)
+            old_inputs, old_output, new_inputs, args.new_output_bundle_name,
+            worksheet_uuid, args.depth)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
