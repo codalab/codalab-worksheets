@@ -136,12 +136,12 @@ def request_new_items(worksheet_info, client):
     # Construct a form template with the current value of the worksheet.
     template_lines = header.split('\n')
     template_lines.extend(get_worksheet_lines(worksheet_info))
-    template = os.linesep.join(template_lines)
+    template = os.linesep.join(template_lines) + os.linesep
 
     # Show the form to the user in their editor of choice.
     editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
     tempfile_name = ''
-    with tempfile.NamedTemporaryFile(suffix='.txt', delete=False) as form:
+    with tempfile.NamedTemporaryFile(suffix='.c', delete=False) as form:
         form.write(template)
         form.flush()
         tempfile_name = form.name
