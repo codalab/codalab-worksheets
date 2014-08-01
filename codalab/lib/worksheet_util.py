@@ -1,8 +1,8 @@
 '''
 worksheet_util contains the following public functions:
-- interpret_items: returns a structure that interprets all the directives in the worksheet item.
 - request_lines: pops up an editor to allow for full-text editing of a worksheet.
-- parse_worksheet_form: takes those lines and generates a set of triples
+- parse_worksheet_form: takes those lines and generates a set of items (triples)
+- interpret_items: takes those triples and returns a structure that interprets all the directives in the worksheet item.
 
 A worksheet contains a list of items, where each item includes
 - bundle_uuid (only used if type == bundle)
@@ -25,26 +25,30 @@ Types of directives:
 %
 %% this is a comment
 % display hidden
-% display inline <genpath (e.g., output/stats/errorRate)>
-% display contents <genpath (e.g., output/stats/things)>
-% display image <genpath (e.g., output/graph.png)>
-% display html <genpath (e.g., output/test.html)>
+% display inline <genpath (e.g., stats/errorRate)>
+% display contents <genpath (e.g., stats/things)>
+% display image <genpath (e.g., graph.png)>
+% display html <genpath (e.g., test.html)>
 % display record <schema name>
 % display table <schema name>
+%
+% search <keywords>
 
 A genpath (generalized path) is either:
 - a bundle field (e.g., command)
-- a metadata field (e.g., metadata/name)
-- a normal path, but can descend into a YAML file (e.g., output/stats/errorRate)
+- a metadata field (e.g., name)
+- a normal path, but can descend into a YAML file (e.g., /stats:train/errorRate)
 
-There are two representations of items:
-- (bundle_uuid, 
+There are two representations of worksheet items:
+- (bundle_uuid, value, type) [inserted into the database]
+- (bundle_info, value_obj, type) [used in the code]
 '''
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import yaml
 
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting
@@ -177,7 +181,7 @@ def request_lines(worksheet_info, client):
 def parse_worksheet_form(form_result, client, worksheet_uuid):
     '''
     Input: form_result is a list of lines.
-    Return a list of (bundle_uuid, value, type) tuples.
+    Return a list of (bundle_uuid, value, type) triples.
     '''
     def parse(line):
         m = BUNDLE_REGEX.match(line)
@@ -202,6 +206,11 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     return result
 
 def interpret_genpath(bundle_info, genpath):
+    '''
+    This function is called in the first server call to a BundleClient to
+    quickly interpret the genpaths that only require looking bundle_info
+    (cheap).
+    '''
     if genpath == 'dependencies':
         return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
     elif genpath.startswith('dependencies/'):
@@ -212,7 +221,8 @@ def interpret_genpath(bundle_info, genpath):
                 return dep['parent_name']
         return 'n/a'
 
-    # Only return the pair if genpath is referring to a file
+    # If genpath is referring to a file, then just returns instructions for
+    # fetching that file rather than actually doing it.
     if genpath.startswith('/'):
         return (bundle_info['uuid'], genpath[1:])
 
@@ -231,6 +241,9 @@ def canonicalize_schema_item(args):
     else:
         raise UsageError('Invalid number of arguments: %s' % value_obj)
 
+def canonicalize_schema_items(items):
+    return [canonicalize_schema_item(item) for item in items]
+
 def apply_func(func, arg):
     try:
         return func(arg)
@@ -238,31 +251,42 @@ def apply_func(func, arg):
         # Can't apply the function, so just return the arg.
         return arg 
 
-def interpret_items(items):
+def get_default_schemas():
+    created = ['created', 'created', formatting.time_str]
+    data_size = ['data_size', 'data_size', formatting.size_str]
+    schemas = {}
+
+    schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, data_size, ['state']])
+
+    schemas['program'] = canonicalize_schema_items([['name'], created, data_size])
+    schemas['dataset'] = canonicalize_schema_items([['name'], created, data_size])
+
+    schemas['make'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['state']])
+    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state']])
+    return schemas
+
+def interpret_items(schemas, items):
     '''
+    schemas: initial mapping from name to list of schema items (columns of a table)
+    items: list of worksheet items to interpret
     Return a list of items, where each item is either:
     - ('markup'|'inline'|'contents', string)
     - ('record'|'table', (col1, col2), [{col1:value1, col2:value2}, ...])
     - ('image'|'html', genpath)
+    - ('search', [keyword, ...])
     '''
     result = {}
-    schemas = {}
 
     # Set default schema
-    schemas['uploaded'] = current_schema = [
-        canonicalize_schema_item(x)
-        for x in [['name'], ['bundle_type'], ['data_size', 'data_size', formatting.size_str]]
-    ]
-    schemas['derived'] = current_schema = [
-        canonicalize_schema_item(x)
-        for x in [['name'], ['bundle_type'], ['dependencies'], ['command'], ['data_size', 'data_size', formatting.size_str], ['state']]
-    ]
-    schemas['default'] = schemas['derived']
+    current_schema = None
 
     current_display = ('table', 'default')
     new_items = []
     bundle_infos = []
     def flush():
+        '''
+        Gathered a group of bundles (in a table), which we can group together.
+        '''
         if len(bundle_infos) == 0: return
         # Print out the curent bundles somehow
         mode = current_display[0] 
@@ -273,9 +297,9 @@ def interpret_items(items):
             for bundle_info in bundle_infos:
                 new_items.append((mode, interpret_genpath(bundle_info, args[0])))
         elif mode == 'image':
-            new_items.append(('image', args[0]))
+            new_items.append((mode, args[0]))
         elif mode == 'html':
-            new_items.append(('html', args[0]))
+            new_items.append((mode, args[0]))
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -325,6 +349,11 @@ def interpret_items(items):
                 current_schema.append(schema_item)
             elif command == 'display':
                 current_display = value_obj[1:]
+            elif command == 'search':
+                keywords = value_obj[1:]
+                mode = command
+                data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
+                new_items.append((mode, data))
             elif command == '%' or command == '':  # Comment
                 pass
             else:
@@ -333,3 +362,44 @@ def interpret_items(items):
     result['items'] = new_items
     #print result
     return result
+
+def lookup_targets(client, value):
+    '''
+    This is called upon second requests to the server to fetch information out of the
+    files.
+    '''
+    # TODO: currently, this is really inefficient since we are possibly reading
+    # the same file multiple times.  Make this more efficient!
+    if isinstance(value, tuple):
+        bundle_uuid, subpath = value
+        if ':' in subpath:
+            subpath, key = subpath.split(':')
+            contents = client.head_target((bundle_uuid, subpath), 50)
+            if contents == None: return ''
+            info = yaml.load('\n'.join(contents))
+            for k in key.split('/'):
+                info = info.get(k, None)
+                if k == None: return ''
+            return info
+        else:
+            if subpath == '.': subpath = ''
+            contents = client.head_target((bundle_uuid, subpath), 1)
+            if contents == None: return ''
+            return contents[0].strip()
+    return value
+
+def interpret_search(client, worksheet_uuid, data):
+    '''
+    Input: specification of a search query.
+    Output: worksheet items based on the result of issuing the search query.
+    '''
+    # First, item determines the display
+    items = [(None, ['display'] + data['display'], TYPE_DIRECTIVE)]
+
+    # Next come the actual bundles
+    bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'], 100, False)
+    for bundle_uuid in bundle_uuids:
+        items.append((client.get_bundle_info(bundle_uuid), None, TYPE_BUNDLE) )
+
+    # Finally, interpret the items
+    return interpret_items(data['schemas'], items)

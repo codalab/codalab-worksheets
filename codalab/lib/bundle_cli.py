@@ -15,7 +15,6 @@ import os
 import re
 import sys
 import time
-import yaml
 
 from codalab.bundles import (
   get_bundle_subclass,
@@ -623,7 +622,7 @@ class BundleCLI(object):
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, 20, args.count)
+        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, 100, args.count)
         if args.uuid_only:
             bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
         else:
@@ -1076,27 +1075,6 @@ state:       {state}
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
-    def lookup_targets(self, client, value):
-        # TODO: make this more efficient
-        if isinstance(value, tuple):
-            bundle_uuid, subpath = value
-            if ':' in subpath:
-                subpath, key = subpath.split(':')
-                contents = client.head_target((bundle_uuid, subpath), 50)
-                if contents == None: return ''
-                info = yaml.load('\n'.join(contents))
-                for k in key.split('/'):
-                    info = info.get(k, None)
-                    if k == None: return ''
-                return info
-            else:
-                if subpath == '.': subpath = ''
-                contents = client.head_target((bundle_uuid, subpath), 1)
-                if contents == None: return ''
-                return contents[0].strip()
-                
-        return value
-            
     def do_print_command(self, argv, parser):
         parser.add_argument(
           'worksheet_spec',
@@ -1115,27 +1093,33 @@ state:       {state}
             for line in lines:
                 print line
         else:
-            interpreted = worksheet_util.interpret_items(worksheet_info['items'])
-            title = interpreted.get('title')
-            if title: print '[[', title, ']]'
-            is_last_newline = False
-            for mode, data in interpreted['items']:
-                is_newline = (data == '')
-                if mode == 'inline' or mode == 'markup' or mode == 'contents':
-                    if not (is_newline and is_last_newline):
-                        if mode == 'inline':
-                            print '[' + self.lookup_targets(client, data) + ']'
-                        elif mode == 'contents':
-                            self.print_target_info(data, decorate=True)
-                        else:
-                            print data
-                elif mode == 'record' or mode == 'table':
-                    header, contents = data
-                    contents = [{key : self.lookup_targets(client, value) for key, value in row.items()} for row in contents]
-                    self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
-                else:
-                    raise UsageError('Invalid mode: %s' % mode)
-                is_last_newline = is_newline
+            interpreted = worksheet_util.interpret_items(worksheet_util.get_default_schemas(), worksheet_info['items'])
+            self.display_interpreted(client, worksheet_info, interpreted)
+
+    def display_interpreted(self, client, worksheet_info, interpreted):
+        title = interpreted.get('title')
+        if title: print '[[', title, ']]'
+        is_last_newline = False
+        for mode, data in interpreted['items']:
+            is_newline = (data == '')
+            if mode == 'inline' or mode == 'markup' or mode == 'contents':
+                if not (is_newline and is_last_newline):
+                    if mode == 'inline':
+                        print '[' + worksheet_util.lookup_targets(client, data) + ']'
+                    elif mode == 'contents':
+                        self.print_target_info(data, decorate=True)
+                    else:
+                        print data
+            elif mode == 'record' or mode == 'table':
+                header, contents = data
+                contents = [{key : worksheet_util.lookup_targets(client, value) for key, value in row.items()} for row in contents]
+                self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
+            elif mode == 'search':
+                search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
+                self.display_interpreted(client, worksheet_info, search_interpreted)
+            else:
+                raise UsageError('Invalid display mode: %s' % mode)
+            is_last_newline = is_newline
 
     def do_wls_command(self, argv, parser):
         args = parser.parse_args(argv)
