@@ -39,8 +39,8 @@ from codalab.lib import (
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects.work_manager import Worker
-from codalab.objects import (
-  machine_types,
+from codalab.machines import (
+  pool_machine,
   remote_machine,
 )
 
@@ -1267,7 +1267,7 @@ state:       {state}
             config = {'type': 'local'}
 
         if config['type'] == 'local':
-            machine = machine_types.PoolMachine()
+            machine = pool_machine.PoolMachine()
         elif config['type'] == 'remote':
             machine = remote_machine.RemoteMachine(config['address'], config['user'], config['working_directory'])
 
