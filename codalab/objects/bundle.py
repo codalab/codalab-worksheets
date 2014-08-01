@@ -93,7 +93,7 @@ class Bundle(ORMObject):
         '''
         return [spec for spec in cls.METADATA_SPECS if not spec.generated]
 
-    def get_dependency_paths(self, bundle_store, parent_dict, path, relative_symlinks=False):
+    def get_dependency_paths(self, bundle_store, parent_dict, dest_path, relative_symlinks=False):
         def process_dep(dep):
             parent = parent_dict[dep.parent_uuid]
             # Compute an absolute target and check that the dependency exists.
@@ -118,15 +118,14 @@ class Bundle(ORMObject):
 
         return [process_dep(dep) for dep in self.dependencies]
 
-
     def install_dependencies(self, bundle_store, parent_dict, dest_path, relative_symlinks):
         '''
         Symlink this bundle's dependencies into the directory at dest_path.
         The caller is responsible for cleaning up this directory.
         rel: whether to use relative symlinks
         '''
-        precondition(os.path.isabs(path), '%s is a relative path!' % (path,))
-        pairs = self.get_dependency_paths(bundle_store, parent_dict, path, relative_symlinks)
+        precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
+        pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks)
         for (target, link_path) in pairs:
             # If the dependency already exists, remove it (this happens when we are reinstalling)
             if os.path.exists(link_path): path_util.remove(link_path)

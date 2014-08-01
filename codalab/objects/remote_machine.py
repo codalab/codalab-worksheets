@@ -1,4 +1,3 @@
-import paramiko
 import subprocess
 import os
 
@@ -11,98 +10,111 @@ from codalab.objects.machine import Machine
 
 class RemoteMachine(Machine):
     def __init__(self, target, username, remote_directory):
-        client = paramiko.SSHClient()
-        # TODO probably remove this line
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.load_system_host_keys()
-        try:
-            client.connect(target, username=username)
-        # TODO probably remove this
-        except paramiko.PasswordRequiredException:
-            password = getpass.getpass('RSA key password: ')
-            client.connect(target, username=username, password=password)
-
         self.username = username
         self.target = target
 
-        self.client = client
-        self.channel = None
+        self.process = None
         self.remote_directory = remote_directory
 
-    def call_rsync(self, local_dir):
-        args = ["rsync", "-avz", local_dir, self.username+'@'+self.target+":"+self.remote_directory]
-        subprocess.call(args)
+    def get_host_string(self):
+        return "{username}@{target}".format(
+                username=self.username,
+                target=self.target)
+    def get_remote_directory(self):
+        return os.path.join(self.remote_directory, self.bundle.uuid)
 
+    # TODO fix erroneous stderr output
+    def start_ssh_command(self):
+        cd_command = 'cd ' + self.get_remote_directory()
+        mkdir_command = 'mkdir output'
+        remote_command = ' && '.join([
+            cd_command,
+            mkdir_command,
+            self.bundle.command])
+
+        # Use -t so we can kill the remote process
+        # Use -o option to suppress "Connection to ... closed." message
+        command = 'ssh -t -o LogLevel=Quiet {host} "{command}"'.format(
+                host=self.get_host_string(),
+                command=remote_command.replace("\"", "\\\""))
+        return subprocess.Popen(command, stdout=self.stdout, stderr=self.stderr, shell=True)
+
+    def call_rsync_command(self):
+        # Adds trailing slash. Needed for correct rsync behavior.
+        local_dir_arg  = os.path.join(self.temp_dir, '') 
+        remote_dir_arg = self.get_remote_directory()
+
+        host_string = self.get_host_string()
+        args = ["rsync", "-avz", local_dir_arg, host_string+":"+remote_dir_arg]
+
+        # Hide stdout
+        with open(os.devnull, 'wb') as devnull:
+            subprocess.call(args, stdout=devnull)
+
+    def call_scp_command(self):
+        command = 'scp -r {host}:{remote_dir}/output {local_dir}'.format(
+                host=self.get_host_string(),
+                remote_dir=self.get_remote_directory(),
+                local_dir=self.temp_dir)
+
+        # Hide stdout
+        with open(os.devnull, 'wb') as devnull:
+            subprocess.call(command, stdout=devnull, shell=True)
+
+    # Sets up remote environment, starts bundle command
     def run_bundle(self, bundle, bundle_store, parent_dict):
-        # Get directories straight
         temp_dir = canonicalize.get_current_location(bundle_store, bundle.uuid)
-        path_util.try_make_directory(temp_dir)
-        pairs = bundle.get_dependency_paths(bundle_store, parent_dict, temp_dir)
-
-        # Copy files
-        for (source, target) in pairs:
-            path_util.try_copy(source, target)
-        self.call_rsync(temp_dir)
-
-        shell = False
-        # Capture stdout/err and start process
-        if shell:
-            c = self.client.invoke_shell()
-        else:
-            c = self.client.get_transport().open_session()
-            c.get_pty()
 
         # Store objects
         self.bundle = bundle
-        self.channel = c
-        self.out = c.makefile()
-        self.err = c.makefile_stderr()
         self.temp_dir = temp_dir
 
-        # Run command
-        # TODO chdir into remote enviroment directory
+        # Copy input files
+        path_util.try_make_directory(temp_dir)
+        pairs = bundle.get_dependency_paths(bundle_store, parent_dict, temp_dir)
+        for (source, target) in pairs:
+            path_util.try_copy(source, target)
+        self.call_rsync_command()
 
-        cd_command = 'cd ' + os.path.join(self.remote_directory, bundle.uuid)
-        if shell:
-            c.send(cd_command)
-            c.send(bundle.command)
-        else:
-            c.exec_command(cd_command + ' && ' + bundle.command)
+        # Start process
+        with path_util.chdir(self.temp_dir):
+            self.stdout = open('stdout', 'wb')
+            self.stderr = open('stderr', 'wb')
+            self.process = self.start_ssh_command()
+
         return True
 
     def poll(self):
-        if self.channel and self.channel.exit_status_ready():
+        if self.process:
+            self.process.poll()
+        if self.process and self.process.returncode != None:
             return self.result()
         else:
             return None
 
     def result(self):
-        # This call blocks
-        success = self.channel.recv_exit_status() == 0
-        # Read process output
-        # TODO update this during execution
-        with path_util.chdir(self.temp_dir):
-            path_util.try_make_directory('output')
-            with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
-                stdout.write(self.out.read());
-                stderr.write(self.err.read());
+        success = self.process.returncode == 0
+
+        # Copy output directory from remote host into temp_dir
+        self.call_scp_command()
 
         return (self.bundle, success, self.temp_dir)
 
     def kill(self, uuid):
         if self.bundle.uuid == uuid:
-            self.channel.close();
+            self.process.kill()
             return self.result()
         else:
             return None
 
     def finalize(self, uuid):
         if self.bundle.uuid == uuid:
-            #path_util.remove(self.temp_dir)
+            path_util.remove(self.temp_dir)
             # TODO clean up remote files
-            self.out.close()
-            self.err.close()
-            self.channel = None
+            self.stdout.close()
+            self.stderr.close()
+            self.process = None
+            self.bundle = None
             return True
         else:
             return False
