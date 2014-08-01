@@ -575,7 +575,7 @@ class BundleModel(object):
             # Find all the worksheet_items that old_bundle_uuid appears in
             query = select([cl_worksheet_item.c.worksheet_uuid, cl_worksheet_item.c.sort_key]).where(cl_worksheet_item.c.bundle_uuid == old_bundle_uuid)
             old_items = connection.execute(query)
-            print 'add_shadow_worksheet_items', old_items
+            #print 'add_shadow_worksheet_items', old_items
 
             # Go through and insert a worksheet item with new_bundle_uuid after
             # each of the old items.

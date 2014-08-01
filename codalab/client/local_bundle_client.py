@@ -271,16 +271,19 @@ class LocalBundleClient(BundleClient):
         old_to_new = {}
         for old, new in zip(old_inputs, new_inputs):
             old_to_new[old] = new
-        def recurse(old_bundle_uuid): # Return the corresponding new version if applicable
+
+        # Return the corresponding new_bundle_uuid.
+        def recurse(old_bundle_uuid):
             if old_bundle_uuid in old_to_new:
                 #print old_bundle_uuid, 'cached'
                 return old_to_new[old_bundle_uuid]
 
-            # Don't have any more information
+            # Don't have any more information (because we probably hit the maximum depth)
             if old_bundle_uuid not in infos:
                 #print old_bundle_uuid, 'no information'
                 return old_bundle_uuid
 
+            # Get information about the old bundle.
             info = infos[old_bundle_uuid]
             new_dependencies = [{
                 'parent_uuid': recurse(dep['parent_uuid']),
@@ -288,21 +291,11 @@ class LocalBundleClient(BundleClient):
                 'child_uuid': dep['child_uuid'],  # This is just a placeholder to do the equality test
                 'child_path': dep['child_path']
             } for dep in info['dependencies']]
-            # Nothing has changed
-            if [dep['parent_uuid'] for dep in new_dependencies] == [dep['parent_uuid'] for dep in info['dependencies']]:
-                #print old_bundle_uuid, 'nothing changed'
-                return old_bundle_uuid
-            else:
-                #print old_bundle_uuid, 'changed dependencies: %s => %s' % (info['dependencies'], new_dependencies)
-                pass
             old_bundle_name = info['metadata']['name']
 
-            # Create a new bundle
-            targets = {}
-            for dep in new_dependencies:
-                targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
-            metadata = info['metadata']
+            # Now create a new bundle that mimics the old bundle.
             # Only change the name if the output name is supplied.
+            metadata = info['metadata']
             if new_output_name:
                 if old_bundle_uuid == old_output:
                     metadata['name'] = new_output_name
@@ -316,6 +309,11 @@ class LocalBundleClient(BundleClient):
                 if spec.generated and spec.key in metadata:
                     metadata.pop(spec.key)
 
+            # Set the targets
+            targets = {}
+            for dep in new_dependencies:
+                targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
+
             new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
                 targets, info['command'], info['metadata'], worksheet_uuid if not shadow else None)
             if shadow:
@@ -323,7 +321,7 @@ class LocalBundleClient(BundleClient):
 
             print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
 
-            old_to_new[old_bundle_uuid] = new_bundle_uuid
+            old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
             return new_bundle_uuid
 
         if old_output:
