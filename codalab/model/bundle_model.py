@@ -46,7 +46,7 @@ from codalab.objects.worksheet import (
 
 import re
 
-CONDITION_REGEX = re.compile('^(\w+)=(.*)$')
+CONDITION_REGEX = re.compile('^([\w/]+)=(.*)$')
 
 class BundleModel(object):
     def __init__(self, engine):
@@ -224,6 +224,7 @@ class BundleModel(object):
             # Each keyword is either a string (just search everywhere) or
             # key=value, which is more targeted, and results in exact match.
             clauses = []
+            offset = 0
 
             for keyword in conditions['*']:
                 m = CONDITION_REGEX.match(keyword)
@@ -233,6 +234,20 @@ class BundleModel(object):
                         clause = (cl_bundle.c.bundle_type == value)
                     elif key == 'state':
                         clause = (cl_bundle.c.state == value)
+                    elif key == 'dependencies':
+                        clause = and_(
+                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
+                            cl_bundle_dependency.c.parent_uuid == value,  # Match the uuid of the dependent (parent)
+                        )
+                    elif key.startswith('dependencies/'):
+                        _, name = key.split('/', 1)
+                        clause = and_(
+                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
+                            cl_bundle_dependency.c.parent_uuid == value,  # Match the uuid of the dependent (parent_uuid)
+                            cl_bundle_dependency.c.child_path == name,  # Match the 'type' of dependent (child_path)
+                        )
+                    elif key == 'offset':
+                        offset = int(value)
                     elif key == 'limit':
                         max_results = int(value)
                     else:
@@ -254,7 +269,7 @@ class BundleModel(object):
                 clauses.append(clause)
             clause = and_(*clauses)
             clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
-            query = select([cl_bundle.c.uuid]).distinct().where(clause).limit(max_results)
+            query = select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(max_results)
 
         #print 'QUERY', query, query.compile().params
         with self.engine.begin() as connection:
