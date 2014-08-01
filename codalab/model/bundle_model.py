@@ -25,6 +25,7 @@ from codalab.common import (
 )
 from codalab.lib import (
     spec_util,
+    worksheet_util,
 )
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
@@ -564,6 +565,34 @@ class BundleModel(object):
         }
         with self.engine.begin() as connection:
             connection.execute(cl_worksheet_item.insert().values(item_value))
+
+    def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
+        '''
+        For each occurrence of old_bundle_uuid in any worksheet, add
+        new_bundle_uuid right after it (a shadow).
+        '''
+        with self.engine.begin() as connection:
+            # Find all the worksheet_items that old_bundle_uuid appears in
+            query = select([cl_worksheet_item.c.worksheet_uuid, cl_worksheet_item.c.sort_key]).where(cl_worksheet_item.c.bundle_uuid == old_bundle_uuid)
+            old_items = connection.execute(query)
+            print 'add_shadow_worksheet_items', old_items
+
+            # Go through and insert a worksheet item with new_bundle_uuid after
+            # each of the old items.
+            new_items = []
+            for old_item in old_items:
+                new_item = {
+                  'worksheet_uuid': old_item.worksheet_uuid,
+                  'bundle_uuid': new_bundle_uuid,
+                  'type': worksheet_util.TYPE_BUNDLE,
+                  'value': '',  # TODO: replace with None once we change tables.py
+                  'sort_key': old_item.sort_key,  # Can't really do after, so use the same value.
+                }
+                new_items.append(new_item)
+                connection.execute(cl_worksheet_item.insert().values(new_item))
+            # sqlite doesn't support this
+            #connection.execute(cl_worksheet_item.insert().values(new_items))
+
 
     def update_worksheet(self, worksheet_uuid, last_item_id, length, new_items):
         '''

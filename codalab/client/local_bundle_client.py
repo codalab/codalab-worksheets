@@ -162,6 +162,7 @@ class LocalBundleClient(BundleClient):
     def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
         '''
         For both make and run bundles.
+        Add the resulting bundle to the given worksheet_uuid (optional).
         '''
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
@@ -236,7 +237,7 @@ class LocalBundleClient(BundleClient):
         # because we will follow them when we copy it from the target path.
         return (self.get_target_path(target), None)
 
-    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth):
+    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow):
         '''
         old_inputs: list of bundle uuids
         old_output: bundle uuid that we produced
@@ -244,6 +245,7 @@ class LocalBundleClient(BundleClient):
         new_output_name: name of the bundle to create to be analogous to old_output (possibly None)
         worksheet_uuid: add newly created bundles to this worksheet
         depth: how far to do a BFS up
+        shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
         #print old_inputs, new_inputs, old_output, new_output_name
 
@@ -315,7 +317,9 @@ class LocalBundleClient(BundleClient):
                     metadata.pop(spec.key)
 
             new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
-                targets, info['command'], info['metadata'], worksheet_uuid)
+                targets, info['command'], info['metadata'], worksheet_uuid if not shadow else None)
+            if shadow:
+                self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
 
             print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
 

@@ -942,6 +942,11 @@ state:       {state}
           default=10,
           help="number of parents to look back from the old output in search of the old input"
         )
+        parser.add_argument(
+          '-s', '--shadow',
+          action='store_true',
+          help="add the newly created bundles right after the old bundles that are being mimicked"
+        )
         self.add_wait_args(parser)
     
     def mimic(self, args):
@@ -967,7 +972,7 @@ state:       {state}
 
         new_uuid = client.mimic(
             old_inputs, old_output, new_inputs, args.name,
-            worksheet_uuid, args.depth)
+            worksheet_uuid, args.depth, args.shadow)
         self.wait(args, new_uuid)
 
     #############################################################################

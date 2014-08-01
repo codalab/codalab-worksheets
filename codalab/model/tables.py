@@ -29,7 +29,7 @@ bundle = Table(
   # The data_hash will be NULL if the bundle's value is still being computed.
   Column('data_hash', String(63), nullable=True),
   Column('state', String(63), nullable=False),
-  # TODO: add home_worksheet_uuid field
+  # TODO: add owner_id
   UniqueConstraint('uuid', name='uix_1'),
   Index('bundle_data_hash_index', 'data_hash'),
   sqlite_autoincrement=True,
@@ -66,7 +66,7 @@ worksheet = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
-  Column('owner_id', Integer, nullable=True),
+  Column('owner_id', Integer, nullable=True),  # TODO: make this a String (to match user_id)
   UniqueConstraint('uuid', name='uix_1'),
   Index('worksheet_name_index', 'name'),
   Index('worksheet_owner_index', 'owner_id'),
