@@ -1,1 +1,2 @@
+#!/bin/bash
 exec `dirname $0`/runjava Main learn "$@"

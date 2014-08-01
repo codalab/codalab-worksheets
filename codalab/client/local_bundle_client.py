@@ -287,9 +287,12 @@ class LocalBundleClient(BundleClient):
                 'child_path': dep['child_path']
             } for dep in info['dependencies']]
             # Nothing has changed
-            if new_dependencies == info['dependencies']:
+            if [dep['parent_uuid'] for dep in new_dependencies] == [dep['parent_uuid'] for dep in info['dependencies']]:
                 #print old_bundle_uuid, 'nothing changed'
                 return old_bundle_uuid
+            else:
+                #print old_bundle_uuid, 'changed dependencies: %s => %s' % (info['dependencies'], new_dependencies)
+                pass
             old_bundle_name = info['metadata']['name']
 
             # Create a new bundle

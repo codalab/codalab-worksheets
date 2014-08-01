@@ -526,7 +526,12 @@ class BundleCLI(object):
             m = pattern.match(command)
             if not m: break
             i = str(len(target_spec)+1)
-            target_spec.append(i + ':' + m.group(2))
+            if ':' in m.group(2):
+                i, val = m.group(2).split(':', 1)
+                if i == '': i = val
+                target_spec.append(m.group(2))
+            else:
+                target_spec.append(i + ':' + m.group(2))
             buf += m.group(1) + i
             command = m.group(3)
         return (target_spec, buf + command)
@@ -659,8 +664,8 @@ class BundleCLI(object):
             for bundle_info in bundle_info_list:
                 print bundle_info['uuid']
         else:
-            columns = ('uuid', 'name', 'bundle_type', 'data_size', 'state')
-            post_funcs = {'data_size': formatting.size_str}
+            columns = ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
+            post_funcs = {'created': formatting.time_str, 'data_size': formatting.size_str}
             justify = {'data_size': 1}
             bundle_dicts = [
               {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
@@ -1019,8 +1024,11 @@ state:       {state}
         for spec in args.bundle_spec:
             bundle_uuid = client.get_bundle_uuid(worksheet_uuid, spec)
             client.add_worksheet_item(worksheet_uuid, (bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
-        if args.message:
-            client.add_worksheet_item(worksheet_uuid, (None, args.message, worksheet_util.TYPE_MARKUP))
+        if args.message != None:
+            if args.message.startswith('%'):
+                client.add_worksheet_item(worksheet_uuid, (None, args.message[1:].strip(), worksheet_util.TYPE_DIRECTIVE))
+            else:
+                client.add_worksheet_item(worksheet_uuid, (None, args.message, worksheet_util.TYPE_MARKUP))
 
     def do_work_command(self, argv, parser):
         parser.add_argument(
@@ -1105,7 +1113,7 @@ state:       {state}
             if mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
                     if mode == 'inline':
-                        print '[' + worksheet_util.lookup_targets(client, data) + ']'
+                        print '[' + str(worksheet_util.lookup_targets(client, data)) + ']'
                     elif mode == 'contents':
                         self.print_target_info(data, decorate=True)
                     else:
@@ -1114,6 +1122,9 @@ state:       {state}
                 header, contents = data
                 contents = [{key : worksheet_util.lookup_targets(client, value) for key, value in row.items()} for row in contents]
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
+            elif mode == 'html' or mode == 'image':
+                # Placeholder
+                print '[' + mode + ' ' + worksheet_util.lookup_targets(client, data) + ']'
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 self.display_interpreted(client, worksheet_info, search_interpreted)
