@@ -368,6 +368,7 @@ class BundleCLI(object):
         parser.add_argument('bundle_type', help=help_text)
         parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='+')
         parser.add_argument('-b', '--base', help='Inherit the metadata from this bundle specification.')
+        parser.add_argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true')
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
@@ -394,6 +395,8 @@ class BundleCLI(object):
         bundle_subclass = get_bundle_subclass(args.bundle_type)
         # Get metadata
         metadata = None
+        if not args.base and args.base_use_default_name:
+            args.base = os.path.basename(args.path[0]) # Use default name
         if args.base:
             bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.base)
             info = client.get_bundle_info(bundle_uuid)
