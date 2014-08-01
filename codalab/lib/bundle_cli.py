@@ -412,7 +412,7 @@ class BundleCLI(object):
 
         # Finally, once everything has been checked, then call the client to upload.
         # Follow symlinks so we don't end up with broken symlinks.
-        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, follow_symlinks=True)
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, True)
 
     def do_download_command(self, argv, parser):
         parser.add_argument(
