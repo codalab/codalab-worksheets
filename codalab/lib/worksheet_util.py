@@ -202,13 +202,19 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     return result
 
 def interpret_genpath(bundle_info, genpath):
-    # TODO: unify the two genpaths?
-    if genpath == 'dependencies' or genpath == 'hard_dependencies':
+    if genpath == 'dependencies':
         return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
+    elif genpath.startswith('dependencies/'):
+        # Look up the particular dependency
+        _, name = genpath.split('/', 1)
+        for dep in bundle_info['dependencies']:
+            if dep['child_path'] == name:
+                return dep['parent_name']
+        return 'n/a'
 
-    # Only return the pair if genpath might be referring to a file.
-    if genpath == 'stdout' or genpath == 'stderr' or genpath.startswith('output'):
-        return (bundle_info['uuid'], genpath)
+    # Only return the pair if genpath is referring to a file
+    if genpath.startswith('/'):
+        return (bundle_info['uuid'], genpath[1:])
 
     # Either bundle info or metadata
     value = bundle_info.get(genpath, None)
@@ -243,10 +249,15 @@ def interpret_items(items):
     schemas = {}
 
     # Set default schema
-    schemas['default'] = current_schema = [
+    schemas['uploaded'] = current_schema = [
+        canonicalize_schema_item(x)
+        for x in [['name'], ['bundle_type'], ['data_size', 'data_size', formatting.size_str]]
+    ]
+    schemas['derived'] = current_schema = [
         canonicalize_schema_item(x)
         for x in [['name'], ['bundle_type'], ['dependencies'], ['command'], ['data_size', 'data_size', formatting.size_str], ['state']]
     ]
+    schemas['default'] = schemas['derived']
 
     current_display = ('table', 'default')
     new_items = []

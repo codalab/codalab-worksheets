@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import time
+import yaml
 
 from codalab.bundles import (
   get_bundle_subclass,
@@ -1075,14 +1076,6 @@ state:       {state}
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
-    def parse_yaml(self, contents):
-        info = {}
-        for line in contents:
-            # a: b
-            key, value = line.strip().split(': ')
-            info[key] = value
-        return info
-
     def lookup_targets(self, client, value):
         # TODO: make this more efficient
         if isinstance(value, tuple):
@@ -1091,8 +1084,11 @@ state:       {state}
                 subpath, key = subpath.split(':')
                 contents = client.head_target((bundle_uuid, subpath), 50)
                 if contents == None: return ''
-                info = self.parse_yaml(contents)
-                return info.get(key, '')
+                info = yaml.load('\n'.join(contents))
+                for k in key.split('/'):
+                    info = info.get(k, None)
+                    if k == None: return ''
+                return info
             else:
                 if subpath == '.': subpath = ''
                 contents = client.head_target((bundle_uuid, subpath), 1)

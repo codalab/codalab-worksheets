@@ -21,7 +21,7 @@ if [ ! -e $env ]; then
 fi
 
 echo "=== Install Python packages into $env..."
-$env/bin/pip install sqlalchemy || exit 1
+$env/bin/pip install sqlalchemy pyyaml || exit 1
 echo
 
 echo "=== Add the following line to your .bashrc to put CodaLab in your path:"
