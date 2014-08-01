@@ -181,14 +181,19 @@ def request_lines(worksheet_info, client):
 def parse_worksheet_form(form_result, client, worksheet_uuid):
     '''
     Input: form_result is a list of lines.
-    Return a list of (bundle_uuid, value, type) triples.
+    Return (list of (bundle_uuid, value, type) triples, commands to execute)
     '''
+    # The user can specify '// <command>', which perform actions on the immediately following bundle
+    current_command = None
+    commands = []
     def parse(line):
         m = BUNDLE_REGEX.match(line)
         if m:
             try:
                 bundle_uuid = client.get_bundle_uuid(worksheet_uuid, m.group(3))
                 bundle_info = client.get_bundle_info(bundle_uuid)
+                if current_command:
+                    commands.append(current_command + [bundle_uuid])
                 return (bundle_info, None, TYPE_BUNDLE)
             except UsageError, e:
                 return (None, line + ': ' + e.message, TYPE_MARKUP)
@@ -201,9 +206,14 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         
     result = []
     for line in form_result:
-        if line.startswith('//'): continue  # Skip comments
-        result.append(parse(line))
-    return result
+        if line.startswith('//'):  # Comments
+            current_command = line[2:].strip().split()
+            if current_command[0] not in ('rm', 'edit'): current_command = None
+        else:
+            result.append(parse(line))
+            current_command = None
+
+    return (result, commands)
 
 def interpret_genpath(bundle_info, genpath):
     '''

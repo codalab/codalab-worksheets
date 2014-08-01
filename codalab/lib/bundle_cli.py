@@ -1083,10 +1083,19 @@ state:       {state}
                 lines = [line.strip() for line in open(args.file).readlines()]
             else:
                 lines = worksheet_util.request_lines(worksheet_info, client)
-            # Parse the lines and update the worksheet.
-            new_items = worksheet_util.parse_worksheet_form(lines, client, worksheet_info['uuid'])
+
+            # Parse the lines.
+            new_items, commands = worksheet_util.parse_worksheet_form(lines, client, worksheet_info['uuid'])
+
+            # Save the worksheet.
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
+
+            # Execute the commands that the user put into the worksheet.
+            for command in commands:
+                print 'Executing: %s' % ' '.join(command)
+                self.do_command(command)
+                
 
     def do_print_command(self, argv, parser):
         parser.add_argument(
