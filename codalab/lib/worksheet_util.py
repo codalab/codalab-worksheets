@@ -1,7 +1,8 @@
 '''
 worksheet_util contains the following public functions:
 - interpret_items: returns a structure that interprets all the directives in the worksheet item.
-- request_new_items: pops up an editor to allow for full-text editing of a worksheet.
+- request_lines: pops up an editor to allow for full-text editing of a worksheet.
+- parse_worksheet_form: takes those lines and generates a set of triples
 
 A worksheet contains a list of items, where each item includes
 - bundle_uuid (only used if type == bundle)
@@ -102,46 +103,60 @@ def get_worksheet_lines(worksheet_info):
     '''
     Generator that returns pretty-printed lines of text for the given worksheet.
     '''
+    header = '''
+// Editing for worksheet %s.  The coments (//) are simply instructions
+// to you and not part of the actual worksheet.  You can enter:
+// - Arbitrary Markdown (see http://daringfireball.net/projects/markdown/syntax)
+// - References to bundles: {<bundle_spec>}
+// - Directives (%% title|schema|add|display)
+//   * title "Place title here"
+//   * schema <schema name>
+//   * add <descriptor> | add <key name> <value source>
+//   * display inline|contents|image|html <value source>
+//   * display record|table <schema name>
+// For example, you can define a schema for a table and then set the display mode to using that schema:
+// %% schema s1
+// %% add name
+// %% add command
+// %% add time
+// %% display table s1
+// %% {run1}
+// %% {run2}
+    '''.strip() % (worksheet_info['name'],)
+    lines = header.split('\n')
+
     for (bundle_info, value_obj, type) in worksheet_info['items']:
         if type == TYPE_MARKUP:
-            yield value_obj
+            lines.append(value_obj)
         elif type == TYPE_BUNDLE:
             metadata = bundle_info['metadata']
             description = bundle_info['bundle_type']
             description += ' ' + metadata['name']
             deps = interpret_genpath(bundle_info, 'dependencies')
-            if deps: description += ' <- ' + deps
+            if deps: description += ' -- ' + deps
             command = bundle_info.get('command')
             if command: description += ' : ' + command
-            yield '[%s]{%s}' % (description, bundle_info['uuid'])
+            lines.append('[%s]{%s}' % (description, bundle_info['uuid']))
         elif type == TYPE_DIRECTIVE:
             value = tokens_to_string(value_obj)
             value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
-            yield value
+            lines.append(value)
+    return lines
 
-def request_new_items(worksheet_info, client):
+def request_lines(worksheet_info, client):
     '''
     Input: worksheet_info, client (which is used to get bundle_infos)
     Popup an editor, populated with the current worksheet contents.
     Return a list of new items (bundle_uuid, value, type) that the user typed into the editor.
     '''
-    header = '''
-// Editing for worksheet %s.  The coments (//) are simply instructions
-// to you and not part of the actual worksheet.  You can enter:
-// - arbitrary Markdown text
-// - References to bundles: {<bundle_spec>}
-// - Directives (%% title|schema|add|display)
-    '''.strip() % (worksheet_info['name'],)
-
     # Construct a form template with the current value of the worksheet.
-    template_lines = header.split('\n')
-    template_lines.extend(get_worksheet_lines(worksheet_info))
+    template_lines = get_worksheet_lines(worksheet_info)
     template = os.linesep.join(template_lines) + os.linesep
 
     # Show the form to the user in their editor of choice.
     editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
     tempfile_name = ''
-    with tempfile.NamedTemporaryFile(suffix='.c', delete=False) as form:
+    with tempfile.NamedTemporaryFile(suffix='.md', delete=False) as form:
         form.write(template)
         form.flush()
         tempfile_name = form.name
@@ -157,7 +172,7 @@ def request_new_items(worksheet_info, client):
     form_result = [line.rstrip() for line in lines]
     if form_result == template_lines:
         raise UsageError('No change made; aborting')
-    return parse_worksheet_form(form_result, client, worksheet_info['uuid'])
+    return form_result
 
 def parse_worksheet_form(form_result, client, worksheet_uuid):
     '''
@@ -226,10 +241,13 @@ def interpret_items(items):
     '''
     result = {}
     schemas = {}
+
+    # Set default schema
     schemas['default'] = current_schema = [
         canonicalize_schema_item(x)
         for x in [['name'], ['bundle_type'], ['dependencies'], ['command'], ['data_size', 'data_size', formatting.size_str], ['state']]
     ]
+
     current_display = ('table', 'default')
     new_items = []
     bundle_infos = []

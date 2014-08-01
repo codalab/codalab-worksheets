@@ -560,8 +560,7 @@ class BundleCLI(object):
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
         parser.add_argument(
-          '-n',
-          '--name',
+          '-n', '--name',
           help='new name: ' + spec_util.NAME_REGEX.pattern,
           nargs='?',
         )
@@ -1033,21 +1032,32 @@ state:       {state}
 
     def do_wedit_command(self, argv, parser):
         parser.add_argument(
-          'worksheet_spec',
-          help=self.GLOBAL_SPEC_FORMAT,
-          nargs='?',
+            'worksheet_spec',
+            help=self.GLOBAL_SPEC_FORMAT,
+            nargs='?',
         )
         parser.add_argument(
-          '--name',
-          help='new name: ' + spec_util.NAME_REGEX.pattern,
-          nargs='?',
+            '-n', '--name',
+            help='new name: ' + spec_util.NAME_REGEX.pattern,
+            nargs='?',
+        )
+        parser.add_argument(
+            '-f', '--file',
+            help='overwrite the given worksheet with this file',
+            nargs='?',
         )
         args = parser.parse_args(argv)
         client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
         if args.name:
             client.rename_worksheet(worksheet_info['uuid'], args.name)
         else:
-            new_items = worksheet_util.request_new_items(worksheet_info, client)
+            # Either get a list of lines from the given file or request it from the user in an editor.
+            if args.file:
+                lines = [line.strip() for line in open(args.file).readlines()]
+            else:
+                lines = worksheet_util.request_lines(worksheet_info, client)
+            # Parse the lines and update the worksheet.
+            new_items = worksheet_util.parse_worksheet_form(lines, client, worksheet_info['uuid'])
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
