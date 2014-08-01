@@ -180,7 +180,7 @@ class LocalBundleClient(BundleClient):
         uuids = set(uuids)
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         if not recursive:
-            # If any descendents exist, then we only delete uuids if force = True.
+            # If any descendants exist, then we only delete uuids if force = True.
             if (not force) and uuids != relevant_uuids:
                 relevant = self.model.batch_get_bundles(uuid=(relevant_uuids - uuids))
                 raise UsageError('Can\'t delete because the following bundles depend on %s:\n  %s' % (
@@ -241,17 +241,22 @@ class LocalBundleClient(BundleClient):
         old_inputs: list of bundle uuids
         old_output: bundle uuid that we produced
         new_inputs: list of bundle uuids that are analogous to old_inputs
-        new_output_name: name of the bundle to create to be analogous to old_output
+        new_output_name: name of the bundle to create to be analogous to old_output (possibly None)
         worksheet_uuid: add newly created bundles to this worksheet
         depth: how far to do a BFS up
         '''
-        # Build the graph: Look at ancestors of old_output_bundle_uuid until we
-        # arrive at old_input_bundle_uuid and/or reached some depth.
+        #print old_inputs, new_inputs, old_output, new_output_name
+
+        # Build the graph.
+        # If old_output is given, look at ancestors of old_output until we
+        # reached some depth.  If it's not given, we first get all the
+        # descendants first, and then get their ancestors.
         infos = {}  # uuid -> bundle info
-        bundle_infos = []  # These are the ones that we need to generate
-        bundle_uuids = set([old_output])
+        if old_output:
+            bundle_uuids = set([old_output])
+        else:
+            bundle_uuids = self.model.get_self_and_descendants(old_inputs, depth=depth)
         for _ in range(depth):
-            #print bundle_uuids
             new_bundle_uuids = set()
             for bundle_uuid in bundle_uuids:
                 if bundle_uuid in infos: continue  # Already visited
@@ -292,10 +297,13 @@ class LocalBundleClient(BundleClient):
             for dep in new_dependencies:
                 targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
             metadata = info['metadata']
-            if old_bundle_uuid == old_output:
-                metadata['name'] = new_output_name
-            else:  # Just make up a name heuristically
-                metadata['name'] = new_output_name + '-' + info['metadata']['name']
+            # Only change the name if the output name is supplied.
+            if new_output_name:
+                if old_bundle_uuid == old_output:
+                    metadata['name'] = new_output_name
+                else:
+                    # Just make up a name heuristically
+                    metadata['name'] = new_output_name + '-' + info['metadata']['name']
 
             # Remove all the automatically generated keys
             cls = get_bundle_subclass(info['bundle_type'])
@@ -311,7 +319,12 @@ class LocalBundleClient(BundleClient):
             old_to_new[old_bundle_uuid] = new_bundle_uuid
             return new_bundle_uuid
 
-        return recurse(old_output)
+        if old_output:
+            return recurse(old_output)
+        else:
+            # Don't have a particular output we're targetting, so just create
+            # new versions of all the uuids.
+            for uuid in infos: recurse(uuid)
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!

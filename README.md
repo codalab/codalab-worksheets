@@ -217,7 +217,7 @@ create another bundle and upload it:
 
 Now we can apply the same thing to `b.txt` that we did to `a.txt`:
 
-    cl mimic a.txt a-sorted.txt b.txt b-sorted.txt
+    cl mimic a.txt a-sorted.txt b.txt --name b-sorted.txt
 
 We can check that `b.txt.sorted` contains the desired sorted result:
 
@@ -236,7 +236,7 @@ We can make the notion of a macro even more explicit.  Let's rename `a.txt` to
 
 Then we can use the following syntactic sugar:
 
-    cl macro sort b.txt b-sorted.txt
+    cl macro sort b.txt --name b-sorted.txt
 
 In Codalab, macros are not defined ahead of time, but are constructed on the
 fly from the bundle DAG.

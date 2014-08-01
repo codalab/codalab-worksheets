@@ -890,8 +890,8 @@ state:       {state}
 
     def do_mimic_command(self, argv, parser):
         parser.add_argument(
-          'bundle_spec',
-          help="old_input_1 ... old_input_n old_output new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
+          'bundles',
+          help="old_input_1 ... old_input_n old_output new_input_1 ... new_input_n (%s)" % self.BUNDLE_SPEC_FORMAT,
           nargs='+'
         )
         self.add_mimic_args(parser)
@@ -904,28 +904,32 @@ state:       {state}
         '''
         parser.add_argument(
           'macro_name',
-          help='name of the macro (look for <name>-in and <name>-out bundles)',
+          help='name of the macro (look for <macro_name>-in... and <macro_name>-out bundles)',
         )
         parser.add_argument(
-          'bundle_spec',
-          help="new_input_1 ... new_input_n (all arguments are bundles %s)" % self.BUNDLE_SPEC_FORMAT,
+          'bundles',
+          help="new_input_1 ... new_input_n (bundles %s)" % self.BUNDLE_SPEC_FORMAT,
           nargs='+'
         )
         self.add_mimic_args(parser)
         args = parser.parse_args(argv)
+        # For a macro, it's important that the name be not-null, so that we
+        # don't create bundles called '<macro_name>-out', which would clash
+        # next time we try to use the macro.
+        if not args.name: args.name = 'new'
         # Reduce to the mimic case
-        if len(args.bundle_spec) == 1:
-            args.bundle_spec = [args.macro_name + '-in'] + \
-                               [args.macro_name + '-out'] + args.bundle_spec
+        if len(args.bundles) == 1:  # Macro only has one argument
+            args.bundles = [args.macro_name + '-in'] + \
+                           [args.macro_name + '-out'] + args.bundles
         else:
-            args.bundle_spec = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundle_spec))] + \
-                               [args.macro_name + '-out'] + args.bundle_spec
+            args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
+                           [args.macro_name + '-out'] + args.bundles
         self.mimic(args)
 
     def add_mimic_args(self, parser):
         parser.add_argument(
-          'new_output_bundle_name',
-          help='name of the new bundle'
+          '-n', '--name',
+          help='name of the output bundle',
         )
         parser.add_argument(
           '-d', '--depth',
@@ -937,20 +941,27 @@ state:       {state}
     
     def mimic(self, args):
         '''
-        Use args.bundle_spec to generate a mimic call to the BundleClient.
+        Use args.bundles to generate a mimic call to the BundleClient.
         '''
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        if len(args.bundle_spec) % 2 != 1:
-            raise UsageError('Should have an odd number of arguments, but got %s' % args.bundle_spec)
 
-        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, spec) for spec in args.bundle_spec]
-        # old_input_1 ... old_input_n old_output new_input_1 ... new_input_n
+        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, spec) for spec in args.bundles]
+
+        # Two cases for args.bundles
+        # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
+        # (B) old_input_1 ... old_input_n old_output new_input_1 ... new_input_n [go from inputs to given output]
         n = len(bundle_uuids) / 2
-        old_inputs = bundle_uuids[0:n]
-        old_output = bundle_uuids[n]
-        new_inputs = bundle_uuids[n+1:]
+        if len(bundle_uuids) % 2 == 0:  # (A)
+            old_inputs = bundle_uuids[0:n]
+            old_output = None
+            new_inputs = bundle_uuids[n:]
+        else: # (B)
+            old_inputs = bundle_uuids[0:n]
+            old_output = bundle_uuids[n]
+            new_inputs = bundle_uuids[n+1:]
+
         new_uuid = client.mimic(
-            old_inputs, old_output, new_inputs, args.new_output_bundle_name,
+            old_inputs, old_output, new_inputs, args.name,
             worksheet_uuid, args.depth)
         self.wait(args, new_uuid)
 
