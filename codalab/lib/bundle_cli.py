@@ -920,28 +920,17 @@ state:       {state}
         self.mimic(args)
 
     def add_mimic_args(self, parser):
-        parser.add_argument(
-          '-n', '--name',
-          help='name of the output bundle',
-        )
-        parser.add_argument(
-          '-d', '--depth',
-          type=int,
-          default=10,
-          help="number of parents to look back from the old output in search of the old input"
-        )
-        parser.add_argument(
-          '-s', '--shadow',
-          action='store_true',
-          help="add the newly created bundles right after the old bundles that are being mimicked"
-        )
+        parser.add_argument('-n', '--name', help='name of the output bundle')
+        parser.add_argument('-d', '--depth', type=int, default=10, help="number of parents to look back from the old output in search of the old input")
+        parser.add_argument('-s', '--shadow', action='store_true', help="add the newly created bundles right after the old bundles that are being mimicked")
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         self.add_wait_args(parser)
     
     def mimic(self, args):
         '''
         Use args.bundles to generate a mimic call to the BundleClient.
         '''
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, spec) for spec in args.bundles]
 

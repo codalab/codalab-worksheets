@@ -208,7 +208,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         if line.startswith('//'):  # Comments
             pass
         elif line.startswith('!'):  # Run commands
-            command = line[1:].strip().split()
+            command = string_to_tokens(line[1:].strip())
             # Replace ^ with the reference to the last bundle.
             command = [(bundle_uuids[-1] if arg == '^' else arg) for arg in command]
             commands.append(command)
