@@ -78,6 +78,7 @@ class RemoteBundleClient(BundleClient):
       # Worksheet-related commands all have JSON-able inputs and outputs.
       'new_worksheet',
       'list_worksheets',
+      'get_worksheet_uuid',
       'get_worksheet_info',
       'add_worksheet_item',
       'update_worksheet',
