@@ -166,7 +166,7 @@ class BundleCLI(object):
                 result.append(bundle_info)
         return result
 
-    def parse_target(self, target_spec):
+    def parse_target(self, client, worksheet_uuid, target_spec):
         '''
         Helper: A target_spec is a bundle_spec[/subpath].
         '''
@@ -175,11 +175,10 @@ class BundleCLI(object):
         else:
             bundle_spec, subpath = target_spec, ''
         # Resolve the bundle_spec to a particular bundle_uuid.
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
-    def parse_key_targets(self, items):
+    def parse_key_targets(self, client, worksheet_uuid, items):
         '''
         Helper: items is a list of strings which are [<key>]:<target>
         '''
@@ -197,7 +196,7 @@ class BundleCLI(object):
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            targets[key] = self.parse_target(target)
+            targets[key] = self.parse_target(client, worksheet_uuid, target)
         return targets
 
     def print_table(self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''):
@@ -253,13 +252,13 @@ class BundleCLI(object):
         if spec == '': spec = Worksheet.DEFAULT_WORKSHEET_NAME
         return (self.manager.client(address), spec)
 
-    def parse_client_worksheet_info(self, spec):
+    def parse_client_worksheet_uuid(self, spec):
         if not spec:
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            spec = worksheet_uuid
         else:
             client, spec = self.parse_spec(spec)
-        return (client, client.get_worksheet_info(spec if spec else Worksheet.DEFAULT_WORKSHEET_NAME))
+            worksheet_uuid = client.get_worksheet_uuid(spec)
+        return (client, worksheet_uuid)
 
     def create_parser(self, command):
         parser = argparse.ArgumentParser(
@@ -363,12 +362,12 @@ class BundleCLI(object):
                 print key + ': ' + value
 
     def do_upload_command(self, argv, parser):
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
         parser.add_argument('bundle_type', help=help_text)
         parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='+')
         parser.add_argument('-b', '--base', help='Inherit the metadata from this bundle specification.')
         parser.add_argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true')
+        parser.add_argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
@@ -378,6 +377,8 @@ class BundleCLI(object):
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         # Expand shortcuts
         if args.bundle_type == 'd': args.bundle_type = 'dataset'
@@ -415,21 +416,14 @@ class BundleCLI(object):
         print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, True)
 
     def do_download_command(self, argv, parser):
-        parser.add_argument(
-          'target_spec',
-          help=self.TARGET_SPEC_FORMAT
-        )
-        parser.add_argument(
-          '-o', '--output-dir',
-          help='Directory to download file.  By default, the bundle or subpath name is used.',
-        )
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
+        parser.add_argument('-o', '--output-dir', help='Directory to download file.  By default, the bundle or subpath name is used.')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        target = self.parse_target(args.target_spec)
-        bundle_uuid, subpath = target
 
-        # Download first to a local location path.
-        local_path, temp_path = client.download_target(target, True)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        bundle_uuid, subpath = target
 
         # Copy into desired directory.
         info = client.get_bundle_info(bundle_uuid)
@@ -439,22 +433,20 @@ class BundleCLI(object):
             local_dir = info['metadata']['name'] if subpath == '' else os.path.basename(subpath)
         final_path = os.path.join(os.getcwd(), local_dir)
         if os.path.exists(final_path):
-            print 'Local directory', local_dir, 'already exists. Bundle is available at:'
-            print local_path
-        else:
-            path_util.copy(local_path, final_path, follow_symlinks=True)
-            if temp_path: path_util.remove(temp_path)
+            print 'Local directory', local_dir, 'already exists.'
+            return
+
+        # Download first to a local location path.
+        local_path, temp_path = client.download_target(target, True)
+        path_util.copy(local_path, final_path, follow_symlinks=True)
+        if temp_path: path_util.remove(temp_path)
+        print 'Downloaded %s(%s) to %s.' % (bundle_uuid, info['metadata']['name'], final_path)
 
     def do_cp_command(self, argv, parser):
-        parser.add_argument(
-          'bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT
-        )
-        parser.add_argument(
-          'worksheet_spec',
-          help='%s (copy to this worksheet)' % self.WORKSHEET_SPEC_FORMAT,
-        )
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
+        parser.add_argument('worksheet_spec', help='%s (copy to this worksheet)' % self.WORKSHEET_SPEC_FORMAT)
         args = parser.parse_args(argv)
+
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
 
         # Source bundle
@@ -464,8 +456,7 @@ class BundleCLI(object):
         source_bundle_uuid = source_client.get_bundle_uuid(worksheet_uuid, source_spec)
 
         # Destination worksheet
-        (dest_client, dest_spec) = self.parse_spec(args.worksheet_spec)
-        dest_worksheet_uuid = dest_client.get_worksheet_info(dest_spec)['uuid']
+        (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         # Copy!
         self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
@@ -500,18 +491,20 @@ class BundleCLI(object):
             print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
             if temp_path: path_util.remove(temp_path)
         else:
-            print "%s already exists, skipping" % source_desc 
+            print "%s already exists on destination client" % source_desc 
 
             # Just need to add it to the worksheet
             dest_client.add_worksheet_item(dest_worksheet_uuid, (source_bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
 
     def do_make_command(self, argv, parser):
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='+')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         metadata_util.add_arguments(MakeBundle, set(), parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
-        targets = self.parse_key_targets(args.target_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = metadata_util.request_missing_metadata(MakeBundle, args)
         print client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
@@ -539,41 +532,41 @@ class BundleCLI(object):
     # After running a bundle, we can wait for it, possibly observing it's output.
     # These functions are shared across run and mimic.
     def add_wait_args(self, parser):
-        parser.add_argument('-w', '--wait', action='store_true', help='Wait until run finishes')
+        parser.add_argument('-W', '--wait', action='store_true', help='Wait until run finishes')
         parser.add_argument('-t', '--tail', action='store_true', help='Wait until run finishes, displaying output')
-    def wait(self, args, uuid):
+    def wait(self, client, args, uuid):
         if args.wait:
-            state = self.follow_targets(uuid, [])
+            state = self.follow_targets(client, uuid, [])
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
         if args.tail:
-            state = self.follow_targets(uuid, ['stdout', 'stderr'])
+            state = self.follow_targets(client, uuid, ['stdout', 'stderr'])
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
 
     def do_run_command(self, argv, parser):
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
         parser.add_argument('command', help='Command-line')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         self.add_wait_args(parser)
         metadata_util.add_arguments(RunBundle, set(), parser)
         metadata_util.add_auto_argument(parser)
         args = parser.parse_args(argv)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = self.desugar_command(args.target_spec, args.command)
-        targets = self.parse_key_targets(args.target_spec)
-        command = args.command
+        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = metadata_util.request_missing_metadata(RunBundle, args)
-        uuid = client.derive_bundle('run', targets, command, metadata, worksheet_uuid)
+        uuid = client.derive_bundle('run', targets, args.command, metadata, worksheet_uuid)
         print uuid
-        self.wait(args, uuid)
+        self.wait(client, args, uuid)
 
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
-        parser.add_argument(
-          '-n', '--name',
-          help='new name: ' + spec_util.NAME_REGEX.pattern,
-          nargs='?',
-        )
+        parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        self.add_wait_args(parser)
         args = parser.parse_args(argv)
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
@@ -605,8 +598,10 @@ class BundleCLI(object):
           action='store_true',
           help='delete all bundles downstream that depend on this bundle',
         )
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
         bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
@@ -625,8 +620,10 @@ class BundleCLI(object):
           action='store_true'
         )
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, 100, args.count)
         if args.uuid_only:
             bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
@@ -638,17 +635,16 @@ class BundleCLI(object):
             self.print_bundle_info_list(bundle_info_list, uuid_only=args.uuid_only)
         else:
             if not args.uuid_only:
-                print 'No search results for keywords: %s' % args.keywords
+                print 'No search results for keywords: %s' % ' '.join(args.keywords)
 
     def do_ls_command(self, argv, parser):
-        parser.add_argument(
-          'worksheet_spec',
-          help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT,
-          nargs='?',
-        )
+        parser.add_argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT, nargs='?')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
-        client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        worksheet_info = client.get_worksheet_info(worksheet_uuid)
         bundle_info_list = self.get_worksheet_bundles(worksheet_info)
         if len(bundle_info_list) > 0:
             if not args.uuid_only:
@@ -675,19 +671,12 @@ class BundleCLI(object):
 
     def do_info_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
-        parser.add_argument(
-          '-c', '--children',
-          action='store_true',
-          help="print only a list of this bundle's children",
-        )
-        parser.add_argument(
-          '-v', '--verbose',
-          action='store_true',
-          help="print top-level contents of bundle"
-        )
+        parser.add_argument('-c', '--children', action='store_true', help="print only a list of this bundle's children")
+        parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle")
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid, args.children)
 
@@ -703,14 +692,14 @@ class BundleCLI(object):
         # Verbose output
         if args.verbose:
             print wrap('contents')
-            info = self.print_target_info((bundle_uuid, ''), decorate=True)
+            info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
             # Print first 10 lines of stdout and stderr
             contents = info.get('contents')
             if contents:
                 for item in contents:
                     if item['name'] not in ['stdout', 'stderr']: continue
                     print wrap(item['name'])
-                    self.print_target_info((bundle_uuid, item['name']), decorate=True)
+                    self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
                     #for line in client.head_target((bundle_uuid, item['name']), 10):
                         #print line,
 
@@ -783,16 +772,16 @@ state:       {state}
         '''.format(**fields).strip()
 
     def do_cat_command(self, argv, parser):
-        parser.add_argument(
-          'target_spec',
-          help=self.TARGET_SPEC_FORMAT
-        )
+        parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        target = self.parse_target(args.target_spec)
-        self.print_target_info(target, decorate=False)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        self.print_target_info(client, target, decorate=False)
 
     # Helper: shared between info and cat
-    def print_target_info(self, target, decorate):
+    def print_target_info(self, client, target, decorate):
         client = self.manager.current_client()
         info = client.get_target_info(target, 1)
         if 'type' not in info:
@@ -842,13 +831,12 @@ state:       {state}
         if state != State.READY:
             self.exit(state)
 
-    def follow_targets(self, bundle_uuid, subpaths):
+    def follow_targets(self, client, bundle_uuid, subpaths):
         '''
         Block on the execution of the given bundle.
         subpaths: list of files to print out output as we go along.
         Return READY or FAILED based on whether it was computed successfully.
         '''
-        client = self.manager.current_client()
         handles = [None] * len(subpaths)
 
         # Constants for a simple exponential backoff routine that will decrease the
@@ -973,7 +961,7 @@ state:       {state}
         new_uuid = client.mimic(
             old_inputs, old_output, new_inputs, args.name,
             worksheet_uuid, args.depth, args.shadow)
-        self.wait(args, new_uuid)
+        self.wait(client, args, new_uuid)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
@@ -995,6 +983,7 @@ state:       {state}
         # given user.
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
         args = parser.parse_args(argv)
+
         client = self.manager.current_client()
         uuid = client.new_worksheet(args.name)
         self.manager.set_current_worksheet_uuid(client, uuid)
@@ -1002,30 +991,12 @@ state:       {state}
         print 'Created and switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     def do_add_command(self, argv, parser):
-        parser.add_argument(
-          'bundle_spec',
-          help=self.BUNDLE_SPEC_FORMAT,
-          nargs='*')
-        parser.add_argument(
-          '-w',
-          '--worksheet_spec',
-          help='add to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT,
-          nargs='?',
-        )
-        parser.add_argument(
-          '-m', '--message',
-          help='add a text element',
-          nargs='?',
-        )
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
+        parser.add_argument('-m', '--message', help='add a text element', nargs='?')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        client = self.manager.current_client()
-        if args.worksheet_spec:
-            worksheet_info = client.get_worksheet_info(args.worksheet_spec)
-        else:
-            worksheet_info = self.get_current_worksheet_info()
-            if not worksheet_info:
-                raise UsageError('Specify a worksheet or switch to one with `cl work`.')
-        worksheet_uuid = worksheet_info['uuid']
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         for spec in args.bundle_spec:
             bundle_uuid = client.get_bundle_uuid(worksheet_uuid, spec)
             client.add_worksheet_item(worksheet_uuid, (bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
@@ -1043,13 +1014,10 @@ state:       {state}
         )
         args = parser.parse_args(argv)
         if args.worksheet_spec:
-            client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
-            if worksheet_info:
-                self.manager.set_current_worksheet_uuid(client, worksheet_info['uuid'])
-                print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
-            else:
-                self.manager.set_current_worksheet_uuid(client, None)
-                print 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
+            client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+            worksheet_info = client.get_worksheet_info(worksheet_uuid)  # Replace with something lightweighter
+            self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
+            print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
         else:
             worksheet_info = self.get_current_worksheet_info()
             if worksheet_info:
@@ -1058,23 +1026,13 @@ state:       {state}
                 print 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
 
     def do_wedit_command(self, argv, parser):
-        parser.add_argument(
-            'worksheet_spec',
-            help=self.GLOBAL_SPEC_FORMAT,
-            nargs='?',
-        )
-        parser.add_argument(
-            '-n', '--name',
-            help='new name: ' + spec_util.NAME_REGEX.pattern,
-            nargs='?',
-        )
-        parser.add_argument(
-            '-f', '--file',
-            help='overwrite the given worksheet with this file',
-            nargs='?',
-        )
+        parser.add_argument('worksheet_spec', help=self.GLOBAL_SPEC_FORMAT, nargs='?')
+        parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
+        parser.add_argument('-f', '--file', help='overwrite the given worksheet with this file', nargs='?')
         args = parser.parse_args(argv)
-        client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        worksheet_info = client.get_worksheet_info(worksheet_uuid)
         if args.name:
             client.rename_worksheet(worksheet_info['uuid'], args.name)
         else:
@@ -1093,23 +1051,22 @@ state:       {state}
 
             # Execute the commands that the user put into the worksheet.
             for command in commands:
-                print 'Executing: %s' % ' '.join(command)
+                # Make sure to do it with respect to this worksheet!
+                if command[0] in ('ls', 'print'):
+                    command.append(worksheet_uuid)
+                else:
+                    command.extend(['--worksheet_spec', worksheet_uuid])
+                print '=== Executing: %s' % ' '.join(command)
                 self.do_command(command)
                 
 
     def do_print_command(self, argv, parser):
-        parser.add_argument(
-          'worksheet_spec',
-          help=self.GLOBAL_SPEC_FORMAT,
-          nargs='?',
-        )
-        parser.add_argument(
-          '-r', '--raw',
-          action='store_true',
-          help="print out the raw contents"
-        )
+        parser.add_argument('worksheet_spec', help=self.GLOBAL_SPEC_FORMAT, nargs='?')
+        parser.add_argument('-r', '--raw', action='store_true', help='print out the raw contents')
         args = parser.parse_args(argv)
-        client, worksheet_info = self.parse_client_worksheet_info(args.worksheet_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        worksheet_info = client.get_worksheet_info(worksheet_uuid)
         if args.raw:
             lines = worksheet_util.get_worksheet_lines(worksheet_info)
             for line in lines:
@@ -1129,7 +1086,7 @@ state:       {state}
                     if mode == 'inline':
                         print '[' + str(worksheet_util.lookup_targets(client, data)) + ']'
                     elif mode == 'contents':
-                        self.print_target_info(data, decorate=True)
+                        self.print_target_info(client, data, decorate=True)
                     else:
                         print data
             elif mode == 'record' or mode == 'table':
@@ -1175,12 +1132,11 @@ state:       {state}
         args = parser.parse_args(argv)
 
         # Source worksheet
-        (source_client, source_spec) = self.parse_spec(args.source_worksheet_spec)
-        items = source_client.get_worksheet_info(source_spec)['items']
+        (source_client, source_worksheet_uuid) = self.parse_client_worksheet_uuid(args.source_worksheet_spec)
+        items = source_client.get_worksheet_info(source_worksheet_uuid)['items']
 
         # Destination worksheet
-        (dest_client, dest_spec) = self.parse_spec(args.dest_worksheet_spec)
-        dest_worksheet_uuid = dest_client.get_worksheet_info(dest_spec)['uuid']
+        (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.dest_worksheet_spec)
 
         for item in items:
             (source_bundle_info, value_obj, type) = item
@@ -1252,9 +1208,9 @@ state:       {state}
         client = self.manager.current_client()
         user_info = client.rm_user(args.user_spec, args.group_spec)
         if user_info is None:
-            print "%s is not a member of group %s." % (user_info['name'], user_info['group_uuid'])
+            print '%s is not a member of group %s.' % (user_info['name'], user_info['group_uuid'])
         else:
-            print "Removed %s from group %s." % (user_info['name'], user_info['group_uuid'])
+            print 'Removed %s from group %s.' % (user_info['name'], user_info['group_uuid'])
 
     def do_set_perm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')

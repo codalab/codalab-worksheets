@@ -348,11 +348,10 @@ class LocalBundleClient(BundleClient):
         else:
             return self.model.list_worksheets(current_user.unique_id)
 
-    def get_worksheet_info(self, worksheet_spec):
+    def get_worksheet_info(self, uuid):
         '''
         The returned info object contains items which are (bundle_info, value_object, type).
         '''
-        uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
         current_user = self.auth_handler.current_user()
         current_user_id = None if current_user is None else current_user.unique_id
