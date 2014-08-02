@@ -247,7 +247,7 @@ class LocalBundleClient(BundleClient):
         depth: how far to do a BFS up
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
-        #print old_inputs, new_inputs, old_output, new_output_name
+        print old_inputs, new_inputs, old_output, new_output_name
 
         # Build the graph.
         # If old_output is given, look at ancestors of old_output until we
@@ -268,11 +268,13 @@ class LocalBundleClient(BundleClient):
             bundle_uuids = new_bundle_uuids
 
         # Now go recursively create the bundles.
-        old_to_new = {}
+        old_to_new = {}  # old_uuid -> new_uuid
+        downstream = {}  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
         for old, new in zip(old_inputs, new_inputs):
             old_to_new[old] = new
+            downstream[old] = True
 
-        # Return the corresponding new_bundle_uuid.
+        # Return corresponding new_bundle_uuid
         def recurse(old_bundle_uuid):
             if old_bundle_uuid in old_to_new:
                 #print old_bundle_uuid, 'cached'
@@ -291,35 +293,38 @@ class LocalBundleClient(BundleClient):
                 'child_uuid': dep['child_uuid'],  # This is just a placeholder to do the equality test
                 'child_path': dep['child_path']
             } for dep in info['dependencies']]
-            old_bundle_name = info['metadata']['name']
 
-            # Now create a new bundle that mimics the old bundle.
-            # Only change the name if the output name is supplied.
-            metadata = info['metadata']
-            if new_output_name:
-                if old_bundle_uuid == old_output:
-                    metadata['name'] = new_output_name
-                else:
-                    # Just make up a name heuristically
-                    metadata['name'] = new_output_name + '-' + info['metadata']['name']
+            # We're downstream, so need to make a new bundle
+            if any(downstream.get(dep['parent_uuid']) for dep in info['dependencies']):
+                # Now create a new bundle that mimics the old bundle.
+                # Only change the name if the output name is supplied.
+                old_bundle_name = info['metadata']['name']
+                metadata = info['metadata']
+                if new_output_name:
+                    if old_bundle_uuid == old_output:
+                        metadata['name'] = new_output_name
+                    else:
+                        # Just make up a name heuristically
+                        metadata['name'] = new_output_name + '-' + info['metadata']['name']
 
-            # Remove all the automatically generated keys
-            cls = get_bundle_subclass(info['bundle_type'])
-            for spec in cls.METADATA_SPECS:
-                if spec.generated and spec.key in metadata:
-                    metadata.pop(spec.key)
+                # Remove all the automatically generated keys
+                cls = get_bundle_subclass(info['bundle_type'])
+                for spec in cls.METADATA_SPECS:
+                    if spec.generated and spec.key in metadata:
+                        metadata.pop(spec.key)
 
-            # Set the targets
-            targets = {}
-            for dep in new_dependencies:
-                targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
+                # Set the targets
+                targets = {}
+                for dep in new_dependencies:
+                    targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
 
-            new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
-                targets, info['command'], info['metadata'], worksheet_uuid if not shadow else None)
-            if shadow:
-                self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
-
-            print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
+                new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
+                    targets, info['command'], info['metadata'], worksheet_uuid if not shadow else None)
+                if shadow:
+                    self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
+                print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
+            else:
+                new_bundle_uuid = old_bundle_uuid
 
             old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
             return new_bundle_uuid

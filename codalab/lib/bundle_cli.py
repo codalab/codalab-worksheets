@@ -1041,10 +1041,11 @@ state:       {state}
             # Execute the commands that the user put into the worksheet.
             for command in commands:
                 # Make sure to do it with respect to this worksheet!
+                spec = client.address + '::' + worksheet_uuid
                 if command[0] in ('ls', 'print'):
-                    command.append(worksheet_uuid)
+                    command.append(spec)
                 else:
-                    command.extend(['--worksheet_spec', worksheet_uuid])
+                    command.extend(['--worksheet_spec', spec])
                 print '=== Executing: %s' % ' '.join(command)
                 self.do_command(command)
                 
