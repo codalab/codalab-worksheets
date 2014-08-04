@@ -78,6 +78,7 @@ class RemoteBundleClient(BundleClient):
       # Worksheet-related commands all have JSON-able inputs and outputs.
       'new_worksheet',
       'list_worksheets',
+      'get_worksheet_uuid',
       'get_worksheet_info',
       'add_worksheet_item',
       'update_worksheet',
@@ -143,9 +144,9 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def upload_bundle(self, path, info, worksheet_uuid):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
         # First, zip path up (temporary local zip file).
-        zip_path = zip_util.zip(path, follow_symlinks=False)
+        zip_path = zip_util.zip(path, follow_symlinks=follow_symlinks)
         # Copy it up to the server (temporary remote zip file)
         with open(zip_path, 'rb') as source:
             remote_file_uuid = self.open_temp_file()
@@ -155,7 +156,7 @@ class RemoteBundleClient(BundleClient):
             file_util.copy(source, dest, autoflush=False, print_status=True)
             dest.close()
         # Finally, install the zip file (this will be in charge of deleting that zip file).
-        result = self.upload_bundle_zip(remote_file_uuid, info, worksheet_uuid)
+        result = self.upload_bundle_zip(remote_file_uuid, info, worksheet_uuid, follow_symlinks)
         path_util.remove(zip_path)  # Remove local zip
         return result
 

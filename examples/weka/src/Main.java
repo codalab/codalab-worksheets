@@ -60,32 +60,38 @@ public class Main {
       System.exit(1);
     }
     String mode = args[0];
-    String input = args[1];
-    String output = args[2];
 
     if (mode.equals("learn")) {
-      // Get data
-      Instances data = readData(input + "/data.arff");
+      String classifierName = args[1];
+      String dataPath = args[2];
+      String modelPath = args[3];
 
       // Get classifier
-      Classifier classifier = (Classifier)newInstance(args[3]);
+      Classifier classifier = (Classifier)newInstance(classifierName);
       String[] opts = new String[args.length-4];
       for (int i = 0; i < opts.length; i++) opts[i] = args[i+4];
       if (classifier instanceof OptionHandler)
         ((OptionHandler)classifier).setOptions(opts);
 
+      // Get data
+      Instances data = readData(dataPath);
+
       // Learn
       classifier.buildClassifier(data);
-      weka.core.SerializationHelper.write(output + "/weka_classifier", classifier);
+      weka.core.SerializationHelper.write(modelPath, classifier);
     } else if (mode.equals("predict")) {
-      // Get data
-      Instances data = readData(input + "/data/data.arff");
+      String modelPath = args[1];
+      String dataPath = args[2];
+      String predictionsPath = args[3];
 
       // Get classifier
-      Classifier classifier = (Classifier)weka.core.SerializationHelper.read(input + "/model/weka_classifier");
+      Classifier classifier = (Classifier)weka.core.SerializationHelper.read(modelPath);
+
+      // Get data
+      Instances data = readData(dataPath);
 
       // Predict
-      PrintWriter out = new PrintWriter(new FileWriter(output + "/predictions"));
+      PrintWriter out = new PrintWriter(new FileWriter(predictionsPath));
       Attribute outputAttr = data.classAttribute();
       for (int i = 0; i < data.numInstances(); i++) {
         double prediction = classifier.classifyInstance(data.instance(i));
@@ -98,14 +104,18 @@ public class Main {
       }
       out.close();
     } else if (mode.equals("evaluate")) {
+      String truePath = args[1];
+      String predPath = args[2];
+      String statsPath = args[3];
+
       // Get data
-      Instances data = readData(input + "/data/data.arff");
+      Instances data = readData(truePath);
 
       // Read predictions
       ArrayList<String> predictions = new ArrayList<String>();
       try {
         String line;
-        BufferedReader in = new BufferedReader(new FileReader(input + "/predictions/predictions"));
+        BufferedReader in = new BufferedReader(new FileReader(predPath));
         while ((line = in.readLine()) != null) {
           predictions.add(line);
         }
@@ -133,20 +143,23 @@ public class Main {
       if (outputAttr.isNumeric()) error = Math.sqrt(error);  // To compute RMSE
       System.out.println("Evaluated " + data.numInstances() + " instances, error is " + error);
 
-      PrintWriter out = new PrintWriter(output + "/stats");
-      out.println("error: " + error);
+      PrintWriter out = new PrintWriter(statsPath);
+      out.println("errorRate: " + error);
       out.println("numExamples: " + data.numInstances());
       out.close();
     } else if (mode.equals("stripLabels")) {
+      String dataPath = args[1];
+      String strippedDataPath = args[2];
+
       // Get data
-      Instances data = readData(input + "/data.arff");
+      Instances data = readData(dataPath);
 
       // Remove class labels
       for (int i = 0; i < data.numInstances(); i++)
         data.instance(i).setMissing(data.classAttribute());
 
       // Output
-      writeData(data, output + "/data.arff");
+      writeData(data, strippedDataPath);
     }
   }
 }

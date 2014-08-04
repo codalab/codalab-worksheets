@@ -21,7 +21,7 @@ def copy(source, dest, autoflush=True, print_status=False):
         if autoflush:
             dest.flush()
         if print_status:
-            print "\rCopied %s" % formatting.size_str(n),
-            sys.stdout.flush()
+            print >>sys.stderr, "\rCopied %s" % formatting.size_str(n),
+            sys.stderr.flush()
     if print_status:
-        print "\rCopied %s" % formatting.size_str(n)
+        print >>sys.stderr, "\rCopied %s" % formatting.size_str(n)

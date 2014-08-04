@@ -162,6 +162,7 @@ class LocalBundleClient(BundleClient):
     def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
         '''
         For both make and run bundles.
+        Add the resulting bundle to the given worksheet_uuid (optional).
         '''
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
@@ -180,7 +181,7 @@ class LocalBundleClient(BundleClient):
         uuids = set(uuids)
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         if not recursive:
-            # If any descendents exist, then we only delete uuids if force = True.
+            # If any descendants exist, then we only delete uuids if force = True.
             if (not force) and uuids != relevant_uuids:
                 relevant = self.model.batch_get_bundles(uuid=(relevant_uuids - uuids))
                 raise UsageError('Can\'t delete because the following bundles depend on %s:\n  %s' % (
@@ -236,22 +237,28 @@ class LocalBundleClient(BundleClient):
         # because we will follow them when we copy it from the target path.
         return (self.get_target_path(target), None)
 
-    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth):
+    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow):
         '''
         old_inputs: list of bundle uuids
         old_output: bundle uuid that we produced
         new_inputs: list of bundle uuids that are analogous to old_inputs
-        new_output_name: name of the bundle to create to be analogous to old_output
+        new_output_name: name of the bundle to create to be analogous to old_output (possibly None)
         worksheet_uuid: add newly created bundles to this worksheet
         depth: how far to do a BFS up
+        shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
-        # Build the graph: Look at ancestors of old_output_bundle_uuid until we
-        # arrive at old_input_bundle_uuid and/or reached some depth.
+        print old_inputs, new_inputs, old_output, new_output_name
+
+        # Build the graph.
+        # If old_output is given, look at ancestors of old_output until we
+        # reached some depth.  If it's not given, we first get all the
+        # descendants first, and then get their ancestors.
         infos = {}  # uuid -> bundle info
-        bundle_infos = []  # These are the ones that we need to generate
-        bundle_uuids = set([old_output])
+        if old_output:
+            bundle_uuids = set([old_output])
+        else:
+            bundle_uuids = self.model.get_self_and_descendants(old_inputs, depth=depth)
         for _ in range(depth):
-            #print bundle_uuids
             new_bundle_uuids = set()
             for bundle_uuid in bundle_uuids:
                 if bundle_uuid in infos: continue  # Already visited
@@ -261,19 +268,24 @@ class LocalBundleClient(BundleClient):
             bundle_uuids = new_bundle_uuids
 
         # Now go recursively create the bundles.
-        old_to_new = {}
+        old_to_new = {}  # old_uuid -> new_uuid
+        downstream = {}  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
         for old, new in zip(old_inputs, new_inputs):
             old_to_new[old] = new
-        def recurse(old_bundle_uuid): # Return the corresponding new version if applicable
+            downstream[old] = True
+
+        # Return corresponding new_bundle_uuid
+        def recurse(old_bundle_uuid):
             if old_bundle_uuid in old_to_new:
                 #print old_bundle_uuid, 'cached'
                 return old_to_new[old_bundle_uuid]
 
-            # Don't have any more information
+            # Don't have any more information (because we probably hit the maximum depth)
             if old_bundle_uuid not in infos:
                 #print old_bundle_uuid, 'no information'
                 return old_bundle_uuid
 
+            # Get information about the old bundle.
             info = infos[old_bundle_uuid]
             new_dependencies = [{
                 'parent_uuid': recurse(dep['parent_uuid']),
@@ -281,37 +293,48 @@ class LocalBundleClient(BundleClient):
                 'child_uuid': dep['child_uuid'],  # This is just a placeholder to do the equality test
                 'child_path': dep['child_path']
             } for dep in info['dependencies']]
-            # Nothing has changed
-            if new_dependencies == info['dependencies']:
-                #print old_bundle_uuid, 'nothing changed'
-                return old_bundle_uuid
-            old_bundle_name = info['metadata']['name']
 
-            # Create a new bundle
-            targets = {}
-            for dep in new_dependencies:
-                targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
-            metadata = info['metadata']
-            if old_bundle_uuid == old_output:
-                metadata['name'] = new_output_name
-            else:  # Just make up a name heuristically
-                metadata['name'] = new_output_name + '-' + info['metadata']['name']
+            # We're downstream, so need to make a new bundle
+            if any(downstream.get(dep['parent_uuid']) for dep in info['dependencies']):
+                # Now create a new bundle that mimics the old bundle.
+                # Only change the name if the output name is supplied.
+                old_bundle_name = info['metadata']['name']
+                metadata = info['metadata']
+                if new_output_name:
+                    if old_bundle_uuid == old_output:
+                        metadata['name'] = new_output_name
+                    else:
+                        # Just make up a name heuristically
+                        metadata['name'] = new_output_name + '-' + info['metadata']['name']
 
-            # Remove all the automatically generated keys
-            cls = get_bundle_subclass(info['bundle_type'])
-            for spec in cls.METADATA_SPECS:
-                if spec.generated and spec.key in metadata:
-                    metadata.pop(spec.key)
+                # Remove all the automatically generated keys
+                cls = get_bundle_subclass(info['bundle_type'])
+                for spec in cls.METADATA_SPECS:
+                    if spec.generated and spec.key in metadata:
+                        metadata.pop(spec.key)
 
-            new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
-                targets, info['command'], info['metadata'], worksheet_uuid)
+                # Set the targets
+                targets = {}
+                for dep in new_dependencies:
+                    targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
 
-            print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
+                new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
+                    targets, info['command'], info['metadata'], worksheet_uuid if not shadow else None)
+                if shadow:
+                    self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
+                print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
+            else:
+                new_bundle_uuid = old_bundle_uuid
 
-            old_to_new[old_bundle_uuid] = new_bundle_uuid
+            old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
             return new_bundle_uuid
 
-        return recurse(old_output)
+        if old_output:
+            return recurse(old_output)
+        else:
+            # Don't have a particular output we're targetting, so just create
+            # new versions of all the uuids.
+            for uuid in infos: recurse(uuid)
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!
@@ -330,11 +353,10 @@ class LocalBundleClient(BundleClient):
         else:
             return self.model.list_worksheets(current_user.unique_id)
 
-    def get_worksheet_info(self, worksheet_spec):
+    def get_worksheet_info(self, uuid):
         '''
         The returned info object contains items which are (bundle_info, value_object, type).
         '''
-        uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid)
         current_user = self.auth_handler.current_user()
         current_user_id = None if current_user is None else current_user.unique_id

@@ -25,6 +25,7 @@ from codalab.common import (
 )
 from codalab.lib import (
     spec_util,
+    worksheet_util,
 )
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
@@ -46,7 +47,7 @@ from codalab.objects.worksheet import (
 
 import re
 
-CONDITION_REGEX = re.compile('^(\w+)=(.*)$')
+CONDITION_REGEX = re.compile('^([\w/]+)=(.*)$')
 
 class BundleModel(object):
     def __init__(self, engine):
@@ -224,6 +225,7 @@ class BundleModel(object):
             # Each keyword is either a string (just search everywhere) or
             # key=value, which is more targeted, and results in exact match.
             clauses = []
+            offset = 0
 
             for keyword in conditions['*']:
                 m = CONDITION_REGEX.match(keyword)
@@ -233,6 +235,20 @@ class BundleModel(object):
                         clause = (cl_bundle.c.bundle_type == value)
                     elif key == 'state':
                         clause = (cl_bundle.c.state == value)
+                    elif key == 'dependencies':
+                        clause = and_(
+                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
+                            cl_bundle_dependency.c.parent_uuid == value,  # Match the uuid of the dependent (parent)
+                        )
+                    elif key.startswith('dependencies/'):
+                        _, name = key.split('/', 1)
+                        clause = and_(
+                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
+                            cl_bundle_dependency.c.parent_uuid == value,  # Match the uuid of the dependent (parent_uuid)
+                            cl_bundle_dependency.c.child_path == name,  # Match the 'type' of dependent (child_path)
+                        )
+                    elif key == 'offset':
+                        offset = int(value)
                     elif key == 'limit':
                         max_results = int(value)
                     else:
@@ -254,7 +270,7 @@ class BundleModel(object):
                 clauses.append(clause)
             clause = and_(*clauses)
             clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
-            query = select([cl_bundle.c.uuid]).distinct().where(clause).limit(max_results)
+            query = select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(max_results)
 
         #print 'QUERY', query, query.compile().params
         with self.engine.begin() as connection:
@@ -549,6 +565,34 @@ class BundleModel(object):
         }
         with self.engine.begin() as connection:
             connection.execute(cl_worksheet_item.insert().values(item_value))
+
+    def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
+        '''
+        For each occurrence of old_bundle_uuid in any worksheet, add
+        new_bundle_uuid right after it (a shadow).
+        '''
+        with self.engine.begin() as connection:
+            # Find all the worksheet_items that old_bundle_uuid appears in
+            query = select([cl_worksheet_item.c.worksheet_uuid, cl_worksheet_item.c.sort_key]).where(cl_worksheet_item.c.bundle_uuid == old_bundle_uuid)
+            old_items = connection.execute(query)
+            #print 'add_shadow_worksheet_items', old_items
+
+            # Go through and insert a worksheet item with new_bundle_uuid after
+            # each of the old items.
+            new_items = []
+            for old_item in old_items:
+                new_item = {
+                  'worksheet_uuid': old_item.worksheet_uuid,
+                  'bundle_uuid': new_bundle_uuid,
+                  'type': worksheet_util.TYPE_BUNDLE,
+                  'value': '',  # TODO: replace with None once we change tables.py
+                  'sort_key': old_item.sort_key,  # Can't really do after, so use the same value.
+                }
+                new_items.append(new_item)
+                connection.execute(cl_worksheet_item.insert().values(new_item))
+            # sqlite doesn't support this
+            #connection.execute(cl_worksheet_item.insert().values(new_items))
+
 
     def update_worksheet(self, worksheet_uuid, last_item_id, length, new_items):
         '''

@@ -11,4 +11,4 @@ runjava = File.dirname($0) + '/runjava'
 
 puts "Converting #{input} => #{output}"
 system "#{runjava} weka.core.converters.CSVLoader '#{input}' > '#{output}'" or exit 1
-# TODO: return proper exit code
+# TODO: return proper exit code because Weka doesn't do it.
