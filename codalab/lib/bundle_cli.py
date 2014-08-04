@@ -782,7 +782,6 @@ state:       {state}
 
     # Helper: shared between info and cat
     def print_target_info(self, client, target, decorate):
-        client = self.manager.current_client()
         info = client.get_target_info(target, 1)
         if 'type' not in info:
             self.exit('Target doesn\'t exist: %s/%s' % target)

@@ -123,6 +123,7 @@ def get_worksheet_lines(worksheet_info):
 //   * title "Place title here"
 //   * schema <schema name>
 //   * add <descriptor> | add <key name> <value source>
+//   * display hidden
 //   * display inline|contents|image|html <value source>
 //   * display record|table <schema name>
 // For example, you can define a schema for a table and then set the display mode to using that schema:
@@ -314,7 +315,10 @@ def interpret_items(schemas, items):
             pass
         elif mode == 'inline' or mode == 'contents':
             for bundle_info in bundle_infos:
-                new_items.append((mode, interpret_genpath(bundle_info, args[0])))
+                data = interpret_genpath(bundle_info, args[0])
+                if not data:
+                    raise UsageError('Invalid argument to display %s: %s in the context of bundle %s (file required)' % (mode, args[0], bundle_info['uuid']))
+                new_items.append((mode, data))
         elif mode == 'image':
             new_items.append((mode, args[0]))
         elif mode == 'html':
