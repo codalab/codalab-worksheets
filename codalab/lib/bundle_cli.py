@@ -543,6 +543,14 @@ class BundleCLI(object):
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
 
     def do_run_command(self, argv, parser):
+        # Usually, the last argument is the command, but we use a special notation '---' to allow
+        # us to specify the command across multiple tokens.
+        #   key:target ... key:target "command_1 ... command_n"
+        #   <==>
+        #   key:target ... key:target --- command_1 ... command_n
+        i = argv.index('---')
+        if i:
+            argv = argv[0:i] + [' '.join(argv[i+1:])]  # TODO: quote command properly
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
         parser.add_argument('command', help='Command-line')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
