@@ -548,9 +548,11 @@ class BundleCLI(object):
         #   key:target ... key:target "command_1 ... command_n"
         #   <==>
         #   key:target ... key:target --- command_1 ... command_n
-        i = argv.index('---')
-        if i:
+        try:
+            i = argv.index('---')
             argv = argv[0:i] + [' '.join(argv[i+1:])]  # TODO: quote command properly
+        except:
+            pass
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
         parser.add_argument('command', help='Command-line')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
