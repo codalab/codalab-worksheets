@@ -47,7 +47,8 @@ def run_migrations_offline():
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    manager = CodaLabManager()
+    url = manager.model().engine.url
     context.configure(url=url, target_metadata=target_metadata)
 
     with context.begin_transaction():
@@ -61,7 +62,6 @@ def run_migrations_online():
 
     """
     manager = CodaLabManager()
-
     engine = manager.model().engine
 
     connection = engine.connect()
