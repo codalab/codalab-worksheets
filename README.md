@@ -24,7 +24,7 @@ the service, as well as supporting competitions.
 1. Make sure you have the dependencies (Python 2.7 and virtualenv).  If you're running Ubuntu:
 
         sudo apt-get install python2.7 python2.7-dev python-virtualenv
-    
+
 2. Clone the CodaLab repository:
 
         git clone https://github.com/codalab/codalab-cli
@@ -81,7 +81,7 @@ You can change your CodaLab settings here:
 
 Now let's walk through a simple example to demonstrate the capabilities of
 CodaLab.  The goal is to sort a file.
-   
+
 ### Uploading bundles
 
 Uploading means transferring information from the filesystem into a CodaLab
@@ -300,7 +300,7 @@ a large CodaLab system with many users, names are not unique, not even within
 the same worksheet.  A *bundle_spec* refers to the string that identifies a
 bundle, importantly given the context (instance, current worksheet).
 
-There are finally a number of other ways to 
+There are finally a number of other ways to
 
 - UUID (`0x3739691aef9f4b07932dc68f7db82de2`): this should match at most one
   bundle.
@@ -414,7 +414,25 @@ Bundle hierarchy:
 To run tests on the code, first install the libraries for testing:
 
     codalab_env/bin/pip install mock nose
-    
+
 Then run all the tests:
 
     codalab_env/bin/nosetests
+
+## Database
+
+By default the local cl runs off sqllite database. You can change this in your `.codalab/config.json` file.
+
+If you are upgrading please run migrations first:
+
+    alembic upgrade head
+
+If adding/changing schema:
+
+    alembic revision -m "<your commit message here>" --autogenerate
+
+will handle most use cases please check the file it generatates.
+
+If it is not correct please see the [Alembic Docs](http://alembic.readthedocs.org/en/latest/tutorial.html#create-a-migration-script) to generate a migration
+
+Make sure you also update COLUMNS in the correct ORM object.
