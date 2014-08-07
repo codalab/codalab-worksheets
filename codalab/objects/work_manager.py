@@ -39,12 +39,8 @@ class Worker(object):
         self.model = model
         self.profiling_depth = 0
         self.verbose = 0
-        # Local machine
-        #self.machine = machine_types.PoolMachine()
-        # Remote machine
-        # TODO fix this
         self.machine = machine
-        #self.processes = {}
+        self.bundle_data = {}
 
     def pretty_print(self, message):
         time_str = datetime.datetime.utcnow().isoformat()[:19].replace('T', ' ')
@@ -84,7 +80,6 @@ class Worker(object):
                 return success
         return True
 
-    # TODO(dskovach) mark bundle as killed rather than failed
     # Poll processes to see if bundles have finished running
     def check_finished_bundles(self):
         result = self.machine.poll()
@@ -106,6 +101,12 @@ class Worker(object):
         parents = self.model.batch_get_bundles(uuid=parent_uuids)
         parent_dict = {parent.uuid: parent for parent in parents}
 
+        # Store data needed by finalize method
+        self.bundle_data[bundle.uuid] = {
+                'parent_dict': parent_dict,
+                'start_time': time.time(),
+                }
+
         # Run the bundle.
         with self.profile('Running bundle...'):
             print '-- START RUN: %s' % (bundle,)
@@ -125,6 +126,13 @@ class Worker(object):
     def finalize(self, result):
         (bundle, success, temp_dir) = result
 
+        end_time = time.time()
+        start_time  = self.bundle_data[bundle.uuid]['start_time']
+        parent_dict = self.bundle_data[bundle.uuid]['parent_dict']
+
+        # Re-install dependencies as relative dependencies
+        bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, relative_symlinks=True)
+
         try:
             (data_hash, metadata) = self.bundle_store.upload(temp_dir)
         except Exception:
@@ -134,6 +142,8 @@ class Worker(object):
             print 'The results of the failed execution were uploaded.'
 
         # Update data, remove temp_dir and process
+        if isinstance(bundle, RunBundle):
+            metadata.update({'time': end_time - start_time})
         state = State.READY if success else State.FAILED
         self.finalize_model_data(bundle, state, data_hash, metadata)
 
@@ -227,6 +237,7 @@ class Worker(object):
         print '-- END RUN: %s [%s]' % (bundle, state)
         update = {'state': state, 'data_hash': data_hash}
         if metadata:
+
             update['metadata'] = metadata
         with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
             self.model.update_bundle(bundle, update)
