@@ -400,9 +400,10 @@ def lookup_targets(client, value):
             contents = client.head_target((bundle_uuid, subpath), 50)
             if contents == None: return ''
             info = yaml.load('\n'.join(contents))
-            for k in key.split('/'):
-                info = info.get(k, None)
-                if k == None: return ''
+            if isinstance(info, dict):
+                for k in key.split('/'):
+                    info = info.get(k, None)
+                    if k == None: return ''
             return info
         else:
             if subpath == '.': subpath = ''

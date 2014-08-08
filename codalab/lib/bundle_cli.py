@@ -825,8 +825,11 @@ state:       {state}
           action='store_true',
           help="print out the tail of the file or bundle and block until the bundle is done"
         )
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        target = self.parse_target(args.target_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
         (bundle_uuid, subpath) = target
 
         # Figure files to display
@@ -836,7 +839,7 @@ state:       {state}
                 subpaths = ['stdout', 'stderr']
             else:
                 subpaths = [subpath]
-        state = self.follow_targets(bundle_uuid, subpaths)
+        state = self.follow_targets(client, bundle_uuid, subpaths)
         if state != State.READY:
             self.exit(state)
 
