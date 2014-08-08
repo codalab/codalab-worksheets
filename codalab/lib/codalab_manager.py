@@ -152,10 +152,8 @@ class CodaLabManager(object):
         '''
         model_class = self.config['server']['class']
         if model_class == 'MySQLModel':
-            arguments = ('username', 'password', 'address', 'database')
-            kwargs = {arg: self.config['server'][arg] for arg in arguments}
             from codalab.model.mysql_model import MySQLModel
-            return MySQLModel(**kwargs)
+            return MySQLModel(engine_url=self.config['server']['engine_url'])
         if model_class == 'SQLiteModel':
             codalab_home = self.codalab_home()
             from codalab.model.sqlite_model import SQLiteModel

@@ -383,6 +383,36 @@ each CodaLab session, the `local` instance points directly to one database, and
 `localhost` just points to some URL, which is backed by one database, which in
 theory can be the same, but in practice is usually different.
 
+## Using MySQL
+
+By default, CodaLab is configured to use SQLite, and the database file is just a single
+file in `~/.codalab`.  While this is a quick way to get started, SQLite is not a very
+scalable solution.  Here are instructions to set up MySQL:
+
+Install the MySQL server.  On Ubuntu, run:
+
+    sudo apt-get install mysql-server
+
+Install the MySQL Python:
+
+    codalab_env/bin/pip install MySQL-python
+
+In the configuration file `.codalab/config.json`,
+change `"class": "SQLiteModel"` to
+
+    "class": "MySQLModel",
+    "engine_url": "mysql://<username>:<password>@<host>:<port>/<database>",
+
+For example:
+
+    "engine_url": "mysql://codalab@localhost:3306/codalab_bundles",
+
+If you already have data in SQLite, you can load it into MySQL as follows:
+
+    sqlite3 ~/.codalab/bundle.db .dump > bundles.sqlite
+    python scripts/sqlite_to_mysql.py < bundles.sqlite > bundles.mysql 
+    mysql -u codalab -p codalab_bundles < bundles.mysql
+
 ## Authentication
 
 [TODO]
