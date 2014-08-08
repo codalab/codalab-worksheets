@@ -3,16 +3,16 @@
 The goal of CodaLab is to faciliate transparent, reproducible, and
 collaborative research in computation- and data-intensive areas such as machine
 learning.  Think Git for experiments.  This repository contains the code for
-the CodaLab Bundle Service provides the foundation on which the [CodaLab
+the CodaLab Bundle Service and provides the foundation on which the [CodaLab
 website](https://github.com/codalab/codalab) is built.
 
 The CodaLab Bundle Service allows users to create *bundles*, which are
-immutable directories containing either code or data.  Bundles are either
-uploaded or created from other bundles by executing generic code in an
-experimental workflow.  When the latter happens, all the provenance information
-is preserved.  In addition, users can create *worksheets*, which interleave
-bundles with free-form textual descriptions, allowing one to easily describe an
-experiment.
+immutable directories containing code or data.  Bundles are either
+uploaded or created from other bundles by executing arbitrary commands.
+When the latter happens, all the provenance information is preserved.  In
+addition, users can create *worksheets*, which interleave bundles with
+free-form textual descriptions, allowing one to easily describe an experimental
+workflow.
 
 This package also contains a command-line interface `cl` that provides flexible
 access to the CodaLab Bundle Service.  The [CodaLab
@@ -51,12 +51,13 @@ keep the following analogy in mind:
 - file = CodaLab bundle (e.g., `stanford-corenlp`)
 - line in a file = CodaLab target (e.g., `stanford-corenlp/src`)
 
-There are some differences:
+There are some differences, however:
 
-- The contents of bundles are immutable (metadata is mutable).
-- A worksheet contains bundles in a user-specified order interleaved with text.
-- Each bundle maintains its provenance.
-- Permissions are coarse.
+- The contents of bundles are immutable (only the metadata is mutable), whereas
+  files are mutable.
+- A worksheet contains bundles in a user-specified order interleaved with text,
+  whereas a directory in a file system contains an unordered set of files.
+- CodaLab maintains the provenance information for each derived bundle.
 
 ## Basic Local Usage
 
@@ -91,11 +92,11 @@ To see how this works, let's create an example dataset bundle to upload:
 
     echo -e "foo\nbar\nbaz" > a.txt
 
-Upload the dataset into CodaLab.  (This will ask you to fill out the metadata
-in a text editor.  You can add `-a` or `--auto` to use defaults, but it is
-highly encouraged to fill out the information.)
+Upload the dataset into CodaLab as follows.  (The `--edit` (or `-e`) will pop
+up a text editor to allow you to edit the metadata of this bundle.  You are
+encouraged to fill this information out!)
 
-    cl upload dataset a.txt
+    cl upload dataset a.txt --edit
 
 This will print out a 32-character UUID which uniquely identifies the Bundle.
 Forever.  You can't edit the contents since bundles are immutable, but you can
@@ -118,7 +119,7 @@ bundle (e.g., `a.txt/file1`).
 Let's now create and upload the sorting program:
 
     echo -e "import sys\nfor line in sorted(sys.stdin.readlines()): print line," > sort.py
-    cl upload program sort.py -a
+    cl upload program sort.py
 
 ### Creating runs
 
@@ -130,7 +131,7 @@ dependencies are put into the right place.
 
 Let us create our first run bundle:
 
-    cl run :sort.py input:a.txt 'python sort.py < input > output' --name sort-run -a
+    cl run :sort.py input:a.txt 'python sort.py < input > output' --name sort-run
 
 The first two arguments specify the dependencies and the third is the command.
 Note that `cl run` doesn't actually run anything; it just creates the run
@@ -150,7 +151,7 @@ which point to the *targets* `sort.py` and `a.txt`.  (When we wrote `:sort.py`,
 
 Note that runs don't have to have dependencies.  Here's a trivial run that doesn't:
 
-    cl run 'echo hello' -a
+    cl run 'echo hello'
 
 Now let's actually excute this run bundle.  In general, a CodaLab instance
 would already have workers constantly executing run bundles, but we're running
@@ -170,7 +171,7 @@ We can look at individual targets inside the bundle:
 
 To make things more convenient, we can define a bundle that points to a target:
 
-    cl make sort-run/output --name a-sorted.txt -a
+    cl make sort-run/output --name a-sorted.txt
     cl cat a-sorted.txt
 
 We can also download the results to local disk:
@@ -190,11 +191,11 @@ depends on `sort-run`.  To delete both bundles, you can remove recursively:
 
 You can also include the bundle references in your run command, which might be more natural:
 
-    cl run :sort.py input:a.txt 'python %sort.py% < %a.txt% > output' --name sort-run -a
+    cl run :sort.py input:a.txt 'python %sort.py% < %a.txt% > output' --name sort-run
 
 This is equivalent to running:
 
-    cl run 1:sort.py 2:a.txt 'python 1 < 2 > output' --name sort-run -a
+    cl run 1:sort.py 2:a.txt 'python 1 < 2 > output' --name sort-run
 
 ### Macros
 
@@ -213,7 +214,7 @@ First, recall that we have created `a.txt` (I) and `sort-run` (O).  Let us
 create another bundle and upload it:
 
     echo -e "6\n3\n8" > b.txt
-    cl upload dataset b.txt -a
+    cl upload dataset b.txt
 
 Now we can apply the same thing to `b.txt` that we did to `a.txt`:
 
@@ -374,7 +375,7 @@ Now there are two physical copies of the bundle `a.txt`, and they have the same
 bundle UUID.  We can create a bundle and copy it in the other direction too:
 
     echo hello > hello.txt
-    cl upload dataset hello.txt -a
+    cl upload dataset hello.txt
     cl cp hello.txt localhost
 
 To summarize, `~/.codalab` and `~/.codalab2` correspond to two databases.  In

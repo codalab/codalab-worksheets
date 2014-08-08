@@ -375,7 +375,7 @@ class BundleCLI(object):
         for bundle_type in UPLOADED_TYPES:
             bundle_subclass = get_bundle_subclass(bundle_type)
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -500,7 +500,7 @@ class BundleCLI(object):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='+')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         metadata_util.add_arguments(MakeBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -558,7 +558,7 @@ class BundleCLI(object):
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         self.add_wait_args(parser)
         metadata_util.add_arguments(RunBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
