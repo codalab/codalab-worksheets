@@ -7,6 +7,6 @@ branches:
 install:
   - "pip install sqlalchemy"
 #   add packages required by tests (mock and nose are on Travis VM by default)
-  - "pip install simplejson"
+  - "pip install pyyaml psutil"
 script:
   - "nosetests"
