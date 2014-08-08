@@ -325,7 +325,7 @@ class LocalBundleClient(BundleClient):
                 print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
                 downstream.add(old_bundle_uuid)
             else:
-                print '%s(%s) => same' % (info['metadata']['name'], old_bundle_uuid)
+                #print '%s(%s) => same' % (info['metadata']['name'], old_bundle_uuid)
                 new_bundle_uuid = old_bundle_uuid
 
             old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
