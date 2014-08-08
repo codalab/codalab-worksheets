@@ -282,7 +282,7 @@ def get_default_schemas():
     schemas['dataset'] = canonicalize_schema_items([['name'], created, data_size])
 
     schemas['make'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['state']])
-    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state']])
+    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state'], ['time']])
     return schemas
 
 def interpret_items(schemas, items):
