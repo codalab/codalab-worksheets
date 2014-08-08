@@ -286,7 +286,7 @@ class LocalBundleClient(BundleClient):
         depth: how far to do a BFS up
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
-        print old_inputs, new_inputs, old_output, new_output_name
+        #print 'old_inputs: %s, new_inputs: %s, old_output: %s, new_output_name: %s' % (old_inputs, new_inputs, old_output, new_output_name)
 
         # Build the graph.
         # If old_output is given, look at ancestors of old_output until we
@@ -308,10 +308,10 @@ class LocalBundleClient(BundleClient):
 
         # Now go recursively create the bundles.
         old_to_new = {}  # old_uuid -> new_uuid
-        downstream = {}  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
+        downstream = set()  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
         for old, new in zip(old_inputs, new_inputs):
             old_to_new[old] = new
-            downstream[old] = True
+            downstream.add(old)
 
         # Return corresponding new_bundle_uuid
         def recurse(old_bundle_uuid):
@@ -334,7 +334,7 @@ class LocalBundleClient(BundleClient):
             } for dep in info['dependencies']]
 
             # We're downstream, so need to make a new bundle
-            if any(downstream.get(dep['parent_uuid']) for dep in info['dependencies']):
+            if any(dep['parent_uuid'] in downstream for dep in info['dependencies']):
                 # Now create a new bundle that mimics the old bundle.
                 # Only change the name if the output name is supplied.
                 old_bundle_name = info['metadata']['name']
@@ -362,7 +362,9 @@ class LocalBundleClient(BundleClient):
                 if shadow:
                     self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
                 print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
+                downstream.add(old_bundle_uuid)
             else:
+                #print '%s(%s) => same' % (info['metadata']['name'], old_bundle_uuid)
                 new_bundle_uuid = old_bundle_uuid
 
             old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
