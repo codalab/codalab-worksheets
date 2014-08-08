@@ -230,9 +230,9 @@ reapply this.  A positive side-effect is that every macro automatically comes
 with an example of how it is used!
 
 We can make the notion of a macro even more explicit.  Let's rename `a.txt` to
-`sort-in` and `a-sorted.txt` to `sort-out`:
+`sort-in1` and `a-sorted.txt` to `sort-out`:
 
-    cl edit a.txt --name sort-in
+    cl edit a.txt --name sort-in1
     cl edit a-sorted.txt --name sort-out
 
 Then we can use the following syntactic sugar:

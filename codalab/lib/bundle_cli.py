@@ -909,7 +909,7 @@ state:       {state}
         '''
         parser.add_argument(
           'macro_name',
-          help='name of the macro (look for <macro_name>-in... and <macro_name>-out bundles)',
+          help='name of the macro (look for <macro_name>-in1, ..., and <macro_name>-out bundles)',
         )
         parser.add_argument(
           'bundles',
@@ -923,12 +923,8 @@ state:       {state}
         # next time we try to use the macro.
         if not args.name: args.name = 'new'
         # Reduce to the mimic case
-        if len(args.bundles) == 1:  # Macro only has one argument
-            args.bundles = [args.macro_name + '-in'] + \
-                           [args.macro_name + '-out'] + args.bundles
-        else:
-            args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
-                           [args.macro_name + '-out'] + args.bundles
+        args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
+                       [args.macro_name + '-out'] + args.bundles
         self.mimic(args)
 
     def add_mimic_args(self, parser):
