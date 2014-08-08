@@ -317,7 +317,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted':interpret_genpath(bundle_info, args[0]),
-                    'data': bundle_info
+                    'bundle_info': bundle_info
                 })
         elif mode == 'image':
             new_items.append((mode, args[0]))
@@ -340,7 +340,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode':mode,
                     'interpreted':(header, rows),
-                    'data': bundle_info
+                    'bundle_info': bundle_info
                 })
         elif mode == 'table':
             # display table schema =>
@@ -355,7 +355,7 @@ def interpret_items(schemas, items):
             new_items.append({
                     "mode":mode,
                     'interpreted':(header, rows),
-                    'data': bundle_info
+                    'bundle_info': bundle_info
                 })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
@@ -370,7 +370,7 @@ def interpret_items(schemas, items):
             new_items.append({
                     'mode':TYPE_MARKUP,
                     'interpreted': value_obj,
-                    'data': bundle_info
+                    'bundle_info': bundle_info
                 })
             pass
         elif item_type == TYPE_DIRECTIVE:
@@ -395,7 +395,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                         'mode': TYPE_DIRECTIVE,
                         'interpreted': data,
-                        'data': bundle_info
+                        'bundle_info': bundle_info
                     })
             elif command == '%' or command == '':  # Comment
                 pass
