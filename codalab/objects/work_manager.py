@@ -27,9 +27,8 @@ from codalab.lib import (
   path_util,
 )
 from codalab.bundles.run_bundle import RunBundle
-from codalab.objects import (
-  machine,
-  machine_types,
+from codalab.bundles.make_bundle import MakeBundle
+from codalab.machines import (
   remote_machine,
 )
 
@@ -84,11 +83,12 @@ class Worker(object):
     def check_finished_bundles(self):
         result = self.machine.poll()
         if result:
-            self.finalize(result)
+            self.finalize_bundle(result)
 
-    def run_bundle(self, bundle):
+    def start_bundle(self, bundle):
         '''
         Run the given bundle using an available Machine.
+        Return 
         '''
         # Check that we're running a bundle in the RUNNING state.
         state_message = 'Unexpected bundle state: %s' % (bundle.state,)
@@ -109,46 +109,75 @@ class Worker(object):
 
         # Run the bundle.
         with self.profile('Running bundle...'):
-            print '-- START RUN: %s' % (bundle,)
-            return self.machine.run_bundle(bundle, self.bundle_store, parent_dict)
+            started = self.machine.start_bundle(bundle, self.bundle_store, parent_dict)
+            if started: print '-- START BUNDLE: %s' % (bundle,)
+            return started
 
     def check_killed_bundles(self):
+        '''
+        For bundles that need to be killed, tell the machine to kill it.
+        '''
         bundles = self.model.batch_get_bundles(worker_command=Command.KILL)
         for bundle in bundles:
             uuid = bundle.uuid
-            result = self.machine.kill(uuid)
-            if not result:
+            if not self.machine.kill_bundle(uuid):
                 self.pretty_print('Kill command for %s failed: bundle isn\'t running ' % uuid)
-            else:
-                self.finalize(result)
             self.model.update_bundle(bundle, {'worker_command': None})
+        return len(bundles) > 0
 
-    def finalize(self, result):
-        (bundle, success, temp_dir) = result
+    def make_bundle(self, bundle, parent_dict):
+        '''
+        For MakeBundles, we just prepare it in one-shot (no need for separate start and finialize steps).
+        '''
+        # Create a temporary directory as a staging area.
+        temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
+        path_util.make_directory(temp_dir)
 
-        end_time = time.time()
-        start_time  = self.bundle_data[bundle.uuid]['start_time']
-        parent_dict = self.bundle_data[bundle.uuid]['parent_dict']
+        # If the make bundle's targets are [('', target)], then treat this
+        # bundle as directly pointing to target rather than having a field that
+        # points to target.
+        if any(not dep.child_path for dep in bundle.dependencies):
+            message = '%s has keyed and anonymous targets!' % (bundle,),
+            precondition(len(bundle.dependencies) == 1, message)
+            temp_dir = os.path.join(temp_dir, 'anonymous_link')
 
-        # Re-install dependencies as relative dependencies
-        bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, relative_symlinks=True)
-
+        bundle.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
         try:
             (data_hash, metadata) = self.bundle_store.upload(temp_dir)
         except Exception:
             (data_hash, metadata) = (None, {})
 
-        if not success and data_hash:
-            print 'The results of the failed execution were uploaded.'
+    def finalize_bundle(self, result):
+        (bundle, success, temp_dir) = result
+
+        end_time = time.time()
+        start_time = self.bundle_data[bundle.uuid]['start_time']
+        parent_dict = self.bundle_data[bundle.uuid]['parent_dict']
+
+        # Re-install dependencies as relative dependencies
+        bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, relative_symlinks=True)
+        try:
+            (data_hash, metadata) = self.bundle_store.upload(temp_dir)
+        except Exception:
+            (data_hash, metadata) = (None, {})
 
         # Update data, remove temp_dir and process
         if isinstance(bundle, RunBundle):
             metadata.update({'time': end_time - start_time})
         state = State.READY if success else State.FAILED
-        self.finalize_model_data(bundle, state, data_hash, metadata)
+
+        # Update a bundle to the new state and data hash at the end of a run.
+        update = {'state': state, 'data_hash': data_hash}
+        if metadata:
+            update['metadata'] = metadata
+        with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
+            self.model.update_bundle(bundle, update)
 
         # Remove temporary data
-        self.machine.finalize(bundle.uuid)
+        self.machine.finalize_bundle(bundle.uuid)
+
+        print '-- END BUNDLE: %s [%s]' % (bundle, state)
+        print ''
 
     def update_created_bundles(self):
         '''
@@ -197,7 +226,8 @@ class Worker(object):
         num_processed = len(bundles_to_fail) + len(bundles_to_stage)
         num_blocking  = len(bundles) - num_processed
         if num_processed > 0:
-            self.pretty_print('%s bundles processed, %s bundles still blocking on parents.' % (num_processed, num_blocking,))
+            self.pretty_print('%s CREATED bundles => %s STAGED, %s FAILED; %s bundles still waiting on dependencies.' % \
+                (num_processed, len(bundles_to_stage), len(bundles_to_fail), num_blocking,))
             return True
         return False
 
@@ -211,36 +241,19 @@ class Worker(object):
             bundles = self.model.batch_get_bundles(state=State.STAGED)
             if self.verbose >= 1 and len(bundles) > 0:
                 self.pretty_print('Staging %s bundles.' % (len(bundles),))
-        random.shuffle(bundles)
         new_running_bundles = 0
         for bundle in bundles:
             if not self.update_bundle_states([bundle], State.RUNNING):
                 self.pretty_print('WARNING: Bundle running, but state failed to update')
             else:
-                if self.run_bundle(bundle):
+                if self.start_bundle(bundle):
                     new_running_bundles += 1
                 else:
                     # Restage
                     self.update_bundle_states([bundle], State.STAGED)
-
-            #if self.update_bundle_states([bundle], State.RUNNING):
-            #    self.run_bundle(bundle)
-            #    break
         else:
             if self.verbose >= 2: self.pretty_print('Failed to lock a bundle!')
         return new_running_bundles > 0
-
-    def finalize_model_data(self, bundle, state, data_hash, metadata=None):
-        '''
-        Update a bundle to the new state and data hash at the end of a run.
-        '''
-        print '-- END RUN: %s [%s]' % (bundle, state)
-        update = {'state': state, 'data_hash': data_hash}
-        if metadata:
-
-            update['metadata'] = metadata
-        with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
-            self.model.update_bundle(bundle, update)
 
     def run_loop(self, num_iterations, sleep_time):
         '''
@@ -251,7 +264,7 @@ class Worker(object):
         iteration = 0
         while not num_iterations or iteration < num_iterations:
             # Check to see if any bundles should be killed
-            bool_killed = self.check_killed_bundles();
+            bool_killed = self.check_killed_bundles()
             # Try to stage bundles
             self.update_created_bundles()
             # Try to run bundles with Ready parents

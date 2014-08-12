@@ -12,28 +12,30 @@ class Machine(object):
     Utility for running bundle commands.
     '''
 
-    def run_bundle(self, bundle_store, parent_dict, temp_dir):
+    def start_bundle(self, bundle, bundle_store, parent_dict):
         '''
         Attempts to begin bundle execution.
-        Returns True/False, indicating success.
+        Returns True/False, indicating whether the bundle was started.
         '''
         raise NotImplementedError
 
     def poll(self):
         '''
-        Checks to see if anything is done executing.
-        Returns (bundle, success flag, directory with output) or None
+        Checks to see if any run bundle has finished.
+        Returns (bundle, success flag, directory with output) if one has or None
         '''
         raise NotImplementedError
-    def finalize(self, uuid):
+
+    def finalize_bundle(self, uuid):
         '''
         Removes all temporary data.
         Returns True/False
         '''
         raise NotImplementedError
-    def kill(self, uuid):
+
+    def kill_bundle(self, uuid):
         '''
-        Stops process.
+        Stops process associated with the bundle.
         Returns (bundle, success flag, directory with output) or None
         '''
         raise NotImplementedError

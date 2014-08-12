@@ -75,14 +75,16 @@ class CodaLabManager(object):
                     'localhost': 'http://localhost:2800',
                 },
                 'workers': {
-                    'remote-example': {
-                        'type': 'remote',
-                        'address': 'localhost',
-                        'user': 'you',
-                        'working_directory': '~/.codalab/remote_working_directory'
-                    },
                     'local': {
                         'type': 'local'
+                    },
+                    # By default, just ssh into the current machine (only for testing)
+                    'localhost': {
+                        'type': 'remote',
+                        'host': 'localhost',
+                        'user': os.getenv('USER'),
+                        'working_directory': os.path.join(self.codalab_home(), 'worker_scratch'),
+                        'verbose': 1,
                     }
                 }
             }, config_path)

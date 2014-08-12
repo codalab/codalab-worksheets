@@ -30,7 +30,7 @@ bundle = Table(
   Column('data_hash', String(63), nullable=True),
   Column('state', String(63), nullable=False),
   # TODO: add home_worksheet_uuid field
-  Column('worker_command', String(63), nullable=True),
+  Column('worker_command', String(63), nullable=True),  # TODO: move to another table
   # TODO: add owner_id
   UniqueConstraint('uuid', name='uix_1'),
   Index('bundle_data_hash_index', 'data_hash'),
