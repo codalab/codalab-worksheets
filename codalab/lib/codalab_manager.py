@@ -73,6 +73,17 @@ class CodaLabManager(object):
                     'dev': 'https://qaintdev.cloudapp.net/bundleservice', # TODO: replace this with something official when it's ready
                     'localhost': 'http://localhost:2800',
                 },
+                'workers': {
+                    'remote-example': {
+                        'type': 'remote',
+                        'address': 'localhost',
+                        'user': 'you',
+                        'working_directory': '~/.codalab/remote_working_directory'
+                    },
+                    'local': {
+                        'type': 'local'
+                    }
+                }
             }, config_path)
         self.config = read_json_or_die(config_path)
 
