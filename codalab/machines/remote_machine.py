@@ -23,7 +23,6 @@ class RemoteMachine(Machine):
     def get_remote_directory(self):
         return os.path.join(self.remote_directory, self.bundle.uuid)
 
-    # TODO fix erroneous stderr output
     def start_ssh_command(self):
         cd_command = 'cd ' + self.get_remote_directory()
         mkdir_command = 'mkdir output'
