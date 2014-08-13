@@ -31,7 +31,7 @@ class BundleTest(unittest.TestCase):
   command = 'my_command'
   data_hash = 'my_data_hash'
   state = 'my_state'
-  worker_command = None
+  #worker_command = None
 
   def construct_mock_bundle(self):
     metadata = {
@@ -45,7 +45,7 @@ class BundleTest(unittest.TestCase):
       state=self.state,
       metadata=metadata,
       dependencies=[],
-      worker_command=self.worker_command,
+      #worker_command=self.worker_command,
     )
 
   def check_bundle(self, bundle, uuid=None):

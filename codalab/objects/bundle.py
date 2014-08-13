@@ -30,7 +30,7 @@ from codalab.objects.metadata import Metadata
 
 
 class Bundle(ORMObject):
-    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state', 'worker_command')
+    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state') #, 'worker_command')
 
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type
@@ -129,26 +129,11 @@ class Bundle(ORMObject):
         for (target, link_path) in pairs:
             # If the dependency already exists, remove it (this happens when we are reinstalling)
             if os.path.exists(link_path): path_util.remove(link_path)
-
             os.symlink(target, link_path)
 
     def get_hard_dependencies(self):
         '''
         Returns a list of dependencies that are actually symlinked into this bundle
         at the time that it is uploaded to the bundle store.
-        '''
-        raise NotImplementedError
-
-    def complete(self, bundle_store, parent_dict, temp_dir):
-        '''
-        Perform the computation needed to construct this bundle within the temp_dir,
-        then upload the result to the bundle store. Return a (data_hash, metadata)
-        pair - that is, return the result of the upload.
-
-        parent_dict will be a dictionary mapping uuids -> bundles for each uuid
-        that this bundle depends on.
-
-        If this method raises a CalledProcessError, the contents of the temp_dir at
-        the time of the error will be uploaded as a partial result.
         '''
         raise NotImplementedError
