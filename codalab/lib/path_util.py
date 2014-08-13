@@ -340,7 +340,6 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
     #else:
     #    shutil.copyfile(source_path, dest_path)
 
-
 def make_directory(path):
     '''
     Create the directory at the given path.
@@ -351,7 +350,6 @@ def make_directory(path):
         if e.errno != errno.EEXIST:
             raise
     check_isdir(path, 'make_directories')
-
 
 def remove(path):
     '''

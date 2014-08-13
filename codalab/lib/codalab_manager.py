@@ -32,6 +32,7 @@ import json
 import os
 import sys
 import time
+import psutil
 
 from codalab.client import is_local_address
 from codalab.common import UsageError
@@ -73,6 +74,19 @@ class CodaLabManager(object):
                     'dev': 'https://qaintdev.cloudapp.net/bundleservice', # TODO: replace this with something official when it's ready
                     'localhost': 'http://localhost:2800',
                 },
+                'workers': {
+                    'local': {
+                        'type': 'local'
+                    },
+                    # By default, just ssh into the current machine (only for testing)
+                    'localhost': {
+                        'type': 'remote',
+                        'host': 'localhost',
+                        'user': os.getenv('USER'),
+                        'working_directory': os.path.join(self.codalab_home(), 'worker_scratch'),
+                        'verbose': 1,
+                    }
+                }
             }, config_path)
         self.config = read_json_or_die(config_path)
 
@@ -117,51 +131,20 @@ class CodaLabManager(object):
         '''
         Return the current session name.
         '''
-        # TODO: move this to another file (say, windows_util.py)
-        if sys.platform == 'win32' and not hasattr(os, 'getppid'):
+        # If specified in the environment, then return that.
+        session = os.getenv('CODALAB_SESSION')
+        if session: return session
 
-            from ctypes.wintypes import DWORD, POINTER, ULONG, LONG
-            from ctypes import c_char, byref, sizeof, Structure, windll
-            from os import getpid
-
-            # See http://msdn2.microsoft.com/en-us/library/ms686701.aspx
-
-            TH32CS_SNAPPROCESS = 0x00000002
-            MAX_PATH = 260
-            class PROCESSENTRY32(Structure):
-                _fields_ = [('dwSize', DWORD),
-                            ('cntUsage', DWORD),
-                            ('th32ProcessID', DWORD),
-                            ('th32DefaultHeapID', POINTER(ULONG)),
-                            ('th32ModuleID', DWORD),
-                            ('cntThreads', DWORD),
-                            ('th32ParentProcessID', DWORD),
-                            ('pcPriClassBase', LONG),
-                            ('dwFlags', DWORD),
-                            ('szExeFile', c_char * MAX_PATH)]
-
-            def getppid():
-                '''
-                Returns the parent's process id.
-                '''
-                hProcessSnap = windll.kernel32.CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0)
-                try:
-                    pid = getpid()
-                    pe32 = PROCESSENTRY32()
-                    pe32.dwSize = sizeof(PROCESSENTRY32)
-                    if windll.kernel32.Process32First(hProcessSnap, byref(pe32)) != 0:
-                        while True:
-                            if pid == pe32.th32ProcessID:
-                                return pe32.th32ParentProcessID
-                            if windll.kernel32.Process32Next(hProcessSnap, byref(pe32)) == 0:
-                                break
-                finally:
-                    windll.kernel32.CloseHandle(hProcessSnap)
-                return 0
-
-            os.getppid = getppid
-
-        return os.getenv('CODALAB_SESSION', str(os.getppid()))
+        # Otherwise, go up process hierarchy to the *highest up shell*.  This
+        # way, it's easy to write scripts that have embedded 'cl' commands
+        # which modify the current session.
+        process = psutil.Process(os.getppid())
+        session = 'top'
+        while process:
+            # TODO: test this on Windows
+            if process.name in ('bash', 'csh', 'zsh'): session = str(process.pid)
+            process = process.parent()
+        return session
 
     @cached
     def session(self):
@@ -182,10 +165,8 @@ class CodaLabManager(object):
         '''
         model_class = self.config['server']['class']
         if model_class == 'MySQLModel':
-            arguments = ('username', 'password', 'address', 'database')
-            kwargs = {arg: self.config['server'][arg] for arg in arguments}
             from codalab.model.mysql_model import MySQLModel
-            return MySQLModel(**kwargs)
+            return MySQLModel(engine_url=self.config['server']['engine_url'])
         if model_class == 'SQLiteModel':
             codalab_home = self.codalab_home()
             from codalab.model.sqlite_model import SQLiteModel

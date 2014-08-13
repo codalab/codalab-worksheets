@@ -39,21 +39,8 @@ class MakeBundle(NamedBundle):
           'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
+          #'worker_command': None,
         })
 
     def get_hard_dependencies(self):
         return self.dependencies
-
-    def complete(self, bundle_store, parent_dict, temp_dir):
-        path_util.make_directory(temp_dir)
-
-        # If the make bundle's targets are [('', target)], then treat this
-        # bundle as directly pointing to target rather than having a field that
-        # points to target.
-        if any(not dep.child_path for dep in self.dependencies):
-            message = '%s has keyed and anonymous targets!' % (self,),
-            precondition(len(self.dependencies) == 1, message)
-            temp_dir = os.path.join(temp_dir, 'anonymous_link')
-
-        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
-        return bundle_store.upload(temp_dir)

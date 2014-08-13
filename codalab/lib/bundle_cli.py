@@ -37,8 +37,13 @@ from codalab.lib import (
   canonicalize,
   formatting
 )
-from codalab.objects.worker import Worker
 from codalab.objects.worksheet import Worksheet
+from codalab.objects.work_manager import Worker
+from codalab.machines import (
+  local_machine,
+  pool_machine,
+  remote_machine,
+)
 
 class BundleCLI(object):
     DESCRIPTIONS = {
@@ -58,6 +63,7 @@ class BundleCLI(object):
       'mimic': 'Creates a set of bundles based on analogy with another set.',
       'macro': 'Use mimicry to simulate macros.',
       # Commands for worksheets.
+      'kill': 'Instruct the worker to terminate a running bundle.',
       'new': 'Create a new worksheet and make it the current one.',
       'add': 'Append a bundle to a worksheet.',
       'work': 'Set the current instance/worksheet.',
@@ -375,7 +381,7 @@ class BundleCLI(object):
         for bundle_type in UPLOADED_TYPES:
             bundle_subclass = get_bundle_subclass(bundle_type)
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -500,7 +506,7 @@ class BundleCLI(object):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='+')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         metadata_util.add_arguments(MakeBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -543,12 +549,22 @@ class BundleCLI(object):
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
 
     def do_run_command(self, argv, parser):
+        # Usually, the last argument is the command, but we use a special notation '---' to allow
+        # us to specify the command across multiple tokens.
+        #   key:target ... key:target "command_1 ... command_n"
+        #   <==>
+        #   key:target ... key:target --- command_1 ... command_n
+        try:
+            i = argv.index('---')
+            argv = argv[0:i] + [' '.join(argv[i+1:])]  # TODO: quote command properly
+        except:
+            pass
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
         parser.add_argument('command', help='Command-line')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         self.add_wait_args(parser)
         metadata_util.add_arguments(RunBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -639,7 +655,6 @@ class BundleCLI(object):
 
     def do_ls_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT, nargs='?')
-        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
 
@@ -782,7 +797,6 @@ state:       {state}
 
     # Helper: shared between info and cat
     def print_target_info(self, client, target, decorate):
-        client = self.manager.current_client()
         info = client.get_target_info(target, 1)
         if 'type' not in info:
             self.exit('Target doesn\'t exist: %s/%s' % target)
@@ -816,8 +830,11 @@ state:       {state}
           action='store_true',
           help="print out the tail of the file or bundle and block until the bundle is done"
         )
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        target = self.parse_target(args.target_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
         (bundle_uuid, subpath) = target
 
         # Figure files to display
@@ -827,7 +844,7 @@ state:       {state}
                 subpaths = ['stdout', 'stderr']
             else:
                 subpaths = [subpath]
-        state = self.follow_targets(bundle_uuid, subpaths)
+        state = self.follow_targets(client, bundle_uuid, subpaths)
         if state != State.READY:
             self.exit(state)
 
@@ -897,7 +914,7 @@ state:       {state}
         '''
         parser.add_argument(
           'macro_name',
-          help='name of the macro (look for <macro_name>-in... and <macro_name>-out bundles)',
+          help='name of the macro (look for <macro_name>-in1, ..., and <macro_name>-out bundles)',
         )
         parser.add_argument(
           'bundles',
@@ -911,12 +928,8 @@ state:       {state}
         # next time we try to use the macro.
         if not args.name: args.name = 'new'
         # Reduce to the mimic case
-        if len(args.bundles) == 1:  # Macro only has one argument
-            args.bundles = [args.macro_name + '-in'] + \
-                           [args.macro_name + '-out'] + args.bundles
-        else:
-            args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
-                           [args.macro_name + '-out'] + args.bundles
+        args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
+                       [args.macro_name + '-out'] + args.bundles
         self.mimic(args)
 
     def add_mimic_args(self, parser):
@@ -951,6 +964,16 @@ state:       {state}
             old_inputs, old_output, new_inputs, args.name,
             worksheet_uuid, args.depth, args.shadow)
         self.wait(client, args, new_uuid)
+
+    def do_kill_command(self, argv, parser):
+        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]', nargs='*')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        args = parser.parse_args(argv)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        for bundle_spec in args.bundle_spec:
+            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
+            client.kill(bundle_uuid)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
@@ -1231,20 +1254,42 @@ state:       {state}
     # LocalBundleClient-only commands follow!
     #############################################################################
 
+    def do_worker_command(self, argv, parser):
+        # This command only works if client is a LocalBundleClient.
+        parser.add_argument('--num-iterations', help="number of bundles to process before exiting", type=int, default=None)
+        parser.add_argument('--sleep-time', type=int, help='Number of seconds to wait between successive polls', default=1)
+        parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
+        parser.add_argument('-p', '--parallelism', type=int, help="number of bundles we can run at once", default=1)
+        args = parser.parse_args(argv)
+
+        # Figure out machine settings
+        worker_config = self.manager.config['workers']
+        if args.worker_type in worker_config:
+            config = worker_config[args.worker_type]
+        else:
+            print '\'' + args.worker_type + '\'' + \
+                  ' is not specified in your config file: ' + self.manager.config_path()
+            print 'Options are ' + str(map(str, worker_config.keys()))
+            return
+
+        if config['type'] == 'local':
+            construct_func = lambda : local_machine.LocalMachine()
+        elif config['type'] == 'remote':
+            construct_func = lambda : remote_machine.RemoteMachine(config['host'], config['user'], config['working_directory'], config['verbose'])
+        machine = pool_machine.PoolMachine(construct_func=construct_func, limit=args.parallelism)
+
+        client = self.manager.current_client()
+        worker = Worker(client.bundle_store, client.model, machine)
+        worker.run_loop(args.num_iterations, args.sleep_time)
+
     def do_cleanup_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.
+        '''
+        Removes data hash directories which are not used by any bundle.
+        '''
         parser.parse_args(argv)
         client = self.manager.current_client()
         client.bundle_store.full_cleanup(client.model)
-
-    def do_worker_command(self, argv, parser):
-        # This command only works if client is a LocalBundleClient.
-        parser.add_argument('iterations', type=int, default=None, nargs='?')
-        parser.add_argument('sleep', type=int, help='Number of seconds to wait between successive polls', default=1, nargs='?')
-        args = parser.parse_args(argv)
-        client = self.manager.current_client()
-        worker = Worker(client.bundle_store, client.model)
-        worker.run_loop(args.iterations, args.sleep)
 
     def do_reset_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.

@@ -30,7 +30,7 @@ from codalab.objects.metadata import Metadata
 
 
 class Bundle(ORMObject):
-    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state')
+    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state') #, 'worker_command')
 
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type
@@ -93,14 +93,8 @@ class Bundle(ORMObject):
         '''
         return [spec for spec in cls.METADATA_SPECS if not spec.generated]
 
-    def install_dependencies(self, bundle_store, parent_dict, dest_path, relative_symlinks):
-        '''
-        Symlink this bundle's dependencies into the directory at dest_path.
-        The caller is responsible for cleaning up this directory.
-        rel: whether to use relative symlinks
-        '''
-        precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
-        for dep in self.dependencies:
+    def get_dependency_paths(self, bundle_store, parent_dict, dest_path, relative_symlinks=False):
+        def process_dep(dep):
             parent = parent_dict[dep.parent_uuid]
             # Compute an absolute target and check that the dependency exists.
             target = path_util.safe_join(
@@ -120,28 +114,26 @@ class Bundle(ORMObject):
                 )
             link_path = path_util.safe_join(dest_path, dep.child_path)
 
+            return (target, link_path)
+
+        return [process_dep(dep) for dep in self.dependencies]
+
+    def install_dependencies(self, bundle_store, parent_dict, dest_path, relative_symlinks):
+        '''
+        Symlink this bundle's dependencies into the directory at dest_path.
+        The caller is responsible for cleaning up this directory.
+        rel: whether to use relative symlinks
+        '''
+        precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
+        pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks)
+        for (target, link_path) in pairs:
             # If the dependency already exists, remove it (this happens when we are reinstalling)
             if os.path.exists(link_path): path_util.remove(link_path)
-
             os.symlink(target, link_path)
 
     def get_hard_dependencies(self):
         '''
         Returns a list of dependencies that are actually symlinked into this bundle
         at the time that it is uploaded to the bundle store.
-        '''
-        raise NotImplementedError
-
-    def complete(self, bundle_store, parent_dict, temp_dir):
-        '''
-        Perform the computation needed to construct this bundle within the temp_dir,
-        then upload the result to the bundle store. Return a (data_hash, metadata)
-        pair - that is, return the result of the upload.
-
-        parent_dict will be a dictionary mapping uuids -> bundles for each uuid
-        that this bundle depends on.
-
-        If this method raises a CalledProcessError, the contents of the temp_dir at
-        the time of the error will be uploaded as a partial result.
         '''
         raise NotImplementedError
