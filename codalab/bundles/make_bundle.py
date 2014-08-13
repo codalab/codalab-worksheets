@@ -39,7 +39,7 @@ class MakeBundle(NamedBundle):
           'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
-          'worker_command': None,
+          #'worker_command': None,
         })
 
     def get_hard_dependencies(self):

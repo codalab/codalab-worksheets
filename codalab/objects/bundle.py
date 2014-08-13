@@ -30,7 +30,7 @@ from codalab.objects.metadata import Metadata
 
 
 class Bundle(ORMObject):
-    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state', 'worker_command')
+    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state') #, 'worker_command')
 
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type
@@ -129,7 +129,6 @@ class Bundle(ORMObject):
         for (target, link_path) in pairs:
             # If the dependency already exists, remove it (this happens when we are reinstalling)
             if os.path.exists(link_path): path_util.remove(link_path)
-
             os.symlink(target, link_path)
 
     def get_hard_dependencies(self):

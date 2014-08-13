@@ -109,14 +109,27 @@ class Worker(object):
 
         # Run the bundle.
         with self.profile('Running bundle...'):
-            started = self.machine.start_bundle(bundle, self.bundle_store, parent_dict)
+            if isinstance(bundle, RunBundle):
+                started = self.machine.start_bundle(bundle, self.bundle_store, parent_dict)
+            else:
+                started = True
             if started: print '-- START BUNDLE: %s' % (bundle,)
+
+            # If we have a MakeBundle, then just process it immediately.
+            if not isinstance(bundle, RunBundle):
+                success = True
+                temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
+                path_util.make_directory(temp_dir)
+                result = (bundle, success, temp_dir)
+                self.finalize_bundle(result)
+
             return started
 
     def check_killed_bundles(self):
         '''
         For bundles that need to be killed, tell the machine to kill it.
         '''
+        return False  # TODO: remove this when worker_command is enabled
         bundles = self.model.batch_get_bundles(worker_command=Command.KILL)
         for bundle in bundles:
             uuid = bundle.uuid
@@ -125,27 +138,27 @@ class Worker(object):
             self.model.update_bundle(bundle, {'worker_command': None})
         return len(bundles) > 0
 
-    def make_bundle(self, bundle, parent_dict):
-        '''
-        For MakeBundles, we just prepare it in one-shot (no need for separate start and finialize steps).
-        '''
-        # Create a temporary directory as a staging area.
-        temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
-        path_util.make_directory(temp_dir)
+    #def make_bundle(self, bundle, parent_dict):
+    #    '''
+    #    For MakeBundles, we just prepare it in one-shot (no need for separate start and finialize steps).
+    #    '''
+    #    # Create a temporary directory as a staging area.
+    #    temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
+    #    path_util.make_directory(temp_dir)
 
-        # If the make bundle's targets are [('', target)], then treat this
-        # bundle as directly pointing to target rather than having a field that
-        # points to target.
-        if any(not dep.child_path for dep in bundle.dependencies):
-            message = '%s has keyed and anonymous targets!' % (bundle,),
-            precondition(len(bundle.dependencies) == 1, message)
-            temp_dir = os.path.join(temp_dir, 'anonymous_link')
+    #    # If the make bundle's targets are [('', target)], then treat this
+    #    # bundle as directly pointing to target rather than having a field that
+    #    # points to target.
+    #    if any(not dep.child_path for dep in bundle.dependencies):
+    #        message = '%s has keyed and anonymous targets!' % (bundle,),
+    #        precondition(len(bundle.dependencies) == 1, message)
+    #        temp_dir = os.path.join(temp_dir, 'anonymous_link')
 
-        bundle.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
-        try:
-            (data_hash, metadata) = self.bundle_store.upload(temp_dir)
-        except Exception:
-            (data_hash, metadata) = (None, {})
+    #    bundle.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
+    #    try:
+    #        (data_hash, metadata) = self.bundle_store.upload(temp_dir)
+    #    except Exception:
+    #        (data_hash, metadata) = (None, {})
 
     def finalize_bundle(self, result):
         (bundle, success, temp_dir) = result
@@ -174,7 +187,8 @@ class Worker(object):
             self.model.update_bundle(bundle, update)
 
         # Remove temporary data
-        self.machine.finalize_bundle(bundle.uuid)
+        if isinstance(bundle, RunBundle):
+            self.machine.finalize_bundle(bundle.uuid)
 
         print '-- END BUNDLE: %s [%s]' % (bundle, state)
         print ''
