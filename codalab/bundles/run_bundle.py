@@ -60,26 +60,10 @@ class RunBundle(NamedBundle):
           'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
-          'worker_command': None,
+          #'worker_command': None,
         })
 
     def get_hard_dependencies(self):
         # The program and input are symlinked into a run bundle while it is being
         # executed, but they are deleted once the run is complete.
         return []
-
-    def complete(self, bundle_store, parent_dict, temp_dir):
-        # TODO: have a mode where we ssh into another machine to do this
-        # In that case, need to copy files around.
-        command = self.command
-        path_util.make_directory(temp_dir)
-
-        # Unlike make, need to use absolute symlinks to be able to run the program
-        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=False)
-
-        with path_util.chdir(temp_dir):
-            print 'Executing command: %s' % (command,)
-            print 'In temp directory: %s' % (temp_dir,)
-            with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
-                process = subprocess.Popen(command, stdout=stdout, stderr=stderr, shell=True)
-        return process

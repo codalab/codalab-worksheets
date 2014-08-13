@@ -40,6 +40,7 @@ from codalab.lib import (
 from codalab.objects.worksheet import Worksheet
 from codalab.objects.work_manager import Worker
 from codalab.machines import (
+  local_machine,
   pool_machine,
   remote_machine,
 )
@@ -965,10 +966,14 @@ state:       {state}
         self.wait(client, args, new_uuid)
 
     def do_kill_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
-        bundle_spec = parser.parse_args(argv).bundle_spec
-        client = self.manager.current_client()
-        client.kill(bundle_spec)
+        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]', nargs='*')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        args = parser.parse_args(argv)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        for bundle_spec in args.bundle_spec:
+            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
+            client.kill(bundle_uuid)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
@@ -1246,41 +1251,42 @@ state:       {state}
     # LocalBundleClient-only commands follow!
     #############################################################################
 
-    def do_cleanup_command(self, argv, parser):
-        # This command only works if client is a LocalBundleClient.
-        parser.parse_args(argv)
-        client = self.manager.current_client()
-        client.bundle_store.full_cleanup(client.model)
-
     def do_worker_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.
-        parser.add_argument('iterations', type=int, default=None, nargs='?')
-        parser.add_argument('sleep', type=int, help='Number of seconds to wait between successive polls', default=1, nargs='?')
-        parser.add_argument('--type', type=str, help="worker alias, defined in config.json", default=None, nargs='?')
+        parser.add_argument('--num-iterations', help="number of bundles to process before exiting", type=int, default=None)
+        parser.add_argument('--sleep-time', type=int, help='Number of seconds to wait between successive polls', default=1)
+        parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
+        parser.add_argument('-p', '--parallelism', type=int, help="number of bundles we can run at once", default=1)
         args = parser.parse_args(argv)
 
         # Figure out machine settings
         worker_config = self.manager.config['workers']
-        if args.type:
-            if args.type in worker_config:
-                config = worker_config[args.type]
-            else:
-                print '\'' + args.type + '\'' + \
-                      ' is not specified in your config file: ' + self.manager.config_path()
-                print 'Options are ' + str(map(str, worker_config.keys()))
-                print 'Omitting --type flag will run default local worker.'
-                return
+        if args.worker_type in worker_config:
+            config = worker_config[args.worker_type]
         else:
-            config = {'type': 'local'}
+            print '\'' + args.worker_type + '\'' + \
+                  ' is not specified in your config file: ' + self.manager.config_path()
+            print 'Options are ' + str(map(str, worker_config.keys()))
+            return
 
         if config['type'] == 'local':
-            machine = pool_machine.PoolMachine()
+            construct_func = lambda : local_machine.LocalMachine()
         elif config['type'] == 'remote':
-            machine = remote_machine.RemoteMachine(config['address'], config['user'], config['working_directory'])
+            construct_func = lambda : remote_machine.RemoteMachine(config['host'], config['user'], config['working_directory'], config['verbose'])
+        machine = pool_machine.PoolMachine(construct_func=construct_func, limit=args.parallelism)
 
         client = self.manager.current_client()
         worker = Worker(client.bundle_store, client.model, machine)
-        worker.run_loop(args.iterations, args.sleep)
+        worker.run_loop(args.num_iterations, args.sleep_time)
+
+    def do_cleanup_command(self, argv, parser):
+        # This command only works if client is a LocalBundleClient.
+        '''
+        Removes data hash directories which are not used by any bundle.
+        '''
+        parser.parse_args(argv)
+        client = self.manager.current_client()
+        client.bundle_store.full_cleanup(client.model)
 
     def do_reset_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.

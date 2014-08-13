@@ -21,7 +21,7 @@ class UploadedBundle(NamedBundle):
           'state': State.READY,
           'metadata': metadata,
           'dependencies': [],
-          'worker_command': None,
+          #'worker_command': None,
         }
         if uuid:
             row['uuid'] = uuid
