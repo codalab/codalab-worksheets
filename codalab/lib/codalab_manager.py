@@ -131,9 +131,14 @@ class CodaLabManager(object):
         '''
         Return the current session name.
         '''
+        if sys.platform == "darwin": # OSX
+            #TODO see if this affects the note below
+            return os.getenv('CODALAB_SESSION', str(os.getppid()))
+
         # If specified in the environment, then return that.
         session = os.getenv('CODALAB_SESSION')
-        if session: return session
+        if session:
+            return session
 
         # Otherwise, go up process hierarchy to the *highest up shell*.  This
         # way, it's easy to write scripts that have embedded 'cl' commands
@@ -142,8 +147,10 @@ class CodaLabManager(object):
         session = 'top'
         while process:
             # TODO: test this on Windows
-            if process.name in ('bash', 'csh', 'zsh'): session = str(process.pid)
+            if process.name in ('bash', 'csh', 'zsh'):
+                session = str(process.pid)
             process = process.parent()
+
         return session
 
     @cached
