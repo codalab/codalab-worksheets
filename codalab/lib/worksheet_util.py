@@ -259,7 +259,7 @@ def canonicalize_schema_item(args):
     elif len(args) == 3:
         return (args[0], args[1], args[2])
     else:
-        raise UsageError('Invalid number of arguments: %s' % value_obj)
+        raise UsageError('Invalid number of arguments: %s' % (args,))
 
 def canonicalize_schema_items(items):
     return [canonicalize_schema_item(item) for item in items]
