@@ -380,7 +380,7 @@ class BundleCLI(object):
         for bundle_type in UPLOADED_TYPES:
             bundle_subclass = get_bundle_subclass(bundle_type)
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -505,7 +505,7 @@ class BundleCLI(object):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='+')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         metadata_util.add_arguments(MakeBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -548,12 +548,22 @@ class BundleCLI(object):
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
 
     def do_run_command(self, argv, parser):
+        # Usually, the last argument is the command, but we use a special notation '---' to allow
+        # us to specify the command across multiple tokens.
+        #   key:target ... key:target "command_1 ... command_n"
+        #   <==>
+        #   key:target ... key:target --- command_1 ... command_n
+        try:
+            i = argv.index('---')
+            argv = argv[0:i] + [' '.join(argv[i+1:])]  # TODO: quote command properly
+        except:
+            pass
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='*')
         parser.add_argument('command', help='Command-line')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         self.add_wait_args(parser)
         metadata_util.add_arguments(RunBundle, set(), parser)
-        metadata_util.add_auto_argument(parser)
+        metadata_util.add_edit_argument(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -644,7 +654,6 @@ class BundleCLI(object):
 
     def do_ls_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT, nargs='?')
-        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
 
@@ -787,7 +796,6 @@ state:       {state}
 
     # Helper: shared between info and cat
     def print_target_info(self, client, target, decorate):
-        client = self.manager.current_client()
         info = client.get_target_info(target, 1)
         if 'type' not in info:
             self.exit('Target doesn\'t exist: %s/%s' % target)
@@ -821,8 +829,11 @@ state:       {state}
           action='store_true',
           help="print out the tail of the file or bundle and block until the bundle is done"
         )
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        target = self.parse_target(args.target_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
         (bundle_uuid, subpath) = target
 
         # Figure files to display
@@ -832,7 +843,7 @@ state:       {state}
                 subpaths = ['stdout', 'stderr']
             else:
                 subpaths = [subpath]
-        state = self.follow_targets(bundle_uuid, subpaths)
+        state = self.follow_targets(client, bundle_uuid, subpaths)
         if state != State.READY:
             self.exit(state)
 
@@ -902,7 +913,7 @@ state:       {state}
         '''
         parser.add_argument(
           'macro_name',
-          help='name of the macro (look for <macro_name>-in... and <macro_name>-out bundles)',
+          help='name of the macro (look for <macro_name>-in1, ..., and <macro_name>-out bundles)',
         )
         parser.add_argument(
           'bundles',
@@ -916,12 +927,8 @@ state:       {state}
         # next time we try to use the macro.
         if not args.name: args.name = 'new'
         # Reduce to the mimic case
-        if len(args.bundles) == 1:  # Macro only has one argument
-            args.bundles = [args.macro_name + '-in'] + \
-                           [args.macro_name + '-out'] + args.bundles
-        else:
-            args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
-                           [args.macro_name + '-out'] + args.bundles
+        args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
+                       [args.macro_name + '-out'] + args.bundles
         self.mimic(args)
 
     def add_mimic_args(self, parser):
