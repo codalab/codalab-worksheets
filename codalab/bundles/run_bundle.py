@@ -60,6 +60,7 @@ class RunBundle(NamedBundle):
           'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
+          'worker_command': None,
         })
 
     def get_hard_dependencies(self):
@@ -80,9 +81,5 @@ class RunBundle(NamedBundle):
             print 'Executing command: %s' % (command,)
             print 'In temp directory: %s' % (temp_dir,)
             with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
-                subprocess.check_call(command, stdout=stdout, stderr=stderr, shell=True)
-
-        # Re-install the dependencies as relative dependencies
-        self.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
-
-        return bundle_store.upload(temp_dir)
+                process = subprocess.Popen(command, stdout=stdout, stderr=stderr, shell=True)
+        return process

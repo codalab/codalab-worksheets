@@ -55,6 +55,12 @@ class State(object):
     OPTIONS = set([CREATED, STAGED, RUNNING, READY, FAILED])
     FINAL_STATES = set([READY, FAILED])
 
+class Command(object):
+    '''
+    An enumeration of commands the Client can send to a Worker
+    '''
+    KILL = 'kill'
+
 
 def precondition(condition, message):
     if not condition:

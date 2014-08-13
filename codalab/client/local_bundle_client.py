@@ -11,10 +11,11 @@ from codalab.bundles import (
     UPLOADED_TYPES,
 )
 from codalab.common import (
-    precondition,
-    State,
-    UsageError,
-    AuthorizationError,
+  precondition,
+  State,
+  UsageError,
+  AuthorizationError,
+  Command,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
@@ -171,6 +172,17 @@ class LocalBundleClient(BundleClient):
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
         return bundle.uuid
+
+    def kill(self, bundle_spec):
+        uuid = self.get_spec_uuid(bundle_spec)
+        bundle = self.model.get_bundle(uuid)
+        self.model.update_bundle(bundle, {'worker_command': Command.KILL});
+
+    def open_target(self, target):
+        (bundle_spec, subpath) = target
+        path = self.get_target_path(target)
+        path_util.check_isfile(path, 'open_target')
+        return open(path)
 
     def update_bundle_metadata(self, uuid, metadata):
         bundle = self.model.get_bundle(uuid)

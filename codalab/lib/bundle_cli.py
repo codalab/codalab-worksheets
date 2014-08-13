@@ -37,8 +37,12 @@ from codalab.lib import (
   canonicalize,
   formatting
 )
-from codalab.objects.worker import Worker
 from codalab.objects.worksheet import Worksheet
+from codalab.objects.work_manager import Worker
+from codalab.machines import (
+  pool_machine,
+  remote_machine,
+)
 
 class BundleCLI(object):
     DESCRIPTIONS = {
@@ -58,6 +62,7 @@ class BundleCLI(object):
       'mimic': 'Creates a set of bundles based on analogy with another set.',
       'macro': 'Use mimicry to simulate macros.',
       # Commands for worksheets.
+      'kill': 'Instruct the worker to terminate a running bundle.',
       'new': 'Create a new worksheet and make it the current one.',
       'add': 'Append a bundle to a worksheet.',
       'work': 'Set the current instance/worksheet.',
@@ -959,6 +964,12 @@ state:       {state}
             worksheet_uuid, args.depth, args.shadow)
         self.wait(client, args, new_uuid)
 
+    def do_kill_command(self, argv, parser):
+        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]')
+        bundle_spec = parser.parse_args(argv).bundle_spec
+        client = self.manager.current_client()
+        client.kill(bundle_spec)
+
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################
@@ -1245,9 +1256,30 @@ state:       {state}
         # This command only works if client is a LocalBundleClient.
         parser.add_argument('iterations', type=int, default=None, nargs='?')
         parser.add_argument('sleep', type=int, help='Number of seconds to wait between successive polls', default=1, nargs='?')
+        parser.add_argument('--type', type=str, help="worker alias, defined in config.json", default=None, nargs='?')
         args = parser.parse_args(argv)
+
+        # Figure out machine settings
+        worker_config = self.manager.config['workers']
+        if args.type:
+            if args.type in worker_config:
+                config = worker_config[args.type]
+            else:
+                print '\'' + args.type + '\'' + \
+                      ' is not specified in your config file: ' + self.manager.config_path()
+                print 'Options are ' + str(map(str, worker_config.keys()))
+                print 'Omitting --type flag will run default local worker.'
+                return
+        else:
+            config = {'type': 'local'}
+
+        if config['type'] == 'local':
+            machine = pool_machine.PoolMachine()
+        elif config['type'] == 'remote':
+            machine = remote_machine.RemoteMachine(config['address'], config['user'], config['working_directory'])
+
         client = self.manager.current_client()
-        worker = Worker(client.bundle_store, client.model)
+        worker = Worker(client.bundle_store, client.model, machine)
         worker.run_loop(args.iterations, args.sleep)
 
     def do_reset_command(self, argv, parser):
