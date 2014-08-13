@@ -43,7 +43,7 @@ bundle_metadata = Table(
   Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
   Column('metadata_key', String(63), nullable=False),
   Column('metadata_value', Text, nullable=False),
-  Index('metadata_kv_index', 'metadata_key', 'metadata_value', mysql_length=255),
+  Index('metadata_kv_index', 'metadata_key', 'metadata_value', mysql_length=63),
   sqlite_autoincrement=True,
 )
 

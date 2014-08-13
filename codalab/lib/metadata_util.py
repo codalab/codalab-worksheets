@@ -41,15 +41,11 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
             )
 
 
-def add_auto_argument(parser):
-    '''
-    Adds a --auto argument that will skip showing the editor to request any
-    unspecified metadata values.
-    '''
+def add_edit_argument(parser):
     parser.add_argument(
-      '-a', '--auto',
+      '-e', '--edit',
       action='store_true',
-      help="use metadata defaults and don't show an editor",
+      help="show an editor to allow changing the metadata information",
     )
 
 
@@ -73,8 +69,9 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
             new_initial_metadata[spec.key] = default
     initial_metadata = new_initial_metadata
 
-    # If the --auto flag was used, skip showing the editor.
-    if getattr(args, 'auto', False):
+    # If args.edit doesn't exist (when doing 'cl edit'), then we want to show
+    # the editor.
+    if not getattr(args, 'edit', True):
         return initial_metadata
 
     # Construct a form template with the required keys, prefilled with the
