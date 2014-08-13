@@ -13,9 +13,9 @@ from codalab.bundles import (
 from codalab.common import (
   precondition,
   State,
-  Command,
   UsageError,
   AuthorizationError,
+  Command,
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
@@ -183,34 +183,7 @@ class LocalBundleClient(BundleClient):
         path_util.check_isfile(path, 'open_target')
         return open(path)
 
-    def tail_file(self, target):
-        (bundle_spec, subpath) = target
-        file_handle = self.open_target(target)
-
-        with contextlib.closing(file_handle):
-            # Print last 10 lines
-            tail = file_util.tail(file_handle)
-            print tail
-
-            def read_line():
-                return file_handle.readline()
-
-            return self.watch(bundle_spec, [read_line])
-
-    def tail_bundle(self, bundle_spec):
-        out = self.open_target((bundle_spec, 'stdout'))
-        err = self.open_target((bundle_spec, 'stderr'))
-
-        with contextlib.closing(out), contextlib.closing(err):
-
-            def out_line():
-                return out.readline()
-            def err_line():
-                return err.readline()
-
-            return self.watch(bundle_spec, [out_line, err_line])
-
-    def edit(self, uuid, metadata):
+    def update_bundle_metadata(self, uuid, metadata):
         bundle = self.model.get_bundle(uuid)
         self.validate_user_metadata(bundle, metadata)
         self.model.update_bundle(bundle, {'metadata': metadata})
