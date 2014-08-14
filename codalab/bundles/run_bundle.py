@@ -33,7 +33,7 @@ class RunBundle(NamedBundle):
 
     METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True))
     METADATA_SPECS.append(MetadataSpec('memory', long, 'amount of memory (bytes) used by this run', generated=True))
-    
+
     @classmethod
     def construct(cls, targets, command, metadata, uuid=None, data_hash=None, state=State.CREATED):
         if not uuid: uuid = spec_util.generate_uuid()
@@ -60,6 +60,7 @@ class RunBundle(NamedBundle):
           'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
+          'owner_id': 0 #FDC CHAGNE
           #'worker_command': None,
         })
 
