@@ -324,9 +324,19 @@ def interpret_items(schemas, items):
                     'bundle_info': bundle_info
                 })
         elif mode == 'image':
-            new_items.append((mode, args[0]))
+            bundle_info = bundle_infos if len(bundle_infos) else None
+            new_items.append({
+                'mode': mode,
+                'interpreted': args[0],
+                'bundle_info': bundle_info
+            })
         elif mode == 'html':
-            new_items.append((mode, args[0]))
+            bundle_info = bundle_infos if len(bundle_infos) else None
+            new_items.append({
+                'mode': mode,
+                'interpreted': args[0],
+                'bundle_info': bundle_info
+            })
         elif mode == 'record':
             # display record schema =>
             # key1: value1
