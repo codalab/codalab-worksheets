@@ -45,6 +45,7 @@ class BundleTest(unittest.TestCase):
       state=self.state,
       metadata=metadata,
       dependencies=[],
+      owner_id=0,
       #worker_command=self.worker_command,
     )
 
@@ -58,7 +59,7 @@ class BundleTest(unittest.TestCase):
       if column == 'uuid':
         expected_value = uuid or getattr(bundle, column)
       else:
-        expected_value = getattr(self, column)
+        expected_value = getattr(bundle, column)
       self.assertEqual(getattr(bundle, column), expected_value)
 
   def test_columns(self):
