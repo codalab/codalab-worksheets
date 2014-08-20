@@ -24,7 +24,7 @@ the service, as well as supporting competitions.
 1. Make sure you have the dependencies (Python 2.7 and virtualenv).  If you're running Ubuntu:
 
         sudo apt-get install python2.7 python2.7-dev python-virtualenv
-    
+
 2. Clone the CodaLab repository:
 
         git clone https://github.com/codalab/codalab-cli
@@ -82,7 +82,7 @@ You can change your CodaLab settings here:
 
 Now let's walk through a simple example to demonstrate the capabilities of
 CodaLab.  The goal is to sort a file.
-   
+
 ### Uploading bundles
 
 Uploading means transferring information from the filesystem into a CodaLab
@@ -301,7 +301,7 @@ a large CodaLab system with many users, names are not unique, not even within
 the same worksheet.  A *bundle_spec* refers to the string that identifies a
 bundle, importantly given the context (instance, current worksheet).
 
-There are finally a number of other ways to 
+There are finally a number of other ways to
 
 - UUID (`0x3739691aef9f4b07932dc68f7db82de2`): this should match at most one
   bundle.
@@ -445,7 +445,65 @@ Bundle hierarchy:
 To run tests on the code, first install the libraries for testing:
 
     codalab_env/bin/pip install mock nose
-    
+
 Then run all the tests:
 
     codalab_env/bin/nosetests
+
+## Database migrations
+
+Migrations are handled with [Alembic](http://alembic.readthedocs.org/en/latest/).
+
+If you are planning to add a migration, please check whether:
+
+* You have a fresh DB with no migrations, or
+* You have already done a migration and wish to add/upgrade to another.
+
+By running this command:
+
+    codalab_env/bin/alembic current
+
+If you have a migration, it will show you your last migration (head).  (In this
+case it's `341ee10697f1`.)
+
+    INFO  [alembic.migration] Context impl SQLiteImpl.
+    INFO  [alembic.migration] Will assume non-transactional DDL.
+    Current revision for sqlite:////Users/Dave/.codalab/bundle.db: 531ace385q2 -> 341ee10697f1 (head), name of migration
+
+If the DB has no migrations and is all set, the output will be:
+
+    INFO  [alembic.migration] Context impl SQLiteImpl.
+    INFO  [alembic.migration] Will assume non-transactional DDL.
+    Current revision for sqlite:////Users/Dave/.codalab/bundle.db: None
+
+##### You have a fresh DB with no migrations.
+
+Simply stamp your current to head and add your migration:
+
+    codalab_env/bin/alembic stamp head
+
+##### You have already done a migration and wish to upgrade to another.
+
+    codalab_env/bin/alembic upgrade head
+
+[TODO write about edge cases]
+
+### Adding a new migration
+
+Add your change to the table in `tables.py`.
+
+Add your migration:
+
+     codalab_env/bin/alembic revision -m "<your commit message here>" --autogenerate
+
+This will handle most use cases but **check the file it generates**.
+
+If it is not correct please see the [Alembic
+Docs](http://alembic.readthedocs.org/en/latest/tutorial.html#create-a-migration-script)
+for more information on the migration script.
+
+Make sure you also update COLUMNS in the correct ORM object (e.g., `objects/worksheet.py`).
+
+Finally upgrade to your migration:
+
+     codalab_env/bin/alembic upgrade head

@@ -21,6 +21,7 @@ class UploadedBundle(NamedBundle):
           'state': State.READY,
           'metadata': metadata,
           'dependencies': [],
+          'owner_id': 0 #FDC CHAGNE'
           #'worker_command': None,
         }
         if uuid:
