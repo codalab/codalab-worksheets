@@ -395,7 +395,7 @@ Install the MySQL server.  On Ubuntu, run:
 
 Install the MySQL Python:
 
-    codalab_env/bin/pip install MySQL-python
+    venv/bin/pip install MySQL-python
 
 In the configuration file `.codalab/config.json`,
 change `"class": "SQLiteModel"` to
@@ -423,7 +423,7 @@ When you do this, the database schema might have changed, and you need to
 perform a *database migration*.  To be on the safe side, first backup your
 database.  Then run:
 
-    codalab_env/bin/alembic upgrade head
+    venv/bin/alembic upgrade head
 
 ## Authentication
 
@@ -456,11 +456,11 @@ Bundle hierarchy:
 
 To run tests on the code, first install the libraries for testing:
 
-    codalab_env/bin/pip install mock nose
+    venv/bin/pip install mock nose
 
 Then run all the tests:
 
-    codalab_env/bin/nosetests
+    venv/bin/nosetests
 
 ## Database migrations
 
@@ -473,7 +473,7 @@ If you are planning to add a migration, please check whether:
 
 By running this command:
 
-    codalab_env/bin/alembic current
+    venv/bin/alembic current
 
 If you have a migration, it will show you your last migration (head).  (In this
 case it's `341ee10697f1`.)
@@ -492,11 +492,11 @@ If the DB has no migrations and is all set, the output will be:
 
 Simply stamp your current to head and add your migration:
 
-    codalab_env/bin/alembic stamp head
+    venv/bin/alembic stamp head
 
 ##### You have already done a migration and wish to upgrade to another.
 
-    codalab_env/bin/alembic upgrade head
+    venv/bin/alembic upgrade head
 
 [TODO write about edge cases]
 
@@ -508,7 +508,7 @@ Simply stamp your current to head and add your migration:
 
 3. Add a migration:
 
-      codalab_env/bin/alembic revision -m "<your commit message here>" --autogenerate
+      venv/bin/alembic revision -m "<your commit message here>" --autogenerate
 
 This will handle most use cases but **check the file it generates**.  If it is
 not correct please see the [Alembic
@@ -517,4 +517,4 @@ for more information on the migration script.
 
 4. Upgrade to your migration (modifies the underlying database):
 
-     codalab_env/bin/alembic upgrade head
+     venv/bin/alembic upgrade head
