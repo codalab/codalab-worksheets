@@ -450,61 +450,59 @@ Then run all the tests:
 
     codalab_env/bin/nosetests
 
-## Database
+## Database migrations
 
-By default the local cl runs off sqlite database. It can also run off mysql. You can change this in your `~/.codalab/config.json` file.
+Migrations are handled with [Alembic](http://alembic.readthedocs.org/en/latest/).
 
-Migrations are handeled with [Alembic](http://alembic.readthedocs.org/en/latest/)
+If you are planning to add a migration, please check whether:
 
-
-If you are planing to add a migration please check your current db status it is either.
-
-* You have a fresh db with no migrations
+* You have a fresh DB with no migrations, or
 * You have already done a migration and wish to add/upgrade to another.
 
-How to check for which path to follow:
+By running this command:
 
-    $  codalab_env/bin/alembic current
-    *** output something like this
+    codalab_env/bin/alembic current
+
+If you have a migration, it will show you your last migration (head).  (In this
+case it's `341ee10697f1`.)
 
     INFO  [alembic.migration] Context impl SQLiteImpl.
     INFO  [alembic.migration] Will assume non-transactional DDL.
     Current revision for sqlite:////Users/Dave/.codalab/bundle.db: 531ace385q2 -> 341ee10697f1 (head), name of migration
 
-    or
+If the DB has no migrations and is all set, the output will be:
 
     INFO  [alembic.migration] Context impl SQLiteImpl.
     INFO  [alembic.migration] Will assume non-transactional DDL.
     Current revision for sqlite:////Users/Dave/.codalab/bundle.db: None
 
-The **top** one is when you have a migration it will show you your last migration (head) in this case it's `341ee10697f1`
+##### You have a fresh DB with no migrations.
 
-The **bottom** case is when your db has no migrations and has everything it needs.
-
-##### If you have a fresh db with no migrations
-This is the easiest. Simply stamp your current to head and add you migration:
+Simply stamp your current to head and add your migration:
 
     codalab_env/bin/alembic stamp head
-
 
 ##### You have already done a migration and wish to upgrade to another.
 
     codalab_env/bin/alembic upgrade head
 
-  [TODO write about edge cases]
+[TODO write about edge cases]
+
 ### Adding a new migration
 
-Add your change to the table in `tables.py`
+Add your change to the table in `tables.py`.
 
-add your migration:
+Add your migration:
 
      codalab_env/bin/alembic revision -m "<your commit message here>" --autogenerate
 
-will handle most use cases but **check the file it generates**.
+This will handle most use cases but **check the file it generates**.
 
-If it is not correct please see the [Alembic Docs](http://alembic.readthedocs.org/en/latest/tutorial.html#create-a-migration-script) for more info on the  migration script.
+If it is not correct please see the [Alembic
+Docs](http://alembic.readthedocs.org/en/latest/tutorial.html#create-a-migration-script)
+for more information on the migration script.
 
-Make sure you also update COLUMNS in the correct ORM object.
+Make sure you also update COLUMNS in the correct ORM object (e.g., `objects/worksheet.py`).
 
 Finally upgrade to your migration:
 
