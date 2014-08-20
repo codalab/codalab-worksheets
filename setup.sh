@@ -22,7 +22,7 @@ fi
 
 echo "=== Install Python packages into $env..."
 
-$env/bin/pip install sqlalchemy pyyaml psutil || exit 1
+$env/bin/pip install sqlalchemy alembic pyyaml psutil || exit 1
 
 echo
 

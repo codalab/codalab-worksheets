@@ -413,6 +413,18 @@ If you already have data in SQLite, you can load it into MySQL as follows:
     python scripts/sqlite_to_mysql.py < bundles.sqlite > bundles.mysql 
     mysql -u codalab -p codalab_bundles < bundles.mysql
 
+## Updating CodaLab
+
+To update to the newest version of CodaLab, run:
+
+    git pull
+
+When you do this, the database schema might have changed, and you need to
+perform a *database migration*.  To be on the safe side, first backup your
+database.  Then run:
+
+    codalab_env/bin/alembic upgrade head
+
 ## Authentication
 
 [TODO]
@@ -436,7 +448,7 @@ Bundle hierarchy:
       NamedBundle
         UploadedBundle
           ProgramBundle
-          DatsaetBundle
+          DatasetBundle
         MakeBundle [DerivedBundle]
         RunBundle [DerivedBundle]
 
@@ -490,20 +502,19 @@ Simply stamp your current to head and add your migration:
 
 ### Adding a new migration
 
-Add your change to the table in `tables.py`.
+1. Make modifications to the database schema in `tables.py`.
 
-Add your migration:
+2. Update COLUMNS in the corresponding ORM objects (e.g., `objects/worksheet.py`).
 
-     codalab_env/bin/alembic revision -m "<your commit message here>" --autogenerate
+3. Add a migration:
 
-This will handle most use cases but **check the file it generates**.
+      codalab_env/bin/alembic revision -m "<your commit message here>" --autogenerate
 
-If it is not correct please see the [Alembic
+This will handle most use cases but **check the file it generates**.  If it is
+not correct please see the [Alembic
 Docs](http://alembic.readthedocs.org/en/latest/tutorial.html#create-a-migration-script)
 for more information on the migration script.
 
-Make sure you also update COLUMNS in the correct ORM object (e.g., `objects/worksheet.py`).
-
-Finally upgrade to your migration:
+4. Upgrade to your migration (modifies the underlying database):
 
      codalab_env/bin/alembic upgrade head
