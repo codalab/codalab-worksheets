@@ -173,9 +173,10 @@ class LocalBundleClient(BundleClient):
             self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
         return bundle.uuid
 
-    def kill(self, bundle_uuid):
-        bundle = self.model.get_bundle(bundle_uuid)
-        self.model.update_bundle(bundle, {'worker_command': Command.KILL});
+    def kill_bundles(self, bundle_uuids):
+        # TODO: batch this
+        for bundle_uuid in bundle_uuids:
+            self.model.add_bundle_action(bundle_uuid, Command.KILL)
 
     def open_target(self, target):
         (bundle_spec, subpath) = target

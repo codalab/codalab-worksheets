@@ -60,8 +60,7 @@ class RunBundle(NamedBundle):
           'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
-          'owner_id': 0 #FDC CHAGNE
-          #'worker_command': None,
+          'owner_id': 0,
         })
 
     def get_hard_dependencies(self):

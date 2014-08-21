@@ -21,8 +21,7 @@ class UploadedBundle(NamedBundle):
           'state': State.READY,
           'metadata': metadata,
           'dependencies': [],
-          'owner_id': 0 #FDC CHAGNE'
-          #'worker_command': None,
+          'owner_id': 0
         }
         if uuid:
             row['uuid'] = uuid

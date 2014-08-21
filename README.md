@@ -191,11 +191,15 @@ depends on `sort-run`.  To delete both bundles, you can remove recursively:
 
 You can also include the bundle references in your run command, which might be more natural:
 
-    cl run :sort.py input:a.txt 'python %sort.py% < %a.txt% > output' --name sort-run
+    cl run 'python %sort.py% < %a.txt% > output' --name sort-run
+    cl run 'python %:sort.py% < %:a.txt% > output' --name sort-run
+    cl run 'python %arg1:sort.py% < %arg2:a.txt% > output' --name sort-run
 
 This is equivalent to running:
 
     cl run 1:sort.py 2:a.txt 'python 1 < 2 > output' --name sort-run
+    cl run :sort.py :a.txt 'python sort.py < a.txt > output' --name sort-run
+    cl run arg1:sort.py arg2:a.txt 'python arg1 < arg2 > output' --name sort-run
 
 ### Macros
 
@@ -395,7 +399,7 @@ Install the MySQL server.  On Ubuntu, run:
 
 Install the MySQL Python:
 
-    codalab_env/bin/pip install MySQL-python
+    venv/bin/pip install MySQL-python
 
 In the configuration file `.codalab/config.json`,
 change `"class": "SQLiteModel"` to
@@ -412,6 +416,23 @@ If you already have data in SQLite, you can load it into MySQL as follows:
     sqlite3 ~/.codalab/bundle.db .dump > bundles.sqlite
     python scripts/sqlite_to_mysql.py < bundles.sqlite > bundles.mysql 
     mysql -u codalab -p codalab_bundles < bundles.mysql
+
+Once you set up your database, run the following so that future migrations
+start from the right place:
+
+    venv/bin/alembic stamp head
+
+## Updating CodaLab
+
+To update to the newest version of CodaLab, run:
+
+    git pull
+
+When you do this, the database schema might have changed, and you need to
+perform a *database migration*.  To be on the safe side, first backup your
+database.  Then run:
+
+    venv/bin/alembic upgrade head
 
 ## Authentication
 
@@ -436,7 +457,7 @@ Bundle hierarchy:
       NamedBundle
         UploadedBundle
           ProgramBundle
-          DatsaetBundle
+          DatasetBundle
         MakeBundle [DerivedBundle]
         RunBundle [DerivedBundle]
 
@@ -444,11 +465,11 @@ Bundle hierarchy:
 
 To run tests on the code, first install the libraries for testing:
 
-    codalab_env/bin/pip install mock nose
+    venv/bin/pip install mock nose
 
 Then run all the tests:
 
-    codalab_env/bin/nosetests
+    venv/bin/nosetests
 
 ## Database migrations
 
@@ -461,7 +482,7 @@ If you are planning to add a migration, please check whether:
 
 By running this command:
 
-    codalab_env/bin/alembic current
+    venv/bin/alembic current
 
 If you have a migration, it will show you your last migration (head).  (In this
 case it's `341ee10697f1`.)
@@ -480,30 +501,29 @@ If the DB has no migrations and is all set, the output will be:
 
 Simply stamp your current to head and add your migration:
 
-    codalab_env/bin/alembic stamp head
+    venv/bin/alembic stamp head
 
 ##### You have already done a migration and wish to upgrade to another.
 
-    codalab_env/bin/alembic upgrade head
+    venv/bin/alembic upgrade head
 
 [TODO write about edge cases]
 
 ### Adding a new migration
 
-Add your change to the table in `tables.py`.
+1. Make modifications to the database schema in `tables.py`.
 
-Add your migration:
+2. If necessary, update COLUMNS in the corresponding ORM objects (e.g., `objects/worksheet.py`).
 
-     codalab_env/bin/alembic revision -m "<your commit message here>" --autogenerate
+3. Add a migration:
 
-This will handle most use cases but **check the file it generates**.
+      venv/bin/alembic revision -m "<your commit message here>" --autogenerate
 
-If it is not correct please see the [Alembic
+This will handle most use cases but **check the file it generates**.  If it is
+not correct please see the [Alembic
 Docs](http://alembic.readthedocs.org/en/latest/tutorial.html#create-a-migration-script)
 for more information on the migration script.
 
-Make sure you also update COLUMNS in the correct ORM object (e.g., `objects/worksheet.py`).
+4. Upgrade to your migration (modifies the underlying database):
 
-Finally upgrade to your migration:
-
-     codalab_env/bin/alembic upgrade head
+     venv/bin/alembic upgrade head

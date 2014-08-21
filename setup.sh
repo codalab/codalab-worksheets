@@ -12,20 +12,21 @@ if ! which virtualenv; then
 fi
 echo
 
-env=`dirname $0`/codalab_env
+env=`dirname $0`/venv
 
 if [ ! -e $env ]; then
   echo "=== Setup a Python virtual environment (in $env)..."
-  virtualenv -p /usr/bin/python2.7 $env --no-site-packages || exit 1
+  virtualenv -p /usr/bin/python2.7 $env || exit 1
   echo
 fi
 
 echo "=== Install Python packages into $env..."
+$env/bin/pip install sqlalchemy alembic pyyaml psutil || exit 1
 
-$env/bin/pip install sqlalchemy pyyaml psutil || exit 1
+echo "=== Initializing the database..."
+$env/bin/alembic stamp head
 
 echo
-
 echo "=== Add the following line to your .bashrc to put CodaLab in your path:"
 echo
 echo "  export PATH=\$PATH:$PWD/codalab/bin"

@@ -971,9 +971,10 @@ state:       {state}
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuids = []
         for bundle_spec in args.bundle_spec:
-            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
-            client.kill(bundle_uuid)
+            bundle_uuids.append(client.get_bundle_uuid(worksheet_uuid, bundle_spec))
+        client.kill_bundles(bundle_uuids)
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
