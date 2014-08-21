@@ -15,12 +15,13 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.create_table('bundle_action',
-        sa.Column('id', sa.Integer()),
-        sa.Column('bundle_uuid', sa.String(length=63), nullable=False),
-        sa.Column('action', sa.String(length=63), nullable=False),
-        sa.PrimaryKeyConstraint('id')
-    )
+    pass
+    #op.create_table('bundle_action',
+    #    sa.Column('id', sa.Integer()),
+    #    sa.Column('bundle_uuid', sa.String(length=63), nullable=False),
+    #    sa.Column('action', sa.String(length=63), nullable=False),
+    #    sa.PrimaryKeyConstraint('id')
+    #)
 
 def downgrade():
     op.drop_table('bundle_action')
