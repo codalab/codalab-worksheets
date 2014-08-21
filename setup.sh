@@ -21,11 +21,12 @@ if [ ! -e $env ]; then
 fi
 
 echo "=== Install Python packages into $env..."
-
 $env/bin/pip install sqlalchemy alembic pyyaml psutil || exit 1
 
-echo
+echo "=== Initializing the database..."
+$env/bin/alembic stamp head
 
+echo
 echo "=== Add the following line to your .bashrc to put CodaLab in your path:"
 echo
 echo "  export PATH=\$PATH:$PWD/codalab/bin"

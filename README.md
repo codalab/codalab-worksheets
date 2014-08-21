@@ -191,11 +191,15 @@ depends on `sort-run`.  To delete both bundles, you can remove recursively:
 
 You can also include the bundle references in your run command, which might be more natural:
 
-    cl run :sort.py input:a.txt 'python %sort.py% < %a.txt% > output' --name sort-run
+    cl run 'python %sort.py% < %a.txt% > output' --name sort-run
+    cl run 'python %:sort.py% < %:a.txt% > output' --name sort-run
+    cl run 'python %arg1:sort.py% < %arg2:a.txt% > output' --name sort-run
 
 This is equivalent to running:
 
     cl run 1:sort.py 2:a.txt 'python 1 < 2 > output' --name sort-run
+    cl run :sort.py :a.txt 'python sort.py < a.txt > output' --name sort-run
+    cl run arg1:sort.py arg2:a.txt 'python arg1 < arg2 > output' --name sort-run
 
 ### Macros
 
@@ -412,6 +416,11 @@ If you already have data in SQLite, you can load it into MySQL as follows:
     sqlite3 ~/.codalab/bundle.db .dump > bundles.sqlite
     python scripts/sqlite_to_mysql.py < bundles.sqlite > bundles.mysql 
     mysql -u codalab -p codalab_bundles < bundles.mysql
+
+Once you set up your database, run the following so that future migrations
+start from the right place:
+
+    venv/bin/alembic stamp head
 
 ## Updating CodaLab
 
