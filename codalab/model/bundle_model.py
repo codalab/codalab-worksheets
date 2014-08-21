@@ -32,6 +32,7 @@ from codalab.model.tables import (
     bundle as cl_bundle,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
+    bundle_action as cl_bundle_action,
     group as cl_group,
     group_object_permission as cl_group_object_permission,
     GROUP_OBJECT_PERMISSION_ALL,
@@ -349,6 +350,20 @@ class BundleModel(object):
                         bundle.update_in_memory(update)
                 return success
         return True
+
+    def add_bundle_action(self, uuid, action):
+        with self.engine.begin() as connection:
+            connection.execute(cl_bundle_action.insert().values({"bundle_uuid": uuid, "action": action}))
+
+    def add_bundle_actions(self, bundle_actions):
+        with self.engine.begin() as connection:
+            self.do_multirow_insert(connection, cl_bundle_action, bundle_actions)
+
+    def pop_bundle_actions(self):
+        with self.engine.begin() as connection:
+            results = connection.execute(cl_bundle_action.select()).fetchall()  # Get the actions
+            connection.execute(cl_bundle_action.delete())  # Delete all actions
+            return [x for x in results]
 
     def save_bundle(self, bundle):
         '''

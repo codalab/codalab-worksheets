@@ -129,36 +129,20 @@ class Worker(object):
         '''
         For bundles that need to be killed, tell the machine to kill it.
         '''
-        return False  # TODO: remove this when worker_command is enabled
-        bundles = self.model.batch_get_bundles(worker_command=Command.KILL)
-        for bundle in bundles:
-            uuid = bundle.uuid
-            if not self.machine.kill_bundle(uuid):
-                self.pretty_print('Kill command for %s failed: bundle isn\'t running ' % uuid)
-            self.model.update_bundle(bundle, {'worker_command': None})
-        return len(bundles) > 0
-
-    #def make_bundle(self, bundle, parent_dict):
-    #    '''
-    #    For MakeBundles, we just prepare it in one-shot (no need for separate start and finialize steps).
-    #    '''
-    #    # Create a temporary directory as a staging area.
-    #    temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
-    #    path_util.make_directory(temp_dir)
-
-    #    # If the make bundle's targets are [('', target)], then treat this
-    #    # bundle as directly pointing to target rather than having a field that
-    #    # points to target.
-    #    if any(not dep.child_path for dep in bundle.dependencies):
-    #        message = '%s has keyed and anonymous targets!' % (bundle,),
-    #        precondition(len(bundle.dependencies) == 1, message)
-    #        temp_dir = os.path.join(temp_dir, 'anonymous_link')
-
-    #    bundle.install_dependencies(bundle_store, parent_dict, temp_dir, relative_symlinks=True)
-    #    try:
-    #        (data_hash, metadata) = self.bundle_store.upload(temp_dir)
-    #    except Exception:
-    #        (data_hash, metadata) = (None, {})
+        bundle_actions = self.model.pop_bundle_actions()
+        if self.verbose >= 2: print 'bundle_actions:', bundle_actions
+        keep_bundle_actions = []
+        for x in bundle_actions:
+            # TODO: generalize this to other commands
+            processed = False
+            if x.action == Command.KILL:
+                if self.machine.kill_bundle(x.bundle_uuid):
+                    processed = True
+            if not processed:
+                keep_bundle_actions.append(x)
+        if len(keep_bundle_actions) > 0:
+            self.model.add_bundle_actions(keep_bundle_actions)
+        return len(bundle_actions) - len(keep_bundle_actions) > 0
 
     def finalize_bundle(self, result):
         (bundle, success, temp_dir) = result

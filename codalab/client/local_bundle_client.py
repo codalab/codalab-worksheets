@@ -174,8 +174,7 @@ class LocalBundleClient(BundleClient):
         return bundle.uuid
 
     def kill(self, bundle_uuid):
-        bundle = self.model.get_bundle(bundle_uuid)
-        self.model.update_bundle(bundle, {'worker_command': Command.KILL});
+        self.model.add_bundle_action(bundle_uuid, Command.KILL)
 
     def open_target(self, target):
         (bundle_spec, subpath) = target

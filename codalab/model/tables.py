@@ -35,7 +35,7 @@ bundle = Table(
   sqlite_autoincrement=True,
 )
 
-# Includes things like name.
+# Includes things like name, description, etc.
 bundle_metadata = Table(
   'bundle_metadata',
   db_metadata,
@@ -47,6 +47,7 @@ bundle_metadata = Table(
   sqlite_autoincrement=True,
 )
 
+# For each child_uuid, we have: key = child_path, target = (parent_uuid, parent_path)
 bundle_dependency = Table(
   'bundle_dependency',
   db_metadata,
@@ -55,6 +56,16 @@ bundle_dependency = Table(
   Column('child_path', Text, nullable=False),
   Column('parent_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
   Column('parent_path', Text, nullable=False),
+  sqlite_autoincrement=True,
+)
+
+# Stores actions sent from the client to the worker.
+bundle_action = Table(
+  'bundle_action',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
+  Column('action', String(63), nullable=False),
   sqlite_autoincrement=True,
 )
 

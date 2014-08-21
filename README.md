@@ -504,7 +504,7 @@ Simply stamp your current to head and add your migration:
 
 1. Make modifications to the database schema in `tables.py`.
 
-2. Update COLUMNS in the corresponding ORM objects (e.g., `objects/worksheet.py`).
+2. If necessary, update COLUMNS in the corresponding ORM objects (e.g., `objects/worksheet.py`).
 
 3. Add a migration:
 
