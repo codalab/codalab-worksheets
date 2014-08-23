@@ -293,7 +293,19 @@ class BundleCLI(object):
             command_fn(remaining_args, parser)
         else:
             try:
-                return command_fn(remaining_args, parser)
+                # Profiling (off by default)
+                if False:
+                    import hotshot, hotshot.stats
+                    prof_path = 'codalab.prof'
+                    prof = hotshot.Profile(prof_path)
+                    prof.runcall(command_fn, remaining_args, parser)
+                    prof.close()
+                    stats = hotshot.stats.load(prof_path)
+                    #stats.strip_dirs()
+                    stats.sort_stats('time', 'calls')
+                    stats.print_stats(20)
+                else:
+                    command_fn(remaining_args, parser)
             except PermissionError:
                 self.exit("You do not have sufficient permissions to execute this command.")
             except UsageError, e:
