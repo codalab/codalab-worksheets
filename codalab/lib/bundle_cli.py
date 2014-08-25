@@ -445,7 +445,8 @@ class BundleCLI(object):
         # Download first to a local location path.
         local_path, temp_path = client.download_target(target, True)
         path_util.copy(local_path, final_path, follow_symlinks=True)
-        if temp_path: path_util.remove(temp_path)
+        if temp_path:
+          path_util.remove(temp_path)
         print 'Downloaded %s(%s) to %s.' % (bundle_uuid, info['metadata']['name'], final_path)
 
     def do_cp_command(self, argv, parser):
