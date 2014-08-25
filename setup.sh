@@ -21,7 +21,23 @@ if [ ! -e $env ]; then
 fi
 
 echo "=== Install Python packages into $env..."
-$env/bin/pip install sqlalchemy alembic pyyaml psutil || exit 1
+$env/bin/pip install sqlalchemy alembic pyyaml || exit 1
+
+( # try
+    $env/bin/pip install psutil || exit 1
+) || ( # catch
+    echo
+    echo "  psutil failed to install"
+    echo "This is most likely happening because of missing python-dev"
+    echo "If you are using Ubuntu, run the following to install:"
+    echo
+    echo "  sudo apt-get install python-dev"
+    echo
+    exit 3
+)
+if [ $? = 3 ]; then
+  exit
+fi
 
 echo "=== Initializing the database..."
 $env/bin/alembic stamp head
