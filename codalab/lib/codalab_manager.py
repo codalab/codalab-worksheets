@@ -131,10 +131,6 @@ class CodaLabManager(object):
         '''
         Return the current session name.
         '''
-        if sys.platform == "darwin": # OSX
-            #TODO see if this affects the note below
-            return os.getenv('CODALAB_SESSION', str(os.getppid()))
-
         # If specified in the environment, then return that.
         session = os.getenv('CODALAB_SESSION')
         if session:
@@ -145,11 +141,13 @@ class CodaLabManager(object):
         # which modify the current session.
         process = psutil.Process(os.getppid())
         session = 'top'
-        while process:
+        max_depth = 10
+        while process and max_depth:
             # TODO: test this on Windows
-            if process.name in ('bash', 'csh', 'zsh'):
+            if process.name() in ('bash', 'csh', 'zsh'):
                 session = str(process.pid)
             process = process.parent()
+            max_depth = max_depth - 1
 
         return session
 
