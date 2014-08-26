@@ -51,7 +51,7 @@ import tempfile
 import yaml
 
 from codalab.common import UsageError
-from codalab.lib import path_util, canonicalize, formatting
+from codalab.lib import path_util, canonicalize, formatting, editor_util
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -165,21 +165,9 @@ def request_lines(worksheet_info, client):
     template_lines = get_worksheet_lines(worksheet_info)
     template = os.linesep.join(template_lines) + os.linesep
 
-    # Show the form to the user in their editor of choice.
-    editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
-    tempfile_name = ''
-    with tempfile.NamedTemporaryFile(suffix='.md', delete=False) as form:
-        form.write(template)
-        form.flush()
-        tempfile_name = form.name
-    if os.path.isfile(tempfile_name):
-        subprocess.call([editor, tempfile_name])
-        with open(tempfile_name, 'rb') as form:
-            lines = form.readlines()
-        path_util.remove(tempfile_name)
-    else:
+    lines = editor_util.open_and_edit(suffix='.md', template=template)
+    if not lines:
         lines = template_lines
-
     # Process the result
     form_result = [line.rstrip() for line in lines]
     if form_result == template_lines:

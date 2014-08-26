@@ -14,7 +14,7 @@ import tempfile
 
 from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
-from codalab.lib import path_util
+from codalab.lib import path_util, editor_util
 
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
@@ -92,17 +92,7 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
     template = os.linesep.join(template_lines)
 
     # Show the form to the user in their editor of choice and parse the result.
-    editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
-    tempfile_name = ''
-    with tempfile.NamedTemporaryFile(suffix='.c', delete=False) as form:
-        form.write(template)
-        form.flush()
-        tempfile_name = form.name
-    if os.path.isfile(tempfile_name):
-        subprocess.call([editor, tempfile_name])
-        with open(tempfile_name, 'rb') as form:
-            form_result = form.readlines()
-        path_util.remove(tempfile_name)
+    form_result = editor_util.open_and_edit(suffix='.c', template=template)
     return parse_metadata_form(bundle_subclass, form_result)
 
 def parse_metadata_form(bundle_subclass, form_result):

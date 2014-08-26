@@ -68,6 +68,7 @@ class CodaLabManager(object):
         if not os.path.exists(config_path):
             write_pretty_json({
                 'cli': {'verbose': 1},
+                'editor': None,
                 'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800,
                     'auth': {'class': 'MockAuthHandler'}, 'verbose': 1},
                 'aliases': {
