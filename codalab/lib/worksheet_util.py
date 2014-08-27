@@ -51,7 +51,7 @@ import tempfile
 import yaml
 
 from codalab.common import UsageError
-from codalab.lib import path_util, canonicalize, formatting
+from codalab.lib import path_util, canonicalize, formatting, editor_util
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -165,21 +165,9 @@ def request_lines(worksheet_info, client):
     template_lines = get_worksheet_lines(worksheet_info)
     template = os.linesep.join(template_lines) + os.linesep
 
-    # Show the form to the user in their editor of choice.
-    editor = os.environ.get('EDITOR', 'notepad' if sys.platform == 'win32' else 'vim')
-    tempfile_name = ''
-    with tempfile.NamedTemporaryFile(suffix='.md', delete=False) as form:
-        form.write(template)
-        form.flush()
-        tempfile_name = form.name
-    if os.path.isfile(tempfile_name):
-        subprocess.call([editor, tempfile_name])
-        with open(tempfile_name, 'rb') as form:
-            lines = form.readlines()
-        path_util.remove(tempfile_name)
-    else:
+    lines = editor_util.open_and_edit(suffix='.md', template=template)
+    if not lines:
         lines = template_lines
-
     # Process the result
     form_result = [line.rstrip() for line in lines]
     if form_result == template_lines:
@@ -210,7 +198,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
             return (None, string_to_tokens(m.group(1)), TYPE_DIRECTIVE)
 
         return (None, line, TYPE_MARKUP)
-        
+
     result = []
     for line in form_result:
         if line.startswith('//'):  # Comments
@@ -269,7 +257,7 @@ def apply_func(func, arg):
         return func(arg)
     except:
         # Can't apply the function, so just return the arg.
-        return arg 
+        return arg
 
 def get_default_schemas():
     created = ['created', 'created', formatting.time_str]
@@ -309,20 +297,34 @@ def interpret_items(schemas, items):
         '''
         if len(bundle_infos) == 0: return
         # Print out the curent bundles somehow
-        mode = current_display[0] 
+        mode = current_display[0]
         args = current_display[1:]
         if mode == 'hidden':
             pass
         elif mode == 'inline' or mode == 'contents':
             for bundle_info in bundle_infos:
-                data = interpret_genpath(bundle_info, args[0])
-                if not data:
+                interpreted = interpret_genpath(bundle_info, args[0])
+                if not interpreted:
                     raise UsageError('Invalid argument to display %s: %s in the context of bundle %s (file required)' % (mode, args[0], bundle_info['uuid']))
-                new_items.append((mode, data))
+                new_items.append({
+                    'mode': mode,
+                    'interpreted':interpreted,
+                    'bundle_info': bundle_info
+                })
         elif mode == 'image':
-            new_items.append((mode, args[0]))
+            bundle_info = bundle_infos if len(bundle_infos) else None
+            new_items.append({
+                'mode': mode,
+                'interpreted': args[0],
+                'bundle_info': bundle_info
+            })
         elif mode == 'html':
-            new_items.append((mode, args[0]))
+            bundle_info = bundle_infos if len(bundle_infos) else None
+            new_items.append({
+                'mode': mode,
+                'interpreted': args[0],
+                'bundle_info': bundle_info
+            })
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -333,8 +335,15 @@ def interpret_items(schemas, items):
                 header = ('key', 'value')
                 rows = []
                 for (name, genpath, post) in schema:
-                    rows.append({'key': name + ':', 'value': apply_func(post, interpret_genpath(bundle_info, genpath))})
-                new_items.append((mode, (header, rows)))
+                    rows.append({
+                        'key': name + ':',
+                        'value': apply_func( post, interpret_genpath(bundle_info, genpath))
+                    })
+                new_items.append({
+                    'mode':mode,
+                    'interpreted':(header, rows),
+                    'bundle_info': bundle_info
+                })
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -345,19 +354,28 @@ def interpret_items(schemas, items):
             rows = []
             for bundle_info in bundle_infos:
                 rows.append({name : apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
-            new_items.append((mode, (header, rows)))
+            new_items.append({
+                    "mode":mode,
+                    'interpreted':(header, rows),
+                    'bundle_info': bundle_info
+                })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
 
-    for (bundle_info, value_obj, type) in items:
-        if type == TYPE_BUNDLE:
+
+    for (bundle_info, value_obj, item_type) in items:
+        if item_type == TYPE_BUNDLE:
             bundle_infos.append(bundle_info)
-        elif type == TYPE_MARKUP:
+        elif item_type == TYPE_MARKUP:
             flush()
-            new_items.append((TYPE_MARKUP, value_obj))
+            new_items.append({
+                    'mode':TYPE_MARKUP,
+                    'interpreted': value_obj,
+                    'bundle_info': bundle_info
+                })
             pass
-        elif type == TYPE_DIRECTIVE:
+        elif item_type == TYPE_DIRECTIVE:
             flush()
             if len(value_obj) == 0: continue
             command = value_obj[0]
@@ -367,7 +385,7 @@ def interpret_items(schemas, items):
                 name = value_obj[1]
                 schemas[name] = current_schema = []
             elif command == 'add':
-                # genpath | name genpath | name genpath 
+                # genpath | name genpath | name genpath
                 schema_item = canonicalize_schema_item(value_obj[1:])
                 current_schema.append(schema_item)
             elif command == 'display':
@@ -376,14 +394,17 @@ def interpret_items(schemas, items):
                 keywords = value_obj[1:]
                 mode = command
                 data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
-                new_items.append((mode, data))
+                new_items.append({
+                        'mode': TYPE_DIRECTIVE,
+                        'interpreted': data,
+                        'bundle_info': bundle_info
+                    })
             elif command == '%' or command == '':  # Comment
                 pass
             else:
                 raise UsageError('Unknown command: %s' % command)
     flush()
     result['items'] = new_items
-    #print result
     return result
 
 def lookup_targets(client, value):

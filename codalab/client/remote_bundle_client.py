@@ -176,7 +176,7 @@ class RemoteBundleClient(BundleClient):
         file_util.copy(source, out)
         self.close_target_handle(source)
 
-    def download_target(self, target, follow_symlinks):
+    def download_target(self, target, follow_symlinks, return_zip=False):
         # Create remote zip file, download to local zip file
         (fd, zip_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
         os.close(fd)
@@ -186,9 +186,13 @@ class RemoteBundleClient(BundleClient):
             with contextlib.closing(source):
                 file_util.copy(source, dest, autoflush=False, print_status=True)
         self.finalize_file(source_uuid, True)  # Delete remote zip file
-
         # Unpack the local zip file
         container_path = tempfile.mkdtemp()
+        if return_zip:
+            return zip_path, container_path
         result_path = zip_util.unzip(zip_path, container_path)
         path_util.remove(zip_path)  # Delete local zip file
+
         return (result_path, container_path)
+
+

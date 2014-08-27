@@ -457,7 +457,8 @@ class BundleCLI(object):
         # Download first to a local location path.
         local_path, temp_path = client.download_target(target, True)
         path_util.copy(local_path, final_path, follow_symlinks=True)
-        if temp_path: path_util.remove(temp_path)
+        if temp_path:
+          path_util.remove(temp_path)
         print 'Downloaded %s(%s) to %s.' % (bundle_uuid, info['metadata']['name'], final_path)
 
     def do_cp_command(self, argv, parser):
@@ -499,7 +500,7 @@ class BundleCLI(object):
 
         source_desc = "%s(%s)" % (source_bundle_uuid, source_client.get_bundle_info(source_bundle_uuid)['metadata']['name'])
         if not bundle:
-            print "Copying %s..." % source_desc 
+            print "Copying %s..." % source_desc
 
             # Download from source
             source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
@@ -509,7 +510,7 @@ class BundleCLI(object):
             print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
             if temp_path: path_util.remove(temp_path)
         else:
-            print "%s already exists on destination client" % source_desc 
+            print "%s already exists on destination client" % source_desc
 
             # Just need to add it to the worksheet
             dest_client.add_worksheet_item(dest_worksheet_uuid, (source_bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
@@ -768,7 +769,7 @@ class BundleCLI(object):
                 parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))
             return '%s:\n%s\n' % (label, '\n'.join(lines))
-             
+
         if info['hard_dependencies']:
             deps = info['hard_dependencies']
             if len(deps) == 1 and not deps[0]['child_path']:
@@ -778,7 +779,7 @@ class BundleCLI(object):
         elif info['dependencies']:
             deps = info['dependencies']
             fields['dependencies'] = display_dependencies('dependencies', deps)
-             
+
         # Compute a nicely-formatted failure message, if this bundle failed.
         # It is possible for bundles that are not failed to have failure messages:
         # for example, if a bundle is killed in the database after running for too
@@ -954,7 +955,7 @@ state:       {state}
         parser.add_argument('-s', '--shadow', action='store_true', help="add the newly created bundles right after the old bundles that are being mimicked")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         self.add_wait_args(parser)
-    
+
     def mimic(self, args):
         '''
         Use args.bundles to generate a mimic call to the BundleClient.
@@ -1088,7 +1089,7 @@ state:       {state}
                     command.extend(['--worksheet_spec', spec])
                 print '=== Executing: %s' % ' '.join(command)
                 self.do_command(command)
-                
+
 
     def do_print_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help=self.GLOBAL_SPEC_FORMAT, nargs='?')
@@ -1107,9 +1108,12 @@ state:       {state}
 
     def display_interpreted(self, client, worksheet_info, interpreted):
         title = interpreted.get('title')
-        if title: print '[[', title, ']]'
+        if title:
+            print '[[', title, ']]'
         is_last_newline = False
-        for mode, data in interpreted['items']:
+        for item in interpreted['items']:
+            mode = item['mode']
+            data = item['interpreted']
             is_newline = (data == '')
             if mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
