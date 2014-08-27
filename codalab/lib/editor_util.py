@@ -11,7 +11,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 def is_installed(name):
     try:
         devnull = open(os.devnull)
-        subprocess.Popen([name], stdout=devnull, stderr=devnull).communicate()
+        subprocess.Popen([name], stdout=devnull, stderr=devnull)
     except OSError as e:
         if e.errno == os.errno.ENOENT:
             return False
