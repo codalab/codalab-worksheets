@@ -293,7 +293,19 @@ class BundleCLI(object):
             command_fn(remaining_args, parser)
         else:
             try:
-                return command_fn(remaining_args, parser)
+                # Profiling (off by default)
+                if False:
+                    import hotshot, hotshot.stats
+                    prof_path = 'codalab.prof'
+                    prof = hotshot.Profile(prof_path)
+                    prof.runcall(command_fn, remaining_args, parser)
+                    prof.close()
+                    stats = hotshot.stats.load(prof_path)
+                    #stats.strip_dirs()
+                    stats.sort_stats('time', 'calls')
+                    stats.print_stats(20)
+                else:
+                    command_fn(remaining_args, parser)
             except PermissionError:
                 self.exit("You do not have sufficient permissions to execute this command.")
             except UsageError, e:
@@ -541,13 +553,15 @@ class BundleCLI(object):
     def add_wait_args(self, parser):
         parser.add_argument('-W', '--wait', action='store_true', help='Wait until run finishes')
         parser.add_argument('-t', '--tail', action='store_true', help='Wait until run finishes, displaying output')
+        parser.add_argument('-v', '--verbose', action='store_true', help='Display verbose output')
     def wait(self, client, args, uuid):
         if args.wait:
             state = self.follow_targets(client, uuid, [])
             self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
         if args.tail:
             state = self.follow_targets(client, uuid, ['stdout', 'stderr'])
-            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+            if args.verbose:
+                self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
 
     def do_run_command(self, argv, parser):
         # Usually, the last argument is the command, but we use a special notation '---' to allow
@@ -864,10 +878,6 @@ state:       {state}
         max_period = 60.0
         info = None
         while True:
-            # Update bundle info
-            info = client.get_bundle_info(bundle_uuid)
-            if info['state'] in (State.READY, State.FAILED): break
-
             # Call update functions
             change = False
             for i, handle in enumerate(handles):
@@ -885,10 +895,15 @@ state:       {state}
                     sys.stdout.write(result)
             sys.stdout.flush()
 
+            # Update bundle info
+            info = client.get_bundle_info(bundle_uuid)
+            if info['state'] in (State.READY, State.FAILED): break
+
             # Sleep if nothing happened
             if not change:
                 time.sleep(period)
                 period = min(backoff*period, max_period)
+
         for handle in handles:
             if not handle: continue
             # Read the remainder of the file
@@ -897,6 +912,7 @@ state:       {state}
                 if result == '': break
                 sys.stdout.write(result)
             client.close_target_handle(handle)
+
         return info['state']
 
     def do_mimic_command(self, argv, parser):
