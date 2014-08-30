@@ -890,7 +890,7 @@ state:       {state}
                     handle.seek(pos, 0)
                 # Read from that file
                 while True:
-                    result = handle.readline()
+                    result = handle.read(16384)
                     if result == '': break
                     change = True
                     sys.stdout.write(result)
@@ -909,7 +909,7 @@ state:       {state}
             if not handle: continue
             # Read the remainder of the file
             while True:
-                result = handle.readline()
+                result = handle.read(16384)
                 if result == '': break
                 sys.stdout.write(result)
             client.close_target_handle(handle)
