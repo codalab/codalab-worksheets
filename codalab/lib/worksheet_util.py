@@ -295,7 +295,7 @@ def canonicalize_schema_item(args):
         return (os.path.basename(args[0]).split(":")[-1], args[0], None)
     elif len(args) == 2:  # name genpath
         return (args[0], args[1], None)
-    elif len(args) == 3:  # name genpath postprocessing
+    elif len(args) == 3:  # name genpath post-processing
         return (args[0], args[1], args[2])
     else:
         raise UsageError('Invalid number of arguments: %s' % (args,))
@@ -307,17 +307,20 @@ def apply_func(func, arg):
     '''
     Apply post-processing function |func| to |arg|.
     |func| is a string representing a list of functions (which are to be
-    applied to |arg| in succession).  Each function is either 'time', 'size'
-    for special formatting, or '%...' for sprintf style formatting or
-    s/... for regular expression substitution.
+    applied to |arg| in succession).  Each function is either:
+    - 'time', 'size' for special formatting
+    - '%...' for sprintf style formatting
+    - s/... for regular expression substitution
+    - [a:b] for taking substrings
     '''
+    FUNC_DELIM = ' | '
     if func == None: return arg
     if isinstance(arg, tuple):
         # tuples are (bundle_uuid, genpath) which have not been fleshed out
         return arg + (func,)
     try:
         # String encoding of a function: size s/a/b
-        for f in func.split(" "):
+        for f in func.split(FUNC_DELIM):
             if f == 'date':
                 arg = formatting.date_str(arg)
             elif f == 'duration':
@@ -326,9 +329,17 @@ def apply_func(func, arg):
                 arg = formatting.size_str(arg)
             elif f.startswith('%'):
                 arg = (f % float(arg)) if arg else ''
-            elif f.startswith('s/'):
+            elif f.startswith('s/'):  # regular expression
                 _, s, t = f.split("/")
                 arg = re.sub(s, t, arg)
+            elif f.startswith('['):  # substring
+                m = re.match('\[(.*):(.*)\]', f)
+                if m:
+                    start = int(m.group(1) or 0)
+                    end = int(m.group(2) or -1)
+                    arg = arg[start:end]
+                else:
+                    return '<invalid function: %s>' % f
             else:
                 return '<invalid function: %s>' % f
         return arg

@@ -453,7 +453,7 @@ class LocalBundleClient(BundleClient):
         responses = []
         for (bundle_uuid, genpath, post) in requests:
             value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath)
-            #print bundle_uuid, genpath, value
+            #print 'interpret_file_genpaths', bundle_uuid, genpath, value
             value = worksheet_util.apply_func(post, value)
             responses.append(value)
         return responses
