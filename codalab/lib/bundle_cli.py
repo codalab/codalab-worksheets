@@ -181,7 +181,7 @@ class BundleCLI(object):
         else:
             bundle_spec, subpath = target_spec, ''
         # Resolve the bundle_spec to a particular bundle_uuid.
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
+        bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
     def parse_key_targets(self, client, worksheet_uuid, items):
@@ -418,7 +418,7 @@ class BundleCLI(object):
         if not args.base and args.base_use_default_name:
             args.base = os.path.basename(args.path[0]) # Use default name
         if args.base:
-            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.base)
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.base)
             info = client.get_bundle_info(bundle_uuid)
             metadata = info['metadata']
         metadata = metadata_util.request_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
@@ -445,7 +445,7 @@ class BundleCLI(object):
         bundle_uuid, subpath = target
 
         # Copy into desired directory.
-        info = client.get_bundle_info(bundle_uuid)
+        info = worksheet_util.get_bundle_info(client, bundle_uuid)
         if args.output_dir:
             local_dir = args.output_dir
         else:
@@ -473,7 +473,7 @@ class BundleCLI(object):
         (source_client, source_spec) = self.parse_spec(args.bundle_spec)
         # worksheet_uuid is only applicable if we're on the source client
         if source_client != client: worksheet_uuid = None
-        source_bundle_uuid = source_client.get_bundle_uuid(worksheet_uuid, source_spec)
+        source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -599,7 +599,7 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
+        bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
         if args.name:
@@ -636,7 +636,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
-        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
+        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
         deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive)
         for uuid in deleted_uuids: print uuid
 
@@ -708,7 +708,7 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
+        bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid, args.children)
 
         def wrap(string): return '=== ' + string + ' ==='
@@ -963,7 +963,7 @@ state:       {state}
         '''
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, spec) for spec in args.bundles]
+        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundles]
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -991,7 +991,7 @@ state:       {state}
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = []
         for bundle_spec in args.bundle_spec:
-            bundle_uuids.append(client.get_bundle_uuid(worksheet_uuid, bundle_spec))
+            bundle_uuids.append(worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec))
         client.kill_bundles(bundle_uuids)
 
     #############################################################################
@@ -1029,7 +1029,7 @@ state:       {state}
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         for spec in args.bundle_spec:
-            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, spec)
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec)
             client.add_worksheet_item(worksheet_uuid, (bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
         if args.message != None:
             if args.message.startswith('%'):

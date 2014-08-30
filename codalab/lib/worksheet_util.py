@@ -49,7 +49,7 @@ import tempfile
 import yaml
 
 from codalab.common import UsageError
-from codalab.lib import path_util, canonicalize, formatting, editor_util
+from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -129,7 +129,7 @@ def get_worksheet_lines(worksheet_info):
 // For example, you can define a schema for a table and then set the display mode to using that schema:
 // %% schema s1
 // %% add name
-// %% add /stats:errorRate %.3f
+// %% add /stats:errorRate %%.3f
 // %% add time
 // %% display table s1
 // %% {run1}
@@ -174,6 +174,20 @@ def request_lines(worksheet_info, client):
         raise UsageError('No change made; aborting')
     return form_result
 
+
+def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
+    '''
+    Return the bundle_uuid corresponding to bundle_spec.
+    Important difference from client.get_bundle_uuid: if bundle_spec is already
+    a uuid, then just return it directly.  This avoids an extra call to the
+    client.
+    '''
+    if spec_util.UUID_REGEX.match(bundle_spec):
+        bundle_uuid = bundle_spec
+    else:  # Already uuid, don't need to look up specification
+        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
+    return bundle_uuid
+
 def parse_worksheet_form(form_result, client, worksheet_uuid):
     '''
     Input: form_result is a list of lines.
@@ -186,8 +200,8 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         m = BUNDLE_REGEX.match(line)
         if m:
             try:
-                bundle_uuid = client.get_bundle_uuid(worksheet_uuid, m.group(3))
-                bundle_info = client.get_bundle_info(bundle_uuid)
+                bundle_uuid = get_bundle_uuid(client, worksheet_uuid, m.group(3))
+                bundle_info = {'uuid': bundle_uuid}  # info doesn't need anything other than uuid
                 bundle_uuids.append(bundle_uuid)
                 return (bundle_info, None, TYPE_BUNDLE)
             except UsageError, e:

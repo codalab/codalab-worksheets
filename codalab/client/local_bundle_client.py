@@ -413,11 +413,6 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def update_worksheet(self, worksheet_info, new_items):
-        # Convert (bundle_spec, value, type) pairs into canonical (bundle_uuid, value, type) pairs.
-        # This step could take O(n) database calls! However, it will only hit the
-        # database for each bundle the user has newly specified by name - bundles
-        # that were already in the worksheet will be referred to by uuid, so
-        # get_bundle_uuid will be an in-memory call for these. This hit is acceptable.
         worksheet_uuid = worksheet_info['uuid']
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
