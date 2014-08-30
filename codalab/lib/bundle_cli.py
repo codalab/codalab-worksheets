@@ -217,6 +217,7 @@ class BundleCLI(object):
                 cell = row_dict.get(col)
                 func = post_funcs.get(col)
                 if func: cell = worksheet_util.apply_func(func, cell)
+                if cell == None: cell = ''
                 row.append(cell)
             rows.append(row)
 

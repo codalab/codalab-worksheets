@@ -314,11 +314,11 @@ def apply_func(func, arg):
     - [a:b] for taking substrings
     '''
     FUNC_DELIM = ' | '
-    if func == None: return arg
     if isinstance(arg, tuple):
         # tuples are (bundle_uuid, genpath) which have not been fleshed out
         return arg + (func,)
     try:
+        if func == None: return arg
         # String encoding of a function: size s/a/b
         for f in func.split(FUNC_DELIM):
             if f == 'date':
