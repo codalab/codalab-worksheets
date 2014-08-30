@@ -982,6 +982,7 @@ state:       {state}
             old_inputs, old_output, new_inputs, args.name,
             worksheet_uuid, args.depth, args.shadow)
         self.wait(client, args, new_uuid)
+        print new_uuid
 
     def do_kill_command(self, argv, parser):
         parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]', nargs='*')
@@ -991,7 +992,9 @@ state:       {state}
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = []
         for bundle_spec in args.bundle_spec:
-            bundle_uuids.append(worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec))
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
+            bundle_uuids.append(bundle_uuid)
+            print bundle_uuid
         client.kill_bundles(bundle_uuids)
 
     #############################################################################
@@ -1119,7 +1122,9 @@ state:       {state}
             if mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
                     if mode == 'inline':
-                        print '[' + str(worksheet_util.lookup_targets(client, data)) + ']'
+                        if isinstance(data, tuple):
+                            data = client.interpret_file_genpaths([data])[0]
+                        print '[' + str(data) + ']'
                     elif mode == 'contents':
                         self.print_target_info(client, data, decorate=True)
                     else:
@@ -1154,7 +1159,7 @@ state:       {state}
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image':
                 # Placeholder
-                print '[' + mode + ' ' + worksheet_util.lookup_targets(client, data) + ']'
+                print '[' + mode + ' ' + str(data) + ']'
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 self.display_interpreted(client, worksheet_info, search_interpreted)

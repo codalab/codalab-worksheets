@@ -12,7 +12,7 @@ def size_str(size):
     '''
     if size == None: return None
     for unit in ('', 'K', 'M', 'G'):
-        if size < 100:
+        if size < 100 and size != int(size):
             return '%.1f%s' % (size, unit)
         if size < 1024:
             return '%d%s' % (size, unit)

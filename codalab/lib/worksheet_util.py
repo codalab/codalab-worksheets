@@ -412,10 +412,10 @@ def interpret_items(schemas, items):
                     if not genpath.startswith('/'):
                         raise UsageError('Invalid genpath: %s' % genpath)
                     # Strip off the beginning '/' since targets by convention do not have '/'
-                    target = (bundle_uuid, genpath[1:])
+                    interpreted = (bundle_uuid, genpath[1:])
                 new_items.append({
                     'mode': mode,
-                    'interpreted': target,
+                    'interpreted': interpreted,
                     'bundle_info': bundle_info
                 })
         elif mode == 'record':
