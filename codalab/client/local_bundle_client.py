@@ -444,6 +444,20 @@ class LocalBundleClient(BundleClient):
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.delete_worksheet(uuid)
 
+    def interpret_file_genpaths(self, requests):
+        '''
+        requests: list of (bundle_uuid, genpath, post-processing-func)
+        Return responses: corresponding list of strings
+        '''
+        target_cache = {}
+        responses = []
+        for (bundle_uuid, genpath, post) in requests:
+            value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath)
+            #print bundle_uuid, genpath, value
+            value = worksheet_util.apply_func(post, value)
+            responses.append(value)
+        return responses
+
     #############################################################################
     # Commands related to groups and permissions follow!
     #############################################################################

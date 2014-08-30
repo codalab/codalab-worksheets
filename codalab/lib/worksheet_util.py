@@ -4,7 +4,7 @@ worksheet_util contains the following public functions:
 - parse_worksheet_form: takes those lines and generates a set of items (triples)
 - interpret_items: takes those triples and returns a structure that interprets all the directives in the worksheet item.
 
-A worksheet contains a list of items, where each item includes
+A worksheet contains a list of (worksheet) items, where each item includes
 - bundle_uuid (only used if type == bundle)
 - value (used for text and directive)
 - type: one of the following:
@@ -13,34 +13,33 @@ A worksheet contains a list of items, where each item includes
   * directive: special instructions for determining formatting
 This is the representation in the DB.
 In the code, we have full items of the form (bundle_info, value_obj, type).
+In other words, there are two representations of worksheet items:
+- (bundle_uuid, value, type) [inserted into the database]
+- (bundle_info, value_obj, type) [used in the code]
 
-The value of a directive can be parsed into a sequence of tokens, where the first token determines the type.
-Types of directives:
+The value of a directive can be parsed into a sequence of tokens, where the
+first token determines the type.  Types of directives:
 % title <title text>
 %
 % schema <schema name>
 % addschema <schema name>
-% add <field name> <genpath> <post-processing>
+% add <field name> <genpath (e.g., /stats:errorRate)> <post-processing>
 %
 %% this is a comment
 % display hidden
-% display inline <genpath (e.g., stats/errorRate)>
-% display contents <genpath (e.g., stats/things)>
-% display image <genpath (e.g., graph.png)>
-% display html <genpath (e.g., test.html)>
+% display inline <genpath (e.g., /stats:errorRate)>
+% display contents <genpath (e.g., /out.txt)>
+% display image <genpath (e.g., /graph.png)>
+% display html <genpath (e.g., /test.html)>
 % display record <schema name>
 % display table <schema name>
 %
 % search <keywords>
 
 A genpath (generalized path) is either:
-- a bundle field (e.g., command)
-- a metadata field (e.g., name)
-- a normal path, but can descend into a YAML file (e.g., /stats:train/errorRate)
-
-There are two representations of worksheet items:
-- (bundle_uuid, value, type) [inserted into the database]
-- (bundle_info, value_obj, type) [used in the code]
+- a bundle field (e.g., 'command')
+- a metadata field (e.g., 'name')
+- a path (starts with '/'), but can descend into a YAML file (e.g., /stats:train/errorRate)
 '''
 import os
 import re
@@ -102,6 +101,8 @@ def string_to_tokens(s):
         while i < len(s) and s[i] == ' ': i += 1
     return tokens
 
+############################################################
+
 def convert_item_to_db(item):
     (bundle_info, value_obj, type) = item
     bundle_uuid = bundle_info['uuid'] if bundle_info else None
@@ -121,14 +122,14 @@ def get_worksheet_lines(worksheet_info):
 // - Directives (%% title|schema|add|display)
 //   * title "Place title here"
 //   * schema <schema name>
-//   * add <descriptor> | add <key name> <value source>
+//   * add <descriptor> | add <key name> <value source> [post processing]
 //   * display hidden
 //   * display inline|contents|image|html <value source>
 //   * display record|table <schema name>
 // For example, you can define a schema for a table and then set the display mode to using that schema:
 // %% schema s1
 // %% add name
-// %% add command
+// %% add /stats:errorRate %.3f
 // %% add time
 // %% display table s1
 // %% {run1}
@@ -215,8 +216,9 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
 def interpret_genpath(bundle_info, genpath):
     '''
     This function is called in the first server call to a BundleClient to
-    quickly interpret the genpaths that only require looking bundle_info
-    (cheap).
+    quickly interpret the genpaths (generalized path) that only require looking
+    bundle_info (e.g., 'time', 'command').  The interpretation of generalized
+    paths that require reading files is done by interpret_file_genpath.
     '''
     if genpath == 'dependencies':
         return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
@@ -231,14 +233,64 @@ def interpret_genpath(bundle_info, genpath):
     # If genpath is referring to a file, then just returns instructions for
     # fetching that file rather than actually doing it.
     if genpath.startswith('/'):
-        return (bundle_info['uuid'], genpath[1:])
+        return (bundle_info['uuid'], genpath)
 
     # Either bundle info or metadata
     value = bundle_info.get(genpath, None)
     if not value: value = bundle_info['metadata'].get(genpath, None)
     return value or ''
 
+def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
+    '''
+    |client|: used to read files
+    |cache| is a mapping from target (bundle_uuid, subpath) to the info map,
+    which is to be read/written to avoid reading/parsing the same file many
+    times.
+    |genpath| specifies the subpath and various fields (e.g., for
+    /stats:train/errorRate, subpath = 'stats', key = 'train/errorRate').
+    Return the string value.
+    '''
+    MAX_LINES = 1000  # Maximum number of lines we need to read from a file.
+
+    # Load the file
+    if not genpath.startswith('/'):
+        raise UsageError('Not file genpath: %s' % genpath)
+    genpath = genpath[1:]
+    if ':' in genpath:  # Looking for a particular key in the file
+        subpath, key = genpath.split(':')
+    else:
+        subpath, key = genpath, None
+    target = (bundle_uuid, subpath)
+    if target not in target_cache:
+        #print 'LOAD', target
+        contents = client.head_target(target, MAX_LINES)
+        if contents != None:
+            if all('\t' in x for x in contents):
+                # Tab-separated file (key\tvalue\nkey\tvalue...)
+                info = {}
+                for x in contents:
+                    kv = x.strip().split("\t", 1)
+                    if len(kv) == 2: info[kv[0]] = kv[1]
+            else:
+                # YAML file
+                info = yaml.load('\n'.join(contents))
+        else:
+            info = None
+        target_cache[target] = info
+
+    # Traverse the info object.
+    info = target_cache.get(target, None)
+    if key and info:
+        for k in key.split('/'):
+            info = info.get(k, None) if isinstance(info, dict) else None
+            if info == None: break
+    return info
+
 def canonicalize_schema_item(args):
+    '''
+    Users who type in schema items can specify a partial argument list.
+    Return the canonicalize version (a triple).
+    '''
     if len(args) == 1:  # genpath
         return (os.path.basename(args[0]).split(":")[-1], args[0], None)
     elif len(args) == 2:  # name genpath
@@ -253,12 +305,16 @@ def canonicalize_schema_items(items):
 
 def apply_func(func, arg):
     '''
+    Apply post-processing function |func| to |arg|.
     |func| is a string representing a list of functions (which are to be
     applied to |arg| in succession).  Each function is either 'time', 'size'
     for special formatting, or '%...' for sprintf style formatting or
     s/... for regular expression substitution.
     '''
     if func == None: return arg
+    if isinstance(arg, tuple):
+        # tuples are (bundle_uuid, genpath) which have not been fleshed out
+        return arg + (func,)
     try:
         # String encoding of a function: size s/a/b
         for f in func.split(" "):
@@ -269,7 +325,7 @@ def apply_func(func, arg):
             elif f == 'size':
                 arg = formatting.size_str(arg)
             elif f.startswith('%'):
-                arg = f % arg
+                arg = (f % float(arg)) if arg else ''
             elif f.startswith('s/'):
                 _, s, t = f.split("/")
                 arg = re.sub(s, t, arg)
@@ -297,10 +353,11 @@ def get_default_schemas():
 def interpret_items(schemas, items):
     '''
     schemas: initial mapping from name to list of schema items (columns of a table)
-    items: list of worksheet items to interpret
+    items: list of worksheet items (triples) to interpret
     Return a list of items, where each item is either:
     - ('markup'|'inline'|'contents', string)
-    - ('record'|'table', (col1, col2), [{col1:value1, col2:value2}, ...])
+    - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
+      where value is either a string (already rendered) or a (bundle_uuid, genpath, post) tuple
     - ('image'|'html', genpath)
     - ('search', [keyword, ...])
     '''
@@ -374,10 +431,11 @@ def interpret_items(schemas, items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
+                row = {}
                 rows.append({name : apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append({
                     "mode":mode,
-                    'interpreted':(header, rows),
+                    'interpreted': (header, rows),
                     'bundle_info': bundle_info
                 })
         else:
@@ -391,7 +449,7 @@ def interpret_items(schemas, items):
         elif item_type == TYPE_MARKUP:
             flush()
             new_items.append({
-                    'mode':TYPE_MARKUP,
+                    'mode': TYPE_MARKUP,
                     'interpreted': value_obj,
                     'bundle_info': bundle_info
                 })
@@ -430,50 +488,18 @@ def interpret_items(schemas, items):
     result['items'] = new_items
     return result
 
-def lookup_targets(client, value):
-    '''
-    This is called upon second requests to the server to fetch information out of the
-    files.
-    '''
-    # TODO: currently, this is really inefficient since we are possibly reading
-    # the same file multiple times.  Make this more efficient!
-    if isinstance(value, tuple):
-        bundle_uuid, subpath = value
-        if ':' in subpath:
-            subpath, key = subpath.split(':')
-            contents = client.head_target((bundle_uuid, subpath), 50)
-            if contents == None: return ''
-            if all('\t' in x for x in contents): # Tab-separated file (key\tvalue\nkey\tvalue...)
-                info = {}
-                for x in contents:
-                    kv = x.strip().split("\t", 1)
-                    if len(kv) == 2: info[kv[0]] = kv[1]
-            else:  # Assume YAML file
-                info = yaml.load('\n'.join(contents))
-            if isinstance(info, dict):
-                for k in key.split('/'):
-                    info = info.get(k, None)
-                    if info == None: return ''
-            return info
-        else:
-            if subpath == '.': subpath = ''
-            contents = client.head_target((bundle_uuid, subpath), 1)
-            if contents == None: return ''
-            return contents[0].strip()
-    return value
-
 def interpret_search(client, worksheet_uuid, data):
     '''
     Input: specification of a search query.
     Output: worksheet items based on the result of issuing the search query.
     '''
-    # First, item determines the display
+    # First item determines the display
     items = [(None, ['display'] + data['display'], TYPE_DIRECTIVE)]
 
     # Next come the actual bundles
     bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'], 100, False)
     for bundle_uuid in bundle_uuids:
-        items.append((client.get_bundle_info(bundle_uuid), None, TYPE_BUNDLE) )
+        items.append((client.get_bundle_info(bundle_uuid), None, TYPE_BUNDLE))
 
     # Finally, interpret the items
     return interpret_items(data['schemas'], items)

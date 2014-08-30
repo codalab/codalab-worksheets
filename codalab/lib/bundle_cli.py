@@ -216,7 +216,7 @@ class BundleCLI(object):
             for col in columns:
                 cell = row_dict.get(col)
                 func = post_funcs.get(col)
-                if func: cell = func(cell)
+                if func: cell = worksheet_util.apply_func(func, cell)
                 row.append(cell)
             rows.append(row)
 
@@ -1124,8 +1124,32 @@ state:       {state}
                     else:
                         print data
             elif mode == 'record' or mode == 'table':
+                # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
-                contents = [{key : worksheet_util.lookup_targets(client, value) for key, value in row.items()} for row in contents]
+
+                # Request information
+                requests = []
+                for r, row in enumerate(contents):
+                    for key, value in row.items():
+                        # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
+                        if isinstance(value, tuple):
+                            requests.append(value)
+                responses = client.interpret_file_genpaths(requests)
+
+                # Put it in a table
+                new_contents = []
+                ri = 0
+                for r, row in enumerate(contents):
+                    new_row = {}
+                    for key, value in row.items():
+                        if isinstance(value, tuple):
+                            value = responses[ri]
+                            ri += 1
+                        new_row[key] = value
+                    new_contents.append(new_row)
+                contents = new_contents
+                    
+                # Print the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image':
                 # Placeholder
