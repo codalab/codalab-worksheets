@@ -12,8 +12,8 @@ def size_str(size):
             return '%d%s' % (size, unit)
         size /= 1024
 
-def time_str(ts):
-    return datetime.datetime.utcfromtimestamp(ts).isoformat().replace('T', ' ')
+def date_str(ts):
+    return datetime.datetime.fromtimestamp(ts).isoformat().replace('T', ' ')
 
 def duration_str(n):
     units = [60, 60, 24, 365, sys.maxint]

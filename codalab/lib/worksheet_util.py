@@ -19,9 +19,8 @@ Types of directives:
 % title <title text>
 %
 % schema <schema name>
-% <other schema name>
-% <field> <genpath> <post-processing>
-% endschema
+% addschema <schema name>
+% add <field name> <genpath> <post-processing>
 %
 %% this is a comment
 % display hidden
@@ -240,11 +239,11 @@ def interpret_genpath(bundle_info, genpath):
     return value or ''
 
 def canonicalize_schema_item(args):
-    if len(args) == 1:
-        return (os.path.basename(args[0]), args[0], lambda x : x)
-    elif len(args) == 2:
-        return (args[0], args[1], lambda x : x)
-    elif len(args) == 3:
+    if len(args) == 1:  # genpath
+        return (os.path.basename(args[0]).split(":")[-1], args[0], None)
+    elif len(args) == 2:  # name genpath
+        return (args[0], args[1], None)
+    elif len(args) == 3:  # name genpath postprocessing
         return (args[0], args[1], args[2])
     else:
         raise UsageError('Invalid number of arguments: %s' % (args,))
@@ -253,15 +252,39 @@ def canonicalize_schema_items(items):
     return [canonicalize_schema_item(item) for item in items]
 
 def apply_func(func, arg):
+    '''
+    |func| is a string representing a list of functions (which are to be
+    applied to |arg| in succession).  Each function is either 'time', 'size'
+    for special formatting, or '%...' for sprintf style formatting or
+    s/... for regular expression substitution.
+    '''
+    if func == None: return arg
     try:
-        return func(arg)
+        # String encoding of a function: size s/a/b
+        for f in func.split(" "):
+            print f
+            if f == 'date':
+                arg = formatting.date_str(arg)
+            elif f == 'duration':
+                arg = formatting.duration_str(float(arg)) if arg else ''
+            elif f == 'size':
+                arg = formatting.size_str(arg)
+            elif f.startswith('%'):
+                arg = f % arg
+            elif f.startswith('s/'):
+                _, s, t = f.split("/")
+                print "REPLACE", s, t
+                arg = re.sub(s, t, arg)
+            else:
+                return '<invalid function: %s>' % f
+        return arg
     except:
         # Can't apply the function, so just return the arg.
         return arg
 
 def get_default_schemas():
-    created = ['created', 'created', formatting.time_str]
-    data_size = ['data_size', 'data_size', formatting.size_str]
+    created = ['created', 'created', 'date']
+    data_size = ['data_size', 'data_size', 'size']
     schemas = {}
 
     schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, data_size, ['state']])
@@ -337,7 +360,7 @@ def interpret_items(schemas, items):
                 for (name, genpath, post) in schema:
                     rows.append({
                         'key': name + ':',
-                        'value': apply_func( post, interpret_genpath(bundle_info, genpath))
+                        'value': apply_func(post, interpret_genpath(bundle_info, genpath))
                     })
                 new_items.append({
                     'mode':mode,
@@ -384,8 +407,10 @@ def interpret_items(schemas, items):
             elif command == 'schema':
                 name = value_obj[1]
                 schemas[name] = current_schema = []
+            elif command == 'addschema':
+                name = value_obj[1]
+                current_schema += schemas[name]
             elif command == 'add':
-                # genpath | name genpath | name genpath
                 schema_item = canonicalize_schema_item(value_obj[1:])
                 current_schema.append(schema_item)
             elif command == 'display':

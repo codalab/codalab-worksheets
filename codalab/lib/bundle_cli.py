@@ -691,7 +691,7 @@ class BundleCLI(object):
                 print bundle_info['uuid']
         else:
             columns = ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
-            post_funcs = {'created': formatting.time_str, 'data_size': formatting.size_str}
+            post_funcs = {'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1}
             bundle_dicts = [
               {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
@@ -749,7 +749,7 @@ class BundleCLI(object):
         # Format statistics about this bundle - creation time, runtime, size, etc.
         stats = []
         if 'created' in metadata:
-            stats.append('created:     %s' % (formatting.time_str(metadata['created']),))
+            stats.append('created:     %s' % (formatting.date_str(metadata['created']),))
         if 'data_size' in metadata:
             stats.append('size:        %s' % (formatting.size_str(metadata['data_size']),))
         if 'time' in metadata:
