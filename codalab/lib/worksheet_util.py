@@ -380,10 +380,9 @@ def interpret_items(schemas, items):
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
     Return a list of items, where each item is either:
-    - ('markup'|'inline'|'contents', string)
+    - ('markup'|'inline'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath))
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
-      where value is either a string (already rendered) or a (bundle_uuid, genpath, post) tuple
-    - ('image'|'html', genpath)
+      where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
     - ('search', [keyword, ...])
     '''
     result = {}
@@ -404,30 +403,21 @@ def interpret_items(schemas, items):
         args = current_display[1:]
         if mode == 'hidden':
             pass
-        elif mode == 'inline' or mode == 'contents':
+        elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
             for bundle_info in bundle_infos:
+                # Result: either a string (rendered) or (bundle_uuid, genpath) pair
                 interpreted = interpret_genpath(bundle_info, args[0])
-                if not interpreted:
-                    raise UsageError('Invalid argument to display %s: %s in the context of bundle %s (file required)' % (mode, args[0], bundle_info['uuid']))
+                if isinstance(interpreted, tuple):
+                    bundle_uuid, genpath = interpreted
+                    if not genpath.startswith('/'):
+                        raise UsageError('Invalid genpath: %s' % genpath)
+                    # Strip off the beginning '/' since targets by convention do not have '/'
+                    target = (bundle_uuid, genpath[1:])
                 new_items.append({
                     'mode': mode,
-                    'interpreted':interpreted,
+                    'interpreted': target,
                     'bundle_info': bundle_info
                 })
-        elif mode == 'image':
-            bundle_info = bundle_infos if len(bundle_infos) else None
-            new_items.append({
-                'mode': mode,
-                'interpreted': args[0],
-                'bundle_info': bundle_info
-            })
-        elif mode == 'html':
-            bundle_info = bundle_infos if len(bundle_infos) else None
-            new_items.append({
-                'mode': mode,
-                'interpreted': args[0],
-                'bundle_info': bundle_info
-            })
         elif mode == 'record':
             # display record schema =>
             # key1: value1
