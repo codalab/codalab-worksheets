@@ -188,6 +188,16 @@ def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
     return bundle_uuid
 
+def get_worksheet_uuid(client, worksheet_spec):
+    '''
+    Same thing as get_bundle_uuid, but for worksheets.
+    '''
+    if spec_util.UUID_REGEX.match(worksheet_spec):
+        worksheet_uuid = worksheet_spec
+    else:  # Already uuid, don't need to look up specification
+        worksheet_uuid = client.get_worksheet_uuid(worksheet_spec)
+    return worksheet_uuid
+
 def parse_worksheet_form(form_result, client, worksheet_uuid):
     '''
     Input: form_result is a list of lines.

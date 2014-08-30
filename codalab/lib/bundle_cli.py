@@ -264,7 +264,7 @@ class BundleCLI(object):
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:
             client, spec = self.parse_spec(spec)
-            worksheet_uuid = client.get_worksheet_uuid(spec)
+            worksheet_uuid = worksheet_util.get_worksheet_uuid(client, spec)
         return (client, worksheet_uuid)
 
     def create_parser(self, command):
