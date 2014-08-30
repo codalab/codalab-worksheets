@@ -262,7 +262,6 @@ def apply_func(func, arg):
     try:
         # String encoding of a function: size s/a/b
         for f in func.split(" "):
-            print f
             if f == 'date':
                 arg = formatting.date_str(arg)
             elif f == 'duration':
@@ -273,7 +272,6 @@ def apply_func(func, arg):
                 arg = f % arg
             elif f.startswith('s/'):
                 _, s, t = f.split("/")
-                print "REPLACE", s, t
                 arg = re.sub(s, t, arg)
             else:
                 return '<invalid function: %s>' % f
