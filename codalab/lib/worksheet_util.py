@@ -420,11 +420,17 @@ def lookup_targets(client, value):
             subpath, key = subpath.split(':')
             contents = client.head_target((bundle_uuid, subpath), 50)
             if contents == None: return ''
-            info = yaml.load('\n'.join(contents))
+            if all('\t' in x for x in contents): # Tab-separated file (key\tvalue\nkey\tvalue...)
+                info = {}
+                for x in contents:
+                    kv = x.strip().split("\t", 1)
+                    if len(kv) == 2: info[kv[0]] = kv[1]
+            else:  # Assume YAML file
+                info = yaml.load('\n'.join(contents))
             if isinstance(info, dict):
                 for k in key.split('/'):
                     info = info.get(k, None)
-                    if k == None: return ''
+                    if info == None: return ''
             return info
         else:
             if subpath == '.': subpath = ''
