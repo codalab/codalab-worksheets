@@ -445,7 +445,7 @@ class BundleCLI(object):
         bundle_uuid, subpath = target
 
         # Copy into desired directory.
-        info = worksheet_util.get_bundle_info(client, bundle_uuid)
+        info = client.get_bundle_info(bundle_uuid)
         if args.output_dir:
             local_dir = args.output_dir
         else:
@@ -1082,6 +1082,19 @@ state:       {state}
             # Save the worksheet.
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
+
+            # Batch the rm commands so that we can handle the recursive
+            # dependencies properly (and it's faster).
+            rm_bundle_uuids = []
+            rest_commands = []
+            for command in commands:
+                if command[0] == 'rm' and len(command) == 2:
+                    rm_bundle_uuids.append(command[1])
+                else:
+                    rest_commands.append(command)
+            commands = rest_commands
+            if len(rm_bundle_uuids) > 0:
+                commands.append(['rm'] + rm_bundle_uuids)
 
             # Execute the commands that the user put into the worksheet.
             for command in commands:
