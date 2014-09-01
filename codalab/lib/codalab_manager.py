@@ -55,9 +55,10 @@ def read_json_or_die(path):
         with open(path, 'rb') as f:
             string = f.read()
         return json.loads(string)
-    except ValueError:
+    except ValueError as e:
         print "Invalid JSON in %s:\n%s" % (path, string)
-        #sys.exit(1)
+        print e
+        sys.exit(1)
 
 class CodaLabManager(object):
     def __init__(self):
@@ -198,6 +199,7 @@ class CodaLabManager(object):
         raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
 
     def current_client(self): return self.client(self.session()['address'])
+    def local_client(self): return self.client('local')
     def client(self, address, is_cli=True):
         '''
         Return a client given the address.  Note that this can either be called
