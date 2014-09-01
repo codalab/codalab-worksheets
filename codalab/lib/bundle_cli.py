@@ -731,76 +731,49 @@ class BundleCLI(object):
                     if item['name'] not in ['stdout', 'stderr']: continue
                     print wrap(item['name'])
                     self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
-                    #for line in client.head_target((bundle_uuid, item['name']), 10):
-                        #print line,
 
     def format_basic_info(self, client, info):
-        metadata = collections.defaultdict(lambda: None, info['metadata'])
-        # Format some simple fields of the basic info string.
-        fields = {
-          'bundle_type': info['bundle_type'],
-          'uuid': info['uuid'],
-          'data_hash': info['data_hash'] or '<no hash>',
-          'state': info['state'],
-          'name': metadata['name'] or '<no name>',
-          'command': info.get('command', '<none>'),
-          'description': metadata['description'] or '<no description>',
-        }
+        def key_value_str(key, value): return '%-16s: %s' % (key, value if value != None else '<none>')
+        metadata = info['metadata']
+        lines = []  # The output
 
-        # Format statistics about this bundle - creation time, runtime, size, etc.
-        stats = []
-        if 'created' in metadata:
-            stats.append('created:     %s' % (formatting.date_str(metadata['created']),))
-        if 'data_size' in metadata:
-            stats.append('size:        %s' % (formatting.size_str(metadata['data_size']),))
-        if 'time' in metadata:
-            stats.append('time:        %s' % (formatting.duration_str(metadata['time']),))
-        fields['stats'] = '%s\n' % ('\n'.join(stats),) if stats else ''
+        # Format bundle fields
+        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'failure_message', 'command', 'owner_id'):
+            if key not in info: continue
+            lines.append(key_value_str(key, info.get(key)))
 
-        # Compute a nicely-formatted list of hard dependencies. Since this type of
-        # dependency is realized within this bundle as a symlink to another bundle,
-        # label these dependencies as 'references' in the UI.
-        fields['hard_dependencies'] = ''
-        fields['dependencies'] = ''
+        # Format metadata fields
+        cls = get_bundle_subclass(info['bundle_type'])
+        for spec in cls.METADATA_SPECS:
+            key = spec.key
+            if key not in metadata: continue
+            if metadata[key] == '' or metadata[key] == []: continue
+            value = worksheet_util.apply_func(spec.formatting, metadata.get(key))
+            lines.append(key_value_str(key, value))
+        # Print out non-standard fields
+        standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
+        for key, value in metadata.items():
+            if key in standard_keys: continue
+            lines.append(key_value_str(key, value))
 
+        # Format dependencies (both hard dependencies and soft)
         def display_dependencies(label, deps):
-            lines = []
+            lines.append(label + ':')
             for dep in sorted(deps, key=lambda dep: dep['child_path']):
                 child = dep['child_path']
                 parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))
-            return '%s:\n%s\n' % (label, '\n'.join(lines))
-
         if info['hard_dependencies']:
             deps = info['hard_dependencies']
             if len(deps) == 1 and not deps[0]['child_path']:
-                fields['hard_dependencies'] = display_dependencies('hard_dependency', deps)
+                display_dependencies('hard_dependency', deps)
             else:
-                fields['hard_dependencies'] = display_dependencies('hard_dependencies', deps)
+                display_dependencies('hard_dependencies', deps)
         elif info['dependencies']:
             deps = info['dependencies']
-            fields['dependencies'] = display_dependencies('dependencies', deps)
+            display_dependencies('dependencies', deps)
 
-        # Compute a nicely-formatted failure message, if this bundle failed.
-        # It is possible for bundles that are not failed to have failure messages:
-        # for example, if a bundle is killed in the database after running for too
-        # long then succeeds afterwards, it will be in this state.
-        fields['failure_message'] = ''
-        if info['state'] == State.FAILED and metadata['failure_message']:
-            fields['failure_message'] = 'failure_message:\n  %s\n' % ('\n  '.join(
-              metadata['failure_message'].split('\n')
-            ))
-        # Return the formatted summary of the bundle info.
-        return '''
-type:        {bundle_type}
-name:        {name}
-uuid:        {uuid}
-data_hash:   {data_hash}
-command:     {command}
-state:       {state}
-{stats}description: {description}
-{hard_dependencies}{dependencies}{failure_message}
-        '''.format(**fields).strip()
+        return '\n'.join(lines)
 
     def do_cat_command(self, argv, parser):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)

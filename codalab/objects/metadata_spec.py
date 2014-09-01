@@ -21,6 +21,7 @@ class MetadataSpec(object):
         metavar=None,
         default=None,
         generated=False,
+        formatting=None,
     ):
         self.key = key
         self.type = type
@@ -29,6 +30,7 @@ class MetadataSpec(object):
         self.metavar = metavar or self.short_key.upper()
         self.default = default
         self.generated = generated
+        self.formatting = formatting
 
     def get_constructor(self):
         if self.type == basestring:
