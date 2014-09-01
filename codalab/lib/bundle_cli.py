@@ -702,6 +702,8 @@ class BundleCLI(object):
 
     def do_info_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
+        parser.add_argument('-f', '--field', help='print out these fields', nargs='?')
+        parser.add_argument('-r', '--raw', action='store_true', help='print out raw information (no rendering)')
         parser.add_argument('-c', '--children', action='store_true', help="print only a list of this bundle's children")
         parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
@@ -711,35 +713,53 @@ class BundleCLI(object):
         for bundle_spec in args.bundle_spec:
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
             info = client.get_bundle_info(bundle_uuid, args.children)
-            self.print_basic_info(client, info)
+
+            if args.field:
+                # Display a single field (arbitrary genpath)
+                genpath = args.field
+                if worksheet_util.is_file_genpath(genpath):
+                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath)
+                else:
+                    value = worksheet_util.interpret_genpath(info, genpath)
+                print value
+            else:
+                # Display all the fields
+                self.print_basic_info(client, info, args.raw)
             if args.children: self.print_children(info)
             if args.verbose: self.print_contents(client, info)
 
-    def print_basic_info(self, client, info):
-        def key_value_str(key, value): return '%-16s: %s' % (key, value if value != None else '<none>')
-        metadata = info['metadata']
-        lines = []  # The output
+    def print_basic_info(self, client, info, raw):
+        def key_value_str(key, value):
+            return '%-16s: %s' % (key, value if value != None else '<none>')
 
-        # Format bundle fields
+        metadata = info['metadata']
+        lines = []  # The output that we're accumulating
+
+        # Bundle fields
         for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'failure_message', 'command', 'owner_id'):
-            if key not in info: continue
+            if not raw:
+                if key not in info: continue
             lines.append(key_value_str(key, info.get(key)))
 
-        # Format metadata fields
+        # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
         for spec in cls.METADATA_SPECS:
             key = spec.key
-            if key not in metadata: continue
-            if metadata[key] == '' or metadata[key] == []: continue
-            value = worksheet_util.apply_func(spec.formatting, metadata.get(key))
+            if not raw:
+                if key not in metadata: continue
+                if metadata[key] == '' or metadata[key] == []: continue
+                value = worksheet_util.apply_func(spec.formatting, metadata.get(key))
+            else:
+                value = metadata.get(key)
             lines.append(key_value_str(key, value))
-        # Print out non-standard fields
+
+        # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
         for key, value in metadata.items():
             if key in standard_keys: continue
             lines.append(key_value_str(key, value))
 
-        # Format dependencies (both hard dependencies and soft)
+        # Dependencies (both hard dependencies and soft)
         def display_dependencies(label, deps):
             lines.append(label + ':')
             for dep in sorted(deps, key=lambda dep: dep['child_path']):

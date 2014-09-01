@@ -237,6 +237,10 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
 
     return (result, commands)
 
+def is_file_genpath(genpath):
+    # Return whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
+    return genpath.startswith('/')
+
 def interpret_genpath(bundle_info, genpath):
     '''
     This function is called in the first server call to a BundleClient to
@@ -244,6 +248,12 @@ def interpret_genpath(bundle_info, genpath):
     bundle_info (e.g., 'time', 'command').  The interpretation of generalized
     paths that require reading files is done by interpret_file_genpath.
     '''
+    # If genpath is referring to a file, then just returns instructions for
+    # fetching that file rather than actually doing it.
+    if is_file_genpath(genpath):
+        return (bundle_info['uuid'], genpath)
+
+    # Special cases
     if genpath == 'dependencies':
         return ','.join([dep['parent_name'] for dep in bundle_info[genpath]])
     elif genpath.startswith('dependencies/'):
@@ -253,16 +263,34 @@ def interpret_genpath(bundle_info, genpath):
             if dep['child_path'] == name:
                 return dep['parent_name']
         return 'n/a'
+    elif genpath == 'args':
+        # Arguments that we would pass to 'cl'
+        args = []
+        bundle_type = bundle_info['bundle_type']
+        if bundle_type not in ('make', 'run'): return None
+        args += [bundle_type]
+        deps = bundle_info['dependencies']
+        anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
+        for dep in deps:
+            a = dep['child_path'] + ':' if not anonymous else ''
+            b = dep['parent_uuid']
+            c = '/' + dep['parent_path'] if dep['parent_path'] else ''
+            args.append(a + b + c)
+        args += ['--name', bundle_info['metadata']['name']]
+        if bundle_info['command']:
+            args.append('---')
+            args.append(bundle_info['command'])
+        return ' '.join(args)
 
-    # If genpath is referring to a file, then just returns instructions for
-    # fetching that file rather than actually doing it.
-    if genpath.startswith('/'):
-        return (bundle_info['uuid'], genpath)
+    # Bundle field?
+    value = bundle_info.get(genpath)
+    if value != None: return value
 
-    # Either bundle info or metadata
-    value = bundle_info.get(genpath, None)
-    if not value: value = bundle_info['metadata'].get(genpath, None)
-    return value or ''
+    # Metadata field?
+    value = bundle_info['metadata'].get(genpath)
+    if value != None: return value
+
+    return None
 
 def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
     '''
@@ -277,7 +305,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
     MAX_LINES = 1000  # Maximum number of lines we need to read from a file.
 
     # Load the file
-    if not genpath.startswith('/'):
+    if not is_file_genpath(genpath):
         raise UsageError('Not file genpath: %s' % genpath)
     genpath = genpath[1:]
     if ':' in genpath:  # Looking for a particular key in the file
@@ -419,8 +447,8 @@ def interpret_items(schemas, items):
                 interpreted = interpret_genpath(bundle_info, args[0])
                 if isinstance(interpreted, tuple):
                     bundle_uuid, genpath = interpreted
-                    if not genpath.startswith('/'):
-                        raise UsageError('Invalid genpath: %s' % genpath)
+                    if not is_file_genpath(genpath):
+                        raise UsageError('Expected a file genpath, but got %s' % genpath)
                     # Strip off the beginning '/' since targets by convention do not have '/'
                     interpreted = (bundle_uuid, genpath[1:])
                 new_items.append({
