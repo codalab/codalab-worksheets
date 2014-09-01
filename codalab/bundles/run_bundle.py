@@ -34,6 +34,7 @@ class RunBundle(NamedBundle):
 
     METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('memory', long, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
 
     @classmethod
     def construct(cls, targets, command, metadata, uuid=None, data_hash=None, state=State.CREATED):

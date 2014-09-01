@@ -696,7 +696,7 @@ class BundleCLI(object):
             post_funcs = {'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1}
             bundle_dicts = [
-              {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
+              {col: info.get(col, info['metadata'].get(col)) for col in columns}
               for info in bundle_info_list
             ]
             self.print_table(columns, bundle_dicts, post_funcs=post_funcs, justify=justify)
@@ -752,6 +752,7 @@ class BundleCLI(object):
                 if key not in metadata: continue
                 if metadata[key] == '' or metadata[key] == []: continue
                 value = worksheet_util.apply_func(spec.formatting, metadata.get(key))
+                if isinstance(value, list): value = ' | '.join(value)
             else:
                 value = metadata.get(key)
             lines.append(key_value_str(key, value))
