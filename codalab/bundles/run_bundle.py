@@ -27,12 +27,14 @@ from codalab.objects.metadata_spec import MetadataSpec
 class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    # Note that these are strings, which need to be parsed
     METADATA_SPECS.append(MetadataSpec('allowed_time', basestring, 'amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run'))
     METADATA_SPECS.append(MetadataSpec('allowed_memory', basestring, 'amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run'))
     METADATA_SPECS.append(MetadataSpec('allowed_disk', basestring, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
 
-    METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True))
-    METADATA_SPECS.append(MetadataSpec('memory', long, 'amount of memory (bytes) used by this run', generated=True))
+    METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('memory', long, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
 
     @classmethod
     def construct(cls, targets, command, metadata, uuid=None, data_hash=None, state=State.CREATED):
