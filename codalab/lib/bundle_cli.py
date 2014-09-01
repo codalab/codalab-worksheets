@@ -701,38 +701,21 @@ class BundleCLI(object):
             self.print_table(columns, bundle_dicts, post_funcs=post_funcs, justify=justify)
 
     def do_info_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-c', '--children', action='store_true', help="print only a list of this bundle's children")
         parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
-        info = client.get_bundle_info(bundle_uuid, args.children)
+        for bundle_spec in args.bundle_spec:
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
+            info = client.get_bundle_info(bundle_uuid, args.children)
+            self.print_basic_info(client, info)
+            if args.children: self.print_children(info)
+            if args.verbose: self.print_contents(client, info)
 
-        def wrap(string): return '=== ' + string + ' ==='
-
-        print self.format_basic_info(client, info)
-
-        if args.children and info['children']:
-            print 'children:'
-            for child in info['children']:
-                print "  %s" % child
-
-        # Verbose output
-        if args.verbose:
-            print wrap('contents')
-            info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
-            # Print first 10 lines of stdout and stderr
-            contents = info.get('contents')
-            if contents:
-                for item in contents:
-                    if item['name'] not in ['stdout', 'stderr']: continue
-                    print wrap(item['name'])
-                    self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
-
-    def format_basic_info(self, client, info):
+    def print_basic_info(self, client, info):
         def key_value_str(key, value): return '%-16s: %s' % (key, value if value != None else '<none>')
         metadata = info['metadata']
         lines = []  # The output
@@ -773,7 +756,26 @@ class BundleCLI(object):
             deps = info['dependencies']
             display_dependencies('dependencies', deps)
 
-        return '\n'.join(lines)
+        print '\n'.join(lines)
+
+    def print_children(self, info):
+        if not info['children']: return
+        print 'children:'
+        for child in info['children']:
+            print "  %s" % child
+
+    def print_contents(self, client, info):
+        def wrap(string): return '=== ' + string + ' ==='
+        print wrap('contents')
+        bundle_uuid = info['uuid']
+        info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
+        # Print first 10 lines of stdout and stderr
+        contents = info.get('contents')
+        if contents:
+            for item in contents:
+                if item['name'] not in ['stdout', 'stderr']: continue
+                print wrap(item['name'])
+                self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
 
     def do_cat_command(self, argv, parser):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
