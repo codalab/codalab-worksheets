@@ -530,7 +530,7 @@ class BundleCLI(object):
 
     def desugar_command(self, target_spec, command):
         '''
-        Desugar command into target_spec and command.
+        Desugar command, returning updated target_spec and command.
         Example: %corenlp%/run %a.txt% => [1:corenlp, 2:a.txt], 1/run 2
         '''
         pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
@@ -632,6 +632,7 @@ class BundleCLI(object):
         )
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete (this is important since
@@ -708,9 +709,10 @@ class BundleCLI(object):
         parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        for bundle_spec in args.bundle_spec:
+        for i, bundle_spec in enumerate(args.bundle_spec):
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
             info = client.get_bundle_info(bundle_uuid, args.children)
 
@@ -724,9 +726,10 @@ class BundleCLI(object):
                 print value
             else:
                 # Display all the fields
+                if i > 0: print
                 self.print_basic_info(client, info, args.raw)
-            if args.children: self.print_children(info)
-            if args.verbose: self.print_contents(client, info)
+                if args.children: self.print_children(info)
+                if args.verbose: self.print_contents(client, info)
 
     def print_basic_info(self, client, info, raw):
         def key_value_str(key, value):
@@ -980,9 +983,10 @@ class BundleCLI(object):
         print new_uuid
 
     def do_kill_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]', nargs='*')
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = []
@@ -1020,10 +1024,11 @@ class BundleCLI(object):
         print 'Created and switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     def do_add_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-m', '--message', help='add a text element', nargs='?')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         for spec in args.bundle_spec:
