@@ -162,6 +162,11 @@ class BundleCLI(object):
                 return formatter_class(max_help_position=30, *args, **kwargs)
             parser.formatter_class = mock_formatter_class
 
+    def simple_bundle_str(self, info):
+        return '%s(%s)' % (info['metadata']['name'], info['uuid'])
+    def simple_worksheet_str(self, info):
+        return '%s(%s)' % (info['name'], info['uuid'])
+
     def get_worksheet_bundles(self, worksheet_info):
         '''
         Return list of info dicts of distinct, non-orphaned bundles in the worksheet.
@@ -354,7 +359,7 @@ class BundleCLI(object):
             print "username: %s" % state['username']
         worksheet_info = self.get_current_worksheet_info()
         if worksheet_info:
-            print "worksheet: %s(%s)" % (worksheet_info['name'], worksheet_info['uuid'])
+            print "worksheet: %s" % self.simple_worksheet_str(worksheet_info)
 
     def do_alias_command(self, argv, parser):
         '''
@@ -460,7 +465,7 @@ class BundleCLI(object):
         path_util.copy(local_path, final_path, follow_symlinks=True)
         if temp_path:
           path_util.remove(temp_path)
-        print 'Downloaded %s(%s) to %s.' % (bundle_uuid, info['metadata']['name'], final_path)
+        print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
     def do_cp_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
@@ -499,7 +504,8 @@ class BundleCLI(object):
         except:
             pass
 
-        source_desc = "%s(%s)" % (source_bundle_uuid, source_client.get_bundle_info(source_bundle_uuid)['metadata']['name'])
+        source_info = source_client.get_bundle_info(source_bundle_uuid)
+        source_desc = self.simple_bundle_str(source_info)
         if not bundle:
             print "Copying %s..." % source_desc
 
@@ -684,7 +690,7 @@ class BundleCLI(object):
             self.print_bundle_info_list(bundle_info_list, args.uuid_only)
         else:
             if not args.uuid_only:
-                print 'Worksheet %s(%s) is empty.' % (worksheet_info['name'], worksheet_info['uuid'])
+                print 'Worksheet %s is empty.' % self.simple_worksheet_str(worksheet_info)
 
     # Helper
     def print_bundle_info_list(self, bundle_info_list, uuid_only):
@@ -954,6 +960,7 @@ class BundleCLI(object):
         parser.add_argument('-d', '--depth', type=int, default=10, help="number of parents to look back from the old output in search of the old input")
         parser.add_argument('-s', '--shadow', action='store_true', help="add the newly created bundles right after the old bundles that are being mimicked")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        parser.add_argument('-r', '--dry-run', help='dry run (just show what will be done)', action='store_true')
         self.add_wait_args(parser)
 
     def mimic(self, args):
@@ -977,11 +984,17 @@ class BundleCLI(object):
             old_output = bundle_uuids[n]
             new_inputs = bundle_uuids[n+1:]
 
-        new_uuid = client.mimic(
+        plan = client.mimic(
             old_inputs, old_output, new_inputs, args.name,
-            worksheet_uuid, args.depth, args.shadow)
-        self.wait(client, args, new_uuid)
-        print new_uuid
+            worksheet_uuid, args.depth, args.shadow, args.dry_run)
+        for (old, new) in plan:
+            print >>sys.stderr, '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new))
+        if len(plan) > 0:
+            new_uuid = plan[-1][1]['uuid']  # Last new uuid to be created
+            self.wait(client, args, new_uuid)
+            print new_uuid
+        else:
+            print 'Nothing to be done.'
 
     def do_kill_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
