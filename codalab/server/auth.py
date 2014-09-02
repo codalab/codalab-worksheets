@@ -27,7 +27,8 @@ class MockAuthHandler(object):
     Note: any username resolves to the same user id (0).
     '''
     def __init__(self, users=None):
-        if users == None: users = [User('root', '0')]
+        if users == None:
+            users = [User('root', '0')]
         self.users = users
         self._user = users[0]
 
@@ -92,7 +93,7 @@ class OAuthHandler(object):
         self._app_id = app_id
         self._app_key = app_key
         self.min_username_length = 1
-        self.min_key_length = 6
+        self.min_key_length = 4
         self._user = None
         self._access_token = None
         self._expires_at = 0.0
