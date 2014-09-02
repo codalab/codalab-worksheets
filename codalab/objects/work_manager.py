@@ -101,11 +101,12 @@ class Worker(object):
         parents = self.model.batch_get_bundles(uuid=parent_uuids)
         parent_dict = {parent.uuid: parent for parent in parents}
 
-        # Store data needed by finalize method
+        # Store data needed by finalize_bundle method
         self.bundle_data[bundle.uuid] = {
-                'parent_dict': parent_dict,
-                'start_time': time.time(),
-                }
+            'parent_dict': parent_dict,
+            'start_time': time.time(),
+            'actions': [],  # Actions performed on this bundle
+        }
 
         # Run the bundle.
         with self.profile('Running bundle...'):
@@ -138,7 +139,9 @@ class Worker(object):
             if x.action == Command.KILL:
                 if self.machine.kill_bundle(x.bundle_uuid):
                     processed = True
-            if not processed:
+            if processed:
+                self.bundle_data[x.bundle_uuid]['actions'].append(x.action)
+            else:
                 keep_bundle_actions.append(x)
         if len(keep_bundle_actions) > 0:
             self.model.add_bundle_actions(keep_bundle_actions)
@@ -148,8 +151,10 @@ class Worker(object):
         (bundle, success, temp_dir) = result
 
         end_time = time.time()
-        start_time = self.bundle_data[bundle.uuid]['start_time']
-        parent_dict = self.bundle_data[bundle.uuid]['parent_dict']
+        bundle_data = self.bundle_data[bundle.uuid]
+        start_time = bundle_data['start_time']
+        parent_dict = bundle_data['parent_dict']
+        actions = bundle_data['actions']
 
         # Re-install dependencies as relative dependencies
         bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, relative_symlinks=True)
@@ -161,6 +166,8 @@ class Worker(object):
         # Update data, remove temp_dir and process
         if isinstance(bundle, RunBundle):
             metadata.update({'time': end_time - start_time})
+            if len(actions) > 0:
+                metadata.update({'actions': actions})
         state = State.READY if success else State.FAILED
 
         # Update a bundle to the new state and data hash at the end of a run.

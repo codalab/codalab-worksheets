@@ -22,6 +22,22 @@ HISTORY_REGEX = re.compile('^\^([0-9]*)$')
 ID_REGEX = re.compile('^[0-9]+$')
 NOT_NAME_CHAR_REGEX = re.compile('[^a-zA-Z0-9_\.\-]')
 
+HISTORY_RANGE_REGEX = re.compile('(.*\^)([0-9]+)-([0-9]+)') # Allow ranges foo^1-3 => foo^1 foo^2 foo^3
+
+def expand_specs(specs):
+    '''
+    Example: ['foo', 'a^1-3', 'bar'] => ['foo', 'a^1', 'a^2', 'a^3', 'bar']
+    ''' 
+    new_specs = []
+    for spec in specs:
+        m = HISTORY_RANGE_REGEX.match(spec)
+        if m:
+            for i in range(int(m.group(2)), int(m.group(3))+1):
+                new_specs.append(m.group(1) + str(i))
+        else:
+            new_specs.append(spec)
+    return new_specs
+
 def generate_uuid():
     return '0x%s' % (uuid.uuid4().hex,)
 

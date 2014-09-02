@@ -162,6 +162,11 @@ class BundleCLI(object):
                 return formatter_class(max_help_position=30, *args, **kwargs)
             parser.formatter_class = mock_formatter_class
 
+    def simple_bundle_str(self, info):
+        return '%s(%s)' % (info['metadata']['name'], info['uuid'])
+    def simple_worksheet_str(self, info):
+        return '%s(%s)' % (info['name'], info['uuid'])
+
     def get_worksheet_bundles(self, worksheet_info):
         '''
         Return list of info dicts of distinct, non-orphaned bundles in the worksheet.
@@ -181,7 +186,7 @@ class BundleCLI(object):
         else:
             bundle_spec, subpath = target_spec, ''
         # Resolve the bundle_spec to a particular bundle_uuid.
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
+        bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
     def parse_key_targets(self, client, worksheet_uuid, items):
@@ -216,7 +221,8 @@ class BundleCLI(object):
             for col in columns:
                 cell = row_dict.get(col)
                 func = post_funcs.get(col)
-                if func: cell = func(cell)
+                if func: cell = worksheet_util.apply_func(func, cell)
+                if cell == None: cell = ''
                 row.append(cell)
             rows.append(row)
 
@@ -263,7 +269,7 @@ class BundleCLI(object):
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:
             client, spec = self.parse_spec(spec)
-            worksheet_uuid = client.get_worksheet_uuid(spec)
+            worksheet_uuid = worksheet_util.get_worksheet_uuid(client, spec)
         return (client, worksheet_uuid)
 
     def create_parser(self, command):
@@ -353,7 +359,7 @@ class BundleCLI(object):
             print "username: %s" % state['username']
         worksheet_info = self.get_current_worksheet_info()
         if worksheet_info:
-            print "worksheet: %s(%s)" % (worksheet_info['name'], worksheet_info['uuid'])
+            print "worksheet: %s" % self.simple_worksheet_str(worksheet_info)
 
     def do_alias_command(self, argv, parser):
         '''
@@ -417,7 +423,7 @@ class BundleCLI(object):
         if not args.base and args.base_use_default_name:
             args.base = os.path.basename(args.path[0]) # Use default name
         if args.base:
-            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.base)
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.base)
             info = client.get_bundle_info(bundle_uuid)
             metadata = info['metadata']
         metadata = metadata_util.request_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
@@ -459,7 +465,7 @@ class BundleCLI(object):
         path_util.copy(local_path, final_path, follow_symlinks=True)
         if temp_path:
           path_util.remove(temp_path)
-        print 'Downloaded %s(%s) to %s.' % (bundle_uuid, info['metadata']['name'], final_path)
+        print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
     def do_cp_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
@@ -472,7 +478,7 @@ class BundleCLI(object):
         (source_client, source_spec) = self.parse_spec(args.bundle_spec)
         # worksheet_uuid is only applicable if we're on the source client
         if source_client != client: worksheet_uuid = None
-        source_bundle_uuid = source_client.get_bundle_uuid(worksheet_uuid, source_spec)
+        source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -498,7 +504,8 @@ class BundleCLI(object):
         except:
             pass
 
-        source_desc = "%s(%s)" % (source_bundle_uuid, source_client.get_bundle_info(source_bundle_uuid)['metadata']['name'])
+        source_info = source_client.get_bundle_info(source_bundle_uuid)
+        source_desc = self.simple_bundle_str(source_info)
         if not bundle:
             print "Copying %s..." % source_desc
 
@@ -529,7 +536,7 @@ class BundleCLI(object):
 
     def desugar_command(self, target_spec, command):
         '''
-        Desugar command into target_spec and command.
+        Desugar command, returning updated target_spec and command.
         Example: %corenlp%/run %a.txt% => [1:corenlp, 2:a.txt], 1/run 2
         '''
         pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
@@ -598,7 +605,7 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
+        bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
         if args.name:
@@ -631,11 +638,12 @@ class BundleCLI(object):
         )
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
-        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
+        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
         deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive)
         for uuid in deleted_uuids: print uuid
 
@@ -682,7 +690,7 @@ class BundleCLI(object):
             self.print_bundle_info_list(bundle_info_list, args.uuid_only)
         else:
             if not args.uuid_only:
-                print 'Worksheet %s(%s) is empty.' % (worksheet_info['name'], worksheet_info['uuid'])
+                print 'Worksheet %s is empty.' % self.simple_worksheet_str(worksheet_info)
 
     # Helper
     def print_bundle_info_list(self, bundle_info_list, uuid_only):
@@ -691,115 +699,113 @@ class BundleCLI(object):
                 print bundle_info['uuid']
         else:
             columns = ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
-            post_funcs = {'created': formatting.time_str, 'data_size': formatting.size_str}
+            post_funcs = {'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1}
             bundle_dicts = [
-              {col: info.get(col, info['metadata'].get(col, None)) for col in columns}
+              {col: info.get(col, info['metadata'].get(col)) for col in columns}
               for info in bundle_info_list
             ]
             self.print_table(columns, bundle_dicts, post_funcs=post_funcs, justify=justify)
 
     def do_info_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
+        parser.add_argument('-f', '--field', help='print out these fields', nargs='?')
+        parser.add_argument('-r', '--raw', action='store_true', help='print out raw information (no rendering)')
         parser.add_argument('-c', '--children', action='store_true', help="print only a list of this bundle's children")
         parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, args.bundle_spec)
-        info = client.get_bundle_info(bundle_uuid, args.children)
+        for i, bundle_spec in enumerate(args.bundle_spec):
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
+            info = client.get_bundle_info(bundle_uuid, args.children)
 
-        def wrap(string): return '=== ' + string + ' ==='
+            if args.field:
+                # Display a single field (arbitrary genpath)
+                genpath = args.field
+                if worksheet_util.is_file_genpath(genpath):
+                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath)
+                else:
+                    value = worksheet_util.interpret_genpath(info, genpath)
+                print value
+            else:
+                # Display all the fields
+                if i > 0: print
+                self.print_basic_info(client, info, args.raw)
+                if args.children: self.print_children(info)
+                if args.verbose: self.print_contents(client, info)
 
-        print self.format_basic_info(client, info)
+    def print_basic_info(self, client, info, raw):
+        def key_value_str(key, value):
+            return '%-16s: %s' % (key, value if value != None else '<none>')
 
-        if args.children and info['children']:
-            print 'children:'
-            for child in info['children']:
-                print "  %s" % child
+        metadata = info['metadata']
+        lines = []  # The output that we're accumulating
 
-        # Verbose output
-        if args.verbose:
-            print wrap('contents')
-            info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
-            # Print first 10 lines of stdout and stderr
-            contents = info.get('contents')
-            if contents:
-                for item in contents:
-                    if item['name'] not in ['stdout', 'stderr']: continue
-                    print wrap(item['name'])
-                    self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
-                    #for line in client.head_target((bundle_uuid, item['name']), 10):
-                        #print line,
+        # Bundle fields
+        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'failure_message', 'command', 'owner_id'):
+            if not raw:
+                if key not in info: continue
+            lines.append(key_value_str(key, info.get(key)))
 
-    def format_basic_info(self, client, info):
-        metadata = collections.defaultdict(lambda: None, info['metadata'])
-        # Format some simple fields of the basic info string.
-        fields = {
-          'bundle_type': info['bundle_type'],
-          'uuid': info['uuid'],
-          'data_hash': info['data_hash'] or '<no hash>',
-          'state': info['state'],
-          'name': metadata['name'] or '<no name>',
-          'command': info.get('command', '<none>'),
-          'description': metadata['description'] or '<no description>',
-        }
+        # Metadata fields (standard)
+        cls = get_bundle_subclass(info['bundle_type'])
+        for spec in cls.METADATA_SPECS:
+            key = spec.key
+            if not raw:
+                if key not in metadata: continue
+                if metadata[key] == '' or metadata[key] == []: continue
+                value = worksheet_util.apply_func(spec.formatting, metadata.get(key))
+                if isinstance(value, list): value = ' | '.join(value)
+            else:
+                value = metadata.get(key)
+            lines.append(key_value_str(key, value))
 
-        # Format statistics about this bundle - creation time, runtime, size, etc.
-        stats = []
-        if 'created' in metadata:
-            stats.append('created:     %s' % (formatting.time_str(metadata['created']),))
-        if 'data_size' in metadata:
-            stats.append('size:        %s' % (formatting.size_str(metadata['data_size']),))
-        if 'time' in metadata:
-            stats.append('time:        %s' % (formatting.duration_str(metadata['time']),))
-        fields['stats'] = '%s\n' % ('\n'.join(stats),) if stats else ''
+        # Metadata fields (non-standard)
+        standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
+        for key, value in metadata.items():
+            if key in standard_keys: continue
+            lines.append(key_value_str(key, value))
 
-        # Compute a nicely-formatted list of hard dependencies. Since this type of
-        # dependency is realized within this bundle as a symlink to another bundle,
-        # label these dependencies as 'references' in the UI.
-        fields['hard_dependencies'] = ''
-        fields['dependencies'] = ''
-
+        # Dependencies (both hard dependencies and soft)
         def display_dependencies(label, deps):
-            lines = []
+            lines.append(label + ':')
             for dep in sorted(deps, key=lambda dep: dep['child_path']):
                 child = dep['child_path']
                 parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))
-            return '%s:\n%s\n' % (label, '\n'.join(lines))
-
         if info['hard_dependencies']:
             deps = info['hard_dependencies']
             if len(deps) == 1 and not deps[0]['child_path']:
-                fields['hard_dependencies'] = display_dependencies('hard_dependency', deps)
+                display_dependencies('hard_dependency', deps)
             else:
-                fields['hard_dependencies'] = display_dependencies('hard_dependencies', deps)
+                display_dependencies('hard_dependencies', deps)
         elif info['dependencies']:
             deps = info['dependencies']
-            fields['dependencies'] = display_dependencies('dependencies', deps)
+            display_dependencies('dependencies', deps)
 
-        # Compute a nicely-formatted failure message, if this bundle failed.
-        # It is possible for bundles that are not failed to have failure messages:
-        # for example, if a bundle is killed in the database after running for too
-        # long then succeeds afterwards, it will be in this state.
-        fields['failure_message'] = ''
-        if info['state'] == State.FAILED and metadata['failure_message']:
-            fields['failure_message'] = 'failure_message:\n  %s\n' % ('\n  '.join(
-              metadata['failure_message'].split('\n')
-            ))
-        # Return the formatted summary of the bundle info.
-        return '''
-type:        {bundle_type}
-name:        {name}
-uuid:        {uuid}
-data_hash:   {data_hash}
-command:     {command}
-state:       {state}
-{stats}description: {description}
-{hard_dependencies}{dependencies}{failure_message}
-        '''.format(**fields).strip()
+        print '\n'.join(lines)
+
+    def print_children(self, info):
+        if not info['children']: return
+        print 'children:'
+        for child in info['children']:
+            print "  %s" % child
+
+    def print_contents(self, client, info):
+        def wrap(string): return '=== ' + string + ' ==='
+        print wrap('contents')
+        bundle_uuid = info['uuid']
+        info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
+        # Print first 10 lines of stdout and stderr
+        contents = info.get('contents')
+        if contents:
+            for item in contents:
+                if item['name'] not in ['stdout', 'stderr']: continue
+                print wrap(item['name'])
+                self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
 
     def do_cat_command(self, argv, parser):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
@@ -889,7 +895,7 @@ state:       {state}
                     handle.seek(pos, 0)
                 # Read from that file
                 while True:
-                    result = handle.readline()
+                    result = handle.read(16384)
                     if result == '': break
                     change = True
                     sys.stdout.write(result)
@@ -908,7 +914,7 @@ state:       {state}
             if not handle: continue
             # Read the remainder of the file
             while True:
-                result = handle.readline()
+                result = handle.read(16384)
                 if result == '': break
                 sys.stdout.write(result)
             client.close_target_handle(handle)
@@ -954,6 +960,7 @@ state:       {state}
         parser.add_argument('-d', '--depth', type=int, default=10, help="number of parents to look back from the old output in search of the old input")
         parser.add_argument('-s', '--shadow', action='store_true', help="add the newly created bundles right after the old bundles that are being mimicked")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        parser.add_argument('-r', '--dry-run', help='dry run (just show what will be done)', action='store_true')
         self.add_wait_args(parser)
 
     def mimic(self, args):
@@ -962,7 +969,7 @@ state:       {state}
         '''
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = [client.get_bundle_uuid(worksheet_uuid, spec) for spec in args.bundles]
+        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundles]
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -977,20 +984,30 @@ state:       {state}
             old_output = bundle_uuids[n]
             new_inputs = bundle_uuids[n+1:]
 
-        new_uuid = client.mimic(
+        plan = client.mimic(
             old_inputs, old_output, new_inputs, args.name,
-            worksheet_uuid, args.depth, args.shadow)
-        self.wait(client, args, new_uuid)
+            worksheet_uuid, args.depth, args.shadow, args.dry_run)
+        for (old, new) in plan:
+            print >>sys.stderr, '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new))
+        if len(plan) > 0:
+            new_uuid = plan[-1][1]['uuid']  # Last new uuid to be created
+            self.wait(client, args, new_uuid)
+            print new_uuid
+        else:
+            print 'Nothing to be done.'
 
     def do_kill_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help='identifier: [<uuid>|<name>]', nargs='*')
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = []
         for bundle_spec in args.bundle_spec:
-            bundle_uuids.append(client.get_bundle_uuid(worksheet_uuid, bundle_spec))
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
+            bundle_uuids.append(bundle_uuid)
+            print bundle_uuid
         client.kill_bundles(bundle_uuids)
 
     #############################################################################
@@ -1021,14 +1038,15 @@ state:       {state}
         print 'Created and switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     def do_add_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-m', '--message', help='add a text element', nargs='?')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         for spec in args.bundle_spec:
-            bundle_uuid = client.get_bundle_uuid(worksheet_uuid, spec)
+            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec)
             client.add_worksheet_item(worksheet_uuid, (bundle_uuid, None, worksheet_util.TYPE_BUNDLE))
         if args.message != None:
             if args.message.startswith('%'):
@@ -1079,6 +1097,19 @@ state:       {state}
             client.update_worksheet(worksheet_info, new_items)
             print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
+            # Batch the rm commands so that we can handle the recursive
+            # dependencies properly (and it's faster).
+            rm_bundle_uuids = []
+            rest_commands = []
+            for command in commands:
+                if command[0] == 'rm' and len(command) == 2:
+                    rm_bundle_uuids.append(command[1])
+                else:
+                    rest_commands.append(command)
+            commands = rest_commands
+            if len(rm_bundle_uuids) > 0:
+                commands.append(['rm'] + rm_bundle_uuids)
+
             # Execute the commands that the user put into the worksheet.
             for command in commands:
                 # Make sure to do it with respect to this worksheet!
@@ -1118,18 +1149,44 @@ state:       {state}
             if mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
                     if mode == 'inline':
-                        print '[' + str(worksheet_util.lookup_targets(client, data)) + ']'
+                        if isinstance(data, tuple):
+                            data = client.interpret_file_genpaths([data])[0]
+                        print '[' + str(data) + ']'
                     elif mode == 'contents':
                         self.print_target_info(client, data, decorate=True)
                     else:
                         print data
             elif mode == 'record' or mode == 'table':
+                # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
-                contents = [{key : worksheet_util.lookup_targets(client, value) for key, value in row.items()} for row in contents]
+
+                # Request information
+                requests = []
+                for r, row in enumerate(contents):
+                    for key, value in row.items():
+                        # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
+                        if isinstance(value, tuple):
+                            requests.append(value)
+                responses = client.interpret_file_genpaths(requests)
+
+                # Put it in a table
+                new_contents = []
+                ri = 0
+                for r, row in enumerate(contents):
+                    new_row = {}
+                    for key, value in row.items():
+                        if isinstance(value, tuple):
+                            value = responses[ri]
+                            ri += 1
+                        new_row[key] = value
+                    new_contents.append(new_row)
+                contents = new_contents
+                    
+                # Print the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image':
                 # Placeholder
-                print '[' + mode + ' ' + worksheet_util.lookup_targets(client, data) + ']'
+                print '[' + mode + ' ' + str(data) + ']'
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 self.display_interpreted(client, worksheet_info, search_interpreted)

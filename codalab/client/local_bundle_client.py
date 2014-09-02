@@ -5,6 +5,7 @@ BundleStore and a BundleModel. All filesystem operations are handled locally.
 from time import sleep
 import contextlib
 import os, sys
+import copy
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -249,7 +250,7 @@ class LocalBundleClient(BundleClient):
         # because we will follow them when we copy it from the target path.
         return (self.get_target_path(target), None)
 
-    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow):
+    def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow, dry_run):
         '''
         old_inputs: list of bundle uuids
         old_output: bundle uuid that we produced
@@ -282,6 +283,7 @@ class LocalBundleClient(BundleClient):
         # Now go recursively create the bundles.
         old_to_new = {}  # old_uuid -> new_uuid
         downstream = set()  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
+        plan = []  # sequence of (old, new) bundle infos to make
         for old, new in zip(old_inputs, new_inputs):
             old_to_new[old] = new
             downstream.add(old)
@@ -311,44 +313,50 @@ class LocalBundleClient(BundleClient):
                 # Now create a new bundle that mimics the old bundle.
                 # Only change the name if the output name is supplied.
                 old_bundle_name = info['metadata']['name']
-                metadata = info['metadata']
+                new_info = copy.deepcopy(info)
+                new_metadata = new_info['metadata']
                 if new_output_name:
                     if old_bundle_uuid == old_output:
-                        metadata['name'] = new_output_name
+                        new_metadata['name'] = new_output_name
                     else:
                         # Just make up a name heuristically
-                        metadata['name'] = new_output_name + '-' + info['metadata']['name']
+                        new_metadata['name'] = new_output_name + '-' + info['metadata']['name']
 
                 # Remove all the automatically generated keys
-                cls = get_bundle_subclass(info['bundle_type'])
+                cls = get_bundle_subclass(new_info['bundle_type'])
                 for spec in cls.METADATA_SPECS:
-                    if spec.generated and spec.key in metadata:
-                        metadata.pop(spec.key)
+                    if spec.generated and spec.key in new_metadata:
+                        new_metadata.pop(spec.key)
 
                 # Set the targets
                 targets = {}
                 for dep in new_dependencies:
                     targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
 
-                new_bundle_uuid = self.derive_bundle(info['bundle_type'], \
-                    targets, info['command'], info['metadata'], worksheet_uuid if not shadow else None)
+                if dry_run:
+                    new_bundle_uuid = None
+                else:
+                    new_bundle_uuid = self.derive_bundle(new_info['bundle_type'], \
+                        targets, new_info['command'], new_metadata, worksheet_uuid if not shadow else None)
+                new_info['uuid'] = new_bundle_uuid
                 if shadow:
                     self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
-                print '%s(%s) => %s(%s)' % (old_bundle_name, old_bundle_uuid, metadata['name'], new_bundle_uuid)
+
+                plan.append((info, new_info))
                 downstream.add(old_bundle_uuid)
             else:
-                #print '%s(%s) => same' % (info['metadata']['name'], old_bundle_uuid)
                 new_bundle_uuid = old_bundle_uuid
 
             old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
             return new_bundle_uuid
 
         if old_output:
-            return recurse(old_output)
+            recurse(old_output)
         else:
             # Don't have a particular output we're targetting, so just create
             # new versions of all the uuids.
             for uuid in infos: recurse(uuid)
+        return plan
 
     #############################################################################
     # Implementations of worksheet-related client methods follow!
@@ -413,11 +421,6 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def update_worksheet(self, worksheet_info, new_items):
-        # Convert (bundle_spec, value, type) pairs into canonical (bundle_uuid, value, type) pairs.
-        # This step could take O(n) database calls! However, it will only hit the
-        # database for each bundle the user has newly specified by name - bundles
-        # that were already in the worksheet will be referred to by uuid, so
-        # get_bundle_uuid will be an in-memory call for these. This hit is acceptable.
         worksheet_uuid = worksheet_info['uuid']
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
@@ -443,6 +446,20 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(uuid)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.delete_worksheet(uuid)
+
+    def interpret_file_genpaths(self, requests):
+        '''
+        requests: list of (bundle_uuid, genpath, post-processing-func)
+        Return responses: corresponding list of strings
+        '''
+        target_cache = {}
+        responses = []
+        for (bundle_uuid, genpath, post) in requests:
+            value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath)
+            #print 'interpret_file_genpaths', bundle_uuid, genpath, value
+            value = worksheet_util.apply_func(post, value)
+            responses.append(value)
+        return responses
 
     #############################################################################
     # Commands related to groups and permissions follow!

@@ -359,7 +359,10 @@ def remove(path):
     if os.path.islink(path):
         os.unlink(path)
     elif os.path.isdir(path):
-        shutil.rmtree(path)
+        try:
+            shutil.rmtree(path)
+        except:
+            pass
     else:
         os.remove(path)
     if os.path.exists(path):
