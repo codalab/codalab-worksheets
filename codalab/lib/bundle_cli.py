@@ -143,6 +143,7 @@ class BundleCLI(object):
         'w': 'work',
         'p': 'print',
         'i': 'info',
+        'st': 'status',
     }
 
     def __init__(self, manager):
@@ -1237,16 +1238,19 @@ class BundleCLI(object):
 
         # Source worksheet
         (source_client, source_worksheet_uuid) = self.parse_client_worksheet_uuid(args.source_worksheet_spec)
-        items = source_client.get_worksheet_info(source_worksheet_uuid)['items']
+        items = source_client.get_worksheet_info(source_worksheet_uuid, True)['items']
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.dest_worksheet_spec)
 
         for item in items:
-            (source_bundle_info, value_obj, type) = item
-            if source_bundle_info != None:
+            (source_bundle_info, source_worksheet_info, value_obj, type) = item
+            if type == worksheet_util.TYPE_BUNDLE:
                 # Copy bundle
                 self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid)
+            elif type == worksheet_util.TYPE_WORKSHEET:
+                # We currently don't have a mechanism for copying worksheets, only contents of worksheets.
+                pass
             else:
                 # Copy non-bundle
                 dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.convert_item_to_db(item))
