@@ -43,6 +43,7 @@ A genpath (generalized path) is either:
 - a metadata field (e.g., 'name')
 - a path (starts with '/'), but can descend into a YAML file (e.g., /stats:train/errorRate)
 '''
+import copy
 import os
 import re
 import subprocess
@@ -464,7 +465,8 @@ def interpret_items(schemas, items):
         '''
         Gathered a group of bundles (in a table), which we can group together.
         '''
-        if len(bundle_infos) == 0: return
+        if len(bundle_infos) == 0:
+            return
         # Print out the curent bundles somehow
         mode = current_display[0]
         args = current_display[1:]
@@ -483,7 +485,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted': interpreted,
-                    'bundle_info': bundle_info
+                    'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'record':
             # display record schema =>
@@ -502,7 +504,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
-                    'bundle_info': bundle_info
+                    'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'table':
             # display table schema =>
@@ -517,7 +519,7 @@ def interpret_items(schemas, items):
             new_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
-                    'bundle_infos': bundle_infos
+                    'bundle_info': copy.deepcopy(bundle_infos)
                 })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
@@ -571,8 +573,10 @@ def interpret_items(schemas, items):
                 raise UsageError('Unknown command: %s' % command)
         else:
             raise InternalError('Unknown worksheet item type: %s' % item_type)
+
     flush()
     result['items'] = new_items
+
     return result
 
 def interpret_search(client, worksheet_uuid, data):
