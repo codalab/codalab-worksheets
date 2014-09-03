@@ -42,19 +42,15 @@ class Worksheet(ORMObject):
 
     def update_in_memory(self, row, strict=False):
         items = row.pop('items', None)
-        if strict:
-            precondition(items is not None, 'No items: %s' % (row,))
-            # Too strict since when we insert shadow worksheet items, those will have the same sort_key.
-            # The keys become unique again when we save.
-            #item_sort_keys = [item_sort_key(item) for item in items]
-            #message = 'Worksheet items were not distinct and sorted: %s' % (items,)
-            #precondition(item_sort_keys == sorted(set(item_sort_keys)), message)
-            if 'uuid' not in row:
-                row['uuid'] = spec_util.generate_uuid()
+        if 'uuid' not in row:
+            row['uuid'] = spec_util.generate_uuid()
         super(Worksheet, self).update_in_memory(row)
         if items is not None:
-            self.items = [(item['bundle_uuid'], item['value'], item['type']) for item in items]
+            self.items = [(item['bundle_uuid'], item['subworksheet_uuid'], item['value'], item['type']) for item in items]
             self.last_item_id = max(item['id'] for item in items) if items else -1
+        else:
+            self.items = None
+            self.last_item_id = None
 
     def get_info_dict(self):
         return {
