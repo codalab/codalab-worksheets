@@ -108,21 +108,24 @@ def get_target_path(bundle_store, model, target):
     result.target = target
     return result
 
-def get_worksheet_uuid(model, worksheet_spec):
+def get_worksheet_uuid(model, base_worksheet_uuid, worksheet_spec):
     '''
     Resolve a string worksheet_spec to a unique worksheet uuid.
+    If base_worksheet_uuid specified, then try to resolve worksheet_spec in the
+    context of base_worksheet_uuid.
     '''
     if not worksheet_spec:
         raise UsageError('Tried to expand empty worksheet_spec!')
     if spec_util.UUID_REGEX.match(worksheet_spec):
         return worksheet_spec
-    elif spec_util.UUID_PREFIX_REGEX.match(worksheet_spec):
-        worksheets = model.batch_get_worksheets(uuid=LikeQuery(worksheet_spec + '%'))
+    if spec_util.UUID_PREFIX_REGEX.match(worksheet_spec):
+        worksheets = model.batch_get_worksheets(fetch_items=False, uuid=LikeQuery(worksheet_spec + '%'), base_worksheet_uuid=base_worksheet_uuid)
         message = "uuid starting with '%s'" % (worksheet_spec,)
     else:
         spec_util.check_name(worksheet_spec)
-        worksheets = model.batch_get_worksheets(name=worksheet_spec)
+        worksheets = model.batch_get_worksheets(fetch_items=False, name=worksheet_spec, base_worksheet_uuid=base_worksheet_uuid)
         message = "name '%s'" % (worksheet_spec,)
+
     if not worksheets:
         raise UsageError('No worksheet found with %s' % (message,))
     elif len(worksheets) > 1:

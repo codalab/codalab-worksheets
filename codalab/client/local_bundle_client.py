@@ -92,15 +92,16 @@ class LocalBundleClient(BundleClient):
         (bundle_uuid, subpath) = target
         return (self.model.get_bundle(bundle_uuid), subpath)
 
-    def get_worksheet_uuid(self, worksheet_spec):
-        # Create default worksheet if necessary
+    def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
         if worksheet_spec == Worksheet.DEFAULT_WORKSHEET_NAME:
+            # If default worksheet, then create one if necessary
+            # TODO: need to rethink this when we have multiple users
             try:
-                return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
+                return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
             except UsageError:
                 return self.new_worksheet(worksheet_spec)
         else:
-            return canonicalize.get_worksheet_uuid(self.model, worksheet_spec)
+            return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
     def validate_user_metadata(self, bundle_subclass, metadata):
         '''
@@ -158,7 +159,7 @@ class LocalBundleClient(BundleClient):
         bundle = bundle_subclass.construct(**construct_args)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
+            self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
         return bundle.uuid
 
     def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
@@ -171,7 +172,7 @@ class LocalBundleClient(BundleClient):
         bundle = bundle_subclass.construct(targets=targets, command=command, metadata=metadata)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, (bundle.uuid, None, worksheet_util.TYPE_BUNDLE))
+            self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
         return bundle.uuid
 
     def kill_bundles(self, bundle_uuids):
@@ -375,47 +376,53 @@ class LocalBundleClient(BundleClient):
         else:
             return self.model.list_worksheets(current_user.unique_id)
 
-    def get_worksheet_info(self, uuid):
+    def get_worksheet_info(self, uuid, fetch_items):
         '''
-        The returned info object contains items which are (bundle_info, value_object, type).
+        The returned info object contains items which are (bundle_info, subworkheet_info, value_obj, type).
         '''
-        worksheet = self.model.get_worksheet(uuid)
+        worksheet = self.model.get_worksheet(uuid, fetch_items=fetch_items)
         current_user = self.auth_handler.current_user()
         current_user_id = None if current_user is None else current_user.unique_id
         check_has_read_permission(self.model, current_user_id, worksheet)
 
         # Create the info by starting out with the metadata.
-        # The items here are (bundle_uuid, value, type).
         result = worksheet.get_info_dict()
-        result['items'] = self._convert_items_from_db(result['items'])
+        if fetch_items:
+            result['items'] = self._convert_items_from_db(result['items'])
+            #for x in result['items']: print x
         return result
 
     def _convert_items_from_db(self, items):
         '''
-        (bundle_uuid, value, type) -> (bundle_info, value_obj, type)
+        (bundle_uuid, subworksheet_uuid, value, type) -> (bundle_info, subworksheet_info, value_obj, type)
         '''
-        # We need to do some finicky stuff here to convert the bundle_uuids into
-        # bundle_info dicts. However, we still make O(1) database calls because we
-        # use the optimized batch_get_bundles multiget method.
-        uuids = set(
-            bundle_uuid for (bundle_uuid, value, type) in items
+        # Database only contains the uuid; need to expand to info.
+        # We need to do to convert the bundle_uuids into bundle_info dicts.
+        # However, we still make O(1) database calls because we use the
+        # optimized batch_get_bundles multiget method.
+        bundle_uuids = set(
+            bundle_uuid for (bundle_uuid, subworksheet_uuid, value, type) in items
             if bundle_uuid is not None
         )
-        bundles = self.model.batch_get_bundles(uuid=uuids)
+        bundles = self.model.batch_get_bundles(uuid=bundle_uuids)
         bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
 
         # Go through the items and substitute the components
         new_items = []
-        for (bundle_uuid, value, type) in items:
+        for (bundle_uuid, subworksheet_uuid, value, type) in items:
             bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
+            if subworksheet_uuid:
+                subworksheet_info = self.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
+            else:
+                subworksheet_info = None
             value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
-            new_items.append((bundle_info, value_obj, type))
+            new_items.append((bundle_info, subworksheet_info, value_obj, type))
         return new_items
 
 
     @authentication_required
     def add_worksheet_item(self, worksheet_uuid, item):
-        worksheet = self.model.get_worksheet(worksheet_uuid)
+        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.add_worksheet_item(worksheet_uuid, item)
 
@@ -424,7 +431,7 @@ class LocalBundleClient(BundleClient):
         worksheet_uuid = worksheet_info['uuid']
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
-        worksheet = self.model.get_worksheet(worksheet_uuid)
+        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         try:
             new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
@@ -434,16 +441,14 @@ class LocalBundleClient(BundleClient):
             raise UsageError('%s was updated concurrently!' % (worksheet,))
 
     @authentication_required
-    def rename_worksheet(self, worksheet_spec, name):
-        uuid = self.get_worksheet_uuid(worksheet_spec)
-        worksheet = self.model.get_worksheet(uuid)
+    def rename_worksheet(self, uuid, name):
+        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.rename_worksheet(worksheet, name)
 
     @authentication_required
-    def delete_worksheet(self, worksheet_spec):
-        uuid = self.get_worksheet_uuid(worksheet_spec)
-        worksheet = self.model.get_worksheet(uuid)
+    def delete_worksheet(self, uuid):
+        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         self.model.delete_worksheet(uuid)
 
@@ -558,7 +563,7 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def set_worksheet_perm(self, worksheet_spec, permission_name, group_spec):
         uuid = self.get_worksheet_uuid(worksheet_spec)
-        worksheet = self.model.get_worksheet(uuid)
+        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         new_permission = parse_permission(permission_name)
         group_info = permission.unique_group(self.model, group_spec)

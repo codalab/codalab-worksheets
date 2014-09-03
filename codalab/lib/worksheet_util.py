@@ -6,16 +6,18 @@ worksheet_util contains the following public functions:
 
 A worksheet contains a list of (worksheet) items, where each item includes
 - bundle_uuid (only used if type == bundle)
+- subworkheet_uuid (only used if type == worksheet)
 - value (used for text and directive)
-- type: one of the following:
+- type (one of the following)
   * markup: just plain plain text (markdown)
-  * bundle: represents a bundle
   * directive: special instructions for determining formatting
+  * bundle: represents a bundle
+  * worksheet: represents a worksheet
 This is the representation in the DB.
-In the code, we have full items of the form (bundle_info, value_obj, type).
+In the code, we have full items of the form (bundle_info, subworkheet_info, value_obj, type).
 In other words, there are two representations of worksheet items:
-- (bundle_uuid, value, type) [inserted into the database]
-- (bundle_info, value_obj, type) [used in the code]
+- (bundle_uuid, subworksheet_uuid, value, type) [inserted into the database]
+- (bundle_info, subworksheet_info, value_obj, type) [used in the code]
 
 The value of a directive can be parsed into a sequence of tokens, where the
 first token determines the type.  Types of directives:
@@ -53,10 +55,20 @@ from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_u
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
-TYPE_BUNDLE = 'bundle'
 TYPE_DIRECTIVE = 'directive'
+TYPE_BUNDLE = 'bundle'
+TYPE_WORKSHEET = 'worksheet'
 
-BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{(.*)\}$')
+def markup_item(x): return (None, None, x, TYPE_MARKUP)
+def directive_item(x): return (None, None, x, TYPE_DIRECTIVE)
+def bundle_item(x): return (x, None, '', TYPE_BUNDLE)  # TODO: replace '' with None when tables.py schema is updated
+def subworksheet_item(x): return (None, x, '', TYPE_WORKSHEET)  # TODO: replace '' with None when tables.py schema is updated
+
+BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
+SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
+def bundle_line(description, uuid): return '[%s]{%s}' % (description, uuid)
+def worksheet_line(description, uuid): return '[%s]{{%s}}' % (description, uuid)
+
 DIRECTIVE_CHAR = '%'
 DIRECTIVE_REGEX = re.compile(r'^' + DIRECTIVE_CHAR + '\s*(.*)$')
 
@@ -104,11 +116,12 @@ def string_to_tokens(s):
 ############################################################
 
 def convert_item_to_db(item):
-    (bundle_info, value_obj, type) = item
+    (bundle_info, subworksheet_info, value_obj, type) = item
     bundle_uuid = bundle_info['uuid'] if bundle_info else None
+    subworksheet_uuid = subworksheet_info['uuid'] if subworksheet_info else None
     value = tokens_to_string(value_obj) if type == TYPE_DIRECTIVE else value_obj
-    if not value: value = ''  # TODO: change the database schema so that None's are allowed
-    return (bundle_uuid, value, type)
+    if not value: value = ''  # TODO: change tables.py so that None's are allowed
+    return (bundle_uuid, subworksheet_uuid, value, type)
 
 def get_worksheet_lines(worksheet_info):
     '''
@@ -137,9 +150,13 @@ def get_worksheet_lines(worksheet_info):
     '''.strip() % (worksheet_info['name'],)
     lines = header.split('\n')
 
-    for (bundle_info, value_obj, type) in worksheet_info['items']:
+    for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:
         if type == TYPE_MARKUP:
             lines.append(value_obj)
+        elif type == TYPE_DIRECTIVE:
+            value = tokens_to_string(value_obj)
+            value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
+            lines.append(value)
         elif type == TYPE_BUNDLE:
             metadata = bundle_info['metadata']
             description = bundle_info['bundle_type']
@@ -148,11 +165,11 @@ def get_worksheet_lines(worksheet_info):
             if deps: description += ' -- ' + deps
             command = bundle_info.get('command')
             if command: description += ' : ' + command
-            lines.append('[%s]{%s}' % (description, bundle_info['uuid']))
-        elif type == TYPE_DIRECTIVE:
-            value = tokens_to_string(value_obj)
-            value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
-            lines.append(value)
+            lines.append(bundle_line(description, bundle_info['uuid']))
+        elif type == TYPE_WORKSHEET:
+            lines.append(worksheet_line('worksheet ' + subworksheet_info['name'], subworksheet_info['uuid']))
+        else:
+            raise InternalError('Invalid worksheet item type: %s' % type)
     return lines
 
 def request_lines(worksheet_info, client):
@@ -183,19 +200,19 @@ def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
     client.
     '''
     if spec_util.UUID_REGEX.match(bundle_spec):
-        bundle_uuid = bundle_spec
-    else:  # Already uuid, don't need to look up specification
+        bundle_uuid = bundle_spec  # Already uuid, don't need to look up specification
+    else:
         bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
     return bundle_uuid
 
-def get_worksheet_uuid(client, worksheet_spec):
+def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
     '''
     Same thing as get_bundle_uuid, but for worksheets.
     '''
     if spec_util.UUID_REGEX.match(worksheet_spec):
-        worksheet_uuid = worksheet_spec
-    else:  # Already uuid, don't need to look up specification
-        worksheet_uuid = client.get_worksheet_uuid(worksheet_spec)
+        worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
+    else:
+        worksheet_uuid = client.get_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
     return worksheet_uuid
 
 def parse_worksheet_form(form_result, client, worksheet_uuid):
@@ -203,8 +220,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     Input: form_result is a list of lines.
     Return (list of (bundle_uuid, value, type) triples, commands to execute)
     '''
-    # The user can specify '!<command> ^', which perform actions on the previous bundle.
-    bundle_uuids = []
+    bundle_uuids = [] # The user can specify '!<command> ^', which perform actions on the previous bundle.
     commands = []
     def parse(line):
         m = BUNDLE_REGEX.match(line)
@@ -213,15 +229,24 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
                 bundle_uuid = get_bundle_uuid(client, worksheet_uuid, m.group(3))
                 bundle_info = {'uuid': bundle_uuid}  # info doesn't need anything other than uuid
                 bundle_uuids.append(bundle_uuid)
-                return (bundle_info, None, TYPE_BUNDLE)
+                return (bundle_info, None, None, TYPE_BUNDLE)
             except UsageError, e:
-                return (None, line + ': ' + e.message, TYPE_MARKUP)
+                return markup_item(line + ': ' + e.message)
+
+        m = SUBWORKSHEET_REGEX.match(line)
+        if m:
+            try:
+                subworksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, m.group(3))
+                subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
+                return subworksheet_item(subworksheet_info)
+            except UsageError, e:
+                return markup_item(e.message + ': ' + line)
 
         m = DIRECTIVE_REGEX.match(line)
         if m:
-            return (None, string_to_tokens(m.group(1)), TYPE_DIRECTIVE)
+            return directive_item(string_to_tokens(m.group(1)))
 
-        return (None, line, TYPE_MARKUP)
+        return markup_item(line)
 
     result = []
     for line in form_result:
@@ -471,8 +496,8 @@ def interpret_items(schemas, items):
                         'value': apply_func(post, interpret_genpath(bundle_info, genpath))
                     })
                 new_items.append({
-                    'mode':mode,
-                    'interpreted':(header, rows),
+                    'mode': mode,
+                    'interpreted': (header, rows),
                     'bundle_info': bundle_info
                 })
         elif mode == 'table':
@@ -484,27 +509,31 @@ def interpret_items(schemas, items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
-                row = {}
-                rows.append({name : apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
+                rows.append({name: apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append({
-                    "mode":mode,
+                    'mode': mode,
                     'interpreted': (header, rows),
-                    'bundle_info': bundle_info
+                    'bundle_infos': bundle_infos
                 })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
 
-
-    for (bundle_info, value_obj, item_type) in items:
+    for (bundle_info, subworksheet_info, value_obj, item_type) in items:
         if item_type == TYPE_BUNDLE:
             bundle_infos.append(bundle_info)
+        elif item_type == TYPE_WORKSHEET:
+            flush()
+            new_items.append({
+                    'mode': TYPE_WORKSHEET,
+                    'interpreted': subworksheet_info,  # TODO: convert into something more useful?
+                    'subworksheet_info': subworksheet_info,
+                })
         elif item_type == TYPE_MARKUP:
             flush()
             new_items.append({
                     'mode': TYPE_MARKUP,
                     'interpreted': value_obj,
-                    'bundle_info': bundle_info
                 })
             pass
         elif item_type == TYPE_DIRECTIVE:
@@ -531,12 +560,13 @@ def interpret_items(schemas, items):
                 new_items.append({
                         'mode': TYPE_DIRECTIVE,
                         'interpreted': data,
-                        'bundle_info': bundle_info
                     })
             elif command == '%' or command == '':  # Comment
                 pass
             else:
                 raise UsageError('Unknown command: %s' % command)
+        else:
+            raise InternalError('Unknown worksheet item type: %s' % item_type)
     flush()
     result['items'] = new_items
     return result
