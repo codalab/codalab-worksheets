@@ -123,8 +123,6 @@ class RemoteMachine(Machine):
             os.close(fd)
             with open(path, 'w') as f:
                 f.write("cd %s &&\n" % self.bundle.uuid)
-                #for (source, target) in pairs:
-                    #f.write("ln -s %s %s &&\n" % (target, source))
                 f.write('(%s) > stdout 2>stderr\n' % self.bundle.command)
                 f.close()
             # Copy the script over
@@ -141,8 +139,6 @@ class RemoteMachine(Machine):
             args = self.get_ssh_args() + ['docker', 'run', '-d']
             args += ['-v',  remote_sh_file + ':/' + container_sh_file + ':ro']
             args += ['-v', self.get_remote_dir() + ':/' + bundle.uuid]
-            #for (source, target) in pairs:
-                #args += ['-v', target + ':' + source + ':ro']
             args += [self.docker_image, 'bash', container_sh_file]
 
             # Run the command
@@ -164,7 +160,13 @@ class RemoteMachine(Machine):
             self.created_local_dir = False
         # Remove remote
         if self.created_remote_dir:
-            self.remove_remote_dir()
+            # Might not have enough permissions to do this since files created
+            # in docker are owned by root, so have to run docker to delete the file
+            #self.remove_remote_dir()
+            args = self.get_ssh_args() + ['docker', 'run', '--rm']
+            args += ['-v', self.remote_directory + ':/scratch']
+            args += [self.docker_image, 'rm', '-r', '/scratch/' + self.bundle.uuid]
+            self.run_command(args)
             self.created_remote_dir = False
         # Remove container
         if self.container:
