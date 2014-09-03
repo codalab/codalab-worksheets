@@ -85,10 +85,10 @@ class PoolMachine(Machine):
         return False
 
     def kill_bundle(self, uuid):
-        spec, machine = self.bundles.get(uuid)
-        if not machine:
+        if uuid not in self.bundles:
             print 'ERROR: bundle %s not on a machine, skipping...' % uuid
             return False
+        spec, machine = self.bundles.get(uuid)
         return machine.kill_bundle(uuid)
 
     def poll(self):
