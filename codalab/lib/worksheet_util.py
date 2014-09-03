@@ -298,6 +298,7 @@ def interpret_genpath(bundle_info, genpath):
         bundle_type = bundle_info['bundle_type']
         if bundle_type not in ('make', 'run'): return None
         args += [bundle_type]
+        args += ['--name', bundle_info['metadata']['name']]
         deps = bundle_info['dependencies']
         anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
         for dep in deps:
@@ -305,7 +306,6 @@ def interpret_genpath(bundle_info, genpath):
             b = dep['parent_uuid']
             c = '/' + dep['parent_path'] if dep['parent_path'] else ''
             args.append(a + b + c)
-        args += ['--name', bundle_info['metadata']['name']]
         if bundle_info['command']:
             args.append('---')
             args.append(bundle_info['command'])
