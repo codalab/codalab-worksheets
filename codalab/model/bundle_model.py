@@ -444,51 +444,54 @@ class BundleModel(object):
     # Worksheet-related model methods follow!
     #############################################################################
 
-    def get_worksheet(self, uuid):
+    def get_worksheet(self, uuid, fetch_items):
         '''
         Get a worksheet given its uuid.
         '''
-        worksheets = self.batch_get_worksheets(uuid=uuid)
+        worksheets = self.batch_get_worksheets(fetch_items=fetch_items, uuid=uuid)
         if not worksheets:
             raise UsageError('Could not find worksheet with uuid %s' % (uuid,))
         elif len(worksheets) > 1:
             raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
         return worksheets[0]
 
-    def get_child_worksheets(self, bundle_uuid):
-        '''
-        Return a list of worksheets that depend on the given bundle.
-        '''
-        with self.engine.begin() as connection:
-            rows = connection.execute(cl_worksheet_item.select().where(
-              cl_worksheet_item.c.bundle_uuid == bundle_uuid
-            )).fetchall()
-        uuids = set(row.worksheet_uuid for row in rows)
-        return self.batch_get_worksheets(uuid=uuids)
-
-    def batch_get_worksheets(self, **kwargs):
+    def batch_get_worksheets(self, fetch_items, **kwargs):
         '''
         Get a list of worksheets, all of which satisfy the clause given by kwargs.
         '''
+        base_worksheet_uuid = kwargs.pop('base_worksheet_uuid', None)
         clause = self.make_kwargs_clause(cl_worksheet, kwargs)
+        # Handle base_worksheet_uuid specially
+        if base_worksheet_uuid:
+            clause = and_(clause,
+                cl_worksheet_item.c.subworksheet_uuid == cl_worksheet.c.uuid,
+                cl_worksheet_item.c.worksheet_uuid == base_worksheet_uuid)
+
         with self.engine.begin() as connection:
             worksheet_rows = connection.execute(
-              cl_worksheet.select().where(clause)
+              cl_worksheet.select().distinct().where(clause)
             ).fetchall()
             if not worksheet_rows:
+                if base_worksheet_uuid != None:
+                    # We didn't find any results restricting to base_worksheet_uuid,
+                    # so do a global search
+                    return self.batch_get_worksheets(fetch_items, **kwargs)
                 return []
-            uuids = set(row.uuid for row in worksheet_rows)
-            item_rows = connection.execute(cl_worksheet_item.select().where(
-              cl_worksheet_item.c.worksheet_uuid.in_(uuids)
-            )).fetchall()
+            # Fetch the items of all the worksheets
+            if fetch_items:
+                uuids = set(row.uuid for row in worksheet_rows)
+                item_rows = connection.execute(cl_worksheet_item.select().where(
+                  cl_worksheet_item.c.worksheet_uuid.in_(uuids)
+                )).fetchall()
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: dict(row) for row in worksheet_rows}
-        for value in worksheet_values.itervalues():
-            value['items'] = []
-        for item_row in sorted(item_rows, key=item_sort_key):
-            if item_row.worksheet_uuid not in worksheet_values:
-                raise IntegrityError('Got item %s without worksheet' % (item_row,))
-            worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
+        if fetch_items:
+            for value in worksheet_values.itervalues():
+                value['items'] = []
+            for item_row in sorted(item_rows, key=item_sort_key):
+                if item_row.worksheet_uuid not in worksheet_values:
+                    raise IntegrityError('Got item %s without worksheet' % (item_row,))
+                worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.itervalues()]
 
     def list_worksheets(self, owner_id=None):
@@ -569,13 +572,14 @@ class BundleModel(object):
         a (bundle_uuid, value, type) pair, where the bundle_uuid may be None and the
         value must be a string.
         '''
-        (bundle_uuid, value, type) = item
-        if value == None: value = ''  # TODO: change the schema to allow nulls
+        (bundle_uuid, subworksheet_uuid, value, type) = item
+        if value == None: value = ''  # TODO: change tables.py to allow nulls
         item_value = {
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
-          'type': type,
+          'subworksheet_uuid': subworksheet_uuid,
           'value': value,
+          'type': type,
           'sort_key': None,
         }
         with self.engine.begin() as connection:
@@ -605,9 +609,8 @@ class BundleModel(object):
                 }
                 new_items.append(new_item)
                 connection.execute(cl_worksheet_item.insert().values(new_item))
-            # sqlite doesn't support this
+            # sqlite doesn't support batch insertion
             #connection.execute(cl_worksheet_item.insert().values(new_items))
-
 
     def update_worksheet(self, worksheet_uuid, last_item_id, length, new_items):
         '''
@@ -634,10 +637,11 @@ class BundleModel(object):
         new_item_values = [{
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
-          'type': type,
+          'subworksheet_uuid': subworksheet_uuid,
           'value': value,
+          'type': type,
           'sort_key': (last_item_id + i - len(new_items)),
-        } for (i, (bundle_uuid, value, type)) in enumerate(new_items)]
+        } for (i, (bundle_uuid, subworksheet_uuid, value, type)) in enumerate(new_items)]
         with self.engine.begin() as connection:
             result = connection.execute(cl_worksheet_item.delete().where(clause))
             message = 'Found extra items for worksheet %s' % (worksheet_uuid,)
@@ -667,6 +671,9 @@ class BundleModel(object):
             )
             connection.execute(cl_worksheet_item.delete().where(
               cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
+            ))
+            connection.execute(cl_worksheet_item.delete().where(
+              cl_worksheet_item.c.subworksheet_uuid == worksheet_uuid
             ))
             connection.execute(cl_worksheet.delete().where(
               cl_worksheet.c.uuid == worksheet_uuid

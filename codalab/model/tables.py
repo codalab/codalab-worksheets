@@ -89,15 +89,21 @@ worksheet_item = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
-  # A worksheet row may OPTIONALLY include a bundle_uuid. This column is a logical
-  # foreign key on bundle.uuid, but it may be broken if bundles are deleted.
-  # TODO: add worksheet_uuid
+
+  # A worksheet item is either:
+  # - type = bundle (bundle_uuid != null)
+  # - type = worksheet (subworksheet_uuid != null)
+  # - type = markup (value != null)
+  # - type = directive (value != null)
   Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=True),
-  Column('value', Text, nullable=False),  # Should change to True
+  Column('subworksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=True),
+  Column('value', Text, nullable=False),  # TODO: make this nullable
   Column('type', String(20), nullable=False),
+
   Column('sort_key', Integer, nullable=True),
   Index('worksheet_item_worksheet_uuid_index', 'worksheet_uuid'),
   Index('worksheet_item_bundle_uuid_index', 'bundle_uuid'),
+  Index('worksheet_item_subworksheet_uuid_index', 'subworksheet_uuid'),
   sqlite_autoincrement=True,
 )
 
