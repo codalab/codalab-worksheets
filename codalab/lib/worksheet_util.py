@@ -308,7 +308,7 @@ def interpret_genpath(bundle_info, genpath):
             args.append(a + b + c)
         if bundle_info['command']:
             args.append('---')
-            args.append(bundle_info['command'])
+            args.append(bundle_info['command'].replace('"', '\\"'))
         return ' '.join(args)
 
     # Bundle field?
