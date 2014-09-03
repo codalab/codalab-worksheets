@@ -101,7 +101,7 @@ def unique_group(model, group_spec):
 ALL_PERMISSIONS = {GROUP_OBJECT_PERMISSION_ALL, GROUP_OBJECT_PERMISSION_READ}
 
 def _check_permissions(model, user_id, target, permissions):
-    if str(target.owner_id) == user_id:
+    if str(target.owner_id) == str(user_id):
         available_perms = ALL_PERMISSIONS
     else:
         available_perms = model.batch_get_permissions(user_id, target.uuid)

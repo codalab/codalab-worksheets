@@ -187,6 +187,7 @@ class CodaLabManager(object):
         '''
         auth_config = self.config['server']['auth']
         handler_class = auth_config['class']
+
         if handler_class == 'OAuthHandler':
             arguments = ('address', 'app_id', 'app_key')
             kwargs = {arg: auth_config[arg] for arg in arguments}
@@ -197,7 +198,9 @@ class CodaLabManager(object):
             return MockAuthHandler()
         raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
 
-    def current_client(self): return self.client(self.session()['address'])
+    def current_client(self):
+        return self.client(self.session()['address'])
+
     def client(self, address, is_cli=True):
         '''
         Return a client given the address.  Note that this can either be called
@@ -207,10 +210,17 @@ class CodaLabManager(object):
         '''
         if address in self.clients:
             return self.clients[address]
+        # if local force mockauth or if locl server use correct auth
         if is_local_address(address):
+            from codalab.server.auth import MockAuthHandler
             bundle_store = self.bundle_store()
             model = self.model()
-            auth_handler = self.auth_handler()
+
+            if is_cli:  # we are local and cli, we only need mock
+                auth_handler = MockAuthHandler()
+            else: # server
+                auth_handler = self.auth_handler()
+
             from codalab.client.local_bundle_client import LocalBundleClient
             client = LocalBundleClient(address, bundle_store, model, auth_handler, self.cli_verbose)
             self.clients[address] = client
@@ -269,18 +279,18 @@ class CodaLabManager(object):
 
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}
-        # For a local client with mock credentials, use the default username.
+
         username = None
+        # For a local client with mock credentials, use the default username.
         if is_local_address(client.address):
-            from codalab.server.auth import MockAuthHandler
-            if type(self.auth_handler()) is MockAuthHandler:
-                username = 'root'
-                password = ''
+            username = 'root'
+            password = ''
         if not username:
             print 'Requesting access at %s' % address
             print 'Username: ',
             username = sys.stdin.readline().rstrip()
             password = getpass.getpass()
+
         token_info = client.login('credentials', username, password)
         if token_info is None:
             raise UsageError("Invalid username or password")
