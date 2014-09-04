@@ -1042,6 +1042,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         uuid = client.new_worksheet(args.name)
         client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(uuid))  # Add new to current
+        client.add_worksheet_item(uuid, worksheet_util.markup_item('Parent:'))  # Backpointer
         client.add_worksheet_item(uuid, worksheet_util.subworksheet_item(worksheet_uuid))  # Backpointer
         worksheet_info = client.get_worksheet_info(uuid, False)
         print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
@@ -1151,7 +1152,7 @@ class BundleCLI(object):
             mode = item['mode']
             data = item['interpreted']
             is_newline = (data == '')
-            if mode == 'inline' or mode == 'markup' or mode == 'contents':
+            if mode == 'link' or mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
                     if mode == 'inline':
                         if isinstance(data, tuple):
