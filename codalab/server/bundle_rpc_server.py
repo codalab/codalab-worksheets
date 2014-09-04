@@ -27,7 +27,8 @@ class BundleRPCServer(FileServer):
         self.port = manager.config['server']['port']
         self.verbose = manager.config['server']['verbose']
         # This server is backed by a LocalBundleClient that processes client commands
-        self.client = manager.client('local', False)
+        self.client = manager.client('local', is_cli=False)
+
         tempdir = tempfile.gettempdir()  # Consider using CodaLab's temp directory
         FileServer.__init__(self, (self.host, self.port), tempdir, manager.auth_handler())
         def wrap(command, func):
