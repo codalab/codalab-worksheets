@@ -39,11 +39,7 @@ from codalab.lib import (
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects.work_manager import Worker
-from codalab.machines import (
-  local_machine,
-  pool_machine,
-  remote_machine,
-)
+from codalab.machines import pool_machine
 
 class BundleCLI(object):
     DESCRIPTIONS = {
@@ -1042,6 +1038,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         uuid = client.new_worksheet(args.name)
         client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(uuid))  # Add new to current
+        client.add_worksheet_item(uuid, worksheet_util.markup_item('Parent:'))  # Backpointer
         client.add_worksheet_item(uuid, worksheet_util.subworksheet_item(worksheet_uuid))  # Backpointer
         worksheet_info = client.get_worksheet_info(uuid, False)
         print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
@@ -1151,7 +1148,7 @@ class BundleCLI(object):
             mode = item['mode']
             data = item['interpreted']
             is_newline = (data == '')
-            if mode == 'inline' or mode == 'markup' or mode == 'contents':
+            if mode == 'link' or mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
                     if mode == 'inline':
                         if isinstance(data, tuple):
@@ -1355,26 +1352,17 @@ class BundleCLI(object):
         parser.add_argument('--num-iterations', help="number of bundles to process before exiting", type=int, default=None)
         parser.add_argument('--sleep-time', type=int, help='Number of seconds to wait between successive polls', default=1)
         parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
-        parser.add_argument('-p', '--parallelism', type=int, help="number of bundles we can run at once", default=1)
         args = parser.parse_args(argv)
 
-        # Figure out machine settings
         worker_config = self.manager.config['workers']
-        if args.worker_type in worker_config:
-            config = worker_config[args.worker_type]
-        else:
+        machine = pool_machine.parse_machine(worker_config, args.worker_type)
+        if not machine:
             print '\'' + args.worker_type + '\'' + \
                   ' is not specified in your config file: ' + self.manager.config_path()
             print 'Options are ' + str(map(str, worker_config.keys()))
             return
 
-        if config['type'] == 'local':
-            construct_func = lambda : local_machine.LocalMachine()
-        elif config['type'] == 'remote':
-            construct_func = lambda : remote_machine.RemoteMachine(config['host'], config['user'], config['working_directory'], config['verbose'])
-        machine = pool_machine.PoolMachine(construct_func=construct_func, limit=args.parallelism)
-
-        client = self.manager.current_client()
+        client = self.manager.local_client()  # Always use the local bundle client
         worker = Worker(client.bundle_store, client.model, machine)
         worker.run_loop(args.num_iterations, args.sleep_time)
 

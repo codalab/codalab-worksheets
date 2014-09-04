@@ -13,6 +13,11 @@ class LocalMachine(Machine):
     Run commands on the local machine.  This is for simple testing only, since
     there is no security at all.
     '''
+    def __init__(self):
+        self.bundle = None
+        self.process = None
+        self.temp_dir = None
+
     def start_bundle(self, bundle, bundle_store, parent_dict):
         '''
         Start a bundle in the background.
@@ -46,19 +51,19 @@ class LocalMachine(Machine):
             return False
 
     def poll(self):
-        if self.process == None:
-            return (self.bundle, True, self.temp_dir)
+        if self.process == None: return None
 
         self.process.poll()
-        if self.process.returncode != None:
-            success = self.process.returncode == 0
-            return (self.bundle, success, self.temp_dir)
-        else:
-            return None
+        if self.process.returncode == None: return None
+
+        success = self.process.returncode == 0
+        return (self.bundle, success, self.temp_dir)
 
     def finalize_bundle(self, uuid):
-        if self.bundle.uuid == uuid:
-            path_util.remove(self.temp_dir)
-            return True
-        else:
-            return False
+        if self.bundle.uuid != uuid: return False
+        path_util.remove(self.temp_dir)
+
+        self.bundle = None
+        self.process = None
+        self.temp_dir = None
+        return True
