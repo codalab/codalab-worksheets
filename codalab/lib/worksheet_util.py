@@ -460,6 +460,12 @@ def interpret_items(schemas, items):
     current_display = ('table', 'default')
     new_items = []
     bundle_infos = []
+    def get_schema(args):  # args is a list of schema names
+        args = args if len(args) > 0 else ['default']
+        schema = []
+        for arg in args:
+            schema += schemas[arg]
+        return schema
     def flush():
         '''
         Gathered a group of bundles (in a table), which we can group together.
@@ -490,7 +496,7 @@ def interpret_items(schemas, items):
             # key1: value1
             # key2: value2
             # ...
-            schema = schemas[args[0] if len(args) > 0 else 'default']
+            schema = get_schema(args)
             for bundle_info in bundle_infos:
                 header = ('key', 'value')
                 rows = []
@@ -509,7 +515,7 @@ def interpret_items(schemas, items):
             # key1       key2
             # b1_value1  b1_value2
             # b2_value1  b2_value2
-            schema = schemas[args[0] if len(args) > 0 else 'default']
+            schema = get_schema(args)
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
