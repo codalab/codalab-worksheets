@@ -65,3 +65,6 @@ def create_default_name(bundle_type, raw_material):
     name = re.compile('\-+').sub('-', name)
     name = shorten_name(name)  # Shorten
     return name
+
+def client_is_explicit(spec):
+    return '::' in spec
