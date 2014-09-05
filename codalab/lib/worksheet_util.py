@@ -483,11 +483,12 @@ def interpret_items(schemas, items):
             pass
         elif mode == 'link':
             for bundle_info in bundle_infos:
-                if len(args) == 0: args = [bundle_info['metadata']['name']]
+                if len(args) == 0:
+                    args = [bundle_info['metadata']['name']]
                 new_items.append({
                     'mode': mode,
                     'interpreted': '[%s](%s)' % (args[0], bundle_info['uuid']),
-                    'bundle_info': bundle_info
+                    'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
             for bundle_info in bundle_infos:
