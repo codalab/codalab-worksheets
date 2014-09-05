@@ -231,9 +231,9 @@ def get_size(path, dirs_and_files=None):
     Does not include symlinked files and directories.
     '''
     if os.path.islink(path) or not os.path.isdir(path):
-        return long(os.lstat(path).st_size)
+        return os.lstat(path).st_size
     dirs_and_files = dirs_and_files or recursive_ls(path)
-    return sum(long(os.lstat(path).st_size) for path in itertools.chain(*dirs_and_files))
+    return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
 
 def get_info(path, depth):
     '''
