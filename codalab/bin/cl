@@ -1,6 +1,13 @@
 #!/bin/bash
 
 # Run cl.py in the right environment so that the proper libraries get loaded.
-export CODALAB=`dirname $0`/../..
+
+f=$0
+# If this file is a symbolic link, get its original location.
+if [ -L $f ]; then
+  f=$(readlink $f)
+fi
+
+export CODALAB=`dirname $f`/../..
 export PYTHONPATH=$CODALAB
 exec $CODALAB/venv/bin/python $CODALAB/codalab/bin/cl.py "$@"
