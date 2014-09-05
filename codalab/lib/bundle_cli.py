@@ -269,18 +269,19 @@ class BundleCLI(object):
             spec = tokens[1]
         if spec == '': spec = Worksheet.DEFAULT_WORKSHEET_NAME
         return (self.manager.client(address), spec)
-
+    
     def parse_client_worksheet_uuid(self, spec):
         if not spec:
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:
+            client_is_explicit = spec_util.client_is_explicit(spec)
             client, spec = self.parse_spec(spec)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
-            if client == self.manager.current_client():
-                _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            else:
+            if client_is_explicit:
                 base_worksheet_uuid = None
+            else:
+                _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
             worksheet_uuid = worksheet_util.get_worksheet_uuid(client, base_worksheet_uuid, spec)
         return (client, worksheet_uuid)
 
