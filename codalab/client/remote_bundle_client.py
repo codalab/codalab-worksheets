@@ -148,6 +148,7 @@ class RemoteBundleClient(BundleClient):
 
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
         # First, zip path up (temporary local zip file).
+        print path
         zip_path = zip_util.zip(path, follow_symlinks=follow_symlinks)
         # Copy it up to the server (temporary remote zip file)
         with open(zip_path, 'rb') as source:
