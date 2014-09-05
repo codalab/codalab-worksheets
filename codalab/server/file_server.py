@@ -19,6 +19,7 @@ from SimpleXMLRPCServer import (
 import tempfile
 import uuid
 import xmlrpclib
+xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)  # Hack to allow 64-bit integers
 
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.lib import (

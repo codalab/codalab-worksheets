@@ -9,6 +9,7 @@ import sys
 import urllib
 import tempfile
 import xmlrpclib
+xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)  # Hack to allow 64-bit integers
 
 from codalab.client import get_address_host
 from codalab.client.bundle_client import BundleClient
