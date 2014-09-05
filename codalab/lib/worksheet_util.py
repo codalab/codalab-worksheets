@@ -49,6 +49,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import types
 import yaml
 
 from codalab.common import UsageError
@@ -578,6 +579,31 @@ def interpret_items(schemas, items):
     result['items'] = new_items
 
     return result
+
+def interpret_gen_path_table_contents(client, contents):
+    # if called after an RPC call tuples may become lists
+    need_gen_types = (types.TupleType, types.ListType)
+    # Request information
+    requests = []
+    for r, row in enumerate(contents):
+        for key, value in row.items():
+            # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
+            if isinstance(value, need_gen_types):
+                requests.append(value)
+    responses = client.interpret_file_genpaths(requests)
+
+    # Put it in a table
+    new_contents = []
+    ri = 0
+    for r, row in enumerate(contents):
+        new_row = {}
+        for key, value in row.items():
+            if isinstance(value, need_gen_types):
+                value = responses[ri]
+                ri += 1
+            new_row[key] = value
+        new_contents.append(new_row)
+    return new_contents
 
 def interpret_search(client, worksheet_uuid, data):
     '''

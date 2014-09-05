@@ -86,7 +86,7 @@ class RemoteBundleClient(BundleClient):
       'rename_worksheet',
       'delete_worksheet',
       'interpret_file_genpaths',
-      'interpret_items_and_file_genpaths',
+      'resolve_interpeted_items',
       # Commands related to authentication.
       'login',
       # Commands related to groups and permissions.

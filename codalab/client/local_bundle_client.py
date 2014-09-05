@@ -6,6 +6,7 @@ from time import sleep
 import contextlib
 import os, sys
 import copy
+import types
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -466,48 +467,34 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
-    def interpret_items_and_file_genpaths(self, schemas, items):
-        # todo: this is very similar to display_interpreted, but for just data.
-        # Merge the 2 or create a separate for interpret_items_and_file_genpaths and printing of interpreted
-        interpreted = worksheet_util.interpret_items(schemas, items)
+    def resolve_interpeted_items(self, interpreted):
         is_last_newline = False
         for item in interpreted['items']:
             mode = item['mode']
             data = item['interpreted']
             is_newline = (data == '')
-            if mode == 'inline' or mode == 'markup' or mode == 'contents':
-                if not (is_newline and is_last_newline):
-                    if mode == 'inline':
-                        if isinstance(data, tuple):
-                            data = self.interpret_file_genpaths([data])[0]
+            # if's in order of most frequent
+            if mode == 'markup':
+                # no need to do anything
+                pass
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
                 # Request information
-                requests = []
-                for r, row in enumerate(contents):
-                    for key, value in row.items():
-                        # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
-                        if isinstance(value, tuple):
-                            requests.append(value)
-                responses = self.interpret_file_genpaths(requests)
-
-                # Put it in a table
-                new_contents = []
-                ri = 0
-                for r, row in enumerate(contents):
-                    new_row = {}
-                    for key, value in row.items():
-                        if isinstance(value, tuple):
-                            value = responses[ri]
-                            ri += 1
-                        new_row[key] = value
-                    new_contents.append(new_row)
-                contents = new_contents
-
+                contents = worksheet_util.interpret_gen_path_table_contents(self, contents)
                 data = (header, contents)
-            elif mode == 'html' or mode == 'image':
-                # Placeholder
+            elif mode == 'inline':
+                if not (is_newline and is_last_newline):
+                    if isinstance(data, tuple) or isinstance(data, type):
+                        data = self.interpret_file_genpaths([data])[0]
+            elif mode == 'contents':
+                # Placeholder,
+                pass
+            elif mode == 'html':
+                # Placeholder,
+                pass
+            elif mode == 'image':
+                # Placeholder,
                 pass
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
