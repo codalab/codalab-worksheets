@@ -19,7 +19,7 @@ class NamedBundle(Bundle):
       MetadataSpec('description', basestring, 'full description of the bundle'),
       MetadataSpec('tags', set, 'space-separated list of tags used for search (e.g., machine-learning)', metavar='TAG'),
       MetadataSpec('created', int, 'time when this bundle was created', generated=True, formatting='date'),
-      MetadataSpec('data_size', long, 'size of this bundle (in bytes)', generated=True, formatting='size'),
+      MetadataSpec('data_size', int, 'size of this bundle (in bytes)', generated=True, formatting='size'),
       MetadataSpec('failure_message', basestring, 'error message if bundle failed', generated=True),
     )
 
