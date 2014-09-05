@@ -22,4 +22,4 @@ def is_local_address(address):
     '''
     Indicates whether the address points to a local (in-memory) service.
     '''
-    return get_address_host(address) == 'local'
+    return address == 'local'

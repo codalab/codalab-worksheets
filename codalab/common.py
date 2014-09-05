@@ -23,6 +23,11 @@ class PreconditionViolation(ValueError):
     it is not an AssertionError because it is not local to a single module.
     '''
 
+class SystemError(ValueError):
+    '''
+    Raised when a system call fails.
+    '''
+
 
 class UsageError(ValueError):
     '''

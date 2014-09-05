@@ -157,11 +157,13 @@ class Worker(object):
         actions = bundle_data['actions']
 
         # Re-install dependencies as relative dependencies
-        bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, relative_symlinks=True)
         try:
+            bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, relative_symlinks=True)
             (data_hash, metadata) = self.bundle_store.upload(temp_dir)
-        except Exception:
+        except Exception as e:
             (data_hash, metadata) = (None, {})
+            success = False
+            metadata['failure_message'] = e.message
 
         # Update data, remove temp_dir and process
         if isinstance(bundle, RunBundle):
@@ -180,6 +182,8 @@ class Worker(object):
         # Remove temporary data
         if isinstance(bundle, RunBundle):
             self.machine.finalize_bundle(bundle.uuid)
+        else:
+            path_util.remove(temp_dir)
 
         print '-- END BUNDLE: %s [%s]' % (bundle, state)
         print ''
@@ -254,7 +258,7 @@ class Worker(object):
                 if self.start_bundle(bundle):
                     new_running_bundles += 1
                 else:
-                    # Restage
+                    # Restage: undo state change to RUNNING
                     self.update_bundle_states([bundle], State.STAGED)
         else:
             if self.verbose >= 2: self.pretty_print('Failed to lock a bundle!')

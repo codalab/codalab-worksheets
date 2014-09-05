@@ -29,6 +29,7 @@ first token determines the type.  Types of directives:
 %
 %% this is a comment
 % display hidden
+% display link <text>
 % display inline <genpath (e.g., /stats:errorRate)>
 % display contents <genpath (e.g., /out.txt)>
 % display image <genpath (e.g., /graph.png)>
@@ -137,9 +138,11 @@ def get_worksheet_lines(worksheet_info):
 // - Directives (%% title|schema|add|display)
 //   * title "Place title here"
 //   * schema <schema name>
-//   * add <descriptor> | add <key name> <value source> [post processing]
+//   * add <descriptor> | add <key name> <generalized path> [post processing]
+//   * addschema <schema name>
 //   * display hidden
-//   * display inline|contents|image|html <value source>
+//   * display link <text>
+//   * display inline|contents|image|html <generalized path (e.g., /stats:errorRate)>
 //   * display record|table <schema name>
 // For example, you can define a schema for a table and then set the display mode to using that schema:
 // %% schema s1
@@ -309,8 +312,7 @@ def interpret_genpath(bundle_info, genpath):
             c = '/' + dep['parent_path'] if dep['parent_path'] else ''
             args.append(a + b + c)
         if bundle_info['command']:
-            args.append('---')
-            args.append(bundle_info['command'].replace('"', '\\"'))
+            args.append(quote(bundle_info['command']))
         return ' '.join(args)
 
     # Bundle field?
@@ -462,6 +464,12 @@ def interpret_items(schemas, items):
     current_display = ('table', 'default')
     new_items = []
     bundle_infos = []
+    def get_schema(args):  # args is a list of schema names
+        args = args if len(args) > 0 else ['default']
+        schema = []
+        for arg in args:
+            schema += schemas[arg]
+        return schema
     def flush():
         '''
         Gathered a group of bundles (in a table), which we can group together.
@@ -473,6 +481,14 @@ def interpret_items(schemas, items):
         args = current_display[1:]
         if mode == 'hidden':
             pass
+        elif mode == 'link':
+            for bundle_info in bundle_infos:
+                if len(args) == 0: args = [bundle_info['metadata']['name']]
+                new_items.append({
+                    'mode': mode,
+                    'interpreted': '[%s](%s)' % (args[0], bundle_info['uuid']),
+                    'bundle_info': bundle_info
+                })
         elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
             for bundle_info in bundle_infos:
                 # Result: either a string (rendered) or (bundle_uuid, genpath) pair
@@ -493,7 +509,7 @@ def interpret_items(schemas, items):
             # key1: value1
             # key2: value2
             # ...
-            schema = schemas[args[0] if len(args) > 0 else 'default']
+            schema = get_schema(args)
             for bundle_info in bundle_infos:
                 header = ('key', 'value')
                 rows = []
@@ -512,7 +528,7 @@ def interpret_items(schemas, items):
             # key1       key2
             # b1_value1  b1_value2
             # b2_value1  b2_value2
-            schema = schemas[args[0] if len(args) > 0 else 'default']
+            schema = get_schema(args)
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
@@ -532,16 +548,16 @@ def interpret_items(schemas, items):
         elif item_type == TYPE_WORKSHEET:
             flush()
             new_items.append({
-                    'mode': TYPE_WORKSHEET,
-                    'interpreted': subworksheet_info,  # TODO: convert into something more useful?
-                    'subworksheet_info': subworksheet_info,
-                })
+                'mode': TYPE_WORKSHEET,
+                'interpreted': subworksheet_info,  # TODO: convert into something more useful?
+                'subworksheet_info': subworksheet_info,
+            })
         elif item_type == TYPE_MARKUP:
             flush()
             new_items.append({
-                    'mode': TYPE_MARKUP,
-                    'interpreted': value_obj,
-                })
+                'mode': TYPE_MARKUP,
+                'interpreted': value_obj,
+            })
             pass
         elif item_type == TYPE_DIRECTIVE:
             flush()
@@ -565,9 +581,9 @@ def interpret_items(schemas, items):
                 mode = command
                 data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
                 new_items.append({
-                        'mode': TYPE_DIRECTIVE,
-                        'interpreted': data,
-                    })
+                    'mode': TYPE_DIRECTIVE,
+                    'interpreted': data,
+                })
             elif command == '%' or command == '':  # Comment
                 pass
             else:
