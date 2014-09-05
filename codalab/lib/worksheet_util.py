@@ -433,6 +433,7 @@ def apply_func(func, arg):
 def get_default_schemas():
     created = ['created', 'created', 'date']
     data_size = ['data_size', 'data_size', 'size']
+    time = ['time', 'time', 'duration']
     schemas = {}
 
     schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, data_size, ['state']])
@@ -441,7 +442,7 @@ def get_default_schemas():
     schemas['dataset'] = canonicalize_schema_items([['name'], created, data_size])
 
     schemas['make'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['state']])
-    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state'], ['time']])
+    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state'], time])
     return schemas
 
 def interpret_items(schemas, items):
