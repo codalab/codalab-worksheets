@@ -13,7 +13,7 @@ class UploadedBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('source_url', basestring, 'where this data came from'))
 
     @classmethod
-    def construct(cls, data_hash, metadata, uuid=None):
+    def construct(cls, data_hash, metadata, owner_id, uuid=None):
         row = {
           'bundle_type': cls.BUNDLE_TYPE,
           'command': None,
@@ -21,7 +21,7 @@ class UploadedBundle(NamedBundle):
           'state': State.READY,
           'metadata': metadata,
           'dependencies': [],
-          'owner_id': 0
+          'owner_id': owner_id
         }
         if uuid:
             row['uuid'] = uuid

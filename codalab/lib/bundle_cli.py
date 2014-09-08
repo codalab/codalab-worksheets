@@ -441,7 +441,8 @@ class BundleCLI(object):
         metadata = metadata_util.request_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
-        bundle_subclass.construct(data_hash='', metadata=metadata).validate()
+        # pass in a null owner to validate. Will be set to the correct owner in the client upload_bundle below.
+        bundle_subclass.construct(owner_id=0, data_hash='', metadata=metadata).validate()
 
         # If only one path, strip away the list so that we make a bundle that
         # is this path rather than contains it.
@@ -1183,7 +1184,7 @@ class BundleCLI(object):
                         new_row[key] = value
                     new_contents.append(new_row)
                 contents = new_contents
-                    
+
                 # Print the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image':
