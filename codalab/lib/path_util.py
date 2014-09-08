@@ -358,7 +358,7 @@ def set_write_permissions(path):
     subprocess.call(['chmod', '-R', 'u+w', path])
 
 def rename(old_path, new_path):
-    set_write_permissions(path)  # Allow permissions
+    set_write_permissions(old_path)  # Allow permissions
     os.rename(old_path, new_path)
 
 def remove(path):
