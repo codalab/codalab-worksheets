@@ -1161,7 +1161,7 @@ class BundleCLI(object):
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
-                contents = worksheet_util.interpret_gen_path_table_contents(client, contents)
+                contents = worksheet_util.interpret_genpath_table_contents(client, contents)
                 # Print the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image':

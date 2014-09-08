@@ -597,7 +597,7 @@ def interpret_items(schemas, items):
 
     return result
 
-def interpret_gen_path_table_contents(client, contents):
+def interpret_genpath_table_contents(client, contents):
     # if called after an RPC call tuples may become lists
     need_gen_types = (types.TupleType, types.ListType)
     # Request information

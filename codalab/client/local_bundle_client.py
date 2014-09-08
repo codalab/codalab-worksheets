@@ -468,6 +468,12 @@ class LocalBundleClient(BundleClient):
         return responses
 
     def resolve_interpeted_items(self, interpreted):
+        """
+        Takes a list of interpreted worksheet items loops through them and depending
+        on the type will find genpath for bundle info being requested.
+
+        Returns as a full interpeted_items lists which can be easialy json or rpc
+        """
         is_last_newline = False
         for item in interpreted['items']:
             mode = item['mode']
@@ -481,7 +487,7 @@ class LocalBundleClient(BundleClient):
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
                 # Request information
-                contents = worksheet_util.interpret_gen_path_table_contents(self, contents)
+                contents = worksheet_util.interpret_genpath_table_contents(self, contents)
                 data = (header, contents)
             elif mode == 'inline':
                 if not (is_newline and is_last_newline):
@@ -607,6 +613,8 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def set_worksheet_perm(self, worksheet_spec, permission_name, group_spec):
+        # base_worksheet_uuid, worksheet_spec):
+        # base_worksheet_uuid?
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
