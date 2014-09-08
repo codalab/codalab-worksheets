@@ -20,6 +20,7 @@ import hashlib
 import itertools
 import os
 import shutil
+import subprocess
 import sys
 
 from codalab.common import (
@@ -351,11 +352,21 @@ def make_directory(path):
             raise
     check_isdir(path, 'make_directories')
 
+def set_write_permissions(path):
+    # Recursively give give write permissions to |path|, so that we can operate
+    # on it.
+    subprocess.call(['chmod', '-R', 'u+w', path])
+
+def rename(old_path, new_path):
+    set_write_permissions(path)  # Allow permissions
+    os.rename(old_path, new_path)
+
 def remove(path):
     '''
     Remove the given path, whether it is a directory, file, or link.
     '''
     check_isvalid(path, 'remove')
+    set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):
         os.unlink(path)
     elif os.path.isdir(path):
