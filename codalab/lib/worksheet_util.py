@@ -301,7 +301,7 @@ def interpret_genpath(bundle_info, genpath):
         bundle_type = bundle_info['bundle_type']
         if bundle_type not in ('make', 'run'): return None
         args += [bundle_type]
-        args += ['--name', bundle_info['metadata']['name']]
+        #args += ['--name', bundle_info['metadata']['name']]
         deps = bundle_info['dependencies']
         anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
         for dep in deps:
