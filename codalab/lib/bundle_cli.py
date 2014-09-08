@@ -745,10 +745,13 @@ class BundleCLI(object):
                 print value
             else:
                 # Display all the fields
-                if i > 0: print
+                if i > 0:
+                    print
                 self.print_basic_info(client, info, args.raw)
-                if args.children: self.print_children(info)
-                if args.verbose: self.print_contents(client, info)
+                if args.children:
+                    self.print_children(info)
+                if args.verbose:
+                    self.print_contents(client, info)
 
     def print_basic_info(self, client, info, raw):
         def key_value_str(key, value):
