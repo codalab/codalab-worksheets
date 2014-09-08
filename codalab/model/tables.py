@@ -29,7 +29,7 @@ bundle = Table(
   # The data_hash will be NULL if the bundle's value is still being computed.
   Column('data_hash', String(63), nullable=True),
   Column('state', String(63), nullable=False),
-  Column('owner_id', Integer, nullable=True),
+  Column('owner_id', String(255), nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('bundle_data_hash_index', 'data_hash'),
   sqlite_autoincrement=True,
@@ -77,7 +77,7 @@ worksheet = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
-  Column('owner_id', Integer, nullable=True),  # TODO: make this a String (to match user_id)
+  Column('owner_id', String(255), nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('worksheet_name_index', 'name'),
   Index('worksheet_owner_index', 'owner_id'),
@@ -114,7 +114,7 @@ group = Table(
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
   Column('user_defined', Boolean),
-  Column('owner_id', Integer, nullable=True),  # TODO: make this String (to match user_id)
+  Column('owner_id', String(255), nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('group_name_index', 'name'),
   Index('group_owner_id_index', 'owner_id'),
