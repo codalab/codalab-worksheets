@@ -6,6 +6,7 @@ from time import sleep
 import contextlib
 import os, sys
 import copy
+import types
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -469,6 +470,56 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
+    def resolve_interpeted_items(self, interpreted_items):
+        """
+        Takes a list of interpreted worksheet items loops through them and depending
+        on the type will find genpath for bundle info being requested.
+
+        Returns as a full interpeted_items lists which can be easialy json or rpc
+        """
+        is_last_newline = False
+        for item in interpreted_items:
+            mode = item['mode']
+            data = item['interpreted']
+            is_newline = (data == '')
+            # if's in order of most frequent
+            if mode == 'markup':
+                # no need to do anything
+                pass
+            elif mode == 'record' or mode == 'table':
+                # header_name_posts is a list of (name, post-processing) pairs.
+                header, contents = data
+                # Request information
+                contents = worksheet_util.interpret_genpath_table_contents(self, contents)
+                data = (header, contents)
+            elif mode == 'inline':
+                if not (is_newline and is_last_newline):
+                    if isinstance(data, tuple) or isinstance(data, type):
+                        data = self.interpret_file_genpaths([data])[0]
+            elif mode == 'contents':
+                # Placeholder,
+                pass
+            elif mode == 'html':
+                # Placeholder,
+                pass
+            elif mode == 'image':
+                # Placeholder,
+                pass
+            elif mode == 'search':
+                search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
+                data = search_interpreted
+            elif mode == 'worksheet':
+                #placeholder
+                pass
+            else:
+                raise UsageError('Invalid display mode: %s' % mode)
+
+            item['interpreted'] = data
+            is_last_newline = is_newline
+
+
+        return interpreted_items
+
     #############################################################################
     # Commands related to groups and permissions follow!
     #############################################################################
@@ -565,6 +616,8 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def set_worksheet_perm(self, worksheet_spec, permission_name, group_spec):
+        # base_worksheet_uuid, worksheet_spec):
+        # base_worksheet_uuid?
         uuid = self.get_worksheet_uuid(worksheet_spec)
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)

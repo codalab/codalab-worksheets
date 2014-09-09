@@ -44,11 +44,13 @@ A genpath (generalized path) is either:
 - a metadata field (e.g., 'name')
 - a path (starts with '/'), but can descend into a YAML file (e.g., /stats:train/errorRate)
 '''
+import copy
 import os
 import re
 import subprocess
 import sys
 import tempfile
+import types
 import yaml
 
 from codalab.common import UsageError
@@ -472,7 +474,8 @@ def interpret_items(schemas, items):
         '''
         Gathered a group of bundles (in a table), which we can group together.
         '''
-        if len(bundle_infos) == 0: return
+        if len(bundle_infos) == 0:
+            return
         # Print out the curent bundles somehow
         mode = current_display[0]
         args = current_display[1:]
@@ -480,11 +483,12 @@ def interpret_items(schemas, items):
             pass
         elif mode == 'link':
             for bundle_info in bundle_infos:
-                if len(args) == 0: args = [bundle_info['metadata']['name']]
+                if len(args) == 0:
+                    args = [bundle_info['metadata']['name']]
                 new_items.append({
                     'mode': mode,
                     'interpreted': '[%s](%s)' % (args[0], bundle_info['uuid']),
-                    'bundle_info': bundle_info
+                    'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
             for bundle_info in bundle_infos:
@@ -499,7 +503,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted': interpreted,
-                    'bundle_info': bundle_info
+                    'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'record':
             # display record schema =>
@@ -518,7 +522,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
-                    'bundle_info': bundle_info
+                    'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'table':
             # display table schema =>
@@ -531,10 +535,10 @@ def interpret_items(schemas, items):
             for bundle_info in bundle_infos:
                 rows.append({name: apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append({
-                'mode': mode,
-                'interpreted': (header, rows),
-                'bundle_infos': bundle_infos
-            })
+                    'mode': mode,
+                    'interpreted': (header, rows),
+                    'bundle_info': copy.deepcopy(bundle_infos)
+                })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
@@ -587,9 +591,36 @@ def interpret_items(schemas, items):
                 raise UsageError('Unknown command: %s' % command)
         else:
             raise InternalError('Unknown worksheet item type: %s' % item_type)
+
     flush()
     result['items'] = new_items
+
     return result
+
+def interpret_genpath_table_contents(client, contents):
+    # if called after an RPC call tuples may become lists
+    need_gen_types = (types.TupleType, types.ListType)
+    # Request information
+    requests = []
+    for r, row in enumerate(contents):
+        for key, value in row.items():
+            # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
+            if isinstance(value, need_gen_types):
+                requests.append(value)
+    responses = client.interpret_file_genpaths(requests)
+
+    # Put it in a table
+    new_contents = []
+    ri = 0
+    for r, row in enumerate(contents):
+        new_row = {}
+        for key, value in row.items():
+            if isinstance(value, need_gen_types):
+                value = responses[ri]
+                ri += 1
+            new_row[key] = value
+        new_contents.append(new_row)
+    return new_contents
 
 def interpret_search(client, worksheet_uuid, data):
     '''
