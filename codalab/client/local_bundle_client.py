@@ -470,7 +470,7 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
-    def resolve_interpeted_items(self, interpreted):
+    def resolve_interpeted_items(self, interpreted_items):
         """
         Takes a list of interpreted worksheet items loops through them and depending
         on the type will find genpath for bundle info being requested.
@@ -478,7 +478,7 @@ class LocalBundleClient(BundleClient):
         Returns as a full interpeted_items lists which can be easialy json or rpc
         """
         is_last_newline = False
-        for item in interpreted['items']:
+        for item in interpreted_items:
             mode = item['mode']
             data = item['interpreted']
             is_newline = (data == '')
@@ -518,7 +518,7 @@ class LocalBundleClient(BundleClient):
             is_last_newline = is_newline
 
 
-        return interpreted
+        return interpreted_items
 
     #############################################################################
     # Commands related to groups and permissions follow!
