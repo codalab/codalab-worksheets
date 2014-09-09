@@ -497,8 +497,11 @@ class LocalBundleClient(BundleClient):
                     if isinstance(data, tuple) or isinstance(data, type):
                         data = self.interpret_file_genpaths([data])[0]
             elif mode == 'contents':
-                # Placeholder,
-                pass
+                info = self.get_target_info(data, 1)
+                if 'type' not in info:
+                    pass
+                elif info['type'] == 'file':
+                    data = self.head_target(data, 10)
             elif mode == 'html':
                 # Placeholder,
                 pass
