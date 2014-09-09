@@ -62,6 +62,7 @@ class LocalBundleClient(BundleClient):
         result = {
           'uuid': bundle.uuid,
           'bundle_type': bundle.bundle_type,
+          'owner_id': bundle.owner_id,
           'command': bundle.command,
           'data_hash': bundle.data_hash,
           'state': bundle.state,
@@ -156,7 +157,8 @@ class LocalBundleClient(BundleClient):
         metadata.update(bundle_store_metadata)
         # TODO: check that if the data hash already exists, it's the same as before.
         construct_args['data_hash'] = data_hash
-
+        #set the owner
+        construct_args['owner_id'] = self._current_user_id()
         bundle = bundle_subclass.construct(**construct_args)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
@@ -170,7 +172,8 @@ class LocalBundleClient(BundleClient):
         '''
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
-        bundle = bundle_subclass.construct(targets=targets, command=command, metadata=metadata)
+        owner_id = self._current_user_id()
+        bundle = bundle_subclass.construct(targets=targets, command=command, metadata=metadata, owner_id=owner_id)
         self.model.save_bundle(bundle)
         if worksheet_uuid:
             self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))

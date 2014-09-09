@@ -16,7 +16,7 @@ class MakeBundle(NamedBundle):
     BUNDLE_TYPE = 'make'
 
     @classmethod
-    def construct(cls, targets, command, metadata, uuid=None, data_hash=None, state=State.CREATED):
+    def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):
         if not uuid: uuid = spec_util.generate_uuid()
         # Check that targets does not include both keyed and anonymous targets.
         if len(targets) > 1 and '' in targets:
@@ -39,7 +39,7 @@ class MakeBundle(NamedBundle):
           'state': state,
           'metadata': metadata,
           'dependencies': dependencies,
-          'owner_id': 0,
+          'owner_id': owner_id,
         })
 
     def get_hard_dependencies(self):
