@@ -470,7 +470,7 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
-    def resolve_interpeted_items(self, interpreted_items):
+    def resolve_interpreted_items(self, interpreted_items):
         """
         Takes a list of interpreted worksheet items loops through them and depending
         on the type will find genpath for bundle info being requested.
