@@ -234,6 +234,8 @@ class BundleModel(object):
                     key, value = m.group(1), m.group(2)
                     if key == 'bundle_type' or key == 'type':
                         clause = (cl_bundle.c.bundle_type == value)
+                    elif key == 'data_hash':
+                        clause = (cl_bundle.c.data_hash == value)
                     elif key == 'state':
                         clause = (cl_bundle.c.state == value)
                     elif key == 'dependencies':

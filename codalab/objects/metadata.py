@@ -71,6 +71,7 @@ class Metadata(object):
                       'Got duplicate values %s and %s for key %s' %
                       (metadata_dict[key], value, key)
                     )
+                # Convert string to the right type (e.g., string to int)
                 metadata_dict[key] = spec.get_constructor()(value)
         return metadata_dict
 

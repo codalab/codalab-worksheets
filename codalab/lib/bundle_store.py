@@ -102,7 +102,7 @@ class BundleStore(object):
             final_path_exists = True
         except OSError, e:
             if e.errno == errno.ENOENT:
-                os.rename(temp_path, final_path)
+                path_util.rename(temp_path, final_path)
             else:
                 raise
         if final_path_exists:

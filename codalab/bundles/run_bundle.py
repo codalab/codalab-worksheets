@@ -33,7 +33,7 @@ class RunBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('allowed_disk', basestring, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
 
     METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('memory', long, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('memory', int, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
 
     @classmethod

@@ -32,13 +32,21 @@ def zip(path, follow_symlinks, exclude_names=[]):
     else:
         absolute_path = path_util.normalize(path)
         path_util.check_isvalid(absolute_path, 'zip_directory')
+
     # Recursively copy the directory into a temp directory.
     temp_path = tempfile.mkdtemp()
     temp_subpath = os.path.join(temp_path, ZIP_SUBPATH)
 
     # TODO: this is inefficient; do the zipping from the original source
     # directly.
-    path_util.copy(absolute_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_names=exclude_names)
+    if isinstance(path, list):
+        os.mkdir(temp_subpath)
+        for p in path:
+            absolute_path = path_util.normalize(p)
+            path_util.copy(absolute_path, os.path.join(temp_subpath, os.path.basename(p)), follow_symlinks=follow_symlinks, exclude_names=exclude_names)
+    else:
+        absolute_path = path_util.normalize(path)
+        path_util.copy(absolute_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_names=exclude_names)
 
     # TODO: These methods of zipping don't preserve permissions, so using a
     # system call for now (only works in Linux)

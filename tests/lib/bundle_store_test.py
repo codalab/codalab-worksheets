@@ -66,7 +66,7 @@ class BundleStoreTest(unittest.TestCase):
       self.assertEqual(source_path, temp_path)
       self.assertEqual(dest_path, final_path)
       rename_called[0] = True
-    mock_os.rename = rename
+    mock_path_util.rename = rename
 
     def utime(path, ts):
       self.assertEqual(path, final_path)

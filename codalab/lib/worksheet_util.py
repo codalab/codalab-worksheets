@@ -303,7 +303,7 @@ def interpret_genpath(bundle_info, genpath):
         bundle_type = bundle_info['bundle_type']
         if bundle_type not in ('make', 'run'): return None
         args += [bundle_type]
-        args += ['--name', bundle_info['metadata']['name']]
+        #args += ['--name', bundle_info['metadata']['name']]
         deps = bundle_info['dependencies']
         anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
         for dep in deps:
@@ -435,6 +435,7 @@ def apply_func(func, arg):
 def get_default_schemas():
     created = ['created', 'created', 'date']
     data_size = ['data_size', 'data_size', 'size']
+    time = ['time', 'time', 'duration']
     schemas = {}
 
     schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, data_size, ['state']])
@@ -443,7 +444,7 @@ def get_default_schemas():
     schemas['dataset'] = canonicalize_schema_items([['name'], created, data_size])
 
     schemas['make'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['state']])
-    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state'], ['time']])
+    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state'], time])
     return schemas
 
 def interpret_items(schemas, items):

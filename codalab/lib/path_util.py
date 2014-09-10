@@ -20,6 +20,7 @@ import hashlib
 import itertools
 import os
 import shutil
+import subprocess
 import sys
 
 from codalab.common import (
@@ -231,9 +232,9 @@ def get_size(path, dirs_and_files=None):
     Does not include symlinked files and directories.
     '''
     if os.path.islink(path) or not os.path.isdir(path):
-        return long(os.lstat(path).st_size)
+        return os.lstat(path).st_size
     dirs_and_files = dirs_and_files or recursive_ls(path)
-    return sum(long(os.lstat(path).st_size) for path in itertools.chain(*dirs_and_files))
+    return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
 
 def get_info(path, depth):
     '''
@@ -351,11 +352,21 @@ def make_directory(path):
             raise
     check_isdir(path, 'make_directories')
 
+def set_write_permissions(path):
+    # Recursively give give write permissions to |path|, so that we can operate
+    # on it.
+    subprocess.call(['chmod', '-R', 'u+w', path])
+
+def rename(old_path, new_path):
+    set_write_permissions(old_path)  # Allow permissions
+    os.rename(old_path, new_path)
+
 def remove(path):
     '''
     Remove the given path, whether it is a directory, file, or link.
     '''
     check_isvalid(path, 'remove')
+    set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):
         os.unlink(path)
     elif os.path.isdir(path):
