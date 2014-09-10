@@ -1167,29 +1167,7 @@ class BundleCLI(object):
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
-
-                # Request information
-                requests = []
-                for r, row in enumerate(contents):
-                    for key, value in row.items():
-                        # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
-                        if isinstance(value, tuple):
-                            requests.append(value)
-                responses = client.interpret_file_genpaths(requests)
-
-                # Put it in a table
-                new_contents = []
-                ri = 0
-                for r, row in enumerate(contents):
-                    new_row = {}
-                    for key, value in row.items():
-                        if isinstance(value, tuple):
-                            value = responses[ri]
-                            ri += 1
-                        new_row[key] = value
-                    new_contents.append(new_row)
-                contents = new_contents
-
+                contents = worksheet_util.interpret_genpath_table_contents(client, contents)
                 # Print the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image':
