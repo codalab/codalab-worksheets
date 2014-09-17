@@ -198,7 +198,7 @@ class RemoteMachine(Machine):
             return None
 
     def kill_bundle(self, uuid):
-        if self.bundle.uuid != uuid: return False
+        if not self.bundle or self.bundle.uuid != uuid: return False
         if self.verbose >= 1: print '=== kill_bundle(%s): container = %s' % (uuid, self.container)
         try:
             self.run_command(self.get_ssh_args() + ['docker', 'kill', self.container])
@@ -207,6 +207,6 @@ class RemoteMachine(Machine):
             return False
 
     def finalize_bundle(self, uuid):
-        if self.bundle.uuid != uuid: return False
+        if not self.bundle or self.bundle.uuid != uuid: return False
         self.cleanup()
         return True

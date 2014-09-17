@@ -111,10 +111,29 @@ class Worker(object):
         # Run the bundle.
         with self.profile('Running bundle...'):
             if isinstance(bundle, RunBundle):
-                started = self.machine.start_bundle(bundle, self.bundle_store, parent_dict)
+                started = False
+                exception = None
+                try:
+                    started = self.machine.start_bundle(bundle, self.bundle_store, parent_dict)
+                except Exception as e:
+                    # TODO: handle this more gracefully
+                    # Currently, if there's an exception, we just make the
+                    # bundle fail (even if it's not the bundle's fault) so we
+                    # don't keep on trying it.
+                    started = True
+                    exception = e
+                    print 'INTERNAL ERROR: %s' % e
             else:
                 started = True
             if started: print '-- START BUNDLE: %s' % (bundle,)
+
+            # Run bundle which failed already
+            if exception:
+                success = False
+                temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
+                path_util.make_directory(temp_dir)
+                result = (bundle, success, temp_dir)
+                self.finalize_bundle(result)
 
             # If we have a MakeBundle, then just process it immediately.
             if not isinstance(bundle, RunBundle):
