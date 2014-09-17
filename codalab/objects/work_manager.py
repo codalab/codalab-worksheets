@@ -110,9 +110,9 @@ class Worker(object):
 
         # Run the bundle.
         with self.profile('Running bundle...'):
+            started = False
+            exception = None
             if isinstance(bundle, RunBundle):
-                started = False
-                exception = None
                 try:
                     started = self.machine.start_bundle(bundle, self.bundle_store, parent_dict)
                 except Exception as e:
