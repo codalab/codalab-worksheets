@@ -14,11 +14,9 @@ from codalab.lib.codalab_manager import CodaLabManager
 
 class ClFileWatcherEventHandler(FileSystemEventHandler):
     SERVER_PROCESS = None
-    manager = None
 
-    def __init__(self, manager):
+    def __init__(self):
         super(ClFileWatcherEventHandler, self).__init__()
-        self.manager = manager
         self.restart()
 
     def restart(self):
@@ -43,7 +41,7 @@ if __name__ == '__main__':
         if '--watch' in sys.argv:
             # Listen to root dir (/codalab/bin/../../)
             path = os.path.join(os.path.dirname(__file__), '../../')
-            event_handler = ClFileWatcherEventHandler(manager)
+            event_handler = ClFileWatcherEventHandler()
             observer = Observer()
             observer.schedule(event_handler, path, recursive=True)
             observer.start()
