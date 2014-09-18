@@ -32,7 +32,7 @@ class Group(ORMObject):
         '''
         spec_util.check_uuid(self.uuid)
         spec_util.check_name(self.name)
-        precondition(isinstance(self.owner_id, basestring), 'Invalid value: owner_id.')
+        precondition(isinstance(self.owner_id, basestring) or isinstance(self.owner_id, int), 'Invalid value: owner_id.')
         precondition(isinstance(self.user_defined, bool), 'Invalid value: user_defined.')
 
     def __repr__(self):
