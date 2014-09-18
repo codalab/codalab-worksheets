@@ -35,13 +35,13 @@ def zip(path, follow_symlinks, exclude_names=[], file_name=None):
 
     # Add proper name
     if file_name:
-        path = file_name
+        sub_path = file_name
     else:
-        path = ZIP_SUBPATH
+        sub_path = ZIP_SUBPATH
 
     # Recursively copy the directory into a temp directory.
     temp_path = tempfile.mkdtemp()
-    temp_subpath = os.path.join(temp_path, path)
+    temp_subpath = os.path.join(temp_path, sub_path)
 
     # TODO: this is inefficient; do the zipping from the original source
     # directly.
@@ -74,7 +74,7 @@ def zip(path, follow_symlinks, exclude_names=[], file_name=None):
     zip_path = temp_path + '.zip'
     opts = '-qr'
     if not follow_symlinks: opts += ' --symlinks'
-    if os.system("cd %s && zip %s %s %s" % (temp_path, opts, zip_path, path)) != 0:
+    if os.system("cd %s && zip %s %s %s" % (temp_path, opts, zip_path, sub_path)) != 0:
         raise UsageError('zip failed')
 
     path_util.remove(temp_path)
