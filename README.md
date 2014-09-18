@@ -158,7 +158,7 @@ The first two arguments specify the dependencies and the third is the command.
 Each dependency has the form `<key>:<target>`; think of it as creating a
 symlink called `<key>` pointing to `<target>`.  The target can be a bundle (e.g., `a.txt`),
 or if the bundle is a directory rather than a file, we can references files
-inside (e.g., `a.txt/file1`).
+inside (e.g., `a.txt/file1`). During the run, targets are read-only.
 
 Note that `cl run` doesn't actually run anything; it just creates the run
 bundle and returns immediately.  You can see by doing `cl ls` that it's been
@@ -699,6 +699,12 @@ To wait for the last bundle to finish and then print out its output:
     
     cl run 'sleep 10; date'
     cl cat $(cl wait ^)/stdout
+
+Dependent bundles are read-only during a run, so to change files or
+add to a dependent directory, everything must first be copied. Example
+of compiling a source tree as a run bundle:
+
+    cl run :src 'cp -r src src-build && cd src-build && make'
 
 ## Editing worksheets
 
