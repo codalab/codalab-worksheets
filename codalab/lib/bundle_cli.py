@@ -1310,8 +1310,9 @@ class BundleCLI(object):
         parser.add_argument('permission', help='permission: [none|(r)ead|(a)ll]')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
         args = parser.parse_args(argv)
-        client = self.manager.current_client()
-        result = client.set_worksheet_perm(args.worksheet_spec, args.permission, args.group_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        result = client.set_worksheet_perm(worksheet_uuid, args.permission, args.group_spec)
         permission_code = result['permission']
         permission_label = 'no'
         from codalab.model.tables import (

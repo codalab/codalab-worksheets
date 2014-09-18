@@ -618,11 +618,8 @@ class LocalBundleClient(BundleClient):
         return None
 
     @authentication_required
-    def set_worksheet_perm(self, worksheet_spec, permission_name, group_spec):
-        # base_worksheet_uuid, worksheet_spec):
-        # base_worksheet_uuid?
-        uuid = self.get_worksheet_uuid(worksheet_spec)
-        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
+    def set_worksheet_perm(self, worksheet_uuid, permission_name, group_spec):
+        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_has_full_permission(self.model, self._current_user_id(), worksheet)
         new_permission = parse_permission(permission_name)
         group_info = permission.unique_group(self.model, group_spec)
