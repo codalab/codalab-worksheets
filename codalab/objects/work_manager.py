@@ -129,18 +129,16 @@ class Worker(object):
 
             # Run bundle which failed already
             if exception:
-                success = False
                 temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                 path_util.make_directory(temp_dir)
-                result = (bundle, success, temp_dir)
+                result = {'bundle': bundle, 'exitcode': -1, 'temp_dir': temp_dir, 'exception': exception}
                 self.finalize_bundle(result)
 
             # If we have a MakeBundle, then just process it immediately.
             if not isinstance(bundle, RunBundle):
-                success = True
                 temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                 path_util.make_directory(temp_dir)
-                result = (bundle, success, temp_dir)
+                result = {'bundle': bundle, 'exitcode': 0, 'temp_dir': temp_dir}
                 self.finalize_bundle(result)
 
             return started
@@ -167,7 +165,9 @@ class Worker(object):
         return len(bundle_actions) - len(keep_bundle_actions) > 0
 
     def finalize_bundle(self, result):
-        (bundle, success, temp_dir) = result
+        bundle = result['bundle']
+        success = result['exitcode'] == 0
+        temp_dir = result['temp_dir']
 
         end_time = time.time()
         bundle_data = self.bundle_data[bundle.uuid]
@@ -183,6 +183,11 @@ class Worker(object):
             (data_hash, metadata) = (None, {})
             success = False
             metadata['failure_message'] = e.message
+
+        # Add metadata
+        for key, value in result.items():
+            if key in ['bundle', 'temp_dir']: continue
+            metadata[key] = value
 
         # Update data, remove temp_dir and process
         if isinstance(bundle, RunBundle):

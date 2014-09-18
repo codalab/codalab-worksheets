@@ -20,7 +20,7 @@ class RemoteMachine(Machine):
         self.user = config.get('user')
         self.host = config['host']
         self.verbose = config.get('verbose', 1)
-        self.docker_image = config.get('docker_image', 'codalab/ubuntu')
+        self.docker_image = config.get('docker_image', '5a76b45a534f')  # codalab/ubuntu
         self.remote_directory = config.get('working_directory', '/tmp/codalab')  # This is the base directory where bundles are stored
         # State
         self.bundle = None
@@ -45,7 +45,6 @@ class RemoteMachine(Machine):
         if self.verbose >= 4: print "=== run_command: exitcode = %s" % exit_code
         if exit_code != 0:
             print '=== run_command failed: %s' % (args,)
-            time.sleep(10)
             raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, args))
 
     def run_command_get_stdout(self, args):
@@ -56,7 +55,6 @@ class RemoteMachine(Machine):
         if self.verbose >= 4: print "=== run_command_get_stdout: exitcode = %s" % exit_code
         if exit_code != 0:
             print '=== run_command_get_stdout failed: %s' % (args,)
-            time.sleep(10)
             raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, args))
         return stdout
 
@@ -177,6 +175,8 @@ class RemoteMachine(Machine):
 
     def poll(self):
         if not self.container: return None
+        exception = None
+        exitcode = -1
         try:
             # Get status
             stdout = self.run_command_get_stdout(self.get_ssh_args() + ['docker', 'inspect', self.container])
@@ -192,10 +192,18 @@ class RemoteMachine(Machine):
                 exitcode = state['ExitCode']
 
                 if self.verbose >= 1: print '=== poll(%s): exitcode = %s' % (self.bundle.uuid, exitcode)
-                success = exitcode == 0
-                return (self.bundle, success, self.temp_dir)  # Return the results back
-        except:
-            return None
+        except Exception as e:
+            exception = e
+
+        # Return the results back
+        return {
+            'bundle': self.bundle,
+            'exitcode': exitcode,
+            'temp_dir': self.temp_dir,
+            'internal_error': str(exception),
+            'docker_image': self.docker_image,
+            'remote': self.get_host_string() + ':' + self.get_remote_dir()
+        }
 
     def kill_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False
