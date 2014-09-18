@@ -253,7 +253,6 @@ class LocalBundleClient(BundleClient):
         # Don't need to download anything because it's already local.
         # Note that we can't really enforce follow_symlinks, but this is okay,
         # because we will follow them when we copy it from the target path.
-        print '2222222222'
         return (self.get_target_path(target), None)
 
     def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow, dry_run):
