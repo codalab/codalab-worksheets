@@ -44,11 +44,9 @@ class LocalMachine(Machine):
         return True
 
     def kill_bundle(self, uuid):
-        if self.bundle.uuid == uuid:
-            self.process.kill()
-            return True
-        else:
-            return False
+        if not self.bundle or self.bundle.uuid != uuid: return False
+        self.process.kill()
+        return True
 
     def poll(self):
         if self.process == None: return None
@@ -60,7 +58,7 @@ class LocalMachine(Machine):
         return (self.bundle, success, self.temp_dir)
 
     def finalize_bundle(self, uuid):
-        if self.bundle.uuid != uuid: return False
+        if not self.bundle or self.bundle.uuid != uuid: return False
         path_util.remove(self.temp_dir)
 
         self.bundle = None
