@@ -70,10 +70,10 @@ class BundleCLI(object):
       'wls': 'List all worksheets.',
       'wcp': 'Copy the contents from one worksheet to another.',
       # Commands for groups and permissions.
-      'list-groups': 'Show groups to which you belong.',
-      'new-group': 'Create a new group.',
-      'rm-group': 'Delete a group.',
-      'group-info': 'Show detailed information for a group.',
+      'gls': 'Show groups to which you belong.',
+      'gnew': 'Create a new group.',
+      'grm': 'Delete a group.',
+      'ginfo': 'Show detailed information for a group.',
       'add-user': 'Add a user to a group.',
       'rm-user': 'Remove a user from a group.',
       'set-perm': 'Set a group\'s permissions for a worksheet.',
@@ -120,10 +120,10 @@ class BundleCLI(object):
     )
 
     GROUP_AND_PERMISSION_COMMANDS = (
-        'list-groups',
-        'new-group',
-        'rm-group',
-        'group-info',
+        'gls',
+        'gnew',
+        'grm',
+        'ginfo',
         'add-user',
         'rm-user',
         'set-perm',
@@ -270,7 +270,7 @@ class BundleCLI(object):
             spec = tokens[1]
         if spec == '': spec = Worksheet.DEFAULT_WORKSHEET_NAME
         return (self.manager.client(address), spec)
-    
+
     def parse_client_worksheet_uuid(self, spec):
         if not spec:
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -1247,7 +1247,7 @@ class BundleCLI(object):
     # CLI methods for commands related to groups and permissions follow!
     #############################################################################
 
-    def do_list_groups_command(self, argv, parser):
+    def do_gls_command(self, argv, parser):
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dicts = client.list_groups()
@@ -1256,21 +1256,21 @@ class BundleCLI(object):
         else:
             print 'No groups found.'
 
-    def do_new_group_command(self, argv, parser):
+    def do_gnew_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dict = client.new_group(args.name)
         print 'Created new group %s(%s).' % (group_dict['name'], group_dict['uuid'])
 
-    def do_rm_group_command(self, argv, parser):
+    def do_grm_command(self, argv, parser):
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dict = client.rm_group(args.group_spec)
         print 'Deleted group %s(%s).' % (group_dict['name'], group_dict['uuid'])
 
-    def do_group_info_command(self, argv, parser):
+    def do_ginfo_command(self, argv, parser):
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
