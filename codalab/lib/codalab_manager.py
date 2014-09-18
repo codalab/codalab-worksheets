@@ -73,7 +73,6 @@ class CodaLabManager(object):
                 'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800,
                     'auth': {'class': 'MockAuthHandler'}, 'verbose': 1},
                 'aliases': {
-                    'dev': 'https://qaintdev.cloudapp.net/bundleservice', # TODO: replace this with something official when it's ready
                     'localhost': 'http://localhost:2800',
                 },
                 'workers': {

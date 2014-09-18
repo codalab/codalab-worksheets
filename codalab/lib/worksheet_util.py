@@ -138,16 +138,22 @@ def get_worksheet_lines(worksheet_info):
 // - Directives (%% title|schema|add|display)
 //   * title "Place title here"
 //   * schema <schema name>
-//   * add <descriptor> | add <key name> <generalized path> [post processing]
+//   * add <descriptor> | add <key name> <generalized path> [<post-processor>]
 //   * addschema <schema name>
 //   * display hidden
 //   * display link <text>
 //   * display inline|contents|image|html <generalized path (e.g., /stats:errorRate)>
-//   * display record|table <schema name>
+//   * display record|table <schema-name-1> ... <schema-name-n>
+//   The post-processor is optional and is a sequence of the following, separated by " | ":
+//   * 'duration', 'date', 'size' for special formatting
+//   * '%%...' for sprintf-style formatting
+//   * s/<old>/<new> for regular expression substitution
+//   * [<start index>:<end index>] for taking substrings
 // For example, you can define a schema for a table and then set the display mode to using that schema:
 // %% schema s1
 // %% add name
 // %% add /stats:errorRate %%.3f
+// %% add method /options.map:method "s/-method// | [0:5]"
 // %% add time
 // %% display table s1
 // %% {run1}
@@ -393,8 +399,8 @@ def apply_func(func, arg):
     Apply post-processing function |func| to |arg|.
     |func| is a string representing a list of functions (which are to be
     applied to |arg| in succession).  Each function is either:
-    - 'time', 'size' for special formatting
-    - '%...' for sprintf style formatting
+    - 'duration', 'date', 'size' for special formatting
+    - '%...' for sprintf-style formatting
     - s/... for regular expression substitution
     - [a:b] for taking substrings
     '''
