@@ -239,7 +239,7 @@ class OAuthHandler(object):
             user_dict = {}
             key_type_key = 'name' if key_type == 'names' else 'id'
             for user in result['users']:
-                key = user[key_type_key]
+                key = str(user[key_type_key])
                 if 'active' in user and user['active'] == True:
                     user_dict[key] = User(user['name'], user['id'])
                 else:
