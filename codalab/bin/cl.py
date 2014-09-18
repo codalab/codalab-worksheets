@@ -39,7 +39,7 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
 if __name__ == '__main__':
     manager = CodaLabManager()
     # Either start the server or the client.
-    if sys.argv[1] == 'server':
+    if len(sys.argv) > 1 and sys.argv[1] == 'server':
         if '--watch' in sys.argv:
             # Listen to root dir (/codalab/bin/../../)
             path = os.path.join(os.path.dirname(__file__), '../../')

@@ -185,6 +185,8 @@ class RemoteBundleClient(BundleClient):
         os.close(fd)
         source_uuid = self.open_target_zip(target, follow_symlinks)
         source = RPCFileHandle(source_uuid, self.proxy)
+        import ipdb;ipdb.set_trace()
+        print 'asdfasdf'
         with open(zip_path, 'wb') as dest:
             with contextlib.closing(source):
                 file_util.copy(source, dest, autoflush=False, print_status=True)
