@@ -74,9 +74,9 @@ class BundleCLI(object):
       'gnew': 'Create a new group.',
       'grm': 'Delete a group.',
       'ginfo': 'Show detailed information for a group.',
-      'add-user': 'Add a user to a group.',
-      'rm-user': 'Remove a user from a group.',
-      'set-perm': 'Set a group\'s permissions for a worksheet.',
+      'uadd': 'Add a user to a group.',
+      'urm': 'Remove a user from a group.',
+      'wperm': 'Set a group\'s permissions for a worksheet.',
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
@@ -124,9 +124,9 @@ class BundleCLI(object):
         'gnew',
         'grm',
         'ginfo',
-        'add-user',
-        'rm-user',
-        'set-perm',
+        'uadd',
+        'urm',
+        'wperm',
     )
 
     OTHER_COMMANDS = (
@@ -1278,7 +1278,7 @@ class BundleCLI(object):
         #print 'Listing members of group %s (%s):\n' % (group_dict['name'], group_dict['uuid'])
         self.print_table(('name', 'role'), group_dict['members'])
 
-    def do_add_user_command(self, argv, parser):
+    def do_uadd_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         parser.add_argument('-a', '--admin', action='store_true',
@@ -1294,7 +1294,7 @@ class BundleCLI(object):
         else:
             print '%s is already in group %s' % (user_info['name'], user_info['group_uuid'])
 
-    def do_rm_user_command(self, argv, parser):
+    def do_urm_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
@@ -1305,7 +1305,7 @@ class BundleCLI(object):
         else:
             print 'Removed %s from group %s.' % (user_info['name'], user_info['group_uuid'])
 
-    def do_set_perm_command(self, argv, parser):
+    def do_wperm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
         parser.add_argument('permission', help='permission: [none|(r)ead|(a)ll]')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
