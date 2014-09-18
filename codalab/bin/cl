@@ -10,4 +10,6 @@ fi
 
 export CODALAB=`dirname $f`/../..
 export PYTHONPATH=$CODALAB
-exec $CODALAB/venv/bin/python $CODALAB/codalab/bin/cl.py "$@"
+# exec $CODALAB/venv/bin/python $CODALAB/codalab/bin/cl.py "$@"
+
+exec python $CODALAB/codalab/bin/cl.py "$@"
