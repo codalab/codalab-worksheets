@@ -70,13 +70,13 @@ class BundleCLI(object):
       'wls': 'List all worksheets.',
       'wcp': 'Copy the contents from one worksheet to another.',
       # Commands for groups and permissions.
-      'list-groups': 'Show groups to which you belong.',
-      'new-group': 'Create a new group.',
-      'rm-group': 'Delete a group.',
-      'group-info': 'Show detailed information for a group.',
-      'add-user': 'Add a user to a group.',
-      'rm-user': 'Remove a user from a group.',
-      'set-perm': 'Set a group\'s permissions for a worksheet.',
+      'gls': 'Show groups to which you belong.',
+      'gnew': 'Create a new group.',
+      'grm': 'Delete a group.',
+      'ginfo': 'Show detailed information for a group.',
+      'uadd': 'Add a user to a group.',
+      'urm': 'Remove a user from a group.',
+      'wperm': 'Set a group\'s permissions for a worksheet.',
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
@@ -120,13 +120,13 @@ class BundleCLI(object):
     )
 
     GROUP_AND_PERMISSION_COMMANDS = (
-        'list-groups',
-        'new-group',
-        'rm-group',
-        'group-info',
-        'add-user',
-        'rm-user',
-        'set-perm',
+        'gls',
+        'gnew',
+        'grm',
+        'ginfo',
+        'uadd',
+        'urm',
+        'wperm',
     )
 
     OTHER_COMMANDS = (
@@ -270,7 +270,7 @@ class BundleCLI(object):
             spec = tokens[1]
         if spec == '': spec = Worksheet.DEFAULT_WORKSHEET_NAME
         return (self.manager.client(address), spec)
-    
+
     def parse_client_worksheet_uuid(self, spec):
         if not spec:
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -1247,7 +1247,7 @@ class BundleCLI(object):
     # CLI methods for commands related to groups and permissions follow!
     #############################################################################
 
-    def do_list_groups_command(self, argv, parser):
+    def do_gls_command(self, argv, parser):
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dicts = client.list_groups()
@@ -1256,21 +1256,21 @@ class BundleCLI(object):
         else:
             print 'No groups found.'
 
-    def do_new_group_command(self, argv, parser):
+    def do_gnew_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dict = client.new_group(args.name)
         print 'Created new group %s(%s).' % (group_dict['name'], group_dict['uuid'])
 
-    def do_rm_group_command(self, argv, parser):
+    def do_grm_command(self, argv, parser):
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dict = client.rm_group(args.group_spec)
         print 'Deleted group %s(%s).' % (group_dict['name'], group_dict['uuid'])
 
-    def do_group_info_command(self, argv, parser):
+    def do_ginfo_command(self, argv, parser):
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
@@ -1278,7 +1278,7 @@ class BundleCLI(object):
         #print 'Listing members of group %s (%s):\n' % (group_dict['name'], group_dict['uuid'])
         self.print_table(('name', 'role'), group_dict['members'])
 
-    def do_add_user_command(self, argv, parser):
+    def do_uadd_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         parser.add_argument('-a', '--admin', action='store_true',
@@ -1294,7 +1294,7 @@ class BundleCLI(object):
         else:
             print '%s is already in group %s' % (user_info['name'], user_info['group_uuid'])
 
-    def do_rm_user_command(self, argv, parser):
+    def do_urm_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         args = parser.parse_args(argv)
@@ -1305,13 +1305,14 @@ class BundleCLI(object):
         else:
             print 'Removed %s from group %s.' % (user_info['name'], user_info['group_uuid'])
 
-    def do_set_perm_command(self, argv, parser):
+    def do_wperm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
         parser.add_argument('permission', help='permission: [none|(r)ead|(a)ll]')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
         args = parser.parse_args(argv)
-        client = self.manager.current_client()
-        result = client.set_worksheet_perm(args.worksheet_spec, args.permission, args.group_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        result = client.set_worksheet_perm(worksheet_uuid, args.permission, args.group_spec)
         permission_code = result['permission']
         permission_label = 'no'
         from codalab.model.tables import (
