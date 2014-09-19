@@ -207,14 +207,17 @@ class RemoteMachine(Machine):
             exception = e
 
         # Return the results back
-        return {
+        result = {
             'bundle': self.bundle,
-            'exitcode': exitcode,
+            'success': exitcode == 0,
             'temp_dir': self.temp_dir,
-            'internal_error': str(exception),
+            'exitcode': exitcode,
             'docker_image': self.docker_image,
             'remote': self.get_host_string() + ':' + self.get_remote_dir()
         }
+        if exception:
+            result['internal_error'] = str(exception)
+        return result
 
     def kill_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False
