@@ -107,55 +107,59 @@ class RemoteMachine(Machine):
         self.bundle = bundle
         self.temp_dir = canonicalize.get_current_location(bundle_store, bundle.uuid)
 
-        try:
-            # Prepare a temporary directory and copy it to remote
-            if self.verbose >= 1:
-                print '=== start_bundle(): preparing temporary directory %s, copying to remote %s:%s' % \
-                    (self.temp_dir, self.get_host_string(), self.get_remote_dir())
-            # TODO: rsync bundles in the bundle store to remote directly; remote keeps own bundle store
-            path_util.make_directory(self.temp_dir)
-            self.created_local_dir = True
-            pairs = bundle.get_dependency_paths(bundle_store, parent_dict, self.temp_dir)
-            for (source, target) in pairs:
-                path_util.copy(source, target, follow_symlinks=True)
-            self.make_remote_dir()
-            self.created_remote_dir = True
-            self.copy_local_to_remote()
+        # TODO: rsync bundles in the bundle store to remote directly; remote keeps own bundle store
 
-            # Write the command to be executed and copy it as a .sh file
-            # This way, we avoid annoying quoting issues
-            fd, path = tempfile.mkstemp()
-            os.close(fd)
-            with open(path, 'w') as f:
-                f.write("cd %s &&\n" % self.bundle.uuid)
-                f.write('(%s) > stdout 2>stderr\n' % self.bundle.command)
-                f.close()
-            # Copy the script over
-            remote_sh_file = self.get_remote_sh_file()
-            container_sh_file = os.path.basename(remote_sh_file)
-            if self.verbose >= 10:
-                print '---', container_sh_file, '---'
-                print open(path).read()
-            self.rsync(path, self.get_host_string() + ":" + remote_sh_file)
-            os.unlink(path)
+        # Copy to temp directory
+        if self.verbose >= 1:
+            print '=== start_bundle(): preparing temporary directory %s' % self.temp_dir
+        path_util.make_directory(self.temp_dir)
+        self.created_local_dir = True
+        pairs = bundle.get_dependency_paths(bundle_store, parent_dict, self.temp_dir)
+        for (source, target) in pairs:
+            # TODO: shouldn't follow symlinks because people could link to
+            # random files on the system.  But this means that if a make bundle
+            # refers to another make bundle, etc., we simply have broken
+            # dependencies.  But it's safer this way.
+            path_util.copy(source, target, follow_symlinks=False)
 
-            # Create the command to ssh into the machine and run the docker command
-            # (-d detaches, -v sets up mount points)
-            args = self.get_ssh_args() + ['docker', 'run', '-d']
-            args += ['-v',  remote_sh_file + ':/' + container_sh_file + ':ro']
-            args += ['-v', self.get_remote_dir() + ':/' + bundle.uuid]
-            args += [self.docker_image, 'bash', container_sh_file]
+        # Copy from temp directory to remote
+        if self.verbose >= 1:
+            print '=== start_bundle(): copying to remote %s:%s' % (self.get_host_string(), self.get_remote_dir())
+        self.make_remote_dir()
+        self.created_remote_dir = True
+        self.copy_local_to_remote()
 
-            # Run the command
-            if self.verbose >= 2: print '=== start_bundle(): running %s' % args
-            stdout = self.run_command_get_stdout(args)
+        # Write the command to be executed and copy it as a .sh file
+        # This way, we avoid annoying quoting issues
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        with open(path, 'w') as f:
+            f.write("cd %s &&\n" % self.bundle.uuid)
+            f.write('(%s) > stdout 2>stderr\n' % self.bundle.command)
+            f.close()
+        # Copy the script over
+        remote_sh_file = self.get_remote_sh_file()
+        container_sh_file = os.path.basename(remote_sh_file)
+        if self.verbose >= 10:
+            print '---', container_sh_file, '---'
+            print open(path).read()
+        self.rsync(path, self.get_host_string() + ":" + remote_sh_file)
+        os.unlink(path)
 
-            self.container = stdout.strip()
-            if self.verbose >= 2: print '=== start_bundle(): container = %s' % self.container
-            return True
-        except:
-            self.cleanup()
-            return False
+        # Create the command to ssh into the machine and run the docker command
+        # (-d detaches, -v sets up mount points)
+        args = self.get_ssh_args() + ['docker', 'run', '-d']
+        args += ['-v',  remote_sh_file + ':/' + container_sh_file + ':ro']
+        args += ['-v', self.get_remote_dir() + ':/' + bundle.uuid]
+        args += [self.docker_image, 'bash', container_sh_file]
+
+        # Run the command
+        if self.verbose >= 1: print '=== start_bundle(): running %s' % args
+        stdout = self.run_command_get_stdout(args)
+
+        self.container = stdout.strip()
+        if self.verbose >= 2: print '=== start_bundle(): container = %s' % self.container
+        return True
 
     def cleanup(self):
         if self.verbose >= 1: print '=== cleanup(%s)' % self.bundle.uuid
