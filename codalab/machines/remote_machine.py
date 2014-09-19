@@ -78,6 +78,7 @@ class RemoteMachine(Machine):
         dest = self.get_host_string() + ':' + self.get_remote_dir()
         self.rsync(source, dest)
         # Need to give global permissions so these files can be accessed inside docker
+        # TODO: combine this with the rsync command
         self.run_command(self.get_ssh_args() + ['chmod -R go=u ' + self.get_remote_dir()])
 
     def copy_remote_to_local(self, copy_all):
@@ -92,7 +93,13 @@ class RemoteMachine(Machine):
         # Copy from remote directory to the local directory
         source = os.path.join(self.get_host_string() + ':' + self.get_remote_dir(), files)
         dest = self.temp_dir
-        self.rsync(source, dest)
+        try:
+            self.rsync(source, dest)
+        except:
+            # Need to do this because some of the files created by docker
+            # aren't accessible by the outside.
+            print 'WARNING: rsync failed, but ignoring (files might be missing)'
+            pass
 
     # Sets up remote environment, starts bundle command
     def start_bundle(self, bundle, bundle_store, parent_dict):
