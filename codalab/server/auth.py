@@ -203,7 +203,7 @@ class OAuthHandler(object):
         result = json.load(response)
         status_code = result['code'] if 'code' in result else 500
         if status_code == 200:
-            self._user = User(result['user']['name'], result['user']['id'])
+            self._user = User(result['user']['name'], str(result['user']['id']))
             return True
         elif status_code == 403 or status_code == 404:
             return False # 'User credentials are not valid'
