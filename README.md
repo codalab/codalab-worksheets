@@ -683,11 +683,11 @@ To search for bundles by keyword:
     cl search a.txt
 
 Most CodaLab commands generate one or more bundle UUIDs.  These can be piped to
-further commands.  To kill all running bundles:
+further commands.  To kill all running bundles (be careful!):
 
     cl search state=running | xargs cl kill
 
-To delete all bundles that do not appear on a worksheet (*orphaned*):
+To delete all "orphaned" bundles that do not appear on a worksheet (be careful!):
 
     cl search orphan -u | xargs cl rm
 
@@ -699,6 +699,14 @@ To wait for the last bundle to finish and then print out its output:
     
     cl run 'sleep 10; date'
     cl cat $(cl wait ^)/stdout
+
+To find out what happened to the last bundle (e.g., why it failed):
+
+    cl info -v ^
+
+To rerun the last bundle:
+
+    cl info -f args ^ | xargs cl
 
 Dependent bundles are read-only during a run, so to change files or
 add to a dependent directory, everything must first be copied. Example
