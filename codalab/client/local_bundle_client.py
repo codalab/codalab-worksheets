@@ -553,7 +553,7 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def rm_group(self, group_spec):
         group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
-        if str(group_info['owner_id']) != str(self._current_user_id()):
+        if group_info['owner_id'] != self._current_user_id():
             raise UsageError('A group cannot be deleted by its co-owners.')
         self.model.delete_group(group_info['uuid'])
         return group_info
