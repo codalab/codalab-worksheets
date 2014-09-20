@@ -69,8 +69,3 @@ class RunBundle(NamedBundle):
           'dependencies': dependencies,
           'owner_id': owner_id,
         })
-
-    def get_hard_dependencies(self):
-        # The program and input are symlinked into a run bundle while it is being
-        # executed, but they are deleted once the run is complete.
-        return []

@@ -31,8 +31,10 @@ class LocalMachine(Machine):
                 # Make sure we follow symlinks and copy all the files (might be a
                 # bit slow but is safer in case we accidentally clobber any
                 # existing bundles).
+                # WARNING: if bundles have symlinks to random places, the run
+                # could overwrite those files by accident.
                 for (source, target) in pairs:
-                    path_util.copy(source, target, follow_symlinks=True)
+                    path_util.copy(source, target, follow_symlinks=False)
                 with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
                     process = subprocess.Popen(bundle.command, stdout=stdout, stderr=stderr, shell=True)
         else:

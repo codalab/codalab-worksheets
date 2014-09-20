@@ -57,7 +57,6 @@ class LocalBundleClient(BundleClient):
         '''
         Helper: Convert bundle to bundle_info.
         '''
-        hard_dependencies = bundle.get_hard_dependencies()
         # See tables.py
         result = {
           'uuid': bundle.uuid,
@@ -68,10 +67,8 @@ class LocalBundleClient(BundleClient):
           'state': bundle.state,
           'metadata': bundle.metadata.to_dict(),
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
-          'hard_dependencies': [dep.to_dict() for dep in hard_dependencies]
         }
         for dep in result['dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
-        for dep in result['hard_dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
         if children is not None:
             result['children'] = [child.simple_str() for child in children]
         return result

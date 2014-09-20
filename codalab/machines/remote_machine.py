@@ -116,10 +116,9 @@ class RemoteMachine(Machine):
         self.created_local_dir = True
         pairs = bundle.get_dependency_paths(bundle_store, parent_dict, self.temp_dir)
         for (source, target) in pairs:
-            # TODO: shouldn't follow symlinks because people could link to
-            # random files on the system.  But this means that if a make bundle
-            # refers to another make bundle, etc., we simply have broken
-            # dependencies.  But it's safer this way.
+            # Don't follow random symlinks because people could link to random
+            # files on the system and also we need to preserve the local
+            # symlink structure.
             path_util.copy(source, target, follow_symlinks=False)
 
         # Copy from temp directory to remote

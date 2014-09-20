@@ -116,10 +116,8 @@ class Worker(object):
                 try:
                     started = self.machine.start_bundle(bundle, self.bundle_store, parent_dict)
                 except Exception as e:
-                    # TODO: handle this more gracefully
-                    # Currently, if there's an exception, we just make the
-                    # bundle fail (even if it's not the bundle's fault) so we
-                    # don't keep on trying it.
+                    # If there's an exception, we just make the bundle fail
+                    # (even if it's not the bundle's fault).
                     started = True
                     exception = e
                     print 'INTERNAL ERROR: %s' % e
@@ -175,9 +173,14 @@ class Worker(object):
         parent_dict = bundle_data['parent_dict']
         actions = bundle_data['actions']
 
-        # Re-install dependencies as relative dependencies
+        # Re-install dependencies.
+        # - For RunBundle, use relative dependencies (this is just for convenience).
+        # - For MakeBundle, copy.
+        # This way, we maintain the invariant that we always only need to look
+        # back one-level at the dependencies, not recurse.
         try:
-            bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, relative_symlinks=True)
+            copy = isinstance(bundle, MakeBundle)
+            bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, copy=copy)
             (data_hash, metadata) = self.bundle_store.upload(temp_dir)
         except Exception as e:
             (data_hash, metadata) = (None, {})

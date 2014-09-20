@@ -117,22 +117,20 @@ class Bundle(ORMObject):
 
         return [process_dep(dep) for dep in self.dependencies]
 
-    def install_dependencies(self, bundle_store, parent_dict, dest_path, relative_symlinks):
+    def install_dependencies(self, bundle_store, parent_dict, dest_path, copy):
         '''
         Symlink this bundle's dependencies into the directory at dest_path.
         The caller is responsible for cleaning up this directory.
         rel: whether to use relative symlinks
         '''
         precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
-        pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks)
+        pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks=not copy)
         for (target, link_path) in pairs:
             # If the dependency already exists, remove it (this happens when we are reinstalling)
-            if os.path.exists(link_path): path_util.remove(link_path)
-            os.symlink(target, link_path)
-
-    def get_hard_dependencies(self):
-        '''
-        Returns a list of dependencies that are actually symlinked into this bundle
-        at the time that it is uploaded to the bundle store.
-        '''
-        raise NotImplementedError
+            if os.path.exists(link_path):
+                path_util.remove(link_path)
+            # Either copy (but not follow further symlinks) or symlink.
+            if copy:
+                path_util.copy(target, link_path, follow_symlinks=False)
+            else:
+                os.symlink(target, link_path)
