@@ -33,29 +33,38 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
             print "Saw file change: %s -- restarting!" % (os.path.basename(event.src_path))
             self.restart()
 
+def run_server():
+    if '--watch' in sys.argv:
+        # Listen to root dir (/codalab/bin/../../)
+        path = os.path.join(os.path.dirname(__file__), '../../')
+        event_handler = ClFileWatcherEventHandler()
+        observer = Observer()
+        observer.schedule(event_handler, path, recursive=True)
+        observer.start()
+        try:
+            while True:
+                time.sleep(10)
+        except KeyboardInterrupt:
+            observer.stop()
+        observer.join()
+    else:
+        from codalab.server.bundle_rpc_server import BundleRPCServer
+        rpc_server = BundleRPCServer(manager)
+        rpc_server.serve_forever()
+
+def run_cli():
+    from codalab.lib.bundle_cli import BundleCLI
+    cli = BundleCLI(manager)
+    cli.do_command(sys.argv[1:])
 
 if __name__ == '__main__':
     manager = CodaLabManager()
     # Either start the server or the client.
-    if len(sys.argv) > 1 and sys.argv[1] == 'server':
-        if '--watch' in sys.argv:
-            # Listen to root dir (/codalab/bin/../../)
-            path = os.path.join(os.path.dirname(__file__), '../../')
-            event_handler = ClFileWatcherEventHandler()
-            observer = Observer()
-            observer.schedule(event_handler, path, recursive=True)
-            observer.start()
-            try:
-                while True:
-                    time.sleep(10)
-            except KeyboardInterrupt:
-                observer.stop()
-            observer.join()
+    try:
+        if len(sys.argv) > 1 and sys.argv[1] == 'server':
+            run_server()
         else:
-            from codalab.server.bundle_rpc_server import BundleRPCServer
-            rpc_server = BundleRPCServer(manager)
-            rpc_server.serve_forever()
-    else:
-        from codalab.lib.bundle_cli import BundleCLI
-        cli = BundleCLI(manager)
-        cli.do_command(sys.argv[1:])
+            run_cli()
+    except KeyboardInterrupt:
+        print 'Terminated by Ctrl-C'
+        sys.exit(130)
