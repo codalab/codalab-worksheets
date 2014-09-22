@@ -20,7 +20,7 @@ class RemoteMachine(Machine):
         self.user = config.get('user')
         self.host = config['host']
         self.verbose = config.get('verbose', 1)
-        self.docker_image = config.get('docker_image', 'codalab/ubuntu')
+        self.docker_image = config.get('docker_image', '5a76b45a534f')  # codalab/ubuntu
         self.remote_directory = config.get('working_directory', '/tmp/codalab')  # This is the base directory where bundles are stored
         # State
         self.bundle = None
@@ -45,7 +45,6 @@ class RemoteMachine(Machine):
         if self.verbose >= 4: print "=== run_command: exitcode = %s" % exit_code
         if exit_code != 0:
             print '=== run_command failed: %s' % (args,)
-            time.sleep(10)
             raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, args))
 
     def run_command_get_stdout(self, args):
@@ -56,7 +55,6 @@ class RemoteMachine(Machine):
         if self.verbose >= 4: print "=== run_command_get_stdout: exitcode = %s" % exit_code
         if exit_code != 0:
             print '=== run_command_get_stdout failed: %s' % (args,)
-            time.sleep(10)
             raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, args))
         return stdout
 
@@ -80,6 +78,7 @@ class RemoteMachine(Machine):
         dest = self.get_host_string() + ':' + self.get_remote_dir()
         self.rsync(source, dest)
         # Need to give global permissions so these files can be accessed inside docker
+        # TODO: combine this with the rsync command
         self.run_command(self.get_ssh_args() + ['chmod -R go=u ' + self.get_remote_dir()])
 
     def copy_remote_to_local(self, copy_all):
@@ -94,7 +93,13 @@ class RemoteMachine(Machine):
         # Copy from remote directory to the local directory
         source = os.path.join(self.get_host_string() + ':' + self.get_remote_dir(), files)
         dest = self.temp_dir
-        self.rsync(source, dest)
+        try:
+            self.rsync(source, dest)
+        except:
+            # Need to do this because some of the files created by docker
+            # aren't accessible by the outside.
+            print 'WARNING: rsync failed, but ignoring (files might be missing)'
+            pass
 
     # Sets up remote environment, starts bundle command
     def start_bundle(self, bundle, bundle_store, parent_dict):
@@ -102,55 +107,58 @@ class RemoteMachine(Machine):
         self.bundle = bundle
         self.temp_dir = canonicalize.get_current_location(bundle_store, bundle.uuid)
 
-        try:
-            # Prepare a temporary directory and copy it to remote
-            if self.verbose >= 1:
-                print '=== start_bundle(): preparing temporary directory %s, copying to remote %s:%s' % \
-                    (self.temp_dir, self.get_host_string(), self.get_remote_dir())
-            # TODO: rsync bundles in the bundle store to remote directly; remote keeps own bundle store
-            path_util.make_directory(self.temp_dir)
-            self.created_local_dir = True
-            pairs = bundle.get_dependency_paths(bundle_store, parent_dict, self.temp_dir)
-            for (source, target) in pairs:
-                path_util.copy(source, target, follow_symlinks=True)
-            self.make_remote_dir()
-            self.created_remote_dir = True
-            self.copy_local_to_remote()
+        # TODO: rsync bundles in the bundle store to remote directly; remote keeps own bundle store
 
-            # Write the command to be executed and copy it as a .sh file
-            # This way, we avoid annoying quoting issues
-            fd, path = tempfile.mkstemp()
-            os.close(fd)
-            with open(path, 'w') as f:
-                f.write("cd %s &&\n" % self.bundle.uuid)
-                f.write('(%s) > stdout 2>stderr\n' % self.bundle.command)
-                f.close()
-            # Copy the script over
-            remote_sh_file = self.get_remote_sh_file()
-            container_sh_file = os.path.basename(remote_sh_file)
-            if self.verbose >= 10:
-                print '---', container_sh_file, '---'
-                print open(path).read()
-            self.rsync(path, self.get_host_string() + ":" + remote_sh_file)
-            os.unlink(path)
+        # Copy to temp directory
+        if self.verbose >= 1:
+            print '=== start_bundle(): preparing temporary directory %s' % self.temp_dir
+        path_util.make_directory(self.temp_dir)
+        self.created_local_dir = True
+        pairs = bundle.get_dependency_paths(bundle_store, parent_dict, self.temp_dir)
+        for (source, target) in pairs:
+            # Don't follow random symlinks because people could link to random
+            # files on the system and also we need to preserve the local
+            # symlink structure.
+            path_util.copy(source, target, follow_symlinks=False)
 
-            # Create the command to ssh into the machine and run the docker command
-            # (-d detaches, -v sets up mount points)
-            args = self.get_ssh_args() + ['docker', 'run', '-d']
-            args += ['-v',  remote_sh_file + ':/' + container_sh_file + ':ro']
-            args += ['-v', self.get_remote_dir() + ':/' + bundle.uuid]
-            args += [self.docker_image, 'bash', container_sh_file]
+        # Copy from temp directory to remote
+        if self.verbose >= 1:
+            print '=== start_bundle(): copying to remote %s:%s' % (self.get_host_string(), self.get_remote_dir())
+        self.make_remote_dir()
+        self.created_remote_dir = True
+        self.copy_local_to_remote()
 
-            # Run the command
-            if self.verbose >= 2: print '=== start_bundle(): running %s' % args
-            stdout = self.run_command_get_stdout(args)
+        # Write the command to be executed and copy it as a .sh file
+        # This way, we avoid annoying quoting issues
+        fd, path = tempfile.mkstemp()
+        os.close(fd)
+        with open(path, 'w') as f:
+            f.write("cd %s &&\n" % self.bundle.uuid)
+            f.write('(%s) > stdout 2>stderr\n' % self.bundle.command)
+            f.close()
+        # Copy the script over
+        remote_sh_file = self.get_remote_sh_file()
+        container_sh_file = os.path.basename(remote_sh_file)
+        if self.verbose >= 10:
+            print '---', container_sh_file, '---'
+            print open(path).read()
+        self.rsync(path, self.get_host_string() + ":" + remote_sh_file)
+        os.unlink(path)
 
-            self.container = stdout.strip()
-            if self.verbose >= 2: print '=== start_bundle(): container = %s' % self.container
-            return True
-        except:
-            self.cleanup()
-            return False
+        # Create the command to ssh into the machine and run the docker command
+        # (-d detaches, -v sets up mount points)
+        args = self.get_ssh_args() + ['docker', 'run', '-d']
+        args += ['-v',  remote_sh_file + ':/' + container_sh_file + ':ro']
+        args += ['-v', self.get_remote_dir() + ':/' + bundle.uuid]
+        args += [self.docker_image, 'bash', container_sh_file]
+
+        # Run the command
+        if self.verbose >= 1: print '=== start_bundle(): running %s' % args
+        stdout = self.run_command_get_stdout(args)
+
+        self.container = stdout.strip()
+        if self.verbose >= 2: print '=== start_bundle(): container = %s' % self.container
+        return True
 
     def cleanup(self):
         if self.verbose >= 1: print '=== cleanup(%s)' % self.bundle.uuid
@@ -177,6 +185,8 @@ class RemoteMachine(Machine):
 
     def poll(self):
         if not self.container: return None
+        exception = None
+        exitcode = -1
         try:
             # Get status
             stdout = self.run_command_get_stdout(self.get_ssh_args() + ['docker', 'inspect', self.container])
@@ -192,10 +202,21 @@ class RemoteMachine(Machine):
                 exitcode = state['ExitCode']
 
                 if self.verbose >= 1: print '=== poll(%s): exitcode = %s' % (self.bundle.uuid, exitcode)
-                success = exitcode == 0
-                return (self.bundle, success, self.temp_dir)  # Return the results back
-        except:
-            return None
+        except Exception as e:
+            exception = e
+
+        # Return the results back
+        result = {
+            'bundle': self.bundle,
+            'success': exitcode == 0,
+            'temp_dir': self.temp_dir,
+            'exitcode': exitcode,
+            'docker_image': self.docker_image,
+            'remote': self.get_host_string() + ':' + self.get_remote_dir()
+        }
+        if exception:
+            result['internal_error'] = str(exception)
+        return result
 
     def kill_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False

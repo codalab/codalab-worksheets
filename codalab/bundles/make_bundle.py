@@ -41,6 +41,3 @@ class MakeBundle(NamedBundle):
           'dependencies': dependencies,
           'owner_id': owner_id,
         })
-
-    def get_hard_dependencies(self):
-        return self.dependencies

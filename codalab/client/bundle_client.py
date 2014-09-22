@@ -65,7 +65,6 @@ class BundleClient(object):
           metadata: its metadata dict
           state: its current state
           uuid: its uuid
-          hard_dependencies: list of this bundle's realized dependencies
 
         If parents is True, this dict will also map 'parents' to a list of string
         representations of each bundle that this bundle depends on. If children is

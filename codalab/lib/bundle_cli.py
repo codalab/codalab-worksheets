@@ -509,8 +509,6 @@ class BundleCLI(object):
         not the most efficient.  Usually one of the source or destination
         clients will be local, so it's not too expensive.
         '''
-        # TODO: copy all the hard dependencies (for make bundles)
-
         # Check if the bundle already exists on the destination, then don't copy it
         # (although metadata could be different)
         bundle = None
@@ -794,13 +792,7 @@ class BundleCLI(object):
                 child = dep['child_path']
                 parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))
-        if info['hard_dependencies']:
-            deps = info['hard_dependencies']
-            if len(deps) == 1 and not deps[0]['child_path']:
-                display_dependencies('hard_dependency', deps)
-            else:
-                display_dependencies('hard_dependencies', deps)
-        elif info['dependencies']:
+        if info['dependencies']:
             deps = info['dependencies']
             display_dependencies('dependencies', deps)
 

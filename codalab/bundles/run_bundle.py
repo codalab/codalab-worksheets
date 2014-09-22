@@ -36,6 +36,11 @@ class RunBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('memory', int, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
 
+    METADATA_SPECS.append(MetadataSpec('docker_image', basestring, 'which docker container was used to run the process', generated=True))
+    METADATA_SPECS.append(MetadataSpec('exitcode', int, 'exitcode of the process', generated=True))
+    METADATA_SPECS.append(MetadataSpec('internal_error', basestring, 'any internal errors', generated=True))
+    METADATA_SPECS.append(MetadataSpec('remote', basestring, 'where this job was run', generated=True))
+
     @classmethod
     def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):
         if not uuid: uuid = spec_util.generate_uuid()
@@ -64,8 +69,3 @@ class RunBundle(NamedBundle):
           'dependencies': dependencies,
           'owner_id': owner_id,
         })
-
-    def get_hard_dependencies(self):
-        # The program and input are symlinked into a run bundle while it is being
-        # executed, but they are deleted once the run is complete.
-        return []

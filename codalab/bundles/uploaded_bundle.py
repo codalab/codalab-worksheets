@@ -27,9 +27,5 @@ class UploadedBundle(NamedBundle):
             row['uuid'] = uuid
         return super(UploadedBundle, cls).construct(row)
 
-    def get_hard_dependencies(self):
-        # Uploaded bundles don't have any dependencies on other bundles at all.
-        return []
-
     def run(self, bundle_store, parent_dict):
         assert(False), '%ss should never be run!' % (self.__class__.__name__,)
