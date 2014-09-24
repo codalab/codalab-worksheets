@@ -500,8 +500,7 @@ class LocalBundleClient(BundleClient):
                 elif info['type'] == 'file':
                     data = self.head_target(data, 10)
             elif mode == 'html':
-                # Placeholder,
-                pass
+                data = self.head_target(data, None)
             elif mode == 'image':
                 # Placeholder,
                 pass
