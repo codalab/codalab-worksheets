@@ -78,17 +78,17 @@ def zip(path, follow_symlinks, exclude_names=[], file_name=None):
         raise UsageError('zip failed')
 
     path_util.remove(temp_path)
-    return zip_path
+    return zip_path, sub_path
 
 
-def unzip(zip_path, temp_path):
+def unzip(zip_path, temp_path, sub_path):
     '''
     Take an absolute path to a zip file and return the path to a file or
     directory containing its unzipped contents.
     The returned contents should live in temp_path.
     '''
     path_util.check_isfile(zip_path, 'unzip_directory')
-    temp_subpath = os.path.join(temp_path, ZIP_SUBPATH)
+    temp_subpath = os.path.join(temp_path, sub_path)
 
     # TODO(pliang): ZipFile doesn't preserve permissions, so must resort to
     # system calls (only works in Linux).
