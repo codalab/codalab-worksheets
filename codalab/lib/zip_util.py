@@ -81,7 +81,7 @@ def zip(path, follow_symlinks, exclude_names=[], file_name=None):
     return zip_path, sub_path
 
 
-def unzip(zip_path, temp_path, sub_path):
+def unzip(zip_path, temp_path, sub_path=ZIP_SUBPATH):
     '''
     Take an absolute path to a zip file and return the path to a file or
     directory containing its unzipped contents.
