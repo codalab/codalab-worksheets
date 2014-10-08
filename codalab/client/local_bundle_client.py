@@ -15,9 +15,10 @@ from codalab.bundles import (
 from codalab.common import (
   precondition,
   State,
-  UsageError,
-  AuthorizationError,
   Command,
+  AuthorizationError,
+  UsageError,
+  PermissionError
 )
 from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
@@ -34,6 +35,12 @@ from codalab.objects.permission import (
     Group,
     parse_permission
 )
+
+from codalab.model.tables import (
+    GROUP_OBJECT_PERMISSION_ALL,
+    GROUP_OBJECT_PERMISSION_READ,
+)
+
 
 def authentication_required(func):
     def decorate(self, *args, **kwargs):
@@ -377,7 +384,7 @@ class LocalBundleClient(BundleClient):
         else:
             return self.model.list_worksheets(current_user.unique_id)
 
-    def get_worksheet_info(self, uuid, fetch_items):
+    def get_worksheet_info(self, uuid, fetch_items=False, get_permissions=True):
         '''
         The returned info object contains items which are (bundle_info, subworkheet_info, value_obj, type).
         '''
@@ -385,12 +392,19 @@ class LocalBundleClient(BundleClient):
         current_user = self.auth_handler.current_user()
         current_user_id = None if current_user is None else current_user.unique_id
         check_has_read_permission(self.model, current_user_id, worksheet)
-
         # Create the info by starting out with the metadata.
         result = worksheet.get_info_dict()
+
         if fetch_items:
             result['items'] = self._convert_items_from_db(result['items'])
-            #for x in result['items']: print x
+
+        if get_permissions:
+            result['permission'] = GROUP_OBJECT_PERMISSION_READ
+            try:
+                check_has_full_permission(self.model, current_user_id, worksheet)
+                result['permission'] = GROUP_OBJECT_PERMISSION_ALL
+            except PermissionError:
+                pass
         return result
 
     def _convert_items_from_db(self, items):
