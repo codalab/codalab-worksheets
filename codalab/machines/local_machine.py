@@ -56,8 +56,15 @@ class LocalMachine(Machine):
         self.process.poll()
         if self.process.returncode == None: return None
 
-        success = self.process.returncode == 0
-        return (self.bundle, success, self.temp_dir)
+        exitcode = self.process.returncode
+        success = exitcode == 0
+        result = {
+            'bundle': self.bundle,
+            'success': exitcode == 0,
+            'temp_dir': self.temp_dir,
+            'exitcode': exitcode,
+        }
+        return result
 
     def finalize_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False
