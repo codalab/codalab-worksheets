@@ -516,8 +516,9 @@ class LocalBundleClient(BundleClient):
             elif mode == 'html':
                 data = self.head_target(data, None)
             elif mode == 'image':
-                # Placeholder,
-                pass
+                path = self.get_target_path(data)
+                encoded = path_util.base64_encode(path)
+                data = encoded
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 data = search_interpreted

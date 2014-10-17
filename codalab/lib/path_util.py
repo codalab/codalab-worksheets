@@ -219,6 +219,18 @@ def read_lines(path, num_lines=None):
         else:
             return list(itertools.islice(file_handle, num_lines))
 
+def base64_encode(path):
+    '''
+        takes a file and returns a base64 encoded version
+    '''
+    if not os.path.isfile(path): return None
+
+    encoded_string = None
+    with open(path, 'rb') as file_handle:
+        import base64
+        encoded_string = base64.b64encode(file_handle.read())
+    return encoded_string
+
 def getmtime(path):
     '''
     Like os.path.getmtime, but does not follow symlinks.
