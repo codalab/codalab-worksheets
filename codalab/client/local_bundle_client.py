@@ -559,6 +559,7 @@ class LocalBundleClient(BundleClient):
         group = Group({'name': name, 'user_defined': True, 'owner_id': self._current_user_id()})
         group.validate()
         group_dict = self.model.create_group(group.to_dict())
+        self.model.add_user_in_group(self._current_user_id(), group_dict['uuid'], True)
         return group_dict
 
     @authentication_required
@@ -573,8 +574,7 @@ class LocalBundleClient(BundleClient):
     def group_info(self, group_spec):
         group_info = permission.unique_group_with_user(self.model, group_spec, self._current_user_id())
         users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
-        user_ids = [group_info['owner_id']]
-        user_ids.extend([u['user_id'] for u in users_in_group])
+        user_ids = [u['user_id'] for u in users_in_group]
         users = self.auth_handler.get_users('ids', user_ids)
         members = []
         roles = {}
