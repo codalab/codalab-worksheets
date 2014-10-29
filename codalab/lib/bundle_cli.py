@@ -251,6 +251,7 @@ class BundleCLI(object):
                 print indent + (sum(lengths) + 2*(len(columns) - 1)) * '-'
 
     GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::]|(<uuid>|<name>)"
+    ADDRESS_SEPC_FORMAT = "(<alias>|<address>)"
     TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
     BUNDLE_SPEC_FORMAT = '(<uuid>|<name>)'
     WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
@@ -268,7 +269,8 @@ class BundleCLI(object):
         else:
             address = self.manager.apply_alias(tokens[0])
             spec = tokens[1]
-        if spec == '': spec = Worksheet.DEFAULT_WORKSHEET_NAME
+        if spec == '':
+            spec = Worksheet.DEFAULT_WORKSHEET_NAME
         return (self.manager.client(address), spec)
 
     def parse_client_worksheet_uuid(self, spec):
@@ -1175,8 +1177,15 @@ class BundleCLI(object):
             is_last_newline = is_newline
 
     def do_wls_command(self, argv, parser):
+        parser.add_argument('address', help=self.ADDRESS_SEPC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
-        client = self.manager.current_client()
+
+        if args.address:
+            address = self.manager.apply_alias(args.address)
+            client = self.manager.client(address)
+        else:
+            client = self.manager.current_client()
+
         worksheet_dicts = client.list_worksheets()
         if worksheet_dicts:
             self.print_table(('uuid', 'name'), worksheet_dicts)
