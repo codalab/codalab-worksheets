@@ -709,6 +709,6 @@ class LocalBundleClient(BundleClient):
         else:
             if old_permission > 0:
                 self.model.delete_permission(group_info['uuid'], worksheet.uuid)
-        return {'worksheet': worksheet,
+        return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
                 'group_info': group_info,
                 'permission': new_permission}
