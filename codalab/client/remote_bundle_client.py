@@ -85,6 +85,7 @@ class RemoteBundleClient(BundleClient):
       'add_worksheet_item',
       'update_worksheet',
       'rename_worksheet',
+      'chown_worksheet',
       'delete_worksheet',
       'interpret_file_genpaths',
       'resolve_interpreted_items',

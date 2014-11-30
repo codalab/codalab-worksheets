@@ -1083,13 +1083,17 @@ class BundleCLI(object):
     def do_wedit_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
+        parser.add_argument('-o', '--owner', help='new owner', nargs='?')
         parser.add_argument('-f', '--file', help='overwrite the given worksheet with this file', nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
-        if args.name:
-            client.rename_worksheet(worksheet_uuid, args.name)
+        if args.name or args.owner:
+            if args.name:
+                client.rename_worksheet(worksheet_uuid, args.name)
+            if args.owner:
+                client.chown_worksheet(worksheet_uuid, args.owner)
         else:
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
@@ -1292,8 +1296,11 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dict = client.group_info(args.group_spec)
-        #print 'Listing members of group %s (%s):\n' % (group_dict['name'], group_dict['uuid'])
-        self.print_table(('name', 'role'), group_dict['members'])
+        members = group_dict['members']
+        for row in members:
+            row['user'] = '%s(%s)' % (row['user_name'], row['user_id'])
+        print 'Members of group %s(%s):' % (group_dict['name'], group_dict['uuid'])
+        self.print_table(('user', 'role'), group_dict['members'])
 
     def do_uadd_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')

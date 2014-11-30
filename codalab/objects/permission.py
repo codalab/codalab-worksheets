@@ -83,6 +83,11 @@ def unique_group_managed_by(model, group_spec, user_id):
 
 def search_groups_with_user(user_id):
     def f(model, **spec_filters):
+        if user_id == None:
+            return model.batch_get_all_groups(
+                spec_filters,
+                {'user_defined': True},
+                None)
         return model.batch_get_all_groups(
             spec_filters,
             {'owner_id': user_id, 'user_defined': True},

@@ -26,6 +26,7 @@ from codalab.lib import (
     path_util,
     file_util,
     worksheet_util,
+    spec_util,
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
@@ -442,6 +443,7 @@ class LocalBundleClient(BundleClient):
         return self._user_id_to_names([user_id])[0]
 
     def _user_id_to_names(self, user_ids):
+        if len(user_ids) == 0: return []
         results = self.auth_handler.get_users('ids', user_ids)
         def get_name(r): return r.name if r else None
         return [get_name(results[user_id]) for user_id in user_ids]
@@ -505,6 +507,22 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_all_permission(self.model, self._current_user(), worksheet)
         self.model.rename_worksheet(worksheet, name)
+
+    @authentication_required
+    def chown_worksheet(self, uuid, owner_spec):
+        '''
+        Change the owner of the given worksheet |uuid| to |owner|.
+        '''
+        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
+        check_has_all_permission(self.model, self._current_user(), worksheet)
+        owner_id = self._get_user_id(owner_spec)
+        self.model.chown_worksheet(worksheet, owner_id)
+
+    def _get_user_id(self, user_spec):
+        user = self.user_info(user_spec)
+        if not user:
+            raise UsageError("Invalid user specification: %s" % user_spec)
+        return user['id']
 
     @authentication_required
     def delete_worksheet(self, uuid):
@@ -615,7 +633,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def rm_group(self, group_spec):
-        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        group_info = self._get_group_info(group_spec)
         if group_info['owner_id'] != self._current_user_id():
             raise UsageError('A group cannot be deleted by its co-owners.')
         self.model.delete_group(group_info['uuid'])
@@ -629,16 +647,18 @@ class LocalBundleClient(BundleClient):
         if user_spec == None:
             user = self.auth_handler.current_user()
         elif spec_util.ID_REGEX.match(user_spec):
-            user = self.auth_handler.get_users('ids', [user_spec])
+            user = self.auth_handler.get_users('ids', [user_spec])[user_spec]
         else:
-            user = self.auth_handler.get_users('names', [user_spec])
+            user = self.auth_handler.get_users('names', [user_spec])[user_spec]
         #groups = [row['group_uuid'] for row in self.model.batch_get_user_in_group(user_id=user.unique_id)]
         #return {'id': user.unique_id, 'name': user.name, 'groups': groups}
-        return {'id': user.unique_id, 'name': user.name}
+        if user:
+            return {'id': user.unique_id, 'name': user.name}
+        return None
 
     @authentication_required
     def group_info(self, group_spec):
-        group_info = permission.unique_group_with_user(self.model, group_spec, self._current_user_id())
+        group_info = self._get_group_info(group_spec)
         users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
         user_ids = [u['user_id'] for u in users_in_group]
         users = self.auth_handler.get_users('ids', user_ids)
@@ -650,13 +670,13 @@ class LocalBundleClient(BundleClient):
         for user_id in user_ids:
             if user_id in users:
                 user = users[user_id]
-                members.append({'name': user.name, 'role': roles[user_id]})
+                members.append({'user_id': user_id, 'user_name': user.name if user else None, 'role': roles[user_id]})
         group_info['members'] = members
         return group_info
 
     @authentication_required
     def add_user(self, username, group_spec, is_admin):
-        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        group_info = self._get_group_info(group_spec)
         users = self.auth_handler.get_users('names', [username])
         user = users[username]
         if user is None:
@@ -679,7 +699,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def rm_user(self, username, group_spec):
-        group_info = permission.unique_group_managed_by(self.model, group_spec, self._current_user_id())
+        group_info = self._get_group_info(group_spec)
         users = self.auth_handler.get_users('names', [username])
         user = users[username]
         if user is None:
@@ -699,7 +719,7 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_has_all_permission(self.model, self._current_user(), worksheet)
         new_permission = parse_permission(permission_name)
-        group_info = permission.unique_group(self.model, group_spec)
+        group_info = self._get_group_info(group_spec)
         old_permission = self.model.get_group_permission(group_info['uuid'], worksheet.uuid)
         if new_permission > 0:
             if old_permission > 0:
@@ -712,3 +732,12 @@ class LocalBundleClient(BundleClient):
         return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
                 'group_info': group_info,
                 'permission': new_permission}
+
+    def _get_group_info(self, group_spec):
+        group_info = permission.unique_group(self.model, group_spec)
+        return group_info
+        user_id = self._current_user_id()
+        if user_id == self.model.root_user_id:
+            user_id = None
+        group_info = permission.unique_group_managed_by(self.model, group_spec, user_id)
+        return group_info

@@ -661,6 +661,17 @@ class BundleModel(object):
               cl_worksheet.c.uuid == worksheet.uuid
             ).values({'name': name}))
 
+    def chown_worksheet(self, worksheet, owner_id):
+        '''
+        Update the given worksheet's owner_id.
+        '''
+        worksheet.owner_id = owner_id
+        worksheet.validate()
+        with self.engine.begin() as connection:
+            connection.execute(cl_worksheet.update().where(
+              cl_worksheet.c.uuid == worksheet.uuid
+            ).values({'owner_id': owner_id}))
+
     def delete_worksheet(self, worksheet_uuid):
         '''
         Delete the worksheet with the given uuid.
