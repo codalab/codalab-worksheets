@@ -414,3 +414,6 @@ def set_permissions(path, permissions, dirs_and_files=None):
             # chmod-ing a broken symlink will raise ENOENT, so we pass on this case.
             if not (e.errno == errno.ENOENT and os.path.islink(subpath)):
                 raise
+
+def path_is_url(path):
+    return path.startswith('http://') or path.startswith('https://') or path.startswith('ftp://')

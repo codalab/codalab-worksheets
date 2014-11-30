@@ -426,7 +426,8 @@ class BundleCLI(object):
 
         # Check that the upload path exists.
         for path in args.path:
-            path_util.check_isvalid(path_util.normalize(path), 'upload')
+            if not path_util.path_is_url(path):
+                path_util.check_isvalid(path_util.normalize(path), 'upload')
 
         # Pull out the upload bundle type from the arguments and validate it.
         if args.bundle_type not in UPLOADED_TYPES:
