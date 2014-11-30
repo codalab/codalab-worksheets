@@ -101,7 +101,7 @@ class GroupsAndPermsTest(unittest.TestCase):
         _assert_group_count_for('root', 0)
         _assert_group_count_for('user1', 0)
         _assert_group_count_for('user2', 0)
-        # root creates a group and adds user1 as a co-owner
+        # root creates a group and adds user1 as an admin
         self.set_current_user('root', '')
         grp_name = 'g_membership'
         g1 = self.client.new_group(grp_name)
@@ -119,28 +119,25 @@ class GroupsAndPermsTest(unittest.TestCase):
         _assert_group_count_for('root', 1)
         _assert_group_count_for('user1', 1)
         _assert_group_count_for('user2', 1)
-        # show group info
+        # show group info (as user2)
+        self.set_current_user('user2', '')
         g1_info = self.client.group_info(grp_name)
         self.assertEqual(g1['uuid'], g1_info['uuid'])
         self.assertIn('members', g1_info)
         self.assertEqual(3, len(g1_info['members']))
-        members = {member['name']: member['role'] for member in g1_info['members']}
+        members = {member['user_name']: member['role'] for member in g1_info['members']}
         self.assertIn('root', members)
         self.assertEqual('owner', members['root'])
         self.assertIn('user1', members)
-        self.assertEqual('co-owner', members['user1'])
+        self.assertEqual('admin', members['user1'])
         self.assertIn('user2', members)
         self.assertEqual('member', members['user2'])
-        # user2 is not allowed to add user4 to the group
+        # user2 (not admin) is not allowed to add user4 to the group
         self.set_current_user('user2', '')
         with self.assertRaises(UsageError):
             self.client.add_user('user4', g1['uuid'], False)
         # user2 can't delete the group
         self.set_current_user('user2', '')
-        with self.assertRaises(UsageError):
-            self.client.rm_group(grp_name)
-        # user1 (co-owner) can't delete the group (only owner can)
-        self.set_current_user('user1', '')
         with self.assertRaises(UsageError):
             self.client.rm_group(grp_name)
         # root removes user2

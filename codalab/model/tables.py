@@ -127,6 +127,7 @@ user_group = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
   Column('user_id', String(63), nullable=False),
+  # Whether a user is able to modify this group.
   Column('is_admin', Boolean),
   Index('group_uuid_index', 'group_uuid'),
   Index('user_id_index', 'user_id'),
@@ -140,12 +141,12 @@ group_object_permission = Table(
   Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
   # Reference to a worksheet object
   Column('object_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
-  # Permissions encoded as integer. 'Read' (0x01) or 'All' (0x11)
+  # Permissions encoded as integer (see below)
   Column('permission', Integer, nullable=False),
   sqlite_autoincrement=True,
 )
 
+# A permission value is one of the following: none (0), read (1), or all (2).
 GROUP_OBJECT_PERMISSION_NONE = 0x00
 GROUP_OBJECT_PERMISSION_READ = 0x01
 GROUP_OBJECT_PERMISSION_ALL = 0x02
-

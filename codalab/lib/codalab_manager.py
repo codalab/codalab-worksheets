@@ -36,6 +36,7 @@ import psutil
 
 from codalab.client import is_local_address
 from codalab.common import UsageError
+from codalab.server.auth import ROOT_USER_NAME
 from codalab.objects.worksheet import Worksheet
 
 def cached(fn):
@@ -286,7 +287,7 @@ class CodaLabManager(object):
         username = None
         # For a local client with mock credentials, use the default username.
         if is_local_address(client.address):
-            username = 'root'
+            username = ROOT_USER_NAME
             password = ''
         if not username:
             print 'Requesting access at %s' % address
@@ -310,8 +311,7 @@ class CodaLabManager(object):
         client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
         if not worksheet_uuid:
-            # TODO: need to take the user into account here
-            worksheet_uuid = client.get_worksheet_uuid(None, Worksheet.DEFAULT_WORKSHEET_NAME)
+            worksheet_uuid = client.get_worksheet_uuid(None, '')
         return (client, worksheet_uuid)
 
     def set_current_worksheet_uuid(self, client, worksheet_uuid):

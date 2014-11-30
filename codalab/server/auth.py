@@ -9,6 +9,9 @@ from base64 import encodestring
 
 from codalab.common import UsageError
 
+ROOT_USER_NAME = 'codalab'
+ROOT_USER_ID = '0'
+
 class User(object):
     '''
     Defines a registered user with a unique name and a unique (int) identifier.
@@ -21,14 +24,12 @@ class User(object):
 class MockAuthHandler(object):
     '''
     A mock handler, which makes it easy to run a server when no real
-    authentication is required. The implementation is such that this
-    handler will accept any combination of username and password, but
-    it will always resolve to the same user: User('root', '0').
-    Note: any username resolves to the same user id (0).
+    authentication is required.  There is exactly one root user with no
+    password.
     '''
     def __init__(self, users=None):
         if users == None:
-            users = [User('root', '0')]
+            users = [User(ROOT_USER_NAME, ROOT_USER_ID)]
         self.users = users
         self._user = users[0]
 

@@ -37,6 +37,7 @@ from codalab.lib import (
   canonicalize,
   formatting
 )
+from codalab.objects.permission import permission_str, group_permissions_str
 from codalab.objects.worksheet import Worksheet
 from codalab.objects.work_manager import Worker
 from codalab.machines import pool_machine
@@ -269,8 +270,6 @@ class BundleCLI(object):
         else:
             address = self.manager.apply_alias(tokens[0])
             spec = tokens[1]
-        if spec == '':
-            spec = Worksheet.DEFAULT_WORKSHEET_NAME
         return (self.manager.client(address), spec)
 
     def parse_client_worksheet_uuid(self, spec):
@@ -328,8 +327,8 @@ class BundleCLI(object):
                     stats.print_stats(20)
                 else:
                     command_fn(remaining_args, parser)
-            except PermissionError:
-                self.exit("You do not have sufficient permissions to execute this command.")
+            except PermissionError, e:
+                self.exit(e.message)
             except UsageError, e:
                 self.exit('%s: %s' % (e.__class__.__name__, e))
 
@@ -376,6 +375,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         print "worksheet: %s" % self.simple_worksheet_str(worksheet_info)
+        print "user: %s" % client.user_info(None)
 
     def do_alias_command(self, argv, parser):
         '''
@@ -697,15 +697,20 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
+        worksheet_info = client.get_worksheet_info(worksheet_uuid, True, True)
         bundle_info_list = self.get_worksheet_bundles(worksheet_info)
+        if not args.uuid_only:
+            print self._worksheet_description(worksheet_info)
         if len(bundle_info_list) > 0:
-            if not args.uuid_only:
-                print 'Worksheet: %s' % self.worksheet_str(worksheet_info)
             self.print_bundle_info_list(bundle_info_list, args.uuid_only)
         else:
             if not args.uuid_only:
-                print 'Worksheet %s has no bundles.' % self.simple_worksheet_str(worksheet_info)
+                print 'No bundles.'
+
+    def _worksheet_description(self, worksheet_info):
+        return '### Worksheet: %s\n### Owner: %s(%s)\n### Permissions: %s' % \
+            (self.worksheet_str(worksheet_info), worksheet_info['owner_name'], worksheet_info['owner_id'], \
+            group_permissions_str(worksheet_info['group_permissions']))
 
     # Helper
     def print_bundle_info_list(self, bundle_info_list, uuid_only):
@@ -1078,13 +1083,17 @@ class BundleCLI(object):
     def do_wedit_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
+        parser.add_argument('-o', '--owner', help='new owner', nargs='?')
         parser.add_argument('-f', '--file', help='overwrite the given worksheet with this file', nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
-        if args.name:
-            client.rename_worksheet(worksheet_uuid, args.name)
+        if args.name or args.owner:
+            if args.name:
+                client.rename_worksheet(worksheet_uuid, args.name)
+            if args.owner:
+                client.chown_worksheet(worksheet_uuid, args.owner)
         else:
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
@@ -1136,6 +1145,7 @@ class BundleCLI(object):
             for line in lines:
                 print line
         else:
+            print self._worksheet_description(worksheet_info)
             interpreted = worksheet_util.interpret_items(worksheet_util.get_default_schemas(), worksheet_info['items'])
             self.display_interpreted(client, worksheet_info, interpreted)
 
@@ -1178,6 +1188,7 @@ class BundleCLI(object):
 
     def do_wls_command(self, argv, parser):
         parser.add_argument('address', help=self.ADDRESS_SEPC_FORMAT, nargs='?')
+        parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
 
         if args.address:
@@ -1187,10 +1198,17 @@ class BundleCLI(object):
             client = self.manager.current_client()
 
         worksheet_dicts = client.list_worksheets()
-        if worksheet_dicts:
-            self.print_table(('uuid', 'name'), worksheet_dicts)
+        if args.uuid_only:
+            for row in worksheet_dicts:
+                print row['uuid']
         else:
-            print 'No worksheets found.'
+            if worksheet_dicts:
+                for row in worksheet_dicts:
+                    row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
+                    row['permissions'] = group_permissions_str(row['group_permissions'])
+                self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts)
+            else:
+                print 'No worksheets found.'
 
     def do_wadd_command(self, argv, parser):
         parser.add_argument('subworksheet_spec', help='worksheets to add (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='+')
@@ -1253,7 +1271,9 @@ class BundleCLI(object):
         client = self.manager.current_client()
         group_dicts = client.list_groups()
         if group_dicts:
-            self.print_table(('name', 'uuid', 'role'), group_dicts)
+            for row in group_dicts:
+                row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
+            self.print_table(('name', 'uuid', 'owner', 'role'), group_dicts)
         else:
             print 'No groups found.'
 
@@ -1276,14 +1296,17 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         group_dict = client.group_info(args.group_spec)
-        #print 'Listing members of group %s (%s):\n' % (group_dict['name'], group_dict['uuid'])
-        self.print_table(('name', 'role'), group_dict['members'])
+        members = group_dict['members']
+        for row in members:
+            row['user'] = '%s(%s)' % (row['user_name'], row['user_id'])
+        print 'Members of group %s(%s):' % (group_dict['name'], group_dict['uuid'])
+        self.print_table(('user', 'role'), group_dict['members'])
 
     def do_uadd_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         parser.add_argument('-a', '--admin', action='store_true',
-                            help='grant admin privileges for the group')
+                            help='Give admin privileges to the user for the group')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         user_info = client.add_user(args.user_spec, args.group_spec, args.admin)
@@ -1308,26 +1331,15 @@ class BundleCLI(object):
 
     def do_wperm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
-        parser.add_argument('permission', help='permission: [none|(r)ead|(a)ll]')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
+        parser.add_argument('permission_spec', help='permission: [(n)one|(r)ead|(a)ll]')
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        result = client.set_worksheet_perm(worksheet_uuid, args.permission, args.group_spec)
-        permission_code = result['permission']
-        permission_label = 'no'
-        from codalab.model.tables import (
-            GROUP_OBJECT_PERMISSION_ALL,
-            GROUP_OBJECT_PERMISSION_READ,
-        )
-        if permission_code == GROUP_OBJECT_PERMISSION_READ:
-            permission_label = 'read'
-        elif permission_code == GROUP_OBJECT_PERMISSION_ALL:
-            permission_label = 'full'
-        print "Group %s (%s) has %s permission on worksheet %s (%s)." % \
+        result = client.set_worksheet_perm(worksheet_uuid, args.group_spec, args.permission_spec)
+        print "Group %s(%s) has %s permission on worksheet %s(%s)." % \
             (result['group_info']['name'], result['group_info']['uuid'],
-             permission_label,
-             result['worksheet']['name'], result['worksheet']['uuid'])
+             permission_str(result['permission']), result['worksheet']['name'], result['worksheet']['uuid'])
 
     #############################################################################
     # LocalBundleClient-only commands follow!
