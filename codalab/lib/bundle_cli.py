@@ -1306,7 +1306,7 @@ class BundleCLI(object):
         parser.add_argument('user_spec', help='username')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
         parser.add_argument('-a', '--admin', action='store_true',
-                            help='grant admin privileges for the group')
+                            help='Give admin privileges to the user for the group')
         args = parser.parse_args(argv)
         client = self.manager.current_client()
         user_info = client.add_user(args.user_spec, args.group_spec, args.admin)
@@ -1332,11 +1332,11 @@ class BundleCLI(object):
     def do_wperm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
         parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
-        parser.add_argument('permission', help='permission: [(n)one|(r)ead|(a)ll]')
+        parser.add_argument('permission_spec', help='permission: [(n)one|(r)ead|(a)ll]')
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        result = client.set_worksheet_perm(worksheet_uuid, args.permission, args.group_spec)
+        result = client.set_worksheet_perm(worksheet_uuid, args.group_spec, args.permission_spec)
         print "Group %s(%s) has %s permission on worksheet %s(%s)." % \
             (result['group_info']['name'], result['group_info']['uuid'],
              permission_str(result['permission']), result['worksheet']['name'], result['worksheet']['uuid'])

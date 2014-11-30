@@ -747,7 +747,7 @@ class BundleModel(object):
     def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
         '''
         Get a list of groups by querying the group table and/or the user_group table.
-        This method performs the general query:
+        Take the union of the two results.  This method performs the general query:
 
         q1 = select([...]).\
                 where(clause_from_spec_filters).\

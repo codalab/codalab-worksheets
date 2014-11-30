@@ -17,7 +17,6 @@ from codalab.model.tables import (
 )
 from codalab.model.util import LikeQuery
 
-
 class Group(ORMObject):
     '''
     Defines a group object which is used to assign permissions to a set of users.
@@ -44,10 +43,32 @@ class Group(ORMObject):
                 row['uuid'] = spec_util.generate_uuid()
         super(Group, self).update_in_memory(row)
 
+############################################################
+
+def unique_group(model, group_spec, user_id):
+    '''
+    Return a group_info corresponding to |group_spec|.
+    If |user_id| is given, only search only group that the user is involved in
+    (either as an owner or just as a regular member).
+    '''
+    def search_all(model, **spec_filters):
+        return model.batch_get_groups(**spec_filters)
+    def search_user(model, **spec_filters):
+        return model.batch_get_all_groups(
+            spec_filters,
+            {'owner_id': user_id, 'user_defined': True},
+            {'user_id': user_id})
+    if user_id == None:
+        search = search_all
+    else:
+        search = search_user
+    return get_single_group(model, group_spec, search)
 
 def get_single_group(model, group_spec, search_fn):
     '''
-    Resolve a string group_spec to a unique group for the given search method.
+    Helper function.
+    Resolve a string group_spec to a unique group for the given |search_fn|.
+    Throw an error if zero or more than one group matches.
     '''
     if not group_spec:
         raise UsageError('Tried to expand empty group_spec!')
@@ -69,38 +90,6 @@ def get_single_group(model, group_spec, search_fn):
           (message, ''.join('\n  uuid=%s' % (group['uuid'],) for group in groups))
         )
     return groups[0]
-
-def search_groups_managed_by(user_id):
-    def f(model, **spec_filters):
-        return model.batch_get_all_groups(
-            spec_filters,
-            {'owner_id': user_id, 'user_defined': True},
-            {'user_id': user_id, 'is_admin': True})
-    return f
-
-def unique_group_managed_by(model, group_spec, user_id):
-    return get_single_group(model, group_spec, search_groups_managed_by(user_id))
-
-def search_groups_with_user(user_id):
-    def f(model, **spec_filters):
-        if user_id == None:
-            return model.batch_get_all_groups(
-                spec_filters,
-                {'user_defined': True},
-                None)
-        return model.batch_get_all_groups(
-            spec_filters,
-            {'owner_id': user_id, 'user_defined': True},
-            {'user_id': user_id})
-    return f
-
-def unique_group_with_user(model, group_spec, user_id):
-    return get_single_group(model, group_spec, search_groups_with_user(user_id))
-
-def unique_group(model, group_spec):
-    def srch_fn(model, **spec_filters):
-        return model.batch_get_groups(**spec_filters)
-    return get_single_group(model, group_spec, srch_fn)
 
 ############################################################
 

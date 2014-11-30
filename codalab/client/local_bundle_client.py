@@ -517,14 +517,8 @@ class LocalBundleClient(BundleClient):
         '''
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_all_permission(self.model, self._current_user(), worksheet)
-        owner_id = self._get_user_id(owner_spec)
+        owner_id = self.user_info(owner_spec)['id']
         self.model.chown_worksheet(worksheet, owner_id)
-
-    def _get_user_id(self, user_spec):
-        user = self.user_info(user_spec)
-        if not user:
-            raise UsageError("Invalid user specification: %s" % user_spec)
-        return user['id']
 
     @authentication_required
     def delete_worksheet(self, uuid):
@@ -620,7 +614,7 @@ class LocalBundleClient(BundleClient):
                 if group_dict['owner_id'] == group_dict['user_id']:
                     role = 'owner'
                 else:
-                    role = 'co-owner'
+                    role = 'admin'
             group_dict['role'] = role
         self._set_owner_names(group_dicts)
         return group_dicts
@@ -635,9 +629,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def rm_group(self, group_spec):
-        group_info = self._get_group_info(group_spec)
-        if group_info['owner_id'] != self._current_user_id():
-            raise UsageError('A group cannot be deleted by its co-owners.')
+        group_info = self._get_group_info(group_spec, need_admin=True)
         self.model.delete_group(group_info['uuid'])
         return group_info
 
@@ -652,22 +644,26 @@ class LocalBundleClient(BundleClient):
             user = self.auth_handler.get_users('ids', [user_spec])[user_spec]
         else:
             user = self.auth_handler.get_users('names', [user_spec])[user_spec]
-        #groups = [row['group_uuid'] for row in self.model.batch_get_user_in_group(user_id=user.unique_id)]
-        #return {'id': user.unique_id, 'name': user.name, 'groups': groups}
         if user:
             return {'id': user.unique_id, 'name': user.name}
-        return None
+        raise UsageError('Invalid user specification: %s' % user_spec)
 
     @authentication_required
     def group_info(self, group_spec):
-        group_info = self._get_group_info(group_spec)
+        '''
+        Return information about the given group.
+        In particular, we get all its members.
+        '''
+        group_info = self._get_group_info(group_spec, need_admin=False)
+
+        # Get all the members
         users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
         user_ids = [u['user_id'] for u in users_in_group]
         users = self.auth_handler.get_users('ids', user_ids)
         members = []
         roles = {}
         for row in users_in_group:
-            roles[row['user_id']] = 'co-owner' if row['is_admin'] == True else 'member'
+            roles[row['user_id']] = 'admin' if row['is_admin'] == True else 'member'
         roles[group_info['owner_id']] = 'owner'
         for user_id in user_ids:
             if user_id in users:
@@ -677,52 +673,56 @@ class LocalBundleClient(BundleClient):
         return group_info
 
     @authentication_required
-    def add_user(self, username, group_spec, is_admin):
-        group_info = self._get_group_info(group_spec)
-        users = self.auth_handler.get_users('names', [username])
-        user = users[username]
-        if user is None:
-            raise UsageError("%s is not a valid user." % (username,))
-        if user.unique_id == self._current_user_id():
-            raise UsageError("You cannot add yourself to a group.")
-        members = self.model.batch_get_user_in_group(user_id=user.unique_id, group_uuid=group_info['uuid'])
+    def add_user(self, user_spec, group_spec, is_admin):
+        '''
+        Add the given |user_spec| to the |group_spec| with |is_admin| privileges.
+        Return information about the operation performed.
+        '''
+        # Lookup group and user
+        group_info = self._get_group_info(group_spec, need_admin=True)
+        user_info = self.user_info(user_spec)
+
+        # Look to see what the user's current status is in the group.
+        members = self.model.batch_get_user_in_group(user_id=user_info['id'], group_uuid=group_info['uuid'])
         if len(members) > 0:
             member = members[0]
-            if user.unique_id == group_info['owner_id']:
-                raise UsageError("You cannot modify the owner a group.")
-            if member['is_admin'] != is_admin:
-                self.model.update_user_in_group(user.unique_id, group_info['uuid'], is_admin)
-                member['operation'] = 'Modified'
+            self.model.update_user_in_group(user_info['id'], group_info['uuid'], is_admin)
+            member['operation'] = 'Modified'
         else:
-            member = self.model.add_user_in_group(user.unique_id, group_info['uuid'], is_admin)
+            member = self.model.add_user_in_group(user_info['id'], group_info['uuid'], is_admin)
             member['operation'] = 'Added'
-        member['name'] = username
+        member['name'] = user_info['name']
         return member
 
     @authentication_required
-    def rm_user(self, username, group_spec):
-        group_info = self._get_group_info(group_spec)
-        users = self.auth_handler.get_users('names', [username])
-        user = users[username]
-        if user is None:
-            raise UsageError("%s is not a valid user." % (username,))
-        if user.unique_id == group_info['owner_id']:
-            raise UsageError("You cannot modify the owner a group.")
-        members = self.model.batch_get_user_in_group(user_id=user.unique_id, group_uuid=group_info['uuid'])
+    def rm_user(self, user_spec, group_spec):
+        '''
+        Remove given |user_spec| from the given |group_spec|.
+        '''
+        # Lookup group and user
+        group_info = self._get_group_info(group_spec, need_admin=True)
+        user_info = self.user_info(user_spec)
+            
+        # Look to see what the user's current status is in the group.
+        members = self.model.batch_get_user_in_group(user_id=user_info['id'], group_uuid=group_info['uuid'])
         if len(members) > 0:
             member = members[0]
-            self.model.delete_user_in_group(user.unique_id, group_info['uuid'])
-            member['name'] = username
+            self.model.delete_user_in_group(user_info['id'], group_info['uuid'])
+            member['name'] = user_info['name']
             return member
         return None
 
     @authentication_required
-    def set_worksheet_perm(self, worksheet_uuid, permission_name, group_spec):
+    def set_worksheet_perm(self, worksheet_uuid, group_spec, permission_spec):
+        '''
+        Give the given |group_spec| the desired |permission_spec| on |worksheet_uuid|.
+        '''
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_has_all_permission(self.model, self._current_user(), worksheet)
-        new_permission = parse_permission(permission_name)
-        group_info = self._get_group_info(group_spec)
+        group_info = self._get_group_info(group_spec, need_admin=False)
         old_permission = self.model.get_group_permission(group_info['uuid'], worksheet.uuid)
+        new_permission = parse_permission(permission_spec)
+
         if new_permission > 0:
             if old_permission > 0:
                 self.model.update_permission(group_info['uuid'], worksheet.uuid, new_permission)
@@ -735,11 +735,16 @@ class LocalBundleClient(BundleClient):
                 'group_info': group_info,
                 'permission': new_permission}
 
-    def _get_group_info(self, group_spec):
-        group_info = permission.unique_group(self.model, group_spec)
-        return group_info
+    def _get_group_info(self, group_spec, need_admin):
+        '''
+        Resolve |group_spec| and return the associated group_info.
+        '''
         user_id = self._current_user_id()
+        # If we're root, then we can access any group.
         if user_id == self.model.root_user_id:
             user_id = None
-        group_info = permission.unique_group_managed_by(self.model, group_spec, user_id)
+        group_info = permission.unique_group(self.model, group_spec, user_id)
+        # If not root and need admin access, but don't have it, raise error.
+        if user_id and need_admin and not group_info['is_admin']:
+            raise UsageError('You are not the admin of group %s.' % group_spec)
         return group_info
