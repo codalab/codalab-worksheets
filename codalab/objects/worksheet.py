@@ -22,7 +22,6 @@ def item_sort_key(item):
 
 class Worksheet(ORMObject):
     COLUMNS = ('uuid', 'name', 'owner_id')
-    DEFAULT_WORKSHEET_NAME = 'home'
 
     def validate(self):
         '''

@@ -649,9 +649,58 @@ start from the right place (this is important!):
 ## Authentication
 
 If you want to make your server public, then you need to set up OAuth
-authentication.
+authentication.  Follow the instructions in the Linux Quickstart section of the
+[CodaLab website
+README](https://github.com/codalab/codalab/blob/master/README.md).
 
-[TODO]
+### Permissions
+
+CodaLab implements the following permissions model:
+
+- Each user belongs to some groups.
+- Each group has access to some worksheets.
+- Each worksheets contains some bundles.
+
+There are three levels of access or permission:
+
+- None: You can't even see that the worksheet exists.
+- Read: You can read/download, but not edit.
+- All: You can do anything (edit/delete/etc.).
+
+A user can read a bundle if there exists a group that contains that user, a
+worksheet that the group has read permission on and also contains that bundle.
+
+Currently, only the owner of a bundle has all permission (this can be relaxed
+to groups later).
+
+Notes:
+
+- There is a designated `public` group that contains all users implicitly.  If
+  you want to make a worksheet world-readable, give the `public` group read
+  permission.
+- There is a designated root user (`codalab`) that has *All* permission to
+  everything.
+- You automatically have *All* permission to all worksheets you own.
+
+To make a worksheet `w1` public:
+
+    cl wperm w1 public read
+
+To make a worksheet `w1` mutually-writable with your research group, first create
+the group `g1`, add users `u1` and `u2` to it, and then give the group all access:
+
+    cl gnew g1
+    cl uadd u1 g1
+    cl uadd u2 g1
+    cl wperm w1 g1 all
+    
+To list the groups that you've created or belong to:
+
+    cl gls
+
+To look more into a given group `g1`:
+
+    cl ginfo g1
 
 ## Updating CodaLab
 

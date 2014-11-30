@@ -97,30 +97,40 @@ def unique_group(model, group_spec):
         return model.batch_get_groups(**spec_filters)
     return get_single_group(model, group_spec, srch_fn)
 
+############################################################
 
-ALL_PERMISSIONS = {GROUP_OBJECT_PERMISSION_ALL, GROUP_OBJECT_PERMISSION_READ}
+def _check_permissions(model, user, obj, need_permission):
+    have_permission = model.get_user_permission(user.unique_id, obj.uuid, obj.owner_id)
+    #print '_check_permissions %s %s, have %s, need %s' % (user_id, obj, permission_str(have_permission), permission_str(need_permission))
+    if have_permission >= need_permission:
+        return
+    raise PermissionError("User %s(%s) does not have sufficient permissions on %s(%s) (have %s, need %s)." % \
+        (user.name, user.unique_id, obj.name, obj.uuid, permission_str(have_permission), permission_str(need_permission)))
 
-def _check_permissions(model, user_id, target, permissions):
-    if str(target.owner_id) == str(user_id):
-        available_perms = ALL_PERMISSIONS
-    else:
-        available_perms = model.batch_get_permissions(user_id, target.uuid)
-    for permission in permissions:
-        if permission in available_perms:
-            return
-    raise PermissionError()
-
-def check_has_read_permission(model, user_id, target):
-    _check_permissions(model, user_id, target, ALL_PERMISSIONS)
-
-def check_has_full_permission(model, user_id, target):
-    _check_permissions(model, user_id, target, {GROUP_OBJECT_PERMISSION_ALL})
+def check_has_read_permission(model, user, obj):
+    _check_permissions(model, user, obj, GROUP_OBJECT_PERMISSION_READ)
+def check_has_all_permission(model, user, obj):
+    _check_permissions(model, user, obj, GROUP_OBJECT_PERMISSION_ALL)
 
 def parse_permission(permission_str):
     if 'r' == permission_str or 'read' == permission_str:
         return GROUP_OBJECT_PERMISSION_READ
     if 'a' == permission_str or 'all' == permission_str:
         return GROUP_OBJECT_PERMISSION_ALL
-    if 'none' == permission_str:
+    if 'n' == permission_str or 'none' == permission_str:
         return GROUP_OBJECT_PERMISSION_NONE
     raise UsageError("Invalid permission flag specified (%s)" % (permission_str))
+
+def permission_str(permission):
+    if permission == 0: return 'none'
+    if permission == 1: return 'read'
+    if permission == 2: return 'all'
+    raise UsageError("Invalid permission: %s" % permission)
+
+# [{'group_name':'a', 'permission:1}, {'group_name':'b', 'permission':2}] => 'a:read,b:all'
+def group_permissions_str(group_permissions):
+    if len(group_permissions) == 0:
+        return '-'
+    return ','.join(
+        '%s(%s):%s' % (row['group_name'], row['group_uuid'], permission_str(row['permission']))
+    for row in group_permissions)
