@@ -1184,6 +1184,7 @@ class BundleCLI(object):
 
     def do_wls_command(self, argv, parser):
         parser.add_argument('address', help=self.ADDRESS_SEPC_FORMAT, nargs='?')
+        parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
 
         if args.address:
@@ -1193,13 +1194,17 @@ class BundleCLI(object):
             client = self.manager.current_client()
 
         worksheet_dicts = client.list_worksheets()
-        if worksheet_dicts:
+        if args.uuid_only:
             for row in worksheet_dicts:
-                row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
-                row['permissions'] = group_permissions_str(row['group_permissions'])
-            self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts)
+                print row['uuid']
         else:
-            print 'No worksheets found.'
+            if worksheet_dicts:
+                for row in worksheet_dicts:
+                    row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
+                    row['permissions'] = group_permissions_str(row['group_permissions'])
+                self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts)
+            else:
+                print 'No worksheets found.'
 
     def do_wadd_command(self, argv, parser):
         parser.add_argument('subworksheet_spec', help='worksheets to add (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='+')
