@@ -61,9 +61,11 @@ class LocalBundleClient(BundleClient):
     def _current_user(self):
         return self.auth_handler.current_user()
     def _current_user_id(self):
-        return self.auth_handler.current_user().unique_id
+        user = self._current_user()
+        return user.unique_id if user else None
     def _current_user_name(self):
-        return self.auth_handler.current_user().name
+        user = self._current_user()
+        return user.name if user else None
 
     def _bundle_to_bundle_info(self, bundle, children=None):
         '''

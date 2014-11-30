@@ -105,12 +105,16 @@ def unique_group(model, group_spec):
 ############################################################
 
 def _check_permissions(model, user, obj, need_permission):
-    have_permission = model.get_user_permission(user.unique_id, obj.uuid, obj.owner_id)
-    #print '_check_permissions %s %s, have %s, need %s' % (user_id, obj, permission_str(have_permission), permission_str(need_permission))
+    have_permission = model.get_user_permission(user.unique_id if user else None, obj.uuid, obj.owner_id)
+    #print '_check_permissions %s %s, have %s, need %s' % (user, obj, permission_str(have_permission), permission_str(need_permission))
     if have_permission >= need_permission:
         return
-    raise PermissionError("User %s(%s) does not have sufficient permissions on %s(%s) (have %s, need %s)." % \
-        (user.name, user.unique_id, obj.name, obj.uuid, permission_str(have_permission), permission_str(need_permission)))
+    if user:
+        user_str = '%s(%s)' % (user.name, user.unique_id)
+    else:
+        user_str = None
+    raise PermissionError("User %s does not have sufficient permissions on %s(%s) (have %s, need %s)." % \
+        (user_str, obj.name, obj.uuid, permission_str(have_permission), permission_str(need_permission)))
 
 def check_has_read_permission(model, user, obj):
     _check_permissions(model, user, obj, GROUP_OBJECT_PERMISSION_READ)
