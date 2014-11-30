@@ -31,8 +31,10 @@ from codalab.lib import (
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
 from codalab.objects.permission import (
-    check_has_all_permission,
     check_has_read_permission,
+    check_has_all_permission,
+    check_has_read_permission_on_bundles,
+    check_has_all_permission_on_bundles,
     Group,
     parse_permission
 )
@@ -88,14 +90,13 @@ class LocalBundleClient(BundleClient):
         return result
 
     def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
-        # TODO: enforce permissions so we only find the bundles on worksheets that we have read permissions on
-        return canonicalize.get_bundle_uuid(self.model, worksheet_uuid, bundle_spec)
+        return canonicalize.get_bundle_uuid(self.model, self._current_user_id(), worksheet_uuid, bundle_spec)
 
     def search_bundle_uuids(self, worksheet_uuid, keywords, max_results, count):
-        # TODO: enforce permissions so we only find the bundles on worksheets that we have read permissions on
         return self.model.get_bundle_uuids({
             '*': keywords,
-            'worksheet_uuid': worksheet_uuid
+            'worksheet_uuid': worksheet_uuid,
+            'user_id': self._current_user_id(),
         }, max_results=max_results, count=count)
 
     # Helper
@@ -109,6 +110,7 @@ class LocalBundleClient(BundleClient):
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
         if worksheet_spec == '':
+            # Default worksheet name: take the username.
             worksheet_spec = self._current_user_name()
             try:
                 return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
@@ -197,27 +199,25 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def kill_bundles(self, bundle_uuids):
-        # TODO: batch this
+        check_has_all_permission_on_bundles(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
             self.model.add_bundle_action(bundle_uuid, Command.KILL)
 
     def open_target(self, target):
-        # TODO: check permissions
-        (bundle_spec, subpath) = target
+        check_has_read_permission_on_bundles(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
         path_util.check_isfile(path, 'open_target')
         return open(path)
 
     @authentication_required
     def update_bundle_metadata(self, uuid, metadata):
-        # TODO: check permissions
+        check_has_all_permission_on_bundles(self.model, self._current_user(), [uuid])
         bundle = self.model.get_bundle(uuid)
         self.validate_user_metadata(bundle, metadata)
         self.model.update_bundle(bundle, {'metadata': metadata})
 
     @authentication_required
     def delete_bundles(self, uuids, force, recursive):
-        # TODO: check permissions
         uuids = set(uuids)
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         if not recursive:
@@ -229,6 +229,7 @@ class LocalBundleClient(BundleClient):
                   '\n  '.join(bundle.simple_str() for bundle in relevant),
                 ))
             relevant_uuids = uuids
+        check_has_all_permission_on_bundles(self.model, self._current_user(), relevant_uuids)
         self.model.delete_bundles(relevant_uuids)
         return list(relevant_uuids)
 
@@ -237,8 +238,10 @@ class LocalBundleClient(BundleClient):
         Return information about the bundle.
         get_children: whether we want to return information about the children too.
         '''
+        check_has_read_permission_on_bundles(self.model, self._current_user(), [uuid])
         bundle = self.model.get_bundle(uuid)
         if get_children:
+            # TODO: make sure we have access to children.
             children_uuids = self.model.get_children_uuids(uuid)
             children = self.model.batch_get_bundles(uuid=children_uuids)
         else:
@@ -254,29 +257,29 @@ class LocalBundleClient(BundleClient):
     # Return information about an individual target inside the bundle.
 
     def get_target_info(self, target, depth):
-        # TODO: enforce permissions
+        check_has_read_permission_on_bundles(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
         return path_util.get_info(path, depth)
 
     def cat_target(self, target, out):
-        # TODO: enforce permissions
+        check_has_read_permission_on_bundles(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
         path_util.cat(path, out)
 
     def head_target(self, target, num_lines):
-        # TODO: enforce permissions
+        check_has_read_permission_on_bundles(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
         return path_util.read_lines(path, num_lines)
 
     def open_target_handle(self, target):
-        # TODO: enforce permissions
+        check_has_read_permission_on_bundles(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
         return open(path) if path and os.path.exists(path) else None
     def close_target_handle(self, handle):
         handle.close()
 
     def download_target(self, target, follow_symlinks):
-        # TODO: enforce permissions
+        check_has_read_permission_on_bundles(self.model, self._current_user(), [target[0]])
         # Don't need to download anything because it's already local.
         # Note that we can't really enforce follow_symlinks, but this is okay,
         # because we will follow them when we copy it from the target path.
@@ -294,7 +297,6 @@ class LocalBundleClient(BundleClient):
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
         #print 'old_inputs: %s, new_inputs: %s, old_output: %s, new_output_name: %s' % (old_inputs, new_inputs, old_output, new_output_name)
-        # TODO: enforce permissions
 
         # Build the graph.
         # If old_output is given, look at ancestors of old_output until we
@@ -313,6 +315,10 @@ class LocalBundleClient(BundleClient):
                 for dep in info['dependencies']:
                     new_bundle_uuids.add(dep['parent_uuid'])
             bundle_uuids = new_bundle_uuids
+
+        # Make sure we have read access to all the bundles involved here.
+        # TODO: need to double check that this is right.
+        check_has_read_permission_on_bundles(self.model, self._current_user(), list(infos.keys()))
 
         # Now go recursively create the bundles.
         old_to_new = {}  # old_uuid -> new_uuid

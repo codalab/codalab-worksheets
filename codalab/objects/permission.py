@@ -92,10 +92,11 @@ def get_single_group(model, group_spec, search_fn):
     return groups[0]
 
 ############################################################
+# Checking permissions for worksheets
 
-def _check_permissions(model, user, obj, need_permission):
+def _check_permission(model, user, obj, need_permission):
     have_permission = model.get_user_permission(user.unique_id if user else None, obj.uuid, obj.owner_id)
-    #print '_check_permissions %s %s, have %s, need %s' % (user, obj, permission_str(have_permission), permission_str(need_permission))
+    #print '_check_permission %s %s, have %s, need %s' % (user, obj, permission_str(have_permission), permission_str(need_permission))
     if have_permission >= need_permission:
         return
     if user:
@@ -106,9 +107,32 @@ def _check_permissions(model, user, obj, need_permission):
         (user_str, obj.name, obj.uuid, permission_str(have_permission), permission_str(need_permission)))
 
 def check_has_read_permission(model, user, obj):
-    _check_permissions(model, user, obj, GROUP_OBJECT_PERMISSION_READ)
+    _check_permission(model, user, obj, GROUP_OBJECT_PERMISSION_READ)
 def check_has_all_permission(model, user, obj):
-    _check_permissions(model, user, obj, GROUP_OBJECT_PERMISSION_ALL)
+    _check_permission(model, user, obj, GROUP_OBJECT_PERMISSION_ALL)
+
+############################################################
+# Checking permissions for bundles
+
+def _check_permission_on_bundles(model, user, bundle_uuids, need_permission):
+    have_permissions = model.get_user_permission_on_bundles(user.unique_id if user else None, bundle_uuids)
+    #print '_check_permission_on_bundles %s %s, have %s, need %s' % (user, bundle_uuids, map(permission_str, have_permissions), permission_str(need_permission))
+    if min(have_permissions) >= need_permission:
+        return
+    if user:
+        user_str = '%s(%s)' % (user.name, user.unique_id)
+    else:
+        user_str = None
+    raise PermissionError("User %s does not have sufficient permissions on bundles %s (have %s, need %s)." % \
+        (user_str, bundle_uuids, map(permission_str, have_permissions), permission_str(need_permission)))
+
+def check_has_read_permission_on_bundles(model, user, bundle_uuids):
+    _check_permission_on_bundles(model, user, bundle_uuids, GROUP_OBJECT_PERMISSION_READ)
+def check_has_all_permission_on_bundles(model, user, bundle_uuids):
+    _check_permission_on_bundles(model, user, bundle_uuids, GROUP_OBJECT_PERMISSION_ALL)
+
+############################################################
+# Parsing functions for permissions.
 
 def parse_permission(permission_str):
     if 'r' == permission_str or 'read' == permission_str:

@@ -187,16 +187,18 @@ class BundleModel(object):
     def get_bundle_uuids(self, conditions, max_results, count=False):
         '''
         Returns a list of bundle_uuids that have match the conditions.
-        Possible conditions (not all supported right now):
+        Possible conditions on bundles (not all supported right now):
         - uuid: could be just a prefix
         - name (exists in bundle_metadata)
         - parent: dependent (exists in bundle_dependency)
         - child: downstream influence (exists in bundle_dependency)
         - worksheet_uuid (exists in worksheet_uuid)
+        - user_id (must be reachable from this user)
         Return in reverse order.
         '''
         # TODO: implement 'count'
         # TODO: handle matching other conditions
+        # TODO: support user_id (to implement permissions!)
         if 'uuid' in conditions:
             # Match the uuid only
             clause = self.make_clause(cl_bundle.c.uuid, conditions['uuid'])
@@ -944,3 +946,43 @@ class BundleModel(object):
         group_permissions = self.get_group_permissions(object_uuid)
         permissions = [row['permission'] for row in group_permissions if row['group_uuid'] in groups]
         return max(permissions) if len(permissions) > 0 else GROUP_OBJECT_PERMISSION_NONE
+
+    def get_user_permission_on_bundles(self, user_id, bundle_uuids):
+        '''
+        Return list of permissions for bundle_uuids.
+        '''
+        # Root always has all permissions.
+        if user_id == self.root_user_id:
+            return [GROUP_OBJECT_PERMISSION_ALL] * len(bundle_uuids)
+
+        # Start out with no permissions
+        permissions = {}
+        for uuid in bundle_uuids:
+            permissions[uuid] = GROUP_OBJECT_PERMISSION_NONE
+
+        # Read: if there exists a group and worksheet that connects the user and the bundle.
+        # Note: might not need this since get_bundle_uuids is already covered by this.
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([
+                cl_worksheet_item.c.bundle_uuid,
+                cl_group_object_permission.c.permission
+            ]).where(and_(
+                cl_user_group.c.user_id == user_id, # user <=> group
+                cl_group_object_permission.c.group_uuid == cl_user_group.c.group_uuid,
+                cl_group_object_permission.c.object_uuid == cl_worksheet_item.c.worksheet_uuid,  # group <=> worksheet
+                cl_worksheet_item.c.bundle_uuid.in_(bundle_uuids),  # worksheet <=> bundle
+            ))).fetchall()
+        for r in rows:
+            permissions[r.bundle_uuid] = max(permissions[r.bundle_uuid], r.permission)
+
+        # All: if the user is the owner of the bundle (a bit restrictive for now).
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([
+              cl_bundle.c.uuid,
+              cl_bundle.c.owner_id
+            ]).where(cl_bundle.c.uuid.in_(bundle_uuids))).fetchall()
+            for r in rows:
+                if r.owner_id == user_id:
+                    permissions[i] = max(permissions[i], GROUP_OBJECT_PERMISSION_ALL)
+
+        return [permissions[uuid] for uuid in bundle_uuids]

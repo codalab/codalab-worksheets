@@ -20,7 +20,7 @@ from codalab.lib import (
 )
 from codalab.model.util import LikeQuery
 
-def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
+def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
     '''
     Resolve a string bundle_spec to a bundle uuid.
     Types of specifications:
@@ -34,7 +34,7 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
     if spec_util.UUID_REGEX.match(bundle_spec):
         return bundle_spec
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
-        bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%')}, max_results=1)
+        bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%'), 'user_id': user_id}, max_results=1)
         last_index = 1
         message = "uuid starting with '%s'" % (bundle_spec,)
     else:
@@ -69,12 +69,13 @@ def get_bundle_uuid(model, worksheet_uuid, bundle_spec):
 
         bundle_uuids = model.get_bundle_uuids({
             'name': bundle_spec_query,
-            'worksheet_uuid': worksheet_uuid
+            'worksheet_uuid': worksheet_uuid,
+            'user_id': user_id
         }, max_results=last_index)
         message = "name pattern '%s'" % (bundle_spec,)
     if not bundle_uuids:
         # If fail to find something in the worksheet, then backoff to global
-        if worksheet_uuid: return get_bundle_uuid(model, None, orig_bundle_spec)
+        if worksheet_uuid: return get_bundle_uuid(model, user_id, None, orig_bundle_spec)
         raise UsageError('No bundle found with %s' % (message,))
     # Take the last bundle
     if last_index <= 0 or last_index > len(bundle_uuids):
