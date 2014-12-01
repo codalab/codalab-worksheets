@@ -7,6 +7,7 @@ folders within this data store. This class provides two main methods:
 import errno
 import os
 import time
+import sys
 import uuid
 
 from codalab.lib import path_util, file_util
@@ -91,6 +92,7 @@ class BundleStore(object):
                     raise UsageError('Not allowed to upload %s (only %s allowed)' % (path_suffix, self.direct_upload_paths))
 
             # Download |path| if it is a URL.
+            print >>sys.stderr, 'BundleStore.upload: downloading %s to %s' % (path, temp_path)
             file_util.download_url(path, temp_path, print_status=True)
         else:
             # Copy |path| into the temp_path.
@@ -103,6 +105,7 @@ class BundleStore(object):
 
             #print 'COPY', absolute_path, temp_path
             # Recursively copy the directory into a new BundleStore temp directory.
+            print >>sys.stderr, 'BundleStore.upload: copying %s to %s' % (absolute_path, temp_path)
             path_util.copy(absolute_path, temp_path, follow_symlinks=follow_symlinks)
 
         # Multiplex between uploading a directory and uploading a file here.
@@ -114,6 +117,7 @@ class BundleStore(object):
 
         # Hash the contents of the temporary directory, and then if there is no
         # data with this hash value, move this directory into the data directory.
+        print >>sys.stderr, 'BundleStore.upload: hashing %s' % (temp_path)
         data_hash = '0x%s' % (path_util.hash_directory(temp_path, dirs_and_files),)
         data_size = path_util.get_size(temp_path, dirs_and_files)
         final_path = os.path.join(self.data, data_hash)
