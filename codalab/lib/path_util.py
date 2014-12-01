@@ -80,6 +80,7 @@ def normalize(path):
     This path is returned in a "canonical form", without ~'s, .'s, ..'s.
     '''
     if path == '-': return '/dev/stdin'
+    if path_is_url(path): return path
     return os.path.abspath(os.path.expanduser(path))
 
 
