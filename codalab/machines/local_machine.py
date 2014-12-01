@@ -1,4 +1,5 @@
 import os
+import sys
 import subprocess
 
 from codalab.lib import (
@@ -10,8 +11,8 @@ from codalab.objects.machine import Machine
 
 class LocalMachine(Machine):
     '''
-    Run commands on the local machine.  This is for simple testing only, since
-    there is no security at all.
+    Run commands on the local machine.  This is for simple testing or personal
+    use only, since there is no security.
     '''
     def __init__(self):
         self.bundle = None
@@ -28,11 +29,14 @@ class LocalMachine(Machine):
 
         if bundle.command:
             with path_util.chdir(temp_dir):
-                # Make sure we follow symlinks and copy all the files (might be a
-                # bit slow but is safer in case we accidentally clobber any
-                # existing bundles).
-                # WARNING: if bundles have symlinks to random places, the run
-                # could overwrite those files by accident.
+                # We don't follow symlinks (for consistency with remote
+                # machine, where it is more secure, so people can't make us
+                # copy random files on the system).  Of course in local mode,
+                # if some of those symlinks are absolute, the run can
+                # read/write those locations.  But we're not sandboxed, so
+                # anything could happen.  The dependencies are copied, so in
+                # practice, this is not a bit worry.
+                print >>sys.stderr, 'LocalMachine.start_bundle: copying dependencies of %s to %s' % (bundle.uuid, temp_dir)
                 for (source, target) in pairs:
                     path_util.copy(source, target, follow_symlinks=False)
                 with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
@@ -68,7 +72,6 @@ class LocalMachine(Machine):
 
     def finalize_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False
-        path_util.remove(self.temp_dir)
 
         self.bundle = None
         self.process = None

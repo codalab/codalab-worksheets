@@ -180,7 +180,9 @@ class Worker(object):
         # back one-level at the dependencies, not recurse.
         try:
             copy = isinstance(bundle, MakeBundle)
+            print >>sys.stderr, 'Worker.finalize_bundle: installing dependencies to %s (copy=%s)' % (temp_dir, copy)
             bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, copy=copy)
+            # Note: uploading will move temp_dir to the bundle store.
             (data_hash, metadata) = self.bundle_store.upload(temp_dir)
         except Exception as e:
             (data_hash, metadata) = (None, {})
@@ -206,11 +208,9 @@ class Worker(object):
         with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
             self.model.update_bundle(bundle, update)
 
-        # Remove temporary data
+        # Clean up any state for RunBundles.
         if isinstance(bundle, RunBundle):
             self.machine.finalize_bundle(bundle.uuid)
-        else:
-            path_util.remove(temp_dir)
 
         print '-- END BUNDLE: %s [%s]' % (bundle, state)
         print ''
