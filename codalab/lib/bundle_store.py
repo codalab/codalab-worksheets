@@ -7,10 +7,11 @@ folders within this data store. This class provides two main methods:
 import errno
 import os
 import time
+import sys
 import uuid
 
-from codalab.lib import path_util
-
+from codalab.lib import path_util, file_util
+from codalab.common import UsageError
 
 class BundleStore(object):
     DATA_SUBDIRECTORY = 'data'
@@ -20,8 +21,13 @@ class BundleStore(object):
     DATA_CLEANUP_TIME = 60
     TEMP_CLEANUP_TIME = 60*60
 
-    def __init__(self, codalab_home):
+    def __init__(self, codalab_home, direct_upload_paths):
+        '''
+        codalab_home: data/ is where all the bundles are actually stored, temp/ is temporary
+        direct_upload_paths: we can accept file://... uploads from these paths.
+        '''
         self.codalab_home = path_util.normalize(codalab_home)
+        self.direct_upload_paths = direct_upload_paths
         self.data = os.path.join(self.codalab_home, self.DATA_SUBDIRECTORY)
         self.temp = os.path.join(self.codalab_home, self.TEMP_SUBDIRECTORY)
         self.make_directories()
@@ -71,18 +77,36 @@ class BundleStore(object):
         Return a (data_hash, metadata) pair, where the metadata is a dict mapping
         keys to precomputed statistics about the new data directory.
         '''
-        if isinstance(path, list):
-            absolute_path = [path_util.normalize(p) for p in path]
-            for p in absolute_path: path_util.check_isvalid(p, 'upload')
-        else:
-            absolute_path = path_util.normalize(path)
-            path_util.check_isvalid(absolute_path, 'upload')
-
-        # Recursively copy the directory into a new BundleStore temp directory.
+        # Create temporary directory as a staging area.
         temp_directory = uuid.uuid4().hex
         temp_path = os.path.join(self.temp, temp_directory)
-        #print 'COPY', absolute_path, temp_path
-        path_util.copy(absolute_path, temp_path, follow_symlinks=follow_symlinks)
+
+        if path_util.path_is_url(path):
+            # Have to be careful.  Want to make sure if we're fetching a URL
+            # that points to a file, we are allowing this.
+            if path.startswith('file://'):
+                path_suffix = path[7:]
+                if os.path.islink(path_suffix):
+                    raise UsageError('Not allowed to upload symlink %s' % path_suffix)
+                if not any(path_suffix.startswith(f) for f in self.direct_upload_paths):
+                    raise UsageError('Not allowed to upload %s (only %s allowed)' % (path_suffix, self.direct_upload_paths))
+
+            # Download |path| if it is a URL.
+            print >>sys.stderr, 'BundleStore.upload: downloading %s to %s' % (path, temp_path)
+            file_util.download_url(path, temp_path, print_status=True)
+        else:
+            # Copy |path| into the temp_path.
+            if isinstance(path, list):
+                absolute_path = [path_util.normalize(p) for p in path]
+                for p in absolute_path: path_util.check_isvalid(p, 'upload')
+            else:
+                absolute_path = path_util.normalize(path)
+                path_util.check_isvalid(absolute_path, 'upload')
+
+            #print 'COPY', absolute_path, temp_path
+            # Recursively copy the directory into a new BundleStore temp directory.
+            print >>sys.stderr, 'BundleStore.upload: copying %s to %s' % (absolute_path, temp_path)
+            path_util.copy(absolute_path, temp_path, follow_symlinks=follow_symlinks)
 
         # Multiplex between uploading a directory and uploading a file here.
         # All other path_util calls will use these lists of directories and files.
@@ -93,6 +117,7 @@ class BundleStore(object):
 
         # Hash the contents of the temporary directory, and then if there is no
         # data with this hash value, move this directory into the data directory.
+        print >>sys.stderr, 'BundleStore.upload: hashing %s' % (temp_path)
         data_hash = '0x%s' % (path_util.hash_directory(temp_path, dirs_and_files),)
         data_size = path_util.get_size(temp_path, dirs_and_files)
         final_path = os.path.join(self.data, data_hash)

@@ -151,6 +151,12 @@ class LocalBundleClient(BundleClient):
         return construct_args
 
     @authentication_required
+    # Called when |path| is a url.
+    # Only used to expose uploading URLs directly to the RemoteBundleClient.
+    def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks):
+        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks)
+
+    @authentication_required
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
         bundle_type = info['bundle_type']
         if 'uuid' in info:

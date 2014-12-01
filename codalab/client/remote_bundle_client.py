@@ -66,6 +66,7 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
 class RemoteBundleClient(BundleClient):
     # Implemented by a nested copy of a LocalBundleClient.
     CLIENT_COMMANDS = (
+      'upload_bundle_url',
       'derive_bundle',
       'update_bundle_metadata',
       'delete_bundles',
@@ -89,7 +90,7 @@ class RemoteBundleClient(BundleClient):
       'delete_worksheet',
       'interpret_file_genpaths',
       'resolve_interpreted_items',
-      # Commands related to authentication.
+      # Commands related to authentication (in BundleClient).
       'login',
       # Commands related to groups and permissions.
       'list_groups',
@@ -152,7 +153,10 @@ class RemoteBundleClient(BundleClient):
             setattr(self, command, do_command(command))
 
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
-        # TODO: check permissions
+        # URLs can be directly passed to the local client.
+        if path_util.path_is_url(path):
+            return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks)
+
         # First, zip path up (temporary local zip file).
         zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks)
         # Copy it up to the server (temporary remote zip file)
@@ -169,25 +173,21 @@ class RemoteBundleClient(BundleClient):
         return result
 
     def open_target_handle(self, target):
-        # TODO: check permissions
         remote_file_uuid = self.open_target(target)
         if remote_file_uuid:
             return RPCFileHandle(remote_file_uuid, self.proxy)
         return None
     def close_target_handle(self, handle):
-        # TODO: check permissions
         handle.close()
         self.finalize_file(handle.file_uuid, False)
 
     def cat_target(self, target, out):
-        # TODO: check permissions
         source = self.open_target_handle(target)
         if not source: return
         file_util.copy(source, out)
         self.close_target_handle(source)
 
     def download_target(self, target, follow_symlinks, return_zip=False):
-        # TODO: check permissions
         # Create remote zip file, download to local zip file
         (fd, zip_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
         os.close(fd)
@@ -207,5 +207,3 @@ class RemoteBundleClient(BundleClient):
         path_util.remove(zip_path)  # Delete local zip file
 
         return (result_path, container_path)
-
-

@@ -123,7 +123,8 @@ class CodaLabManager(object):
     def bundle_store(self):
         codalab_home = self.codalab_home()
         from codalab.lib.bundle_store import BundleStore
-        return BundleStore(codalab_home)
+        direct_upload_paths = self.config['server'].get('direct_upload_paths', [])
+        return BundleStore(codalab_home, direct_upload_paths)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)

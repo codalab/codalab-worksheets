@@ -80,6 +80,7 @@ def normalize(path):
     This path is returned in a "canonical form", without ~'s, .'s, ..'s.
     '''
     if path == '-': return '/dev/stdin'
+    if path_is_url(path): return path
     return os.path.abspath(os.path.expanduser(path))
 
 
@@ -414,3 +415,9 @@ def set_permissions(path, permissions, dirs_and_files=None):
             # chmod-ing a broken symlink will raise ENOENT, so we pass on this case.
             if not (e.errno == errno.ENOENT and os.path.islink(subpath)):
                 raise
+
+def path_is_url(path):
+    for prefix in ['http', 'https', 'ftp', 'file']:
+        if path.startswith(prefix + '://'):
+            return True
+    return False
