@@ -78,8 +78,12 @@ class BundleStore(object):
         keys to precomputed statistics about the new data directory.
         '''
         # Create temporary directory as a staging area.
-        temp_directory = uuid.uuid4().hex
-        temp_path = os.path.join(self.temp, temp_directory)
+        # If |path| is already temporary, then we use that directly
+        # (with the understanding that |path| will be moved)
+        if path.startswith(self.temp):
+            temp_path = path
+        else:
+            temp_path = os.path.join(self.temp, uuid.uuid4().hex)
 
         if path_util.path_is_url(path):
             # Have to be careful.  Want to make sure if we're fetching a URL
@@ -94,7 +98,7 @@ class BundleStore(object):
             # Download |path| if it is a URL.
             print >>sys.stderr, 'BundleStore.upload: downloading %s to %s' % (path, temp_path)
             file_util.download_url(path, temp_path, print_status=True)
-        else:
+        elif path != temp_path:
             # Copy |path| into the temp_path.
             if isinstance(path, list):
                 absolute_path = [path_util.normalize(p) for p in path]

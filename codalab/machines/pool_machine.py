@@ -20,9 +20,8 @@ def parse_machine(config, name):
     if name == 'local':
         return local_machine.LocalMachine()
     if name in config:
-        sub_config = config[name]
-        if 'host' not in sub_config: sub_config['host'] = name
-        return PoolMachine(sub_config)
+        subconfig = config[name]
+        return PoolMachine(subconfig)
     return None
 
 '''
@@ -49,28 +48,18 @@ class PoolMachine(Machine):
 
         # Create a machine pool
         machine_specs = []
-        def create_specs(config):
-            max_instances = config.get('max_instances', 1)
-            verbose = config.get('verbose', 1)
-            if 'children' not in config:
-                construct_func = lambda : remote_machine.RemoteMachine(config)
-                print 'PoolMachine: %s (%d)' % (config.get('host'), max_instances)
-                machine_specs.append(MachineSpec(construct_func, max_instances))
-            else:
-                for name, sub_config in config['children'].items():
-                    # Set defaults
-                    if 'host' not in sub_config: sub_config['host'] = name
-                    if 'max_instances' not in sub_config: sub_config['max_instances'] = max_instances
-                    if 'verbose' not in sub_config: sub_config['verbose'] = verbose
-                    create_specs(sub_config)
-        create_specs(config)
+        max_instances = config.get('max_instances', 1)
+        verbose = config.get('verbose', 1)
+        construct_func = lambda : remote_machine.RemoteMachine(config)
+        print 'PoolMachine: %s (%d)' % (config.get('host'), max_instances)
+        machine_specs.append(MachineSpec(construct_func, max_instances))
 
         self.machine_specs = machine_specs
         self.bundles = {}  # map from bundle uuid to (machine_spec, machine)
 
     def start_bundle(self, bundle, bundle_store, parent_dict):
         # Choose a machine spec (currently just loop through and see if there are any free).
-        # TODO: do this based on further knowledge of the machines (see how much availability there is)
+        # Assume these 'machines' are all interchangeable.
         for spec in self.machine_specs:
             if spec.num_instances >= spec.max_instances: continue
 
