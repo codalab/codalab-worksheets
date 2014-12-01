@@ -14,12 +14,16 @@ Important: each call to open_temp_file, open_target, open_target_zip should
 have a matching call to finalize_file.
 '''
 import tempfile
+import traceback
 
+from codalab.common import (
+    precondition,
+    UsageError,
+    PermissionError,
+)
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.common import precondition
 from codalab.lib import zip_util, path_util
 from codalab.server.file_server import FileServer
-
 
 class BundleRPCServer(FileServer):
     def __init__(self, manager):
@@ -35,7 +39,15 @@ class BundleRPCServer(FileServer):
             def inner(*args, **kwargs):
                 if self.verbose >= 1:
                     print "bundle_rpc_server: %s %s" % (command, args)
-                return func(*args, **kwargs)
+                try:
+                    return func(*args, **kwargs)
+                except Exception, e:
+                    if not (isinstance(e, UsageError) or isinstance(e, PermissionError)):
+                        # This is really bad and shouldn't happen.
+                        # If it does, someone should get paged.
+                        print '=== INTERNAL ERROR:', e
+                        traceback.print_exc()
+                    raise e
             return inner
         for command in RemoteBundleClient.CLIENT_COMMANDS:
             self.register_function(wrap(command, getattr(self.client, command)), command)

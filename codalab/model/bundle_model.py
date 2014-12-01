@@ -982,7 +982,7 @@ class BundleModel(object):
             ]).where(cl_bundle.c.uuid.in_(bundle_uuids))).fetchall()
             for r in rows:
                 if r.owner_id == user_id:
-                    permissions[i] = max(permissions[i], GROUP_OBJECT_PERMISSION_ALL)
+                    permissions[r.uuid] = max(permissions[r.uuid], GROUP_OBJECT_PERMISSION_ALL)
 
         return [permissions[uuid] for uuid in bundle_uuids]
 
