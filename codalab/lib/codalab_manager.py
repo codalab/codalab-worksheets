@@ -77,16 +77,11 @@ class CodaLabManager(object):
                     'localhost': 'http://localhost:2800',
                 },
                 'workers': {
-                    'local': {
-                        'type': 'local'
-                    },
-                    # By default, just ssh into the current machine (only for testing)
-                    'localhost': {
+                    'q': {
                         'type': 'remote',
-                        'host': 'localhost',
-                        'user': os.getenv('USER'),
-                        'working_directory': os.path.join(self.codalab_home(), 'worker_scratch'),
                         'verbose': 1,
+                        'max_instances': 10,
+                        'dispatch_command': "python (fill in)/codalab-cli/scripts/dispatch-q.py",
                     }
                 }
             }, config_path)
