@@ -33,8 +33,6 @@ Convention: command is a string, args is a list of arguments
 '''
 class RemoteMachine(Machine):
     def __init__(self, config):
-        self.user = config.get('user')
-        self.host = config['host']
         self.verbose = config.get('verbose', 1)
         self.dispatch_command = config['dispatch_command']
 
