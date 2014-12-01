@@ -120,7 +120,8 @@ class Worker(object):
                     # (even if it's not the bundle's fault).
                     started = True
                     exception = e
-                    print 'INTERNAL ERROR: %s' % e
+                    print '=== INTERNAL ERROR: %s' % e
+                    traceback.print_exc()
             else:
                 started = True
             if started: print '-- START BUNDLE: %s' % (bundle,)

@@ -4,6 +4,7 @@ import json
 import tempfile
 import time
 import sys
+import traceback
 
 from codalab.lib import (
   canonicalize,
@@ -36,12 +37,13 @@ class RemoteMachine(Machine):
         self.verbose = config.get('verbose', 1)
         self.dispatch_command = config['dispatch_command']
 
-        # State
+        # State for the current run
         self.bundle = None  # Bundle 
         self.temp_dir = None  # Where the job is being run.
         self.script_file = None  # Script file to invoke the run.
         self.handle = None  # Handle from the dispatcher.
 
+    # Not used right now
     def run_command(self, args):
         if self.verbose >= 3: print "=== run_command: %s" % (args,)
         # Prints everything to stdout
@@ -61,6 +63,15 @@ class RemoteMachine(Machine):
             print '=== run_command_get_stdout failed: %s' % (args,)
             raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, args))
         return stdout
+
+    def run_command_get_stdout_json(self, args):
+        stdout = self.run_command_get_stdout(args)
+        try:
+            return json.loads(stdout)
+        except:
+            print "=== INVALID JSON from %s:" % (args)
+            print stdout
+            raise
 
     # Sets up remote environment, starts bundle command
     def start_bundle(self, bundle, bundle_store, parent_dict):
@@ -100,12 +111,14 @@ class RemoteMachine(Machine):
         try:
             # Get status
             args = self.dispatch_command.split() + ['info', self.handle]
-            result = json.loads(self.run_command_get_stdout(args))
+            result = self.run_command_get_stdout_json(args)
             exitcode = result.get('exitcode')
             if exitcode == None:
                 return None  # Not done yet
-            if self.verbose >= 1: print '=== poll(%s): %s' % (self.bundle.uuid, result)
-        except Exception as e:
+            if self.verbose >= 0: print '=== poll(%s): %s' % (self.bundle.uuid, result)
+        except Exception, e:
+            print '=== INTERNAL ERROR: %s' % e
+            traceback.print_exc()
             exception = e
 
         # Return the results back
@@ -126,22 +139,30 @@ class RemoteMachine(Machine):
         if self.verbose >= 1: print '=== kill_bundle(%s)' % (uuid)
         try:
             args = self.dispatch_command.split() + ['kill', self.handle]
-            result = json.loads(self.run_command_get_stdout(args))
+            result = self.run_command_get_stdout_json(args)
             return True
-        except:
+        except Exception, e:
+            print '=== INTERNAL ERROR: %s' % e
+            traceback.print_exc()
             return False
 
     def finalize_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False
         if self.verbose >= 1: print '=== finalize_bundle(%s)' % self.bundle.uuid
 
-        args = self.dispatch_command.split() + ['cleanup', self.handle]
-        result = json.loads(self.run_command_get_stdout(args))
-        path_util.remove(self.script_file)
+        try:
+            args = self.dispatch_command.split() + ['cleanup', self.handle]
+            result = self.run_command_get_stdout_json(args)
+            path_util.remove(self.script_file)
+            ok = True
+        except Exception, e:
+            print '=== INTERNAL ERROR: %s' % e
+            traceback.print_exc()
+            ok = False
 
         self.bundle = None
         self.temp_dir = None
         self.script_file = None
         self.handle = None
 
-        return True
+        return ok

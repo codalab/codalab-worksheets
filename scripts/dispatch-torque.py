@@ -1,7 +1,7 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
-# Wrapper for fig's simple workqueue system.
-# https://github.com/percyliang/fig/blob/master/bin/q
+# Wrapper for the Torque Resource Manager (PBS).
+# http://docs.adaptivecomputing.com/torque/4-1-4/Content/topics/commands/qsub.htm
 # Each command outputs JSON.
 
 import sys, os, json, re
@@ -29,29 +29,28 @@ handle = None
 mode = sys.argv[1]
 if mode == 'start':
     script = sys.argv[2]
-    stdout = get_output('q -shareWorkingPath -add bash %s' % script)
-    m = re.match(r'Job (J-.+) added successfully', stdout)
-    if m:
-        handle = m.group(1)
+    stdout = get_output('qsub %s -o /dev/null -e /dev/null' % script)
+    handle = stdout.strip()
 elif mode == 'info':
     handle = sys.argv[2]
-    stdout = get_output('q -list %s -tabs' % handle)
-    # Example output
-    # handle	worker	status	exitcode	time	mem	disk	outName	command
-    # J-ifnrj9	mazurka-37 mazurka	done	0	1m40s	1m	-1m		sleep 100
-    tokens = stdout.strip().split("\t")
-    hostname = tokens[1].split()
-    if len(hostname) > 1: hostname = hostname[-1]
-    result['hostname'] = hostname
-    exitcode = tokens[3]
-    if exitcode != '':
-        result['exitcode'] = int(exitcode)
+    stdout = get_output('qstat -f %s' % handle)
+    for line in stdout.split("\n"):
+        m = re.match(r'\s*([^ ]+) = (.+)', line)
+        if not m:
+            continue
+        key = m.group(1)
+        value = m.group(2)
+        #print key, value
+        if key == 'exec_host':
+            result['hostname'] = value
+        elif key == 'exit_status':
+            result['exitcode'] = int(value)
 elif mode == 'kill':
     handle = sys.argv[2]
-    stdout = get_output('q -kill %s' % handle)
+    stdout = get_output('qdel %s' % handle)
 elif mode == 'cleanup':
     handle = sys.argv[2]
-    stdout = get_output('q -del %s' % handle)
+    stdout = ''
 else:
     print 'Invalid mode: %s' % mode
     sys.exit(1)
