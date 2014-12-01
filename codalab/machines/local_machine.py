@@ -23,30 +23,29 @@ class LocalMachine(Machine):
         '''
         Start a bundle in the background.
         '''
+        if self.bundle != None: raise InternalError('Bundle already started')
         temp_dir = canonicalize.get_current_location(bundle_store, bundle.uuid)
         path_util.make_directory(temp_dir)
-        pairs = bundle.get_dependency_paths(bundle_store, parent_dict, temp_dir)
 
-        if bundle.command:
-            with path_util.chdir(temp_dir):
-                # We don't follow symlinks (for consistency with remote
-                # machine, where it is more secure, so people can't make us
-                # copy random files on the system).  Of course in local mode,
-                # if some of those symlinks are absolute, the run can
-                # read/write those locations.  But we're not sandboxed, so
-                # anything could happen.  The dependencies are copied, so in
-                # practice, this is not a bit worry.
-                print >>sys.stderr, 'LocalMachine.start_bundle: copying dependencies of %s to %s' % (bundle.uuid, temp_dir)
-                for (source, target) in pairs:
-                    path_util.copy(source, target, follow_symlinks=False)
-                with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
-                    process = subprocess.Popen(bundle.command, stdout=stdout, stderr=stderr, shell=True)
-        else:
-            process = None
+        # We don't follow symlinks (for consistency with remote
+        # machine, where it is more secure, so people can't make us
+        # copy random files on the system).  Of course in local mode,
+        # if some of those symlinks are absolute, the run can
+        # read/write those locations.  But we're not sandboxed, so
+        # anything could happen.  The dependencies are copied, so in
+        # practice, this is not a bit worry.
+        pairs = bundle.get_dependency_paths(bundle_store, parent_dict, temp_dir)
+        print >>sys.stderr, 'LocalMachine.start_bundle: copying dependencies of %s to %s' % (bundle.uuid, temp_dir)
+        for (source, target) in pairs:
+            path_util.copy(source, target, follow_symlinks=False)
+
+        with path_util.chdir(temp_dir):
+            with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
+                process = subprocess.Popen(bundle.command, stdout=stdout, stderr=stderr, shell=True)
 
         self.bundle = bundle
-        self.process = process
         self.temp_dir = temp_dir
+        self.process = process
         return True
 
     def kill_bundle(self, uuid):
@@ -74,6 +73,6 @@ class LocalMachine(Machine):
         if not self.bundle or self.bundle.uuid != uuid: return False
 
         self.bundle = None
-        self.process = None
         self.temp_dir = None
+        self.process = None
         return True
