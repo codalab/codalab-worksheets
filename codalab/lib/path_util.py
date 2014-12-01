@@ -416,4 +416,7 @@ def set_permissions(path, permissions, dirs_and_files=None):
                 raise
 
 def path_is_url(path):
-    return path.startswith('http://') or path.startswith('https://') or path.startswith('ftp://')
+    for prefix in ['http', 'https', 'ftp', 'file']:
+        if path.startswith(prefix + '://'):
+            return True
+    return False

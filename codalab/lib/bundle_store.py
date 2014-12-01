@@ -10,6 +10,7 @@ import time
 import uuid
 
 from codalab.lib import path_util, file_util
+from codalab.common import UsageError
 
 class BundleStore(object):
     DATA_SUBDIRECTORY = 'data'
@@ -19,8 +20,13 @@ class BundleStore(object):
     DATA_CLEANUP_TIME = 60
     TEMP_CLEANUP_TIME = 60*60
 
-    def __init__(self, codalab_home):
+    def __init__(self, codalab_home, direct_upload_paths):
+        '''
+        codalab_home: data/ is where all the bundles are actually stored, temp/ is temporary
+        direct_upload_paths: we can accept file://... uploads from these paths.
+        '''
         self.codalab_home = path_util.normalize(codalab_home)
+        self.direct_upload_paths = direct_upload_paths
         self.data = os.path.join(self.codalab_home, self.DATA_SUBDIRECTORY)
         self.temp = os.path.join(self.codalab_home, self.TEMP_SUBDIRECTORY)
         self.make_directories()
@@ -75,6 +81,15 @@ class BundleStore(object):
         temp_path = os.path.join(self.temp, temp_directory)
 
         if path_util.path_is_url(path):
+            # Have to be careful.  Want to make sure if we're fetching a URL
+            # that points to a file, we are allowing this.
+            if path.startswith('file://'):
+                path_suffix = path[7:]
+                if os.path.islink(path_suffix):
+                    raise UsageError('Not allowed to upload symlink %s' % path_suffix)
+                if not any(path_suffix.startswith(f) for f in self.direct_upload_paths):
+                    raise UsageError('Not allowed to upload %s (only %s allowed)' % (path_suffix, self.direct_upload_paths))
+
             # Download |path| if it is a URL.
             file_util.download_url(path, temp_path, print_status=True)
         else:
