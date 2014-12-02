@@ -78,8 +78,9 @@ class BundleRPCServer(FileServer):
         return self.open_file(path, 'rb')
 
     def open_target_zip(self, target, follow_symlinks):
+        bundle_uuid = target[0]
         path = self.client.get_target_path(target)
-        name = self.client.get_bundle_info(target)['metadata']['name']
+        name = self.client.get_bundle_info(bundle_uuid)['metadata']['name']
         zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks, file_name=name)  # Create temporary zip file
         return self.open_file(zip_path, 'rb'), sub_path
 
