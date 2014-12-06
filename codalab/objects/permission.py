@@ -50,6 +50,7 @@ def unique_group(model, group_spec, user_id):
     Return a group_info corresponding to |group_spec|.
     If |user_id| is given, only search only group that the user is involved in
     (either as an owner or just as a regular member).
+    Otherwise, search all groups (this happens when we're root).
     '''
     def search_all(model, **spec_filters):
         return model.batch_get_groups(**spec_filters)

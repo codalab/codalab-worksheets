@@ -750,25 +750,29 @@ class BundleModel(object):
         '''
         Get a list of groups by querying the group table and/or the user_group table.
         Take the union of the two results.  This method performs the general query:
-
-        q1 = select([...]).\
-                where(clause_from_spec_filters).\
-                where(clause_from_group_filters)
-        q2 = select([...]).\
-                where(clause_from_spec_filters).\
-                where(group.c.uuid == user_group.c.group_uuid).\
-                where(clause_from_user_group_filters)
-        q = union(s1, s2)
+        - q0: use spec_filters on the public group
+        - q1: use spec_filters and group_filters on group
+        - q2: use spec_filters and user_group_filters on user_group
+        return union(q0, q1, q2)
         '''
-        fetch_cols1 = [cl_group.c.uuid, cl_group.c.name, cl_group.c.owner_id, cl_group.c.owner_id.label('user_id'), literal(True).label('is_admin')]
-        fetch_cols2 = list(fetch_cols1)[:3]
-        fetch_cols2.extend([cl_user_group.c.user_id, cl_user_group.c.is_admin])
+        fetch_cols = [cl_group.c.uuid, cl_group.c.name, cl_group.c.owner_id]
+        fetch_cols0 = fetch_cols + [cl_group.c.owner_id.label('user_id'), literal(False).label('is_admin')]
+        fetch_cols1 = fetch_cols + [cl_group.c.owner_id.label('user_id'), literal(True).label('is_admin')]
+        fetch_cols2 = fetch_cols + [cl_user_group.c.user_id, cl_user_group.c.is_admin]
+
+        q0 = None
         q1 = None
         q2 = None
+
         if spec_filters:
             spec_clause = self.make_kwargs_clause(cl_group, spec_filters)
+            q0 = select(fetch_cols0).where(spec_clause)
             q1 = select(fetch_cols1).where(spec_clause)
             q2 = select(fetch_cols2).where(spec_clause).where(cl_group.c.uuid == cl_user_group.c.group_uuid)
+        if True:
+            if q0 is None:
+                q0 = select(fetch_cols0)
+            q0 = q0.where(cl_group.c.uuid == self.public_group_uuid)
         if group_filters:
             group_clause = self.make_kwargs_clause(cl_group, group_filters)
             if q1 is None:
@@ -779,23 +783,19 @@ class BundleModel(object):
             if q2 is None:
                 q2 = select(fetch_cols2).where(cl_group.c.uuid == cl_user_group.c.group_uuid)
             q2 = q2.where(user_group_clause)
-        # Figure out which query to run: q1, q2, union(q1,q2) or none. Query to execute will be in q1.
-        if q1 is None:
-            if q2 is None:
-                return []
-            q1 = q2
-        else:
-            if q2 is not None:
-                q1 = union(q1, q2)
+
+        # Union
+        q0 = union(*filter(lambda q : q is not None, [q0, q1, q2]))
+
         with self.engine.begin() as connection:
-            rows = connection.execute(q1).fetchall()
+            rows = connection.execute(q0).fetchall()
             if not rows:
                 return []
             for i, row in enumerate(rows):
                 row = dict(row)
                 # TODO: remove these conversions once database schema is changed from int to str
-                row['user_id'] = str(row['user_id'])
-                row['owner_id'] = str(row['owner_id'])
+                if isinstance(row['user_id'], int): row['user_id'] = str(row['user_id'])
+                if isinstance(row['owner_id'], int): row['owner_id'] = str(row['owner_id'])
                 rows[i] = row
             values = {row['uuid']: dict(row) for row in rows}
             return [value for value in values.itervalues()]

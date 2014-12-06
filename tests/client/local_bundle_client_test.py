@@ -19,7 +19,7 @@ class GroupsAndPermsTest(unittest.TestCase):
     def setUpClass(cls):
         cls.test_root = path_util.normalize("~/.codalab_tests")
         path_util.make_directory(cls.test_root)
-        cls.bundle_store = BundleStore(cls.test_root)
+        cls.bundle_store = BundleStore(cls.test_root, [])
         cls.model = SQLiteModel(cls.test_root)
         users = [User('root', '0'), User('user1', '1'), User('user2', '2'), User('user4', '4')]
         cls.auth_handler = MockAuthHandler(users)
@@ -35,10 +35,11 @@ class GroupsAndPermsTest(unittest.TestCase):
         self.auth_handler.validate_token(token_info['access_token'])
 
     def test_new_group(self):
+        defaultCount = 1  # Include public group
         self.set_current_user('root', '')
         # Verify assumption that there are no groups for user 'root'.
         groups = self.client.list_groups()
-        self.assertEqual(0, len(groups))
+        self.assertEqual(defaultCount + 0, len(groups))
         # Create group 'grp1'
         g1 = self.client.new_group('grp1')
         self.assertIsNotNone(g1)
@@ -47,8 +48,8 @@ class GroupsAndPermsTest(unittest.TestCase):
         self.assertIn('uuid', g1)
         # Verify output of list command.
         groups = self.client.list_groups()
-        self.assertEqual(1, len(groups))
-        g1prime = groups[0]
+        self.assertEqual(defaultCount + 1, len(groups))
+        g1prime = [g for g in groups if g['name'] != 'public'][0]
         self.assertIn('name', g1prime)
         self.assertEqual(g1['name'], g1prime['name'])
         self.assertIn('uuid', g1prime)
@@ -62,7 +63,7 @@ class GroupsAndPermsTest(unittest.TestCase):
         self.assertIn('uuid', g1deleted)
         self.assertEqual(g1['uuid'], g1deleted['uuid'])
         groups = self.client.list_groups()
-        self.assertEqual(0, len(groups))
+        self.assertEqual(defaultCount + 0, len(groups))
 
     def test_new_group_bad_name(self):
         self.set_current_user('root', '')
@@ -97,6 +98,9 @@ class GroupsAndPermsTest(unittest.TestCase):
         def _assert_group_count_for(username, num_group):
             self.set_current_user(username, '')
             groups = self.client.list_groups()
+            num_group += 1  # For public group, who everyone is part of
+            if num_group != len(groups):
+                print 'GROUPS:', groups
             self.assertEqual(num_group, len(groups))
         _assert_group_count_for('root', 0)
         _assert_group_count_for('user1', 0)

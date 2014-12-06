@@ -28,7 +28,7 @@ class BundleStoreTest(unittest.TestCase):
     '''
     mock_os.path.join = os.path.join
     mock_path_util.normalize = self.mock_normalize
-    BundleStore(self.unnormalized_test_root)
+    BundleStore(self.unnormalized_test_root, [])
     self.assertEqual(mock_path_util.make_directory.call_args_list, self.mkdir_calls)
 
   @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
@@ -109,6 +109,8 @@ class BundleStoreTest(unittest.TestCase):
       self.assertTrue(path, temp_path)
       return test_directory_hash
     mock_path_util.hash_directory = hash_directory
+
+    mock_path_util.path_is_url = lambda x : False
 
     class MockBundleStore(BundleStore):
       def __init__(self, root):
