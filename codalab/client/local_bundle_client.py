@@ -426,6 +426,9 @@ class LocalBundleClient(BundleClient):
         return results
 
     def _set_owner_names(self, results):
+        '''
+        Helper function: Set owner_name given owner_id of each item in results.
+        '''
         owner_names = self._user_id_to_names([r['owner_id'] for r in results])
         for r, owner_name in zip(results, owner_names):
             r['owner_name'] = owner_name
@@ -460,7 +463,7 @@ class LocalBundleClient(BundleClient):
         if len(user_ids) == 0: return []
         results = self.auth_handler.get_users('ids', user_ids)
         def get_name(r): return r.name if r else None
-        return [get_name(results[user_id]) for user_id in user_ids]
+        return [get_name(results[user_id] if results else None) for user_id in user_ids]
 
     def _convert_items_from_db(self, items):
         '''
@@ -671,7 +674,7 @@ class LocalBundleClient(BundleClient):
         # Get all the members
         users_in_group = self.model.batch_get_user_in_group(group_uuid=group_info['uuid'])
         user_ids = [u['user_id'] for u in users_in_group]
-        users = self.auth_handler.get_users('ids', user_ids)
+        users = self.auth_handler.get_users('ids', user_ids) if len(user_ids) > 0 else []
         members = []
         roles = {}
         for row in users_in_group:
@@ -752,11 +755,19 @@ class LocalBundleClient(BundleClient):
         Resolve |group_spec| and return the associated group_info.
         '''
         user_id = self._current_user_id()
+
         # If we're root, then we can access any group.
         if user_id == self.model.root_user_id:
             user_id = None
+
         group_info = permission.unique_group(self.model, group_spec, user_id)
+
         # If not root and need admin access, but don't have it, raise error.
         if user_id and need_admin and not group_info['is_admin']:
             raise UsageError('You are not the admin of group %s.' % group_spec)
+
+        # No one can admin the public group (not even root), because it's a special group.
+        if need_admin and group_info['uuid'] == self.model.public_group_uuid:
+            raise UsageError('Cannot modify the public group %s.' % group_spec)
+
         return group_info
