@@ -36,12 +36,13 @@ class RemoteMachine(Machine):
     def __init__(self, config):
         self.verbose = config.get('verbose', 1)
         self.dispatch_command = config['dispatch_command']
+        self.docker_image = config.get('docker_image')
 
         # State for the current run
         self.bundle = None  # Bundle 
-        self.temp_dir = None  # Where the job is being run.
-        self.script_file = None  # Script file to invoke the run.
-        self.handle = None  # Handle from the dispatcher.
+        self.temp_dir = None  # Where the job is being run (moved on upload).
+        self.temp_files = None  # Files used to run the job (we need to delete).
+        self.handle = None  # Job handle used to communicate with the dispatcher.
 
     # Not used right now
     def run_command(self, args):
@@ -76,20 +77,50 @@ class RemoteMachine(Machine):
     # Sets up remote environment, starts bundle command
     def start_bundle(self, bundle, bundle_store, parent_dict):
         if self.bundle != None: raise InternalError('Bundle already started')
+
+        # Create a temporary directory
         temp_dir = canonicalize.get_current_location(bundle_store, bundle.uuid)
+        temp_dir = os.path.realpath(temp_dir)  # Follow symlinks
         path_util.make_directory(temp_dir)
 
+        # Copy all the dependencies to that temporary directory.
         pairs = bundle.get_dependency_paths(bundle_store, parent_dict, temp_dir)
         print >>sys.stderr, 'RemoteMachine.start_bundle: copying dependencies of %s to %s' % (bundle.uuid, temp_dir)
         for (source, target) in pairs:
             path_util.copy(source, target, follow_symlinks=False)
 
-        # Write the command to be executed.
-        script_file = os.path.join(temp_dir + '.sh')
-        with open(script_file, 'w') as f:
-            f.write("cd %s &&\n" % temp_dir)
-            f.write('(%s) > stdout 2>stderr\n' % bundle.command)
-            f.close()
+        # Write the command to be executed to a script.
+        if self.docker_image:
+            container_file = temp_dir + '.cid'
+            script_file = temp_dir + '.sh'
+            internal_script_file = temp_dir + '-internal.sh'
+            docker_temp_dir = bundle.uuid
+            docker_internal_script_file = bundle.uuid + '-internal.sh'
+            temp_files = [container_file, script_file, internal_script_file]
+
+            # 1) script_file starts the docker container and runs internal_script_file in docker.
+            # --rm removes the docker container once the job terminates (note that this makes things slow)
+            # -v mounts the internal and user scripts and the temp directory
+            # Trap SIGTERM and forward it to docker.
+            with open(script_file, 'w') as f:
+                f.write('trap \'docker kill $(cat %s); exit 143\' TERM\n' % container_file)
+                f.write("docker run --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s & wait $!\n" % (
+                    container_file, os.geteuid(),
+                    temp_dir, docker_temp_dir,
+                    internal_script_file, docker_internal_script_file,
+                    self.docker_image, docker_internal_script_file))
+
+            # 2) internal_script_file runs the actual command
+            with open(internal_script_file, 'w') as f:
+                f.write("cd %s &&\n" % docker_temp_dir)
+                f.write('(%s) > stdout 2>stderr\n' % bundle.command)
+        else:
+            # Just run the command regularly without docker
+            script_file = temp_dir + '.sh'
+            temp_files = [script_file]
+            with open(script_file, 'w') as f:
+                f.write("cd %s &&\n" % temp_dir)
+                f.write('(%s) > stdout 2>stderr\n' % bundle.command)
 
         # Start the command.
         args = self.dispatch_command.split() + ['start', script_file]
@@ -97,10 +128,12 @@ class RemoteMachine(Machine):
         result = json.loads(self.run_command_get_stdout(args))
         if self.verbose >= 1: print '=== start_bundle(): got %s' % result
 
+        # Save the state
         self.bundle = bundle
         self.temp_dir = temp_dir
-        self.script_file = script_file
+        self.temp_files = temp_files
         self.handle = result['handle']
+
         return True
 
     def poll(self):
@@ -114,6 +147,7 @@ class RemoteMachine(Machine):
             result = self.run_command_get_stdout_json(args)
             exitcode = result.get('exitcode')
             if exitcode == None:
+                # TODO: return information about the job
                 return None  # Not done yet
             if self.verbose >= 0: print '=== poll(%s): %s' % (self.bundle.uuid, result)
         except Exception, e:
@@ -127,7 +161,7 @@ class RemoteMachine(Machine):
             'success': exitcode == 0,
             'temp_dir': self.temp_dir,
             'exitcode': exitcode,
-            'docker_image': result.get('docker_image', ''),
+            'docker_image': self.docker_image,
             'remote': result.get('hostname', '?') + ':' + self.temp_dir,
         }
         if exception:
@@ -153,7 +187,9 @@ class RemoteMachine(Machine):
         try:
             args = self.dispatch_command.split() + ['cleanup', self.handle]
             result = self.run_command_get_stdout_json(args)
-            path_util.remove(self.script_file)
+            for f in self.temp_files:
+                if os.path.exists(f):
+                    path_util.remove(f)
             ok = True
         except Exception, e:
             print '=== INTERNAL ERROR: %s' % e
@@ -162,7 +198,7 @@ class RemoteMachine(Machine):
 
         self.bundle = None
         self.temp_dir = None
-        self.script_file = None
+        self.temp_files = None
         self.handle = None
 
         return ok

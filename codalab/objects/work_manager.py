@@ -158,7 +158,10 @@ class Worker(object):
             if processed:
                 self.bundle_data[x.bundle_uuid]['actions'].append(x.action)
             else:
-                keep_bundle_actions.append(x)
+                if x.action == '':
+                    print 'Invalid action, skipping: %s' % x
+                else:
+                    keep_bundle_actions.append(x)
         if len(keep_bundle_actions) > 0:
             self.model.add_bundle_actions(keep_bundle_actions)
         return len(bundle_actions) - len(keep_bundle_actions) > 0
@@ -184,15 +187,26 @@ class Worker(object):
             print >>sys.stderr, 'Worker.finalize_bundle: installing dependencies to %s (copy=%s)' % (temp_dir, copy)
             bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, copy=copy)
             # Note: uploading will move temp_dir to the bundle store.
-            (data_hash, metadata) = self.bundle_store.upload(temp_dir)
+            (data_hash, metadata) = self.bundle_store.upload(temp_dir, follow_symlinks=False)
         except Exception as e:
             (data_hash, metadata) = (None, {})
             success = False
             metadata['failure_message'] = e.message
 
-        # Add metadata
+        # Clean up any state for RunBundles.
+        if isinstance(bundle, RunBundle):
+            try:
+                self.machine.finalize_bundle(bundle.uuid)
+            except Exception as e:
+                success = False
+                if 'failure_message' not in metadata:
+                    metadata['failure_message'] = e.message
+                else:
+                    metadata['failure_message'] += '\n' + e.message
+
+        # Add metadata (e.g., docker_image, time, memory, etc.)
         for key, value in result.items():
-            if key in ['bundle', 'success', 'temp_dir']: continue
+            if key in ['bundle', 'success', 'temp_dir']: continue  # Skip these keys
             metadata[key] = value
 
         # Update data, remove temp_dir and process
@@ -208,10 +222,6 @@ class Worker(object):
             update['metadata'] = metadata
         with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
             self.model.update_bundle(bundle, update)
-
-        # Clean up any state for RunBundles.
-        if isinstance(bundle, RunBundle):
-            self.machine.finalize_bundle(bundle.uuid)
 
         print '-- END BUNDLE: %s [%s]' % (bundle, state)
         print ''

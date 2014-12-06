@@ -408,6 +408,7 @@ class BundleCLI(object):
         parser.add_argument('-b', '--base', help='Inherit the metadata from this bundle specification.')
         parser.add_argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true')
         parser.add_argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        parser.add_argument('-L', '--follow-symlinks', help='always dereference symlinks', action='store_true')
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
@@ -454,8 +455,7 @@ class BundleCLI(object):
         if len(args.path) == 1: args.path = args.path[0]
 
         # Finally, once everything has been checked, then call the client to upload.
-        # Follow symlinks so we don't end up with broken symlinks.
-        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, True)
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks)
 
     def do_download_command(self, argv, parser):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
