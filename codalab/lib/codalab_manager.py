@@ -78,14 +78,23 @@ class CodaLabManager(object):
                 },
                 'workers': {
                     'q': {
-                        'type': 'remote',
                         'verbose': 1,
                         'max_instances': 10,
-                        'dispatch_command': "python (fill in)/codalab-cli/scripts/dispatch-q.py",
+                        'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
                     }
                 }
             }, config_path)
         self.config = read_json_or_die(config_path)
+
+        # Substitute environment variables
+        codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        def replace(x):
+            if isinstance(x, basestring):
+                return x.replace('$CODALAB_CLI', codalab_cli)
+            if isinstance(x, dict):
+                return dict((k, replace(v)) for k, v in x.items())
+            return x
+        self.config = replace(self.config)
 
         # Read state file, creating if it doesn't exist.
         state_path = self.state_path()

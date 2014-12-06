@@ -8,7 +8,7 @@ import sys, os, json, re
 import subprocess
 
 def get_output(command):
-    print >>sys.stderr, 'dispatch-torque.py: ' + command
+    print >>sys.stderr, 'dispatch-q.py: ' + command
     return subprocess.check_output(command, shell=True)
 
 if len(sys.argv) <= 1:
