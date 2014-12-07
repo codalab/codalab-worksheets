@@ -144,18 +144,19 @@ class Worker(object):
         if self.verbose >= 2: print 'bundle_actions:', bundle_actions
         keep_bundle_actions = []
         for x in bundle_actions:
-            # TODO: generalize this to other commands
+            # Try to process action
             processed = False
             if x.action == Command.KILL:
-                if self.machine.kill_bundle(x.bundle_uuid):
-                    processed = True
+                if not self.machine.kill_bundle(x.bundle_uuid):
+                    print 'Killing %s failed' % x.bundle_uuid
+                processed = True
+
+            # If processed, record it as such.  Else, keep the action around.
             if processed:
-                self.bundle_data[x.bundle_uuid]['actions'].append(x.action)
+                if x.bundle_uuid in self.bundle_data:
+                    self.bundle_data[x.bundle_uuid]['actions'].append(x.action)
             else:
-                if x.action == '':
-                    print 'Invalid action, skipping: %s' % x
-                else:
-                    keep_bundle_actions.append(x)
+                keep_bundle_actions.append(x)
         if len(keep_bundle_actions) > 0:
             self.model.add_bundle_actions(keep_bundle_actions)
         return len(bundle_actions) - len(keep_bundle_actions) > 0
