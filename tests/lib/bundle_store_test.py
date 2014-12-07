@@ -48,6 +48,7 @@ class BundleStoreTest(unittest.TestCase):
 
     mock_os.path = mock.Mock()
     mock_os.path.join = os.path.join
+    mock_os.path.realpath = lambda x : x
 
     unnormalized_bundle_path = 'random thing that will normalize to bundle path'
     bundle_path = 'bundle path'
@@ -120,7 +121,7 @@ class BundleStoreTest(unittest.TestCase):
 
     bundle_store = MockBundleStore(test_root)
     self.assertFalse(check_isvalid_called[0])
-    bundle_store.upload(unnormalized_bundle_path)
+    bundle_store.upload(unnormalized_bundle_path, False)
     self.assertTrue(check_isvalid_called[0])
     if new:
       self.assertTrue(rename_called[0])
