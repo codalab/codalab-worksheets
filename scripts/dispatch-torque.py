@@ -30,10 +30,12 @@ mode = sys.argv[1]
 if mode == 'start':
     script = sys.argv[2]
     stdout = get_output('qsub %s -o /dev/null -e /dev/null' % script)
+    #stdout = get_output('qsub %s' % script)
     handle = stdout.strip()
 elif mode == 'info':
     handle = sys.argv[2]
     stdout = get_output('qstat -f %s' % handle)
+    completed = False
     for line in stdout.split("\n"):
         m = re.match(r'\s*([^ ]+) = (.+)', line)
         if not m:
@@ -45,8 +47,21 @@ elif mode == 'info':
             result['hostname'] = value
         elif key == 'exit_status':
             result['exitcode'] = int(value)
+        elif key == 'job_state':
+            if value == 'C':
+                completed = True
+        elif key == 'resources_used.mem':
+            m = re.match(r'(\d+)kb', value)
+            if m:
+                result['memory'] = int(m.group(1)) * 1024
+
+    # Ensure exitcode if job is completed
+    if completed and 'exitcode' not in result:
+        result['exitcode'] = -1
+
 elif mode == 'kill':
     handle = sys.argv[2]
+    # Wait 
     stdout = get_output('qdel %s' % handle)
 elif mode == 'cleanup':
     handle = sys.argv[2]

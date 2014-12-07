@@ -35,8 +35,9 @@ class MachineSpec:
 
 class PoolMachine(Machine):
     '''
-    Maintains a pool of machines and dispatches all requests to
+    Maintains a pool of 'Machines' and dispatches all requests to
     those machines.
+    Currently, we only allow RemoteMachine.
     '''
     def __init__(self, config):
         '''
@@ -80,12 +81,12 @@ class PoolMachine(Machine):
         spec, machine = self.bundles.get(uuid)
         return machine.kill_bundle(uuid)
 
-    def poll(self):
+    def get_bundle_statuses(self):
+        # Poll each machine and just concatenate the results
+        results = []
         for (spec, machine) in self.bundles.values():
-            result = machine.poll()
-            # Machine is done with the run
-            if result: return result
-        return None
+            results.extend(machine.get_bundle_statuses())
+        return results
 
     def finalize_bundle(self, uuid):
         if uuid not in self.bundles:

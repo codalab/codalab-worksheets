@@ -79,12 +79,6 @@ class Worker(object):
                 return success
         return True
 
-    # Poll processes to see if bundles have finished running
-    def check_finished_bundles(self):
-        result = self.machine.poll()
-        if result:
-            self.finalize_bundle(result)
-
     def start_bundle(self, bundle):
         '''
         Run the given bundle using an available Machine.
@@ -130,15 +124,15 @@ class Worker(object):
             if exception:
                 temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                 path_util.make_directory(temp_dir)
-                result = {'bundle': bundle, 'success': False, 'temp_dir': temp_dir, 'internal_error': str(exception)}
-                self.finalize_bundle(result)
+                status = {'bundle': bundle, 'success': False, 'temp_dir': temp_dir, 'internal_error': str(exception)}
+                self.update_running_bundle(status)
 
             # If we have a MakeBundle, then just process it immediately.
             if isinstance(bundle, MakeBundle):
                 temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                 path_util.make_directory(temp_dir)
-                result = {'bundle': bundle, 'success': True, 'temp_dir': temp_dir}
-                self.finalize_bundle(result)
+                status = {'bundle': bundle, 'success': True, 'temp_dir': temp_dir}
+                self.update_running_bundle(status)
 
             return started
 
@@ -166,65 +160,83 @@ class Worker(object):
             self.model.add_bundle_actions(keep_bundle_actions)
         return len(bundle_actions) - len(keep_bundle_actions) > 0
 
-    def finalize_bundle(self, result):
-        bundle = result['bundle']
-        success = result['success']
-        temp_dir = result['temp_dir']
+    # Poll processes to see if bundles have finished running
+    # Either way, update the bundle metadata.
+    def check_finished_bundles(self):
+        statuses = self.machine.get_bundle_statuses()
+        for status in statuses:
+            self.update_running_bundle(status)
 
-        end_time = time.time()
-        bundle_data = self.bundle_data[bundle.uuid]
-        start_time = bundle_data['start_time']
-        parent_dict = bundle_data['parent_dict']
-        actions = bundle_data['actions']
+    def update_running_bundle(self, status):
+        '''
+        Update the database with information about the bundle given by |status|.
+        If the bundle is completed, then we need to install the bundle and clean up.
+        '''
+        # Update the bundle's data with status (which is the new information).
+        bundle = status['bundle']
+        data = self.bundle_data[bundle.uuid]
+        data.update(status)
 
-        # Re-install dependencies.
-        # - For RunBundle, use relative dependencies (this is just for convenience).
-        # - For MakeBundle, copy.
-        # This way, we maintain the invariant that we always only need to look
-        # back one-level at the dependencies, not recurse.
-        try:
-            copy = isinstance(bundle, MakeBundle)
-            print >>sys.stderr, 'Worker.finalize_bundle: installing dependencies to %s (copy=%s)' % (temp_dir, copy)
-            bundle.install_dependencies(self.bundle_store, parent_dict, temp_dir, copy=copy)
-            # Note: uploading will move temp_dir to the bundle store.
-            (data_hash, metadata) = self.bundle_store.upload(temp_dir, follow_symlinks=False)
-        except Exception as e:
-            (data_hash, metadata) = (None, {})
-            success = False
-            metadata['failure_message'] = e.message
+        # Update to the database
+        db_update = {}
 
-        # Clean up any state for RunBundles.
-        if isinstance(bundle, RunBundle):
+        # Add metadata from the machine
+        db_update['metadata'] = metadata = {}
+        bundle_subclass = type(bundle)
+        for spec in bundle_subclass.METADATA_SPECS:
+            value = data.get(spec.key)
+            if value != None:
+                metadata[spec.key] = value
+
+        # See if the bundle is completed.
+        success = data['success']
+        if success != None:
+            # Re-install dependencies.
+            # - For RunBundle, use relative dependencies (this is just for convenience).
+            # - For MakeBundle, copy.
+            # This way, we maintain the invariant that we always only need to look
+            # back one-level at the dependencies, not recurse.
             try:
-                self.machine.finalize_bundle(bundle.uuid)
+                temp_dir = data['temp_dir']
+                copy = isinstance(bundle, MakeBundle)
+                print >>sys.stderr, 'Worker.finalize_bundle: installing dependencies to %s (copy=%s)' % (temp_dir, copy)
+                bundle.install_dependencies(self.bundle_store, data['parent_dict'], temp_dir, copy=copy)
+                # Note: uploading will move temp_dir to the bundle store.
+                data_hash, new_metadata = self.bundle_store.upload(temp_dir, follow_symlinks=False)
+                db_update['data_hash'] = data_hash
+                metadata.update(new_metadata)
             except Exception as e:
                 success = False
-                if 'failure_message' not in metadata:
-                    metadata['failure_message'] = e.message
-                else:
-                    metadata['failure_message'] += '\n' + e.message
+                metadata['failure_message'] = e.message
 
-        # Add metadata (e.g., docker_image, time, memory, etc.)
-        for key, value in result.items():
-            if key in ['bundle', 'success', 'temp_dir']: continue  # Skip these keys
-            metadata[key] = value
+            # Clean up any state for RunBundles.
+            if isinstance(bundle, RunBundle):
+                try:
+                    self.machine.finalize_bundle(bundle.uuid)
+                except Exception as e:
+                    success = False
+                    if 'failure_message' not in metadata:
+                        metadata['failure_message'] = e.message
+                    else:
+                        metadata['failure_message'] += '\n' + e.message
 
-        # Update data, remove temp_dir and process
+            state = State.READY if success else State.FAILED
+            db_update['state'] = state
+            print '-- END BUNDLE: %s [%s]' % (bundle, state)
+            print ''
+
+        # Information for RunBundles.
         if isinstance(bundle, RunBundle):
-            metadata.update({'time': end_time - start_time})
+            start_time = data['start_time']
+            end_time = time.time()
+            # Current amount of time taken
+            metadata['time'] = end_time - start_time
+            actions = data['actions']
             if len(actions) > 0:
-                metadata.update({'actions': actions})
-        state = State.READY if success else State.FAILED
+                metadata['actions'] = actions
 
-        # Update a bundle to the new state and data hash at the end of a run.
-        update = {'state': state, 'data_hash': data_hash}
-        if metadata:
-            update['metadata'] = metadata
-        with self.profile('Setting 1 bundle to %s...' % (state.upper(),)):
-            self.model.update_bundle(bundle, update)
-
-        print '-- END BUNDLE: %s [%s]' % (bundle, state)
-        print ''
+        # Update database!
+        self.model.update_bundle(bundle, db_update)
 
     def update_created_bundles(self):
         '''

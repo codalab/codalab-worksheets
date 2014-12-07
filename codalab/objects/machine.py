@@ -1,17 +1,8 @@
 '''
 Machine is a class that manages execution of bundle(s) that need to be run.
-
-Subclasses implement local execution (in a separate process) and
-remote execution (through ssh).
-
-Does not interact with bundle model.  Uses BundleStore to resolve dependencies.
 '''
 
 class Machine(object):
-    '''
-    Utility for running bundle commands.
-    '''
-
     def start_bundle(self, bundle, bundle_store, parent_dict):
         '''
         Attempts to begin bundle execution.
@@ -19,10 +10,10 @@ class Machine(object):
         '''
         raise NotImplementedError
 
-    def poll(self):
+    def get_bundle_statuses(self):
         '''
-        Checks to see if any run bundle has finished.
-        Returns (bundle, success flag, directory with output) if one has or None
+        Checks the status of bundles.
+        Returns a list of bundle statuses (dicts).
         '''
         raise NotImplementedError
 

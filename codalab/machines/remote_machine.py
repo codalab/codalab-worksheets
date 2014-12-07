@@ -103,7 +103,8 @@ class RemoteMachine(Machine):
             # -v mounts the internal and user scripts and the temp directory
             # Trap SIGTERM and forward it to docker.
             with open(script_file, 'w') as f:
-                f.write('trap \'docker kill $(cat %s); exit 143\' TERM\n' % container_file)
+                # TODO: this doesn't quite work reliably with Torque.
+                f.write('trap \'echo Killing docker container $(cat %s); docker kill $(cat %s); echo Killed: $?; exit 143\' TERM\n' % (container_file, container_file))
                 f.write("docker run --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s & wait $!\n" % (
                     container_file, os.geteuid(),
                     temp_dir, docker_temp_dir,
@@ -136,37 +137,32 @@ class RemoteMachine(Machine):
 
         return True
 
-    def poll(self):
-        if not self.handle: return None
+    def get_bundle_statuses(self):
+        if not self.handle: return []
         exception = None
-        exitcode = -1
-        result = {}
+        info = {}
         try:
             # Get status
             args = self.dispatch_command.split() + ['info', self.handle]
-            result = self.run_command_get_stdout_json(args)
-            exitcode = result.get('exitcode')
-            if exitcode == None:
-                # TODO: return information about the job
-                return None  # Not done yet
-            if self.verbose >= 0: print '=== poll(%s): %s' % (self.bundle.uuid, result)
+            info = self.run_command_get_stdout_json(args)
+            if self.verbose >= 2: print '=== get_bundle_statuses(%s): %s' % (self.bundle.uuid, info)
         except Exception, e:
             print '=== INTERNAL ERROR: %s' % e
             traceback.print_exc()
             exception = e
+            info['exitcode'] = -1  # Fail due to internal error
 
-        # Return the results back
-        result = {
+        status = {
             'bundle': self.bundle,
-            'success': exitcode == 0,
             'temp_dir': self.temp_dir,
-            'exitcode': exitcode,
+            'exitcode': info.get('exitcode'),
             'docker_image': self.docker_image,
-            'remote': result.get('hostname', '?') + ':' + self.temp_dir,
+            'remote': info.get('hostname', '?') + ':' + self.temp_dir,
         }
+        status['success'] = status['exitcode'] == 0 if status['exitcode'] != None else None
         if exception:
-            result['internal_error'] = str(exception)
-        return result
+            status['internal_error'] = str(exception)
+        return [status]
 
     def kill_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False
