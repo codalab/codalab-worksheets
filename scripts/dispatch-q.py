@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Wrapper for fig's simple workqueue system.
 # https://github.com/percyliang/fig/blob/master/bin/q
@@ -8,7 +8,7 @@ import sys, os, json, re
 import subprocess
 
 def get_output(command):
-    print >>sys.stderr, 'dispatch-torque.py: ' + command
+    print >>sys.stderr, 'dispatch-q.py: ' + command
     return subprocess.check_output(command, shell=True)
 
 if len(sys.argv) <= 1:
@@ -40,9 +40,9 @@ elif mode == 'info':
     # handle	worker	status	exitcode	time	mem	disk	outName	command
     # J-ifnrj9	mazurka-37 mazurka	done	0	1m40s	1m	-1m		sleep 100
     tokens = stdout.strip().split("\t")
-    hostname = tokens[1].split()
-    if len(hostname) > 1: hostname = hostname[-1]
-    result['hostname'] = hostname
+    hostname = tokens[1]
+    if hostname != '':
+        result['hostname'] = hostname.split()[-1]
     exitcode = tokens[3]
     if exitcode != '':
         result['exitcode'] = int(exitcode)

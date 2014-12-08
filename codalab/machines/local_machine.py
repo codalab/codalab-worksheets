@@ -53,21 +53,17 @@ class LocalMachine(Machine):
         self.process.kill()
         return True
 
-    def poll(self):
-        if self.process == None: return None
+    def get_bundle_statuses(self):
+        if self.process == None: return []
 
         self.process.poll()
-        if self.process.returncode == None: return None
-
-        exitcode = self.process.returncode
-        success = exitcode == 0
-        result = {
+        status = {
             'bundle': self.bundle,
-            'success': exitcode == 0,
             'temp_dir': self.temp_dir,
-            'exitcode': exitcode,
+            'exitcode': self.process.returncode,
         }
-        return result
+        status['success'] = status['exitcode'] == 0 if status['exitcode'] != None else None
+        return [status]
 
     def finalize_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False

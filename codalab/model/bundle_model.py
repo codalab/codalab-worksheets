@@ -22,6 +22,7 @@ from codalab.common import (
     IntegrityError,
     precondition,
     UsageError,
+    State,
 )
 from codalab.lib import (
     spec_util,
@@ -431,6 +432,12 @@ class BundleModel(object):
         Delete bundles with the given uuids.
         '''
         with self.engine.begin() as connection:
+            # Make sure we don't delete running bundles.
+            rows = connection.execute(select([cl_bundle.c.uuid, cl_bundle.c.state]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
+            running_uuids = [r.uuid for r in rows if r.state == State.RUNNING]
+            if len(running_uuids) > 0:
+                raise UsageError('Can\'t delete running bundles: %s' % ' '.join(running_uuids))
+
             # We must delete bundles rows in the opposite order that we create them
             # to avoid foreign-key constraint failures.
             connection.execute(cl_worksheet_item.delete().where(

@@ -69,10 +69,11 @@ class BundleStore(object):
         path_util.make_directory(self.get_temp_location(identifier));
 
 
-    def upload(self, path, follow_symlinks=False):
+    def upload(self, path, follow_symlinks):
         '''
-        Copy the contents of the directory at path into the data subdirectory,
+        Copy the contents of the directory at |path| into the data subdirectory,
         in a subfolder named by a hash of the contents of the new data directory.
+        If |path| is in a temporary directory, then we just move it.
 
         Return a (data_hash, metadata) pair, where the metadata is a dict mapping
         keys to precomputed statistics about the new data directory.
@@ -80,7 +81,7 @@ class BundleStore(object):
         # Create temporary directory as a staging area.
         # If |path| is already temporary, then we use that directly
         # (with the understanding that |path| will be moved)
-        if path.startswith(self.temp):
+        if os.path.realpath(path).startswith(os.path.realpath(self.temp)):
             temp_path = path
         else:
             temp_path = os.path.join(self.temp, uuid.uuid4().hex)
@@ -107,7 +108,6 @@ class BundleStore(object):
                 absolute_path = path_util.normalize(path)
                 path_util.check_isvalid(absolute_path, 'upload')
 
-            #print 'COPY', absolute_path, temp_path
             # Recursively copy the directory into a new BundleStore temp directory.
             print >>sys.stderr, 'BundleStore.upload: copying %s to %s' % (absolute_path, temp_path)
             path_util.copy(absolute_path, temp_path, follow_symlinks=follow_symlinks)
@@ -127,10 +127,12 @@ class BundleStore(object):
         final_path = os.path.join(self.data, data_hash)
         final_path_exists = False
         try:
+            # If data_hash already exists, then we don't need to move it over.
             os.utime(final_path, None)
             final_path_exists = True
         except OSError, e:
             if e.errno == errno.ENOENT:
+                print 'BundleStore.upload: moving %s to %s' % (temp_path, final_path)
                 path_util.rename(temp_path, final_path)
             else:
                 raise
