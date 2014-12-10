@@ -154,7 +154,7 @@ class RemoteBundleClient(BundleClient):
 
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
         # URLs can be directly passed to the local client.
-        if path_util.path_is_url(path):
+        if not isinstance(path, list) and path_util.path_is_url(path):
             return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks)
 
         # First, zip path up (temporary local zip file).
