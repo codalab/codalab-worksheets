@@ -52,6 +52,7 @@ import sys
 import tempfile
 import types
 import yaml
+import json
 
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
@@ -362,6 +363,8 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
                 for x in contents:
                     kv = x.strip().split("\t", 1)
                     if len(kv) == 2: info[kv[0]] = kv[1]
+            elif contents[0][0] == '{':  # Hack to detect JSON file
+                info = json.loads('\n'.join(contents))
             else:
                 # YAML file
                 info = yaml.load('\n'.join(contents))
@@ -371,9 +374,17 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
 
     # Traverse the info object.
     info = target_cache.get(target, None)
-    if key and info:
+    if key != None and info != None:
         for k in key.split('/'):
-            info = info.get(k, None) if isinstance(info, dict) else None
+            if isinstance(info, dict):
+                info = info.get(k, None)
+            elif isinstance(info, list):
+                try:
+                    info = info[int(k)]
+                except:
+                    info = None
+            else:
+                info = None
             if info == None: break
     return info
 
@@ -505,8 +516,12 @@ def interpret_items(schemas, items):
                     bundle_uuid, genpath = interpreted
                     if not is_file_genpath(genpath):
                         raise UsageError('Expected a file genpath, but got %s' % genpath)
-                    # Strip off the beginning '/' since targets by convention do not have '/'
-                    interpreted = (bundle_uuid, genpath[1:])
+                    if mode == 'inline':
+                        post = None  # TODO: allow post-processing
+                        interpreted = (bundle_uuid, genpath, post)
+                    else:
+                        # This is a target: strip off the leading /
+                        interpreted = (bundle_uuid, genpath[1:])
                 new_items.append({
                     'mode': mode,
                     'interpreted': interpreted,
