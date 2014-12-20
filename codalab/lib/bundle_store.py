@@ -81,12 +81,12 @@ class BundleStore(object):
         # Create temporary directory as a staging area.
         # If |path| is already temporary, then we use that directly
         # (with the understanding that |path| will be moved)
-        if os.path.realpath(path).startswith(os.path.realpath(self.temp)):
+        if not isinstance(path, list) and os.path.realpath(path).startswith(os.path.realpath(self.temp)):
             temp_path = path
         else:
             temp_path = os.path.join(self.temp, uuid.uuid4().hex)
 
-        if path_util.path_is_url(path):
+        if not isinstance(path, list) and path_util.path_is_url(path):
             # Have to be careful.  Want to make sure if we're fetching a URL
             # that points to a file, we are allowing this.
             if path.startswith('file://'):
