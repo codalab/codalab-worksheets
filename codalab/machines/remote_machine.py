@@ -113,7 +113,11 @@ class RemoteMachine(Machine):
 
             # 2) internal_script_file runs the actual command
             with open(internal_script_file, 'w') as f:
+                # Make sure I have a username
+                f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (os.getlogin(), os.geteuid(), os.getgid()))
+                # Go into the temp directory
                 f.write("cd %s &&\n" % docker_temp_dir)
+                # Run the actual command
                 f.write('(%s) > stdout 2>stderr\n' % bundle.command)
         else:
             # Just run the command regularly without docker
