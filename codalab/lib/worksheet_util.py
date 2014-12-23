@@ -455,7 +455,7 @@ def get_default_schemas():
     time = ['time', 'time', 'duration']
     schemas = {}
 
-    schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, data_size, ['state']])
+    schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
 
     schemas['program'] = canonicalize_schema_items([['name'], created, data_size])
     schemas['dataset'] = canonicalize_schema_items([['name'], created, data_size])
@@ -479,7 +479,8 @@ def interpret_items(schemas, items):
     # Set default schema
     current_schema = None
 
-    current_display = ('table', 'default')
+    default_display = ('table', 'default')
+    current_display = default_display
     new_items = []
     bundle_infos = []
     def get_schema(args):  # args is a list of schema names
@@ -581,7 +582,8 @@ def interpret_items(schemas, items):
                 'mode': TYPE_MARKUP,
                 'interpreted': value_obj,
             })
-            pass
+            # Reset the display to minimize the long distance nature of the bundles
+            current_display = default_display
         elif item_type == TYPE_DIRECTIVE:
             flush()
             if len(value_obj) == 0: continue
