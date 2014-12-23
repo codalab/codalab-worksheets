@@ -166,8 +166,11 @@ class CodaLabManager(object):
         sessions = self.state['sessions']
         name = self.session_name()
         if name not in sessions:
-            # Default: use local
-            sessions[name] = {'address': 'local'}
+            # New session: set the address and worksheet uuid to the default (local if not specified)
+            cli_config = self.config['cli']
+            address = cli_config.get('default_address', 'local')
+            worksheet_uuid = cli_config.get('default_worksheet_uuid', '')
+            sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
         return sessions[name]
 
     @cached
@@ -239,7 +242,11 @@ class CodaLabManager(object):
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose())
+            try:
+                client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose())
+            except:
+                print "Failed to connect to address: '%s'" % address
+                raise
             self.clients[address] = client
             self._authenticate(client)
         return client
