@@ -39,12 +39,21 @@ class LocalMachine(Machine):
         for (source, target) in pairs:
             path_util.copy(source, target, follow_symlinks=False)
 
-        with path_util.chdir(temp_dir):
-            with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
-                process = subprocess.Popen(bundle.command, stdout=stdout, stderr=stderr, shell=True)
+        script_file = temp_dir + '.sh'
+        temp_files = [script_file]
+        with open(script_file, 'w') as f:
+            f.write("cd %s &&\n" % temp_dir)
+            f.write('(%s) > stdout 2>stderr\n' % bundle.command)
+        # Use stdbuf to turn off buffering so we get real-time feedback.
+        process = subprocess.Popen("stdbuf -o0 bash " + script_file, shell=True)
+
+        #with path_util.chdir(temp_dir):
+            #with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
+                #process = subprocess.Popen("stdbuf -o0 " + bundle.command, stdout=stdout, stderr=stderr, shell=True)
 
         self.bundle = bundle
         self.temp_dir = temp_dir
+        self.temp_files = temp_files
         self.process = process
         return True
 
@@ -68,7 +77,17 @@ class LocalMachine(Machine):
     def finalize_bundle(self, uuid):
         if not self.bundle or self.bundle.uuid != uuid: return False
 
+        try:
+            for f in self.temp_files:
+                if os.path.exists(f):
+                    path_util.remove(f)
+            ok = True
+        except Exception, e:
+            print '=== INTERNAL ERROR: %s' % e
+            traceback.print_exc()
+            ok = False
+
         self.bundle = None
         self.temp_dir = None
         self.process = None
-        return True
+        return ok
