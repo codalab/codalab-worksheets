@@ -92,15 +92,15 @@ def string_to_tokens(s):
     Output (array): ["a", "b", "c d", "e"]
     Both single and double quotes are supported.
     '''
-    #print s
     tokens = []
     i = 0
     while i < len(s):
         # Every time we enter the loop, we're at the beginning of a token.
         if s[i] == '"' or s[i] == '\'':
+            j = i
             while True:
                 try:
-                    j = s.index(s[i], i+1)
+                    j = s.index(s[i], j+1)
                 except:
                     raise UsageError('Unclosed quote: %s' % s)
                 if s[j-1] != '\\': break
@@ -455,7 +455,7 @@ def get_default_schemas():
     time = ['time', 'time', 'duration']
     schemas = {}
 
-    schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, data_size, ['state']])
+    schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
 
     schemas['program'] = canonicalize_schema_items([['name'], created, data_size])
     schemas['dataset'] = canonicalize_schema_items([['name'], created, data_size])
@@ -479,7 +479,8 @@ def interpret_items(schemas, items):
     # Set default schema
     current_schema = None
 
-    current_display = ('table', 'default')
+    default_display = ('table', 'default')
+    current_display_ref = [default_display]
     new_items = []
     bundle_infos = []
     def get_schema(args):  # args is a list of schema names
@@ -495,8 +496,8 @@ def interpret_items(schemas, items):
         if len(bundle_infos) == 0:
             return
         # Print out the curent bundles somehow
-        mode = current_display[0]
-        args = current_display[1:]
+        mode = current_display_ref[0][0]
+        args = current_display_ref[0][1:]
         if mode == 'hidden':
             pass
         elif mode == 'link':
@@ -565,7 +566,18 @@ def interpret_items(schemas, items):
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
 
-    for (bundle_info, subworksheet_info, value_obj, item_type) in items:
+        # Reset display to minimize the long distance dependencies of directives
+        if item_type != TYPE_BUNDLE:
+            current_display_ref[0] = default_display
+        # Reset schema to minimize long distance dependencies of directives
+        if item_type != TYPE_DIRECTIVE:
+            current_schema = None
+
+    def get_command(value_obj):  # For directives only
+        return value_obj[0] if len(value_obj) > 0 else None
+    for item in items:
+        (bundle_info, subworksheet_info, value_obj, item_type) = item
+
         if item_type == TYPE_BUNDLE:
             bundle_infos.append(bundle_info)
         elif item_type == TYPE_WORKSHEET:
@@ -581,36 +593,38 @@ def interpret_items(schemas, items):
                 'mode': TYPE_MARKUP,
                 'interpreted': value_obj,
             })
-            pass
         elif item_type == TYPE_DIRECTIVE:
             flush()
-            if len(value_obj) == 0: continue
-            command = value_obj[0]
-            if command == 'title':
+            command = get_command(value_obj)
+            if command == '%' or command == '' or command == None:  # Comment
+                pass
+            elif command == 'title':
                 result['title'] = value_obj[1]
             elif command == 'schema':
                 name = value_obj[1]
                 schemas[name] = current_schema = []
             elif command == 'addschema':
+                if current_schema == None:
+                    raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 name = value_obj[1]
                 current_schema += schemas[name]
             elif command == 'add':
+                if current_schema == None:
+                    raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 schema_item = canonicalize_schema_item(value_obj[1:])
                 current_schema.append(schema_item)
             elif command == 'display':
-                current_display = value_obj[1:]
+                current_display_ref[0] = value_obj[1:]
             elif command == 'search':
                 keywords = value_obj[1:]
                 mode = command
-                data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
+                data = {'keywords': keywords, 'display': current_display_ref[0], 'schemas': schemas}
                 new_items.append({
                     'mode': TYPE_DIRECTIVE,
                     'interpreted': data,
                 })
-            elif command == '%' or command == '':  # Comment
-                pass
             else:
-                raise UsageError('Unknown command: %s' % command)
+                raise UsageError('Unknown directive command in %s' % value_obj)
         else:
             raise InternalError('Unknown worksheet item type: %s' % item_type)
 
