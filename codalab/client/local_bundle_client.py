@@ -78,12 +78,15 @@ class LocalBundleClient(BundleClient):
           'uuid': bundle.uuid,
           'bundle_type': bundle.bundle_type,
           'owner_id': bundle.owner_id,
+          'owner_name': self.user_info(bundle.owner_id)['name'],
           'command': bundle.command,
           'data_hash': bundle.data_hash,
           'state': bundle.state,
           'metadata': bundle.metadata.to_dict(),
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
         }
+        result['owner'] = '%s(%s)' % (result['owner_name'], result['owner_id'])
+
         for dep in result['dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
         if children is not None:
             result['children'] = [child.simple_str() for child in children]
@@ -750,6 +753,18 @@ class LocalBundleClient(BundleClient):
         return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
                 'group_info': group_info,
                 'permission': new_permission}
+
+    @authentication_required
+    def chown(self, bundle_uuids, user_spec):
+        '''
+        Set the owner of the bundles to the user.
+        '''
+        check_has_all_permission_on_bundles(self.model, self._current_user(), bundle_uuids)
+        user_info = self.user_info(user_spec)
+        # Update bundles
+        for bundle_uuid in bundle_uuids:
+            bundle = self.model.get_bundle(bundle_uuid)
+            self.model.update_bundle(bundle, {'owner_id': user_info['id']})
 
     def _get_group_info(self, group_spec, need_admin):
         '''

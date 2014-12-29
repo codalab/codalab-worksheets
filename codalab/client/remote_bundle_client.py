@@ -101,6 +101,7 @@ class RemoteBundleClient(BundleClient):
       'add_user',
       'rm_user',
       'set_worksheet_perm',
+      'chown',
     )
     # Implemented by the BundleRPCServer.
     SERVER_COMMANDS = (
