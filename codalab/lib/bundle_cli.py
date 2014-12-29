@@ -257,6 +257,8 @@ class BundleCLI(object):
     BUNDLE_SPEC_FORMAT = '(<uuid>|<name>)'
     WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
 
+    UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
+
     def parse_spec(self, spec):
         '''
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
@@ -719,12 +721,18 @@ class BundleCLI(object):
             for bundle_info in bundle_info_list:
                 print bundle_info['uuid']
         else:
-            columns = ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
-            post_funcs = {'created': 'date', 'data_size': 'size'}
-            justify = {'data_size': 1}
+            def get(i, info, col):
+                if col == 'ref':
+                    return '^' + str(len(bundle_info_list) - i)
+                else:
+                    return info.get(col, info['metadata'].get(col))
+                    
+            columns = ('ref', 'uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
+            post_funcs = {'uuid': self.UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
+            justify = {'data_size': 1, 'ref': 1}
             bundle_dicts = [
-              {col: info.get(col, info['metadata'].get(col)) for col in columns}
-              for info in bundle_info_list
+              {col: get(i, info, col) for col in columns}
+              for i, info in enumerate(bundle_info_list)
             ]
             self.print_table(columns, bundle_dicts, post_funcs=post_funcs, justify=justify)
 
@@ -1207,7 +1215,8 @@ class BundleCLI(object):
                 for row in worksheet_dicts:
                     row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
-                self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts)
+                post_funcs = {'uuid': self.UUID_POST_FUNC}
+                self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
             else:
                 print 'No worksheets found.'
 
