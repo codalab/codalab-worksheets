@@ -419,7 +419,12 @@ is either a JSON file:
 
     {"errorRate": 0.2, "method": "simple"}
 
-or a tab-separated file:
+a YAML file,
+
+    errorRate: 0.2
+    method: simple
+
+or a tab-separated file,
 
     errorRate   0.2
     method	    simple

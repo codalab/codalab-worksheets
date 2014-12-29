@@ -644,16 +644,9 @@ class BundleCLI(object):
 
     def do_rm_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
-        parser.add_argument(
-          '-f', '--force',
-          action='store_true',
-          help='delete bundle (DANGEROUS - breaking dependencies!)',
-        )
-        parser.add_argument(
-          '-r', '--recursive',
-          action='store_true',
-          help='delete all bundles downstream that depend on this bundle',
-        )
+        parser.add_argument('-f', '--force', action='store_true', help='delete bundle (DANGEROUS - breaking dependencies!)')
+        parser.add_argument('-r', '--recursive', action='store_true', help='delete all bundles downstream that depend on this bundle')
+        parser.add_argument('-i', '--dry-run', action='store_true', help='delete all bundles downstream that depend on this bundle')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
@@ -662,8 +655,14 @@ class BundleCLI(object):
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
         bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
-        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive)
-        for uuid in deleted_uuids: print uuid
+        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.dry_run)
+        if args.dry_run:
+            print 'This command would permanently remove the following bundles (not doing so yet):'
+            bundle_infos = client.get_bundle_infos(deleted_uuids)
+            bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids]
+            self.print_bundle_info_list(bundle_info_list, uuid_only=False, print_ref=False)
+        else:
+            for uuid in deleted_uuids: print uuid
 
     def do_search_command(self, argv, parser):
         parser.add_argument('keywords', help='keywords to search for', nargs='+')
@@ -987,8 +986,8 @@ class BundleCLI(object):
         parser.add_argument('-n', '--name', help='name of the output bundle')
         parser.add_argument('-d', '--depth', type=int, default=10, help="number of parents to look back from the old output in search of the old input")
         parser.add_argument('-s', '--shadow', action='store_true', help="add the newly created bundles right after the old bundles that are being mimicked")
+        parser.add_argument('-i', '--dry-run', help='dry run (just show what will be done without doing it)', action='store_true')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
-        parser.add_argument('-r', '--dry-run', help='dry run (just show what will be done)', action='store_true')
         self.add_wait_args(parser)
 
     def mimic(self, args):

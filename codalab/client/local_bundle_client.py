@@ -223,7 +223,7 @@ class LocalBundleClient(BundleClient):
         self.model.update_bundle(bundle, {'metadata': metadata})
 
     @authentication_required
-    def delete_bundles(self, uuids, force, recursive):
+    def delete_bundles(self, uuids, force, recursive, dry_run):
         uuids = set(uuids)
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         if not recursive:
@@ -236,7 +236,8 @@ class LocalBundleClient(BundleClient):
                 ))
             relevant_uuids = uuids
         check_has_all_permission_on_bundles(self.model, self._current_user(), relevant_uuids)
-        self.model.delete_bundles(relevant_uuids)
+        if not dry_run:
+            self.model.delete_bundles(relevant_uuids)
         return list(relevant_uuids)
 
     def get_bundle_info(self, uuid, get_children=False):
