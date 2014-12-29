@@ -20,19 +20,14 @@ def is_installed(name):
 
 def find_default_editor():
     manager = CodaLabManager()
-    editor = manager.config.get('editor', None)
+    editor = os.getenv('EDITOR')
     if editor:
         return editor
-    #not yet set, lets set a sane default.
+    # If not yet set, use a sane default.
     if sys.platform == 'win32':
         editor = 'notepad'
     else:
-        if is_installed('vim'):
-            editor = 'vim'
-        else:
-            editor = 'vi'
-    manager.config['editor'] = editor
-    manager.save_config()
+        editor = 'vim' if is_installed('vim') else 'vi'
     return editor
 
 def open_and_edit(suffix, template=''):

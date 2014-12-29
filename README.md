@@ -753,9 +753,17 @@ To find out what happened to the last bundle (e.g., why it failed):
 
     cl info -v ^
 
-To rerun the last bundle:
+To rerun the last bundle (`-f args` prints out the command that was used to
+generate the bundle):
 
     cl info -f args ^ | xargs cl
+
+To put the command of a bundle back on the command-line for editing, create
+this handy alias in bash:
+
+    clhist() {
+      history -s cl $(cl info -f args $1)
+    }
 
 Dependent bundles are read-only during a run, so to change files or
 add to a dependent directory, everything must first be copied. Example
