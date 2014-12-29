@@ -823,7 +823,7 @@ class BundleCLI(object):
         if not info['children']: return
         print 'children:'
         for child in info['children']:
-            print "  %s" % child
+            print "  %s" % self.simple_bundle_str(child)
 
     def print_contents(self, client, info):
         def wrap(string): return '=== ' + string + ' ==='

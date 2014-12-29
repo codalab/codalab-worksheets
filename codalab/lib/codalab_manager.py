@@ -241,11 +241,7 @@ class CodaLabManager(object):
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            try:
-                client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose())
-            except:
-                print "Failed to connect to address: '%s'" % address
-                raise
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose())
             self.clients[address] = client
             self._authenticate(client)
         return client

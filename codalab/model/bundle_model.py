@@ -123,24 +123,22 @@ class BundleModel(object):
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
 
-    # TODO: integrate with get_bundle, but we need more custom logic for
-    # selecting out parts of the bundle.
-    def get_name(self, uuid):
+    def get_names(self, uuids):
         '''
-        Return the name of the bundle with given uuid.
+        Return the names of the bundle with given uuids.
         '''
+        if len(uuids) == 0:
+            return []
         with self.engine.begin() as connection:
             rows = connection.execute(select([
-              cl_bundle_metadata.c.metadata_value
+                cl_bundle_metadata.c.bundle_uuid,
+                cl_bundle_metadata.c.metadata_value
             ]).where(
-              and_(cl_bundle_metadata.c.metadata_key == 'name',
-                   cl_bundle_metadata.c.bundle_uuid == uuid)
+                and_(cl_bundle_metadata.c.metadata_key == 'name',
+                     cl_bundle_metadata.c.bundle_uuid.in_(uuids))
             )).fetchall()
-            if len(rows) > 1:
-                raise IntegrityError('Bundle %s has more than one name: %s' % (uuid, rows))
-            if len(rows) == 0:  # uuid might not be in the database (broken links are possible)
-                return None
-            return rows[0][0]
+            names = dict((row.bundle_uuid, row.metadata_value) for row in rows)
+            return [names.get(uuid) for uuid in uuids]
 
     def get_parents(self, uuid):
         '''

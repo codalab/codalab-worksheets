@@ -38,7 +38,7 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
         xmlrpclib.SafeTransport.__init__(self, use_datetime=0)
         url_type, _ = urllib.splittype(address)
         if url_type not in ("http", "https"):
-            raise IOError("Unsupported XML-RPC protocol (expected http:// or https://)")
+            raise UsageError("Unsupported protocol: expected http://... or https://... but got %s" % address)
         self._url_type = url_type
         self._bearer_token = get_auth_token
 
