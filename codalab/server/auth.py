@@ -176,7 +176,7 @@ class OAuthHandler(object):
         response = urllib2.urlopen(request)
         token_info = json.load(response)
         self._access_token = token_info['access_token']
-        self._expires_at = (time.time() + float(token_info['expires_in'])) - 60.0
+        self._expires_at = time.time() + float(token_info['expires_in'])
 
     def validate_token(self, token):
         '''

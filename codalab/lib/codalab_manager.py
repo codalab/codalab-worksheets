@@ -269,7 +269,8 @@ class CodaLabManager(object):
             Helper to update state with new token info and optional username.
             Returns the latest access token.
             '''
-            token_info['expires_at'] = time.time() + float(token_info['expires_in']) - 60.0
+            # Make sure this is in sync with auth.py.
+            token_info['expires_at'] = time.time() + float(token_info['expires_in'])
             del token_info['expires_in']
             auth['token_info'] = token_info
             if username is not None:
@@ -282,10 +283,11 @@ class CodaLabManager(object):
             token_info = auth['token_info']
             expires_at = token_info.get('expires_at', 0.0)
             if expires_at > time.time():
-                # Token is usable but check if it's nearing expiration
-                if expires_at >= (time.time() + 900.0):
+                # Token is usable but check if it's nearing expiration (10 minutes)
+                # If not nearing, then just return it.
+                if expires_at >= (time.time() + 10 * 60):
                     return token_info['access_token']
-                # Try to refresh token
+                # Otherwise, let's refresh the token.
                 token_info = client.login('refresh_token',
                                           auth['username'],
                                           token_info['refresh_token'])
@@ -302,7 +304,7 @@ class CodaLabManager(object):
             password = ''
         if not username:
             print 'Requesting access at %s' % address
-            print 'Username: ',
+            sys.stdout.write('Username: ')  # Use write to avoid extra space
             username = sys.stdin.readline().rstrip()
             password = getpass.getpass()
 
