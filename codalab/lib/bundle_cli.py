@@ -1368,7 +1368,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundle_spec]
-        client.chown(bundle_uuids, args.user_spec)
+        client.chown_bundles(bundle_uuids, args.user_spec)
         for uuid in bundle_uuids: print uuid
 
     #############################################################################

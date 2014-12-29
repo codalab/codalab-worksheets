@@ -71,6 +71,7 @@ class RemoteBundleClient(BundleClient):
       'update_bundle_metadata',
       'delete_bundles',
       'kill_bundles',
+      'chown_bundles',
       'get_bundle_uuid',
       'search_bundle_uuids',
       'get_bundle_info',
@@ -101,7 +102,6 @@ class RemoteBundleClient(BundleClient):
       'add_user',
       'rm_user',
       'set_worksheet_perm',
-      'chown',
     )
     # Implemented by the BundleRPCServer.
     SERVER_COMMANDS = (
