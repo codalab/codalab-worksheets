@@ -185,7 +185,7 @@ class BundleCLI(object):
         '''
         result = []
         for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:
-            if bundle_info:
+            if bundle_info and 'metadata' in bundle_info:  # Test if this bundle is valid
                 result.append(bundle_info)
         return result
 
@@ -752,6 +752,8 @@ class BundleCLI(object):
         for i, bundle_spec in enumerate(args.bundle_spec):
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
             info = client.get_bundle_info(bundle_uuid, args.children)
+            if info is None:
+                raise UsageError('Invalid bundle uuid: %s' % bundle_uuid)
 
             if args.field:
                 # Display a single field (arbitrary genpath)

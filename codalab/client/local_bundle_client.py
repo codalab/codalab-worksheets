@@ -256,7 +256,7 @@ class LocalBundleClient(BundleClient):
         return list(relevant_uuids)
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False):
-        return self.get_bundle_infos([uuid], get_children, get_host_worksheets)[uuid]
+        return self.get_bundle_infos([uuid], get_children, get_host_worksheets).get(uuid)
 
     def get_bundle_infos(self, uuids, get_children=False, get_host_worksheets=False):
         '''
@@ -265,9 +265,13 @@ class LocalBundleClient(BundleClient):
         '''
         if len(uuids) == 0:
             return {}
-        check_has_read_permission_on_bundles(self.model, self._current_user(), uuids)
         bundles = self.model.batch_get_bundles(uuid=uuids)
         bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
+
+        # Check permissions after get the bundle information because some uuids
+        # might be invalid, and we don't want to check permissions because
+        # that's going to fail (for no good reason).
+        check_has_read_permission_on_bundles(self.model, self._current_user(), bundle_dict.keys())
 
         # Lookup the user names of all the owners
         ids = [info['owner_id'] for info in bundle_dict.values()]

@@ -556,6 +556,8 @@ def interpret_items(schemas, items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
+                if 'metadata' not in bundle_info:
+                    continue
                 rows.append({name: apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append({
                     'mode': mode,
