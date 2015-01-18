@@ -776,6 +776,10 @@ of compiling a source tree as a run bundle:
 
     cl run :src 'cp -r src src-build && cd src-build && make'
 
+To compare two worksheets:
+
+    vimdiff <(cl print -r worksheet1) <(cl print -r worksheet2)
+
 ## Editing worksheets
 
 By default, you will use `cl wedit` to edit worksheets.  However, it is

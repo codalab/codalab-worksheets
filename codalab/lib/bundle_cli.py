@@ -663,7 +663,7 @@ class BundleCLI(object):
         if args.dry_run:
             print 'This command would permanently remove the following bundles (not doing so yet):'
             bundle_infos = client.get_bundle_infos(deleted_uuids)
-            bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids]
+            bundle_info_list = [bundle_infos[uuid] for uuid in deleted_uuids]
             self.print_bundle_info_list(bundle_info_list, uuid_only=False, print_ref=False)
         else:
             for uuid in deleted_uuids: print uuid
