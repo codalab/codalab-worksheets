@@ -69,7 +69,7 @@ class LocalBundleClient(BundleClient):
         user = self._current_user()
         return user.name if user else None
 
-    def _bundle_to_bundle_info(self, bundle, children=None):
+    def _bundle_to_bundle_info(self, bundle):
         '''
         Helper: Convert bundle to bundle_info.
         '''
@@ -84,9 +84,9 @@ class LocalBundleClient(BundleClient):
           'metadata': bundle.metadata.to_dict(),
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
         }
-        for dep in result['dependencies']: dep['parent_name'] = self.model.get_name(dep['parent_uuid'])
-        if children is not None:
-            result['children'] = [child.simple_str() for child in children]
+        for dep in result['dependencies']:
+            dep['parent_name'] = self.model.get_names([dep['parent_uuid']])[0]
+
         return result
 
     def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
@@ -205,9 +205,24 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def kill_bundles(self, bundle_uuids):
+        '''
+        Send a kill command to all the given bundles.
+        '''
         check_has_all_permission_on_bundles(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
             self.model.add_bundle_action(bundle_uuid, Command.KILL)
+
+    @authentication_required
+    def chown_bundles(self, bundle_uuids, user_spec):
+        '''
+        Set the owner of the bundles to the user.
+        '''
+        check_has_all_permission_on_bundles(self.model, self._current_user(), bundle_uuids)
+        user_info = self.user_info(user_spec)
+        # Update bundles
+        for bundle_uuid in bundle_uuids:
+            bundle = self.model.get_bundle(bundle_uuid)
+            self.model.update_bundle(bundle, {'owner_id': user_info['id']})
 
     def open_target(self, target):
         check_has_read_permission_on_bundles(self.model, self._current_user(), [target[0]])
@@ -223,7 +238,7 @@ class LocalBundleClient(BundleClient):
         self.model.update_bundle(bundle, {'metadata': metadata})
 
     @authentication_required
-    def delete_bundles(self, uuids, force, recursive):
+    def delete_bundles(self, uuids, force, recursive, dry_run):
         uuids = set(uuids)
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         if not recursive:
@@ -236,28 +251,48 @@ class LocalBundleClient(BundleClient):
                 ))
             relevant_uuids = uuids
         check_has_all_permission_on_bundles(self.model, self._current_user(), relevant_uuids)
-        self.model.delete_bundles(relevant_uuids)
+        if not dry_run:
+            self.model.delete_bundles(relevant_uuids)
         return list(relevant_uuids)
 
-    def get_bundle_info(self, uuid, get_children=False):
+    def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False):
+        return self.get_bundle_infos([uuid], get_children, get_host_worksheets).get(uuid)
+
+    def get_bundle_infos(self, uuids, get_children=False, get_host_worksheets=False):
         '''
-        Return information about the bundle.
+        Return information about the bundles.
         get_children: whether we want to return information about the children too.
         '''
-        check_has_read_permission_on_bundles(self.model, self._current_user(), [uuid])
-        bundle = self.model.get_bundle(uuid)
-        if get_children:
-            # TODO: make sure we have access to children.
-            children_uuids = self.model.get_children_uuids(uuid)
-            children = self.model.batch_get_bundles(uuid=children_uuids)
-        else:
-            children = None
-        return self._bundle_to_bundle_info(bundle, children=children)
-
-    def get_bundle_infos(self, uuids):
-        # TODO: move get_children logic into this.
+        if len(uuids) == 0:
+            return {}
         bundles = self.model.batch_get_bundles(uuid=uuids)
         bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
+
+        # Check permissions after get the bundle information because some uuids
+        # might be invalid, and we don't want to check permissions because
+        # that's going to fail (for no good reason).
+        check_has_read_permission_on_bundles(self.model, self._current_user(), bundle_dict.keys())
+
+        # Lookup the user names of all the owners
+        ids = [info['owner_id'] for info in bundle_dict.values()]
+        users = self.auth_handler.get_users('ids', ids)
+        for info in bundle_dict.values():
+            user = users[info['owner_id']]
+            info['owner_name'] = user.name if user else None
+            info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
+
+        if get_children:
+            # TODO: make sure we have access to children.
+            # In the future, batch this.
+            for uuid, info in bundle_dict.items():
+                children_uuids = self.model.get_children_uuids(uuid)
+                names = self.model.get_names(children_uuids)
+                info['children'] = [{'uuid': uuid, 'metadata': {'name': name}} for uuid, name in zip(children_uuids, names)]
+
+        if get_host_worksheets:
+            # TODO
+            pass
+
         return bundle_dict
 
     # Return information about an individual target inside the bundle.
@@ -478,8 +513,7 @@ class LocalBundleClient(BundleClient):
             bundle_uuid for (bundle_uuid, subworksheet_uuid, value, type) in items
             if bundle_uuid is not None
         )
-        bundles = self.model.batch_get_bundles(uuid=bundle_uuids)
-        bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
+        bundle_dict = self.get_bundle_infos(bundle_uuids)
 
         # Go through the items and substitute the components
         new_items = []

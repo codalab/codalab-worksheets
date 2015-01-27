@@ -73,10 +73,6 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
             'user_id': user_id
         }, max_results=last_index)
         message = "name pattern '%s'" % (bundle_spec,)
-    if not bundle_uuids:
-        # If fail to find something in the worksheet, then backoff to global
-        if worksheet_uuid: return get_bundle_uuid(model, user_id, None, orig_bundle_spec)
-        raise UsageError('No bundle found with %s' % (message,))
     # Take the last bundle
     if last_index <= 0 or last_index > len(bundle_uuids):
         raise UsageError('Index %d out of range, only %d bundles matched' % (last_index, len(bundle_uuids)))

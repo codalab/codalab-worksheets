@@ -78,6 +78,7 @@ class BundleCLI(object):
       'uadd': 'Add a user to a group.',
       'urm': 'Remove a user from a group.',
       'wperm': 'Set a group\'s permissions for a worksheet.',
+      'chown': 'Set the owner of bundles/worksheets.',
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
@@ -128,6 +129,7 @@ class BundleCLI(object):
         'uadd',
         'urm',
         'wperm',
+        'chown',
     )
 
     OTHER_COMMANDS = (
@@ -174,6 +176,8 @@ class BundleCLI(object):
         return '%s(%s)' % (info['metadata']['name'], info['uuid'])
     def simple_worksheet_str(self, info):
         return '%s(%s)' % (info['name'], info['uuid'])
+    def simple_user_str(self, info):
+        return '%s(%s)' % (info['name'], info['id'])
 
     def get_worksheet_bundles(self, worksheet_info):
         '''
@@ -181,7 +185,7 @@ class BundleCLI(object):
         '''
         result = []
         for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:
-            if bundle_info:
+            if bundle_info and 'metadata' in bundle_info:  # Test if this bundle is valid
                 result.append(bundle_info)
         return result
 
@@ -256,6 +260,8 @@ class BundleCLI(object):
     TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
     BUNDLE_SPEC_FORMAT = '(<uuid>|<name>)'
     WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
+
+    UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
     def parse_spec(self, spec):
         '''
@@ -375,7 +381,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         print "worksheet: %s" % self.simple_worksheet_str(worksheet_info)
-        print "user: %s" % client.user_info(None)
+        print "user: %s" % self.simple_user_str(client.user_info(None))
 
     def do_alias_command(self, argv, parser):
         '''
@@ -642,16 +648,9 @@ class BundleCLI(object):
 
     def do_rm_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
-        parser.add_argument(
-          '-f', '--force',
-          action='store_true',
-          help='delete bundle (DANGEROUS - breaking dependencies!)',
-        )
-        parser.add_argument(
-          '-r', '--recursive',
-          action='store_true',
-          help='delete all bundles downstream that depend on this bundle',
-        )
+        parser.add_argument('-f', '--force', action='store_true', help='delete bundle (DANGEROUS - breaking dependencies!)')
+        parser.add_argument('-r', '--recursive', action='store_true', help='delete all bundles downstream that depend on this bundle')
+        parser.add_argument('-i', '--dry-run', action='store_true', help='delete all bundles downstream that depend on this bundle')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
@@ -660,26 +659,27 @@ class BundleCLI(object):
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
         bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
-        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive)
-        for uuid in deleted_uuids: print uuid
+        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.dry_run)
+        if args.dry_run:
+            print 'This command would permanently remove the following bundles (not doing so yet):'
+            bundle_infos = client.get_bundle_infos(deleted_uuids)
+            bundle_info_list = [bundle_infos[uuid] for uuid in deleted_uuids]
+            self.print_bundle_info_list(bundle_info_list, uuid_only=False, print_ref=False)
+        else:
+            for uuid in deleted_uuids: print uuid
 
     def do_search_command(self, argv, parser):
-        parser.add_argument(
-          'keywords',
-          help='keywords to search for',
-          nargs='+',
-        )
-        parser.add_argument(
-          '-c', '--count',
-          help='just count number of bundles',
-          action='store_true'
-        )
-        parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
+        parser.add_argument('keywords', help='keywords to search for', nargs='+')
+        parser.add_argument('-a', '--append', help='append these bundles to the given worksheet', action='store_true')
+        parser.add_argument('-c', '--count', help='just count number of bundles', action='store_true')
+        parser.add_argument('-u', '--uuid-only', help='print only uuids', action='store_true')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, 100, args.count)
+
+        # Print out bundles
         if args.uuid_only:
             bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
         else:
@@ -687,10 +687,15 @@ class BundleCLI(object):
             bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids]
 
         if len(bundle_info_list) > 0:
-            self.print_bundle_info_list(bundle_info_list, uuid_only=args.uuid_only)
-        else:
-            if not args.uuid_only:
-                print 'No search results for keywords: %s' % ' '.join(args.keywords)
+            self.print_bundle_info_list(bundle_info_list, uuid_only=args.uuid_only, print_ref=False)
+
+        if args.append:
+            # Add the bundles to the current worksheet
+            # Consider batching this
+            for bundle_uuid in bundle_uuids:
+                client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
+            worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
+            print 'Added %d bundles to %s' % (len(bundle_uuids), self.worksheet_str(worksheet_info))
 
     def do_ls_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT, nargs='?')
@@ -703,28 +708,33 @@ class BundleCLI(object):
         if not args.uuid_only:
             print self._worksheet_description(worksheet_info)
         if len(bundle_info_list) > 0:
-            self.print_bundle_info_list(bundle_info_list, args.uuid_only)
-        else:
-            if not args.uuid_only:
-                print 'No bundles.'
+            self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True)
 
     def _worksheet_description(self, worksheet_info):
         return '### Worksheet: %s\n### Owner: %s(%s)\n### Permissions: %s' % \
             (self.worksheet_str(worksheet_info), worksheet_info['owner_name'], worksheet_info['owner_id'], \
             group_permissions_str(worksheet_info['group_permissions']))
 
-    # Helper
-    def print_bundle_info_list(self, bundle_info_list, uuid_only):
+    def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
+        '''
+        Helper function: print a nice table showing all provided bundles.
+        '''
         if uuid_only:
             for bundle_info in bundle_info_list:
                 print bundle_info['uuid']
         else:
-            columns = ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
-            post_funcs = {'created': 'date', 'data_size': 'size'}
-            justify = {'data_size': 1}
+            def get(i, info, col):
+                if col == 'ref':
+                    return '^' + str(len(bundle_info_list) - i)
+                else:
+                    return info.get(col, info['metadata'].get(col))
+                    
+            columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
+            post_funcs = {'uuid': self.UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
+            justify = {'data_size': 1, 'ref': 1}
             bundle_dicts = [
-              {col: info.get(col, info['metadata'].get(col)) for col in columns}
-              for info in bundle_info_list
+              {col: get(i, info, col) for col in columns}
+              for i, info in enumerate(bundle_info_list)
             ]
             self.print_table(columns, bundle_dicts, post_funcs=post_funcs, justify=justify)
 
@@ -742,6 +752,8 @@ class BundleCLI(object):
         for i, bundle_spec in enumerate(args.bundle_spec):
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
             info = client.get_bundle_info(bundle_uuid, args.children)
+            if info is None:
+                raise UsageError('Invalid bundle uuid: %s' % bundle_uuid)
 
             if args.field:
                 # Display a single field (arbitrary genpath)
@@ -762,6 +774,9 @@ class BundleCLI(object):
                     self.print_contents(client, info)
 
     def print_basic_info(self, client, info, raw):
+        '''
+        Print the basic information for a bundle (key/value pairs).
+        '''
         def key_value_str(key, value):
             return '%-16s: %s' % (key, value if value != None else '<none>')
 
@@ -769,7 +784,7 @@ class BundleCLI(object):
         lines = []  # The output that we're accumulating
 
         # Bundle fields
-        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command', 'owner_id'):
+        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command', 'owner'):
             if not raw:
                 if key not in info: continue
             lines.append(key_value_str(key, info.get(key)))
@@ -810,7 +825,7 @@ class BundleCLI(object):
         if not info['children']: return
         print 'children:'
         for child in info['children']:
-            print "  %s" % child
+            print "  %s" % self.simple_bundle_str(child)
 
     def print_contents(self, client, info):
         def wrap(string): return '=== ' + string + ' ==='
@@ -978,8 +993,8 @@ class BundleCLI(object):
         parser.add_argument('-n', '--name', help='name of the output bundle')
         parser.add_argument('-d', '--depth', type=int, default=10, help="number of parents to look back from the old output in search of the old input")
         parser.add_argument('-s', '--shadow', action='store_true', help="add the newly created bundles right after the old bundles that are being mimicked")
+        parser.add_argument('-i', '--dry-run', help='dry run (just show what will be done without doing it)', action='store_true')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
-        parser.add_argument('-r', '--dry-run', help='dry run (just show what will be done)', action='store_true')
         self.add_wait_args(parser)
 
     def mimic(self, args):
@@ -1207,7 +1222,8 @@ class BundleCLI(object):
                 for row in worksheet_dicts:
                     row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
-                self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts)
+                post_funcs = {'uuid': self.UUID_POST_FUNC}
+                self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
             else:
                 print 'No worksheets found.'
 
@@ -1341,6 +1357,21 @@ class BundleCLI(object):
         print "Group %s(%s) has %s permission on worksheet %s(%s)." % \
             (result['group_info']['name'], result['group_info']['uuid'],
              permission_str(result['permission']), result['worksheet']['name'], result['worksheet']['uuid'])
+
+    def do_chown_command(self, argv, parser):
+        '''
+        Change the owner of bundles.
+        '''
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
+        parser.add_argument('user_spec', help='username')
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundle_spec]
+        client.chown_bundles(bundle_uuids, args.user_spec)
+        for uuid in bundle_uuids: print uuid
 
     #############################################################################
     # LocalBundleClient-only commands follow!

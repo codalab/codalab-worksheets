@@ -155,5 +155,5 @@ def group_permissions_str(group_permissions):
     if len(group_permissions) == 0:
         return '-'
     return ','.join(
-        '%s(%s):%s' % (row['group_name'], row['group_uuid'], permission_str(row['permission']))
+            '%s(%s):%s' % (row['group_name'], row['group_uuid'][0:8], permission_str(row['permission']))
     for row in group_permissions)

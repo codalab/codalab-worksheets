@@ -137,14 +137,15 @@ def get_worksheet_lines(worksheet_info):
 // - Arbitrary Markdown (see http://daringfireball.net/projects/markdown/syntax)
 // - References to bundles: {<bundle_spec>}
 // - Directives (%% title|schema|add|display)
-//   * title "Place title here"
-//   * schema <schema name>
-//   * add <descriptor> | add <key name> <generalized path> [<post-processor>]
-//   * addschema <schema name>
+//   * title <title-text>
+//   * schema <schema-name>
+//   * add <key> <generalized-path> [<post-processor>]
+//   * addschema <schema-name>
 //   * display hidden
 //   * display link <text>
-//   * display inline|contents|image|html <generalized path (e.g., /stats:errorRate)>
+//   * display inline|contents|image|html <generalized-path (e.g., /stats:errorRate)> [<key>=<value> ...]
 //   * display record|table <schema-name-1> ... <schema-name-n>
+//   * search <keyword-1> ... <keyword-n>
 //   The post-processor is optional and is a sequence of the following, separated by " | ":
 //   * 'duration', 'date', 'size' for special formatting
 //   * '%%...' for sprintf-style formatting
@@ -556,6 +557,8 @@ def interpret_items(schemas, items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             for bundle_info in bundle_infos:
+                if 'metadata' not in bundle_info:
+                    continue
                 rows.append({name: apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append({
                     'mode': mode,
@@ -620,7 +623,7 @@ def interpret_items(schemas, items):
                 mode = command
                 data = {'keywords': keywords, 'display': current_display_ref[0], 'schemas': schemas}
                 new_items.append({
-                    'mode': TYPE_DIRECTIVE,
+                    'mode': mode,
                     'interpreted': data,
                 })
             else:
@@ -664,12 +667,14 @@ def interpret_search(client, worksheet_uuid, data):
     Output: worksheet items based on the result of issuing the search query.
     '''
     # First item determines the display
-    items = [(None, ['display'] + data['display'], TYPE_DIRECTIVE)]
+    items = [directive_item(('display',) + data['display'])]
 
     # Next come the actual bundles
-    bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'], 100, False)
+    MAX_RESULTS = 100  # TODO: pass in as parameter
+    bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'], MAX_RESULTS, False)
+    bundle_infos = client.get_bundle_infos(bundle_uuids)
     for bundle_uuid in bundle_uuids:
-        items.append((client.get_bundle_info(bundle_uuid), None, TYPE_BUNDLE))
+        items.append(bundle_item(bundle_infos[bundle_uuid]))
 
     # Finally, interpret the items
     return interpret_items(data['schemas'], items)

@@ -38,7 +38,7 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
         xmlrpclib.SafeTransport.__init__(self, use_datetime=0)
         url_type, _ = urllib.splittype(address)
         if url_type not in ("http", "https"):
-            raise IOError("unsupported XML-RPC protocol")
+            raise UsageError("Unsupported protocol: expected http://... or https://... but got %s" % address)
         self._url_type = url_type
         self._bearer_token = get_auth_token
 
@@ -71,6 +71,7 @@ class RemoteBundleClient(BundleClient):
       'update_bundle_metadata',
       'delete_bundles',
       'kill_bundles',
+      'chown_bundles',
       'get_bundle_uuid',
       'search_bundle_uuids',
       'get_bundle_info',
