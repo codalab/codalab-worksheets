@@ -116,6 +116,8 @@ def check_has_all_permission(model, user, obj):
 # Checking permissions for bundles
 
 def _check_permission_on_bundles(model, user, bundle_uuids, need_permission):
+    if len(bundle_uuids) == 0:
+        return
     have_permissions = model.get_user_permission_on_bundles(user.unique_id if user else None, bundle_uuids)
     #print '_check_permission_on_bundles %s %s, have %s, need %s' % (user, bundle_uuids, map(permission_str, have_permissions), permission_str(need_permission))
     if min(have_permissions) >= need_permission:
