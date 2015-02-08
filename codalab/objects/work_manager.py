@@ -133,32 +133,33 @@ class Worker(object):
             self.update_running_bundle(status)
             return True
 
+    def _safe_get_bundle(self, uuid):
+        try:
+            return self.model.get_bundle(uuid)
+        except:
+            return None
+
     def check_killed_bundles(self):
         '''
         For bundles that need to be killed, tell the machine to kill it.
         '''
         bundle_actions = self.model.pop_bundle_actions()
         if self.verbose >= 2: print 'bundle_actions:', bundle_actions
-        keep_bundle_actions = []
+        db_update = {}
         for x in bundle_actions:
-            # Try to process action
+            # Process action
             processed = False
             if x.action == Command.KILL:
-                bundle = self.model.get_bundle(x.bundle_uuid)
+                bundle = self._safe_get_bundle(x.bundle_uuid)
                 if not self.machine.kill_bundle(bundle):
                     print 'Killing %s failed' % x.bundle_uuid
-                processed = True
-
-            # If processed, record it as such.  Else, keep the action around.
-            if processed:
-                new_actions = bundle.metadata.actions | set([x.action])
-                db_update = {'state': State.FAILED, 'metadata': {'actions': new_actions}}
-                self.model.update_bundle(bundle, db_update)
             else:
-                keep_bundle_actions.append(x)
-        if len(keep_bundle_actions) > 0:
-            self.model.add_bundle_actions(keep_bundle_actions)
-        return len(bundle_actions) - len(keep_bundle_actions) > 0
+                print 'Unknown action: %s' % x.action
+
+            new_actions = bundle.metadata.actions | set([x.action])
+            db_update = {'metadata': {'actions': new_actions}}
+            self.model.update_bundle(bundle, db_update)
+        return len(bundle_actions) > 0
 
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.
@@ -172,18 +173,31 @@ class Worker(object):
             uuids = self.model.get_bundle_uuids({'*': ['job_handle='+handle]}, None)
             if len(uuids) == 0:
                 continue
-            bundle = self.model.get_bundle(uuids[0])
-            if bundle.state in [State.READY, State.FAILED]:  # Skip bundles that are already done
+            bundle = self._safe_get_bundle(uuids[0])
+            if not bundle:
                 continue
             status['bundle'] = bundle
             new_statuses.append(status)
-
         statuses = new_statuses
 
-        if len(statuses) > 0:
-            print "work_manager: %d jobs (%s)" % (len(statuses), ' '.join(status['bundle'].uuid for status in statuses))
+        # Make a note of runnning jobs (according to the database) which aren't
+        # mentioned in statuses.  These are probably zombies, and we want to
+        # get rid of them if they have been issued a kill action.
+        status_bundle_uuids = set(status['bundle'].uuid for status in statuses)
+        running_bundles = self.model.batch_get_bundles(state=State.RUNNING)
+        for bundle in running_bundles:
+            if bundle.uuid in status_bundle_uuids: continue
+            if Command.KILL not in bundle.metadata.actions: continue
+            status = {'state': State.FAILED, 'bundle': bundle}
+            print 'work_manager: %s (%s): killing zombie %s' % (bundle.uuid, bundle.state, status)
+            self.update_running_bundle(status)
 
+        # Update the status of these bundles.
         for status in statuses:
+            bundle = status['bundle']
+            if bundle.state != State.RUNNING:  # Skip bundles that have already completed.
+                continue
+            print 'work_manager: %s (%s): %s' % (bundle.uuid, bundle.state, status)
             self.update_running_bundle(status)
 
     def update_running_bundle(self, status):
@@ -213,10 +227,10 @@ class Worker(object):
         success = status.get('success')
         if success != None:
             # Re-install dependencies.
-            # - For RunBundle, use relative dependencies (this is just for convenience).
-            # - For MakeBundle, copy.
-            # This way, we maintain the invariant that we always only need to look
-            # back one-level at the dependencies, not recurse.
+            # - For RunBundle, use relative symlink dependencies (this is just for convenience).
+            # - For MakeBundle, copy.  This way, we maintain the invariant that
+            # we always only need to look back one-level at the dependencies,
+            # not recurse.
             try:
                 temp_dir = bundle.metadata.temp_dir
                 copy = isinstance(bundle, MakeBundle)
