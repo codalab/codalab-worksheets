@@ -45,3 +45,43 @@ def duration_str(s):
     d -= y * 365
 
     return "%dy%dd" % (y, d)
+
+def parse_size(s):
+    '''
+    s: <number><k|m|g>
+    Returns the number of bytes.
+    '''
+    if s[-1].isdigit():
+        return float(s)
+    n, unit = float(s[0:-1]), s[-1].lower()
+    if unit == 'k':
+        return n * 1024
+    if unit == 'm':
+        return n * 1024 * 1024
+    if unit == 'g':
+        return n * 1024 * 1024 * 1024
+    # If error, ignore unit
+    print >>sys.stderr, 'Warning: invalid unit in ', s
+    raise n
+
+def parse_duration(s):
+    '''
+    s: <number><s|m|h|d|y>
+    Returns the number of seconds
+    '''
+    if s[-1].isdigit():
+        return float(s)
+    n, unit = float(s[0:-1]), s[-1].lower()
+    if unit == 's':
+        return n
+    if unit == 'm':
+        return n * 60
+    if unit == 'h':
+        return n * 60 * 60
+    if unit == 'd':
+        return n * 60 * 60 * 24
+    if unit == 'y':
+        return n * 60 * 60 * 24 * 365
+    # If error, ignore unit
+    print >>sys.stderr, 'Warning: invalid unit in ', s
+    raise n

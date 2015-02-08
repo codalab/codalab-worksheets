@@ -26,8 +26,8 @@ class MetadataSpec(object):
         self.key = key
         self.type = type
         self.description = description
-        self.short_key = short_key or self.key
-        self.metavar = metavar or self.short_key.upper()
+        self.short_key = short_key
+        self.metavar = metavar or (self.short_key or self.key).upper()
         self.default = default
         self.generated = generated
         self.formatting = formatting
