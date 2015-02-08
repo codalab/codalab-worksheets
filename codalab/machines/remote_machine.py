@@ -152,9 +152,11 @@ class RemoteMachine(Machine):
             resource_args.extend(['--request_gpus', bundle.metadata.request_gpus])
         if bundle.metadata.request_queue:
             resource_args.extend(['--request_queue', bundle.metadata.request_queue])
+        if username:
+            resource_args.extend(['--username', username])
 
         # Start the command
-        args = self.dispatch_command.split() + ['start', '--username', username] + map(str, resource_args) + [script_file]
+        args = self.dispatch_command.split() + ['start'] + map(str, resource_args) + [script_file]
         if self.verbose >= 1: print '=== start_bundle(): running %s' % args
         result = json.loads(self.run_command_get_stdout(args))
         if self.verbose >= 1: print '=== start_bundle(): got %s' % result

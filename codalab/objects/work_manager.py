@@ -105,10 +105,11 @@ class Worker(object):
             if isinstance(bundle, RunBundle):
                 try:
                     # Get the username of the bundle
-                    username = None
                     results = self.auth_handler.get_users('ids', [bundle.owner_id])
-                    if len(results) > 0:
+                    if results.get(bundle.owner_id):
                         username = results[bundle.owner_id].name
+                    else:
+                        username = str(bundle.owner_id)
 
                     status = self.machine.start_bundle(bundle, self.bundle_store, self.get_parent_dict(bundle), username)
                 except Exception as e:

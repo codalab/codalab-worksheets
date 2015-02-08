@@ -78,7 +78,7 @@ class CodaLabManager(object):
                 'workers': {
                     'q': {
                         'verbose': 1,
-                        'max_instances': 10,
+                        #'docker_image': 'codalab/ubuntu:1.6',
                         'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
                     }
                 }
