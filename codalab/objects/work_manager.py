@@ -172,9 +172,16 @@ class Worker(object):
             uuids = self.model.get_bundle_uuids({'*': ['job_handle='+handle]}, None)
             if len(uuids) == 0:
                 continue
-            status['bundle'] = self.model.get_bundle(uuids[0])
+            bundle = self.model.get_bundle(uuids[0])
+            if bundle.state in [State.READY, State.FAILED]:  # Skip bundles that are already done
+                continue
+            status['bundle'] = bundle
             new_statuses.append(status)
+
         statuses = new_statuses
+
+        if len(statuses) > 0:
+            print "work_manager: %d jobs (%s)" % (len(statuses), ' '.join(status['bundle'].uuid for status in statuses))
 
         for status in statuses:
             self.update_running_bundle(status)
@@ -186,10 +193,6 @@ class Worker(object):
         '''
         # Update the bundle's data with status (which is the new information).
         bundle = status['bundle']
-
-        # Already froze, can't update
-        if bundle.state in [State.READY, State.FAILED]:
-            return
 
         # Update to the database
         db_update = {}
