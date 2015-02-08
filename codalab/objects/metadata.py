@@ -26,6 +26,8 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
+                if isinstance(value, int) and spec.type == float:  # cast int to float (easy)
+                    value = float(value)
                 if not isinstance(value, spec.type):
                     raise UsageError(
                       'Metadata value for %s should be of type %s, was %s' %
@@ -60,7 +62,7 @@ class Metadata(object):
             # database), cast it to a string. This operation encodes it with UTF-8.
             key = str(maybe_unicode_key)
             if key not in metadata_spec_dict:
-                print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
+                #print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
                 continue  # Somewhat dangerous since we might lose information
             spec = metadata_spec_dict[key]
             if spec.type == set:

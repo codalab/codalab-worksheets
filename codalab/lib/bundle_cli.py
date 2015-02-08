@@ -40,7 +40,8 @@ from codalab.lib import (
 from codalab.objects.permission import permission_str, group_permissions_str
 from codalab.objects.worksheet import Worksheet
 from codalab.objects.work_manager import Worker
-from codalab.machines import pool_machine
+from codalab.machines.remote_machine import RemoteMachine
+from codalab.machines.local_machine import LocalMachine
 
 class BundleCLI(object):
     DESCRIPTIONS = {
@@ -778,7 +779,7 @@ class BundleCLI(object):
         Print the basic information for a bundle (key/value pairs).
         '''
         def key_value_str(key, value):
-            return '%-16s: %s' % (key, value if value != None else '<none>')
+            return '%-21s: %s' % (key, value if value != None else '<none>')
 
         metadata = info['metadata']
         lines = []  # The output that we're accumulating
@@ -1379,21 +1380,24 @@ class BundleCLI(object):
 
     def do_worker_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.
+        parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
         parser.add_argument('--num-iterations', help="number of bundles to process before exiting", type=int, default=None)
         parser.add_argument('--sleep-time', type=int, help='Number of seconds to wait between successive polls', default=1)
-        parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
         args = parser.parse_args(argv)
 
         worker_config = self.manager.config['workers']
-        machine = pool_machine.parse_machine(worker_config, args.worker_type)
-        if not machine:
+        if args.worker_type == 'local':
+            machine = LocalMachine()
+        elif args.worker_type in worker_config:
+            machine = RemoteMachine(worker_config[args.worker_type])
+        else:
             print '\'' + args.worker_type + '\'' + \
                   ' is not specified in your config file: ' + self.manager.config_path()
             print 'Options are ' + str(map(str, worker_config.keys()))
             return
 
         client = self.manager.local_client()  # Always use the local bundle client
-        worker = Worker(client.bundle_store, client.model, machine)
+        worker = Worker(client.bundle_store, client.model, machine, client.auth_handler)
         worker.run_loop(args.num_iterations, args.sleep_time)
 
     def do_cleanup_command(self, argv, parser):

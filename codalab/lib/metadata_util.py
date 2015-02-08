@@ -31,14 +31,18 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
     for spec in bundle_subclass.get_user_defined_metadata():
         if spec.key not in metadata_keys:
             metadata_keys.add(spec.key)
-            parser.add_argument(
-              '-%s' % (spec.short_key,),
-              '--%s' % (spec.key,),
-              dest=metadata_key_to_argument(spec.key,),
-              help=(spec.description + help_suffix),
-              metavar=spec.metavar,
-              nargs=('*' if spec.type == set else None),
-            )
+            args = []
+            if spec.short_key:
+                args.append('-%s' % spec.short_key)
+            args.append('--%s' % (spec.key))
+            kwargs = {
+                'dest': metadata_key_to_argument(spec.key,),
+                'metavar': spec.metavar,
+                'nargs': ('*' if spec.type == set else None),
+                'help': spec.description + help_suffix,
+                'type': str if spec.type == basestring else spec.type
+            }
+            parser.add_argument(*args, **kwargs)
 
 
 def add_edit_argument(parser):

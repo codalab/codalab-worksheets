@@ -276,10 +276,11 @@ class LocalBundleClient(BundleClient):
         # Lookup the user names of all the owners
         ids = [info['owner_id'] for info in bundle_dict.values()]
         users = self.auth_handler.get_users('ids', ids)
-        for info in bundle_dict.values():
-            user = users[info['owner_id']]
-            info['owner_name'] = user.name if user else None
-            info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
+        if users:
+            for info in bundle_dict.values():
+                user = users[info['owner_id']]
+                info['owner_name'] = user.name if user else None
+                info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
 
         if get_children:
             # TODO: make sure we have access to children.

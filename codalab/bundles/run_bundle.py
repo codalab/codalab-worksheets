@@ -28,18 +28,30 @@ class RunBundle(NamedBundle):
     BUNDLE_TYPE = 'run'
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
     # Note that these are strings, which need to be parsed
-    METADATA_SPECS.append(MetadataSpec('allowed_time', basestring, 'amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run'))
-    METADATA_SPECS.append(MetadataSpec('allowed_memory', basestring, 'amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run'))
-    METADATA_SPECS.append(MetadataSpec('allowed_disk', basestring, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
+    # Request a machine with this much resources and don't let run exceed these resources
+    METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'which docker container we wish to use'))
+    METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'number of CPUs allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'number of GPUs allowed for this run'))
+    METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'submit job to this queue'))
 
-    METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('memory', int, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
 
+    METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run (total)', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_user', float, 'amount of time (seconds) by user', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_system', float, 'amount of time (seconds) by the system', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('memory', float, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('disk_read', float, 'number of bytes read', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('disk_write', float, 'number of bytes written', generated=True, formatting='size'))
+
+    # Information about running
     METADATA_SPECS.append(MetadataSpec('docker_image', basestring, 'which docker container was used to run the process', generated=True))
     METADATA_SPECS.append(MetadataSpec('exitcode', int, 'exitcode of the process', generated=True))
-    METADATA_SPECS.append(MetadataSpec('internal_error', basestring, 'any internal errors', generated=True))
+    METADATA_SPECS.append(MetadataSpec('job_handle', basestring, 'identifies the job handle (internal)', generated=True))
     METADATA_SPECS.append(MetadataSpec('remote', basestring, 'where this job was run', generated=True))
+    METADATA_SPECS.append(MetadataSpec('temp_dir', basestring, 'temporary directory where job is running (internal)', generated=True))
 
     @classmethod
     def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):

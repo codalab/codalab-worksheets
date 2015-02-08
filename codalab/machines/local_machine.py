@@ -40,7 +40,6 @@ class LocalMachine(Machine):
             path_util.copy(source, target, follow_symlinks=False)
 
         script_file = temp_dir + '.sh'
-        temp_files = [script_file]
         with open(script_file, 'w') as f:
             f.write("cd %s &&\n" % temp_dir)
             f.write('(%s) > stdout 2>stderr\n' % bundle.command)
@@ -53,12 +52,15 @@ class LocalMachine(Machine):
 
         self.bundle = bundle
         self.temp_dir = temp_dir
-        self.temp_files = temp_files
         self.process = process
-        return True
+        return {
+            'bundle': bundle,
+            'temp_dir': temp_dir,
+            'job_handle': str(process.pid)
+        }
 
-    def kill_bundle(self, uuid):
-        if not self.bundle or self.bundle.uuid != uuid: return False
+    def kill_bundle(self, bundle):
+        if not self.bundle or self.bundle.uuid != bundle.uuid: return False
         self.process.kill()
         return True
 
@@ -66,19 +68,20 @@ class LocalMachine(Machine):
         if self.process == None: return []
 
         self.process.poll()
+        # TODO: include time and memory
         status = {
-            'bundle': self.bundle,
-            'temp_dir': self.temp_dir,
+            'job_handle': str(self.process.pid),
             'exitcode': self.process.returncode,
         }
         status['success'] = status['exitcode'] == 0 if status['exitcode'] != None else None
         return [status]
 
-    def finalize_bundle(self, uuid):
-        if not self.bundle or self.bundle.uuid != uuid: return False
+    def finalize_bundle(self, bundle):
+        if not self.bundle or self.bundle.uuid != bundle.uuid: return False
 
         try:
-            for f in self.temp_files:
+            script_file = self.temp_dir + '.sh'
+            for f in [script_file]:
                 if os.path.exists(f):
                     path_util.remove(f)
             ok = True
