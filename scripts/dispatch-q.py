@@ -40,9 +40,9 @@ if mode == 'start':
 
     resource_args = ''
     if args.request_time:
-        resource_args += ' -time %ds' % args.request_time
+        resource_args += ' -time %ds' % int(args.request_time)
     if args.request_memory:
-        resource_args += ' -mem %dm' % (args.request_memory / (1024*1024)) # convert to MB
+        resource_args += ' -mem %dm' % int(args.request_memory / (1024*1024)) # convert to MB
 
     stdout = get_output('q%s -shareWorkingPath -add bash %s' % (resource_args, args.script))
     m = re.match(r'Job (J-.+) added successfully', stdout)

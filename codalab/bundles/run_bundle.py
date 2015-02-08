@@ -37,9 +37,14 @@ class RunBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'number of GPUs allowed for this run'))
     METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'submit job to this queue'))
 
-    METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('memory', float, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
+
+    METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run (total)', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_user', float, 'amount of time (seconds) by user', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_system', float, 'amount of time (seconds) by the system', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('memory', float, 'amount of memory (bytes) used by this run', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('disk_read', float, 'number of bytes read', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('disk_write', float, 'number of bytes written', generated=True, formatting='size'))
 
     # Information about running
     METADATA_SPECS.append(MetadataSpec('docker_image', basestring, 'which docker container was used to run the process', generated=True))

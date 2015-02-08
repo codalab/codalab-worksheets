@@ -166,7 +166,7 @@ class Worker(object):
     def check_finished_bundles(self):
         statuses = self.machine.get_bundle_statuses()
 
-        # Lookup the bundle given the uuid
+        # Lookup the bundle given the uuid from the status
         new_statuses = []
         for status in statuses:
             handle = status['job_handle']
@@ -179,6 +179,13 @@ class Worker(object):
             status['bundle'] = bundle
             new_statuses.append(status)
         statuses = new_statuses
+
+        # Now that we have the bundle information and thus the temporary directory,
+        # we can fetch the rest of the status.
+        for status in statuses:
+            if 'bundle_handler' in status:
+                status.update(status['bundle_handler'](status['bundle']))
+                del status['bundle_handler']
 
         # Make a note of runnning jobs (according to the database) which aren't
         # mentioned in statuses.  These are probably zombies, and we want to
@@ -195,7 +202,7 @@ class Worker(object):
         # Update the status of these bundles.
         for status in statuses:
             bundle = status['bundle']
-            if bundle.state != State.RUNNING:  # Skip bundles that have already completed.
+            if bundle.state in [State.READY, State.FAILED]:  # Skip bundles that have already completed.
                 continue
             print 'work_manager: %s (%s): %s' % (bundle.uuid, bundle.state, status)
             self.update_running_bundle(status)

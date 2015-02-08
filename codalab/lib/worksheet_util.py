@@ -427,11 +427,11 @@ def apply_func(func, arg):
             if f == 'date':
                 arg = formatting.date_str(arg)
             elif f == 'duration':
-                arg = formatting.duration_str(float(arg)) if arg else ''
+                arg = formatting.duration_str(float(arg)) if arg != None else ''
             elif f == 'size':
                 arg = formatting.size_str(arg)
             elif f.startswith('%'):
-                arg = (f % float(arg)) if arg else ''
+                arg = (f % float(arg)) if arg != None else ''
             elif f.startswith('s/'):  # regular expression
                 _, s, t = f.split("/")
                 arg = re.sub(s, t, arg)

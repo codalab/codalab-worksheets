@@ -84,6 +84,7 @@ class RemoteMachine(Machine):
         # Write the command to be executed to a script.
         if docker_image:
             container_file = temp_dir + '.cid'
+            status_dir = temp_dir + '.status'
             script_file = temp_dir + '.sh'
             internal_script_file = temp_dir + '-internal.sh'
             docker_temp_dir = bundle.uuid
@@ -94,15 +95,35 @@ class RemoteMachine(Machine):
             # -v mounts the internal and user scripts and the temp directory
             # Trap SIGTERM and forward it to docker.
             with open(script_file, 'w') as f:
-                # TODO: this doesn't quite work reliably with Torque.
+                # NOTE: trap doesn't quite work reliably with Torque.
                 f.write('trap \'echo Killing docker container $(cat %s); docker kill $(cat %s); echo Killed: $?; exit 143\' TERM\n' % (container_file, container_file))
-                f.write("docker run --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s & wait $!\n" % (
+                # inspect doesn't tell us a lot
+                #f.write('while [ -e %s ]; do docker inspect $(cat %s) > %s; sleep 1; done &\n' % (temp_dir, container_file, status_dir))
+                
+                # Monitor CPU/memory/disk
+                monitor_commands = [
+                    'mkdir -p %s' % status_dir,
+                    'if [ -e /cgroup ]; then cgroup=/cgroup; else cgroup=/sys/fs/cgroup; fi',  # find where cgroup is
+                    'cp -f $cgroup/cpuacct/docker/$(cat %s)/cpuacct.stat %s' % (container_file, status_dir),
+                    'cp -f $cgroup/memory/docker/$(cat %s)/memory.usage_in_bytes %s' % (container_file, status_dir),
+                    'cp -f $cgroup/blkio/docker/$(cat %s)/blkio.throttle.io_service_bytes %s' % (container_file, status_dir),
+                ]
+                f.write('while [ -e %s ]; do %s; sleep 1; done &\n' % (temp_dir, '; '. join(monitor_commands)))
+
+                # Constrain resources
+                resource_args = ''
+                if bundle.metadata.request_memory:
+                    resource_args += ' -m %s' % formatting.parse_size(bundle.metadata.request_memory)
+                # TODO: would constrain --cpuset=0, but difficult because don't know the CPU ids
+
+                f.write("docker run%s --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s & wait $!\n" % (
+                    resource_args,
                     container_file, os.geteuid(),
                     temp_dir, docker_temp_dir,
                     internal_script_file, docker_internal_script_file,
                     docker_image, docker_internal_script_file))
 
-            # 2) internal_script_file runs the actual command
+            # 2) internal_script_file runs the actual command inside the docker container
             with open(internal_script_file, 'w') as f:
                 # Make sure I have a username
                 f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (os.getlogin(), os.geteuid(), os.getgid()))
@@ -165,6 +186,45 @@ class RemoteMachine(Machine):
                     'state': info.get('state'),
                     'job_handle': info.get('handle'),
                 }
+
+                # We don't have access to the temp_dir at this point, so make a
+                # function when given a directory, will retrieve the
+                # appropriate information.
+                def bundle_handler(bundle):
+                    # Read out information from the status file
+                    # (See start_bundle for what's printed out)
+                    temp_dir = getattr(bundle.metadata, 'temp_dir', None)
+                    if temp_dir == None: return {}
+                    status_dir = temp_dir + '.status'
+                    status_update = {}
+                    try:
+                        for line in open(os.path.join(status_dir, 'cpuacct.stat')):
+                            key, value = line.split(" ")
+                            # NOTE: there is a bug in /cgroup where the first values are garbage (way too high).
+                            # Convert jiffies to seconds
+                            if key == 'user':
+                                status_update['time_user'] = int(value) / 100.0
+                            elif key == 'system':
+                                status_update['time_system'] = int(value) / 100.0
+                    except:
+                        pass
+                    try:
+                        status_update['memory'] = int(open(os.path.join(status_dir, 'memory.usage_in_bytes')).read())
+                    except:
+                        pass
+                    try:
+                        for line in open(os.path.join(status_dir, 'blkio.throttle.io_service_bytes')):
+                            _, key, value = line.split(" ")
+                            if key == 'Read':
+                                status_update['disk_read'] = int(value)
+                            elif key == 'Write':
+                                status_update['disk_write'] = int(value)
+                    except:
+                        pass
+                    return status_update
+
+                status['bundle_handler'] = bundle_handler
+                    
                 status['success'] = status['exitcode'] == 0 if status['exitcode'] != None else None
                 statuses.append(status)
             return statuses
@@ -189,13 +249,14 @@ class RemoteMachine(Machine):
         try:
             args = self.dispatch_command.split() + ['cleanup', bundle.metadata.job_handle]
             result = self.run_command_get_stdout_json(args)
-            # Sync this with start_bundle
+            # Sync this with files created in start_bundle
             temp_dir = bundle.metadata.temp_dir
             if bundle.metadata.docker_image:
                 container_file = temp_dir + '.cid'
+                status_dir = temp_dir + '.status'
                 script_file = temp_dir + '.sh'
                 internal_script_file = temp_dir + '-internal.sh'
-                temp_files = [container_file, script_file, internal_script_file]
+                temp_files = [container_file, status_dir, script_file, internal_script_file]
             else:
                 script_file = temp_dir + '.sh'
                 temp_files = [script_file]
