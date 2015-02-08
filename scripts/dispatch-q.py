@@ -61,27 +61,27 @@ elif mode == 'info':
     for line in stdout.strip().split("\n"):
         if line == '': continue
         tokens = line.split("\t")
-        result = {'handle': tokens[0]}
+        info = {'handle': tokens[0]}
 
         hostname = tokens[1]
         if hostname != '':
-            result['hostname'] = hostname.split()[-1]  # worker => hostname
+            info['hostname'] = hostname.split()[-1]  # worker => hostname
 
-        result['state'] = {'running': 'running'}.get(tokens[2], 'queued')
+        info['state'] = {'running': 'running'}.get(tokens[2], 'queued')
 
         exitcode = tokens[3]
         if exitcode != '':
-            result['exitcode'] = int(exitcode)
+            info['exitcode'] = int(exitcode)
 
         time = tokens[4]
         if time:
-            result['time'] = int(time)
+            info['time'] = int(time)
 
         memory = tokens[5]
         if memory:
-            result['memory'] = int(memory) * 1024 * 1024  # Convert to bytes
+            info['memory'] = int(memory) * 1024 * 1024  # Convert to bytes
 
-        infos.append(result)
+        infos.append(info)
     response['infos'] = infos
 elif mode == 'kill':
     handle = sys.argv[2]

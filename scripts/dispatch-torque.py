@@ -36,14 +36,14 @@ if mode == 'start':
     parser.add_argument('--request_memory', type=float, help='request this much memory (in bytes)')
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
     parser.add_argument('--request_gpus', type=int, help='request this many GPUs')
-    parser.add_argument('--request_queue', type=int, help='submit job to this queue')
+    parser.add_argument('--request_queue', type=str, help='submit job to this queue')
     parser.add_argument('script', type=str, help='script to run')
 
     args = parser.parse_args(sys.argv[2:])
 
     resource_args = ''
     if args.request_cpus:
-        resource_args += ' -l nodes=1:ppn==%d' % args.request_cpus
+        resource_args += ' -l nodes=1:ppn=%d' % args.request_cpus
     if args.request_memory:
         resource_args += ' -l mem=%d' % args.request_memory
     if args.request_queue:
@@ -58,14 +58,14 @@ elif mode == 'info':
     if len(handles) > 0:
         list_args += ' ' + ' '.join(handles)
     stdout = get_output('qstat -f%s' % list_args)
-    response = {'raw': stdout}
+    response = {'raw': ''}
 
     infos = []
     for line in stdout.split("\n"):
         # Job Id: ...
         m = re.match('^Job Id: (.+)', line)
         if m:
-            info = {}
+            info = {'handle': m.group(1)}
             completed = False
             continue
 
@@ -92,6 +92,7 @@ elif mode == 'info':
         elif key == 'job_state':
             if value == 'C':
                 completed = True
+            result['state'] = {'R': 'running'}.get(value, 'queued')
         elif key == 'resources_used.mem':
             m = re.match(r'(\d+)kb', value)
             if m:

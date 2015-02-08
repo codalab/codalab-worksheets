@@ -109,7 +109,7 @@ class Worker(object):
                     # (even if it's not the bundle's fault).
                     temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                     path_util.make_directory(temp_dir)
-                    status = {'success': False, 'failure_message': str(e)}
+                    status = {'bundle': bundle, 'success': False, 'failure_message': str(e)}
                     print '=== INTERNAL ERROR: %s' % e
                     traceback.print_exc()
             else:  # MakeBundle
@@ -144,7 +144,7 @@ class Worker(object):
 
             # If processed, record it as such.  Else, keep the action around.
             if processed:
-                new_actions = bundle.metadata.actions | set(x.action)
+                new_actions = bundle.metadata.actions | set([x.action])
                 db_update = {'state': State.FAILED, 'metadata': {'actions': new_actions}}
                 self.model.update_bundle(bundle, db_update)
             else:
@@ -180,11 +180,15 @@ class Worker(object):
         # Update the bundle's data with status (which is the new information).
         bundle = status['bundle']
 
+        # Already froze, can't update
+        if bundle.state in [State.READY, State.FAILED]:
+            return
+
         # Update to the database
         db_update = {}
 
         # Update state
-        if 'state' in status:
+        if 'state' in status and status['state']:
             db_update['state'] = status['state']
 
         # Add metadata from the machine

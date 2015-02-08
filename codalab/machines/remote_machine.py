@@ -128,6 +128,8 @@ class RemoteMachine(Machine):
             resource_args.extend(['--request_cpus', bundle.metadata.request_cpus])
         if bundle.metadata.request_gpus:
             resource_args.extend(['--request_gpus', bundle.metadata.request_gpus])
+        if bundle.metadata.request_queue:
+            resource_args.extend(['--request_queue', bundle.metadata.request_queue])
 
         # Start the command
         args = self.dispatch_command.split() + ['start'] + map(str, resource_args) + [script_file]

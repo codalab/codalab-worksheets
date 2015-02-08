@@ -40,6 +40,7 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
                 'metavar': spec.metavar,
                 'nargs': ('*' if spec.type == set else None),
                 'help': spec.description + help_suffix,
+                'type': str if spec.type == basestring else spec.type
             }
             parser.add_argument(*args, **kwargs)
 
