@@ -59,9 +59,10 @@ class RemoteMachine(Machine):
             print stdout
             raise
 
-    def start_bundle(self, bundle, bundle_store, parent_dict):
+    def start_bundle(self, bundle, bundle_store, parent_dict, username):
         '''
         Sets up all the temporary files and then dispatches the job.
+        username: the username of the owner of the bundle
         Returns the bundle information.
         '''
         # Create a temporary directory
@@ -132,7 +133,7 @@ class RemoteMachine(Machine):
             resource_args.extend(['--request_queue', bundle.metadata.request_queue])
 
         # Start the command
-        args = self.dispatch_command.split() + ['start'] + map(str, resource_args) + [script_file]
+        args = self.dispatch_command.split() + ['start', '--username', username] + map(str, resource_args) + [script_file]
         if self.verbose >= 1: print '=== start_bundle(): running %s' % args
         result = json.loads(self.run_command_get_stdout(args))
         if self.verbose >= 1: print '=== start_bundle(): got %s' % result
@@ -170,6 +171,7 @@ class RemoteMachine(Machine):
         except Exception, e:
             print '=== INTERNAL ERROR: %s' % e
             traceback.print_exc()
+            return []
 
     def kill_bundle(self, bundle):
         if self.verbose >= 1: print '=== kill_bundle(%s)' % (bundle.uuid)

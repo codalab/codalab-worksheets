@@ -29,6 +29,7 @@ if len(sys.argv) <= 1:
 mode = sys.argv[1]
 if mode == 'start':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--username', type=str, help='user who is running this job')
     parser.add_argument('--request_time', type=float, help='request this much computation time (in seconds)')
     parser.add_argument('--request_memory', type=float, help='request this much memory (in bytes)')
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')

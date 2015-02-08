@@ -32,6 +32,7 @@ handle = None
 mode = sys.argv[1]
 if mode == 'start':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--username', type=str, help='user who is running this job')
     parser.add_argument('--request_time', type=float, help='request this much computation time (in seconds)')
     parser.add_argument('--request_memory', type=float, help='request this much memory (in bytes)')
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
@@ -42,6 +43,8 @@ if mode == 'start':
     args = parser.parse_args(sys.argv[2:])
 
     resource_args = ''
+    if args.username:
+        resource_args += ' -N codalab-%s' % args.username
     if args.request_cpus:
         resource_args += ' -l nodes=1:ppn=%d' % args.request_cpus
     if args.request_memory:

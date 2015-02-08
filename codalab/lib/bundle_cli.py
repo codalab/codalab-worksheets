@@ -1397,7 +1397,7 @@ class BundleCLI(object):
             return
 
         client = self.manager.local_client()  # Always use the local bundle client
-        worker = Worker(client.bundle_store, client.model, machine)
+        worker = Worker(client.bundle_store, client.model, machine, client.auth_handler)
         worker.run_loop(args.num_iterations, args.sleep_time)
 
     def do_cleanup_command(self, argv, parser):

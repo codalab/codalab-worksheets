@@ -33,12 +33,13 @@ from codalab.machines import (
 )
 
 class Worker(object):
-    def __init__(self, bundle_store, model, machine):
+    def __init__(self, bundle_store, model, machine, auth_handler):
         self.bundle_store = bundle_store
         self.model = model
         self.profiling_depth = 0
         self.verbose = 0
         self.machine = machine
+        self.auth_handler = auth_handler  # In order to get names of owners
 
     def pretty_print(self, message):
         time_str = datetime.datetime.utcnow().isoformat()[:19].replace('T', ' ')
@@ -103,7 +104,13 @@ class Worker(object):
             exception = None
             if isinstance(bundle, RunBundle):
                 try:
-                    status = self.machine.start_bundle(bundle, self.bundle_store, self.get_parent_dict(bundle))
+                    # Get the username of the bundle
+                    username = None
+                    results = self.auth_handler.get_users('ids', [bundle.owner_id])
+                    if len(results) > 0:
+                        username = results[bundle.owner_id].name
+
+                    status = self.machine.start_bundle(bundle, self.bundle_store, self.get_parent_dict(bundle), username)
                 except Exception as e:
                     # If there's an exception, we just make the bundle fail
                     # (even if it's not the bundle's fault).
