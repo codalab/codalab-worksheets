@@ -83,10 +83,12 @@ class RemoteMachine(Machine):
 
         # Write the command to be executed to a script.
         if docker_image:
-            container_file = temp_dir + '.cid'
-            status_dir = temp_dir + '.status'
-            script_file = temp_dir + '.sh'
-            internal_script_file = temp_dir + '-internal.sh'
+            container_file = temp_dir + '.cid'  # contains the docker container id
+            action_file = temp_dir + '.action'  # send actions to the container (e.g., kill)
+            status_dir = temp_dir + '.status'  # receive information from the container (e.g., memory)
+            script_file = temp_dir + '.sh'  # main entry point
+            internal_script_file = temp_dir + '-internal.sh'  # run inside the docker container
+            # Names of file inside the docker container
             docker_temp_dir = bundle.uuid
             docker_internal_script_file = bundle.uuid + '-internal.sh'
 
@@ -95,18 +97,21 @@ class RemoteMachine(Machine):
             # -v mounts the internal and user scripts and the temp directory
             # Trap SIGTERM and forward it to docker.
             with open(script_file, 'w') as f:
-                # NOTE: trap doesn't quite work reliably with Torque.
-                f.write('trap \'echo Killing docker container $(cat %s); docker kill $(cat %s); echo Killed: $?; exit 143\' TERM\n' % (container_file, container_file))
-                # inspect doesn't tell us a lot
+                # trap doesn't quite work reliably with Torque, so don't use it
+                #f.write('trap \'echo Killing docker container $(cat %s); docker kill $(cat %s); echo Killed: $?; exit 143\' TERM\n' % (container_file, container_file))
+                # Inspect doesn't tell us a lot, so don't use it
                 #f.write('while [ -e %s ]; do docker inspect $(cat %s) > %s; sleep 1; done &\n' % (temp_dir, container_file, status_dir))
                 
                 # Monitor CPU/memory/disk
                 monitor_commands = [
+                    # Report on status
                     'mkdir -p %s' % status_dir,
                     'if [ -e /cgroup ]; then cgroup=/cgroup; else cgroup=/sys/fs/cgroup; fi',  # find where cgroup is
                     'cp -f $cgroup/cpuacct/docker/$(cat %s)/cpuacct.stat %s' % (container_file, status_dir),
                     'cp -f $cgroup/memory/docker/$(cat %s)/memory.usage_in_bytes %s' % (container_file, status_dir),
                     'cp -f $cgroup/blkio/docker/$(cat %s)/blkio.throttle.io_service_bytes %s' % (container_file, status_dir),
+                    # Respond to actions
+                    '[ -e %s ] && [ "$(cat %s)" == "kill" ] && docker kill $(cat %s) && rm %s' % (action_file, action_file, container_file, action_file),
                 ]
                 f.write('while [ -e %s ]; do %s; sleep 1; done &\n' % (temp_dir, '; '. join(monitor_commands)))
 
@@ -238,8 +243,14 @@ class RemoteMachine(Machine):
     def kill_bundle(self, bundle):
         if self.verbose >= 1: print '=== kill_bundle(%s)' % (bundle.uuid)
         try:
-            args = self.dispatch_command.split() + ['kill', bundle.metadata.job_handle]
-            result = self.run_command_get_stdout_json(args)
+            if getattr(bundle.metadata, 'docker_image', None):
+                # If running docker, we kill by writing a file
+                action_file = bundle.metadata.temp_dir + '.action'
+                with open(action_file, 'w') as f:
+                    print >>f, 'kill'
+            else:
+                args = self.dispatch_command.split() + ['kill', bundle.metadata.job_handle]
+                result = self.run_command_get_stdout_json(args)
             return True
         except Exception, e:
             print '=== INTERNAL ERROR: %s' % e
@@ -255,10 +266,11 @@ class RemoteMachine(Machine):
             temp_dir = bundle.metadata.temp_dir
             if bundle.metadata.docker_image:
                 container_file = temp_dir + '.cid'
+                action_file = temp_dir + '.action'
                 status_dir = temp_dir + '.status'
                 script_file = temp_dir + '.sh'
                 internal_script_file = temp_dir + '-internal.sh'
-                temp_files = [container_file, status_dir, script_file, internal_script_file]
+                temp_files = [container_file, action_file, status_dir, script_file, internal_script_file]
             else:
                 script_file = temp_dir + '.sh'
                 temp_files = [script_file]
