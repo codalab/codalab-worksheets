@@ -118,7 +118,7 @@ class RemoteMachine(Machine):
                 # Constrain resources
                 resource_args = ''
                 if bundle.metadata.request_memory:
-                    resource_args += ' -m %s' % formatting.parse_size(bundle.metadata.request_memory)
+                    resource_args += ' -m %s' % int(formatting.parse_size(bundle.metadata.request_memory))
                 # TODO: would constrain --cpuset=0, but difficult because don't know the CPU ids
 
                 f.write("docker run%s --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s & wait $!\n" % (
