@@ -48,7 +48,7 @@ if mode == 'start':
     if args.request_cpus:
         resource_args += ' -l nodes=1:ppn=%d' % args.request_cpus
     if args.request_memory:
-        resource_args += ' -l mem=%d' % args.request_memory
+        resource_args += ' -l mem=%d' % int(args.request_memory)
     if args.request_queue:
         resource_args += ' -q %s' % args.request_queue
 
