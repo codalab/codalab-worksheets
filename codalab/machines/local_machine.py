@@ -19,7 +19,7 @@ class LocalMachine(Machine):
         self.process = None
         self.temp_dir = None
 
-    def start_bundle(self, bundle, bundle_store, parent_dict):
+    def start_bundle(self, bundle, bundle_store, parent_dict, username):
         '''
         Start a bundle in the background.
         '''
