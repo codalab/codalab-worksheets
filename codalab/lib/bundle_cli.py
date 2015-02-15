@@ -743,8 +743,7 @@ class BundleCLI(object):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-f', '--field', help='print out these fields', nargs='?')
         parser.add_argument('-r', '--raw', action='store_true', help='print out raw information (no rendering)')
-        parser.add_argument('-c', '--children', action='store_true', help="print only a list of this bundle's children")
-        parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle")
+        parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle, children bundles, and host worksheets")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
@@ -752,7 +751,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         for i, bundle_spec in enumerate(args.bundle_spec):
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
-            info = client.get_bundle_info(bundle_uuid, args.children)
+            info = client.get_bundle_info(bundle_uuid, args.verbose, args.verbose)
             if info is None:
                 raise UsageError('Invalid bundle uuid: %s' % bundle_uuid)
 
@@ -769,9 +768,9 @@ class BundleCLI(object):
                 if i > 0:
                     print
                 self.print_basic_info(client, info, args.raw)
-                if args.children:
-                    self.print_children(info)
                 if args.verbose:
+                    self.print_children(info)
+                    self.print_host_worksheets(info)
                     self.print_contents(client, info)
 
     def print_basic_info(self, client, info, raw):
@@ -823,10 +822,14 @@ class BundleCLI(object):
         print '\n'.join(lines)
 
     def print_children(self, info):
-        if not info['children']: return
         print 'children:'
         for child in info['children']:
             print "  %s" % self.simple_bundle_str(child)
+
+    def print_host_worksheets(self, info):
+        print 'host_worksheets:'
+        for host_worksheet_info in info['host_worksheets']:
+            print "  %s" % self.simple_worksheet_str(host_worksheet_info)
 
     def print_contents(self, client, info):
         def wrap(string): return '=== ' + string + ' ==='

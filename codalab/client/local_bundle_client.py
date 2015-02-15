@@ -85,7 +85,7 @@ class LocalBundleClient(BundleClient):
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
         }
         for dep in result['dependencies']:
-            dep['parent_name'] = self.model.get_names([dep['parent_uuid']])[0]
+            dep['parent_name'] = self.model.get_bundle_names([dep['parent_uuid']])[0]
 
         return result
 
@@ -284,15 +284,21 @@ class LocalBundleClient(BundleClient):
 
         if get_children:
             # TODO: make sure we have access to children.
-            # In the future, batch this.
+            # TODO: In the future, batch this.
             for uuid, info in bundle_dict.items():
                 children_uuids = self.model.get_children_uuids(uuid)
-                names = self.model.get_names(children_uuids)
+                names = self.model.get_bundle_names(children_uuids)
                 info['children'] = [{'uuid': uuid, 'metadata': {'name': name}} for uuid, name in zip(children_uuids, names)]
 
         if get_host_worksheets:
-            # TODO
-            pass
+            # bundle_uuids -> list of worksheet_uuids
+            result = self.model.get_host_worksheet_uuids(uuids)
+            # Gather all worksheet uuids
+            worksheet_uuids = [uuid for l in result.values() for uuid in l]
+            worksheets = dict((worksheet.uuid, worksheet) for worksheet in self.model.batch_get_worksheets(fetch_items=False, uuid=worksheet_uuids))
+            # Fill the info
+            for uuid, info in bundle_dict.items():
+                info['host_worksheets'] = [{'uuid': worksheet_uuid, 'name': worksheets[worksheet_uuid].name} for worksheet_uuid in result[uuid]]
 
         return bundle_dict
 

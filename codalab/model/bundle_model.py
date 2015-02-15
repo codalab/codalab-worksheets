@@ -123,9 +123,9 @@ class BundleModel(object):
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
 
-    def get_names(self, uuids):
+    def get_bundle_names(self, uuids):
         '''
-        Return the names of the bundle with given uuids.
+        Return the names of the bundles with given uuids.
         '''
         if len(uuids) == 0:
             return []
@@ -168,6 +168,22 @@ class BundleModel(object):
               cl_bundle_dependency.c.child_uuid
             ]).where(clause)).fetchall()
         return set([row.child_uuid for row in rows])
+
+    def get_host_worksheet_uuids(self, bundle_uuids):
+        '''
+        Return list of worksheet uuids that contain the given bundle_uuids.
+        bundle_uuids = ['0x12435']
+        Return {'0x12435': [host_worksheet_uuid, ...]}
+        '''
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([
+              cl_worksheet_item.c.worksheet_uuid,
+              cl_worksheet_item.c.bundle_uuid,
+            ]).where(cl_worksheet_item.c.bundle_uuid.in_(bundle_uuids))).fetchall()
+        result = dict((uuid, []) for uuid in bundle_uuids)
+        for row in rows:
+            result[row.bundle_uuid].append(row.worksheet_uuid)
+        return result
 
     def get_self_and_descendants(self, uuids, depth):
         '''
