@@ -607,6 +607,7 @@ class LocalBundleClient(BundleClient):
         for item in interpreted_items:
             mode = item['mode']
             data = item['interpreted']
+            properties = item.get('properties', {})
             is_newline = (data == '')
             # if's in order of most frequent
             if mode == 'markup':
@@ -627,7 +628,7 @@ class LocalBundleClient(BundleClient):
                 if 'type' not in info:
                     pass
                 elif info['type'] == 'file':
-                    data = self.head_target(data, 10)
+                    data = self.head_target(data, int(properties.get('maxlines', 10)))
             elif mode == 'html':
                 data = self.head_target(data, None)
             elif mode == 'image':
