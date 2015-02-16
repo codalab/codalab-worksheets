@@ -11,9 +11,11 @@ from codalab.common import (
   UsageError,
 )
 from codalab.lib import spec_util, path_util
+from codalab.objects.metadata_spec import MetadataSpec
 
 class MakeBundle(NamedBundle):
     BUNDLE_TYPE = 'make'
+    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
 
     @classmethod
     def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):

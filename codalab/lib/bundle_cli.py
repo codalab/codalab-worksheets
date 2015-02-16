@@ -1177,7 +1177,7 @@ class BundleCLI(object):
         for item in interpreted['items']:
             mode = item['mode']
             data = item['interpreted']
-            properties = item.get('properties', {})
+            properties = item['properties']
             is_newline = (data == '')
             if mode == 'link' or mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
@@ -1186,7 +1186,10 @@ class BundleCLI(object):
                             data = client.interpret_file_genpaths([data])[0]
                         print '[' + str(data) + ']'
                     elif mode == 'contents':
-                        self.print_target_info(client, data, decorate=True, maxlines=int(properties.get('maxlines')))
+                        maxlines = properties.get('maxlines')
+                        if maxlines:
+                            maxlines = int(maxlines)
+                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
                     else:
                         print data
             elif mode == 'record' or mode == 'table':

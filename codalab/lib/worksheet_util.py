@@ -496,6 +496,7 @@ def interpret_items(schemas, items):
         # Print out the curent bundles somehow
         mode = current_display_ref[0][0]
         args = current_display_ref[0][1:]
+        properties = {}
         if mode == 'hidden':
             pass
         elif mode == 'link':
@@ -505,6 +506,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted': '[%s](%s)' % (args[0], bundle_info['uuid']),
+                    'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
@@ -515,8 +517,6 @@ def interpret_items(schemas, items):
                 # Properties - e.g., height, width, maxlines (optional)
                 if len(args) > 1:
                     properties = dict(item.split('=') for item in args[1].split(','))
-                else:
-                    properties = None
 
                 if isinstance(interpreted, tuple):  # Not rendered yet
                     bundle_uuid, genpath = interpreted
@@ -550,6 +550,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
+                    'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'table':
@@ -567,6 +568,7 @@ def interpret_items(schemas, items):
             new_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
+                    'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_infos)
                 })
         else:
@@ -584,6 +586,7 @@ def interpret_items(schemas, items):
         return value_obj[0] if len(value_obj) > 0 else None
     for item in items:
         (bundle_info, subworksheet_info, value_obj, item_type) = item
+        properties = {}
 
         if item_type == TYPE_BUNDLE:
             bundle_infos.append(bundle_info)
@@ -592,6 +595,7 @@ def interpret_items(schemas, items):
             new_items.append({
                 'mode': TYPE_WORKSHEET,
                 'interpreted': subworksheet_info,  # TODO: convert into something more useful?
+                'properties': {},
                 'subworksheet_info': subworksheet_info,
             })
         elif item_type == TYPE_MARKUP:
@@ -599,6 +603,7 @@ def interpret_items(schemas, items):
             new_items.append({
                 'mode': TYPE_MARKUP,
                 'interpreted': value_obj,
+                'properties': {},
             })
         elif item_type == TYPE_DIRECTIVE:
             flush()
@@ -629,6 +634,7 @@ def interpret_items(schemas, items):
                 new_items.append({
                     'mode': mode,
                     'interpreted': data,
+                    'properties': {},
                 })
             else:
                 raise UsageError('Unknown directive command in %s' % value_obj)
