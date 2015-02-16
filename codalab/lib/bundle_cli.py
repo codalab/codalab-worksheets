@@ -651,6 +651,7 @@ class BundleCLI(object):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-f', '--force', action='store_true', help='delete bundle (DANGEROUS - breaking dependencies!)')
         parser.add_argument('-r', '--recursive', action='store_true', help='delete all bundles downstream that depend on this bundle')
+        parser.add_argument('-d', '--data-only', action='store_true', help='keep the bundle metadata, but remove the bundle contents')
         parser.add_argument('-i', '--dry-run', action='store_true', help='delete all bundles downstream that depend on this bundle')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
@@ -660,7 +661,7 @@ class BundleCLI(object):
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
         bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
-        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.dry_run)
+        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.data_only, args.dry_run)
         if args.dry_run:
             print 'This command would permanently remove the following bundles (not doing so yet):'
             bundle_infos = client.get_bundle_infos(deleted_uuids)

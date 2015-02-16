@@ -239,7 +239,12 @@ class LocalBundleClient(BundleClient):
         self.model.update_bundle(bundle, {'metadata': metadata})
 
     @authentication_required
-    def delete_bundles(self, uuids, force, recursive, dry_run):
+    def delete_bundles(self, uuids, force, recursive, data_only, dry_run):
+        '''
+        Delete the bundles specified by |uuids|.
+        If |recursive|, add all bundles downstream too.
+        If |data_only|, only remove from the bundle store, not the bundle metadata.
+        '''
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         uuids_set = set(uuids)
         relevant_uuids_set = set(relevant_uuids)
@@ -257,11 +262,19 @@ class LocalBundleClient(BundleClient):
         # Get data hashes
         relevant_data_hashes = set(bundle.data_hash for bundle in self.model.batch_get_bundles(uuid=relevant_uuids) if bundle.data_hash)
 
+        # Delete the actual bundle
         if not dry_run:
-            self.model.delete_bundles(relevant_uuids)
-        # Clean out data from bundle store!
+            if data_only:
+                # Just remove references to the data hashes
+                self.model.remove_data_hash_references(relevant_uuids)
+            else:
+                # Actually delete the bundle
+                self.model.delete_bundles(relevant_uuids)
+
+        # Delete the data_hash
         for data_hash in relevant_data_hashes:
-            self.bundle_store.cleanup(self.model, data_hash, dry_run)
+            self.bundle_store.cleanup(self.model, data_hash, relevant_uuids, dry_run)
+
         return relevant_uuids
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False):

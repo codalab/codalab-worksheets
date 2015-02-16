@@ -461,6 +461,10 @@ class BundleModel(object):
                 cl_bundle.c.uuid.in_(uuids)
             ))
 
+    def remove_data_hash_references(self, uuids):
+        with self.engine.begin() as connection:
+            connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
+
     #############################################################################
     # Worksheet-related model methods follow!
     #############################################################################
