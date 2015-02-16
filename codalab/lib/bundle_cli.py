@@ -759,7 +759,7 @@ class BundleCLI(object):
                 # Display a single field (arbitrary genpath)
                 genpath = args.field
                 if worksheet_util.is_file_genpath(genpath):
-                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath)
+                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None)
                 else:
                     value = worksheet_util.interpret_genpath(info, genpath)
                 print value

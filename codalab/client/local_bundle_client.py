@@ -591,19 +591,17 @@ class LocalBundleClient(BundleClient):
         target_cache = {}
         responses = []
         for (bundle_uuid, genpath, post) in requests:
-            value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath)
+            value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath, post)
             #print 'interpret_file_genpaths', bundle_uuid, genpath, value
-            value = worksheet_util.apply_func(post, value)
             responses.append(value)
         return responses
 
     def resolve_interpreted_items(self, interpreted_items):
         """
-        Helper function.
-        Takes a list of interpreted worksheet items loops through them and depending
-        on the type will find genpath for bundle info being requested.
-
-        Returns as a full interpeted_items lists which can be easialy json or rpc
+        Called by the web interface.  Takes a list of interpreted worksheet
+        items (returned by worksheet_util.interpret_items) and fetches the
+        appropriate information, replacing the 'interpreted' field in each item.
+        The result can be serialized via JSON.
         """
         is_last_newline = False
         for item in interpreted_items:
@@ -634,13 +632,11 @@ class LocalBundleClient(BundleClient):
                 data = self.head_target(data, None)
             elif mode == 'image':
                 path = self.get_target_path(data)
-                encoded = path_util.base64_encode(path)
-                data = encoded
+                data = path_util.base64_encode(path)
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 data = search_interpreted
             elif mode == 'worksheet':
-                #placeholder
                 pass
             else:
                 raise UsageError('Invalid display mode: %s' % mode)

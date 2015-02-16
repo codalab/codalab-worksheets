@@ -147,10 +147,12 @@ def get_worksheet_lines(worksheet_info):
 //   * display record|table <schema-name-1> ... <schema-name-n>
 //   * search <keyword-1> ... <keyword-n>
 //   The post-processor is optional and is a sequence of the following, separated by " | ":
+//   * 'link' for getting the file name
 //   * 'duration', 'date', 'size' for special formatting
 //   * '%%...' for sprintf-style formatting
 //   * s/<old>/<new> for regular expression substitution
-//   * [<start index>:<end index>] for taking substrings
+//   * [<start-index>:<end-index>] for taking substrings
+//   Examples of <key>=<value>: height=100, width=50, maxlines=500
 // For example, you can define a schema for a table and then set the display mode to using that schema:
 // %% schema s1
 // %% add name
@@ -333,7 +335,7 @@ def interpret_genpath(bundle_info, genpath):
 
     return None
 
-def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
+def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
     '''
     |client|: used to read files
     |cache| is a mapping from target (bundle_uuid, subpath) to the info map,
@@ -341,6 +343,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
     times.
     |genpath| specifies the subpath and various fields (e.g., for
     /stats:train/errorRate, subpath = 'stats', key = 'train/errorRate').
+    |post| function to apply to the resulting value.
     Return the string value.
     '''
     MAX_LINES = 1000  # Maximum number of lines we need to read from a file.
@@ -353,10 +356,17 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
         subpath, key = genpath.split(':')
     else:
         subpath, key = genpath, None
+
+    # Just a link
+    if post == 'link':
+        # TODO: need to synchronize with frontend
+        return '/%s' % os.path.join('api', 'bundles', 'filecontent', bundle_uuid, subpath)
+
     target = (bundle_uuid, subpath)
     if target not in target_cache:
         #print 'LOAD', target
         contents = client.head_target(target, MAX_LINES)
+        # Try to interpret the structure of the file by looking inside it.
         if contents != None:
             if all('\t' in x for x in contents):
                 # Tab-separated file (key\tvalue\nkey\tvalue...)
@@ -364,11 +374,16 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
                 for x in contents:
                     kv = x.strip().split("\t", 1)
                     if len(kv) == 2: info[kv[0]] = kv[1]
-            elif contents[0][0] == '{':  # Hack to detect JSON file
+            elif contents[0][0] == '{':
+                # JSON file (hack)
                 info = json.loads('\n'.join(contents))
             else:
-                # YAML file
-                info = yaml.load('\n'.join(contents))
+                try:
+                    # YAML file
+                    info = yaml.load('\n'.join(contents))
+                except:
+                    # Plain text file
+                    info = '\n'.join(contents)
         else:
             info = None
         target_cache[target] = info
@@ -387,7 +402,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath):
             else:
                 info = None
             if info == None: break
-    return info
+    return apply_func(post, info)
 
 def canonicalize_schema_item(args):
     '''
@@ -469,7 +484,7 @@ def interpret_items(schemas, items):
     '''
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
-    Return a list of items, where each item is either:
+    Return a list of interpreted items, where each item is either:
     - ('markup'|'inline'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath))
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
       where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
@@ -637,8 +652,13 @@ def interpret_items(schemas, items):
     return result
 
 def interpret_genpath_table_contents(client, contents):
+    '''
+    contents represents a table, but some of the elements might not be interpreted.
+    Interpret them by calling the client.
+    '''
     # if called after an RPC call tuples may become lists
     need_gen_types = (types.TupleType, types.ListType)
+
     # Request information
     requests = []
     for r, row in enumerate(contents):
