@@ -494,23 +494,28 @@ class BundleCLI(object):
         print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
     def do_cp_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('worksheet_spec', help='%s (copy to this worksheet)' % self.WORKSHEET_SPEC_FORMAT)
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
 
         # Source bundle
-        (source_client, source_spec) = self.parse_spec(args.bundle_spec)
-        # worksheet_uuid is only applicable if we're on the source client
-        if source_client != client: worksheet_uuid = None
-        source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
+        source_bundle_uuids = []
+        for bundle_spec in args.bundle_spec:
+            (source_client, source_spec) = self.parse_spec(bundle_spec)
+            # worksheet_uuid is only applicable if we're on the source client
+            if source_client != client: worksheet_uuid = None
+            source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
+            source_bundle_uuids.append(source_bundle_uuid)
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         # Copy!
-        self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
+        for source_bundle_uuid in source_bundle_uuids:
+            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
 
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid):
         '''
