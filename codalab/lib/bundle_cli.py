@@ -854,13 +854,13 @@ class BundleCLI(object):
         self.print_target_info(client, target, decorate=False)
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, target, decorate):
+    def print_target_info(self, client, target, decorate, maxlines=10):
         info = client.get_target_info(target, 1)
         if 'type' not in info:
             self.exit('Target doesn\'t exist: %s/%s' % target)
         if info['type'] == 'file':
             if decorate:
-                for line in client.head_target(target, 10):
+                for line in client.head_target(target, maxlines):
                     print line,
             else:
                 client.cat_target(target, sys.stdout)
@@ -1177,6 +1177,7 @@ class BundleCLI(object):
         for item in interpreted['items']:
             mode = item['mode']
             data = item['interpreted']
+            properties = item.get('properties', {})
             is_newline = (data == '')
             if mode == 'link' or mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
@@ -1185,7 +1186,7 @@ class BundleCLI(object):
                             data = client.interpret_file_genpaths([data])[0]
                         print '[' + str(data) + ']'
                     elif mode == 'contents':
-                        self.print_target_info(client, data, decorate=True)
+                        self.print_target_info(client, data, decorate=True, maxlines=int(properties.get('maxlines')))
                     else:
                         print data
             elif mode == 'record' or mode == 'table':

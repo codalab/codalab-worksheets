@@ -19,30 +19,12 @@ In other words, there are two representations of worksheet items:
 - (bundle_uuid, subworksheet_uuid, value, type) [inserted into the database]
 - (bundle_info, subworksheet_info, value_obj, type) [used in the code]
 
-The value of a directive can be parsed into a sequence of tokens, where the
-first token determines the type.  Types of directives:
-% title <title text>
-%
-% schema <schema name>
-% addschema <schema name>
-% add <field name> <genpath (e.g., /stats:errorRate)> <post-processing>
-%
-%% this is a comment
-% display hidden
-% display link <text>
-% display inline <genpath (e.g., /stats:errorRate)>
-% display contents <genpath (e.g., /out.txt)>
-% display image <genpath (e.g., /graph.png)>
-% display html <genpath (e.g., /test.html)>
-% display record <schema name>
-% display table <schema name>
-%
-% search <keywords>
-
 A genpath (generalized path) is either:
 - a bundle field (e.g., 'command')
 - a metadata field (e.g., 'name')
 - a path (starts with '/'), but can descend into a YAML file (e.g., /stats:train/errorRate)
+
+See get_worksheet_lines for documentation on the specification of the directives.
 '''
 import copy
 import os
@@ -143,7 +125,7 @@ def get_worksheet_lines(worksheet_info):
 //   * addschema <schema-name>
 //   * display hidden
 //   * display link <text>
-//   * display inline|contents|image|html <generalized-path (e.g., /stats:errorRate)> [<key>=<value> ...]
+//   * display inline|contents|image|html <generalized-path (e.g., /stats:errorRate)> [<key>=<value>,<key>=<value>,...]
 //   * display record|table <schema-name-1> ... <schema-name-n>
 //   * search <keyword-1> ... <keyword-n>
 //   The post-processor is optional and is a sequence of the following, separated by " | ":
@@ -376,14 +358,14 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
                     if len(kv) == 2: info[kv[0]] = kv[1]
             elif contents[0][0] == '{':
                 # JSON file (hack)
-                info = json.loads('\n'.join(contents))
+                info = json.loads(''.join(contents))
             else:
                 try:
                     # YAML file
-                    info = yaml.load('\n'.join(contents))
+                    info = yaml.load(''.join(contents))
                 except:
                     # Plain text file
-                    info = '\n'.join(contents)
+                    info = ''.join(contents)
         else:
             info = None
         target_cache[target] = info
@@ -485,7 +467,7 @@ def interpret_items(schemas, items):
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
     Return a list of interpreted items, where each item is either:
-    - ('markup'|'inline'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath))
+    - ('markup'|'inline'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
       where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
     - ('search', [keyword, ...])
@@ -527,21 +509,28 @@ def interpret_items(schemas, items):
                 })
         elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
             for bundle_info in bundle_infos:
-                # Result: either a string (rendered) or (bundle_uuid, genpath) pair
+                # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
                 interpreted = interpret_genpath(bundle_info, args[0])
-                if isinstance(interpreted, tuple):
+
+                # Properties - e.g., height, width, maxlines (optional)
+                if len(args) > 1:
+                    properties = dict(item.split('=') for item in args[1].split(','))
+                else:
+                    properties = None
+
+                if isinstance(interpreted, tuple):  # Not rendered yet
                     bundle_uuid, genpath = interpreted
                     if not is_file_genpath(genpath):
                         raise UsageError('Expected a file genpath, but got %s' % genpath)
                     if mode == 'inline':
-                        post = None  # TODO: allow post-processing
-                        interpreted = (bundle_uuid, genpath, post)
+                        interpreted = (bundle_uuid, genpath, None)
                     else:
-                        # This is a target: strip off the leading /
+                        # interpreted is a target: strip off the leading /
                         interpreted = (bundle_uuid, genpath[1:])
                 new_items.append({
                     'mode': mode,
                     'interpreted': interpreted,
+                    'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
         elif mode == 'record':
