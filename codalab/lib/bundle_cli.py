@@ -521,7 +521,7 @@ class BundleCLI(object):
         clients will be local, so it's not too expensive.
         '''
         # Check if the bundle already exists on the destination, then don't copy it
-        # (although metadata could be different)
+        # (although metadata could be different on source and destination).
         bundle = None
         try:
             bundle = dest_client.get_bundle_info(source_bundle_uuid)
@@ -531,15 +531,24 @@ class BundleCLI(object):
         source_info = source_client.get_bundle_info(source_bundle_uuid)
         source_desc = self.simple_bundle_str(source_info)
         if not bundle:
-            print "Copying %s..." % source_desc
+            if source_info['state'] not in [State.READY, State.FAILED]:
+                print 'Not copying %s because it has non-final state %s' % (source_desc, source_info['state'])
+            else:
+                print "Copying %s..." % source_desc
 
-            # Download from source
-            source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
-            info = source_client.get_bundle_info(source_bundle_uuid)
+                # Download from source
+                if source_info['data_hash']:
+                    source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
+                else:
+                    # Would want to pass in None, but the upload process expects real files, so use this placeholder.
+                    source_path = temp_path = None
+                info = source_client.get_bundle_info(source_bundle_uuid)
 
-            # Upload to dest
-            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
-            if temp_path: path_util.remove(temp_path)
+                # Upload to dest
+                print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
+
+                # Clean up
+                if temp_path: path_util.remove(temp_path)
         else:
             print "%s already exists on destination client" % source_desc
 

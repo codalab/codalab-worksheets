@@ -175,10 +175,12 @@ class LocalBundleClient(BundleClient):
             self.validate_user_metadata(bundle_subclass, metadata)
 
         # Upload the given path and record additional metadata from the upload.
-        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
-        metadata.update(bundle_store_metadata)
-        # TODO: check that if the data hash already exists, it's the same as before.
-        construct_args['data_hash'] = data_hash
+        if path:
+            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
+            metadata.update(bundle_store_metadata)
+            precondition(construct_args['data_hash'] == data_hash, \
+                'Provided data_hash doesn\'t match: %s versus %s' % (construct_args['data_hash'], data_hash))
+            construct_args['data_hash'] = data_hash
         # Set the owner
         construct_args['owner_id'] = self._current_user_id()
         bundle = bundle_subclass.construct(**construct_args)
