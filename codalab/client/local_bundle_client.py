@@ -86,7 +86,7 @@ class LocalBundleClient(BundleClient):
         }
         for dep in result['dependencies']:
             uuid = dep['parent_uuid']
-            dep['parent_name'] = self.model.get_bundle_names([uuid])[uuid]
+            dep['parent_name'] = self.model.get_bundle_names([uuid]).get(uuid)
 
         return result
 

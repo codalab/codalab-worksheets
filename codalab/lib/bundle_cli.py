@@ -148,6 +148,7 @@ class BundleCLI(object):
         'p': 'print',
         'i': 'info',
         'e': 'edit',
+        's': 'search',
         'st': 'status',
     }
 
