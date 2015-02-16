@@ -1412,9 +1412,10 @@ class BundleCLI(object):
         '''
         Removes data hash directories which are not used by any bundle.
         '''
-        parser.parse_args(argv)
+        parser.add_argument('-i', '--dry-run', action='store_true', help='don\'t actually do it, but see what the command would do')
+        args = parser.parse_args(argv)
         client = self.manager.current_client()
-        client.bundle_store.full_cleanup(client.model)
+        client.bundle_store.full_cleanup(client.model, args.dry_run)
 
     def do_reset_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.

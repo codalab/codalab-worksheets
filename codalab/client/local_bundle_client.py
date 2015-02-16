@@ -253,8 +253,15 @@ class LocalBundleClient(BundleClient):
                 ))
             relevant_uuids = uuids
         check_has_all_permission_on_bundles(self.model, self._current_user(), relevant_uuids)
+
+        # Get data hashes
+        relevant_data_hashes = set(bundle.data_hash for bundle in self.model.batch_get_bundles(uuid=relevant_uuids) if bundle.data_hash)
+
         if not dry_run:
             self.model.delete_bundles(relevant_uuids)
+        # Clean out data from bundle store!
+        for data_hash in relevant_data_hashes:
+            self.bundle_store.cleanup(self.model, data_hash, dry_run)
         return relevant_uuids
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False):
