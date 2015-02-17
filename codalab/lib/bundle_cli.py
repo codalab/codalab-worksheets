@@ -640,7 +640,6 @@ class BundleCLI(object):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
         parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
-        self.add_wait_args(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -1074,6 +1073,7 @@ class BundleCLI(object):
 
     def do_new_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
+        parser.add_argument('-r', '--raw', action='store_true', help='print out the worksheet uuid')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
@@ -1083,7 +1083,10 @@ class BundleCLI(object):
         client.add_worksheet_item(uuid, worksheet_util.markup_item('Parent:'))  # Backpointer
         client.add_worksheet_item(uuid, worksheet_util.subworksheet_item(worksheet_uuid))  # Backpointer
         worksheet_info = client.get_worksheet_info(uuid, False)
-        print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
+        if args.raw:
+            print worksheet_info['uuid']
+        else:
+            print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     def do_add_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
@@ -1103,6 +1106,7 @@ class BundleCLI(object):
                 client.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(args.message))
 
     def do_work_command(self, argv, parser):
+        parser.add_argument('-r', '--raw', action='store_true', help='print out the worksheet uuid')
         parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
@@ -1110,10 +1114,16 @@ class BundleCLI(object):
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         if args.worksheet_spec:
             self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
-            print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
+            if args.raw:
+                print worksheet_info['uuid']
+            else:
+                print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
         else:
             if worksheet_info:
-                print 'Currently on worksheet %s.' % (self.worksheet_str(worksheet_info))
+                if args.raw:
+                    print worksheet_info['uuid']
+                else:
+                    print 'Currently on worksheet %s.' % (self.worksheet_str(worksheet_info))
             else:
                 print 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
 
