@@ -200,6 +200,7 @@ def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
     a uuid, then just return it directly.  This avoids an extra call to the
     client.
     '''
+    bundle_spec = bundle_spec.strip()
     if spec_util.UUID_REGEX.match(bundle_spec):
         bundle_uuid = bundle_spec  # Already uuid, don't need to look up specification
     else:
@@ -214,6 +215,7 @@ def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
     '''
     Same thing as get_bundle_uuid, but for worksheets.
     '''
+    worksheet_spec = worksheet_spec.strip()
     if spec_util.UUID_REGEX.match(worksheet_spec):
         worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
     else:

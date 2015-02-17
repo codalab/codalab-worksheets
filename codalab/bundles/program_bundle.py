@@ -11,5 +11,5 @@ from codalab.objects.metadata_spec import MetadataSpec
 class ProgramBundle(UploadedBundle):
     BUNDLE_TYPE = 'program'
     METADATA_SPECS = list(UploadedBundle.METADATA_SPECS)
-    METADATA_SPECS.append(MetadataSpec('architectures', set, 'viable architectures'))
-    METADATA_SPECS.append(MetadataSpec('language', set, 'which programming language was used'))
+    METADATA_SPECS.append(MetadataSpec('architectures', list, 'viable architectures'))
+    METADATA_SPECS.append(MetadataSpec('language', list, 'which programming language was used'))

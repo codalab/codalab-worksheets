@@ -159,7 +159,7 @@ class Worker(object):
             else:
                 print 'Unknown action: %s' % x.action
 
-            new_actions = getattr(bundle.metadata, 'actions', set()) | set([x.action])
+            new_actions = getattr(bundle.metadata, 'actions', []) + [x.action]
             db_update = {'metadata': {'actions': new_actions}}
             self.model.update_bundle(bundle, db_update)
         return len(bundle_actions) > 0

@@ -37,7 +37,7 @@ class RunBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'number of GPUs allowed for this run'))
     METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'submit job to this queue'))
 
-    METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
+    METADATA_SPECS.append(MetadataSpec('actions', list, 'actions performed on this run', generated=True))
 
     METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run (total)', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'amount of time (seconds) by user', generated=True, formatting='duration'))
