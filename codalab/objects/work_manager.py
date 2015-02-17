@@ -118,8 +118,9 @@ class Worker(object):
                     # (even if it's not the bundle's fault).
                     temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                     path_util.make_directory(temp_dir)
-                    status = {'bundle': bundle, 'success': False, 'failure_message': str(e)}
+                    status = {'bundle': bundle, 'success': False, 'failure_message': str(e), 'temp_dir': temp_dir}
                     print '=== INTERNAL ERROR: %s' % e
+                    started = True  # Force failing
                     traceback.print_exc()
             else:  # MakeBundle
                 started = True
@@ -244,9 +245,8 @@ class Worker(object):
             # we always only need to look back one-level at the dependencies,
             # not recurse.
             try:
-                if isinstance(bundle, MakeBundle):
-                    temp_dir = status.get('temp_dir')
-                else:
+                temp_dir = status.get('temp_dir')
+                if not temp_dir:
                     temp_dir = bundle.metadata.temp_dir
                 copy = isinstance(bundle, MakeBundle)
                 print >>sys.stderr, 'Worker.finalize_bundle: installing dependencies to %s (copy=%s)' % (temp_dir, copy)
