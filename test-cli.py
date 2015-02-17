@@ -12,6 +12,7 @@ Tests all the CLI functionality end-to-end.
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
+- Worker system
 '''
 
 cl = 'cl'
@@ -74,7 +75,7 @@ def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '--description', 'hello', '--tags', 'a', 'b'])
     check_equals('hosts', get_info(uuid, 'name'))
     check_equals('hello', get_info(uuid, 'description'))
-    check_equals("[u'a', u'b']", get_info(uuid, 'tags'))
+    check_contains(['a', 'b'], get_info(uuid, 'tags'))
     check_equals('ready', get_info(uuid, 'state'))
 
     # edit

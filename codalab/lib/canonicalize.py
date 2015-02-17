@@ -75,7 +75,7 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
         message = "name pattern '%s'" % (bundle_spec,)
     # Take the last bundle
     if last_index <= 0 or last_index > len(bundle_uuids):
-        raise UsageError('Index %d out of range, only %d bundles matched' % (last_index, len(bundle_uuids)))
+        raise UsageError('bundle spec %s doesn\'t match (want index %d out of %d bundles)' % (bundle_spec, last_index, len(bundle_uuids)))
     return bundle_uuids[last_index - 1]
 
 def get_current_location(bundle_store, uuid):
