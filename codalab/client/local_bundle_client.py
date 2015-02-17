@@ -142,8 +142,8 @@ class LocalBundleClient(BundleClient):
             construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash']}
         elif bundle_type == 'make' or bundle_type == 'run':
-            targets = { item['child_path'] : (item['parent_uuid'], item['parent_path'])
-                        for item in info['dependencies'] }
+            targets = [(item['child_path'], (item['parent_uuid'], item['parent_path']))
+                        for item in info['dependencies']]
             construct_args = {'targets': targets, 'command': info['command'],
                               'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash'], 'state': info['state']}
@@ -488,9 +488,7 @@ class LocalBundleClient(BundleClient):
                         new_metadata.pop(spec.key)
 
                 # Set the targets
-                targets = {}
-                for dep in new_dependencies:
-                    targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
+                targets = [(dep['child_path'], (dep['parent_uuid'], dep['parent_path'])) for dep in new_dependencies]
 
                 if dry_run:
                     new_bundle_uuid = None

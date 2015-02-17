@@ -207,7 +207,7 @@ class BundleCLI(object):
         '''
         Helper: items is a list of strings which are [<key>]:<target>
         '''
-        targets = {}
+        targets = []
         # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
         for item in items:
             if ':' in item:
@@ -221,7 +221,7 @@ class BundleCLI(object):
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            targets[key] = self.parse_target(client, worksheet_uuid, target)
+            targets.append((key, self.parse_target(client, worksheet_uuid, target)))
         return targets
 
     def print_table(self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''):
@@ -582,7 +582,8 @@ class BundleCLI(object):
         while True:
             m = pattern.match(command)
             if not m: break
-            i = str(len(target_spec)+1)
+            # Call bundles b1, b2, b3 by default.
+            i = 'b' + str(len(target_spec)+1)
             if ':' in m.group(2):
                 i, val = m.group(2).split(':', 1)
                 if i == '': i = val
@@ -827,7 +828,7 @@ class BundleCLI(object):
         # Dependencies (both hard dependencies and soft)
         def display_dependencies(label, deps):
             lines.append(label + ':')
-            for dep in sorted(deps, key=lambda dep: dep['child_path']):
+            for dep in deps:
                 child = dep['child_path']
                 parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))

@@ -285,7 +285,7 @@ def interpret_genpath(bundle_info, genpath):
 
     # Special cases
     if genpath == 'dependencies':
-        return ','.join(sorted(dep['parent_name'] for dep in bundle_info[genpath]))
+        return ','.join(sorted(dep['child_path'] + ':' + dep['parent_name'] for dep in bundle_info[genpath]))
     elif genpath.startswith('dependencies/'):
         # Look up the particular dependency
         _, name = genpath.split('/', 1)
