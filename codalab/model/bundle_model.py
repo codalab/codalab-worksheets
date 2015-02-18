@@ -435,17 +435,20 @@ class BundleModel(object):
                 connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
 
-    def delete_bundles(self, uuids):
-        '''
-        Delete bundles with the given uuids.
-        '''
+    def _check_not_running(self, uuids):
+        # Make sure we don't delete running bundles.
         with self.engine.begin() as connection:
-            # Make sure we don't delete running bundles.
             rows = connection.execute(select([cl_bundle.c.uuid, cl_bundle.c.state]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
             running_uuids = [r.uuid for r in rows if r.state == State.RUNNING]
             if len(running_uuids) > 0:
                 raise UsageError('Can\'t delete running bundles: %s' % ' '.join(running_uuids))
 
+    def delete_bundles(self, uuids):
+        '''
+        Delete bundles with the given uuids.
+        '''
+        self._check_not_running(uuids)
+        with self.engine.begin() as connection:
             # We must delete bundles rows in the opposite order that we create them
             # to avoid foreign-key constraint failures.
             connection.execute(cl_worksheet_item.delete().where(
@@ -462,6 +465,7 @@ class BundleModel(object):
             ))
 
     def remove_data_hash_references(self, uuids):
+        self._check_not_running(uuids)
         with self.engine.begin() as connection:
             connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
 
