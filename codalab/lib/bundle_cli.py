@@ -148,6 +148,7 @@ class BundleCLI(object):
         'p': 'print',
         'i': 'info',
         'e': 'edit',
+        's': 'search',
         'st': 'status',
     }
 
@@ -206,7 +207,7 @@ class BundleCLI(object):
         '''
         Helper: items is a list of strings which are [<key>]:<target>
         '''
-        targets = {}
+        targets = []
         # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
         for item in items:
             if ':' in item:
@@ -220,7 +221,7 @@ class BundleCLI(object):
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            targets[key] = self.parse_target(client, worksheet_uuid, target)
+            targets.append((key, self.parse_target(client, worksheet_uuid, target)))
         return targets
 
     def print_table(self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''):
@@ -493,23 +494,28 @@ class BundleCLI(object):
         print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
     def do_cp_command(self, argv, parser):
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('worksheet_spec', help='%s (copy to this worksheet)' % self.WORKSHEET_SPEC_FORMAT)
         args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
 
         # Source bundle
-        (source_client, source_spec) = self.parse_spec(args.bundle_spec)
-        # worksheet_uuid is only applicable if we're on the source client
-        if source_client != client: worksheet_uuid = None
-        source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
+        source_bundle_uuids = []
+        for bundle_spec in args.bundle_spec:
+            (source_client, source_spec) = self.parse_spec(bundle_spec)
+            # worksheet_uuid is only applicable if we're on the source client
+            if source_client != client: worksheet_uuid = None
+            source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
+            source_bundle_uuids.append(source_bundle_uuid)
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         # Copy!
-        self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
+        for source_bundle_uuid in source_bundle_uuids:
+            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
 
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid):
         '''
@@ -520,7 +526,7 @@ class BundleCLI(object):
         clients will be local, so it's not too expensive.
         '''
         # Check if the bundle already exists on the destination, then don't copy it
-        # (although metadata could be different)
+        # (although metadata could be different on source and destination).
         bundle = None
         try:
             bundle = dest_client.get_bundle_info(source_bundle_uuid)
@@ -530,15 +536,24 @@ class BundleCLI(object):
         source_info = source_client.get_bundle_info(source_bundle_uuid)
         source_desc = self.simple_bundle_str(source_info)
         if not bundle:
-            print "Copying %s..." % source_desc
+            if source_info['state'] not in [State.READY, State.FAILED]:
+                print 'Not copying %s because it has non-final state %s' % (source_desc, source_info['state'])
+            else:
+                print "Copying %s..." % source_desc
 
-            # Download from source
-            source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
-            info = source_client.get_bundle_info(source_bundle_uuid)
+                # Download from source
+                if source_info['data_hash']:
+                    source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
+                else:
+                    # Would want to pass in None, but the upload process expects real files, so use this placeholder.
+                    source_path = temp_path = None
+                info = source_client.get_bundle_info(source_bundle_uuid)
 
-            # Upload to dest
-            print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
-            if temp_path: path_util.remove(temp_path)
+                # Upload to dest
+                print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
+
+                # Clean up
+                if temp_path: path_util.remove(temp_path)
         else:
             print "%s already exists on destination client" % source_desc
 
@@ -567,7 +582,8 @@ class BundleCLI(object):
         while True:
             m = pattern.match(command)
             if not m: break
-            i = str(len(target_spec)+1)
+            # Call bundles b1, b2, b3 by default.
+            i = 'b' + str(len(target_spec)+1)
             if ':' in m.group(2):
                 i, val = m.group(2).split(':', 1)
                 if i == '': i = val
@@ -624,7 +640,6 @@ class BundleCLI(object):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
         parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
-        self.add_wait_args(parser)
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -651,6 +666,7 @@ class BundleCLI(object):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-f', '--force', action='store_true', help='delete bundle (DANGEROUS - breaking dependencies!)')
         parser.add_argument('-r', '--recursive', action='store_true', help='delete all bundles downstream that depend on this bundle')
+        parser.add_argument('-d', '--data-only', action='store_true', help='keep the bundle metadata, but remove the bundle contents')
         parser.add_argument('-i', '--dry-run', action='store_true', help='delete all bundles downstream that depend on this bundle')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
@@ -660,7 +676,7 @@ class BundleCLI(object):
         # Resolve all the bundles first, then delete (this is important since
         # some of the bundle specs are relative).
         bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
-        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.dry_run)
+        deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.data_only, args.dry_run)
         if args.dry_run:
             print 'This command would permanently remove the following bundles (not doing so yet):'
             bundle_infos = client.get_bundle_infos(deleted_uuids)
@@ -743,8 +759,7 @@ class BundleCLI(object):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-f', '--field', help='print out these fields', nargs='?')
         parser.add_argument('-r', '--raw', action='store_true', help='print out raw information (no rendering)')
-        parser.add_argument('-c', '--children', action='store_true', help="print only a list of this bundle's children")
-        parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle")
+        parser.add_argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle, children bundles, and host worksheets")
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
@@ -752,7 +767,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         for i, bundle_spec in enumerate(args.bundle_spec):
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
-            info = client.get_bundle_info(bundle_uuid, args.children)
+            info = client.get_bundle_info(bundle_uuid, args.verbose, args.verbose)
             if info is None:
                 raise UsageError('Invalid bundle uuid: %s' % bundle_uuid)
 
@@ -760,7 +775,7 @@ class BundleCLI(object):
                 # Display a single field (arbitrary genpath)
                 genpath = args.field
                 if worksheet_util.is_file_genpath(genpath):
-                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath)
+                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None)
                 else:
                     value = worksheet_util.interpret_genpath(info, genpath)
                 print value
@@ -769,9 +784,9 @@ class BundleCLI(object):
                 if i > 0:
                     print
                 self.print_basic_info(client, info, args.raw)
-                if args.children:
-                    self.print_children(info)
                 if args.verbose:
+                    self.print_children(info)
+                    self.print_host_worksheets(info)
                     self.print_contents(client, info)
 
     def print_basic_info(self, client, info, raw):
@@ -812,7 +827,7 @@ class BundleCLI(object):
         # Dependencies (both hard dependencies and soft)
         def display_dependencies(label, deps):
             lines.append(label + ':')
-            for dep in sorted(deps, key=lambda dep: dep['child_path']):
+            for dep in deps:
                 child = dep['child_path']
                 parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))
@@ -823,10 +838,14 @@ class BundleCLI(object):
         print '\n'.join(lines)
 
     def print_children(self, info):
-        if not info['children']: return
         print 'children:'
         for child in info['children']:
             print "  %s" % self.simple_bundle_str(child)
+
+    def print_host_worksheets(self, info):
+        print 'host_worksheets:'
+        for host_worksheet_info in info['host_worksheets']:
+            print "  %s" % self.simple_worksheet_str(host_worksheet_info)
 
     def print_contents(self, client, info):
         def wrap(string): return '=== ' + string + ' ==='
@@ -851,13 +870,13 @@ class BundleCLI(object):
         self.print_target_info(client, target, decorate=False)
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, target, decorate):
+    def print_target_info(self, client, target, decorate, maxlines=10):
         info = client.get_target_info(target, 1)
         if 'type' not in info:
             self.exit('Target doesn\'t exist: %s/%s' % target)
         if info['type'] == 'file':
             if decorate:
-                for line in client.head_target(target, 10):
+                for line in client.head_target(target, maxlines):
                     print line,
             else:
                 client.cat_target(target, sys.stdout)
@@ -1054,6 +1073,7 @@ class BundleCLI(object):
 
     def do_new_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
+        parser.add_argument('-r', '--raw', action='store_true', help='print out the worksheet uuid')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
@@ -1063,7 +1083,10 @@ class BundleCLI(object):
         client.add_worksheet_item(uuid, worksheet_util.markup_item('Parent:'))  # Backpointer
         client.add_worksheet_item(uuid, worksheet_util.subworksheet_item(worksheet_uuid))  # Backpointer
         worksheet_info = client.get_worksheet_info(uuid, False)
-        print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
+        if args.raw:
+            print worksheet_info['uuid']
+        else:
+            print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     def do_add_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
@@ -1083,6 +1106,7 @@ class BundleCLI(object):
                 client.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(args.message))
 
     def do_work_command(self, argv, parser):
+        parser.add_argument('-r', '--raw', action='store_true', help='print out the worksheet uuid')
         parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
@@ -1090,10 +1114,16 @@ class BundleCLI(object):
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         if args.worksheet_spec:
             self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
-            print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
+            if args.raw:
+                print worksheet_info['uuid']
+            else:
+                print 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
         else:
             if worksheet_info:
-                print 'Currently on worksheet %s.' % (self.worksheet_str(worksheet_info))
+                if args.raw:
+                    print worksheet_info['uuid']
+                else:
+                    print 'Currently on worksheet %s.' % (self.worksheet_str(worksheet_info))
             else:
                 print 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
 
@@ -1174,6 +1204,7 @@ class BundleCLI(object):
         for item in interpreted['items']:
             mode = item['mode']
             data = item['interpreted']
+            properties = item['properties']
             is_newline = (data == '')
             if mode == 'link' or mode == 'inline' or mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
@@ -1182,7 +1213,10 @@ class BundleCLI(object):
                             data = client.interpret_file_genpaths([data])[0]
                         print '[' + str(data) + ']'
                     elif mode == 'contents':
-                        self.print_target_info(client, data, decorate=True)
+                        maxlines = properties.get('maxlines')
+                        if maxlines:
+                            maxlines = int(maxlines)
+                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
                     else:
                         print data
             elif mode == 'record' or mode == 'table':
@@ -1405,9 +1439,10 @@ class BundleCLI(object):
         '''
         Removes data hash directories which are not used by any bundle.
         '''
-        parser.parse_args(argv)
+        parser.add_argument('-i', '--dry-run', action='store_true', help='don\'t actually do it, but see what the command would do')
+        args = parser.parse_args(argv)
         client = self.manager.current_client()
-        client.bundle_store.full_cleanup(client.model)
+        client.bundle_store.full_cleanup(client.model, args.dry_run)
 
     def do_reset_command(self, argv, parser):
         # This command only works if client is a LocalBundleClient.

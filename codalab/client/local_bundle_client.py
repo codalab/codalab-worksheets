@@ -85,7 +85,8 @@ class LocalBundleClient(BundleClient):
           'dependencies': [dep.to_dict() for dep in bundle.dependencies],
         }
         for dep in result['dependencies']:
-            dep['parent_name'] = self.model.get_names([dep['parent_uuid']])[0]
+            uuid = dep['parent_uuid']
+            dep['parent_name'] = self.model.get_bundle_names([uuid]).get(uuid)
 
         return result
 
@@ -141,8 +142,8 @@ class LocalBundleClient(BundleClient):
             construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash']}
         elif bundle_type == 'make' or bundle_type == 'run':
-            targets = { item['child_path'] : (item['parent_uuid'], item['parent_path'])
-                        for item in info['dependencies'] }
+            targets = [(item['child_path'], (item['parent_uuid'], item['parent_path']))
+                        for item in info['dependencies']]
             construct_args = {'targets': targets, 'command': info['command'],
                               'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash'], 'state': info['state']}
@@ -174,10 +175,12 @@ class LocalBundleClient(BundleClient):
             self.validate_user_metadata(bundle_subclass, metadata)
 
         # Upload the given path and record additional metadata from the upload.
-        (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
-        metadata.update(bundle_store_metadata)
-        # TODO: check that if the data hash already exists, it's the same as before.
-        construct_args['data_hash'] = data_hash
+        if path:
+            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
+            metadata.update(bundle_store_metadata)
+            precondition(construct_args.get('data_hash', data_hash) == data_hash, \
+                'Provided data_hash doesn\'t match: %s versus %s' % (construct_args.get('data_hash'), data_hash))
+            construct_args['data_hash'] = data_hash
         # Set the owner
         construct_args['owner_id'] = self._current_user_id()
         bundle = bundle_subclass.construct(**construct_args)
@@ -238,22 +241,43 @@ class LocalBundleClient(BundleClient):
         self.model.update_bundle(bundle, {'metadata': metadata})
 
     @authentication_required
-    def delete_bundles(self, uuids, force, recursive, dry_run):
-        uuids = set(uuids)
+    def delete_bundles(self, uuids, force, recursive, data_only, dry_run):
+        '''
+        Delete the bundles specified by |uuids|.
+        If |recursive|, add all bundles downstream too.
+        If |data_only|, only remove from the bundle store, not the bundle metadata.
+        '''
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
+        uuids_set = set(uuids)
+        relevant_uuids_set = set(relevant_uuids)
         if not recursive:
             # If any descendants exist, then we only delete uuids if force = True.
-            if (not force) and uuids != relevant_uuids:
-                relevant = self.model.batch_get_bundles(uuid=(relevant_uuids - uuids))
+            if (not force) and uuids_set != relevant_uuids_set:
+                relevant = self.model.batch_get_bundles(uuid=(set(relevant_uuids) - set(uuids)))
                 raise UsageError('Can\'t delete because the following bundles depend on %s:\n  %s' % (
                   uuids,
                   '\n  '.join(bundle.simple_str() for bundle in relevant),
                 ))
             relevant_uuids = uuids
         check_has_all_permission_on_bundles(self.model, self._current_user(), relevant_uuids)
+
+        # Get data hashes
+        relevant_data_hashes = set(bundle.data_hash for bundle in self.model.batch_get_bundles(uuid=relevant_uuids) if bundle.data_hash)
+
+        # Delete the actual bundle
         if not dry_run:
-            self.model.delete_bundles(relevant_uuids)
-        return list(relevant_uuids)
+            if data_only:
+                # Just remove references to the data hashes
+                self.model.remove_data_hash_references(relevant_uuids)
+            else:
+                # Actually delete the bundle
+                self.model.delete_bundles(relevant_uuids)
+
+        # Delete the data_hash
+        for data_hash in relevant_data_hashes:
+            self.bundle_store.cleanup(self.model, data_hash, relevant_uuids, dry_run)
+
+        return relevant_uuids
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False):
         return self.get_bundle_infos([uuid], get_children, get_host_worksheets).get(uuid)
@@ -283,16 +307,24 @@ class LocalBundleClient(BundleClient):
                 info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
 
         if get_children:
-            # TODO: make sure we have access to children.
-            # In the future, batch this.
+            result = self.model.get_children_uuids(uuids)
+            # Gather all children bundle uuids
+            children_uuids = [uuid for l in result.values() for uuid in l]
+            # Lookup bundle names
+            names = self.model.get_bundle_names(children_uuids)
+            # Fill in info
             for uuid, info in bundle_dict.items():
-                children_uuids = self.model.get_children_uuids(uuid)
-                names = self.model.get_names(children_uuids)
-                info['children'] = [{'uuid': uuid, 'metadata': {'name': name}} for uuid, name in zip(children_uuids, names)]
+                info['children'] = [{'uuid': uuid, 'metadata': {'name': names[uuid]}} for uuid in result[uuid]]
 
         if get_host_worksheets:
-            # TODO
-            pass
+            # bundle_uuids -> list of worksheet_uuids
+            result = self.model.get_host_worksheet_uuids(uuids)
+            # Gather all worksheet uuids
+            worksheet_uuids = [uuid for l in result.values() for uuid in l]
+            worksheets = dict((worksheet.uuid, worksheet) for worksheet in self.model.batch_get_worksheets(fetch_items=False, uuid=worksheet_uuids))
+            # Fill the info
+            for uuid, info in bundle_dict.items():
+                info['host_worksheets'] = [{'uuid': worksheet_uuid, 'name': worksheets[worksheet_uuid].name} for worksheet_uuid in result[uuid]]
 
         return bundle_dict
 
@@ -340,22 +372,67 @@ class LocalBundleClient(BundleClient):
         '''
         #print 'old_inputs: %s, new_inputs: %s, old_output: %s, new_output_name: %s' % (old_inputs, new_inputs, old_output, new_output_name)
 
-        # Build the graph.
+        # Return the worksheet items that occur right before the given bundle_uuid
+        worksheet_cache = {} # worksheet_uuid => items
+        def add_with_prelude_items(old_bundle_uuid, new_bundle_uuid):
+            '''
+            Add new_bundle_uuid to the current worksheet (along with the occurrences on the worksheet).
+            Also add the prelude (items that occur right before old_bundle_uuid on a worksheet).
+            Note that new_bundle_uuid might get multiple times.
+            '''
+            host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_bundle_uuid])[old_bundle_uuid]
+            if len(host_worksheet_uuids) > 0:
+                # Choose a single worksheet.
+                if worksheet_uuid in host_worksheet_uuids:
+                    # If current worksheet is one of them, favor that one.
+                    host_worksheet_uuid = worksheet_uuid
+                else:
+                    # Choose an arbitrary one
+                    host_worksheet_uuid = host_worksheet_uuids[0]
+
+                if host_worksheet_uuid in worksheet_cache:
+                    worksheet_info = worksheet_cache[host_worksheet_uuid]
+                else:
+                    worksheet_info = worksheet_cache[host_worksheet_uuid] = \
+                        self.get_worksheet_info(host_worksheet_uuid, fetch_items=True)
+
+                # Look for items that appear right before the old_bundle_uuid
+                collect_items = []
+                for item in worksheet_info['items']:
+                    (bundle_info, subworkheet_info, value_obj, type) = item
+                    if type == worksheet_util.TYPE_BUNDLE and bundle_info['uuid'] == old_bundle_uuid:
+                        # Ended in the target old_bundle_uuid, flush the prelude gathered so far.
+                        for item2 in collect_items:
+                            self.add_worksheet_item(worksheet_uuid, worksheet_util.convert_item_to_db(item2))
+                        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
+                        collect_items = []
+                    elif type == worksheet_util.TYPE_MARKUP and value_obj == '':
+                        collect_items = []
+                    elif type == worksheet_util.TYPE_BUNDLE:
+                        collect_items = []
+                    else:
+                        collect_items.append(item)
+
+        # Build the graph (get all the infos).
         # If old_output is given, look at ancestors of old_output until we
         # reached some depth.  If it's not given, we first get all the
         # descendants first, and then get their ancestors.
         infos = {}  # uuid -> bundle info
         if old_output:
-            bundle_uuids = set([old_output])
+            bundle_uuids = [old_output]
         else:
             bundle_uuids = self.model.get_self_and_descendants(old_inputs, depth=depth)
+        all_bundle_uuids = list(bundle_uuids) # should be infos.keys() in order
         for _ in range(depth):
-            new_bundle_uuids = set()
+            new_bundle_uuids = []
             for bundle_uuid in bundle_uuids:
                 if bundle_uuid in infos: continue  # Already visited
                 info = infos[bundle_uuid] = self.get_bundle_info(bundle_uuid)
                 for dep in info['dependencies']:
-                    new_bundle_uuids.add(dep['parent_uuid'])
+                    parent_uuid = dep['parent_uuid']
+                    if parent_uuid not in infos:
+                        new_bundle_uuids.append(parent_uuid)
+            all_bundle_uuids = new_bundle_uuids + all_bundle_uuids
             bundle_uuids = new_bundle_uuids
 
         # Make sure we have read access to all the bundles involved here.
@@ -411,19 +488,21 @@ class LocalBundleClient(BundleClient):
                         new_metadata.pop(spec.key)
 
                 # Set the targets
-                targets = {}
-                for dep in new_dependencies:
-                    targets[dep['child_path']] = (dep['parent_uuid'], dep['parent_path'])
+                targets = [(dep['child_path'], (dep['parent_uuid'], dep['parent_path'])) for dep in new_dependencies]
 
                 if dry_run:
                     new_bundle_uuid = None
                 else:
                     new_bundle_uuid = self.derive_bundle(new_info['bundle_type'], \
-                        targets, new_info['command'], new_metadata, worksheet_uuid if not shadow else None)
-                new_info['uuid'] = new_bundle_uuid
-                if shadow:
-                    self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
+                        targets, new_info['command'], new_metadata, None)
+                    # Add to worksheet
+                    if shadow:
+                        self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
+                    else:
+                        # Copy the markup and directives right before the old
+                        add_with_prelude_items(old_bundle_uuid, new_bundle_uuid)
 
+                new_info['uuid'] = new_bundle_uuid
                 plan.append((info, new_info))
                 downstream.add(old_bundle_uuid)
             else:
@@ -432,12 +511,16 @@ class LocalBundleClient(BundleClient):
             old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
             return new_bundle_uuid
 
+        # Put initial newline to delimit things
+        if not dry_run and not shadow:
+            self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
+
         if old_output:
             recurse(old_output)
         else:
             # Don't have a particular output we're targetting, so just create
             # new versions of all the uuids.
-            for uuid in infos: recurse(uuid)
+            for uuid in all_bundle_uuids: recurse(uuid)
         return plan
 
     #############################################################################
@@ -585,24 +668,23 @@ class LocalBundleClient(BundleClient):
         target_cache = {}
         responses = []
         for (bundle_uuid, genpath, post) in requests:
-            value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath)
+            value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath, post)
             #print 'interpret_file_genpaths', bundle_uuid, genpath, value
-            value = worksheet_util.apply_func(post, value)
             responses.append(value)
         return responses
 
     def resolve_interpreted_items(self, interpreted_items):
         """
-        Helper function.
-        Takes a list of interpreted worksheet items loops through them and depending
-        on the type will find genpath for bundle info being requested.
-
-        Returns as a full interpeted_items lists which can be easialy json or rpc
+        Called by the web interface.  Takes a list of interpreted worksheet
+        items (returned by worksheet_util.interpret_items) and fetches the
+        appropriate information, replacing the 'interpreted' field in each item.
+        The result can be serialized via JSON.
         """
         is_last_newline = False
         for item in interpreted_items:
             mode = item['mode']
             data = item['interpreted']
+            properties = item['properties']
             is_newline = (data == '')
             # if's in order of most frequent
             if mode == 'markup':
@@ -623,18 +705,16 @@ class LocalBundleClient(BundleClient):
                 if 'type' not in info:
                     pass
                 elif info['type'] == 'file':
-                    data = self.head_target(data, 10)
+                    data = self.head_target(data, int(properties.get('maxlines', 10)))
             elif mode == 'html':
                 data = self.head_target(data, None)
             elif mode == 'image':
                 path = self.get_target_path(data)
-                encoded = path_util.base64_encode(path)
-                data = encoded
+                data = path_util.base64_encode(path)
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 data = search_interpreted
             elif mode == 'worksheet':
-                #placeholder
                 pass
             else:
                 raise UsageError('Invalid display mode: %s' % mode)

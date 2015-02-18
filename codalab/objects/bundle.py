@@ -96,6 +96,8 @@ class Bundle(ORMObject):
         def process_dep(dep):
             parent = parent_dict[dep.parent_uuid]
             # Compute an absolute target and check that the dependency exists.
+            if not parent.data_hash:
+                raise UsageError('Parent %s does not have data hash' % parent)
             target = path_util.safe_join(
               bundle_store.get_location(parent.data_hash),
               dep.parent_path,

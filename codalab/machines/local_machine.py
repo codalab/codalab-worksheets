@@ -23,7 +23,7 @@ class LocalMachine(Machine):
         '''
         Start a bundle in the background.
         '''
-        if self.bundle != None: raise InternalError('Bundle already started')
+        if self.bundle != None: return None
         temp_dir = canonicalize.get_current_location(bundle_store, bundle.uuid)
         path_util.make_directory(temp_dir)
 
@@ -45,10 +45,6 @@ class LocalMachine(Machine):
             f.write('(%s) > stdout 2>stderr\n' % bundle.command)
         # Use stdbuf to turn off buffering so we get real-time feedback.
         process = subprocess.Popen("stdbuf -o0 bash " + script_file, shell=True)
-
-        #with path_util.chdir(temp_dir):
-            #with open('stdout', 'wb') as stdout, open('stderr', 'wb') as stderr:
-                #process = subprocess.Popen("stdbuf -o0 " + bundle.command, stdout=stdout, stderr=stderr, shell=True)
 
         self.bundle = bundle
         self.temp_dir = temp_dir

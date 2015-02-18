@@ -115,6 +115,7 @@ class BundleModel(object):
     def get_bundle(self, uuid):
         '''
         Retrieve a bundle from the database given its uuid.
+        Assume it's unique.
         '''
         bundles = self.batch_get_bundles(uuid=uuid)
         if not bundles:
@@ -123,9 +124,10 @@ class BundleModel(object):
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
 
-    def get_names(self, uuids):
+    def get_bundle_names(self, uuids):
         '''
-        Return the names of the bundle with given uuids.
+        Fetch the bundle names of the given uuids.
+        Return {uuid: name, ...}
         '''
         if len(uuids) == 0:
             return []
@@ -137,49 +139,57 @@ class BundleModel(object):
                 and_(cl_bundle_metadata.c.metadata_key == 'name',
                      cl_bundle_metadata.c.bundle_uuid.in_(uuids))
             )).fetchall()
-            names = dict((row.bundle_uuid, row.metadata_value) for row in rows)
-            return [names.get(uuid) for uuid in uuids]
+            return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
-    def get_parents(self, uuid):
+    def get_children_uuids(self, uuids):
         '''
-        Get all bundles that the bundle with the given uuid depends on.
+        Get all bundles that depend on the bundle with the given uuids.
+        Return {parent_uuid: [child_uuid, ...], ...}
         '''
         with self.engine.begin() as connection:
             rows = connection.execute(select([
-              cl_bundle_dependency.c.parent_uuid
-            ]).where(
-              cl_bundle_dependency.c.child_uuid == uuid
-            )).fetchall()
-        uuids = set([row.parent_uuid for row in rows])
-        return self.batch_get_bundles(uuid=uuids)
+              cl_bundle_dependency.c.parent_uuid,
+              cl_bundle_dependency.c.child_uuid,
+            ]).where(cl_bundle_dependency.c.parent_uuid.in_(uuids))).fetchall()
+        result = dict((uuid, []) for uuid in uuids)
+        for row in rows:
+            result[row.parent_uuid].append(row.child_uuid)
+        return result
 
-    def get_children_uuids(self, uuid):
+    def get_host_worksheet_uuids(self, bundle_uuids):
         '''
-        Get all bundles that depend on the bundle with the given uuid.
-        uuid may also be a list, set, or tuple, in which case we return all
-        bundles that depend on any bundle in that collection.
+        Return list of worksheet uuids that contain the given bundle_uuids.
+        bundle_uuids = ['0x12435']
+        Return {'0x12435': [host_worksheet_uuid, ...], ...}
         '''
-        if isinstance(uuid, (list, set, tuple)):
-            clause = cl_bundle_dependency.c.parent_uuid.in_(uuid)
-        else:
-            clause = (cl_bundle_dependency.c.parent_uuid == uuid)
         with self.engine.begin() as connection:
             rows = connection.execute(select([
-              cl_bundle_dependency.c.child_uuid
-            ]).where(clause)).fetchall()
-        return set([row.child_uuid for row in rows])
+              cl_worksheet_item.c.worksheet_uuid,
+              cl_worksheet_item.c.bundle_uuid,
+            ]).where(cl_worksheet_item.c.bundle_uuid.in_(bundle_uuids))).fetchall()
+        result = dict((uuid, []) for uuid in bundle_uuids)
+        for row in rows:
+            result[row.bundle_uuid].append(row.worksheet_uuid)
+        return result
 
     def get_self_and_descendants(self, uuids, depth):
         '''
         Get all bundles that depend on bundles with the given uuids.
         depth = 1 gets only children
         '''
-        frontier = set(uuids)
-        visited = set(frontier)
+        frontier = uuids
+        visited = list(frontier)
         while len(frontier) > 0 and depth > 0:
-            new_frontier = self.get_children_uuids(frontier)
-            frontier = new_frontier - visited
-            visited.update(frontier)
+            # Get children of all nodes in frontier
+            result = self.get_children_uuids(frontier)
+            new_frontier = []
+            for l in result.values():
+                for uuid in l:
+                    if uuid in visited:
+                        continue
+                    new_frontier.append(uuid)
+                    visited.append(uuid)
+            frontier = new_frontier
             depth -= 1
         return visited
 
@@ -450,6 +460,10 @@ class BundleModel(object):
             connection.execute(cl_bundle.delete().where(
                 cl_bundle.c.uuid.in_(uuids)
             ))
+
+    def remove_data_hash_references(self, uuids):
+        with self.engine.begin() as connection:
+            connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
 
     #############################################################################
     # Worksheet-related model methods follow!

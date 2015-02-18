@@ -60,13 +60,17 @@ class BundleRPCServer(FileServer):
         upload the unzipped directory. Return the new bundle's id.
         Note: delete the file_uuid file, because it's temporary!
         '''
-        zip_path = self.file_paths[file_uuid]  # Note: cheat and look at file_server's data
-        precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
-        container_path = tempfile.mkdtemp()  # Make temporary directory
-        path = zip_util.unzip(zip_path, container_path)  # Unzip
+        if file_uuid:
+            zip_path = self.file_paths[file_uuid]  # Note: cheat and look at file_server's data
+            precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
+            container_path = tempfile.mkdtemp()  # Make temporary directory
+            path = zip_util.unzip(zip_path, container_path)  # Unzip
+        else:
+            path = None
         result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks)
-        path_util.remove(container_path)  # Remove temporary directory
-        self.finalize_file(file_uuid, True)  # Remove temporary zip
+        if file_uuid:
+            path_util.remove(container_path)  # Remove temporary directory
+            self.finalize_file(file_uuid, True)  # Remove temporary zip
         return result
 
     def open_target(self, target):

@@ -780,6 +780,13 @@ To compare two worksheets:
 
     vimdiff <(cl print -r worksheet1) <(cl print -r worksheet2)
 
+To replace the contents of worksheet2 with worksheet1 (be careful when we do
+this, since all the contents of worksheet1 are removed, although the bundles
+themselves are not removed and will be orphaned):
+
+    cl wedit -f /dev/null -w worksheet2
+    cl wcp worksheet1 worksheet2
+
 ## Editing worksheets
 
 By default, you will use `cl wedit` to edit worksheets.  However, it is

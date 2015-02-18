@@ -26,12 +26,13 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
-                if isinstance(value, int) and spec.type == float:  # cast int to float (easy)
+                if spec.type == float and isinstance(value, int):
+                    # cast int to float
                     value = float(value)
-                if not isinstance(value, spec.type):
+                if value != None and not isinstance(value, spec.type):
                     raise UsageError(
-                      'Metadata value for %s should be of type %s, was %s' %
-                      (spec.key, spec.type, type(value))
+                      'Metadata value for %s should be of type %s, was %s (type %s)' %
+                      (spec.key, spec.type, value, type(value))
                     )
             elif not spec.generated:
                 raise UsageError('Missing metadata key: %s' % (spec.key,))
@@ -41,8 +42,6 @@ class Metadata(object):
         Set this Metadata object's key to be the given value. Record the key.
         '''
         self._metadata_keys.add(key)
-        if isinstance(value, (set, list, tuple)):
-            value = set(value)
         setattr(self, key, value)
 
     @classmethod
@@ -53,7 +52,7 @@ class Metadata(object):
         metadata_dict = {}
         metadata_spec_dict = {}
         for spec in metadata_specs:
-            if spec.type == set or not spec.generated:
+            if spec.type == list or not spec.generated:
                 metadata_dict[spec.key] = spec.get_constructor()()
             metadata_spec_dict[spec.key] = spec
         for row in rows:
@@ -64,9 +63,10 @@ class Metadata(object):
             if key not in metadata_spec_dict:
                 #print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
                 continue  # Somewhat dangerous since we might lose information
+
             spec = metadata_spec_dict[key]
-            if spec.type == set:
-                metadata_dict[key].add(value)
+            if spec.type == list:
+                metadata_dict[key].append(value)
             else:
                 if metadata_dict.get(key):
                     raise UsageError(
@@ -88,7 +88,8 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
-                values = value if spec.type == set else (value,)
+                if value == None: continue
+                values = value if spec.type == list else (value,)
                 for value in values:
                     result.append({
                       'metadata_key': unicode(spec.key),
@@ -103,6 +104,6 @@ class Metadata(object):
         '''
         items = [(key, getattr(self, key)) for key in self._metadata_keys]
         return {
-          key: list(value) if isinstance(value, (list, set, tuple)) else value
+          key: value
           for (key, value) in items
         }

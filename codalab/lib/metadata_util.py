@@ -35,12 +35,19 @@ def add_arguments(bundle_subclass, metadata_keys, parser):
             if spec.short_key:
                 args.append('-%s' % spec.short_key)
             args.append('--%s' % (spec.key))
+            nargs = None
+            type = spec.type
+            if spec.type == list:
+                nargs = '*'
+                type = str
+            elif spec.type == basestring:
+                type = str
             kwargs = {
                 'dest': metadata_key_to_argument(spec.key,),
                 'metavar': spec.metavar,
-                'nargs': ('*' if spec.type == set else None),
+                'nargs': nargs,
                 'help': spec.description + help_suffix,
-                'type': str if spec.type == basestring else spec.type
+                'type': type,
             }
             parser.add_argument(*args, **kwargs)
 
@@ -88,7 +95,7 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
     ]))
     for spec in bundle_subclass.get_user_defined_metadata():
         initial_value = initial_metadata.get(spec.key) or ''
-        if spec.type == set:
+        if spec.type == list:
             initial_value = ' '.join(initial_value or [])
         template_lines.append('')
         template_lines.append('// %s' % spec.description)
@@ -108,19 +115,28 @@ def parse_metadata_form(bundle_subclass, form_result):
     result = {}
     for line in form_result:
         line = line.strip()
-        if line and not line.startswith('//'):
+        if line != '' and not line.startswith('//'):
             if ':' not in line:
                 # TODO: don't delete everything; go back to the editor and show the error message
                 raise UsageError('Malformatted line (no colon): %s' % (line,))
             (metadata_key, remainder) = line.split(':', 1)
+            remainder = remainder.strip()
+            if remainder == '':
+                remainder = None
+
             # TODO: handle multiple lines
             if metadata_key not in metadata_types:
                 raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
             metadata_type = metadata_types[metadata_key]
-            if metadata_type == set:
-                result[metadata_key] = remainder.replace(',', ' ').strip().split()
+            if metadata_type == list:
+                result[metadata_key] = remainder.split() if remainder else []
+            elif metadata_type == basestring:
+                result[metadata_key] = remainder
             else:
-                result[metadata_key] = remainder.strip()
+                try:
+                    result[metadata_key] = metadata_type(remainder) if remainder != None else None
+                except:
+                    raise UsageError('Invalid value %s for type %s' % (remainder, metadata_type))
     if 'name' not in result:
         raise UsageError('No name specified; aborting')
     return result

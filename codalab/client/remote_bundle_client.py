@@ -155,22 +155,29 @@ class RemoteBundleClient(BundleClient):
 
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
         # URLs can be directly passed to the local client.
-        if not isinstance(path, list) and path_util.path_is_url(path):
+        if path and not isinstance(path, list) and path_util.path_is_url(path):
             return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks)
 
         # First, zip path up (temporary local zip file).
-        zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks)
-        # Copy it up to the server (temporary remote zip file)
-        with open(zip_path, 'rb') as source:
-            remote_file_uuid = self.open_temp_file()
-            dest = RPCFileHandle(remote_file_uuid, self.proxy)
-            # FileServer does not expose an API for forcibly flushing writes, so
-            # we rely on closing the file to flush it.
-            file_util.copy(source, dest, autoflush=False, print_status=True)
-            dest.close()
+        if path:
+            zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks)
+            # Copy it up to the server (temporary remote zip file)
+            with open(zip_path, 'rb') as source:
+                remote_file_uuid = self.open_temp_file()
+                dest = RPCFileHandle(remote_file_uuid, self.proxy)
+                # FileServer does not expose an API for forcibly flushing writes, so
+                # we rely on closing the file to flush it.
+                file_util.copy(source, dest, autoflush=False, print_status=True)
+                dest.close()
+        else:
+            remote_file_uuid = None
+            zip_path = None
+
         # Finally, install the zip file (this will be in charge of deleting that zip file).
         result = self.upload_bundle_zip(remote_file_uuid, info, worksheet_uuid, follow_symlinks)
-        path_util.remove(zip_path)  # Remove local zip
+
+        if zip_path:
+            path_util.remove(zip_path)  # Remove local zip
         return result
 
     def open_target_handle(self, target):

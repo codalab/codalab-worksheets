@@ -86,11 +86,10 @@ class Worker(object):
         parent_dict = {parent.uuid: parent for parent in parents}
         return parent_dict
 
-
     def start_bundle(self, bundle):
         '''
         Run the given bundle using an available Machine.
-        Return 
+        Return whether something was started.
         '''
         # Check that we're running a bundle in the RUNNING state.
         state_message = 'Unexpected bundle state: %s' % (bundle.state,)
@@ -101,7 +100,6 @@ class Worker(object):
         # Run the bundle.
         with self.profile('Running bundle...'):
             started = False
-            exception = None
             if isinstance(bundle, RunBundle):
                 try:
                     # Get the username of the bundle
@@ -112,13 +110,17 @@ class Worker(object):
                         username = str(bundle.owner_id)
 
                     status = self.machine.start_bundle(bundle, self.bundle_store, self.get_parent_dict(bundle), username)
+                    if status != None:
+                        started = True
+
                 except Exception as e:
                     # If there's an exception, we just make the bundle fail
                     # (even if it's not the bundle's fault).
                     temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                     path_util.make_directory(temp_dir)
-                    status = {'bundle': bundle, 'success': False, 'failure_message': str(e)}
+                    status = {'bundle': bundle, 'success': False, 'failure_message': str(e), 'temp_dir': temp_dir}
                     print '=== INTERNAL ERROR: %s' % e
+                    started = True  # Force failing
                     traceback.print_exc()
             else:  # MakeBundle
                 started = True
@@ -128,11 +130,12 @@ class Worker(object):
             if isinstance(bundle, MakeBundle):
                 temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                 path_util.make_directory(temp_dir)
-                status.update({'success': True})
+                status = {'bundle': bundle, 'success': True, 'temp_dir': temp_dir}
 
             # Update database
-            self.update_running_bundle(status)
-            return True
+            if started:
+                self.update_running_bundle(status)
+            return started
 
     def _safe_get_bundle(self, uuid):
         try:
@@ -157,7 +160,7 @@ class Worker(object):
             else:
                 print 'Unknown action: %s' % x.action
 
-            new_actions = bundle.metadata.actions | set([x.action])
+            new_actions = getattr(bundle.metadata, 'actions', []) + [x.action]
             db_update = {'metadata': {'actions': new_actions}}
             self.model.update_bundle(bundle, db_update)
         return len(bundle_actions) > 0
@@ -195,7 +198,7 @@ class Worker(object):
         running_bundles = self.model.batch_get_bundles(state=State.RUNNING)
         for bundle in running_bundles:
             if bundle.uuid in status_bundle_uuids: continue
-            if Command.KILL not in bundle.metadata.actions: continue
+            if Command.KILL not in getattr(bundle.metadata, 'actions', set()): continue
             status = {'state': State.FAILED, 'bundle': bundle}
             print 'work_manager: %s (%s): killing zombie %s' % (bundle.uuid, bundle.state, status)
             self.update_running_bundle(status)
@@ -231,6 +234,8 @@ class Worker(object):
             if value != None:
                 metadata[spec.key] = value
 
+        #print 'update_running_bundle', status
+
         # See if the bundle is completed.
         success = status.get('success')
         if success != None:
@@ -240,7 +245,9 @@ class Worker(object):
             # we always only need to look back one-level at the dependencies,
             # not recurse.
             try:
-                temp_dir = bundle.metadata.temp_dir
+                temp_dir = status.get('temp_dir')
+                if not temp_dir:
+                    temp_dir = bundle.metadata.temp_dir
                 copy = isinstance(bundle, MakeBundle)
                 print >>sys.stderr, 'Worker.finalize_bundle: installing dependencies to %s (copy=%s)' % (temp_dir, copy)
                 bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=copy)
@@ -249,6 +256,8 @@ class Worker(object):
                 db_update['data_hash'] = data_hash
                 metadata.update(new_metadata)
             except Exception as e:
+                print '=== INTERNAL ERROR: %s' % e
+                traceback.print_exc()
                 success = False
                 metadata['failure_message'] = e.message
 

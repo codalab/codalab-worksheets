@@ -37,7 +37,7 @@ class RunBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'number of GPUs allowed for this run'))
     METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'submit job to this queue'))
 
-    METADATA_SPECS.append(MetadataSpec('actions', set, 'actions performed on this run', generated=True))
+    METADATA_SPECS.append(MetadataSpec('actions', list, 'actions performed on this run', generated=True))
 
     METADATA_SPECS.append(MetadataSpec('time', float, 'amount of time (seconds) used by this run (total)', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'amount of time (seconds) by user', generated=True, formatting='duration'))
@@ -57,14 +57,14 @@ class RunBundle(NamedBundle):
     def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):
         if not uuid: uuid = spec_util.generate_uuid()
         # Check that targets does not include both keyed and anonymous targets.
-        if len(targets) > 1 and '' in targets:
+        if len(targets) > 1 and any(key == '' for key, value in targets):
             raise UsageError('Must specify keys when packaging multiple targets!')
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
 
         # List the dependencies of this bundle on its targets.
         dependencies = []
-        for (child_path, (parent_uuid, parent_path)) in targets.iteritems():
+        for (child_path, (parent_uuid, parent_path)) in targets:
             dependencies.append({
               'child_uuid': uuid,
               'child_path': child_path,
