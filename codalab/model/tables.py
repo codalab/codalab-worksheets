@@ -134,6 +134,7 @@ user_group = Table(
   sqlite_autoincrement=True,
 )
 
+# Permissions for worksheets
 group_object_permission = Table(
   'group_object_permission',
   db_metadata,
