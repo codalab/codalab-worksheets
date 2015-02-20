@@ -43,8 +43,11 @@ class LocalMachine(Machine):
         with open(script_file, 'w') as f:
             f.write("cd %s &&\n" % temp_dir)
             f.write('(%s) > stdout 2>stderr\n' % bundle.command)
-        # Use stdbuf to turn off buffering so we get real-time feedback.
-        process = subprocess.Popen("stdbuf -o0 bash " + script_file, shell=True)
+        # Use stdbuf (if it exists) to turn off buffering so we get real-time feedback.
+        if os.path.exists('/usr/bin/stdbuf'):
+            process = subprocess.Popen("/usr/bin/stdbuf -o0 bash " + script_file, shell=True)
+        else:
+            process = subprocess.Popen("bash " + script_file, shell=True)
 
         self.bundle = bundle
         self.temp_dir = temp_dir
