@@ -718,8 +718,27 @@ class LocalBundleClient(BundleClient):
                 pass
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
-
+            # assign the interpreted from the processed data
             item['interpreted'] = data
+
+            # we need to get check if this is a run and we can get teh stdout and stderr
+            if 'bundle_info' in item.keys():  # making sure this is a bundle, not markdown or something else
+                for info in item['bundle_info']:
+                    if info['bundle_type'] == 'run':
+                        target = (info['uuid'], '')
+                        target_info = self.get_target_info(target, 2)
+                        target_info['stdout'] = None
+                        target_info['stderr'] = None
+                        # if we have std out or err update it.
+                        contents = target_info.get('contents')
+                        if contents:
+                            for item in contents:
+                                if item['name'] in ['stdout', 'stderr']:
+                                    lines = self.head_target((info['uuid'], item['name']), 100)
+                                    if lines:
+                                        lines = ' '.join(lines)
+                                        info[item['name']] = lines
+
             is_last_newline = is_newline
 
         return interpreted_items
@@ -832,7 +851,7 @@ class LocalBundleClient(BundleClient):
         # Lookup group and user
         group_info = self._get_group_info(group_spec, need_admin=True)
         user_info = self.user_info(user_spec)
-            
+
         # Look to see what the user's current status is in the group.
         members = self.model.batch_get_user_in_group(user_id=user_info['id'], group_uuid=group_info['uuid'])
         if len(members) > 0:
