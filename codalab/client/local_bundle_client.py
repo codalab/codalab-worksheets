@@ -724,7 +724,7 @@ class LocalBundleClient(BundleClient):
             # we need to get check if this is a run and we can get teh stdout and stderr
             if 'bundle_info' in item.keys():  # making sure this is a bundle, not markdown or something else
                 for info in item['bundle_info']:
-                    if info['bundle_type'] == 'run':
+                    if isinstance(info, dict) and info['bundle_type'] == 'run':
                         target = (info['uuid'], '')
                         target_info = self.get_target_info(target, 2)
                         target_info['stdout'] = None
