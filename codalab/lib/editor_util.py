@@ -7,17 +7,6 @@ import tempfile
 from codalab.lib import path_util
 from codalab.lib.codalab_manager import CodaLabManager
 
-
-def is_installed(name):
-    try:
-        devnull = open(os.devnull)
-        subprocess.Popen([name], stdout=devnull, stderr=devnull)
-    except OSError as e:
-        if e.errno == os.errno.ENOENT:
-            return False
-    return True
-
-
 def find_default_editor():
     manager = CodaLabManager()
     editor = os.getenv('EDITOR')
@@ -27,7 +16,7 @@ def find_default_editor():
     if sys.platform == 'win32':
         editor = 'notepad'
     else:
-        editor = 'vim' if is_installed('vim') else 'vi'
+        editor = 'vi'
     return editor
 
 def open_and_edit(suffix, template=''):
