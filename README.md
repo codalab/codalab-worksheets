@@ -49,7 +49,7 @@ keep the following analogy in mind:
 
 - shell = CodaLab session (usually identified by the process ID of the shell)
 - drive = CodaLab instance (e.g., `http://localhost:2800`)
-- directory = CodaLab worksheet (e.g., `home`)
+- directory = CodaLab worksheet (e.g., `codalab`)
 - file = CodaLab bundle (e.g., `stanford-corenlp`)
 - line in a file = CodaLab target (e.g., `stanford-corenlp/src`)
 
@@ -80,7 +80,7 @@ current session (like running `pwd`):
 
 Your session is associated with a session ID, which identifies the current
 address/worksheet pair (usually, by default, address will be 'local' and
-worksheet is 'home').
+worksheet is 'codalab').
 
 For reference, your CodaLab settings here:
 
@@ -171,7 +171,7 @@ Look inside the bundle:
     cl info sort-run
 
 You'll see that like any bundle, it consists of a set of files and directories.
-Under *provenance*, you will see two files (*keys*), `sort.py` and `input`,
+Under *dependencies*, you will see two files (*keys*), `sort.py` and `input`,
 which point to the *targets* `sort.py` and `a.txt`.
 
 Note that runs need not have dependencies.  Here's a trivial run bundle that
@@ -282,7 +282,7 @@ fly from the bundle DAG.
 
 ### Worksheet basics
 
-So far, every bundle we've created has been added to the `home` worksheet.
+So far, every bundle we've created has been added to the `codalab` worksheet.
 Recall that a worksheet is like a directory, but we can do much more.  We can
 edit the worksheet:
 
@@ -299,16 +299,16 @@ We can add another worksheet:
 
     cl new scratch
 
-This adds a link from `home` to `scratch` and a link from `scratch` to `home`.
+This adds a link from `codalab` to `scratch` and a link from `scratch` to `codalab`.
 A worksheet on another worksheet, like a bundle, is just a pointer.  The container
 worksheet does not "own" its items.  To see this:
 
-    cl print home
+    cl print codalab
     cl print scratch
 
 We can switch between worksheets (analogous to switching directories using `cd`):
 
-    cl work home
+    cl work codalab
     cl work scratch
 
 We can add items (text or bundles) to a worksheet:
@@ -340,7 +340,7 @@ a large CodaLab system with many users, names are not unique, not even within
 the same worksheet.  A *bundle_spec* refers to the string that identifies a
 bundle, importantly given the context (address, current worksheet).
 
-There are finally a number of other ways to
+There are finally a number of other ways to reference bundles:
 
 - UUID (`0x3739691aef9f4b07932dc68f7db82de2`): this should match at most one
   bundle.
@@ -365,7 +365,7 @@ depend on the bundles you just created.
 
 ### Displaying worksheets
 
-A worksheet contain an ordered list of *items*, which are either bundles,
+A worksheet contains an ordered list of *items*, which are either bundles,
 worksheets, text, and *directives* (so far, we've seen only the first three).
 Directives tell the `cl print` command how to render bundle items.
 
@@ -516,15 +516,17 @@ So far, we have been doing everything locally, but one advantage of CodaLab is
 to have a centralized instance so that both the data and the computational
 resources can be shared and scaled.
 
+In the following, you can use `codalab` for `<username>`.
+
 ### Connecting to an existing server
 
 Usually, a CodaLab instance will already be set up and you can just connect to
 it directly.  For example, suppose a CodaLab instance is running at
 `http://example.com:2800`.  Then you can connect to it by typing:
 
-    cl work http://example.com:2800::home
+    cl work http://example.com:2800::<username>
 
-This sets your current worksheet to `home` (think directory in the filesystem
+This sets your current worksheet to `<username>` (think directory in the filesystem
 analogy) on the remote machine (think drive).  The general form is:
 
     cl work <address>::<worksheet>
@@ -535,7 +537,7 @@ It is convenient to create an alias so you don't have to type the address every 
 
 so you now just need to type:
 
-    cl work ex::home
+    cl work ex::<username>
 
 ### Starting your own server
 
@@ -555,12 +557,12 @@ will have a bad security vulnerability.
 
 Now we can connect to this server:
 
-    cl work http://localhost:2800::home
+    cl work http://localhost:2800::<username>
 
 or
 
     cl alias localhost http://localhost:2800
-    cl work localhost::home
+    cl work localhost::<username>
 
 This will prompt you for your password.  By default, the username is "root" and
 the password is "".
@@ -794,13 +796,13 @@ convenient to just keep a text editor open.  Here's one way to do this.
 
 1. Save the contents of a worksheet to a local file:
 
-        cl print -r home > home.ws
+        cl print -r codalab > codalab.ws
 
-2. Edit `home.ws`.
+2. Edit `codalab.ws`.
 
 3. Save the worksheet back into CodaLab:
 
-        cl wedit home -f home.ws
+        cl wedit codalab -f codalab.ws
 
 It is useful to define editor macros to execute the first and third commands.
 For example, in vim, you could define a *save* and *load* command by adding the
