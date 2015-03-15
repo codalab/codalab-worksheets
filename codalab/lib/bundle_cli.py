@@ -1150,7 +1150,7 @@ class BundleCLI(object):
         else:
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
-                lines = [line.strip() for line in open(args.file).readlines()]
+                lines = [line.rstrip() for line in open(args.file).readlines()]
             else:
                 lines = worksheet_util.request_lines(worksheet_info, client)
 
