@@ -281,7 +281,11 @@ class BundleCLI(object):
         return (self.manager.client(address), spec)
 
     def parse_client_worksheet_uuid(self, spec):
-        if not spec:
+        '''
+        Return the worksheet referred to by |spec|.
+        '''
+        if not spec or spec == '.':
+            # Empty spec, just return current worksheet.
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
@@ -1399,8 +1403,8 @@ class BundleCLI(object):
         '''
         Change the owner of bundles.
         '''
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('user_spec', help='username')
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)

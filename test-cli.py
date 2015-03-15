@@ -95,7 +95,7 @@ def test():
     run_command([cl, 'rm', '--data-only', uuid])
     check_equals('None', get_info(uuid, 'data_hash'))
     run_command([cl, 'rm', uuid])
-add_test('upload', test)
+add_test('upload1', test)
 
 def test():
     # Upload two files
@@ -107,6 +107,13 @@ def test():
     # Cleanup
     run_command([cl, 'rm', uuid, uuid2])
 add_test('upload2', test)
+
+def test():
+    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    run_command([cl, 'cp', uuid, '.'])  # Duplicate
+    run_command([cl, 'rm', uuid], 1)  # should fail
+    run_command([cl, 'rm', '-f', uuid])  # force it
+add_test('rm', test)
 
 def test():
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])

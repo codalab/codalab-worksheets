@@ -261,6 +261,13 @@ class LocalBundleClient(BundleClient):
             relevant_uuids = uuids
         check_has_all_permission_on_bundles(self.model, self._current_user(), relevant_uuids)
 
+        # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
+        if not force:
+            result = self.model.get_host_worksheet_uuids(relevant_uuids)
+            for uuid, host_worksheet_uuids in result.items():
+                if len(host_worksheet_uuids) > 1:
+                    raise UsageError('Bundle %s appears in multiple worksheets: %s, not deleting' % (uuid, host_worksheet_uuids))
+
         # Get data hashes
         relevant_data_hashes = set(bundle.data_hash for bundle in self.model.batch_get_bundles(uuid=relevant_uuids) if bundle.data_hash)
 
