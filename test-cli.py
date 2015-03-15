@@ -77,6 +77,7 @@ def test():
     check_equals('hello', get_info(uuid, 'description'))
     check_contains(['a', 'b'], get_info(uuid, 'tags'))
     check_equals('ready', get_info(uuid, 'state'))
+    check_equals('ready\thello', get_info(uuid, 'state,description'))
 
     # edit
     run_command([cl, 'edit', uuid, '--name', 'hosts2'])

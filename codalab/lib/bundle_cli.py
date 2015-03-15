@@ -746,7 +746,7 @@ class BundleCLI(object):
                 else:
                     return info.get(col, info['metadata'].get(col))
                     
-            columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
+            columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'bundle_type', 'owner', 'created', 'data_size', 'state')
             post_funcs = {'uuid': self.UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1, 'ref': 1}
             bundle_dicts = [
@@ -772,13 +772,15 @@ class BundleCLI(object):
                 raise UsageError('Invalid bundle uuid: %s' % bundle_uuid)
 
             if args.field:
-                # Display a single field (arbitrary genpath)
-                genpath = args.field
-                if worksheet_util.is_file_genpath(genpath):
-                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None)
-                else:
-                    value = worksheet_util.interpret_genpath(info, genpath)
-                print value
+                # Display individual fields (arbitrary genpath)
+                values = []
+                for genpath in args.field.split(','):
+                    if worksheet_util.is_file_genpath(genpath):
+                        value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None)
+                    else:
+                        value = worksheet_util.interpret_genpath(info, genpath)
+                    values.append(value)
+                print '\t'.join(map(str, values))
             else:
                 # Display all the fields
                 if i > 0:
