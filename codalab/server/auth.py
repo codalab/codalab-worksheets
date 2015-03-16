@@ -7,7 +7,7 @@ import urllib
 import urllib2
 from base64 import encodestring
 
-from codalab.common import UsageError
+from codalab.common import UsageError, PermissionError
 
 ROOT_USER_NAME = 'codalab'
 ROOT_USER_ID = '0'
@@ -158,7 +158,7 @@ class OAuthHandler(object):
         '''
         if grant_type == 'credentials':
             if len(username) < self.min_username_length or len(key) < self.min_key_length:
-                raise UsageError("Invalid username or password.")
+                raise PermissionError("Invalid username or password.")
             return self._generate_new_token(username, key)
         if grant_type == 'refresh_token':
             return self._refresh_token(username, key)

@@ -9,6 +9,7 @@ import sys
 import urllib
 import tempfile
 import xmlrpclib
+import socket
 xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)  # Hack to allow 64-bit integers
 
 from codalab.client import get_address_host
@@ -135,10 +136,7 @@ class RemoteBundleClient(BundleClient):
                         print 'remote_bundle_client: %s %s %s' % (command, args, kwargs)
                     return getattr(self.proxy, command)(*args, **kwargs)
                 except xmlrpclib.ProtocolError, e:
-                    if e.errcode == 401:
-                        raise UsageError("Could not authenticate request.")
-                    else:
-                        raise
+                    raise UsageError("Could not authenticate on %s: %s" % (host, e))
                 except xmlrpclib.Fault, e:
                     # Transform server-side UsageErrors into client-side UsageErrors.
                     if 'codalab.common.UsageError' in e.faultString:
@@ -149,6 +147,8 @@ class RemoteBundleClient(BundleClient):
                         raise PermissionError(e.faultString[index + 1:])
                     else:
                         raise
+                except socket.error, e:
+                    raise UsageError('Failed to connect to %s: %s' % (host, e))
             return inner
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))

@@ -35,7 +35,7 @@ import time
 import psutil
 
 from codalab.client import is_local_address
-from codalab.common import UsageError
+from codalab.common import UsageError, PermissionError
 from codalab.server.auth import ROOT_USER_NAME
 from codalab.objects.worksheet import Worksheet
 
@@ -306,7 +306,7 @@ class CodaLabManager(object):
 
         token_info = client.login('credentials', username, password)
         if token_info is None:
-            raise UsageError("Invalid username or password")
+            raise PermissionError("Invalid username or password.")
         return _cache_token(token_info, username)
 
     def get_current_worksheet_uuid(self):
