@@ -879,7 +879,7 @@ class BundleCLI(object):
     def print_target_info(self, client, target, decorate, maxlines=10):
         info = client.get_target_info(target, 1)
         if 'type' not in info:
-            self.exit('Target doesn\'t exist: %s/%s' % target)
+            raise UsageError('Target doesn\'t exist: %s/%s' % target)
         if info['type'] == 'file':
             if decorate:
                 for line in client.head_target(target, maxlines):
@@ -1222,7 +1222,10 @@ class BundleCLI(object):
                         maxlines = properties.get('maxlines')
                         if maxlines:
                             maxlines = int(maxlines)
-                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                        try:
+                            self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                        except UsageError, e:
+                            print 'ERROR:', e
                     else:
                         print data
             elif mode == 'record' or mode == 'table':
