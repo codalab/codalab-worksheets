@@ -628,7 +628,7 @@ Install the MySQL server.  On Ubuntu, run:
 
     sudo apt-get install mysql-server
 
-Install the MySQL Python:
+Install the MySQL Python if it hasn't been done already:
 
     venv/bin/pip install MySQL-python
 
