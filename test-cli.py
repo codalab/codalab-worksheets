@@ -9,6 +9,10 @@ import shutil
 '''
 Tests all the CLI functionality end-to-end.
 
+Currently, the tests will operate on your current worksheet.  In theory, it
+shouldn't mutate anything, but this is not guaranteed, and you should run this
+command in an unimportant CodaLab account.
+
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
@@ -150,7 +154,7 @@ def test():
     # block
     uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
     # cleanup
-    run_command([cl, 'rm', uuid, uuid2])
+    run_command([cl, 'rm', '-f', uuid, uuid2])  # force because bundle shows up twice
 add_test('run', test)
 
 def test():
