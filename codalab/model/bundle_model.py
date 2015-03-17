@@ -733,9 +733,6 @@ class BundleModel(object):
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
 
-        # TODO: find a more systematic way of doing this.
-        self.root_user_id = '0'
-
     def list_groups(self, owner_id):
         '''
         Return a list of row dicts --one per group-- for the given owner.
