@@ -9,9 +9,6 @@ from base64 import encodestring
 
 from codalab.common import UsageError, PermissionError
 
-ROOT_USER_NAME = 'codalab'
-ROOT_USER_ID = '0'
-
 class User(object):
     '''
     Defines a registered user with a unique name and a unique (int) identifier.
@@ -27,9 +24,7 @@ class MockAuthHandler(object):
     authentication is required.  There is exactly one root user with no
     password.
     '''
-    def __init__(self, users=None):
-        if users == None:
-            users = [User(ROOT_USER_NAME, ROOT_USER_ID)]
+    def __init__(self, users):
         self.users = users
         self._user = users[0]
 
