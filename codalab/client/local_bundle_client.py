@@ -534,8 +534,24 @@ class LocalBundleClient(BundleClient):
     # Implementations of worksheet-related client methods follow!
     #############################################################################
 
+    def ensure_unused_worksheet_name(self, name):
+        # Ensure worksheet names are unique.  Note: for simplicity, we are
+        # ensuring uniqueness across the system, even on worksheet names that
+        # the user may not have access to.
+        try:
+            self.get_worksheet_uuid(None, name)
+            exists = True
+        except UsageError, e:
+            # Note: this exception could be thrown also when there's multiple
+            # worksheets with the same name.  In the future, we want to rule
+            # that out.
+            exists = False
+        if exists:
+            raise UsageError('Worksheet with name %s already exists' % name)
+
     @authentication_required
     def new_worksheet(self, name):
+        self.ensure_unused_worksheet_name(name)
         # Don't need any permissions to do this.
         worksheet = Worksheet({'name': name, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
@@ -654,6 +670,7 @@ class LocalBundleClient(BundleClient):
     def rename_worksheet(self, uuid, name):
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_all_permission(self.model, self._current_user(), worksheet)
+        self.ensure_unused_worksheet_name(name)
         self.model.rename_worksheet(worksheet, name)
 
     @authentication_required
