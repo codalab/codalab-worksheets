@@ -285,15 +285,24 @@ def interpret_genpath(bundle_info, genpath):
     if is_file_genpath(genpath):
         return (bundle_info['uuid'], genpath)
 
-    # Special cases
+    # Render dependencies
+    deps = bundle_info['dependencies']
+    anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
+    def render_dep(dep, show_key=True, show_uuid=False):
+        a = dep['child_path'] + ':' if not anonymous and show_key else ''
+        b = dep['parent_uuid'] if show_uuid else dep['parent_name']
+        c = '/' + dep['parent_path'] if dep['parent_path'] else ''
+        return a + b + c
+
+    # Special genpaths (dependencies, args)
     if genpath == 'dependencies':
-        return ','.join(sorted(dep['child_path'] + ':' + dep['parent_name'] for dep in bundle_info[genpath]))
+        return ','.join([render_dep(dep) for dep in bundle_info[genpath]])
     elif genpath.startswith('dependencies/'):
         # Look up the particular dependency
         _, name = genpath.split('/', 1)
         for dep in bundle_info['dependencies']:
             if dep['child_path'] == name:
-                return dep['parent_name']
+                return render_dep(dep, show_key=False)
         return 'n/a'
     elif genpath == 'args':
         # Arguments that we would pass to 'cl'
@@ -301,14 +310,8 @@ def interpret_genpath(bundle_info, genpath):
         bundle_type = bundle_info['bundle_type']
         if bundle_type not in ('make', 'run'): return None
         args += [bundle_type]
-        #args += ['--name', bundle_info['metadata']['name']]
-        deps = bundle_info['dependencies']
-        anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
         for dep in deps:
-            a = dep['child_path'] + ':' if not anonymous else ''
-            b = dep['parent_uuid']
-            c = '/' + dep['parent_path'] if dep['parent_path'] else ''
-            args.append(a + b + c)
+            args.append(render_dep(dep, show_uuid=True))
         if bundle_info['command']:
             args.append(quote(bundle_info['command']))
         return ' '.join(args)
