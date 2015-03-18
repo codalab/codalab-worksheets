@@ -289,7 +289,13 @@ def interpret_genpath(bundle_info, genpath):
     deps = bundle_info['dependencies']
     anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
     def render_dep(dep, show_key=True, show_uuid=False):
-        a = dep['child_path'] + ':' if not anonymous and show_key else ''
+        if show_key and not anonymous:
+            if show_uuid or dep['child_path'] != dep['parent_name']:
+                a = dep['child_path'] + ':'
+            else:
+                a = ':'
+        else:
+            a = ''
         b = dep['parent_uuid'] if show_uuid else dep['parent_name']
         c = '/' + dep['parent_path'] if dep['parent_path'] else ''
         return a + b + c
