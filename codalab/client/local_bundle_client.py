@@ -611,7 +611,13 @@ class LocalBundleClient(BundleClient):
         for (bundle_uuid, subworksheet_uuid, value, type) in items:
             bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
             if subworksheet_uuid:
-                subworksheet_info = self.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
+                try:
+                    subworksheet_info = self.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
+                except UsageError, e:
+                    # If can't get the subworksheet, it's probably invalid, so just replace it with an error
+                    type = worksheet_util.TYPE_MARKUP
+                    subworksheet_info = None
+                    value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
             else:
                 subworksheet_info = None
             value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value

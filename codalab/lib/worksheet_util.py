@@ -157,7 +157,7 @@ def get_worksheet_lines(worksheet_info):
         elif type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
-                lines.append('Non-existent bundle: %s' % bundle_info['uuid'])
+                lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
                 continue
             metadata = bundle_info['metadata']
             description = bundle_info['bundle_type']
