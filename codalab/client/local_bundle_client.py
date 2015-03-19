@@ -555,6 +555,10 @@ class LocalBundleClient(BundleClient):
         # Don't need any permissions to do this.
         worksheet = Worksheet({'name': name, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
+
+        # Make worksheet publicly readable by default
+        self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
+
         return worksheet.uuid
 
     def list_worksheets(self):
