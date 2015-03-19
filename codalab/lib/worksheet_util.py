@@ -114,8 +114,9 @@ def get_worksheet_lines(worksheet_info):
     Generator that returns pretty-printed lines of text for the given worksheet.
     '''
     header = '''
-// Editing for worksheet %s.  The coments (//) are simply instructions
-// to you and not part of the actual worksheet.  You can enter:
+// Editing worksheet %s(%s).
+// The coments (//) are simply instructions to you and not part of the actual
+// worksheet.  You can enter:
 // - Arbitrary Markdown (see http://daringfireball.net/projects/markdown/syntax)
 // - References to bundles: {<bundle_spec>}
 // - Directives (%% title|schema|add|display)
@@ -144,7 +145,7 @@ def get_worksheet_lines(worksheet_info):
 // %% display table s1
 // %% {run1}
 // %% {run2}
-    '''.strip() % (worksheet_info['name'],)
+    '''.strip() % (worksheet_info['name'], worksheet_info['uuid'],)
     lines = header.split('\n')
 
     for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:

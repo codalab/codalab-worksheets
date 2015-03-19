@@ -79,7 +79,7 @@ class BundleCLI(object):
       'uadd': 'Add a user to a group.',
       'urm': 'Remove a user from a group.',
       'wperm': 'Set a group\'s permissions for a worksheet.',
-      'chown': 'Set the owner of bundles/worksheets.',
+      'chown': 'Set the owner of bundles.',
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
