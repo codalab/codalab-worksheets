@@ -240,7 +240,7 @@ class Worker(object):
         success = status.get('success')
         if success != None:
             # Re-install dependencies.
-            # - For RunBundle, use relative symlink dependencies (this is just for convenience).
+            # - For RunBundle, remove the dependencies.
             # - For MakeBundle, copy.  This way, we maintain the invariant that
             # we always only need to look back one-level at the dependencies,
             # not recurse.
@@ -248,9 +248,13 @@ class Worker(object):
                 temp_dir = status.get('temp_dir')
                 if not temp_dir:
                     temp_dir = bundle.metadata.temp_dir
-                copy = isinstance(bundle, MakeBundle)
-                print >>sys.stderr, 'Worker.finalize_bundle: installing dependencies to %s (copy=%s)' % (temp_dir, copy)
-                bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=copy)
+                if isinstance(bundle, RunBundle):
+                    print >>sys.stderr, 'Worker.finalize_bundle: removing dependencies from %s (RunBundle)' % temp_dir
+                    bundle.remove_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir)
+                else:
+                    print >>sys.stderr, 'Worker.finalize_bundle: installing (copying) dependencies to %s (MakeBundle)' % temp_dir
+                    bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=True)
+
                 # Note: uploading will move temp_dir to the bundle store.
                 data_hash, new_metadata = self.bundle_store.upload(temp_dir, follow_symlinks=False)
                 db_update['data_hash'] = data_hash

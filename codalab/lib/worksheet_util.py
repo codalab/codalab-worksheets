@@ -114,8 +114,9 @@ def get_worksheet_lines(worksheet_info):
     Generator that returns pretty-printed lines of text for the given worksheet.
     '''
     header = '''
-// Editing for worksheet %s.  The coments (//) are simply instructions
-// to you and not part of the actual worksheet.  You can enter:
+// Editing worksheet %s(%s).
+// The coments (//) are simply instructions to you and not part of the actual
+// worksheet.  You can enter:
 // - Arbitrary Markdown (see http://daringfireball.net/projects/markdown/syntax)
 // - References to bundles: {<bundle_spec>}
 // - Directives (%% title|schema|add|display)
@@ -144,7 +145,7 @@ def get_worksheet_lines(worksheet_info):
 // %% display table s1
 // %% {run1}
 // %% {run2}
-    '''.strip() % (worksheet_info['name'],)
+    '''.strip() % (worksheet_info['name'], worksheet_info['uuid'],)
     lines = header.split('\n')
 
     for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:
@@ -157,7 +158,7 @@ def get_worksheet_lines(worksheet_info):
         elif type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
-                lines.append('Non-existent bundle: %s' % bundle_info['uuid'])
+                lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
                 continue
             metadata = bundle_info['metadata']
             description = bundle_info['bundle_type']
@@ -285,15 +286,30 @@ def interpret_genpath(bundle_info, genpath):
     if is_file_genpath(genpath):
         return (bundle_info['uuid'], genpath)
 
-    # Special cases
+    # Render dependencies
+    deps = bundle_info['dependencies']
+    anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
+    def render_dep(dep, show_key=True, show_uuid=False):
+        if show_key and not anonymous:
+            if show_uuid or dep['child_path'] != dep['parent_name']:
+                a = dep['child_path'] + ':'
+            else:
+                a = ':'
+        else:
+            a = ''
+        b = dep['parent_uuid'] if show_uuid else dep['parent_name']
+        c = '/' + dep['parent_path'] if dep['parent_path'] else ''
+        return a + b + c
+
+    # Special genpaths (dependencies, args)
     if genpath == 'dependencies':
-        return ','.join(sorted(dep['child_path'] + ':' + dep['parent_name'] for dep in bundle_info[genpath]))
+        return ','.join([render_dep(dep) for dep in bundle_info[genpath]])
     elif genpath.startswith('dependencies/'):
         # Look up the particular dependency
         _, name = genpath.split('/', 1)
         for dep in bundle_info['dependencies']:
             if dep['child_path'] == name:
-                return dep['parent_name']
+                return render_dep(dep, show_key=False)
         return 'n/a'
     elif genpath == 'args':
         # Arguments that we would pass to 'cl'
@@ -301,14 +317,8 @@ def interpret_genpath(bundle_info, genpath):
         bundle_type = bundle_info['bundle_type']
         if bundle_type not in ('make', 'run'): return None
         args += [bundle_type]
-        #args += ['--name', bundle_info['metadata']['name']]
-        deps = bundle_info['dependencies']
-        anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
         for dep in deps:
-            a = dep['child_path'] + ':' if not anonymous else ''
-            b = dep['parent_uuid']
-            c = '/' + dep['parent_path'] if dep['parent_path'] else ''
-            args.append(a + b + c)
+            args.append(render_dep(dep, show_uuid=True))
         if bundle_info['command']:
             args.append(quote(bundle_info['command']))
         return ' '.join(args)

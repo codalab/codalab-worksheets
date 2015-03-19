@@ -261,6 +261,13 @@ class LocalBundleClient(BundleClient):
             relevant_uuids = uuids
         check_has_all_permission_on_bundles(self.model, self._current_user(), relevant_uuids)
 
+        # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
+        if not force:
+            result = self.model.get_host_worksheet_uuids(relevant_uuids)
+            for uuid, host_worksheet_uuids in result.items():
+                if len(host_worksheet_uuids) > 1:
+                    raise UsageError('Bundle %s appears in multiple worksheets: %s, not deleting' % (uuid, host_worksheet_uuids))
+
         # Get data hashes
         relevant_data_hashes = set(bundle.data_hash for bundle in self.model.batch_get_bundles(uuid=relevant_uuids) if bundle.data_hash)
 
@@ -527,11 +534,31 @@ class LocalBundleClient(BundleClient):
     # Implementations of worksheet-related client methods follow!
     #############################################################################
 
+    def ensure_unused_worksheet_name(self, name):
+        # Ensure worksheet names are unique.  Note: for simplicity, we are
+        # ensuring uniqueness across the system, even on worksheet names that
+        # the user may not have access to.
+        try:
+            self.get_worksheet_uuid(None, name)
+            exists = True
+        except UsageError, e:
+            # Note: this exception could be thrown also when there's multiple
+            # worksheets with the same name.  In the future, we want to rule
+            # that out.
+            exists = False
+        if exists:
+            raise UsageError('Worksheet with name %s already exists' % name)
+
     @authentication_required
     def new_worksheet(self, name):
+        self.ensure_unused_worksheet_name(name)
         # Don't need any permissions to do this.
         worksheet = Worksheet({'name': name, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
+
+        # Make worksheet publicly readable by default
+        self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
+
         return worksheet.uuid
 
     def list_worksheets(self):
@@ -604,7 +631,13 @@ class LocalBundleClient(BundleClient):
         for (bundle_uuid, subworksheet_uuid, value, type) in items:
             bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
             if subworksheet_uuid:
-                subworksheet_info = self.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
+                try:
+                    subworksheet_info = self.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
+                except UsageError, e:
+                    # If can't get the subworksheet, it's probably invalid, so just replace it with an error
+                    type = worksheet_util.TYPE_MARKUP
+                    subworksheet_info = None
+                    value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
             else:
                 subworksheet_info = None
             value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
@@ -641,6 +674,7 @@ class LocalBundleClient(BundleClient):
     def rename_worksheet(self, uuid, name):
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_has_all_permission(self.model, self._current_user(), worksheet)
+        self.ensure_unused_worksheet_name(name)
         self.model.rename_worksheet(worksheet, name)
 
     @authentication_required
@@ -655,8 +689,11 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def delete_worksheet(self, uuid):
-        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
+        worksheet = self.model.get_worksheet(uuid, fetch_items=True)
         check_has_all_permission(self.model, self._current_user(), worksheet)
+        # Be safe!
+        if len(worksheet.items) > 0:
+            raise UsageError("Can\'t delete worksheet %s because it is not empty" % worksheet.uuid)
         self.model.delete_worksheet(uuid)
 
     def interpret_file_genpaths(self, requests):

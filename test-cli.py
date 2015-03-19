@@ -9,6 +9,10 @@ import shutil
 '''
 Tests all the CLI functionality end-to-end.
 
+Currently, the tests will operate on your current worksheet.  In theory, it
+shouldn't mutate anything, but this is not guaranteed, and you should run this
+command in an unimportant CodaLab account.
+
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
@@ -77,6 +81,7 @@ def test():
     check_equals('hello', get_info(uuid, 'description'))
     check_contains(['a', 'b'], get_info(uuid, 'tags'))
     check_equals('ready', get_info(uuid, 'state'))
+    check_equals('ready\thello', get_info(uuid, 'state,description'))
 
     # edit
     run_command([cl, 'edit', uuid, '--name', 'hosts2'])
@@ -94,7 +99,7 @@ def test():
     run_command([cl, 'rm', '--data-only', uuid])
     check_equals('None', get_info(uuid, 'data_hash'))
     run_command([cl, 'rm', uuid])
-add_test('upload', test)
+add_test('upload1', test)
 
 def test():
     # Upload two files
@@ -106,6 +111,13 @@ def test():
     # Cleanup
     run_command([cl, 'rm', uuid, uuid2])
 add_test('upload2', test)
+
+def test():
+    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    run_command([cl, 'cp', uuid, '.'])  # Duplicate
+    run_command([cl, 'rm', uuid], 1)  # should fail
+    run_command([cl, 'rm', '-f', uuid])  # force it
+add_test('rm', test)
 
 def test():
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
@@ -142,7 +154,7 @@ def test():
     # block
     uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
     # cleanup
-    run_command([cl, 'rm', uuid, uuid2])
+    run_command([cl, 'rm', '-f', uuid, uuid2])  # force because bundle shows up twice
 add_test('run', test)
 
 def test():

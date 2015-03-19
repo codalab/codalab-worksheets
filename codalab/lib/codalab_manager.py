@@ -35,9 +35,9 @@ import time
 import psutil
 
 from codalab.client import is_local_address
-from codalab.common import UsageError
-from codalab.server.auth import ROOT_USER_NAME
+from codalab.common import UsageError, PermissionError
 from codalab.objects.worksheet import Worksheet
+from codalab.server.auth import User
 
 def cached(fn):
     def inner(self):
@@ -178,33 +178,51 @@ class CodaLabManager(object):
         Return a model.  Called by the server.
         '''
         model_class = self.config['server']['class']
+        model = None
         if model_class == 'MySQLModel':
             from codalab.model.mysql_model import MySQLModel
-            return MySQLModel(engine_url=self.config['server']['engine_url'])
-        if model_class == 'SQLiteModel':
+            model = MySQLModel(engine_url=self.config['server']['engine_url'])
+        elif model_class == 'SQLiteModel':
             codalab_home = self.codalab_home()
             from codalab.model.sqlite_model import SQLiteModel
-            return SQLiteModel(codalab_home)
+            model = SQLiteModel(codalab_home)
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,))
+        model.root_user_id = self.root_user_id()
+        return model
 
-    @cached
-    def auth_handler(self):
+    def auth_handler(self, mock=False):
         '''
         Returns a class to authenticate users on the server-side.  Called by the server.
         '''
         auth_config = self.config['server']['auth']
         handler_class = auth_config['class']
 
+        if mock or handler_class == 'MockAuthHandler':
+            return self.mock_auth_handler()
         if handler_class == 'OAuthHandler':
-            arguments = ('address', 'app_id', 'app_key')
-            kwargs = {arg: auth_config[arg] for arg in arguments}
-            from codalab.server.auth import OAuthHandler
-            return OAuthHandler(**kwargs)
-        if handler_class == 'MockAuthHandler':
-            from codalab.server.auth import MockAuthHandler
-            return MockAuthHandler()
+            return self.oauth_handler()
         raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
+
+    @cached
+    def mock_auth_handler(self):
+        from codalab.server.auth import MockAuthHandler
+        # Just create one user corresponding to the root
+        users = [User(self.root_user_name(), self.root_user_id())]
+        return MockAuthHandler(users)
+
+    @cached
+    def oauth_handler(self):
+        arguments = ('address', 'app_id', 'app_key')
+        auth_config = self.config['server']['auth']
+        kwargs = {arg: auth_config[arg] for arg in arguments}
+        from codalab.server.auth import OAuthHandler
+        return OAuthHandler(**kwargs)
+
+    def root_user_name(self):
+        return self.config['server'].get('root_user_name', 'codalab')
+    def root_user_id(self):
+        return self.config['server'].get('root_user_id', '0')
 
     def local_client(self):
         return self.client('local')
@@ -223,14 +241,9 @@ class CodaLabManager(object):
             return self.clients[address]
         # if local force mockauth or if locl server use correct auth
         if is_local_address(address):
-            from codalab.server.auth import MockAuthHandler
             bundle_store = self.bundle_store()
             model = self.model()
-
-            if is_cli:  # we are local and cli, we only need mock
-                auth_handler = MockAuthHandler()
-            else: # server
-                auth_handler = self.auth_handler()
+            auth_handler = self.auth_handler(mock=is_cli)
 
             from codalab.client.local_bundle_client import LocalBundleClient
             client = LocalBundleClient(address, bundle_store, model, auth_handler, self.cli_verbose)
@@ -296,7 +309,7 @@ class CodaLabManager(object):
         username = None
         # For a local client with mock credentials, use the default username.
         if is_local_address(client.address):
-            username = ROOT_USER_NAME
+            username = self.root_user_name()
             password = ''
         if not username:
             print 'Requesting access at %s' % address
@@ -306,7 +319,7 @@ class CodaLabManager(object):
 
         token_info = client.login('credentials', username, password)
         if token_info is None:
-            raise UsageError("Invalid username or password")
+            raise PermissionError("Invalid username or password.")
         return _cache_token(token_info, username)
 
     def get_current_worksheet_uuid(self):

@@ -7,10 +7,7 @@ import urllib
 import urllib2
 from base64 import encodestring
 
-from codalab.common import UsageError
-
-ROOT_USER_NAME = 'codalab'
-ROOT_USER_ID = '0'
+from codalab.common import UsageError, PermissionError
 
 class User(object):
     '''
@@ -27,9 +24,7 @@ class MockAuthHandler(object):
     authentication is required.  There is exactly one root user with no
     password.
     '''
-    def __init__(self, users=None):
-        if users == None:
-            users = [User(ROOT_USER_NAME, ROOT_USER_ID)]
+    def __init__(self, users):
         self.users = users
         self._user = users[0]
 
@@ -158,7 +153,7 @@ class OAuthHandler(object):
         '''
         if grant_type == 'credentials':
             if len(username) < self.min_username_length or len(key) < self.min_key_length:
-                raise UsageError("Invalid username or password.")
+                raise PermissionError("Invalid username or password.")
             return self._generate_new_token(username, key)
         if grant_type == 'refresh_token':
             return self._refresh_token(username, key)

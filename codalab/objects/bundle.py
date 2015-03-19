@@ -121,9 +121,8 @@ class Bundle(ORMObject):
 
     def install_dependencies(self, bundle_store, parent_dict, dest_path, copy):
         '''
-        Symlink this bundle's dependencies into the directory at dest_path.
+        Symlink or copy this bundle's dependencies into the directory at dest_path.
         The caller is responsible for cleaning up this directory.
-        rel: whether to use relative symlinks
         '''
         precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
         pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks=not copy)
@@ -136,3 +135,14 @@ class Bundle(ORMObject):
                 path_util.copy(target, link_path, follow_symlinks=False)
             else:
                 os.symlink(target, link_path)
+
+    def remove_dependencies(self, bundle_store, parent_dict, dest_path):
+        '''
+        Remove dependencies (for RunBundles).
+        '''
+        precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
+        pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks=False)
+        for (target, link_path) in pairs:
+            # If the dependency already exists, remove it (this happens when we are reinstalling)
+            if os.path.exists(link_path):
+                path_util.remove(link_path)

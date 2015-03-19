@@ -79,7 +79,7 @@ class BundleCLI(object):
       'uadd': 'Add a user to a group.',
       'urm': 'Remove a user from a group.',
       'wperm': 'Set a group\'s permissions for a worksheet.',
-      'chown': 'Set the owner of bundles/worksheets.',
+      'chown': 'Set the owner of bundles.',
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
@@ -148,6 +148,7 @@ class BundleCLI(object):
         'p': 'print',
         'i': 'info',
         'e': 'edit',
+        'we': 'wedit',
         's': 'search',
         'st': 'status',
     }
@@ -281,7 +282,11 @@ class BundleCLI(object):
         return (self.manager.client(address), spec)
 
     def parse_client_worksheet_uuid(self, spec):
-        if not spec:
+        '''
+        Return the worksheet referred to by |spec|.
+        '''
+        if not spec or spec == '.':
+            # Empty spec, just return current worksheet.
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
@@ -746,7 +751,7 @@ class BundleCLI(object):
                 else:
                     return info.get(col, info['metadata'].get(col))
                     
-            columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'bundle_type', 'created', 'data_size', 'state')
+            columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'bundle_type', 'owner', 'created', 'data_size', 'state')
             post_funcs = {'uuid': self.UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1, 'ref': 1}
             bundle_dicts = [
@@ -772,13 +777,15 @@ class BundleCLI(object):
                 raise UsageError('Invalid bundle uuid: %s' % bundle_uuid)
 
             if args.field:
-                # Display a single field (arbitrary genpath)
-                genpath = args.field
-                if worksheet_util.is_file_genpath(genpath):
-                    value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None)
-                else:
-                    value = worksheet_util.interpret_genpath(info, genpath)
-                print value
+                # Display individual fields (arbitrary genpath)
+                values = []
+                for genpath in args.field.split(','):
+                    if worksheet_util.is_file_genpath(genpath):
+                        value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None)
+                    else:
+                        value = worksheet_util.interpret_genpath(info, genpath)
+                    values.append(value)
+                print '\t'.join(map(str, values))
             else:
                 # Display all the fields
                 if i > 0:
@@ -873,7 +880,7 @@ class BundleCLI(object):
     def print_target_info(self, client, target, decorate, maxlines=10):
         info = client.get_target_info(target, 1)
         if 'type' not in info:
-            self.exit('Target doesn\'t exist: %s/%s' % target)
+            raise UsageError('Target doesn\'t exist: %s/%s' % target)
         if info['type'] == 'file':
             if decorate:
                 for line in client.head_target(target, maxlines):
@@ -1080,8 +1087,9 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         uuid = client.new_worksheet(args.name)
         client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(uuid))  # Add new to current
-        client.add_worksheet_item(uuid, worksheet_util.markup_item('Parent:'))  # Backpointer
-        client.add_worksheet_item(uuid, worksheet_util.subworksheet_item(worksheet_uuid))  # Backpointer
+        # Don't need backpointer - looks ugly anyway
+        #client.add_worksheet_item(uuid, worksheet_util.markup_item('Parent:'))  # Backpointer
+        #client.add_worksheet_item(uuid, worksheet_util.subworksheet_item(worksheet_uuid))  # Backpointer
         worksheet_info = client.get_worksheet_info(uuid, False)
         if args.raw:
             print worksheet_info['uuid']
@@ -1144,7 +1152,7 @@ class BundleCLI(object):
         else:
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
-                lines = [line.strip() for line in open(args.file).readlines()]
+                lines = [line.rstrip() for line in open(args.file).readlines()]
             else:
                 lines = worksheet_util.request_lines(worksheet_info, client)
 
@@ -1216,7 +1224,10 @@ class BundleCLI(object):
                         maxlines = properties.get('maxlines')
                         if maxlines:
                             maxlines = int(maxlines)
-                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                        try:
+                            self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                        except UsageError, e:
+                            print 'ERROR:', e
                     else:
                         print data
             elif mode == 'record' or mode == 'table':
@@ -1397,8 +1408,8 @@ class BundleCLI(object):
         '''
         Change the owner of bundles.
         '''
-        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('user_spec', help='username')
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
