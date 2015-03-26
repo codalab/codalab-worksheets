@@ -21,7 +21,7 @@ if [ ! -e $env ]; then
 fi
 
 echo "=== Install Python packages into $env..."
-$env/bin/pip install sqlalchemy alembic pyyaml MySQL-python watchdog || exit 1
+$env/bin/pip install sqlalchemy alembic pyyaml watchdog || exit 1
 
 ( # try
     $env/bin/pip install psutil || exit 1
