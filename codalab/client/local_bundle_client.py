@@ -265,7 +265,7 @@ class LocalBundleClient(BundleClient):
         if not force:
             result = self.model.get_host_worksheet_uuids(relevant_uuids)
             for uuid, host_worksheet_uuids in result.items():
-                if len(host_worksheet_uuids) > 1:
+                if len(set(host_worksheet_uuids)) > 1:
                     raise UsageError('Bundle %s appears in multiple worksheets: %s, not deleting' % (uuid, host_worksheet_uuids))
 
         # Get data hashes
