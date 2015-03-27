@@ -30,13 +30,17 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
     '''
     orig_bundle_spec = bundle_spec
     if not bundle_spec:
-        raise ('Tried to expand empty bundle_spec!')
+        raise UsageError('Tried to expand empty bundle_spec!')
     if spec_util.UUID_REGEX.match(bundle_spec):
         return bundle_spec
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
-        bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%'), 'user_id': user_id}, max_results=1)
-        last_index = 1
-        message = "uuid starting with '%s'" % (bundle_spec,)
+        bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%'), 'user_id': user_id}, max_results=2)
+        if len(bundle_uuids) == 0:
+            raise UsageError('uuid prefix %s doesn\'t match any bundles' % bundle_spec)
+        elif len(bundle_uuids) == 1:
+            return bundle_uuids[0]
+        else:
+            raise UsageError('uuid prefix %s more than one bundle' % bundle_spec)
     else:
         def match(bundle_spec):
             m = spec_util.NAME_PATTERN_REGEX.match(bundle_spec)  # run: bundle whose name starts with foo
