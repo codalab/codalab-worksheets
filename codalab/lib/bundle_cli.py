@@ -500,6 +500,7 @@ class BundleCLI(object):
         print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
     def do_cp_command(self, argv, parser):
+        parser.add_argument('-d', '--copy-dependencies', help='Whether to copy dependencies of the bundles.', action='store_true')
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('worksheet_spec', help='%s (copy to this worksheet)' % self.WORKSHEET_SPEC_FORMAT)
         args = parser.parse_args(argv)
@@ -521,16 +522,24 @@ class BundleCLI(object):
 
         # Copy!
         for source_bundle_uuid in source_bundle_uuids:
-            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid)
+            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies)
 
-    def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid):
+    def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies):
         '''
         Helper function that supports cp and wcp.
         Copies the source bundle to the target worksheet.
-        Goes between two clients by downloading and then uploading, which is
-        not the most efficient.  Usually one of the source or destination
-        clients will be local, so it's not too expensive.
+        Currently, this goes between two clients by downloading to the local
+        disk and then uploading, which is not the most efficient.
+        But having two clients talk directly to each other is complicated...
         '''
+        if copy_dependencies:
+            source_info = source_client.get_bundle_info(source_bundle_uuid)
+            # Copy all the dependencies, but only for run dependencies.
+            for dep in source_info['dependencies']:
+                self.copy_bundle(source_client, dep['parent_uuid'], dest_client, dest_worksheet_uuid, False)
+            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, False)
+            return
+
         # Check if the bundle already exists on the destination, then don't copy it
         # (although metadata could be different on source and destination).
         bundle = None
@@ -561,8 +570,7 @@ class BundleCLI(object):
                 # Clean up
                 if temp_path: path_util.remove(temp_path)
         else:
-            print "%s already exists on destination client" % source_desc
-
+            #print "%s already exists on destination client" % source_desc
             # Just need to add it to the worksheet
             dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(source_bundle_uuid))
 
@@ -1270,16 +1278,8 @@ class BundleCLI(object):
         client.delete_worksheet(worksheet_uuid)
 
     def do_wcp_command(self, argv, parser):
-        parser.add_argument(
-          'source_worksheet_spec',
-          help=self.WORKSHEET_SPEC_FORMAT,
-          nargs='?',
-        )
-        parser.add_argument(
-          'dest_worksheet_spec',
-          help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT,
-          nargs='?',
-        )
+        parser.add_argument('source_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        parser.add_argument('dest_worksheet_spec', help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
         # Source worksheet
@@ -1293,7 +1293,7 @@ class BundleCLI(object):
             (source_bundle_info, source_worksheet_info, value_obj, type) = item
             if type == worksheet_util.TYPE_BUNDLE:
                 # Copy bundle
-                self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid)
+                self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=False)
             elif type == worksheet_util.TYPE_WORKSHEET:
                 # We currently don't have a mechanism for copying worksheets, only contents of worksheets.
                 pass
