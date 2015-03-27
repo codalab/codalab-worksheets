@@ -426,7 +426,7 @@ def apply_func(func, arg):
     applied to |arg| in succession).  Each function is either:
     - 'duration', 'date', 'size' for special formatting
     - '%...' for sprintf-style formatting
-    - s/... for regular expression substitution
+    - s/.../... for regular expression substitution
     - [a:b] for taking substrings
     '''
     FUNC_DELIM = ' | '
@@ -438,21 +438,29 @@ def apply_func(func, arg):
         # String encoding of a function: size s/a/b
         for f in func.split(FUNC_DELIM):
             if f == 'date':
-                arg = formatting.date_str(arg)
+                arg = formatting.date_str(float(arg)) if arg != None else ''
             elif f == 'duration':
                 arg = formatting.duration_str(float(arg)) if arg != None else ''
             elif f == 'size':
-                arg = formatting.size_str(arg)
+                arg = formatting.size_str(float(arg)) if arg != None else ''
             elif f.startswith('%'):
                 arg = (f % float(arg)) if arg != None else ''
-            elif f.startswith('s/'):  # regular expression
-                _, s, t = f.split("/")
-                arg = re.sub(s, t, arg)
+            elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
+                esc_slash = '_ESC_SLASH_'  # Assume this doesn't occur in s
+                try:
+                    # Preserve escaped characters: \/
+                    tokens = f.replace('\\/', esc_slash).split('/')
+                    s = tokens[1].replace(esc_slash, '/')
+                    t = tokens[2].replace(esc_slash, '/')
+                    arg = re.sub(s, t, arg)
+                except Exception, e:
+                    print e
+                    return '<invalid regex: %s>' % f
             elif f.startswith('['):  # substring
                 m = re.match('\[(.*):(.*)\]', f)
                 if m:
                     start = int(m.group(1) or 0)
-                    end = int(m.group(2) or -1)
+                    end = int(m.group(2) or len(arg))
                     arg = arg[start:end]
                 else:
                     return '<invalid function: %s>' % f

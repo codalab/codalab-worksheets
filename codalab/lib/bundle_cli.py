@@ -62,7 +62,7 @@ class BundleCLI(object):
       'macro': 'Use mimicry to simulate macros.',
       'kill': 'Instruct the worker to terminate a running bundle.',
       # Commands for worksheets.
-      'new': 'Create a new worksheet and make it the current one.',
+      'new': 'Create a new worksheet and add it to the current worksheet.',
       'add': 'Append a bundle to a worksheet.',
       'work': 'Set the current instance/worksheet.',
       'print': 'Print the contents of a worksheet.',
