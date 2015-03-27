@@ -75,6 +75,10 @@ def run_test(query_name):
 ############################################################
 
 def test():
+    run_command(['venv/bin/nosetests'])
+add_test('unittest', test)
+
+def test():
     # upload
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '--description', 'hello', '--tags', 'a', 'b'])
     check_equals('hosts', get_info(uuid, 'name'))
@@ -115,8 +119,7 @@ add_test('upload2', test)
 def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
     run_command([cl, 'cp', uuid, '.'])  # Duplicate
-    run_command([cl, 'rm', uuid], 1)  # should fail
-    run_command([cl, 'rm', '-f', uuid])  # force it
+    run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
 add_test('rm', test)
 
 def test():
@@ -209,7 +212,7 @@ def test():
 add_test('status', test)
 
 if len(sys.argv) == 1:
-    print 'Modules:', ' '.join(name for name, func in tests)
+    print 'Modules (or type all):', ' '.join(name for name, func in tests)
 else:
     for name in sys.argv[1:]:
         run_test(name)

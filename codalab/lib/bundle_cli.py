@@ -34,6 +34,7 @@ from codalab.lib import (
   path_util,
   spec_util,
   worksheet_util,
+  cli_util,
   canonicalize,
   formatting
 )
@@ -577,28 +578,6 @@ class BundleCLI(object):
         metadata = metadata_util.request_missing_metadata(MakeBundle, args)
         print client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
-    def desugar_command(self, target_spec, command):
-        '''
-        Desugar command, returning updated target_spec and command.
-        Example: %corenlp%/run %a.txt% => [1:corenlp, 2:a.txt], 1/run 2
-        '''
-        pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
-        buf = ''
-        while True:
-            m = pattern.match(command)
-            if not m: break
-            # Call bundles b1, b2, b3 by default.
-            i = 'b' + str(len(target_spec)+1)
-            if ':' in m.group(2):
-                i, val = m.group(2).split(':', 1)
-                if i == '': i = val
-                target_spec.append(m.group(2))
-            else:
-                target_spec.append(i + ':' + m.group(2))
-            buf += m.group(1) + i
-            command = m.group(3)
-        return (target_spec, buf + command)
-
     # After running a bundle, we can wait for it, possibly observing it's output.
     # These functions are shared across run and mimic.
     def add_wait_args(self, parser):
@@ -634,7 +613,7 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        args.target_spec, args.command = self.desugar_command(args.target_spec, args.command)
+        args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
         targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = metadata_util.request_missing_metadata(RunBundle, args)
         uuid = client.derive_bundle('run', targets, args.command, metadata, worksheet_uuid)
