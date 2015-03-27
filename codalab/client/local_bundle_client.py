@@ -471,10 +471,6 @@ class LocalBundleClient(BundleClient):
             old_to_new[old_bundle_uuid] = new_bundle_uuid  # Cache it
             return new_bundle_uuid
 
-        # Put initial newline to delimit things
-        if not dry_run and not shadow:
-            self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
-
         if old_output:
             recurse(old_output)
         else:
@@ -496,6 +492,7 @@ class LocalBundleClient(BundleClient):
                 # For items not on this worksheet, add them at the end (instead of orphaning them).
                 host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_inputs[0]])[old_inputs[0]]
                 new_bundle_uuids_added = set()
+                skipped = True  # Whether there were items that we didn't include in the prelude (in which case we want to put '')
                 if len(host_worksheet_uuids) > 0:
                     # Choose a single worksheet.
                     if worksheet_uuid in host_worksheet_uuids:
@@ -511,6 +508,7 @@ class LocalBundleClient(BundleClient):
                     prelude_items = []  # The prelude that we're building up
                     for item in worksheet_info['items']:
                         (bundle_info, subworkheet_info, value_obj, item_type) = item
+                        just_added = False
 
                         if item_type == worksheet_util.TYPE_BUNDLE:
                             old_bundle_uuid = bundle_info['uuid']
@@ -518,17 +516,27 @@ class LocalBundleClient(BundleClient):
                                 # Flush the prelude gathered so far.
                                 new_bundle_uuid = old_to_new[old_bundle_uuid]
                                 if old_bundle_uuid != new_bundle_uuid:  # Only add novel bundles
+                                    # Stand in for things skipped (this is important so directives have proper extent).
+                                    if skipped:
+                                        self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
+
+                                    # Add prelude and items
                                     for item2 in prelude_items:
                                         self.add_worksheet_item(worksheet_uuid, worksheet_util.convert_item_to_db(item2))
                                     self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
                                     new_bundle_uuids_added.add(new_bundle_uuid)
+                                    just_added = True
 
                         if (item_type == worksheet_util.TYPE_MARKUP and value_obj != '') or item_type == worksheet_util.TYPE_DIRECTIVE:
                             prelude_items.append(item)  # Include in prelude
+                            skipped = False
                         else:
                             prelude_items = [] # Reset
+                            skipped = not just_added
 
                 # Add the bundles that haven't been added yet
+                if skipped:
+                    self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
                 for info, new_info in plan:
                     new_bundle_uuid = new_info['uuid']
                     if new_bundle_uuid not in new_bundle_uuids_added:
