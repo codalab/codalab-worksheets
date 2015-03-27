@@ -374,51 +374,10 @@ class LocalBundleClient(BundleClient):
         new_inputs: list of bundle uuids that are analogous to old_inputs
         new_output_name: name of the bundle to create to be analogous to old_output (possibly None)
         worksheet_uuid: add newly created bundles to this worksheet
-        depth: how far to do a BFS up
+        depth: how far to do a BFS up from old_output.
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
         #print 'old_inputs: %s, new_inputs: %s, old_output: %s, new_output_name: %s' % (old_inputs, new_inputs, old_output, new_output_name)
-
-        # Return the worksheet items that occur right before the given bundle_uuid
-        worksheet_cache = {} # worksheet_uuid => items
-        def add_with_prelude_items(old_bundle_uuid, new_bundle_uuid):
-            '''
-            Add new_bundle_uuid to the current worksheet (along with the occurrences on the worksheet).
-            Also add the prelude (items that occur right before old_bundle_uuid on a worksheet).
-            Note that new_bundle_uuid might get multiple times.
-            '''
-            host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_bundle_uuid])[old_bundle_uuid]
-            if len(host_worksheet_uuids) > 0:
-                # Choose a single worksheet.
-                if worksheet_uuid in host_worksheet_uuids:
-                    # If current worksheet is one of them, favor that one.
-                    host_worksheet_uuid = worksheet_uuid
-                else:
-                    # Choose an arbitrary one
-                    host_worksheet_uuid = host_worksheet_uuids[0]
-
-                if host_worksheet_uuid in worksheet_cache:
-                    worksheet_info = worksheet_cache[host_worksheet_uuid]
-                else:
-                    worksheet_info = worksheet_cache[host_worksheet_uuid] = \
-                        self.get_worksheet_info(host_worksheet_uuid, fetch_items=True)
-
-                # Look for items that appear right before the old_bundle_uuid
-                collect_items = []
-                for item in worksheet_info['items']:
-                    (bundle_info, subworkheet_info, value_obj, type) = item
-                    if type == worksheet_util.TYPE_BUNDLE and bundle_info['uuid'] == old_bundle_uuid:
-                        # Ended in the target old_bundle_uuid, flush the prelude gathered so far.
-                        for item2 in collect_items:
-                            self.add_worksheet_item(worksheet_uuid, worksheet_util.convert_item_to_db(item2))
-                        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
-                        collect_items = []
-                    elif type == worksheet_util.TYPE_MARKUP and value_obj == '':
-                        collect_items = []
-                    elif type == worksheet_util.TYPE_BUNDLE:
-                        collect_items = []
-                    else:
-                        collect_items.append(item)
 
         # Build the graph (get all the infos).
         # If old_output is given, look at ancestors of old_output until we
@@ -474,7 +433,7 @@ class LocalBundleClient(BundleClient):
                 'child_path': dep['child_path']
             } for dep in info['dependencies']]
 
-            # We're downstream, so need to make a new bundle
+            # If we're downstream of any inputs, we need to make a new bundle.
             if any(dep['parent_uuid'] in downstream for dep in info['dependencies']):
                 # Now create a new bundle that mimics the old bundle.
                 # Only change the name if the output name is supplied.
@@ -502,12 +461,6 @@ class LocalBundleClient(BundleClient):
                 else:
                     new_bundle_uuid = self.derive_bundle(new_info['bundle_type'], \
                         targets, new_info['command'], new_metadata, None)
-                    # Add to worksheet
-                    if shadow:
-                        self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
-                    else:
-                        # Copy the markup and directives right before the old
-                        add_with_prelude_items(old_bundle_uuid, new_bundle_uuid)
 
                 new_info['uuid'] = new_bundle_uuid
                 plan.append((info, new_info))
@@ -527,7 +480,60 @@ class LocalBundleClient(BundleClient):
         else:
             # Don't have a particular output we're targetting, so just create
             # new versions of all the uuids.
-            for uuid in all_bundle_uuids: recurse(uuid)
+            for uuid in all_bundle_uuids:
+                recurse(uuid)
+
+        # Add to worksheet
+        if not dry_run:
+            if shadow:
+                # Add each new bundle in the "shadow" of the old_bundle (right after it).
+                for old_bundle_uuid, new_bundle_uuid in old_to_new.items():
+                    self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
+            else:
+                # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup, directives, etc.)
+                # Let W be the first worksheet containing the old_inputs[0].
+                # Add all items on that worksheet that appear in old_to_new along with their preludes.
+                # For items not on this worksheet, add them at the end (instead of orphaning them).
+                host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_inputs[0]])[old_inputs[0]]
+                new_bundle_uuids_added = set()
+                if len(host_worksheet_uuids) > 0:
+                    # Choose a single worksheet.
+                    if worksheet_uuid in host_worksheet_uuids:
+                        # If current worksheet is one of them, favor that one.
+                        host_worksheet_uuid = worksheet_uuid
+                    else:
+                        # Choose an arbitrary one (in the future, have a better way of canonicalizing).
+                        host_worksheet_uuid = host_worksheet_uuids[0]
+
+                    # Fetch the worksheet
+                    worksheet_info = self.get_worksheet_info(host_worksheet_uuid, fetch_items=True)
+
+                    prelude_items = []  # The prelude that we're building up
+                    for item in worksheet_info['items']:
+                        (bundle_info, subworkheet_info, value_obj, item_type) = item
+
+                        if item_type == worksheet_util.TYPE_BUNDLE:
+                            old_bundle_uuid = bundle_info['uuid']
+                            if old_bundle_uuid in old_to_new:
+                                # Flush the prelude gathered so far.
+                                new_bundle_uuid = old_to_new[old_bundle_uuid]
+                                if old_bundle_uuid != new_bundle_uuid:  # Only add novel bundles
+                                    for item2 in prelude_items:
+                                        self.add_worksheet_item(worksheet_uuid, worksheet_util.convert_item_to_db(item2))
+                                    self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
+                                    new_bundle_uuids_added.add(new_bundle_uuid)
+
+                        if (item_type == worksheet_util.TYPE_MARKUP and value_obj != '') or item_type == worksheet_util.TYPE_DIRECTIVE:
+                            prelude_items.append(item)  # Include in prelude
+                        else:
+                            prelude_items = [] # Reset
+
+                # Add the bundles that haven't been added yet
+                for info, new_info in plan:
+                    new_bundle_uuid = new_info['uuid']
+                    if new_bundle_uuid not in new_bundle_uuids_added:
+                        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
+
         return plan
 
     #############################################################################
