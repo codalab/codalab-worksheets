@@ -148,14 +148,14 @@ def get_worksheet_lines(worksheet_info):
     '''.strip() % (worksheet_info['name'], worksheet_info['uuid'],)
     lines = header.split('\n')
 
-    for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:
-        if type == TYPE_MARKUP:
+    for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
+        if item_type == TYPE_MARKUP:
             lines.append(value_obj)
-        elif type == TYPE_DIRECTIVE:
+        elif item_type == TYPE_DIRECTIVE:
             value = tokens_to_string(value_obj)
             value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
             lines.append(value)
-        elif type == TYPE_BUNDLE:
+        elif item_type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
                 lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
@@ -168,7 +168,7 @@ def get_worksheet_lines(worksheet_info):
             command = bundle_info.get('command')
             if command: description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
-        elif type == TYPE_WORKSHEET:
+        elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + subworksheet_info['name'], subworksheet_info['uuid']))
         else:
             raise InternalError('Invalid worksheet item type: %s' % type)
