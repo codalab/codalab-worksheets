@@ -447,15 +447,13 @@ def apply_func(func, arg):
                 arg = (f % float(arg)) if arg != None else ''
             elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
                 esc_slash = '_ESC_SLASH_'  # Assume this doesn't occur in s
-                try:
-                    # Preserve escaped characters: \/
-                    tokens = f.replace('\\/', esc_slash).split('/')
-                    s = tokens[1].replace(esc_slash, '/')
-                    t = tokens[2].replace(esc_slash, '/')
-                    arg = re.sub(s, t, arg)
-                except Exception, e:
-                    print e
+                # Preserve escaped characters: \/
+                tokens = f.replace('\\/', esc_slash).split('/')
+                if len(tokens) != 3:
                     return '<invalid regex: %s>' % f
+                s = tokens[1].replace(esc_slash, '/')
+                t = tokens[2].replace(esc_slash, '/')
+                arg = re.sub(s, t, arg)
             elif f.startswith('['):  # substring
                 m = re.match('\[(.*):(.*)\]', f)
                 if m:
@@ -468,7 +466,7 @@ def apply_func(func, arg):
                 return '<invalid function: %s>' % f
         return arg
     except:
-        # Can't apply the function, so just return the arg.
+        # Applying the function failed, so just return the arg.
         return arg
 
 def get_default_schemas():

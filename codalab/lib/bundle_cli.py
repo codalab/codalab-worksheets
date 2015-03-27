@@ -1293,10 +1293,15 @@ class BundleCLI(object):
             (source_bundle_info, source_worksheet_info, value_obj, type) = item
             if type == worksheet_util.TYPE_BUNDLE:
                 # Copy bundle
-                self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=False)
+                self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid, copy_dependencies=False)
             elif type == worksheet_util.TYPE_WORKSHEET:
                 # We currently don't have a mechanism for copying worksheets, only contents of worksheets.
-                pass
+                if source_client == dest_client:
+                    new_item = item
+                else:
+                    new_item = worksheet_util.markup_item( \
+                        'WARNING: did not copy worksheet %s' % self.simple_worksheet_str(source_worksheet_info))
+                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.convert_item_to_db(new_item))
             else:
                 # Copy non-bundle
                 dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.convert_item_to_db(item))
