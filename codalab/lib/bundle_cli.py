@@ -841,9 +841,9 @@ class BundleCLI(object):
                     print
                 self.print_basic_info(client, info, args.raw)
                 if args.verbose:
-                    self.print_permissions(info)
                     self.print_children(info)
                     self.print_host_worksheets(info)
+                    self.print_permissions(info)
                     self.print_contents(client, info)
 
     def key_value_str(self, key, value):
@@ -895,9 +895,6 @@ class BundleCLI(object):
 
         print '\n'.join(lines)
 
-    def print_permissions(self, info):
-        print self.key_value_str('permissions', group_permissions_str(info['group_permissions']))
-
     def print_children(self, info):
         print 'children:'
         for child in info['children']:
@@ -907,6 +904,10 @@ class BundleCLI(object):
         print 'host_worksheets:'
         for host_worksheet_info in info['host_worksheets']:
             print "  %s" % self.simple_worksheet_str(host_worksheet_info)
+
+    def print_permissions(self, info):
+        print 'permissions:'
+        print '  %s' % group_permissions_str(info['group_permissions'])
 
     def print_contents(self, client, info):
         def wrap(string): return '=== ' + string + ' ==='

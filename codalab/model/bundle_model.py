@@ -142,19 +142,23 @@ class BundleModel(object):
             )).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
-    def get_bundle_owner_ids(self, uuids):
+    def get_owner_ids(self, table, uuids):
         '''
-        Fetch the bundle owners of the given uuids.
+        Fetch the owners of the given uuids (for either bundles or worksheets).
         Return {uuid: ..., owner_id: ...}
         '''
         if len(uuids) == 0:
             return []
         with self.engine.begin() as connection:
             rows = connection.execute(select([
-                cl_bundle.c.uuid,
-                cl_bundle.c.owner_id,
-            ]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
+                table.c.uuid,
+                table.c.owner_id,
+            ]).where(table.c.uuid.in_(uuids))).fetchall()
             return dict((row.uuid, row.owner_id) for row in rows)
+    def get_bundle_owner_ids(self, uuids):
+        return self.get_owner_ids(cl_bundle, uuids)
+    def get_worksheet_owner_ids(self, uuids):
+        return self.get_owner_ids(cl_worksheet, uuids)
 
     def get_children_uuids(self, uuids):
         '''
