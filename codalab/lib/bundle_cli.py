@@ -85,6 +85,7 @@ class BundleCLI(object):
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
+      'logout': 'Logout of the current worksheet.',
       'alias': 'Manage CodaLab instance aliases.',
       'worker': 'Run the CodaLab bundle worker.',
       # Internal commands wihch are used for debugging.
@@ -392,6 +393,10 @@ class BundleCLI(object):
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         print "worksheet: %s" % self.simple_worksheet_str(worksheet_info)
         print "user: %s" % self.simple_user_str(client.user_info(None))
+
+    def do_logout_command(self, argv, parser):
+        client = self.manager.current_client()
+        self.manager.logout(client)
 
     def do_alias_command(self, argv, parser):
         '''

@@ -348,6 +348,10 @@ class CodaLabManager(object):
             if 'worksheet_uuid' in session: del session['worksheet_uuid']
         self.save_state()
 
+    def logout(self, client):
+        del self.state['auth'][client.address]  # Clear credentials
+        self.save_state()
+
     def save_config(self):
         write_pretty_json(self.config, self.config_path())
 
