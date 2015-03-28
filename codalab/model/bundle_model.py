@@ -35,7 +35,8 @@ from codalab.model.tables import (
     bundle_metadata as cl_bundle_metadata,
     bundle_action as cl_bundle_action,
     group as cl_group,
-    group_object_permission as cl_group_object_permission,
+    group_bundle_permission as cl_group_bundle_permission,
+    group_object_permission as cl_group_worksheet_permission,
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
     GROUP_OBJECT_PERMISSION_NONE,
@@ -127,7 +128,7 @@ class BundleModel(object):
     def get_bundle_names(self, uuids):
         '''
         Fetch the bundle names of the given uuids.
-        Return {uuid: name, ...}
+        Return {uuid: ..., name: ...}
         '''
         if len(uuids) == 0:
             return []
@@ -140,6 +141,20 @@ class BundleModel(object):
                      cl_bundle_metadata.c.bundle_uuid.in_(uuids))
             )).fetchall()
             return dict((row.bundle_uuid, row.metadata_value) for row in rows)
+
+    def get_bundle_owner_ids(self, uuids):
+        '''
+        Fetch the bundle owners of the given uuids.
+        Return {uuid: ..., owner_id: ...}
+        '''
+        if len(uuids) == 0:
+            return []
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([
+                cl_bundle.c.uuid,
+                cl_bundle.c.owner_id,
+            ]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
+            return dict((row.uuid, row.owner_id) for row in rows)
 
     def get_children_uuids(self, uuids):
         '''
@@ -451,6 +466,9 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             # We must delete bundles rows in the opposite order that we create them
             # to avoid foreign-key constraint failures.
+            connection.execute(cl_group_bundle_permission.delete().where(
+                cl_group_bundle_permission.c.object_uuid.in_(uuids)
+            ))
             connection.execute(cl_worksheet_item.delete().where(
                 cl_worksheet_item.c.bundle_uuid.in_(uuids)
             ))
@@ -533,7 +551,7 @@ class BundleModel(object):
                           cl_worksheet.c.uuid,
                           cl_worksheet.c.name,
                           cl_worksheet.c.owner_id,
-                          cl_group_object_permission.c.permission]
+                          cl_group_worksheet_permission.c.permission]
         cols1 = cols_to_select[:4]
         cols1.extend([literal(GROUP_OBJECT_PERMISSION_ALL).label('permission')])
         if user_id == self.root_user_id:
@@ -542,8 +560,8 @@ class BundleModel(object):
         elif user_id is None:
             # query for public worksheets (only used by the webserver when user is not logged in)
             stmt = select(cols_to_select).\
-                where(cl_worksheet.c.uuid == cl_group_object_permission.c.object_uuid).\
-                where(cl_group_object_permission.c.group_uuid == self.public_group_uuid)
+                where(cl_worksheet.c.uuid == cl_group_worksheet_permission.c.object_uuid).\
+                where(cl_group_worksheet_permission.c.group_uuid == self.public_group_uuid)
         else:
             # 1) Worksheets owned by owner_id
             stmt1 = select(cols1).where(cl_worksheet.c.owner_id == user_id)
@@ -553,10 +571,10 @@ class BundleModel(object):
                 where(cl_user_group.c.user_id == user_id)
             # List worksheets where one of our groups has permission.
             stmt2 = select(cols_to_select).\
-                where(cl_worksheet.c.uuid == cl_group_object_permission.c.object_uuid).\
+                where(cl_worksheet.c.uuid == cl_group_worksheet_permission.c.object_uuid).\
                 where(or_(
-                    cl_group_object_permission.c.group_uuid.in_(stmt2_groups),
-                    cl_group_object_permission.c.group_uuid == self.public_group_uuid)).\
+                    cl_group_worksheet_permission.c.group_uuid.in_(stmt2_groups),
+                    cl_group_worksheet_permission.c.group_uuid == self.public_group_uuid)).\
                 where(cl_worksheet.c.owner_id != user_id)  # Avoid duplicates
 
             stmt = union(stmt1, stmt2)
@@ -568,7 +586,7 @@ class BundleModel(object):
 
         # Get permissions of the worksheets
         worksheet_uuids = [row.uuid for row in rows]
-        uuid_group_permissions = dict(zip(worksheet_uuids, self.batch_get_group_permissions(worksheet_uuids)))
+        uuid_group_permissions = self.batch_get_group_worksheet_permissions(worksheet_uuids)
 
         # Put the permissions into the worksheets
         row_dicts = []
@@ -702,17 +720,17 @@ class BundleModel(object):
         Delete the worksheet with the given uuid.
         '''
         with self.engine.begin() as connection:
-            connection.execute(cl_group_object_permission.delete().\
-                where(cl_group_object_permission.c.object_uuid == worksheet_uuid)
-            )
-            connection.execute(cl_worksheet_item.delete().where(
-              cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
+            connection.execute(cl_group_worksheet_permission.delete().where(
+                cl_group_worksheet_permission.c.object_uuid == worksheet_uuid
             ))
             connection.execute(cl_worksheet_item.delete().where(
-              cl_worksheet_item.c.subworksheet_uuid == worksheet_uuid
+                cl_worksheet_item.c.worksheet_uuid == worksheet_uuid
+            ))
+            connection.execute(cl_worksheet_item.delete().where(
+                cl_worksheet_item.c.subworksheet_uuid == worksheet_uuid
             ))
             connection.execute(cl_worksheet.delete().where(
-              cl_worksheet.c.uuid == worksheet_uuid
+                cl_worksheet.c.uuid == worksheet_uuid
             ))
 
     #############################################################################
@@ -825,8 +843,11 @@ class BundleModel(object):
         Delete the group with the given uuid.
         '''
         with self.engine.begin() as connection:
-            connection.execute(cl_group_object_permission.delete().\
-                where(cl_group_object_permission.c.group_uuid == uuid)
+            connection.execute(cl_group_bundle_permission.delete().\
+                where(cl_group_bundle_permission.c.group_uuid == uuid)
+            )
+            connection.execute(cl_group_worksheet_permission.delete().\
+                where(cl_group_worksheet_permission.c.group_uuid == uuid)
             )
             connection.execute(cl_user_group.delete().\
                 where(cl_user_group.c.group_uuid == uuid)
@@ -880,135 +901,126 @@ class BundleModel(object):
                 return []
         return [dict(row) for row in rows]
 
-    def add_permission(self, group_uuid, object_uuid, permission):
-        '''
-        Add specified permission for the given (group, object) pair.
-        '''
-        row = {'group_uuid': group_uuid, 'object_uuid': object_uuid, 'permission': permission}
-        with self.engine.begin() as connection:
-            result = connection.execute(cl_group_object_permission.insert().values(row))
-            row['id'] = result.lastrowid
-        return row
-
-    def delete_permission(self, group_uuid, object_uuid):
-        '''
-        Delete permissions for the given (group, object) pair.
-        '''
-        with self.engine.begin() as connection:
-            connection.execute(cl_group_object_permission.delete().\
-                where(cl_group_object_permission.c.group_uuid == group_uuid).\
-                where(cl_group_object_permission.c.object_uuid == object_uuid)
-            )
-
-    def update_permission(self, group_uuid, object_uuid, permission):
-        '''
-        Update permission for the given (group, object) pair.
-        There should be one.
-        '''
-        with self.engine.begin() as connection:
-            connection.execute(cl_group_object_permission.update().\
-                where(cl_group_object_permission.c.group_uuid == group_uuid).\
-                where(cl_group_object_permission.c.object_uuid == object_uuid).\
-                values({'permission': permission}))
-
-    def batch_get_group_permissions(self, object_uuids):
-        '''
-        Return list of sublists (one for each object_uuid), where each sublist
-        is a list of {group_uuid: ..., group_name: ..., permission: ...}
-        entries for the given objects.  Objects are worksheets.
-        '''
-        with self.engine.begin() as connection:
-            rows = connection.execute(select([cl_group_object_permission, cl_group.c.name])
-                .where(cl_group_object_permission.c.group_uuid == cl_group.c.uuid)
-                .where(cl_group_object_permission.c.object_uuid.in_(object_uuids))
-            ).fetchall()
-            result = collections.defaultdict(list)  # object_uuid => list of rows
-            for row in rows:
-                result[row.object_uuid].append({'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
-            return [result[object_uuid] for object_uuid in object_uuids]
-
-    def get_group_permissions(self, object_uuid):
-        '''
-        Return list of {group_uuid: ..., group_name: ..., permission: ...} entries for the given object.
-        Objects are worksheets.
-        '''
-        return self.batch_get_group_permissions([object_uuid])[0]
-
-    def get_group_permission(self, group_uuid, object_uuid):
-        '''
-        Get permission for the given (group, object) pair.
-        Objects are worksheets.
-        '''
-        for row in self.get_group_permissions(object_uuid):
-            if row['group_uuid'] == group_uuid:
-                return row['permission']
-        return GROUP_OBJECT_PERMISSION_NONE
-
-    def get_user_permission(self, user_id, object_uuid, object_owner_id):
-        '''
-        Gets the set of permissions granted to the given user on the given object.
-        Use user_id = None to check the set of permissions of an anonymous user.
-        Objects are worksheets.
-        '''
-        # Owner always has all permissions.
-        if user_id == object_owner_id:
-            return GROUP_OBJECT_PERMISSION_ALL
-
-        # Root always has all permissions.
-        if user_id == self.root_user_id:
-            return GROUP_OBJECT_PERMISSION_ALL
-
-        # Figure out which groups the user is in (not that many).
-        groups = self._get_user_groups(user_id)
-
-        # See if any of these groups have the desired permission.
-        group_permissions = self.get_group_permissions(object_uuid)
-        permissions = [row['permission'] for row in group_permissions if row['group_uuid'] in groups]
-        return max(permissions) if len(permissions) > 0 else GROUP_OBJECT_PERMISSION_NONE
-    
-    def get_user_permission_on_bundles(self, user_id, bundle_uuids):
-        '''
-        Return list of permissions for bundle_uuids.
-        '''
-        # Root always has all permissions.
-        if user_id == self.root_user_id:
-            return [GROUP_OBJECT_PERMISSION_ALL] * len(bundle_uuids)
-
-        # Start out with no permissions
-        permissions = {}
-        for uuid in bundle_uuids:
-            permissions[uuid] = GROUP_OBJECT_PERMISSION_NONE
-
-        # Read: if there exists a group and worksheet that connects the user and the bundle.
-        # Note: might not need this since get_bundle_uuids is already covered by this.
-        groups = self._get_user_groups(user_id)
-        with self.engine.begin() as connection:
-            rows = connection.execute(select([
-                cl_worksheet_item.c.bundle_uuid,
-                cl_group_object_permission.c.permission
-            ]).where(and_(
-                cl_group_object_permission.c.group_uuid.in_(groups),
-                cl_group_object_permission.c.object_uuid == cl_worksheet_item.c.worksheet_uuid,  # group <=> worksheet
-                cl_worksheet_item.c.bundle_uuid.in_(bundle_uuids),  # worksheet <=> bundle
-            ))).fetchall()
-            for r in rows:
-                permissions[r.bundle_uuid] = max(permissions[r.bundle_uuid], r.permission)
-
-        # All: if the user is the owner of the bundle (a bit restrictive for now).
-        with self.engine.begin() as connection:
-            rows = connection.execute(select([
-              cl_bundle.c.uuid,
-              cl_bundle.c.owner_id
-            ]).where(cl_bundle.c.uuid.in_(bundle_uuids))).fetchall()
-            for r in rows:
-                if r.owner_id == user_id:
-                    permissions[r.uuid] = max(permissions[r.uuid], GROUP_OBJECT_PERMISSION_ALL)
-
-        return [permissions[uuid] for uuid in bundle_uuids]
-
     # Helper function: return list of group uuids that |user_id| is in.
     def _get_user_groups(self, user_id):
         groups = [self.public_group_uuid]  # Everyone is in the public group implicitly.
         if user_id != None:
             groups += [row['group_uuid'] for row in self.batch_get_user_in_group(user_id=user_id)]
-        return groups 
+        return groups
+
+    def add_permission(self, table, group_uuid, object_uuid, permission):
+        '''
+        Add specified permission for the given (group, object) pair.
+        '''
+        row = {'group_uuid': group_uuid, 'object_uuid': object_uuid, 'permission': permission}
+        with self.engine.begin() as connection:
+            result = connection.execute(table.insert().values(row))
+            row['id'] = result.lastrowid
+        return row
+    def add_bundle_permission(self, group_uuid, bundle_uuid, permission):
+        self.add_permission(cl_group_bundle_permission, group_uuid, bundle_uuid, permission)
+    def add_worksheet_permission(self, group_uuid, worksheet_uuid, permission):
+        self.add_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid, permission)
+
+    def delete_permission(self, table, group_uuid, object_uuid):
+        '''
+        Delete permissions for the given (group, object) pair.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(table.delete(). \
+                where(table.c.group_uuid == group_uuid). \
+                where(table.c.object_uuid == object_uuid)
+            )
+    def delete_bundle_permission(self, group_uuid, bundle_uuid):
+        self.delete_permission(cl_group_bundle_permission, group_uuid, bundle_uuid)
+    def delete_worksheet_permission(self, group_uuid, worksheet_uuid):
+        self.delete_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid)
+
+    def update_permission(self, table, group_uuid, object_uuid, permission):
+        '''
+        Update permission for the given (group, object) pair.
+        There should be one.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(table.update(). \
+                where(table.c.group_uuid == group_uuid). \
+                where(table.c.object_uuid == object_uuid). \
+                values({'permission': permission}))
+    def update_bundle_permission(self, group_uuid, bundle_uuid, permission):
+        self.update_permission(cl_group_bundle_permission, group_uuid, bundle_uuid, permission)
+    def update_worksheet_permission(self, group_uuid, worksheet_uuid, permission):
+        self.update_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid, permission)
+
+    def batch_get_group_permissions(self, table, object_uuids):
+        '''
+        Return map from object_uuid to list of {group_uuid: ..., group_name: ..., permission: ...}
+        '''
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([table, cl_group.c.name])
+                .where(table.c.group_uuid == cl_group.c.uuid)
+                .where(table.c.object_uuid.in_(object_uuids))
+            ).fetchall()
+            result = collections.defaultdict(list)  # object_uuid => list of rows
+            for row in rows:
+                result[row.object_uuid].append({'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
+            return result
+    def batch_get_group_bundle_permissions(self, bundle_uuids):
+        return self.batch_get_group_permissions(cl_group_bundle_permission, bundle_uuids)
+    def batch_get_group_worksheet_permissions(self, worksheet_uuids):
+        return self.batch_get_group_permissions(cl_group_worksheet_permission, worksheet_uuids)
+
+    def get_group_permissions(self, table, object_uuid):
+        '''
+        Return list of {group_uuid: ..., group_name: ..., permission: ...} entries for the given object.
+        '''
+        return self.batch_get_group_permissions(table, [object_uuid])[object_uuid]
+    def get_group_bundle_permissions(self, bundle_uuid):
+        return self.get_group_permissions(cl_group_bundle_permission, bundle_uuid)
+    def get_group_worksheet_permissions(self, worksheet_uuid):
+        return self.get_group_permissions(cl_group_worksheet_permission, worksheet_uuid)
+
+    def get_group_permission(self, table, group_uuid, object_uuid):
+        '''
+        Get permission for the given (group, object) pair.
+        '''
+        for row in self.get_group_permissions(table, object_uuid):
+            if row['group_uuid'] == group_uuid:
+                return row['permission']
+        return GROUP_OBJECT_PERMISSION_NONE
+    def get_group_bundle_permission(self, group_uuid, bundle_uuid):
+        return self.get_group_permission(cl_group_bundle_permission, group_uuid, bundle_uuid)
+    def get_group_worksheet_permission(self, group_uuid, worksheet_uuid):
+        return self.get_group_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid)
+
+    def get_user_permissions(self, table, user_id, object_uuids, owner_ids):
+        '''
+        Gets the set of permissions granted to the given user on the given objects.
+        owner_ids: map from object_uuid to owner_id.
+        Return: map from object_uuid to permission.
+
+        Use user_id = None to check the set of permissions of an anonymous user.
+        To compute this, look at the groups that the user belongs to.
+        '''
+        object_permissions = dict((object_uuid, GROUP_OBJECT_PERMISSION_NONE) for object_uuid in object_uuids)
+
+        remaining_object_uuids = []
+        for object_uuid in object_uuids:
+            owner_id = owner_ids.get(object_uuid)
+            # Owner and root has all permissions.
+            if user_id == owner_id or user_id == self.root_user_id:
+                object_permissions[object_uuid] = GROUP_OBJECT_PERMISSION_ALL
+            else:
+                remaining_object_uuids.append(object_uuid)
+
+        if len(remaining_object_uuids) > 0:
+            result = self.batch_get_group_permissions(table, remaining_object_uuids)
+            user_groups = self._get_user_groups(user_id)
+            for object_uuid, permissions in result.items():
+                for row in permissions:
+                    if row['group_uuid'] in user_groups:
+                        object_permissions[object_uuid] = max(object_permissions[object_uuid], row['permission'])
+        return object_permissions
+    def get_user_bundle_permissions(self, user_id, bundle_uuids, owner_ids):
+        return self.get_user_permissions(cl_group_bundle_permission, user_id, bundle_uuids, owner_ids) 
+    def get_user_worksheet_permissions(self, user_id, worksheet_uuids, owner_ids):
+        return self.get_user_permissions(cl_group_worksheet_permission, user_id, worksheet_uuids, owner_ids) 

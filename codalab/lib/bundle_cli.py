@@ -80,6 +80,7 @@ class BundleCLI(object):
       'ginfo': 'Show detailed information for a group.',
       'uadd': 'Add a user to a group.',
       'urm': 'Remove a user from a group.',
+      'perm': 'Set a group\'s permissions for a bundle.',
       'wperm': 'Set a group\'s permissions for a worksheet.',
       'chown': 'Set the owner of bundles.',
       # Commands that can only be executed on a LocalBundleClient.
@@ -133,6 +134,7 @@ class BundleCLI(object):
         'ginfo',
         'uadd',
         'urm',
+        'perm',
         'wperm',
         'chown',
     )
@@ -191,8 +193,9 @@ class BundleCLI(object):
         Return list of info dicts of distinct, non-orphaned bundles in the worksheet.
         '''
         result = []
-        for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:
-            if bundle_info and 'metadata' in bundle_info:  # Test if this bundle is valid
+        for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
+            if item_type == worksheet_util.TYPE_BUNDLE:
+            #if bundle_info and 'metadata' in bundle_info:  # Test if this bundle is valid
                 result.append(bundle_info)
         return result
 
@@ -265,8 +268,10 @@ class BundleCLI(object):
     GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::]|(<uuid>|<name>)"
     ADDRESS_SEPC_FORMAT = "(<alias>|<address>)"
     TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
-    BUNDLE_SPEC_FORMAT = '(<uuid>|<name>)'
+    BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
     WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
+    GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
+    PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 
     UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
@@ -708,7 +713,7 @@ class BundleCLI(object):
                             hide = True
             if not hide:
                 new_items.append(item)
-                
+
         client.update_worksheet(worksheet_info, new_items)
 
     def do_rm_command(self, argv, parser):
@@ -793,8 +798,8 @@ class BundleCLI(object):
                 if col == 'ref':
                     return '^' + str(len(bundle_info_list) - i)
                 else:
-                    return info.get(col, info['metadata'].get(col))
-                    
+                    return info.get(col, info.get('metadata', {}).get(col))
+
             columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'bundle_type', 'owner', 'created', 'data_size', 'state')
             post_funcs = {'uuid': self.UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1, 'ref': 1}
@@ -816,9 +821,9 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         for i, bundle_spec in enumerate(args.bundle_spec):
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
-            info = client.get_bundle_info(bundle_uuid, args.verbose, args.verbose)
+            info = client.get_bundle_info(bundle_uuid, args.verbose, args.verbose, args.verbose)
             if info is None:
-                raise UsageError('Invalid bundle uuid: %s' % bundle_uuid)
+                raise UsageError('Unable to retrieve information about bundle with uuid %s' % bundle_uuid)
 
             if args.field:
                 # Display individual fields (arbitrary genpath)
@@ -836,16 +841,18 @@ class BundleCLI(object):
                     print
                 self.print_basic_info(client, info, args.raw)
                 if args.verbose:
+                    self.print_permissions(info)
                     self.print_children(info)
                     self.print_host_worksheets(info)
                     self.print_contents(client, info)
+
+    def key_value_str(self, key, value):
+        return '%-21s: %s' % (key, value if value != None else '<none>')
 
     def print_basic_info(self, client, info, raw):
         '''
         Print the basic information for a bundle (key/value pairs).
         '''
-        def key_value_str(key, value):
-            return '%-21s: %s' % (key, value if value != None else '<none>')
 
         metadata = info['metadata']
         lines = []  # The output that we're accumulating
@@ -854,7 +861,7 @@ class BundleCLI(object):
         for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command', 'owner'):
             if not raw:
                 if key not in info: continue
-            lines.append(key_value_str(key, info.get(key)))
+            lines.append(self.key_value_str(key, info.get(key)))
 
         # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
@@ -867,13 +874,13 @@ class BundleCLI(object):
                 if isinstance(value, list): value = ' | '.join(value)
             else:
                 value = metadata.get(key)
-            lines.append(key_value_str(key, value))
+            lines.append(self.key_value_str(key, value))
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
         for key, value in metadata.items():
             if key in standard_keys: continue
-            lines.append(key_value_str(key, value))
+            lines.append(self.key_value_str(key, value))
 
         # Dependencies (both hard dependencies and soft)
         def display_dependencies(label, deps):
@@ -887,6 +894,9 @@ class BundleCLI(object):
             display_dependencies('dependencies', deps)
 
         print '\n'.join(lines)
+
+    def print_permissions(self, info):
+        print self.key_value_str('permissions', group_permissions_str(info['group_permissions']))
 
     def print_children(self, info):
         print 'children:'
@@ -1131,9 +1141,6 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         uuid = client.new_worksheet(args.name)
         client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(uuid))  # Add new to current
-        # Don't need backpointer - looks ugly anyway
-        #client.add_worksheet_item(uuid, worksheet_util.markup_item('Parent:'))  # Backpointer
-        #client.add_worksheet_item(uuid, worksheet_util.subworksheet_item(worksheet_uuid))  # Backpointer
         worksheet_info = client.get_worksheet_info(uuid, False)
         if args.raw:
             print worksheet_info['uuid']
@@ -1424,8 +1431,9 @@ class BundleCLI(object):
 
     def do_urm_command(self, argv, parser):
         parser.add_argument('user_spec', help='username')
-        parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>]')
+        parser.add_argument('group_spec', help='group %s' + self.GROUP_SPEC_FORMAT)
         args = parser.parse_args(argv)
+
         client = self.manager.current_client()
         user_info = client.rm_user(args.user_spec, args.group_spec)
         if user_info is None:
@@ -1433,10 +1441,25 @@ class BundleCLI(object):
         else:
             print 'Removed %s from group %s.' % (user_info['name'], user_info['group_uuid'])
 
+    def do_perm_command(self, argv, parser):
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
+        parser.add_argument('group_spec', help=self.GROUP_SPEC_FORMAT)
+        parser.add_argument('permission_spec', help=self.PERMISSION_SPEC_FORMAT)
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundle_spec]
+        result = client.set_bundles_perm(bundle_uuids, args.group_spec, args.permission_spec)
+        print "Group %s(%s) has %s permission on %d bundles." % \
+            (result['group_info']['name'], result['group_info']['uuid'],
+             permission_str(result['permission']), len(bundle_uuids))
+
     def do_wperm_command(self, argv, parser):
-        parser.add_argument('worksheet_spec', help='worksheet identifier: [<uuid>|<name>]')
-        parser.add_argument('group_spec', help='group identifier: [<uuid>|<name>|public]')
-        parser.add_argument('permission_spec', help='permission: [(n)one|(r)ead|(a)ll]')
+        parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT)
+        parser.add_argument('group_spec', help=self.GROUP_SPEC_FORMAT)
+        parser.add_argument('permission_spec', help=self.PERMISSION_SPEC_FORMAT)
         args = parser.parse_args(argv)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 

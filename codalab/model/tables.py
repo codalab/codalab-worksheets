@@ -134,6 +134,19 @@ user_group = Table(
   sqlite_autoincrement=True,
 )
 
+# Permissions for bundles
+group_bundle_permission = Table(
+  'group_bundle_permission',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
+  # Reference to a bundle
+  Column('object_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
+  # Permissions encoded as integer (see below)
+  Column('permission', Integer, nullable=False),
+  sqlite_autoincrement=True,
+)
+
 # Permissions for worksheets
 group_object_permission = Table(
   'group_object_permission',
