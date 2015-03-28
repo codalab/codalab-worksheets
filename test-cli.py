@@ -206,6 +206,22 @@ def test():
 add_test('copy', test)
 
 def test():
+    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue'])
+    run_command([cl, 'add', uuid1])
+    run_command([cl, 'add', uuid2])
+    # State after the above: 1 2 1 2
+    run_command([cl, 'hide', uuid1], 1) # multiple indices
+    run_command([cl, 'hide', uuid1, '-n', '3'], 1) # indes out of range
+    run_command([cl, 'hide', uuid2, '-n', '2']) # State: 1 1 2
+    check_equals(get_info('^', 'uuid'), uuid2)
+    run_command([cl, 'hide', uuid2]) # State: 1 1
+    check_equals(get_info('^', 'uuid'), uuid1)
+    # Cleanup
+    run_command([cl, 'rm', uuid1, uuid2])
+add_test('hide', test)
+
+def test():
     run_command([cl, 'status'])
     run_command([cl, 'alias'])
     run_command([cl, 'help'])

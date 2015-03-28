@@ -51,7 +51,8 @@ class BundleCLI(object):
       'make': 'Create a bundle out of existing bundles.',
       'run': 'Create a bundle by running a program bundle on an input bundle.',
       'edit': "Edit an existing bundle's metadata.",
-      'rm': 'Delete a bundle (and all bundles that depend on it).',
+      'hide': 'Hide a bundle from this worksheet, but doesn\'t remove the bundle.',
+      'rm': 'Remove a bundle (permanent!).',
       'search': 'Search for bundles in the system',
       'ls': 'List bundles in a worksheet.',
       'info': 'Show detailed information for a bundle.',
@@ -98,6 +99,7 @@ class BundleCLI(object):
         'make',
         'run',
         'edit',
+        'hide',
         'rm',
         'search',
         'ls',
@@ -654,6 +656,56 @@ class BundleCLI(object):
                 client.update_bundle_metadata(bundle_uuid, new_metadata)
                 print "Saved metadata for bundle %s." % (bundle_uuid)
 
+    def do_hide_command(self, argv, parser):
+        '''
+        Removes the given bundles from the given worksheet (but importantly
+        doesn't delete the actual bundles, unlike rm).
+        '''
+        parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
+        parser.add_argument('-n', '--index', help='index (1, 2, ...) of the bundle to delete', type=int)
+        parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        args = parser.parse_args(argv)
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        # Resolve all the bundles first, then hide.
+        # This is important since some of the bundle specs (^1 ^2) are relative.
+        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
+        worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
+
+        # Number the bundles: c c a b c => 3 2 1 1 1
+        items = worksheet_info['items']
+        indices = [None] * len(items)  # Parallel array to items that stores the index associated with that bundle uuid
+        uuid2index = {}  # bundle uuid => index of the bundle (at the end, number of times it occurs on the worksheet)
+        for i, item in reversed(list(enumerate(items))):
+            (bundle_info, subworksheet_info, value_obj, item_type) = item
+            if item_type == worksheet_util.TYPE_BUNDLE:
+                uuid = bundle_info['uuid']
+                indices[i] = uuid2index[uuid] = uuid2index.get(uuid, 0) + 1
+
+        # Hide the items.
+        new_items = []
+        for i, item in enumerate(items):
+            (bundle_info, subworksheet_info, value_obj, item_type) = item
+            hide = False
+            if item_type == worksheet_util.TYPE_BUNDLE:
+                uuid = bundle_info['uuid']
+                # If want to hide uuid, then make sure we're hiding the right index or if the index is not specified, that it's unique
+                if uuid in bundle_uuids:
+                    if args.index == None:
+                        if uuid2index[uuid] != 1:
+                            raise UsageError('bundle %s shows up more than once, need to specify index' % uuid)
+                        hide = True
+                    else:
+                        if args.index > uuid2index[uuid]:
+                            raise UsageError('bundle %s shows up %d times, can\'t get index %d' % (uuid, uuid2index[uuid], args.index))
+                        if args.index == indices[i]:
+                            hide = True
+            if not hide:
+                new_items.append(item)
+                
+        client.update_worksheet(worksheet_info, new_items)
+
     def do_rm_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
         parser.add_argument('-f', '--force', action='store_true', help='delete bundle (DANGEROUS - breaking dependencies!)')
@@ -665,8 +717,8 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        # Resolve all the bundles first, then delete (this is important since
-        # some of the bundle specs are relative).
+        # Resolve all the bundles first, then delete.
+        # This is important since some of the bundle specs (^1 ^2) are relative.
         bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
         deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.data_only, args.dry_run)
         if args.dry_run:
@@ -1290,11 +1342,11 @@ class BundleCLI(object):
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.dest_worksheet_spec)
 
         for item in items:
-            (source_bundle_info, source_worksheet_info, value_obj, type) = item
-            if type == worksheet_util.TYPE_BUNDLE:
+            (source_bundle_info, source_worksheet_info, value_obj, item_type) = item
+            if item_type == worksheet_util.TYPE_BUNDLE:
                 # Copy bundle
                 self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid, copy_dependencies=False)
-            elif type == worksheet_util.TYPE_WORKSHEET:
+            elif item_type == worksheet_util.TYPE_WORKSHEET:
                 # We currently don't have a mechanism for copying worksheets, only contents of worksheets.
                 if source_client == dest_client:
                     new_item = item
