@@ -222,6 +222,14 @@ def test():
 add_test('hide', test)
 
 def test():
+    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    check_contains('none', run_command([cl, 'perm', uuid, 'public', 'n']))
+    check_contains('read', run_command([cl, 'perm', uuid, 'public', 'r']))
+    check_contains('all', run_command([cl, 'perm', uuid, 'public', 'a']))
+    run_command([cl, 'rm', uuid])
+add_test('perm', test)
+
+def test():
     run_command([cl, 'status'])
     run_command([cl, 'alias'])
     run_command([cl, 'help'])

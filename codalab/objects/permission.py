@@ -13,7 +13,9 @@ from codalab.lib import (
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
-    GROUP_OBJECT_PERMISSION_NONE
+    GROUP_OBJECT_PERMISSION_NONE,
+    group_bundle_permission as cl_group_bundle_permission,
+    group_object_permission as cl_group_worksheet_permission,
 )
 from codalab.model.util import LikeQuery
 
@@ -93,46 +95,31 @@ def get_single_group(model, group_spec, search_fn):
     return groups[0]
 
 ############################################################
-# Checking permissions for worksheets
+# Checking permissions
 
-def _check_permission(model, user, obj, need_permission):
-    have_permission = model.get_user_permission(user.unique_id if user else None, obj.uuid, obj.owner_id)
-    #print '_check_permission %s %s, have %s, need %s' % (user, obj, permission_str(have_permission), permission_str(need_permission))
-    if have_permission >= need_permission:
+def _check_permissions(model, table, user, object_uuids, owner_ids, need_permission):
+    if len(object_uuids) == 0:
+        return
+    have_permissions = model.get_user_permissions(table, user.unique_id if user else None, object_uuids, owner_ids)
+    #print '_check_permissions %s %s, have %s, need %s' % (user, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission))
+    if min(have_permissions.values()) >= need_permission:
         return
     if user:
         user_str = '%s(%s)' % (user.name, user.unique_id)
     else:
         user_str = None
-    raise PermissionError("User %s does not have sufficient permissions on %s(%s) (have %s, need %s)." % \
-        (user_str, obj.name, obj.uuid, permission_str(have_permission), permission_str(need_permission)))
+    raise PermissionError("User %s does not have sufficient permissions on %s (have %s, need %s)." % \
+        (user_str, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission)))
 
-def check_has_read_permission(model, user, obj):
-    _check_permission(model, user, obj, GROUP_OBJECT_PERMISSION_READ)
-def check_has_all_permission(model, user, obj):
-    _check_permission(model, user, obj, GROUP_OBJECT_PERMISSION_ALL)
+def check_bundles_have_read_permission(model, user, bundle_uuids):
+    _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, model.get_bundle_owner_ids(bundle_uuids), GROUP_OBJECT_PERMISSION_READ)
+def check_bundles_have_all_permission(model, user, bundle_uuids):
+    _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, model.get_bundle_owner_ids(bundle_uuids), GROUP_OBJECT_PERMISSION_ALL)
 
-############################################################
-# Checking permissions for bundles
-
-def _check_permission_on_bundles(model, user, bundle_uuids, need_permission):
-    if len(bundle_uuids) == 0:
-        return
-    have_permissions = model.get_user_permission_on_bundles(user.unique_id if user else None, bundle_uuids)
-    #print '_check_permission_on_bundles %s %s, have %s, need %s' % (user, bundle_uuids, map(permission_str, have_permissions), permission_str(need_permission))
-    if min(have_permissions) >= need_permission:
-        return
-    if user:
-        user_str = '%s(%s)' % (user.name, user.unique_id)
-    else:
-        user_str = None
-    raise PermissionError("User %s does not have sufficient permissions on bundles %s (have %s, need %s)." % \
-        (user_str, bundle_uuids, map(permission_str, have_permissions), permission_str(need_permission)))
-
-def check_has_read_permission_on_bundles(model, user, bundle_uuids):
-    _check_permission_on_bundles(model, user, bundle_uuids, GROUP_OBJECT_PERMISSION_READ)
-def check_has_all_permission_on_bundles(model, user, bundle_uuids):
-    _check_permission_on_bundles(model, user, bundle_uuids, GROUP_OBJECT_PERMISSION_ALL)
+def check_worksheet_has_read_permission(model, user, worksheet):
+    _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}, GROUP_OBJECT_PERMISSION_READ)
+def check_worksheet_has_all_permission(model, user, worksheet):
+    _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}, GROUP_OBJECT_PERMISSION_ALL)
 
 ############################################################
 # Parsing functions for permissions.

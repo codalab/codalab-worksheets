@@ -38,7 +38,7 @@ class BundleRPCServer(FileServer):
         def wrap(command, func):
             def inner(*args, **kwargs):
                 if self.verbose >= 1:
-                    print "bundle_rpc_server: %s %s" % (command, args)
+                    print "bundle_rpc_server: %s %s" % (command, args if command != 'login' else '...')
                 try:
                     return func(*args, **kwargs)
                 except Exception, e:
