@@ -23,14 +23,15 @@ def open_and_edit(suffix, template=''):
     editor = find_default_editor()
     tempfile_name = ''
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as form:
-        form.write(template)
+        form.write(template.encode('utf-8'))
         form.flush()
         tempfile_name = form.name
     lines = ''
     if os.path.isfile(tempfile_name):
         subprocess.call([editor, tempfile_name])
-        with open(tempfile_name, 'rb') as form:
+        with open(tempfile_name, 'r') as form:
             lines = form.readlines()
+            lines = [line.decode('utf-8') for line in lines]
         path_util.remove(tempfile_name)
 
     return lines

@@ -75,6 +75,10 @@ def run_test(query_name):
 ############################################################
 
 def test():
+    run_command(['venv/bin/nosetests'])
+add_test('unittest', test)
+
+def test():
     # upload
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '--description', 'hello', '--tags', 'a', 'b'])
     check_equals('hosts', get_info(uuid, 'name'))
@@ -115,8 +119,7 @@ add_test('upload2', test)
 def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
     run_command([cl, 'cp', uuid, '.'])  # Duplicate
-    run_command([cl, 'rm', uuid], 1)  # should fail
-    run_command([cl, 'rm', '-f', uuid])  # force it
+    run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
 add_test('rm', test)
 
 def test():
@@ -203,13 +206,29 @@ def test():
 add_test('copy', test)
 
 def test():
+    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue'])
+    run_command([cl, 'add', uuid1])
+    run_command([cl, 'add', uuid2])
+    # State after the above: 1 2 1 2
+    run_command([cl, 'hide', uuid1], 1) # multiple indices
+    run_command([cl, 'hide', uuid1, '-n', '3'], 1) # indes out of range
+    run_command([cl, 'hide', uuid2, '-n', '2']) # State: 1 1 2
+    check_equals(get_info('^', 'uuid'), uuid2)
+    run_command([cl, 'hide', uuid2]) # State: 1 1
+    check_equals(get_info('^', 'uuid'), uuid1)
+    # Cleanup
+    run_command([cl, 'rm', uuid1, uuid2])
+add_test('hide', test)
+
+def test():
     run_command([cl, 'status'])
     run_command([cl, 'alias'])
     run_command([cl, 'help'])
 add_test('status', test)
 
 if len(sys.argv) == 1:
-    print 'Modules:', ' '.join(name for name, func in tests)
+    print 'Modules (or type all):', ' '.join(name for name, func in tests)
 else:
     for name in sys.argv[1:]:
         run_test(name)

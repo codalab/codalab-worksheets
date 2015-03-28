@@ -148,14 +148,14 @@ def get_worksheet_lines(worksheet_info):
     '''.strip() % (worksheet_info['name'], worksheet_info['uuid'],)
     lines = header.split('\n')
 
-    for (bundle_info, subworksheet_info, value_obj, type) in worksheet_info['items']:
-        if type == TYPE_MARKUP:
+    for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
+        if item_type == TYPE_MARKUP:
             lines.append(value_obj)
-        elif type == TYPE_DIRECTIVE:
+        elif item_type == TYPE_DIRECTIVE:
             value = tokens_to_string(value_obj)
             value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
             lines.append(value)
-        elif type == TYPE_BUNDLE:
+        elif item_type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
                 lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
@@ -168,7 +168,7 @@ def get_worksheet_lines(worksheet_info):
             command = bundle_info.get('command')
             if command: description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
-        elif type == TYPE_WORKSHEET:
+        elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + subworksheet_info['name'], subworksheet_info['uuid']))
         else:
             raise InternalError('Invalid worksheet item type: %s' % type)
@@ -426,7 +426,7 @@ def apply_func(func, arg):
     applied to |arg| in succession).  Each function is either:
     - 'duration', 'date', 'size' for special formatting
     - '%...' for sprintf-style formatting
-    - s/... for regular expression substitution
+    - s/.../... for regular expression substitution
     - [a:b] for taking substrings
     '''
     FUNC_DELIM = ' | '
@@ -438,21 +438,27 @@ def apply_func(func, arg):
         # String encoding of a function: size s/a/b
         for f in func.split(FUNC_DELIM):
             if f == 'date':
-                arg = formatting.date_str(arg)
+                arg = formatting.date_str(float(arg)) if arg != None else ''
             elif f == 'duration':
                 arg = formatting.duration_str(float(arg)) if arg != None else ''
             elif f == 'size':
-                arg = formatting.size_str(arg)
+                arg = formatting.size_str(float(arg)) if arg != None else ''
             elif f.startswith('%'):
                 arg = (f % float(arg)) if arg != None else ''
-            elif f.startswith('s/'):  # regular expression
-                _, s, t = f.split("/")
+            elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
+                esc_slash = '_ESC_SLASH_'  # Assume this doesn't occur in s
+                # Preserve escaped characters: \/
+                tokens = f.replace('\\/', esc_slash).split('/')
+                if len(tokens) != 3:
+                    return '<invalid regex: %s>' % f
+                s = tokens[1].replace(esc_slash, '/')
+                t = tokens[2].replace(esc_slash, '/')
                 arg = re.sub(s, t, arg)
             elif f.startswith('['):  # substring
                 m = re.match('\[(.*):(.*)\]', f)
                 if m:
                     start = int(m.group(1) or 0)
-                    end = int(m.group(2) or -1)
+                    end = int(m.group(2) or len(arg))
                     arg = arg[start:end]
                 else:
                     return '<invalid function: %s>' % f
@@ -460,7 +466,7 @@ def apply_func(func, arg):
                 return '<invalid function: %s>' % f
         return arg
     except:
-        # Can't apply the function, so just return the arg.
+        # Applying the function failed, so just return the arg.
         return arg
 
 def get_default_schemas():

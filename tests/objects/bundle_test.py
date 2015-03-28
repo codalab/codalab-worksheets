@@ -11,7 +11,7 @@ class MockBundle(Bundle):
   METADATA_SPECS = (
     MetadataSpec('str_metadata', basestring, 'test str metadata'),
     MetadataSpec('int_metadata', int, 'test int metadata'),
-    MetadataSpec('set_metadata', set, 'test set metadata'),
+    MetadataSpec('list_metadata', list, 'test list metadata'),
   )
 
   @classmethod
@@ -25,7 +25,7 @@ class BundleTest(unittest.TestCase):
 
   str_metadata = 'my_str'
   int_metadata = 17
-  set_metadata = ['value_1', 'value_2']
+  list_metadata = ['value_1', 'value_2']
 
   bundle_type = MockBundle.BUNDLE_TYPE
   command = 'my_command'
@@ -37,7 +37,7 @@ class BundleTest(unittest.TestCase):
     metadata = {
       'str_metadata': self.str_metadata,
       'int_metadata': self.int_metadata,
-      'set_metadata': self.set_metadata,
+      'list_metadata': self.list_metadata,
     }
     return MockBundle.construct(
       command=self.command,
@@ -52,8 +52,8 @@ class BundleTest(unittest.TestCase):
   def check_bundle(self, bundle, uuid=None):
     for spec in MockBundle.METADATA_SPECS:
       expected_value = getattr(self, spec.key)
-      if spec.type == set:
-        expected_value = set(expected_value)
+      if spec.type == list:
+        expected_value = list(expected_value)
       self.assertEqual(getattr(bundle.metadata, spec.key), expected_value)
     for column in self.COLUMNS:
       if column == 'uuid':
