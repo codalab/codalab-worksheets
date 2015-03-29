@@ -172,7 +172,7 @@ def test():
     # create worksheet
     check_contains(uuid[0:5], run_command([cl, 'ls']))
     run_command([cl, 'add', '-m', 'testing'])
-    run_command([cl, 'add', '-m', '% display contents / maxlines=2'])
+    run_command([cl, 'add', '-m', '% display contents / maxlines=10'])
     run_command([cl, 'add', uuid])
     run_command([cl, 'add', '-m', '%% comment'])
     run_command([cl, 'add', '-m', '% schema foo'])
