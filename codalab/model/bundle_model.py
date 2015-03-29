@@ -243,6 +243,12 @@ class BundleModel(object):
         sort_key = [None]
         sum_key = [None]
 
+        # Number nested subqueries
+        subquery_index = [0]
+        def alias(clause):
+            subquery_index[0] += 1
+            return clause.alias('q' + str(subquery_index[0]))
+
         def make_condition(field, value):
             # Special
             if value == '.sort':
@@ -299,7 +305,7 @@ class BundleModel(object):
                             condition,
                         )
                     else:  # embedded
-                        clause = cl_bundle.c.uuid.in_(select([cl_bundle_dependency.c.child_uuid]).where(condition))
+                        clause = cl_bundle.c.uuid.in_(alias(select([cl_bundle_dependency.c.child_uuid]).where(condition)))
                 elif key.startswith('dependency/'):
                     _, name = key.split('/', 1)
                     condition = make_condition(cl_bundle_dependency.c.parent_uuid, value)
@@ -310,10 +316,10 @@ class BundleModel(object):
                             condition,
                         )
                     else:  # embedded
-                        clause = cl_bundle.c.uuid.in_(select([cl_bundle_dependency.c.child_uuid]).where(and_(
+                        clause = cl_bundle.c.uuid.in_(alias(select([cl_bundle_dependency.c.child_uuid]).where(and_(
                             cl_bundle_dependency.c.child_path == name,  # Match the 'type' of dependent (child_path)
                             condition,
-                        )))
+                        ))))
                 elif key == 'host_worksheet':
                     condition = make_condition(cl_worksheet_item.c.worksheet_uuid, value)
                     if condition == true():  # top-level
@@ -322,7 +328,7 @@ class BundleModel(object):
                             condition,
                         )
                     else:
-                        clause = cl_bundle.c.uuid.in_(select([cl_worksheet_item.c.bundle_uuid]).where(condition))
+                        clause = cl_bundle.c.uuid.in_(alias(select([cl_worksheet_item.c.bundle_uuid]).where(condition)))
                 # Special functions
                 elif key == '.offset':
                     offset = int(value)
@@ -338,24 +344,24 @@ class BundleModel(object):
                             condition,
                         )
                     else:  # embedded
-                        clause = cl_bundle.c.uuid.in_(select([cl_bundle_metadata.c.bundle_uuid]).where(and_(
+                        clause = cl_bundle.c.uuid.in_(alias(select([cl_bundle_metadata.c.bundle_uuid]).where(and_(
                             cl_bundle_metadata.c.metadata_key == key,
                             condition,
-                        )))
+                        ))))
             elif keyword == '.count':
                 count = True
                 limit = None
             elif keyword == '.orphan':
                 # Get bundles that have host worksheets, and then take the complement.
-                with_hosts = select([cl_bundle.c.uuid]).where(cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
+                with_hosts = alias(select([cl_bundle.c.uuid]).where(cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid))
                 clause = not_(cl_bundle.c.uuid.in_(with_hosts))
             else: # General keywords
                 clause = []
                 clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
                 clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
-                clause.append(cl_bundle.c.uuid.in_(select([cl_bundle_metadata.c.bundle_uuid]).where(
+                clause.append(cl_bundle.c.uuid.in_(alias(select([cl_bundle_metadata.c.bundle_uuid]).where(
                     cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'),
-                )))
+                ))))
                 clause = or_(*clause)
 
             if clause is not None:
@@ -370,7 +376,7 @@ class BundleModel(object):
                 cl_group_bundle_permission.c.object_uuid == cl_bundle.c.uuid,  # Join constraint (bundle)
                 or_(  # Join constraint (group)
                     cl_group_bundle_permission.c.group_uuid == self.public_group_uuid,  # Public group
-                    cl_group_bundle_permission.c.group_uuid.in_(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id))  # Private group
+                    cl_group_bundle_permission.c.group_uuid.in_(alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)))  # Private group
                 ),
                 cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
             )
@@ -378,9 +384,9 @@ class BundleModel(object):
 
         # Aggregate (sum)
         if sum_key[0] is not None:
-            query = select([func.sum(sum_key[0])]).distinct().where(clause).offset(offset).limit(limit)
+            query = alias(select([func.sum(sum_key[0])]).distinct().where(clause).offset(offset).limit(limit))
         else:
-            query = select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(limit)
+            query = alias(select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(limit))
 
         # Sort
         if sort_key[0] is not None:
