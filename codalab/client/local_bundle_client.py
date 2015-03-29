@@ -160,6 +160,8 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
+        check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
+
         bundle_type = info['bundle_type']
         if 'uuid' in info:
             existing = True
@@ -190,9 +192,9 @@ class LocalBundleClient(BundleClient):
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
 
-        if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
-            # TODO: don't fail if don't have permissions
+        # Add to worksheet
+        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
+
         return bundle.uuid
 
     @authentication_required
@@ -201,6 +203,8 @@ class LocalBundleClient(BundleClient):
         For both make and run bundles.
         Add the resulting bundle to the given worksheet_uuid (optional).
         '''
+        check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
+
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
         owner_id = self._current_user_id()
@@ -210,9 +214,9 @@ class LocalBundleClient(BundleClient):
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
 
-        if worksheet_uuid:
-            self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
-            # TODO: don't fail if don't have permissions
+        # Add to worksheet
+        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
+
         return bundle.uuid
 
     def _bundle_inherit_workheet_permissions(self, bundle_uuid, worksheet_uuid):
@@ -304,6 +308,7 @@ class LocalBundleClient(BundleClient):
         return relevant_uuids
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
+        check_bundles_have_read_permission(self.model, self._current_user(), [uuid])
         return self.get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
 
     def get_bundle_infos(self, uuids, get_children=False, get_host_worksheets=False, get_permissions=False):
@@ -328,9 +333,6 @@ class LocalBundleClient(BundleClient):
         for uuid in select_unreadable_bundles(uuids):
             if uuid in bundle_dict:
                 del bundle_dict[uuid]
-
-        # Too harsh
-        #check_bundles_have_read_permission(self.model, self._current_user(), [bundle.uuid for bundle in bundles])
 
         # Lookup the user names of all the owners
         user_ids = [info['owner_id'] for info in bundle_dict.values()]
@@ -418,6 +420,7 @@ class LocalBundleClient(BundleClient):
         depth: how far to do a BFS up from old_output.
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
+        check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
         #print 'old_inputs: %s, new_inputs: %s, old_output: %s, new_output_name: %s' % (old_inputs, new_inputs, old_output, new_output_name)
 
         # Build the graph (get all the infos).

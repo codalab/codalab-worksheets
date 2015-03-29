@@ -259,7 +259,6 @@ class BundleCLI(object):
                     row_strs.append(str(value) + padding)
                 else:
                     row_strs.append(padding + str(value))
-                # TODO: center
             if show_header or i > 0:
                 print indent + '  '.join(row_strs)
             if i == 0:
