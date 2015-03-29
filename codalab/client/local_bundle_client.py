@@ -812,7 +812,8 @@ class LocalBundleClient(BundleClient):
                 path = self.get_target_path(data)
                 data = path_util.base64_encode(path)
             elif mode == 'search':
-                search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
+                worksheet_uuid = None
+                search_interpreted = worksheet_util.interpret_search(self, worksheet_uuid, data)
                 data = search_interpreted
             elif mode == 'worksheet':
                 pass
