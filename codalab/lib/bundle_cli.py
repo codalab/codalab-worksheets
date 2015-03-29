@@ -905,7 +905,8 @@ class BundleCLI(object):
             print "  %s" % self.simple_worksheet_str(host_worksheet_info)
 
     def print_permissions(self, info):
-        print 'permissions:'
+        print 'permission: %s' % permission_str(info['permission'])
+        print 'group_permissions:'
         print '  %s' % group_permissions_str(info['group_permissions'])
 
     def print_contents(self, client, info):

@@ -38,6 +38,7 @@ import json
 
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
+from codalab.objects.permission import permission_str, group_permissions_str
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -322,6 +323,15 @@ def interpret_genpath(bundle_info, genpath):
         if bundle_info['command']:
             args.append(quote(bundle_info['command']))
         return ' '.join(args)
+    elif genpath == 'host_worksheets':
+        if 'host_worksheets' in bundle_info:
+            return ' '.join('%s(%s)' % (info['name'], info['uuid']) for info in bundle_info['host_worksheets'])
+    elif genpath == 'permission':
+        if 'permission' in bundle_info:
+            return permission_str(bundle_info['permission'])
+    elif genpath == 'group_permissions':
+        if 'group_permissions' in bundle_info:
+            return group_permissions_str(bundle_info['group_permissions'])
 
     # Bundle field?
     value = bundle_info.get(genpath)

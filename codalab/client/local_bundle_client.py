@@ -372,9 +372,11 @@ class LocalBundleClient(BundleClient):
 
         if get_permissions:
             # Fill the info
-            result = self.model.batch_get_group_bundle_permissions(uuids)
+            group_result = self.model.batch_get_group_bundle_permissions(uuids)
+            result = self.model.get_user_bundle_permissions(self._current_user_id(), uuids, self.model.get_bundle_owner_ids(uuids))
             for uuid, info in bundle_dict.items():
-                info['group_permissions'] = result[uuid]
+                info['group_permissions'] = group_result[uuid]
+                info['permission'] = result[uuid]
 
         return bundle_dict
 

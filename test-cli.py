@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import subprocess
 import sys
 import re
@@ -223,6 +221,7 @@ add_test('hide', test)
 
 def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    check_equals('all', run_command([cl, 'info', '-v', '-f', 'permission', uuid]))
     check_contains('none', run_command([cl, 'perm', uuid, 'public', 'n']))
     check_contains('read', run_command([cl, 'perm', uuid, 'public', 'r']))
     check_contains('all', run_command([cl, 'perm', uuid, 'public', 'a']))
@@ -236,7 +235,9 @@ def test():
 add_test('status', test)
 
 if len(sys.argv) == 1:
-    print 'Modules (or type all):', ' '.join(name for name, func in tests)
+    print 'Usage: python %s <module> ... <module>' % sys.argv[0]
+    print 'Note that this will modify your current worksheet, but should restore it.'
+    print 'Modules: all ' + ' '.join(name for name, func in tests)
 else:
     for name in sys.argv[1:]:
         run_test(name)
