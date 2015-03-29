@@ -369,11 +369,8 @@ class BundleModel(object):
             access_via_group = and_(
                 cl_group_bundle_permission.c.object_uuid == cl_bundle.c.uuid,  # Join constraint (bundle)
                 or_(  # Join constraint (group)
-                    cl_group_bundle_permission.c.group_uuid == self.public_group_uuid,  # Public
-                    and_(  # Given to group that contains user
-                        cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid,
-                        cl_user_group.c.user_id == user_id,
-                    ),
+                    cl_group_bundle_permission.c.group_uuid == self.public_group_uuid,  # Public group
+                    cl_group_bundle_permission.c.group_uuid.in_(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id))  # Private group
                 ),
                 cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
             )
