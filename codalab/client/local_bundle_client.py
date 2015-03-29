@@ -94,12 +94,8 @@ class LocalBundleClient(BundleClient):
     def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
         return canonicalize.get_bundle_uuid(self.model, self._current_user_id(), worksheet_uuid, bundle_spec)
 
-    def search_bundle_uuids(self, worksheet_uuid, keywords, max_results, count):
-        return self.model.get_bundle_uuids({
-            '*': keywords,
-            'worksheet_uuid': worksheet_uuid,
-            'user_id': self._current_user_id(),
-        }, max_results=max_results, count=count)
+    def search_bundle_uuids(self, worksheet_uuid, keywords):
+        return self.model.search_bundle_uuids(self._current_user_id(), worksheet_uuid, keywords)
 
     # Helper
     def get_target_path(self, target):
@@ -593,6 +589,14 @@ class LocalBundleClient(BundleClient):
     # Implementations of worksheet-related client methods follow!
     #############################################################################
 
+    def ensure_unused_group_name(self, name):
+        # Ensure group names are unique.  Note: for simplicity, we are
+        # ensuring uniqueness across the system, even on group names that
+        # the user may not have access to.
+        groups = self.model.batch_get_groups(name=name)
+        if len(groups) != 0:
+            raise UsageError('Group with name %s already exists' % name)
+
     def ensure_unused_worksheet_name(self, name):
         # Ensure worksheet names are unique.  Note: for simplicity, we are
         # ensuring uniqueness across the system, even on worksheet names that
@@ -866,6 +870,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def new_group(self, name):
+        self.ensure_unused_group_name(name)
         group = Group({'name': name, 'user_defined': True, 'owner_id': self._current_user_id()})
         group.validate()
         group_dict = self.model.create_group(group.to_dict())

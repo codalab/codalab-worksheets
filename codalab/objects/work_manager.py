@@ -174,7 +174,8 @@ class Worker(object):
         new_statuses = []
         for status in statuses:
             handle = status['job_handle']
-            uuids = self.model.get_bundle_uuids({'*': ['job_handle='+handle]}, None)
+            # Note: should probably have a more specalized way of getting this.
+            uuids = self.model.search_bundle_uuids(worksheet_uuid=None, user_id=self.model.root_user_id, keywords=['job_handle='+handle])
             if len(uuids) == 0:
                 continue
             bundle = self._safe_get_bundle(uuids[0])

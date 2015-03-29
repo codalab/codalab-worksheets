@@ -7,6 +7,8 @@ from sqlalchemy import (
     not_,
     select,
     union,
+    desc,
+    func,
 )
 from sqlalchemy.exc import (
     OperationalError,
@@ -49,10 +51,11 @@ from codalab.objects.worksheet import (
     item_sort_key,
     Worksheet,
 )
+from codalab.objects.permission import parse_permission
 
 import re, collections
 
-CONDITION_REGEX = re.compile('^([\w/]+)=(.*)$')
+CONDITION_REGEX = re.compile('^([\.\w/]+)=(.*)$')
 
 class BundleModel(object):
     def __init__(self, engine):
@@ -212,21 +215,196 @@ class BundleModel(object):
             depth -= 1
         return visited
 
-    def get_bundle_uuids(self, conditions, max_results, count=False):
+    def search_bundle_uuids(self, user_id, worksheet_uuid, keywords):
+        '''
+        Return a list of uuids (in the appropriate order) matching the keywords.
+        Each keyword is either:
+        - <key>=<value>
+        - .orphan: return bundles
+        - .offset=<int>
+        - .limit=<int>: maximum number of bundles to return
+        - .count: just return the number
+        - <general word>
+        Keys are one of the following:
+        - Bundle fields (e.g., uuid)
+        - Metadata fields (e.g., time)
+        - Special fields (e.g., dependencies)
+        Values can be one of the following:
+        - .sort: sort in increasing order
+        - .sort-: sort by decreasing order
+        - .count|.min|.max|.sum: aggregate
+        Search only bundles which are readable by user_id.
+        worksheet_uuid is not used right now.
+        '''
+        clauses = []
+        offset = 0
+        limit = 10
+        count = False
+        sort_key = [None]
+        sum_key = [None]
+
+        def make_condition(field, value):
+            # Special
+            if value == '.sort':
+                sort_key[0] = field * 1
+            elif value == '.sort-':
+                # TODO: if field is not numeric, this doesn't work.
+                # We should either detect whether the field is numeric.
+                sort_key[0] = desc(field * 1)
+            elif value == '.sum':
+                sum_key[0] = field * 1
+            else:
+                # Ordinary value
+                if '%' in value:
+                    return field.like(value)
+                else:
+                    return field == value
+            return true()
+
+        shortcuts = {
+            'type': 'bundle_type',
+            'size': 'data_size',
+            'worksheet': 'host_worksheet',
+        }
+
+        for keyword in keywords:
+            keyword = keyword.replace('.*', '%')
+            m = CONDITION_REGEX.match(keyword) # key=value
+            clause = None
+            if m:
+                key, value = m.group(1), m.group(2)
+                key = shortcuts.get(key, key)
+                # Bundle fields
+                if key == 'bundle_type':
+                    clause = make_condition(cl_bundle.c.bundle_type, value)
+                elif key == 'id':
+                    clause = make_condition(cl_bundle.c.id, value)
+                elif key == 'uuid':
+                    clause = make_condition(cl_bundle.c.uuid, value)
+                elif key == 'data_hash':
+                    clause = make_condition(cl_bundle.c.data_hash, value)
+                elif key == 'state':
+                    clause = make_condition(cl_bundle.c.state, value)
+                elif key == 'command':
+                    clause = make_condition(cl_bundle.c.command, value)
+                elif key == 'owner_id':
+                    clause = make_condition(cl_bundle.c.owner_id, value)
+                # Special fields
+                elif key == 'dependency':
+                    # Match uuid of dependency
+                    condition = make_condition(cl_bundle_dependency.c.parent_uuid, value)
+                    if condition == true():  # top-level
+                        clause = and_(
+                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,
+                            condition,
+                        )
+                    else:  # embedded
+                        clause = cl_bundle.c.uuid.in_(select([cl_bundle_dependency.c.child_uuid]).where(condition))
+                elif key.startswith('dependency/'):
+                    _, name = key.split('/', 1)
+                    condition = make_condition(cl_bundle_dependency.c.parent_uuid, value)
+                    if condition == true():  # top-level
+                        clause = and_(
+                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
+                            cl_bundle_dependency.c.child_path == name,  # Match the 'type' of dependent (child_path)
+                            condition,
+                        )
+                    else:  # embedded
+                        clause = cl_bundle.c.uuid.in_(select([cl_bundle_dependency.c.child_uuid]).where(and_(
+                            cl_bundle_dependency.c.child_path == name,  # Match the 'type' of dependent (child_path)
+                            condition,
+                        )))
+                elif key == 'host_worksheet':
+                    condition = make_condition(cl_worksheet_item.c.worksheet_uuid, value)
+                    if condition == true():  # top-level
+                        clause = and_(
+                            cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid,  # Join constraint
+                            condition,
+                        )
+                    else:
+                        clause = cl_bundle.c.uuid.in_(select([cl_worksheet_item.c.bundle_uuid]).where(condition))
+                # Special functions
+                elif key == '.offset':
+                    offset = int(value)
+                elif key == '.limit':
+                    limit = int(value)
+                # Otherwise, assume metadata.
+                else:
+                    condition = make_condition(cl_bundle_metadata.c.metadata_value, value)
+                    if condition == true():  # top-level
+                        clause = and_(
+                            cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid,
+                            cl_bundle_metadata.c.metadata_key == key,
+                            condition,
+                        )
+                    else:  # embedded
+                        clause = cl_bundle.c.uuid.in_(select([cl_bundle_metadata.c.bundle_uuid]).where(and_(
+                            cl_bundle_metadata.c.metadata_key == key,
+                            condition,
+                        )))
+            elif keyword == '.count':
+                count = True
+                limit = None
+            elif keyword == '.orphan':
+                # Get bundles that have host worksheets, and then take the complement.
+                with_hosts = select([cl_bundle.c.uuid]).where(cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
+                clause = not_(cl_bundle.c.uuid.in_(with_hosts))
+            else: # General keywords
+                clause = []
+                clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
+                clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
+                clause.append(cl_bundle.c.uuid.in_(select([cl_bundle_metadata.c.bundle_uuid]).where(
+                    cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'),
+                )))
+                clause = or_(*clause)
+
+            if clause is not None:
+                clauses.append(clause)
+
+        clause = and_(*clauses)
+
+        if user_id != self.root_user_id:
+            # Restrict to the bundles that we have access to.
+            access_via_owner = (cl_bundle.c.owner_id == user_id)
+            access_via_group = and_(
+                cl_group_bundle_permission.c.object_uuid == cl_bundle.c.uuid,  # Join constraint (bundle)
+                or_(  # Join constraint (group)
+                    cl_group_bundle_permission.c.group_uuid == self.public_group_uuid,  # Public
+                    and_(  # Given to group that contains user
+                        cl_group_bundle_permission.c.group_uuid == cl_user_group.c.group_uuid,
+                        cl_user_group.c.user_id == user_id,
+                    ),
+                ),
+                cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
+            )
+            clause = and_(clause, or_(access_via_owner, access_via_group))
+
+        # Aggregate (sum)
+        if sum_key[0] is not None:
+            query = select([func.sum(sum_key[0])]).distinct().where(clause).offset(offset).limit(limit)
+        else:
+            query = select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(limit)
+
+        # Sort
+        if sort_key[0] is not None:
+            query = query.order_by(sort_key[0])
+
+        # Count
+        if count:
+            query = query.count()
+
+        #print 'QUERY', self._render_query(query)
+        result = self._execute_query(query)
+        if count or sum_key[0] is not None:  # Just returning a single number
+            return result[0]
+        #print 'RESULT', result
+        return result
+
+    def get_bundle_uuids(self, conditions, max_results):
         '''
         Returns a list of bundle_uuids that have match the conditions.
-        Possible conditions on bundles (not all supported right now):
-        - uuid: could be just a prefix
-        - name (exists in bundle_metadata)
-        - parent: dependent (exists in bundle_dependency)
-        - child: downstream influence (exists in bundle_dependency)
-        - worksheet_uuid (exists in worksheet_uuid)
-        - user_id (must be reachable from this user)
-        Return in reverse order.
+        Possible conditions on bundles: uuid, name, worksheet_uuid
         '''
-        # TODO: implement 'count'
-        # TODO: handle matching other conditions
-        # TODO: support user_id (to implement permissions!)
         if 'uuid' in conditions:
             # Match the uuid only
             clause = self.make_clause(cl_bundle.c.uuid, conditions['uuid'])
@@ -253,64 +431,20 @@ class BundleModel(object):
                 clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
                 query = select([cl_bundle.c.uuid]).where(clause)
                 query = query.order_by(cl_bundle.c.id.desc()).limit(max_results)
-        elif '*' in conditions:
-            # Search any field: uuid, command, other metadata
-            # Each keyword is either a string (just search everywhere) or
-            # key=value, which is more targeted, and results in exact match.
-            clauses = []
-            offset = 0
 
-            for keyword in conditions['*']:
-                m = CONDITION_REGEX.match(keyword)
-                if m:
-                    key, value = m.group(1), m.group(2)
-                    if key == 'bundle_type' or key == 'type':
-                        clause = (cl_bundle.c.bundle_type == value)
-                    elif key == 'data_hash':
-                        clause = (cl_bundle.c.data_hash == value)
-                    elif key == 'state':
-                        clause = (cl_bundle.c.state == value)
-                    elif key == 'dependencies':
-                        clause = and_(
-                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
-                            cl_bundle_dependency.c.parent_uuid == value,  # Match the uuid of the dependent (parent)
-                        )
-                    elif key.startswith('dependencies/'):
-                        _, name = key.split('/', 1)
-                        clause = and_(
-                            cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
-                            cl_bundle_dependency.c.parent_uuid == value,  # Match the uuid of the dependent (parent_uuid)
-                            cl_bundle_dependency.c.child_path == name,  # Match the 'type' of dependent (child_path)
-                        )
-                    elif key == 'offset':
-                        offset = int(value)
-                    elif key == 'limit':
-                        max_results = int(value)
-                    else:
-                        clause = and_(
-                            cl_bundle_metadata.c.metadata_key == key,
-                            cl_bundle_metadata.c.metadata_value == value
-                        )
-                else:
-                    if keyword == 'orphan':
-                        # Get bundles with homes (those in worksheets), and then take the complement.
-                        with_homes = select([cl_bundle.c.uuid]).where(cl_bundle.c.uuid == cl_worksheet_item.c.bundle_uuid)
-                        clause = not_(cl_bundle.c.uuid.in_(with_homes))
-                    else:
-                        clause = []
-                        clause.append(cl_bundle.c.uuid.like('%' + keyword + '%'))
-                        clause.append(cl_bundle.c.command.like('%' + keyword + '%'))
-                        clause.append(cl_bundle_metadata.c.metadata_value.like('%' + keyword + '%'))
-                        clause = or_(*clause)
-                clauses.append(clause)
-            clause = and_(*clauses)
-            clause = and_(clause, cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
-            query = select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(max_results)
+        return self._execute_query(query)
 
-        #print 'QUERY', query, query.compile().params
+    # Helper function: return string representing SQL query.
+    def _render_query(self, query):
+        query = query.compile()
+        s = str(query)
+        for k, v in query.params.items():
+            s = s.replace(':' + k, str(v))
+        return s
+
+    def _execute_query(self, query):
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
-        #for row in rows: print row
         return [row[0] for row in rows]
 
     def batch_get_bundles(self, **kwargs):

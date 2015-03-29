@@ -1,0 +1,11 @@
+# Handy macros for the CodaLab CLI.
+
+# Usage: clhist <bundle>
+# Put the command used to create the bundle in the history.
+clhist() {
+  history -s cl $(cl info -f args $1)
+}
+
+# Useful for chaining cl commands.
+# Example: cl search .orphan -u | xcl info
+alias xcl='xargs cl'

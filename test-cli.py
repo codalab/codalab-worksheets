@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 import subprocess
 import sys
 import re
@@ -145,7 +147,6 @@ def test():
     wait(uuid)
     # test search
     check_contains('hello', run_command([cl, 'search', name]))
-    #check_equals('1', run_command([cl, 'search', name, '--count'])) # TODO: doesn't work
     check_equals(uuid, run_command([cl, 'search', name, '-u']))
     run_command([cl, 'search', 'test-hello-run', '--append'])
     # get info
@@ -227,6 +228,25 @@ def test():
     check_contains('all', run_command([cl, 'perm', uuid, 'public', 'a']))
     run_command([cl, 'rm', uuid])
 add_test('perm', test)
+
+def test():
+    name = 'test-123'
+    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', name])
+    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue', '-n', name])
+    check_equals(uuid1, run_command([cl, 'search', uuid1, '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, '-u']))
+    check_equals('', run_command([cl, 'search', 'uuid='+uuid1[0:8], '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1[0:8]+'.*', '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1[0:8]+'%', '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, 'name='+name, '-u']))
+    check_equals(uuid1 + '\n' + uuid2, run_command([cl, 'search', 'name='+name, 'id=.sort', '-u']))
+    check_equals(uuid2 + '\n' + uuid1, run_command([cl, 'search', 'name='+name, 'id=.sort-', '-u']))
+    check_equals('2', run_command([cl, 'search', 'name='+name, '.count']))
+    size1 = int(run_command([cl, 'info', '-f', 'data_size', uuid1]))
+    size2 = int(run_command([cl, 'info', '-f', 'data_size', uuid2]))
+    check_equals(str(size1 + size2), run_command([cl, 'search', 'name='+name, 'data_size=.sum']))
+    run_command([cl, 'rm', uuid1, uuid2])
+add_test('search', test)
 
 def test():
     run_command([cl, 'status'])
