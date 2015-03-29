@@ -745,7 +745,7 @@ further commands.  To kill all running bundles (be careful!):
 
 To delete all "orphaned" bundles that do not appear on a worksheet (be careful!):
 
-    cl search orphan -u | xargs cl rm
+    cl search .orphan -u | xargs cl rm
 
 To run a bundle and create another bundle that depends on it:
 

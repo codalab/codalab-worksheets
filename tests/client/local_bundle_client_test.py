@@ -81,13 +81,14 @@ class GroupsAndPermsTest(unittest.TestCase):
         self.set_current_user('root', '')
         grp_name = 'g_delete_group'
         g1 = self.client.new_group(grp_name)
-        g2 = self.client.new_group(grp_name)
-        # Can't delete by name when multiple groups have same name
+        # Can't create two groups of the same name
         with self.assertRaises(UsageError):
-            self.client.rm_group(grp_name)
+            self.client.new_group(grp_name)
         # Delete by UUID
         g1deleted = self.client.rm_group(g1['uuid'])
         self.assertEqual(g1['uuid'], g1deleted['uuid'])
+        # Create it now
+        g2 = self.client.new_group(grp_name)
         # Delete by name
         g2deleted = self.client.rm_group(grp_name)
         self.assertEqual(g2['uuid'], g2deleted['uuid'])

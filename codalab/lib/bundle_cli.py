@@ -259,7 +259,6 @@ class BundleCLI(object):
                     row_strs.append(str(value) + padding)
                 else:
                     row_strs.append(padding + str(value))
-                # TODO: center
             if show_header or i > 0:
                 print indent + '  '.join(row_strs)
             if i == 0:
@@ -742,20 +741,22 @@ class BundleCLI(object):
     def do_search_command(self, argv, parser):
         parser.add_argument('keywords', help='keywords to search for', nargs='+')
         parser.add_argument('-a', '--append', help='append these bundles to the given worksheet', action='store_true')
-        parser.add_argument('-c', '--count', help='just count number of bundles', action='store_true')
         parser.add_argument('-u', '--uuid-only', help='print only uuids', action='store_true')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords, 100, args.count)
+        bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords)
+        if not isinstance(bundle_uuids, list):  # Direct result
+            print bundle_uuids
+            return
 
         # Print out bundles
         if args.uuid_only:
             bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
         else:
             bundle_infos = client.get_bundle_infos(bundle_uuids)
-            bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids]
+            bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids if uuid in bundle_infos]
 
         if len(bundle_info_list) > 0:
             self.print_bundle_info_list(bundle_info_list, uuid_only=args.uuid_only, print_ref=False)
@@ -841,9 +842,9 @@ class BundleCLI(object):
                     print
                 self.print_basic_info(client, info, args.raw)
                 if args.verbose:
-                    self.print_permissions(info)
                     self.print_children(info)
                     self.print_host_worksheets(info)
+                    self.print_permissions(info)
                     self.print_contents(client, info)
 
     def key_value_str(self, key, value):
@@ -895,9 +896,6 @@ class BundleCLI(object):
 
         print '\n'.join(lines)
 
-    def print_permissions(self, info):
-        print self.key_value_str('permissions', group_permissions_str(info['group_permissions']))
-
     def print_children(self, info):
         print 'children:'
         for child in info['children']:
@@ -907,6 +905,11 @@ class BundleCLI(object):
         print 'host_worksheets:'
         for host_worksheet_info in info['host_worksheets']:
             print "  %s" % self.simple_worksheet_str(host_worksheet_info)
+
+    def print_permissions(self, info):
+        print 'permission: %s' % permission_str(info['permission'])
+        print 'group_permissions:'
+        print '  %s' % group_permissions_str(info['group_permissions'])
 
     def print_contents(self, client, info):
         def wrap(string): return '=== ' + string + ' ==='

@@ -38,6 +38,7 @@ import json
 
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
+from codalab.objects.permission import permission_str, group_permissions_str
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -322,6 +323,15 @@ def interpret_genpath(bundle_info, genpath):
         if bundle_info['command']:
             args.append(quote(bundle_info['command']))
         return ' '.join(args)
+    elif genpath == 'host_worksheets':
+        if 'host_worksheets' in bundle_info:
+            return ' '.join('%s(%s)' % (info['name'], info['uuid']) for info in bundle_info['host_worksheets'])
+    elif genpath == 'permission':
+        if 'permission' in bundle_info:
+            return permission_str(bundle_info['permission'])
+    elif genpath == 'group_permissions':
+        if 'group_permissions' in bundle_info:
+            return group_permissions_str(bundle_info['group_permissions'])
 
     # Bundle field?
     value = bundle_info.get(genpath)
@@ -704,11 +714,13 @@ def interpret_search(client, worksheet_uuid, data):
     Output: worksheet items based on the result of issuing the search query.
     '''
     # First item determines the display
-    items = [directive_item(('display',) + data['display'])]
+    items = [directive_item(('display',) + tuple(data['display']))]
 
     # Next come the actual bundles
-    MAX_RESULTS = 100  # TODO: pass in as parameter
-    bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'], MAX_RESULTS, False)
+    bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'])
+    if not isinstance(bundle_uuids, list):  # Single number, just print it out...
+        return interpret_items(data['schemas'], [markup_item(str(bundle_uuids))])
+
     bundle_infos = client.get_bundle_infos(bundle_uuids)
     for bundle_uuid in bundle_uuids:
         items.append(bundle_item(bundle_infos[bundle_uuid]))

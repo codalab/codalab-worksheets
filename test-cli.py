@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import subprocess
 import sys
@@ -147,7 +147,6 @@ def test():
     wait(uuid)
     # test search
     check_contains('hello', run_command([cl, 'search', name]))
-    #check_equals('1', run_command([cl, 'search', name, '--count'])) # TODO: doesn't work
     check_equals(uuid, run_command([cl, 'search', name, '-u']))
     run_command([cl, 'search', 'test-hello-run', '--append'])
     # get info
@@ -173,7 +172,7 @@ def test():
     # create worksheet
     check_contains(uuid[0:5], run_command([cl, 'ls']))
     run_command([cl, 'add', '-m', 'testing'])
-    run_command([cl, 'add', '-m', '% display contents / maxlines=2'])
+    run_command([cl, 'add', '-m', '% display contents / maxlines=10'])
     run_command([cl, 'add', uuid])
     run_command([cl, 'add', '-m', '%% comment'])
     run_command([cl, 'add', '-m', '% schema foo'])
@@ -223,11 +222,31 @@ add_test('hide', test)
 
 def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    check_equals('all', run_command([cl, 'info', '-v', '-f', 'permission', uuid]))
     check_contains('none', run_command([cl, 'perm', uuid, 'public', 'n']))
     check_contains('read', run_command([cl, 'perm', uuid, 'public', 'r']))
     check_contains('all', run_command([cl, 'perm', uuid, 'public', 'a']))
     run_command([cl, 'rm', uuid])
 add_test('perm', test)
+
+def test():
+    name = 'test-123'
+    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', name])
+    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue', '-n', name])
+    check_equals(uuid1, run_command([cl, 'search', uuid1, '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, '-u']))
+    check_equals('', run_command([cl, 'search', 'uuid='+uuid1[0:8], '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1[0:8]+'.*', '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1[0:8]+'%', '-u']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, 'name='+name, '-u']))
+    check_equals(uuid1 + '\n' + uuid2, run_command([cl, 'search', 'name='+name, 'id=.sort', '-u']))
+    check_equals(uuid2 + '\n' + uuid1, run_command([cl, 'search', 'name='+name, 'id=.sort-', '-u']))
+    check_equals('2', run_command([cl, 'search', 'name='+name, '.count']))
+    size1 = int(run_command([cl, 'info', '-f', 'data_size', uuid1]))
+    size2 = int(run_command([cl, 'info', '-f', 'data_size', uuid2]))
+    check_equals(str(size1 + size2), run_command([cl, 'search', 'name='+name, 'data_size=.sum']))
+    run_command([cl, 'rm', uuid1, uuid2])
+add_test('search', test)
 
 def test():
     run_command([cl, 'status'])
@@ -236,7 +255,9 @@ def test():
 add_test('status', test)
 
 if len(sys.argv) == 1:
-    print 'Modules (or type all):', ' '.join(name for name, func in tests)
+    print 'Usage: python %s <module> ... <module>' % sys.argv[0]
+    print 'Note that this will modify your current worksheet, but should restore it.'
+    print 'Modules: all ' + ' '.join(name for name, func in tests)
 else:
     for name in sys.argv[1:]:
         run_test(name)

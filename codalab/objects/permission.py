@@ -108,8 +108,14 @@ def _check_permissions(model, table, user, object_uuids, owner_ids, need_permiss
         user_str = '%s(%s)' % (user.name, user.unique_id)
     else:
         user_str = None
-    raise PermissionError("User %s does not have sufficient permissions on %s (have %s, need %s)." % \
-        (user_str, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission)))
+    if table == cl_group_bundle_permission:
+        object_type = 'bundle'
+    elif table == cl_group_worksheet_permission:
+        object_type = 'worksheet'
+    else:
+        raise IntegrityError('Unexpected table: %s' % table)
+    raise PermissionError("User %s does not have sufficient permissions on %s %s (have %s, need %s)." % \
+        (user_str, object_type, ' '.join(object_uuids), ' '.join(map(permission_str, have_permissions.values())), permission_str(need_permission)))
 
 def check_bundles_have_read_permission(model, user, bundle_uuids):
     _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, model.get_bundle_owner_ids(bundle_uuids), GROUP_OBJECT_PERMISSION_READ)
