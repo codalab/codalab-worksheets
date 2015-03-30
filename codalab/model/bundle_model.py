@@ -416,7 +416,7 @@ class BundleModel(object):
 
         # Count
         if count:
-            query = query.count()
+            query = alias(query).count()
 
         #print 'QUERY', self._render_query(query)
         result = self._execute_query(query)
