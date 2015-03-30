@@ -766,8 +766,17 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.name, value)
             elif key == 'owner_id':
                 clause = make_condition(cl_worksheet.c.owner_id, value)
-            elif key == 'bundle':
+            elif key == 'bundle':  # contains bundle?
                 condition = make_condition(cl_worksheet_item.c.bundle_uuid, value)
+                if condition == true():  # top-level
+                    clause = and_(
+                        cl_worksheet_item.c.worksheet_uuid == cl_worksheet.c.uuid,  # Join constraint
+                        condition,
+                    )
+                else:
+                    clause = cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_item.c.worksheet_uuid]).where(condition)))
+            elif key == 'worksheet':  # contains worksheet?
+                condition = make_condition(cl_worksheet_item.c.subworksheet_uuid, value)
                 if condition == true():  # top-level
                     clause = and_(
                         cl_worksheet_item.c.worksheet_uuid == cl_worksheet.c.uuid,  # Join constraint
