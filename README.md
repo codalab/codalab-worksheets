@@ -36,9 +36,13 @@ Skip this section if your administrator has already installed CodaLab for you.
 
         ./setup.sh
 
-4. Set your path to include CodaLab for convenience (add this line to your `.bashrc`):
+4. Set your path to include CodaLab (add this line to your `.bashrc`):
 
-        export PATH=$PATH:<your path>/codalab-cli/codalab/bin
+        export PATH=$PATH:<path to codalab-cli>/codalab/bin
+
+5. Optional: include some handy macros (add this line to your `.bashrc`):
+
+        . <path to codalab-cli>/rc
 
 Now you are ready to start using CodaLab!
 
@@ -80,7 +84,7 @@ current session (like running `pwd`):
 
 Your session is associated with a session ID, which identifies the current
 address/worksheet pair (usually, by default, address will be 'local' and
-worksheet is 'codalab').
+worksheet your username, which in this document is `codalab`).
 
 For reference, your CodaLab settings here:
 
@@ -152,7 +156,7 @@ makes sure the dependencies are put into the right place.
 
 Let us create our first run bundle:
 
-    cl run sort.py:sort.py input:a.txt 'python sort.py < input > output' --name sort-run
+    cl run sort.py:sort.py input:a.txt 'python sort.py < input > output' -n sort-run
 
 The first two arguments specify the dependencies and the third is the command.
 Each dependency has the form `<key>:<target>`; think of it as creating a
@@ -160,11 +164,15 @@ symlink called `<key>` pointing to `<target>`.  The target can be a bundle (e.g.
 or if the bundle is a directory rather than a file, we can references files
 inside (e.g., `a.txt/file1`). During the run, targets are read-only.
 
-Note that `cl run` doesn't actually run anything; it just creates the run
+Note that `cl run` doesn't actually run anything directly; it just creates the run
 bundle and returns immediately.  You can see by doing `cl ls` that it's been
 created, but it's state is `created`, not `ready`.  (You can add `-t` or
 `--tail` to make `cl run` block and print out stdout/stderr, more like how you
 would normally run a program.)
+
+The `-n` (`--name`) can be used to set the name of a bundle (which doesn't have
+to be unique).  Names must only contain alphanumeric characters (think of them
+as variable names).
 
 Look inside the bundle:
 
@@ -198,7 +206,7 @@ We can look at individual targets inside the bundle:
 To make things more convenient, we can define a bundle that points to a target
 inside the last bundle:
 
-    cl make sort-run/output --name a-sorted.txt
+    cl make sort-run/output -n a-sorted.txt
     cl cat a-sorted.txt
 
 We can also download the results to local disk:
@@ -221,19 +229,19 @@ Note: be *very careful* with `rm -r` because it might delete a lot of bundles!
 You can also include bundle references directly in your run command, which
 might be more natural than listing the dependencies ahead of time:
 
-    cl run 'python %sort.py% < %a.txt% > output' --name sort-run
-    cl run 'python %arg1:sort.py% < %arg2:a.txt% > output' --name sort-run
-    cl run 'python %:sort.py% < %:a.txt% > output' --name sort-run
+    cl run 'python %sort.py% < %a.txt% > output' -n sort-run
+    cl run 'python %arg1:sort.py% < %arg2:a.txt% > output' -n sort-run
+    cl run 'python %:sort.py% < %:a.txt% > output' -n sort-run
 
 These are equivalent to the following, respectively:
 
-    cl run 1:sort.py 2:a.txt 'python 1 < 2 > output' --name sort-run
-    cl run arg1:sort.py arg2:a.txt 'python arg1 < arg2 > output' --name sort-run
-    cl run sort.py:sort.py a.txt:a.txt 'python sort.py < a.txt > output' --name sort-run
+    cl run b1:sort.py b2:a.txt 'python b1 < b2 > output' -n sort-run
+    cl run arg1:sort.py arg2:a.txt 'python arg1 < arg2 > output' -n sort-run
+    cl run sort.py:sort.py a.txt:a.txt 'python sort.py < a.txt > output' -n sort-run
 
 Note that the last line is also equivalent to:
 
-    cl run :sort.py :a.txt 'python sort.py < a.txt > output' --name sort-run
+    cl run :sort.py :a.txt 'python sort.py < a.txt > output' -n sort-run
 
 ### Macros
 
@@ -256,7 +264,7 @@ create another bundle and upload it:
 
 Now we can apply the same thing to `b.txt` that we did to `a.txt`:
 
-    cl mimic a.txt a-sorted.txt b.txt --name b-sorted.txt
+    cl mimic a.txt a-sorted.txt b.txt -n b-sorted.txt
 
 We can check that `b.txt.sorted` contains the desired sorted result:
 
@@ -270,98 +278,130 @@ that every macro automatically comes with an example of how it is used!
 We can make the notion of a macro even more explicit.  Let's rename `a.txt` to
 `sort-in1` and `a-sorted.txt` to `sort-out`:
 
-    cl edit a.txt --name sort-in1
-    cl edit a-sorted.txt --name sort-out
+    cl edit a.txt -n sort-in1
+    cl edit a-sorted.txt -n sort-out
 
 Then we can use the following syntactic sugar:
 
-    cl macro sort b.txt --name b-sorted.txt
+    cl macro sort b.txt -n b-sorted.txt
 
 In CodaLab, macros are not defined ahead of time, but are constructed on the
 fly from the bundle DAG.
 
 ### Worksheet basics
 
-So far, every bundle we've created has been added to the `codalab` worksheet.
-Recall that a worksheet is like a directory, but we can do much more.  We can
-edit the worksheet:
+So far, we've focused on creating (and deleting) new bundles, and these bundles
+automatically added to the current worksheet (`codalab`):
 
-    cl wedit
+    cl work
 
-In the popped up editor, we can enter arbitrary text interleaved with the
-bundles that we have created so far.  Try adding some text, saving, and exiting
-the editor.  Then we can display the contents of this worksheet in a more
-rendered fashion.
+In this way, a worksheet is like a directory.  But unlike a directory, it
+remembers the order of the items (which can be changed) and a worksheet can
+contain other items besides bundles.
 
-    cl print
+We can add items (text or bundles) to the current worksheet, which appends to
+the end:
+
+    cl add -m "Here's a simple bundle:"
+    cl add sort.py
+
+A worksheet just contains pointers to bundles, and unlike bundles, they are
+mutable.  We can display the contents of a worksheet as follows:
+
+    cl print    # Shows all items (bundles, text, and worksheets)
+    cl ls       # Only shows the bundles
 
 We can add another worksheet:
 
     cl new scratch
 
-This adds a link from `codalab` to `scratch` and a link from `scratch` to `codalab`.
-A worksheet on another worksheet, like a bundle, is just a pointer.  The container
-worksheet does not "own" its items.  To see this:
+This creates a new worksheet called `scratch` and adds it as an item to the
+current worksheet `codalab`.  We can switch back and forth between worksheets
+(analogous to switching directories using `cd`):
 
-    cl print codalab
-    cl print scratch
-
-We can switch between worksheets (analogous to switching directories using `cd`):
-
-    cl work codalab
     cl work scratch
+    cl work codalab
 
-We can add items (text or bundles) to a worksheet:
+At this point, it is important to note that a worksheet only contains
+*pointers* to bundles and other worksheets.  Their existence is independent of
+the container worksheet (think symlinks or hyperlinks), although CodaLab keeps
+track of the reverse to avoid broken links.
 
-    cl add -m "Here's a simple bundle:"
-    cl add sort.py
+With this in mind, we can edit the contents of this worksheet in a text editor.
+
+    cl wedit
+
+In the popped up editor (determined by our `EDITOR` environment variable),
+you'll see documentation (starting with `//`) about the worksheet syntax, which
+is markdown interleaved with bundles, worksheets, and formatting directives
+(which we'll describe later).  For example, the editor might look like this:
+
+    // Editing worksheet codalab(0x4734384f503944dfb15c23d7e466007a).
+    // ... (documentation) ...
+    Arbitrary text describing a bundle.
+    [run run-echo-hello : echo hello]{0xa113e342f21347e4a65d1be833c3aaa8}
+    Arbitrary text describing a worksheet.
+    [worksheet scratch]{{0xfdd5d68b64c9450da918b24ce7708f34}}
+
+You can leverage the full power of the editor to change the list of worksheet
+items: you can add and remove text, bundles, worksheets.  You can switch the
+order.  You can list a bundle multiple times.  You can do edit another
+worksheet (e.g., `cl wedit scratch`) and transfer contents between the two.
+This all works because the worksheet contents are merely pointers.  When you
+remove a bundle or worksheet item, the item still exist; only the references to
+them are removed.  At the end, you can display the fruits of your labor:
+
     cl print
 
-Another way to add bundles to a worksheet is to use `cl wedit` and entering
-additional lines:
+If you have set up the CodaLab server, you can use the web interface to view
+and edit the worksheet.  Using the web interface in conjunction with the
+command line is probably the most effective way.
 
-    {sort.py}
-
-If you save, exit, and open up the worksheet again, you'll see that the
-reference has been resolved.  In general, editing the worksheet with a text
-editor gives you a lot of flexibility for organizing bundles.
-
-To remove the worksheet:
+To remove the worksheet, you need to first remove all the items by opening a
+text editor and deleting all its contents and then running:
 
     cl wrm scratch
 
-Note that the bundles and worksheets linked to in the worksheet are not
-deleted.
-
 ### Referencing bundles
 
-So far, we have referred to bundles by their names, which have been unique.  In
-a large CodaLab system with many users, names are not unique, not even within
-the same worksheet.  A *bundle_spec* refers to the string that identifies a
-bundle, importantly given the context (address, current worksheet).
+So far, we have referred to bundles by their names.  In
+a large CodaLab system with many users, names are not unique, and possibly not
+even within the same worksheet.  A *bundle_spec* refers to the string that
+identifies a bundle, importantly given the context (address, current
+worksheet).
 
-There are finally a number of other ways to reference bundles:
+There are a number of ways to reference bundles:
 
 - UUID (`0x3739691aef9f4b07932dc68f7db82de2`): this should match at most one
-  bundle.
-- Prefix of UUID (`0x3739`): matches all bundles whose UUIDs start with this
-  prefix.
-- Name prefix (`foo`): matches all bundles with the given name.
-  You can use `foo%` to match bundles that begin with `foo` or `%foo%` to match
-  bundles that contain `foo` (SQL LIKE syntax).
-- Ordering (`^, ^2, ^3`): returns the first, second, and third last bundles on
-  the current worksheet.
+  bundle.  You can use a prefix (an error is thrown if the prefix doesn't
+  resolve uniquely).
+- Name (`foo`): matches the *last* bundle on the current worksheet with the
+  given name.  You can use `foo%` to match bundles that begin with `foo` or
+  `%foo%` to match bundles that contain `foo` (SQL LIKE syntax).
+  You can use `w1/foo` to refer to a bundle by name on worksheet `w1`.
+- Ordering (`^, ^2, ^3`): returns the first, second, and third bundles from the end
+  of the current worksheet.
 - Named ordering (`foo^, foo^2, foo^3`): returns the first, second, and third
-  last bundles with the given name on the current worksheet.
-
-Each of the above matches some number of bundles.  Exactly one is chosen based
-on the following rules (in order of precedence):
-
-1. Bundles in the current worksheet are preferred to those not.
-2. Later bundles are preferred.
+  bundles from the end with the given name.
+- You can refer to a range of bundles: `^1-3` resolves to `^1 ^2 ^3`.
 
 In practice, `^` and `^2` are used frequently because future operations tend to
 depend on the bundles you just created.
+
+Warning: ordering references are not stable.  For example,
+if you run:
+
+    cl ls
+    cl rm ^1
+    cl rm ^2
+
+This *does not* delete the first and second last bundles, but rather the first
+and third!  The intended behavior is:
+
+    cl rm ^1 ^2
+
+Also, if someone else is adding to your worksheet while you're editing it, you
+might end up referring to the wrong bundle.
 
 ### Displaying worksheets
 
@@ -384,8 +424,8 @@ The `title` directive sets the title of a worksheet:
 
     % title "My Worksheet"
 
-The `display` directive changes the way all bundles from that point on are
-displayed (until the next `display` directive).  The general form is:
+The `display` directive changes the way the bundles after it are displayed.
+The general form is:
 
     % display <mode> <arg>
 
@@ -396,6 +436,15 @@ Here are the specific instances.  To hide the bundle completely:
 To display only a link to the bundle with the given anchor text:
 
     % display link "this program"
+
+A directive applies exactly to the block of consecutive bundles immediately
+following it.  For example:
+
+    % display hidden
+    [run run-echo-hello : echo hello]{0xa113e342f21347e4a65d1be833c3aaa8}
+    [run run-echo-hello : echo hello]{0xa113e342f21347e4a65d1be833c3aaa8}
+    And now this bundle is not hidden:
+    [run run-echo-hello : echo hello]{0xa113e342f21347e4a65d1be833c3aaa8}
 
 ### Displaying parts of bundles
 
@@ -437,12 +486,14 @@ If you have a nested JSON dictionary, you can access it with
 For directories or large files, use `contents` rather than `inline`:
 
     % display contents /stdout
+    % display contents /stdout maxlines=10
 
 If your file is an image or HTML file, then you can tell CodaLab to render it
 directly.  Note that these two modes are only really useful for displaying on
 the webpage.
 
     % display image /graph.png
+    % display image /graph.png width=100
     % display html /visualization.html
 
 ### Displaying records and tables
@@ -498,17 +549,20 @@ corresponding value.
 When editing a worksheet, you can specify CLI commands to execute right in the worksheet.
 For example, if you add `!rm ^`` after a bundle:
 
-    {0xd84059a97bf544e89f18344221faa212}
+    [run run-echo-hello : echo hello]{0xa113e342f21347e4a65d1be833c3aaa8}
     !rm ^
 
 Then when you save the worksheet, then it is as if the following command was executed:
 
-    cl rm 0xd84059a97bf544e89f18344221faa212
+    cl rm 0xa113e342f21347e4a65d1be833c3aaa8
 
 One common use case of these embedded commands is to move bundles around and
 mark some as ones to `rm` or `kill`.
 
-The same thing works for any CLI command.
+In the general case, after a worksheet has been processed, every line of the
+form `!<command>` is converted into `cl <subst-command>`, where
+`<subst-command>` is `<command>` where `^` is replaced with the bundle
+immediately preceding the command.
 
 ## Working remotely
 
@@ -530,6 +584,7 @@ This sets your current worksheet to `<username>` (think directory in the filesys
 analogy) on the remote machine (think drive).  The general form is:
 
     cl work <address>::<worksheet>
+    cl work <address>::             # Defaults to <worksheet>=<username>
 
 It is convenient to create an alias so you don't have to type the address every time:
 
@@ -537,7 +592,9 @@ It is convenient to create an alias so you don't have to type the address every 
 
 so you now just need to type:
 
-    cl work ex::<username>
+    cl work ex::
+
+This will prompt you for your username and password.
 
 ### Starting your own server
 
@@ -553,23 +610,22 @@ For security reasons, the server is only accessible from localhost.  To make
 the server accessible from anywhere, under "server" / "host" in
 `~/.codalab/config.json`, change "localhost" to "".  In this case, you should
 change the authentication from `MockAuthHandler` to `OAuthHandler` or else you
-will have a bad security vulnerability.
+will have a bad security vulnerability.  Setting this requires have an OAuth
+endpoint, which the CodaLab web server happens to provide (see the README
+there).
 
 Now we can connect to this server:
 
-    cl work http://localhost:2800::<username>
+    cl work http://localhost:2800::
 
 or
 
     cl alias localhost http://localhost:2800
-    cl work localhost::<username>
-
-This will prompt you for your password.  By default, the username is "root" and
-the password is "".
+    cl work localhost::
 
 To switch back to the `local` instance, type:
 
-    cl work local
+    cl work local::
 
 Note that when you are on `localhost`, you are accessing the same CodaLab
 instance as when you are on `local`, but all requests go through the network,
@@ -592,17 +648,19 @@ the situation is as follows:
 
 We can copy bundles between CodaLab instances by doing:
 
-    cl cp localhost::a.txt local
+    cl cp localhost::a.txt local::
 
 Now there are two physical copies of the bundle `a.txt`, and they have the same
 bundle UUID.  We can create a bundle and copy it in the other direction too:
 
     echo hello > hello.txt
     cl upload dataset hello.txt
-    cl cp hello.txt localhost
+    cl cp hello.txt localhost::
 
-Note that currently, if a bundle has dependencies, `cl cp` does not copy these
-dependencies.  In the future, you should be able to do this with `cl cp -r`.
+By default, `cl cp` does not copy the dependencies of a bundle.  If you want to
+copy the dependencies (for example, to reproduce a run on another machine),
+then use `cl cp -d`.  The dependencies of the dependencies are not copied,
+since only the immediate dependencies are required to execute a run.
 
 In general, the `cp` command is as follows:
 
@@ -664,42 +722,52 @@ README](https://github.com/codalab/codalab/blob/master/README.md).
 
 CodaLab implements the following permissions model:
 
-- Each user belongs to some groups.
-- Each group has access to some worksheets.
-- Each worksheets contains some bundles.
+- Users belong to groups.
+- Each group has access to some bundles and worksheets.
 
 There are three levels of access or permission:
 
-- None: You can't even see that the worksheet exists.
-- Read: You can read/download, but not edit.
-- All: You can do anything (edit/delete/etc.).
-
-A user can read a bundle if there exists a group that contains that user, a
-worksheet that the group has read permission on and also contains that bundle.
-
-Currently, only the owner of a bundle has all permission (this can be relaxed
-to groups later).
+- `none`: You can't even see that the worksheet exists.
+- `read`: You can read/download, but not edit.
+- `all`: You can do anything (edit/delete/etc.).
 
 Notes:
 
-- There is a designated `public` group that contains all users implicitly.  If
+- There is a designated `public` group to which all users implicitly belong.  If
   you want to make a worksheet world-readable, give the `public` group read
   permission.
-- There is a designated root user (`codalab`) that has *All* permission to
-  everything.
-- You automatically have *All* permission to all worksheets you own.
+- There is a designated root user (`codalab`) that has `all` permission to
+  all bundles and worksheets.
+- Each user has `all` permission to all bundles and worksheets that he/she owns.
 
-To make a worksheet `w1` public:
+To grant/revoke permissions:
 
-    cl wperm w1 public read
+    cl perm <bundle> <group> <(n)one|(r)ead|(a)ll>
+    cl wperm <bundle> <group> <(n)one|(r)ead|(a)ll>
 
-To make a worksheet `w1` mutually-writable with your research group, first create
-the group `g1`, add users `u1` and `u2` to it, and then give the group all access:
+For example:
+
+    cl perm bundle1 public r  # grant read permission
+    cl perm bundle1 public a  # grant all permission
+    cl perm bundle1 public n  # revoke permissions
+
+We can transfer ownership (and therefore permissions) of bundles and
+worksheets:
+
+    cl chown <username> <bundle-1> ... <bundle-n>
+    cl wedit <worksheet> -o <username>
+
+To make a worksheet `w1` mutually-writable with your research group, first
+create a group `g1`, add users `u1` and `u2` to it, and then give the group all
+access:
 
     cl gnew g1
     cl uadd u1 g1
     cl uadd u2 g1
     cl wperm w1 g1 all
+
+All bundles created on `w1` will initially inherit the permissions of that
+worksheet, but these permissions can be changed independently.
     
 To list the groups that you've created or belong to:
 
@@ -708,6 +776,58 @@ To list the groups that you've created or belong to:
 To look more into a given group `g1`:
 
     cl ginfo g1
+
+## Search
+
+The `cl search` command allows us to find bundles and compute various
+statistics over them.  The search performs a conjunction over keywords.
+
+    cl search <keyword-1> ... <keyword-n>
+
+Some initial examples:
+
+    cl search mnist                        # bundles whose name or uuid contains `mnist`
+    cl search e342f                        # bundles whose name or uuid contains `e342f`
+    cl search type=program                 # program bundles
+    cl search name=mnist                   # bundles whose names is exactly `mnist`
+    cl search state=running                # all running bundles
+    cl search command=%python%             # bundles whose command contains `python`
+    cl search dependency=0xa11%            # bundles that depends on the given bundle
+    cl search worksheet=0xfdd%             # bundles that are on the given worksheet
+    cl search owner=codalab                # bundles that are owned by the given user name
+
+You can combine search terms:
+
+    cl search type=program owner=codalab   # programs owned by user `codalab`
+
+You can change the number and ordering of results:
+
+    cl search .offset=50 .limit=100        # bundles 50-99
+    cl search size=.sort                   # sort by increasing size
+    cl search size=.sort-                  # sort by decreasing size
+
+There are some special commands:
+
+    cl search .mine                        # show bundles that the current user owns
+    cl search .last                        # bundles in reverse order of creation
+    cl search .floating                    # bundles that aren't on any worksheet
+
+Operations that return a single number rather than a list of bundles:
+
+    cl search .count                       # return total number of bundles in the system
+    cl search size=.sum                    # return total number of bytes
+
+We can combine these keywords to yield the following handy queries:
+
+    cl search .mine .last                  # bundles that you just created
+    cl search .mine .floating              # bundles that are floating (probably want to delete these periodically)
+    cl search .mine size=.sort-            # what are the biggest bundles I own?
+
+The search returns a list of bundles.  We can use `-u` to just get the uuids.
+This can be piped into other commands:
+
+    cl search .mine .floating -u | xargs cl rm  # delete the floating bundles
+    cl search mnist -u | xargs cl add           # add mnist to the current worksheet
 
 ## Updating CodaLab
 
@@ -726,30 +846,26 @@ database.  Then run:
 The following describes some common tip and tricks to make the most out of CodaLab.
 
 Delete the last five bundles (remember this also removes all other instances of
-these bundles, so be careful):
+these bundles on the current worksheet):
 
     cl rm ^1-5
 
-To kill the last running bundle:
+To kill the last bundle:
 
     cl kill ^
-
-To search for bundles by keyword:
-
-    cl search a.txt
 
 Most CodaLab commands generate one or more bundle UUIDs.  These can be piped to
 further commands.  To kill all running bundles (be careful!):
 
     cl search state=running | xargs cl kill
 
-To delete all "orphaned" bundles that do not appear on a worksheet (be careful!):
+To delete all *floating* bundles that do not appear on a worksheet (be careful!):
 
-    cl search .orphan -u | xargs cl rm
+    cl search .floating -u | xargs cl rm
 
 To run a bundle and create another bundle that depends on it:
 
-    cl make $(cl run date)/stdout --name stdout
+    cl make $(cl run date)/stdout -n stdout
 
 To wait for the last bundle to finish and then print out its output:
     
@@ -784,7 +900,7 @@ To compare two worksheets:
 
 To replace the contents of worksheet2 with worksheet1 (be careful when we do
 this, since all the contents of worksheet1 are removed, although the bundles
-themselves are not removed and will be orphaned):
+themselves are not removed and will be floating):
 
     cl wedit -f /dev/null -w worksheet2
     cl wcp worksheet1 worksheet2
@@ -948,7 +1064,7 @@ in the environment or to run your own local CodaLab instance), follow these
 Then, to test out your environment, open a shell (the first time you do this,
 it will take some time to download the image):
 
-    docker run -t -i codalab/ubuntu:1.1
+    docker run -t -i codalab/ubuntu:1.6
 
 Now, let us integrate docker into CodaLab.  First, we need to setup a job
 scheduling system (that manages the deployment of runs on machines).  Note that
@@ -966,8 +1082,7 @@ are orthogonal choices).  Edit the `.codalab/config.json` as follows:
     "workers": {
         "q": {
             "verbose": 1,
-            "max_instances": 10,
-            "docker_image": "codalab/ubuntu:1.1"
+            "docker_image": "codalab/ubuntu:1.6"
             "dispatch_command": "python $CODALAB_CLI/scripts/dispatch-q.py"
         }
     }

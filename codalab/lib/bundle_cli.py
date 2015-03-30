@@ -190,7 +190,7 @@ class BundleCLI(object):
 
     def get_worksheet_bundles(self, worksheet_info):
         '''
-        Return list of info dicts of distinct, non-orphaned bundles in the worksheet.
+        Return list of info dicts of distinct bundles in the worksheet.
         '''
         result = []
         for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:

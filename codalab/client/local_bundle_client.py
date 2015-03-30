@@ -4,7 +4,7 @@ BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from time import sleep
 import contextlib
-import os, sys
+import os, sys, re
 import copy
 import types
 
@@ -95,6 +95,15 @@ class LocalBundleClient(BundleClient):
         return canonicalize.get_bundle_uuid(self.model, self._current_user_id(), worksheet_uuid, bundle_spec)
 
     def search_bundle_uuids(self, worksheet_uuid, keywords):
+        # Resolve references to owner ids
+        def resolve(keyword):
+            # Example: owner=codalab => owner_id=0
+            m = re.match('owner=(.+)', keyword)
+            if not m:
+                return keyword
+            return 'owner_id=' + self._user_name_to_id(m.group(1))
+        keywords = map(resolve, keywords)
+
         return self.model.search_bundle_uuids(self._current_user_id(), worksheet_uuid, keywords)
 
     # Helper
@@ -530,7 +539,7 @@ class LocalBundleClient(BundleClient):
                 # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup, directives, etc.)
                 # Let W be the first worksheet containing the old_inputs[0].
                 # Add all items on that worksheet that appear in old_to_new along with their preludes.
-                # For items not on this worksheet, add them at the end (instead of orphaning them).
+                # For items not on this worksheet, add them at the end (instead of making them floating).
                 host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_inputs[0]])[old_inputs[0]]
                 new_bundle_uuids_added = set()
                 skipped = True  # Whether there were items that we didn't include in the prelude (in which case we want to put '')
@@ -668,6 +677,12 @@ class LocalBundleClient(BundleClient):
     def _user_id_to_name(self, user_id):
         return self._user_id_to_names([user_id])[0]
 
+    def _user_name_to_id(self, user_name):
+        results = self.auth_handler.get_users('names', [user_name])
+        if user_name not in results:
+            raise UsageError('Unknown user: %s' % user_name)
+        return results[user_name].unique_id
+        
     def _user_id_to_names(self, user_ids):
         if len(user_ids) == 0: return []
         results = self.auth_handler.get_users('ids', user_ids)
