@@ -94,7 +94,7 @@ class LocalBundleClient(BundleClient):
     def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
         return canonicalize.get_bundle_uuid(self.model, self._current_user_id(), worksheet_uuid, bundle_spec)
 
-    def search_bundle_uuids(self, worksheet_uuid, keywords):
+    def resolve_owner_in_keywords(self, keywords):
         # Resolve references to owner ids
         def resolve(keyword):
             # Example: owner=codalab => owner_id=0
@@ -102,8 +102,10 @@ class LocalBundleClient(BundleClient):
             if not m:
                 return keyword
             return 'owner_id=' + self._user_name_to_id(m.group(1))
-        keywords = map(resolve, keywords)
+        return map(resolve, keywords)
 
+    def search_bundle_uuids(self, worksheet_uuid, keywords):
+        keywords = self.resolve_owner_in_keywords(keywords)
         return self.model.search_bundle_uuids(self._current_user_id(), worksheet_uuid, keywords)
 
     # Helper
@@ -633,13 +635,9 @@ class LocalBundleClient(BundleClient):
 
         return worksheet.uuid
 
-    def list_worksheets(self):
-        # Permissions enforced by selecting only current user's.
-        current_user = self._current_user()
-        if current_user is None:
-            results = self.model.list_worksheets()
-        else:
-            results = self.model.list_worksheets(current_user.unique_id)
+    def list_worksheets(self, keywords):
+        keywords = self.resolve_owner_in_keywords(keywords)
+        results = self.model.list_worksheets(self._current_user_id(), keywords)
         self._set_owner_names(results)
         return results
 

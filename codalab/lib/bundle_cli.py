@@ -53,7 +53,7 @@ class BundleCLI(object):
       'edit': "Edit an existing bundle's metadata.",
       'hide': 'Hide a bundle from this worksheet, but doesn\'t remove the bundle.',
       'rm': 'Remove a bundle (permanent!).',
-      'search': 'Search for bundles in the system',
+      'search': 'Search for bundles in the system.',
       'ls': 'List bundles in a worksheet.',
       'info': 'Show detailed information for a bundle.',
       'cat': 'Print the contents of a file/directory in a bundle.',
@@ -1303,7 +1303,8 @@ class BundleCLI(object):
             is_last_newline = is_newline
 
     def do_wls_command(self, argv, parser):
-        parser.add_argument('address', help=self.ADDRESS_SEPC_FORMAT, nargs='?')
+        parser.add_argument('keywords', help='keywords to search for', nargs='*')
+        parser.add_argument('-a', '--address', help=self.ADDRESS_SEPC_FORMAT, nargs='?')
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
 
@@ -1313,7 +1314,7 @@ class BundleCLI(object):
         else:
             client = self.manager.current_client()
 
-        worksheet_dicts = client.list_worksheets()
+        worksheet_dicts = client.list_worksheets(args.keywords)
         if args.uuid_only:
             for row in worksheet_dicts:
                 print row['uuid']
@@ -1324,8 +1325,6 @@ class BundleCLI(object):
                     row['permissions'] = group_permissions_str(row['group_permissions'])
                 post_funcs = {'uuid': self.UUID_POST_FUNC}
                 self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
-            else:
-                print 'No worksheets found.'
 
     def do_wadd_command(self, argv, parser):
         parser.add_argument('subworksheet_spec', help='worksheets to add (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='+')

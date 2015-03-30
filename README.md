@@ -795,6 +795,7 @@ Some initial examples:
     cl search dependency=0xa11%            # bundles that depends on the given bundle
     cl search worksheet=0xfdd%             # bundles that are on the given worksheet
     cl search owner=codalab                # bundles that are owned by the given user name
+    cl search =%python%                    # match any field
 
 You can combine search terms:
 
@@ -828,6 +829,16 @@ This can be piped into other commands:
 
     cl search .mine .floating -u | xargs cl rm  # delete the floating bundles
     cl search mnist -u | xargs cl add           # add mnist to the current worksheet
+
+We can list and search worksheets in a similar fashion:
+
+    cl wls                       # all worksheets
+    cl wls .mine                 # my worksheet
+    cl wls .last .limit=3        # last worksheets created
+    cl wls name=.sort            # worksheets sorted by name
+    cl wls bundle=0x3bb%         # worksheets containing this bundle
+    cl wls owner=codalab         # worksheets owned by `codalab`
+    cl wls =%Hello%              # worksheets containing 'Hello'
 
 ## Updating CodaLab
 
