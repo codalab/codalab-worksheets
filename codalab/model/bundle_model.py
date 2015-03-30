@@ -713,7 +713,7 @@ class BundleModel(object):
         '''
         clauses = []
         offset = 0
-        limit = 10
+        limit = 1000
         sort_key = [cl_worksheet.c.name]
 
         # Number nested subqueries
