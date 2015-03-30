@@ -635,9 +635,12 @@ class LocalBundleClient(BundleClient):
 
         return worksheet.uuid
 
-    def list_worksheets(self, keywords):
+    def list_worksheets(self):
+        return self.search_worksheets([])
+
+    def search_worksheets(self, keywords):
         keywords = self.resolve_owner_in_keywords(keywords)
-        results = self.model.list_worksheets(self._current_user_id(), keywords)
+        results = self.model.search_worksheets(self._current_user_id(), keywords)
         self._set_owner_names(results)
         return results
 

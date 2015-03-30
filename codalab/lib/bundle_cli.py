@@ -1314,7 +1314,7 @@ class BundleCLI(object):
         else:
             client = self.manager.current_client()
 
-        worksheet_dicts = client.list_worksheets(args.keywords)
+        worksheet_dicts = client.search_worksheets(args.keywords)
         if args.uuid_only:
             for row in worksheet_dicts:
                 print row['uuid']

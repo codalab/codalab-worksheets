@@ -704,7 +704,7 @@ class BundleModel(object):
                 worksheet_values[item_row.worksheet_uuid]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.itervalues()]
 
-    def list_worksheets(self, user_id, keywords):
+    def search_worksheets(self, user_id, keywords):
         '''
         Return a list of row dicts, one per worksheet. These dicts do NOT contain
         ALL worksheet items; this method is meant to make it easy for a user to see
