@@ -101,7 +101,7 @@ class LocalBundleClient(BundleClient):
             m = re.match('owner=(.+)', keyword)
             if not m:
                 return keyword
-            return 'owner_id=' + self._user_name_to_id(m.group(1))
+            return 'owner_id=%s' % self._user_name_to_id(m.group(1))
         return map(resolve, keywords)
 
     def search_bundle_uuids(self, worksheet_uuid, keywords):
@@ -677,7 +677,7 @@ class LocalBundleClient(BundleClient):
 
     def _user_name_to_id(self, user_name):
         results = self.auth_handler.get_users('names', [user_name])
-        if user_name not in results:
+        if not results[user_name]:
             raise UsageError('Unknown user: %s' % user_name)
         return results[user_name].unique_id
         
