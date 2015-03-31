@@ -167,8 +167,8 @@ add_test('run', test)
 def test():
     wname = random_name()
     # Create new worksheet
-    orig_wuuid = run_command([cl, 'work', '--raw'])
-    wuuid = run_command([cl, 'new', wname, '--raw'])
+    orig_wuuid = run_command([cl, 'work', '-u'])
+    wuuid = run_command([cl, 'new', wname, '-u'])
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
     # ls
     check_equals('', run_command([cl, 'ls', '-u']))
@@ -260,6 +260,35 @@ def test():
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'rm', uuid])
 add_test('kill', test)
+
+def test():
+    # Do everything on a new worksheet
+    wname = random_name()
+    old = run_command([cl, 'work', '-u'])
+    new = run_command([cl, 'new', wname, '-u'])
+
+    name = random_name()
+    def data_hash(uuid):
+        run_command([cl, 'wait', uuid])
+        return get_info(uuid, 'data_hash')
+    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', name + '-in1'])
+    uuid2 = run_command([cl, 'make', uuid1, '-n', name + '-out'])
+    uuid3 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    # Try three ways of mimicing, should all produce the same answer
+    uuid4 = run_command([cl, 'mimic', uuid1, uuid3, '-n', 'new'])
+    check_equals(data_hash(uuid2), data_hash(uuid4))
+    uuid5 = run_command([cl, 'mimic', uuid1, uuid2, uuid3, '-n', 'new'])
+    check_equals(data_hash(uuid2), data_hash(uuid5))
+    uuid6 = run_command([cl, 'macro', name, uuid3, '-n', 'new'])
+    check_equals(data_hash(uuid2), data_hash(uuid6))
+    run_command([cl, 'rm', uuid1, uuid2, uuid3, uuid4, uuid5, uuid6])
+
+    # Cleanup
+    run_command([cl, 'wedit', new, '-f', '/dev/null'])
+    run_command([cl, 'wrm', new])
+    run_command([cl, 'work', old])
+
+add_test('mimic', test)
 
 def test():
     run_command([cl, 'status'])
