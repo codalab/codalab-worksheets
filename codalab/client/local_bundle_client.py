@@ -464,6 +464,7 @@ class LocalBundleClient(BundleClient):
         # Now go recursively create the bundles.
         old_to_new = {}  # old_uuid -> new_uuid
         downstream = set()  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
+        created_uuids = set()  # set of uuids which were newly created
         plan = []  # sequence of (old, new) bundle infos to make
         for old, new in zip(old_inputs, new_inputs):
             old_to_new[old] = new
@@ -521,6 +522,7 @@ class LocalBundleClient(BundleClient):
                 new_info['uuid'] = new_bundle_uuid
                 plan.append((info, new_info))
                 downstream.add(old_bundle_uuid)
+                created_uuids.add(new_bundle_uuid)
             else:
                 new_bundle_uuid = old_bundle_uuid
 
@@ -540,7 +542,8 @@ class LocalBundleClient(BundleClient):
             if shadow:
                 # Add each new bundle in the "shadow" of the old_bundle (right after it).
                 for old_bundle_uuid, new_bundle_uuid in old_to_new.items():
-                    self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
+                    if new_bundle_uuid in created_uuids:  # Only add novel bundles
+                        self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
             else:
                 def newline():
                     self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
@@ -573,7 +576,7 @@ class LocalBundleClient(BundleClient):
                             if old_bundle_uuid in old_to_new:
                                 # Flush the prelude gathered so far.
                                 new_bundle_uuid = old_to_new[old_bundle_uuid]
-                                if old_bundle_uuid != new_bundle_uuid:  # Only add novel bundles
+                                if new_bundle_uuid in created_uuids:  # Only add novel bundles
                                     # Stand in for things skipped (this is important so directives have proper extent).
                                     if skipped:
                                         newline()

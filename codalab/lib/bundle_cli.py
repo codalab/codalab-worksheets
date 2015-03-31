@@ -154,6 +154,7 @@ class BundleCLI(object):
         'p': 'print',
         'i': 'info',
         'e': 'edit',
+        'de': 'detach',
         'we': 'wedit',
         's': 'search',
         'st': 'status',
