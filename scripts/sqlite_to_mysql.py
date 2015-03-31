@@ -7,8 +7,9 @@ import fileinput
 # Adapted from http://paulasmuth.com/blog/migrate_sqlite_to_mysql/
 # Reads from stdin (output of sqlite3 <db> .dump), writes to stdout.
 
-# Suppress errors when record contains invalid foreign key.
-print 'SET FOREIGN_KEY_CHECKS=0;'
+# Suppress errors when record contains invalid foreign key.  This is here
+# because sqlite is less strict than mysql, but avoid doing this.
+#print 'SET FOREIGN_KEY_CHECKS=0;'
 
 for line in fileinput.input():
     line = line.strip()
@@ -29,4 +30,4 @@ for line in fileinput.input():
         line = line.replace('metadata_value', 'metadata_value(255)')
     print line
 
-print 'SET FOREIGN_KEY_CHECKS=1;'
+#print 'SET FOREIGN_KEY_CHECKS=1;'

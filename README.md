@@ -719,7 +719,7 @@ start from the right place (this is important!):
 
 You can back up the contents of the database:
 
-    mysqldump codalab_bundles > bundles.mysqldump
+    mysqldump -u codalab -p codalab_bundles > bundles.mysql
 
 ## Authentication
 

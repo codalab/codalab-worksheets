@@ -54,7 +54,9 @@ bundle_dependency = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('child_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
   Column('child_path', Text, nullable=False),
-  Column('parent_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
+  # Deliberately omit ForeignKey(bundle.c.uuid), because bundles can have
+  # dependencies to bundles not (yet) in the system.
+  Column('parent_uuid', String(63), nullable=False),
   Column('parent_path', Text, nullable=False),
   sqlite_autoincrement=True,
 )
