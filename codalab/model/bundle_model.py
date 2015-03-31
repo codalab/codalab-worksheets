@@ -486,7 +486,7 @@ class BundleModel(object):
             uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
             dependency_rows = connection.execute(cl_bundle_dependency.select().where(
               cl_bundle_dependency.c.child_uuid.in_(uuids)
-            )).fetchall()
+            ).order_by(cl_bundle_dependency.c.id)).fetchall()
             metadata_rows = connection.execute(cl_bundle_metadata.select().where(
               cl_bundle_metadata.c.bundle_uuid.in_(uuids)
             )).fetchall()
