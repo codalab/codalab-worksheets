@@ -258,6 +258,7 @@ def test():
     time.sleep(2)
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
+    run_command([cl, 'rm', uuid])
 add_test('kill', test)
 
 def test():
