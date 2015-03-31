@@ -16,8 +16,11 @@ from codalab.common import UsageError
 class BundleStore(object):
     DATA_SUBDIRECTORY = 'data'
     TEMP_SUBDIRECTORY = 'temp'
-    # The amount of time an orphaned folder can live in the data and temp
+
+    # The amount of time a folder can live in the data and temp
     # directories before it is garbage collected by full_cleanup.
+    # Note: this is not used right now since we clear out the bundle store
+    # immediately.
     DATA_CLEANUP_TIME = 60
     TEMP_CLEANUP_TIME = 60*60
 

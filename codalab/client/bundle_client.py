@@ -128,10 +128,7 @@ class BundleClient(object):
         This dict will have the following keys:
           uuid: the worksheet uuid
           name: the worksheet name
-          items: an list of (bundle_info, value) pairs, where bundle_info is either:
-                  - a bundle info dict
-                  - a dict mapping 'uuid' to a bundle_uuid, if the uuid is orphaned
-                  - None (for non-bundle rows)
+          items: an list of worksheet items
           last_item_id: the last database id of any item in the list
         '''
         raise NotImplementedError

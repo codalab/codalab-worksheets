@@ -146,6 +146,7 @@ class Worker(object):
     def check_killed_bundles(self):
         '''
         For bundles that need to be killed, tell the machine to kill it.
+        If unable to kill, still discard the action.
         '''
         bundle_actions = self.model.pop_bundle_actions()
         if self.verbose >= 2: print 'bundle_actions:', bundle_actions

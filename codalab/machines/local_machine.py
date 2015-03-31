@@ -60,6 +60,7 @@ class LocalMachine(Machine):
 
     def kill_bundle(self, bundle):
         if not self.bundle or self.bundle.uuid != bundle.uuid: return False
+        print >>sys.stderr, 'LocalMachine.kill_bundle %s' % (bundle.uuid)
         self.process.kill()
         return True
 

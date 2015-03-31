@@ -51,9 +51,9 @@ class BundleCLI(object):
       'make': 'Create a bundle out of existing bundles.',
       'run': 'Create a bundle by running a program bundle on an input bundle.',
       'edit': "Edit an existing bundle's metadata.",
-      'hide': 'Hide a bundle from this worksheet, but doesn\'t remove the bundle.',
+      'detach': 'Detach a bundle from this worksheet, but doesn\'t remove the bundle.',
       'rm': 'Remove a bundle (permanent!).',
-      'search': 'Search for bundles in the system',
+      'search': 'Search for bundles in the system.',
       'ls': 'List bundles in a worksheet.',
       'info': 'Show detailed information for a bundle.',
       'cat': 'Print the contents of a file/directory in a bundle.',
@@ -101,7 +101,7 @@ class BundleCLI(object):
         'make',
         'run',
         'edit',
-        'hide',
+        'detach',
         'rm',
         'search',
         'ls',
@@ -190,7 +190,7 @@ class BundleCLI(object):
 
     def get_worksheet_bundles(self, worksheet_info):
         '''
-        Return list of info dicts of distinct, non-orphaned bundles in the worksheet.
+        Return list of info dicts of distinct bundles in the worksheet.
         '''
         result = []
         for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
@@ -665,7 +665,7 @@ class BundleCLI(object):
                 client.update_bundle_metadata(bundle_uuid, new_metadata)
                 print "Saved metadata for bundle %s." % (bundle_uuid)
 
-    def do_hide_command(self, argv, parser):
+    def do_detach_command(self, argv, parser):
         '''
         Removes the given bundles from the given worksheet (but importantly
         doesn't delete the actual bundles, unlike rm).
@@ -677,7 +677,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        # Resolve all the bundles first, then hide.
+        # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
         bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
@@ -692,25 +692,25 @@ class BundleCLI(object):
                 uuid = bundle_info['uuid']
                 indices[i] = uuid2index[uuid] = uuid2index.get(uuid, 0) + 1
 
-        # Hide the items.
+        # Detach the items.
         new_items = []
         for i, item in enumerate(items):
             (bundle_info, subworksheet_info, value_obj, item_type) = item
-            hide = False
+            detach = False
             if item_type == worksheet_util.TYPE_BUNDLE:
                 uuid = bundle_info['uuid']
-                # If want to hide uuid, then make sure we're hiding the right index or if the index is not specified, that it's unique
+                # If want to detach uuid, then make sure we're hiding the right index or if the index is not specified, that it's unique
                 if uuid in bundle_uuids:
                     if args.index == None:
                         if uuid2index[uuid] != 1:
                             raise UsageError('bundle %s shows up more than once, need to specify index' % uuid)
-                        hide = True
+                        detach = True
                     else:
                         if args.index > uuid2index[uuid]:
                             raise UsageError('bundle %s shows up %d times, can\'t get index %d' % (uuid, uuid2index[uuid], args.index))
                         if args.index == indices[i]:
-                            hide = True
-            if not hide:
+                            detach = True
+            if not detach:
                 new_items.append(item)
 
         client.update_worksheet(worksheet_info, new_items)
@@ -1303,7 +1303,8 @@ class BundleCLI(object):
             is_last_newline = is_newline
 
     def do_wls_command(self, argv, parser):
-        parser.add_argument('address', help=self.ADDRESS_SEPC_FORMAT, nargs='?')
+        parser.add_argument('keywords', help='keywords to search for', nargs='*')
+        parser.add_argument('-a', '--address', help=self.ADDRESS_SEPC_FORMAT, nargs='?')
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
         args = parser.parse_args(argv)
 
@@ -1313,7 +1314,7 @@ class BundleCLI(object):
         else:
             client = self.manager.current_client()
 
-        worksheet_dicts = client.list_worksheets()
+        worksheet_dicts = client.search_worksheets(args.keywords)
         if args.uuid_only:
             for row in worksheet_dicts:
                 print row['uuid']
@@ -1324,8 +1325,6 @@ class BundleCLI(object):
                     row['permissions'] = group_permissions_str(row['group_permissions'])
                 post_funcs = {'uuid': self.UUID_POST_FUNC}
                 self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
-            else:
-                print 'No worksheets found.'
 
     def do_wadd_command(self, argv, parser):
         parser.add_argument('subworksheet_spec', help='worksheets to add (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='+')

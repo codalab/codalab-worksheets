@@ -5,6 +5,8 @@ import sys
 import re
 import os
 import shutil
+import random
+import time
 
 '''
 Tests all the CLI functionality end-to-end.
@@ -20,6 +22,9 @@ Things not tested:
 '''
 
 cl = 'cl'
+
+def random_name():
+    return 'test-cli-' + str(random.randint(0, 1000000))
 
 def run_command(args, expected_exit_code=0):
     try:
@@ -142,7 +147,7 @@ def test():
 add_test('make', test)
 
 def test():
-    name = 'test-hello-run'
+    name = random_name()
     uuid = run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
     # test search
@@ -156,11 +161,11 @@ def test():
     # block
     uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
     # cleanup
-    run_command([cl, 'rm', '-f', uuid, uuid2])  # force because bundle shows up twice
+    run_command([cl, 'rm', uuid, uuid2])  # force because bundle shows up twice
 add_test('run', test)
 
 def test():
-    wname = 'test-worksheet'
+    wname = random_name()
     # Create new worksheet
     orig_wuuid = run_command([cl, 'work', '--raw'])
     wuuid = run_command([cl, 'new', wname, '--raw'])
@@ -210,15 +215,15 @@ def test():
     run_command([cl, 'add', uuid1])
     run_command([cl, 'add', uuid2])
     # State after the above: 1 2 1 2
-    run_command([cl, 'hide', uuid1], 1) # multiple indices
-    run_command([cl, 'hide', uuid1, '-n', '3'], 1) # indes out of range
-    run_command([cl, 'hide', uuid2, '-n', '2']) # State: 1 1 2
+    run_command([cl, 'detach', uuid1], 1) # multiple indices
+    run_command([cl, 'detach', uuid1, '-n', '3'], 1) # indes out of range
+    run_command([cl, 'detach', uuid2, '-n', '2']) # State: 1 1 2
     check_equals(get_info('^', 'uuid'), uuid2)
-    run_command([cl, 'hide', uuid2]) # State: 1 1
+    run_command([cl, 'detach', uuid2]) # State: 1 1
     check_equals(get_info('^', 'uuid'), uuid1)
     # Cleanup
     run_command([cl, 'rm', uuid1, uuid2])
-add_test('hide', test)
+add_test('detach', test)
 
 def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
@@ -230,7 +235,7 @@ def test():
 add_test('perm', test)
 
 def test():
-    name = 'test-123'
+    name = random_name()
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', name])
     uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue', '-n', name])
     check_equals(uuid1, run_command([cl, 'search', uuid1, '-u']))
@@ -242,11 +247,19 @@ def test():
     check_equals(uuid1 + '\n' + uuid2, run_command([cl, 'search', 'name='+name, 'id=.sort', '-u']))
     check_equals(uuid2 + '\n' + uuid1, run_command([cl, 'search', 'name='+name, 'id=.sort-', '-u']))
     check_equals('2', run_command([cl, 'search', 'name='+name, '.count']))
-    size1 = int(run_command([cl, 'info', '-f', 'data_size', uuid1]))
-    size2 = int(run_command([cl, 'info', '-f', 'data_size', uuid2]))
-    check_equals(str(size1 + size2), run_command([cl, 'search', 'name='+name, 'data_size=.sum']))
+    size1 = float(run_command([cl, 'info', '-f', 'data_size', uuid1]))
+    size2 = float(run_command([cl, 'info', '-f', 'data_size', uuid2]))
+    check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
     run_command([cl, 'rm', uuid1, uuid2])
 add_test('search', test)
+
+def test():
+    uuid = run_command([cl, 'run', 'sleep 1000'])
+    time.sleep(2)
+    check_equals(uuid, run_command([cl, 'kill', uuid]))
+    run_command([cl, 'wait', uuid], 1)
+    run_command([cl, 'rm', uuid])
+add_test('kill', test)
 
 def test():
     run_command([cl, 'status'])
