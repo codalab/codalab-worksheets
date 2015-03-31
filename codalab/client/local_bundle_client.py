@@ -550,8 +550,7 @@ class LocalBundleClient(BundleClient):
                 # For items not on this worksheet, add them at the end (instead of making them floating).
                 host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_inputs[0]])[old_inputs[0]]
                 new_bundle_uuids_added = set()
-                skipped = False  # Whether there were items that we didn't include in the prelude (in which case we want to put '')
-                newline()
+                skipped = True  # Whether there were items that we didn't include in the prelude (in which case we want to put '')
                 if len(host_worksheet_uuids) > 0:
                     # Choose a single worksheet.
                     if worksheet_uuid in host_worksheet_uuids:
