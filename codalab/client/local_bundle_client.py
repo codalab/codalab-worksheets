@@ -208,22 +208,26 @@ class LocalBundleClient(BundleClient):
     def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
         '''
         For both make and run bundles.
-        Add the resulting bundle to the given worksheet_uuid (optional).
+        Add the resulting bundle to the given worksheet_uuid.
         '''
         check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
+        bundle_uuid = self._derive_bundle(bundle_type, targets, command, metadata, worksheet_uuid)
+        # Add to worksheet
+        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
+        return bundle_uuid
 
+    def _derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
+        '''
+        Helper function that creates the bundle but doesn't add it to the worksheet.
+        Returns the uuid.
+        '''
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
         owner_id = self._current_user_id()
         bundle = bundle_subclass.construct(targets=targets, command=command, metadata=metadata, owner_id=owner_id)
         self.model.save_bundle(bundle)
-
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
-
-        # Add to worksheet
-        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
-
         return bundle.uuid
 
     def _bundle_inherit_workheet_permissions(self, bundle_uuid, worksheet_uuid):
@@ -460,6 +464,7 @@ class LocalBundleClient(BundleClient):
         # Now go recursively create the bundles.
         old_to_new = {}  # old_uuid -> new_uuid
         downstream = set()  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
+        created_uuids = set()  # set of uuids which were newly created
         plan = []  # sequence of (old, new) bundle infos to make
         for old, new in zip(old_inputs, new_inputs):
             old_to_new[old] = new
@@ -511,12 +516,13 @@ class LocalBundleClient(BundleClient):
                 if dry_run:
                     new_bundle_uuid = None
                 else:
-                    new_bundle_uuid = self.derive_bundle(new_info['bundle_type'], \
-                        targets, new_info['command'], new_metadata, None)
+                    new_bundle_uuid = self._derive_bundle(new_info['bundle_type'], \
+                        targets, new_info['command'], new_metadata, worksheet_uuid)
 
                 new_info['uuid'] = new_bundle_uuid
                 plan.append((info, new_info))
                 downstream.add(old_bundle_uuid)
+                created_uuids.add(new_bundle_uuid)
             else:
                 new_bundle_uuid = old_bundle_uuid
 
@@ -536,8 +542,11 @@ class LocalBundleClient(BundleClient):
             if shadow:
                 # Add each new bundle in the "shadow" of the old_bundle (right after it).
                 for old_bundle_uuid, new_bundle_uuid in old_to_new.items():
-                    self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
+                    if new_bundle_uuid in created_uuids:  # Only add novel bundles
+                        self.model.add_shadow_worksheet_items(old_bundle_uuid, new_bundle_uuid)
             else:
+                def newline():
+                    self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
                 # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup, directives, etc.)
                 # Let W be the first worksheet containing the old_inputs[0].
                 # Add all items on that worksheet that appear in old_to_new along with their preludes.
@@ -567,10 +576,10 @@ class LocalBundleClient(BundleClient):
                             if old_bundle_uuid in old_to_new:
                                 # Flush the prelude gathered so far.
                                 new_bundle_uuid = old_to_new[old_bundle_uuid]
-                                if old_bundle_uuid != new_bundle_uuid:  # Only add novel bundles
+                                if new_bundle_uuid in created_uuids:  # Only add novel bundles
                                     # Stand in for things skipped (this is important so directives have proper extent).
                                     if skipped:
-                                        self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
+                                        newline()
 
                                     # Add prelude and items
                                     for item2 in prelude_items:
@@ -587,11 +596,12 @@ class LocalBundleClient(BundleClient):
                             skipped = not just_added
 
                 # Add the bundles that haven't been added yet
-                if skipped:
-                    self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
                 for info, new_info in plan:
                     new_bundle_uuid = new_info['uuid']
                     if new_bundle_uuid not in new_bundle_uuids_added:
+                        if skipped:
+                            newline()
+                            skipped = False
                         self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
 
         return plan
