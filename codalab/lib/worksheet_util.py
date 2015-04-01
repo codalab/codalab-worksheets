@@ -288,7 +288,7 @@ def interpret_genpath(bundle_info, genpath):
         return (bundle_info['uuid'], genpath)
 
     # Render dependencies
-    deps = bundle_info['dependencies']
+    deps = bundle_info.get('dependencies', [])
     anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
     def render_dep(dep, show_key=True, show_uuid=False):
         if show_key and not anonymous:
@@ -304,18 +304,18 @@ def interpret_genpath(bundle_info, genpath):
 
     # Special genpaths (dependencies, args)
     if genpath == 'dependencies':
-        return ','.join([render_dep(dep) for dep in bundle_info[genpath]])
+        return ','.join([render_dep(dep) for dep in deps])
     elif genpath.startswith('dependencies/'):
         # Look up the particular dependency
         _, name = genpath.split('/', 1)
-        for dep in bundle_info['dependencies']:
+        for dep in deps:
             if dep['child_path'] == name:
                 return render_dep(dep, show_key=False)
         return 'n/a'
     elif genpath == 'args':
         # Arguments that we would pass to 'cl'
         args = []
-        bundle_type = bundle_info['bundle_type']
+        bundle_type = bundle_info.get('bundle_type')
         if bundle_type not in ('make', 'run'): return None
         args += [bundle_type]
         for dep in deps:
@@ -338,7 +338,7 @@ def interpret_genpath(bundle_info, genpath):
     if value != None: return value
 
     # Metadata field?
-    value = bundle_info['metadata'].get(genpath)
+    value = bundle_info.get('metadata', {}).get(genpath)
     if value != None: return value
 
     return None
