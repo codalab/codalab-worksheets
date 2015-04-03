@@ -702,8 +702,7 @@ class BundleModel(object):
                 if item_row.worksheet_uuid not in worksheet_values:
                     raise IntegrityError('Got item %s without worksheet' % (item_row,))
                 item_row = {key: item_row[key] for key in item_row.keys()}
-                if self.db_raw_str:
-                    item_row['value'] = item_row['value'].decode('utf-8')
+                item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.itervalues()]
 
@@ -873,7 +872,7 @@ class BundleModel(object):
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
           'subworksheet_uuid': subworksheet_uuid,
-          'value': value.encode('utf-8') if self.db_raw_str else value,
+          'value': self.encode_str(value),
           'type': type,
           'sort_key': None,
         }
@@ -933,7 +932,7 @@ class BundleModel(object):
           'worksheet_uuid': worksheet_uuid,
           'bundle_uuid': bundle_uuid,
           'subworksheet_uuid': subworksheet_uuid,
-          'value': value,
+          'value': self.encode_str(value),
           'type': type,
           'sort_key': (last_item_id + i - len(new_items)),
         } for (i, (bundle_uuid, subworksheet_uuid, value, type)) in enumerate(new_items)]

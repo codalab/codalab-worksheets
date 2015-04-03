@@ -14,10 +14,14 @@ class MySQLModel(BundleModel):
         if not engine_url.startswith('mysql://'):
             raise UsageError('Engine URL should start with %s' % engine_url)
         engine = create_engine(engine_url, strategy='threadlocal')
-        self.db_raw_str = False  # Would like utf-8, but this currently throws an exception
         super(MySQLModel, self).__init__(engine)
 
     def do_multirow_insert(self, connection, table, values):
         # MySQL allows for more efficient multi-row insertions.
         if values:
             connection.execute(table.insert().values(values))
+
+    def encode_str(self, value):
+        return value.encode('utf-8')
+    def decode_str(self, value):
+        return value.decode('utf-8')
