@@ -298,7 +298,7 @@ def interpret_genpath(bundle_info, genpath):
                 a = ':'
         else:
             a = ''
-        b = dep['parent_uuid'] if show_uuid else dep['parent_name']
+        b = dep['parent_uuid'] if show_uuid else (dep['parent_name'] or '')
         c = '/' + dep['parent_path'] if dep['parent_path'] else ''
         return a + b + c
 
