@@ -20,3 +20,8 @@ class MySQLModel(BundleModel):
         # MySQL allows for more efficient multi-row insertions.
         if values:
             connection.execute(table.insert().values(values))
+
+    def encode_str(self, value):
+        return value.encode('utf-8')
+    def decode_str(self, value):
+        return value.decode('utf-8')

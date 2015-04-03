@@ -16,3 +16,8 @@ class SQLiteModel(BundleModel):
         engine_url = 'sqlite:///%s' % (sqlite_db_path,)
         engine = create_engine(engine_url, strategy='threadlocal')
         super(SQLiteModel, self).__init__(engine)
+
+    def encode_str(self, value):
+        return value
+    def decode_str(self, value):
+        return value
