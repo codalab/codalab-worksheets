@@ -5,6 +5,7 @@ import tempfile
 import time
 import sys
 import traceback
+import pwd
 
 from codalab.lib import (
   canonicalize,
@@ -131,7 +132,8 @@ class RemoteMachine(Machine):
             # 2) internal_script_file runs the actual command inside the docker container
             with open(internal_script_file, 'w') as f:
                 # Make sure I have a username
-                f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (os.getlogin(), os.geteuid(), os.getgid()))
+                username = pwd.getpwuid(os.getuid())[0]  # do this because os.getlogin() doesn't always work
+                f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (username, os.geteuid(), os.getgid()))
                 # Do this because .bashrc isn't sourced automatically (even with --login, though it works with docker -t -i, strange...)
                 f.write(". .bashrc || exit 1\n")
                 # Go into the temp directory
