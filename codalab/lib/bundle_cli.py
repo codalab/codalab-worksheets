@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import time
+import tempfile
 
 from codalab.bundles import (
   get_bundle_subclass,
@@ -430,11 +431,12 @@ class BundleCLI(object):
     def do_upload_command(self, argv, parser):
         help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
         parser.add_argument('bundle_type', help=help_text)
-        parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='+')
+        parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='*')
         parser.add_argument('-b', '--base', help='Inherit the metadata from this bundle specification.')
         parser.add_argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true')
         parser.add_argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-L', '--follow-symlinks', help='always dereference symlinks', action='store_true')
+        parser.add_argument('-c', '--contents', help='specify the contents of the bundle')
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
@@ -450,6 +452,16 @@ class BundleCLI(object):
         # Expand shortcuts
         if args.bundle_type == 'd': args.bundle_type = 'dataset'
         if args.bundle_type == 'p': args.bundle_type = 'program'
+
+        # If contents of file are specified on the command-line, then just use that.
+        if args.contents:
+            tmp = tempfile.NamedTemporaryFile()
+            print >>tmp, args.contents
+            tmp.flush()
+            args.path.append(tmp.name)
+
+        if len(args.path) == 0:
+            raise UsageError('Nothing to upload')
 
         # Check that the upload path exists.
         for path in args.path:
@@ -482,6 +494,10 @@ class BundleCLI(object):
 
         # Finally, once everything has been checked, then call the client to upload.
         print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks)
+
+        # Clean up if necessary
+        if args.contents:
+            tmp.close()
 
     def do_download_command(self, argv, parser):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
