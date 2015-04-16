@@ -31,7 +31,6 @@ class Worksheet(ORMObject):
         '''
         spec_util.check_uuid(self.uuid)
         spec_util.check_name(self.name)
-        #spec_util.check_id(self.owner_id)  # TODO: this is a string (do we have any restrictions on this string?)
 
     def __repr__(self):
         return 'Worksheet(uuid=%r, name=%r)' % (self.uuid, self.name)
@@ -41,7 +40,7 @@ class Worksheet(ORMObject):
 
     def update_in_memory(self, row, strict=False):
         items = row.pop('items', None)
-        if 'uuid' not in row:
+        if not row.get('uuid'):
             row['uuid'] = spec_util.generate_uuid()
         super(Worksheet, self).update_in_memory(row)
         if items is not None:

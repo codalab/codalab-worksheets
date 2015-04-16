@@ -1156,18 +1156,15 @@ class BundleCLI(object):
 
     def do_new_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
-        parser.add_argument('-u', '--uuid-only', help='print worksheet uuid', action='store_true')
+        parser.add_argument('-u', '--uuid', help='specify the uuid of worksheet (if really want this)')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name)
+        uuid = client.new_worksheet(args.name, args.uuid)
         client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(uuid))  # Add new to current
         worksheet_info = client.get_worksheet_info(uuid, False)
-        if args.uuid_only:
-            print worksheet_info['uuid']
-        else:
-            print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
+        print worksheet_info['uuid']
 
     def do_add_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
@@ -1356,15 +1353,16 @@ class BundleCLI(object):
             client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
 
     def do_wrm_command(self, argv, parser):
-        parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
+        parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]', nargs='+')
         args = parser.parse_args(argv)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        client.delete_worksheet(worksheet_uuid)
+        for worksheet_spec in args.worksheet_spec:
+            client, worksheet_uuid = self.parse_client_worksheet_uuid(worksheet_spec)
+            client.delete_worksheet(worksheet_uuid)
 
     def do_wcp_command(self, argv, parser):
-        parser.add_argument('source_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
-        parser.add_argument('dest_worksheet_spec', help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        parser.add_argument('source_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT)
+        parser.add_argument('dest_worksheet_spec', help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT)
         args = parser.parse_args(argv)
 
         # Source worksheet

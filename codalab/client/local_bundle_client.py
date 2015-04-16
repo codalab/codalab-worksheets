@@ -639,10 +639,11 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Worksheet with name %s already exists' % name)
 
     @authentication_required
-    def new_worksheet(self, name):
+    def new_worksheet(self, name, uuid):
         self.ensure_unused_worksheet_name(name)
+        self.ensure_unused_worksheet_name(uuid[0:-1])  # Hack: strip off last character so we force a lookup of the uuid
         # Don't need any permissions to do this.
-        worksheet = Worksheet({'name': name, 'items': [], 'owner_id': self._current_user_id()})
+        worksheet = Worksheet({'name': name, 'uuid': uuid, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
 
         # Make worksheet publicly readable by default
