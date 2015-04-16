@@ -340,7 +340,7 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
-            file_util.copy(sys.stdin, dest, autoflush=False, print_status=True)
+            file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
         command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
         if os.system(command) != 0:

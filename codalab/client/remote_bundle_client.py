@@ -169,7 +169,7 @@ class RemoteBundleClient(BundleClient):
                 dest = RPCFileHandle(remote_file_uuid, self.proxy)
                 # FileServer does not expose an API for forcibly flushing writes, so
                 # we rely on closing the file to flush it.
-                file_util.copy(source, dest, autoflush=False, print_status=True)
+                file_util.copy(source, dest, autoflush=False, print_status='Uploading %s%s to %s' % (zip_path, ' ('+info['uuid']+')' if 'uuid' in info else '', self.address))
                 dest.close()
         else:
             remote_file_uuid = None
@@ -205,7 +205,7 @@ class RemoteBundleClient(BundleClient):
         source = RPCFileHandle(source_uuid, self.proxy)
         with open(zip_path, 'wb') as dest:
             with contextlib.closing(source):
-                file_util.copy(source, dest, autoflush=False, print_status=True)
+                file_util.copy(source, dest, autoflush=False, print_status='Downloading %s on %s to %s' % ('/'.join(target), self.address, zip_path))
 
         self.finalize_file(source_uuid, True)  # Delete remote zip file
         # Unpack the local zip file

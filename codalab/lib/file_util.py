@@ -10,7 +10,7 @@ import formatting
 import urllib2
 from codalab.common import UsageError
 
-def copy(source, dest, autoflush=True, print_status=False):
+def copy(source, dest, autoflush=True, print_status=None):
     '''
     Read from the source file handle and write the data to the dest file handle.
     '''
@@ -24,10 +24,10 @@ def copy(source, dest, autoflush=True, print_status=False):
         if autoflush:
             dest.flush()
         if print_status:
-            print >>sys.stderr, "\rCopied %s" % formatting.size_str(n),
+            print >>sys.stderr, "\r%s: %s" % (print_status, formatting.size_str(n)),
             sys.stderr.flush()
     if print_status:
-        print >>sys.stderr, "\rCopied %s [done]" % formatting.size_str(n)
+        print >>sys.stderr, "\r%s: %s [done]" % (print_status, formatting.size_str(n))
 
 def download_url(source_url, target_path, print_status=False):
     '''
