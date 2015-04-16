@@ -62,8 +62,18 @@ def read_json_or_die(path):
         sys.exit(1)
 
 class CodaLabManager(object):
-    def __init__(self):
+    '''
+    temporary: don't use config files
+    '''
+    def __init__(self, temporary=False, clients=None):
         self.cache = {}
+        self.temporary = temporary
+
+        if self.temporary:
+            self.config = {}
+            self.state = {'auth': {}, 'sessions': {}}
+            self.clients = clients
+            return
 
         # Read config file, creating if it doesn't exist.
         config_path = self.config_path()
@@ -137,6 +147,9 @@ class CodaLabManager(object):
         '''
         Return the current session name.
         '''
+        if self.temporary:
+            return 'temporary'
+
         # If specified in the environment, then return that.
         session = os.getenv('CODALAB_SESSION')
         if session:
@@ -166,7 +179,7 @@ class CodaLabManager(object):
         name = self.session_name()
         if name not in sessions:
             # New session: set the address and worksheet uuid to the default (local if not specified)
-            cli_config = self.config['cli']
+            cli_config = self.config.get('cli', {})
             address = cli_config.get('default_address', 'local')
             worksheet_uuid = cli_config.get('default_worksheet_uuid', '')
             sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
@@ -259,7 +272,7 @@ class CodaLabManager(object):
             self._authenticate(client)
         return client
 
-    def cli_verbose(self): return self.config['cli']['verbose']
+    def cli_verbose(self): return self.config.get('cli', {}).get('verbose')
 
     def _authenticate(self, client):
         '''
@@ -353,7 +366,9 @@ class CodaLabManager(object):
         self.save_state()
 
     def save_config(self):
+        if self.temporary: return
         write_pretty_json(self.config, self.config_path())
 
     def save_state(self):
+        if self.temporary: return
         write_pretty_json(self.state, self.state_path())

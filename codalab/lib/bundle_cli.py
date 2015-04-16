@@ -161,16 +161,17 @@ class BundleCLI(object):
         'st': 'status',
     }
 
-    def __init__(self, manager):
+    def __init__(self, manager, headless=False):
         self.manager = manager
         self.verbose = manager.cli_verbose()
+        self.headless = headless
 
     def exit(self, message, error_code=1):
         '''
         Print the message to stderr and exit with the given error code.
         '''
         precondition(error_code, 'exit called with error_code == 0')
-        print >> sys.stderr, message
+        print >>sys.stderr, message
         sys.exit(error_code)
 
     def hack_formatter(self, parser):
@@ -331,11 +332,14 @@ class BundleCLI(object):
 
         command_fn = getattr(self, 'do_%s_command' % (command.replace('-', '_'),), None)
         if not command_fn:
-            self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
+            message = "'%s' is not a CodaLab command. Try 'cl help'." % (command,)
+            if self.headless: raise UsageError(message)
+            self.exit(message)
         parser = self.create_parser(command)
         if self.verbose >= 2:
             command_fn(remaining_args, parser)
         else:
+            message = None
             try:
                 # Profiling (off by default)
                 if False:
@@ -351,8 +355,10 @@ class BundleCLI(object):
                 else:
                     command_fn(remaining_args, parser)
             except PermissionError, e:
+                if self.headless: raise e
                 self.exit(e.message)
             except UsageError, e:
+                if self.headless: raise e
                 self.exit('%s: %s' % (e.__class__.__name__, e))
 
     def do_help_command(self, argv, parser):
@@ -388,6 +394,7 @@ class BundleCLI(object):
             print_command(command)
 
     def do_status_command(self, argv, parser):
+        self._fail_if_headless('status')
         print "codalab_home: %s" % self.manager.codalab_home()
         print "session: %s" % self.manager.session_name()
         address = self.manager.session()['address']
@@ -401,6 +408,7 @@ class BundleCLI(object):
         print "user: %s" % self.simple_user_str(client.user_info(None))
 
     def do_logout_command(self, argv, parser):
+        self._fail_if_headless('logout')
         client = self.manager.current_client()
         self.manager.logout(client)
 
@@ -409,6 +417,7 @@ class BundleCLI(object):
         Show, add, modify, delete aliases (mappings from names to instances).
         Only modifies the CLI configuration, doesn't need a BundleClient.
         '''
+        self._fail_if_headless('alias')
         parser.add_argument('key', help='name of the alias (e.g., cloud)', nargs='?')
         parser.add_argument('value', help='Instance to map the alias to (e.g., http://codalab.org:2800)', nargs='?')
         parser.add_argument('-r', '--remove', help='Remove this alias', action='store_true')
@@ -449,6 +458,9 @@ class BundleCLI(object):
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        if len(args.path) > 0:
+            self._fail_if_headless('upload')
 
         # Expand shortcuts
         if args.bundle_type == 'd': args.bundle_type = 'dataset'
@@ -501,6 +513,7 @@ class BundleCLI(object):
             tmp.close()
 
     def do_download_command(self, argv, parser):
+        self._fail_if_headless('download')
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
         parser.add_argument('-o', '--output-dir', help='Directory to download file.  By default, the bundle or subpath name is used.')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
@@ -674,11 +687,14 @@ class BundleCLI(object):
             client.update_bundle_metadata(bundle_uuid, new_metadata)
         else:
             # Prompt user for all information
-            new_metadata = metadata_util.request_missing_metadata(
-              bundle_subclass,
-              args,
-              info['metadata'],
-            )
+            if self.headless:
+                new_metadata = metadata
+            else:
+                new_metadata = metadata_util.request_missing_metadata(
+                  bundle_subclass,
+                  args,
+                  info['metadata'],
+                )
             if new_metadata != info['metadata']:
                 client.update_bundle_metadata(bundle_uuid, new_metadata)
                 print "Saved metadata for bundle %s." % (bundle_uuid)
@@ -945,6 +961,7 @@ class BundleCLI(object):
                 self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
 
     def do_cat_command(self, argv, parser):
+        self._fail_if_headless('cat')  # Files might be too big
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
@@ -979,6 +996,7 @@ class BundleCLI(object):
         return info
 
     def do_wait_command(self, argv, parser):
+        self._fail_if_headless('wait')
         parser.add_argument(
           'target_spec',
           help=self.TARGET_SPEC_FORMAT
@@ -1260,6 +1278,7 @@ class BundleCLI(object):
 
 
     def do_print_command(self, argv, parser):
+        self._fail_if_headless('print')
         parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-r', '--raw', action='store_true', help='print out the raw contents')
         args = parser.parse_args(argv)
@@ -1508,6 +1527,7 @@ class BundleCLI(object):
     #############################################################################
 
     def do_worker_command(self, argv, parser):
+        self._fail_if_headless('worker')
         # This command only works if client is a LocalBundleClient.
         parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
         parser.add_argument('--num-iterations', help="number of bundles to process before exiting", type=int, default=None)
@@ -1530,6 +1550,7 @@ class BundleCLI(object):
         worker.run_loop(args.num_iterations, args.sleep_time)
 
     def do_cleanup_command(self, argv, parser):
+        self._fail_if_headless('cleanup')
         # This command only works if client is a LocalBundleClient.
         '''
         Removes data hash directories which are not used by any bundle.
@@ -1540,12 +1561,9 @@ class BundleCLI(object):
         client.bundle_store.full_cleanup(client.model, args.dry_run)
 
     def do_reset_command(self, argv, parser):
+        self._fail_if_headless('reset')
         # This command only works if client is a LocalBundleClient.
-        parser.add_argument(
-          '--commit',
-          action='store_true',
-          help='reset is a no-op unless committed',
-        )
+        parser.add_argument('--commit', action='store_true', help='reset is a no-op unless committed')
         args = parser.parse_args(argv)
         if not args.commit:
             raise UsageError('If you really want to delete EVERYTHING, use --commit')
@@ -1554,3 +1572,7 @@ class BundleCLI(object):
         client.bundle_store._reset()
         print 'Deleting entire database...'
         client.model._reset()
+
+    def _fail_if_headless(self, message):
+        if self.headless:
+            raise UsageError('Cannot execute CLI command: %s' % message)

@@ -159,9 +159,9 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Invalid bundle_type: %s' % bundle_type)
         return construct_args
 
-    @authentication_required
     # Called when |path| is a url.
     # Only used to expose uploading URLs directly to the RemoteBundleClient.
+    @authentication_required
     def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
         return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
 
@@ -517,6 +517,8 @@ class LocalBundleClient(BundleClient):
                 if dry_run:
                     new_bundle_uuid = None
                 else:
+                    if new_info['bundle_type'] not in ('make', 'run'):
+                        raise UsageError('Can\'t mimic %s since it is not make or run' % old_bundle_uuid)
                     new_bundle_uuid = self._derive_bundle(new_info['bundle_type'], \
                         targets, new_info['command'], new_metadata, worksheet_uuid)
 
