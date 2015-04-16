@@ -490,8 +490,9 @@ class LocalBundleClient(BundleClient):
                 'child_path': dep['child_path']
             } for dep in info['dependencies']]
 
-            # If we're downstream of any inputs, we need to make a new bundle.
-            if any(dep['parent_uuid'] in downstream for dep in info['dependencies']):
+            # If there are no inputs or if we're downstream of any inputs, we need to make a new bundle.
+            downstream_of_inputs = any(dep['parent_uuid'] in downstream for dep in info['dependencies'])
+            if len(old_inputs) == 0 or downstream_of_inputs:
                 # Now create a new bundle that mimics the old bundle.
                 # Only change the name if the output name is supplied.
                 old_bundle_name = info['metadata']['name']
@@ -551,7 +552,11 @@ class LocalBundleClient(BundleClient):
                 # Let W be the first worksheet containing the old_inputs[0].
                 # Add all items on that worksheet that appear in old_to_new along with their preludes.
                 # For items not on this worksheet, add them at the end (instead of making them floating).
-                host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_inputs[0]])[old_inputs[0]]
+                if old_output:
+                    anchor_uuid = old_output
+                elif len(old_inputs) > 0:
+                    anchor_uuid = old_inputs[0]
+                host_worksheet_uuids = self.model.get_host_worksheet_uuids([anchor_uuid])[anchor_uuid]
                 new_bundle_uuids_added = set()
                 skipped = True  # Whether there were items that we didn't include in the prelude (in which case we want to put '')
                 if len(host_worksheet_uuids) > 0:
