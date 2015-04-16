@@ -67,7 +67,7 @@ class BundleRPCServer(FileServer):
             path = zip_util.unzip(zip_path, container_path)  # Unzip
         else:
             path = None
-        result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks)
+        result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks, exclude_patterns=[])
         if file_uuid:
             path_util.remove(container_path)  # Remove temporary directory
             self.finalize_file(file_uuid, True)  # Remove temporary zip

@@ -121,7 +121,7 @@ class BundleStoreTest(unittest.TestCase):
 
     bundle_store = MockBundleStore(test_root)
     self.assertFalse(check_isvalid_called[0])
-    bundle_store.upload(unnormalized_bundle_path, False)
+    bundle_store.upload(unnormalized_bundle_path, False, [])
     self.assertTrue(check_isvalid_called[0])
     if new:
       self.assertTrue(rename_called[0])

@@ -434,9 +434,10 @@ class BundleCLI(object):
         parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='*')
         parser.add_argument('-b', '--base', help='Inherit the metadata from this bundle specification.')
         parser.add_argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true')
-        parser.add_argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-L', '--follow-symlinks', help='always dereference symlinks', action='store_true')
+        parser.add_argument('-x', '--exclude-patterns', help='exclude these file patterns', nargs='*')
         parser.add_argument('-c', '--contents', help='specify the contents of the bundle')
+        parser.add_argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
@@ -493,7 +494,7 @@ class BundleCLI(object):
         if len(args.path) == 1: args.path = args.path[0]
 
         # Finally, once everything has been checked, then call the client to upload.
-        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks)
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks, args.exclude_patterns)
 
         # Clean up if necessary
         if args.contents:
@@ -593,7 +594,7 @@ class BundleCLI(object):
                 info = source_client.get_bundle_info(source_bundle_uuid)
 
                 # Upload to dest
-                print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
+                print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False, [])
 
                 # Clean up
                 if temp_path: path_util.remove(temp_path)

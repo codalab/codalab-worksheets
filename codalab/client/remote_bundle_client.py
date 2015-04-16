@@ -155,14 +155,14 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
         # URLs can be directly passed to the local client.
         if path and not isinstance(path, list) and path_util.path_is_url(path):
-            return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks)
+            return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
 
         # First, zip path up (temporary local zip file).
         if path:
-            zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks)
+            zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
             # Copy it up to the server (temporary remote zip file)
             with open(zip_path, 'rb') as source:
                 remote_file_uuid = self.open_temp_file()

@@ -162,11 +162,11 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     # Called when |path| is a url.
     # Only used to expose uploading URLs directly to the RemoteBundleClient.
-    def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks):
-        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks)
+    def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
+        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
 
     @authentication_required
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
         check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
 
         bundle_type = info['bundle_type']
@@ -186,7 +186,7 @@ class LocalBundleClient(BundleClient):
 
         # Upload the given path and record additional metadata from the upload.
         if path:
-            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
+            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
             metadata.update(bundle_store_metadata)
             precondition(construct_args.get('data_hash', data_hash) == data_hash, \
                 'Provided data_hash doesn\'t match: %s versus %s' % (construct_args.get('data_hash'), data_hash))
@@ -641,7 +641,9 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def new_worksheet(self, name, uuid):
         self.ensure_unused_worksheet_name(name)
-        self.ensure_unused_worksheet_name(uuid[0:-1])  # Hack: strip off last character so we force a lookup of the uuid
+        if uuid:
+            # Hack: strip off last character so we force a lookup of the uuid
+            self.ensure_unused_worksheet_name(uuid[0:-1])
         # Don't need any permissions to do this.
         worksheet = Worksheet({'name': name, 'uuid': uuid, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
