@@ -151,9 +151,9 @@ def test():
     uuid = run_command([cl, 'run', 'echo hello', '-n', name])
     wait(uuid)
     # test search
-    check_contains('hello', run_command([cl, 'search', name]))
+    check_contains(name, run_command([cl, 'search', name]))
     check_equals(uuid, run_command([cl, 'search', name, '-u']))
-    run_command([cl, 'search', 'test-hello-run', '--append'])
+    run_command([cl, 'search', name, '--append'])
     # get info
     check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
     check_equals('run "echo hello"', run_command([cl, 'info', '-f', 'args', uuid]))
@@ -161,14 +161,14 @@ def test():
     # block
     uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
     # cleanup
-    run_command([cl, 'rm', uuid, uuid2])  # force because bundle shows up twice
+    run_command([cl, 'rm', uuid, uuid2])
 add_test('run', test)
 
 def test():
     wname = random_name()
     # Create new worksheet
     orig_wuuid = run_command([cl, 'work', '-u'])
-    wuuid = run_command([cl, 'new', wname, '-u'])
+    wuuid = run_command([cl, 'new', wname])
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
     # ls
     check_equals('', run_command([cl, 'ls', '-u']))
@@ -265,7 +265,7 @@ def test():
     # Do everything on a new worksheet
     wname = random_name()
     old = run_command([cl, 'work', '-u'])
-    new = run_command([cl, 'new', wname, '-u'])
+    new = run_command([cl, 'new', wname])
 
     name = random_name()
     def data_hash(uuid):

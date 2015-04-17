@@ -155,21 +155,21 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
         # URLs can be directly passed to the local client.
         if path and not isinstance(path, list) and path_util.path_is_url(path):
-            return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks)
+            return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
 
         # First, zip path up (temporary local zip file).
         if path:
-            zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks)
+            zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
             # Copy it up to the server (temporary remote zip file)
             with open(zip_path, 'rb') as source:
                 remote_file_uuid = self.open_temp_file()
                 dest = RPCFileHandle(remote_file_uuid, self.proxy)
                 # FileServer does not expose an API for forcibly flushing writes, so
                 # we rely on closing the file to flush it.
-                file_util.copy(source, dest, autoflush=False, print_status=True)
+                file_util.copy(source, dest, autoflush=False, print_status='Uploading %s%s to %s' % (zip_path, ' ('+info['uuid']+')' if 'uuid' in info else '', self.address))
                 dest.close()
         else:
             remote_file_uuid = None
@@ -205,7 +205,7 @@ class RemoteBundleClient(BundleClient):
         source = RPCFileHandle(source_uuid, self.proxy)
         with open(zip_path, 'wb') as dest:
             with contextlib.closing(source):
-                file_util.copy(source, dest, autoflush=False, print_status=True)
+                file_util.copy(source, dest, autoflush=False, print_status='Downloading %s on %s to %s' % ('/'.join(target), self.address, zip_path))
 
         self.finalize_file(source_uuid, True)  # Delete remote zip file
         # Unpack the local zip file

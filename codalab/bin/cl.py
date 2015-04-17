@@ -11,7 +11,6 @@ from watchdog.events import FileSystemEventHandler
 
 from codalab.lib.codalab_manager import CodaLabManager
 
-
 class ClFileWatcherEventHandler(FileSystemEventHandler):
     SERVER_PROCESS = None
 

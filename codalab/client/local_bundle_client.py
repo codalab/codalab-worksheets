@@ -159,14 +159,14 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Invalid bundle_type: %s' % bundle_type)
         return construct_args
 
-    @authentication_required
     # Called when |path| is a url.
     # Only used to expose uploading URLs directly to the RemoteBundleClient.
-    def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks):
-        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks)
+    @authentication_required
+    def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
+        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
 
     @authentication_required
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
         check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
 
         bundle_type = info['bundle_type']
@@ -186,7 +186,7 @@ class LocalBundleClient(BundleClient):
 
         # Upload the given path and record additional metadata from the upload.
         if path:
-            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks)
+            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
             metadata.update(bundle_store_metadata)
             precondition(construct_args.get('data_hash', data_hash) == data_hash, \
                 'Provided data_hash doesn\'t match: %s versus %s' % (construct_args.get('data_hash'), data_hash))
@@ -490,8 +490,9 @@ class LocalBundleClient(BundleClient):
                 'child_path': dep['child_path']
             } for dep in info['dependencies']]
 
-            # If we're downstream of any inputs, we need to make a new bundle.
-            if any(dep['parent_uuid'] in downstream for dep in info['dependencies']):
+            # If there are no inputs or if we're downstream of any inputs, we need to make a new bundle.
+            downstream_of_inputs = any(dep['parent_uuid'] in downstream for dep in info['dependencies'])
+            if len(old_inputs) == 0 or downstream_of_inputs:
                 # Now create a new bundle that mimics the old bundle.
                 # Only change the name if the output name is supplied.
                 old_bundle_name = info['metadata']['name']
@@ -516,6 +517,8 @@ class LocalBundleClient(BundleClient):
                 if dry_run:
                     new_bundle_uuid = None
                 else:
+                    if new_info['bundle_type'] not in ('make', 'run'):
+                        raise UsageError('Can\'t mimic %s since it is not make or run' % old_bundle_uuid)
                     new_bundle_uuid = self._derive_bundle(new_info['bundle_type'], \
                         targets, new_info['command'], new_metadata, worksheet_uuid)
 
@@ -551,7 +554,11 @@ class LocalBundleClient(BundleClient):
                 # Let W be the first worksheet containing the old_inputs[0].
                 # Add all items on that worksheet that appear in old_to_new along with their preludes.
                 # For items not on this worksheet, add them at the end (instead of making them floating).
-                host_worksheet_uuids = self.model.get_host_worksheet_uuids([old_inputs[0]])[old_inputs[0]]
+                if old_output:
+                    anchor_uuid = old_output
+                elif len(old_inputs) > 0:
+                    anchor_uuid = old_inputs[0]
+                host_worksheet_uuids = self.model.get_host_worksheet_uuids([anchor_uuid])[anchor_uuid]
                 new_bundle_uuids_added = set()
                 skipped = True  # Whether there were items that we didn't include in the prelude (in which case we want to put '')
                 if len(host_worksheet_uuids) > 0:
@@ -634,10 +641,13 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Worksheet with name %s already exists' % name)
 
     @authentication_required
-    def new_worksheet(self, name):
+    def new_worksheet(self, name, uuid):
         self.ensure_unused_worksheet_name(name)
+        if uuid:
+            # Hack: strip off last character so we force a lookup of the uuid
+            self.ensure_unused_worksheet_name(uuid[0:-1])
         # Don't need any permissions to do this.
-        worksheet = Worksheet({'name': name, 'items': [], 'owner_id': self._current_user_id()})
+        worksheet = Worksheet({'name': name, 'uuid': uuid, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
 
         # Make worksheet publicly readable by default

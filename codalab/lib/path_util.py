@@ -321,14 +321,13 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
-def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
+def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
     '''
     source_path can be a list of files, in which case we need to create a
     directory first.  Assume dest_path doesn't exist.
+    Don't copy things that match |exclude_patterns|.
     '''
-    # TODO: implement exclude_names
-    # TODO: copytree doesn't preserve permissions, so we're making a system
-    # call (only works in Linux).
+    # Note: this only works in Linux.
     if os.path.exists(dest_path):
         raise path_error('already exists', dest_path)
 
@@ -340,9 +339,14 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_names=[]):
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
-            file_util.copy(sys.stdin, dest, autoflush=False, print_status=True)
+            file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
-        command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
+        #command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
+        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else ''), source, '/' if os.path.isdir(source) else '', dest_path)
+        if exclude_patterns:
+            for pattern in exclude_patterns:
+                command += ' --exclude "' + pattern + '"'
+        #print command
         if os.system(command) != 0:
             raise path_error('Unable to copy %s to' % source_path, dest_path)
 

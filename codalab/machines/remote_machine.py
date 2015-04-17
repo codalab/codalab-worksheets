@@ -5,6 +5,7 @@ import tempfile
 import time
 import sys
 import traceback
+import pwd
 
 from codalab.lib import (
   canonicalize,
@@ -38,6 +39,11 @@ class RemoteMachine(Machine):
         self.verbose = config.get('verbose', 1)
         self.dispatch_command = config['dispatch_command']
         self.default_docker_image = config.get('docker_image')
+        self.default_request_time = config.get('request_time')
+        self.default_request_memory = config.get('request_memory')
+        self.default_request_cpus = config.get('request_cpus')
+        self.default_request_gpus = config.get('request_gpus')
+        self.default_request_queue = config.get('request_queue')
 
     def run_command_get_stdout(self, args):
         if self.verbose >= 3: print "=== run_command_get_stdout: %s" % (args,)
@@ -76,10 +82,25 @@ class RemoteMachine(Machine):
         for (source, target) in pairs:
             path_util.copy(source, target, follow_symlinks=False)
 
-        # Set docker image
+        # Set defaults
         docker_image = self.default_docker_image
         if bundle.metadata.request_docker_image:
             docker_image = bundle.metadata.request_docker_image
+        request_time = self.default_request_time
+        if bundle.metadata.request_time:
+            request_time = bundle.metadata.request_time
+        request_memory = self.default_request_memory
+        if bundle.metadata.request_memory:
+            request_memory = bundle.metadata.request_memory
+        request_cpus = self.default_request_cpus
+        if bundle.metadata.request_cpus:
+            request_cpus = bundle.metadata.request_cpus
+        request_gpus = self.default_request_gpus
+        if bundle.metadata.request_gpus:
+            request_gpus = bundle.metadata.request_gpus
+        request_queue = self.default_request_queue
+        if bundle.metadata.request_queue:
+            request_queue = bundle.metadata.request_queue
 
         # Write the command to be executed to a script.
         if docker_image:
@@ -131,7 +152,8 @@ class RemoteMachine(Machine):
             # 2) internal_script_file runs the actual command inside the docker container
             with open(internal_script_file, 'w') as f:
                 # Make sure I have a username
-                f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (os.getlogin(), os.geteuid(), os.getgid()))
+                username = pwd.getpwuid(os.getuid())[0]  # do this because os.getlogin() doesn't always work
+                f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (username, os.geteuid(), os.getgid()))
                 # Do this because .bashrc isn't sourced automatically (even with --login, though it works with docker -t -i, strange...)
                 f.write(". .bashrc || exit 1\n")
                 # Go into the temp directory
@@ -147,16 +169,16 @@ class RemoteMachine(Machine):
 
         # Determine resources to request
         resource_args = []
-        if bundle.metadata.request_time:
-            resource_args.extend(['--request_time', formatting.parse_duration(bundle.metadata.request_time)])
-        if bundle.metadata.request_memory:
-            resource_args.extend(['--request_memory', formatting.parse_size(bundle.metadata.request_memory)])
-        if bundle.metadata.request_cpus:
-            resource_args.extend(['--request_cpus', bundle.metadata.request_cpus])
-        if bundle.metadata.request_gpus:
-            resource_args.extend(['--request_gpus', bundle.metadata.request_gpus])
-        if bundle.metadata.request_queue:
-            resource_args.extend(['--request_queue', bundle.metadata.request_queue])
+        if request_time:
+            resource_args.extend(['--request_time', formatting.parse_duration(request_time)])
+        if request_memory:
+            resource_args.extend(['--request_memory', formatting.parse_size(request_memory)])
+        if request_cpus:
+            resource_args.extend(['--request_cpus', request_cpus])
+        if request_gpus:
+            resource_args.extend(['--request_gpus', request_gpus])
+        if request_queue:
+            resource_args.extend(['--request_queue', request_queue])
         if username:
             resource_args.extend(['--username', username])
 

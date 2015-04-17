@@ -483,15 +483,16 @@ def get_default_schemas():
     created = ['created', 'created', 'date']
     data_size = ['data_size', 'data_size', 'size']
     time = ['time', 'time', 'duration']
+    description = ['description']
     schemas = {}
 
-    schemas['default'] = canonicalize_schema_items([['name'], ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
+    schemas['default'] = canonicalize_schema_items([['name'], description, ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
 
-    schemas['program'] = canonicalize_schema_items([['name'], created, data_size])
-    schemas['dataset'] = canonicalize_schema_items([['name'], created, data_size])
+    schemas['program'] = canonicalize_schema_items([['name'], description, created, data_size])
+    schemas['dataset'] = canonicalize_schema_items([['name'], description, created, data_size])
 
-    schemas['make'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['state']])
-    schemas['run'] = canonicalize_schema_items([['name'], created, ['dependencies'], ['command'], ['state'], time])
+    schemas['make'] = canonicalize_schema_items([['name'], description, created, ['dependencies'], ['state']])
+    schemas['run'] = canonicalize_schema_items([['name'], description, created, ['dependencies'], ['command'], ['state'], time])
     return schemas
 
 def interpret_items(schemas, items):

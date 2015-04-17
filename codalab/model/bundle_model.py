@@ -251,14 +251,17 @@ class BundleModel(object):
             subquery_index[0] += 1
             return clause.alias('q' + str(subquery_index[0]))
 
-        def make_condition(field, value):
+        def is_numeric(key):
+            return key != 'name'
+
+        def make_condition(key, field, value):
             # Special
             if value == '.sort':
-                sort_key[0] = field * 1
+                if is_numeric(key): field = field * 1
+                sort_key[0] = field
             elif value == '.sort-':
-                # TODO: if field is not numeric, this doesn't work.
-                # We should either detect whether the field is numeric.
-                sort_key[0] = desc(field * 1)
+                if is_numeric(key): field = field * 1
+                sort_key[0] = desc(field)
             elif value == '.sum':
                 sum_key[0] = field * 1
             else:
@@ -308,23 +311,23 @@ class BundleModel(object):
                 limit = int(value)
             # Bundle fields
             elif key == 'bundle_type':
-                clause = make_condition(cl_bundle.c.bundle_type, value)
+                clause = make_condition(key, cl_bundle.c.bundle_type, value)
             elif key == 'id':
-                clause = make_condition(cl_bundle.c.id, value)
+                clause = make_condition(key, cl_bundle.c.id, value)
             elif key == 'uuid':
-                clause = make_condition(cl_bundle.c.uuid, value)
+                clause = make_condition(key, cl_bundle.c.uuid, value)
             elif key == 'data_hash':
-                clause = make_condition(cl_bundle.c.data_hash, value)
+                clause = make_condition(key, cl_bundle.c.data_hash, value)
             elif key == 'state':
-                clause = make_condition(cl_bundle.c.state, value)
+                clause = make_condition(key, cl_bundle.c.state, value)
             elif key == 'command':
-                clause = make_condition(cl_bundle.c.command, value)
+                clause = make_condition(key, cl_bundle.c.command, value)
             elif key == 'owner_id':
-                clause = make_condition(cl_bundle.c.owner_id, value)
+                clause = make_condition(key, cl_bundle.c.owner_id, value)
             # Special fields
             elif key == 'dependency':
                 # Match uuid of dependency
-                condition = make_condition(cl_bundle_dependency.c.parent_uuid, value)
+                condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
                 if condition == true():  # top-level
                     clause = and_(
                         cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,
@@ -334,7 +337,7 @@ class BundleModel(object):
                     clause = cl_bundle.c.uuid.in_(alias(select([cl_bundle_dependency.c.child_uuid]).where(condition)))
             elif key.startswith('dependency/'):
                 _, name = key.split('/', 1)
-                condition = make_condition(cl_bundle_dependency.c.parent_uuid, value)
+                condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
                 if condition == true():  # top-level
                     clause = and_(
                         cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
@@ -347,7 +350,7 @@ class BundleModel(object):
                         condition,
                     ))))
             elif key == 'host_worksheet':
-                condition = make_condition(cl_worksheet_item.c.worksheet_uuid, value)
+                condition = make_condition(key, cl_worksheet_item.c.worksheet_uuid, value)
                 if condition == true():  # top-level
                     clause = and_(
                         cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid,  # Join constraint
@@ -373,7 +376,7 @@ class BundleModel(object):
                 clause = or_(*clause)
             # Otherwise, assume metadata.
             else:
-                condition = make_condition(cl_bundle_metadata.c.metadata_value, value)
+                condition = make_condition(key, cl_bundle_metadata.c.metadata_value, value)
                 if condition == true():  # top-level
                     clause = and_(
                         cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid,

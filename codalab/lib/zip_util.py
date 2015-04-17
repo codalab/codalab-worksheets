@@ -20,7 +20,7 @@ from codalab.lib import path_util
 ZIP_SUBPATH = 'zip_subpath'
 
 
-def zip(path, follow_symlinks, exclude_names=[], file_name=None):
+def zip(path, follow_symlinks, exclude_patterns=[], file_name=None):
     '''
     Take a path to a file or directory and return the path to a zip archive
     containing its contents.
@@ -49,10 +49,10 @@ def zip(path, follow_symlinks, exclude_names=[], file_name=None):
         os.mkdir(temp_subpath)
         for p in path:
             absolute_path = path_util.normalize(p)
-            path_util.copy(absolute_path, os.path.join(temp_subpath, os.path.basename(p)), follow_symlinks=follow_symlinks, exclude_names=exclude_names)
+            path_util.copy(absolute_path, os.path.join(temp_subpath, os.path.basename(p)), follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
     else:
         absolute_path = path_util.normalize(path)
-        path_util.copy(absolute_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_names=exclude_names)
+        path_util.copy(absolute_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
 
     # TODO: These methods of zipping don't preserve permissions, so using a
     # system call for now (only works in Linux)

@@ -10,11 +10,13 @@ This function takes an argument list and an ArgumentParser and does the action.
 '''
 import argparse
 import collections
+import copy
 import itertools
 import os
 import re
 import sys
 import time
+import tempfile
 
 from codalab.bundles import (
   get_bundle_subclass,
@@ -160,16 +162,17 @@ class BundleCLI(object):
         'st': 'status',
     }
 
-    def __init__(self, manager):
+    def __init__(self, manager, headless=False):
         self.manager = manager
         self.verbose = manager.cli_verbose()
+        self.headless = headless
 
     def exit(self, message, error_code=1):
         '''
         Print the message to stderr and exit with the given error code.
         '''
         precondition(error_code, 'exit called with error_code == 0')
-        print >> sys.stderr, message
+        print >>sys.stderr, message
         sys.exit(error_code)
 
     def hack_formatter(self, parser):
@@ -330,11 +333,14 @@ class BundleCLI(object):
 
         command_fn = getattr(self, 'do_%s_command' % (command.replace('-', '_'),), None)
         if not command_fn:
-            self.exit("'%s' is not a CodaLab command. Try 'cl help'." % (command,))
+            message = "'%s' is not a CodaLab command. Try 'cl help'." % (command,)
+            if self.headless: raise UsageError(message)
+            self.exit(message)
         parser = self.create_parser(command)
         if self.verbose >= 2:
             command_fn(remaining_args, parser)
         else:
+            message = None
             try:
                 # Profiling (off by default)
                 if False:
@@ -350,8 +356,10 @@ class BundleCLI(object):
                 else:
                     command_fn(remaining_args, parser)
             except PermissionError, e:
+                if self.headless: raise e
                 self.exit(e.message)
             except UsageError, e:
+                if self.headless: raise e
                 self.exit('%s: %s' % (e.__class__.__name__, e))
 
     def do_help_command(self, argv, parser):
@@ -387,6 +395,7 @@ class BundleCLI(object):
             print_command(command)
 
     def do_status_command(self, argv, parser):
+        self._fail_if_headless('status')
         print "codalab_home: %s" % self.manager.codalab_home()
         print "session: %s" % self.manager.session_name()
         address = self.manager.session()['address']
@@ -400,6 +409,7 @@ class BundleCLI(object):
         print "user: %s" % self.simple_user_str(client.user_info(None))
 
     def do_logout_command(self, argv, parser):
+        self._fail_if_headless('logout')
         client = self.manager.current_client()
         self.manager.logout(client)
 
@@ -408,6 +418,7 @@ class BundleCLI(object):
         Show, add, modify, delete aliases (mappings from names to instances).
         Only modifies the CLI configuration, doesn't need a BundleClient.
         '''
+        self._fail_if_headless('alias')
         parser.add_argument('key', help='name of the alias (e.g., cloud)', nargs='?')
         parser.add_argument('value', help='Instance to map the alias to (e.g., http://codalab.org:2800)', nargs='?')
         parser.add_argument('-r', '--remove', help='Remove this alias', action='store_true')
@@ -430,11 +441,13 @@ class BundleCLI(object):
     def do_upload_command(self, argv, parser):
         help_text = 'bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES)))
         parser.add_argument('bundle_type', help=help_text)
-        parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='+')
+        parser.add_argument('path', help='path(s) of the file/directory to upload', nargs='*')
         parser.add_argument('-b', '--base', help='Inherit the metadata from this bundle specification.')
         parser.add_argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true')
-        parser.add_argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-L', '--follow-symlinks', help='always dereference symlinks', action='store_true')
+        parser.add_argument('-x', '--exclude-patterns', help='exclude these file patterns', nargs='*')
+        parser.add_argument('-c', '--contents', help='specify the contents of the bundle')
+        parser.add_argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         metadata_keys = set()
@@ -447,9 +460,22 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
+        if len(args.path) > 0:
+            self._fail_if_headless('upload')
+
         # Expand shortcuts
         if args.bundle_type == 'd': args.bundle_type = 'dataset'
         if args.bundle_type == 'p': args.bundle_type = 'program'
+
+        # If contents of file are specified on the command-line, then just use that.
+        if args.contents:
+            tmp = tempfile.NamedTemporaryFile()
+            print >>tmp, args.contents
+            tmp.flush()
+            args.path.append(tmp.name)
+
+        if len(args.path) == 0:
+            raise UsageError('Nothing to upload')
 
         # Check that the upload path exists.
         for path in args.path:
@@ -481,9 +507,14 @@ class BundleCLI(object):
         if len(args.path) == 1: args.path = args.path[0]
 
         # Finally, once everything has been checked, then call the client to upload.
-        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks)
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks, args.exclude_patterns)
+
+        # Clean up if necessary
+        if args.contents:
+            tmp.close()
 
     def do_download_command(self, argv, parser):
+        self._fail_if_headless('download')
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
         parser.add_argument('-o', '--output-dir', help='Directory to download file.  By default, the bundle or subpath name is used.')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
@@ -577,7 +608,7 @@ class BundleCLI(object):
                 info = source_client.get_bundle_info(source_bundle_uuid)
 
                 # Upload to dest
-                print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False)
+                print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False, [])
 
                 # Clean up
                 if temp_path: path_util.remove(temp_path)
@@ -643,6 +674,7 @@ class BundleCLI(object):
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
         parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
+        parser.add_argument('-d', '--description', help='new description', nargs='?')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
@@ -650,21 +682,21 @@ class BundleCLI(object):
         bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
+
+        metadata = info['metadata']
+        new_metadata = copy.deepcopy(metadata)
         if args.name:
-            # Just change the name
-            new_metadata = info['metadata']
             new_metadata['name'] = args.name
+        if args.description:
+            new_metadata['description'] = args.description
+
+        # Prompt user for all information
+        if not self.headless and metadata == new_metadata:
+            new_metadata = metadata_util.request_missing_metadata(bundle_subclass, args, new_metadata)
+
+        if metadata != new_metadata:
             client.update_bundle_metadata(bundle_uuid, new_metadata)
-        else:
-            # Prompt user for all information
-            new_metadata = metadata_util.request_missing_metadata(
-              bundle_subclass,
-              args,
-              info['metadata'],
-            )
-            if new_metadata != info['metadata']:
-                client.update_bundle_metadata(bundle_uuid, new_metadata)
-                print "Saved metadata for bundle %s." % (bundle_uuid)
+            print "Saved metadata for bundle %s." % (bundle_uuid)
 
     def do_detach_command(self, argv, parser):
         '''
@@ -928,6 +960,7 @@ class BundleCLI(object):
                 self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
 
     def do_cat_command(self, argv, parser):
+        self._fail_if_headless('cat')  # Files might be too big
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT)
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
@@ -962,6 +995,7 @@ class BundleCLI(object):
         return info
 
     def do_wait_command(self, argv, parser):
+        self._fail_if_headless('wait')
         parser.add_argument(
           'target_spec',
           help=self.TARGET_SPEC_FORMAT
@@ -1140,18 +1174,15 @@ class BundleCLI(object):
 
     def do_new_command(self, argv, parser):
         parser.add_argument('name', help='name: ' + spec_util.NAME_REGEX.pattern)
-        parser.add_argument('-u', '--uuid-only', help='print worksheet uuid', action='store_true')
+        parser.add_argument('-u', '--uuid', help='specify the uuid of worksheet (if really want this)')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name)
+        uuid = client.new_worksheet(args.name, args.uuid)
         client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(uuid))  # Add new to current
         worksheet_info = client.get_worksheet_info(uuid, False)
-        if args.uuid_only:
-            print worksheet_info['uuid']
-        else:
-            print 'Created worksheet %s.' % (self.worksheet_str(worksheet_info))
+        print worksheet_info['uuid']
 
     def do_add_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
@@ -1246,6 +1277,7 @@ class BundleCLI(object):
 
 
     def do_print_command(self, argv, parser):
+        self._fail_if_headless('print')
         parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-r', '--raw', action='store_true', help='print out the raw contents')
         args = parser.parse_args(argv)
@@ -1340,15 +1372,16 @@ class BundleCLI(object):
             client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
 
     def do_wrm_command(self, argv, parser):
-        parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]')
+        parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]', nargs='+')
         args = parser.parse_args(argv)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        client.delete_worksheet(worksheet_uuid)
+        for worksheet_spec in args.worksheet_spec:
+            client, worksheet_uuid = self.parse_client_worksheet_uuid(worksheet_spec)
+            client.delete_worksheet(worksheet_uuid)
 
     def do_wcp_command(self, argv, parser):
-        parser.add_argument('source_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
-        parser.add_argument('dest_worksheet_spec', help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
+        parser.add_argument('source_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT)
+        parser.add_argument('dest_worksheet_spec', help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT)
         args = parser.parse_args(argv)
 
         # Source worksheet
@@ -1493,6 +1526,7 @@ class BundleCLI(object):
     #############################################################################
 
     def do_worker_command(self, argv, parser):
+        self._fail_if_headless('worker')
         # This command only works if client is a LocalBundleClient.
         parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
         parser.add_argument('--num-iterations', help="number of bundles to process before exiting", type=int, default=None)
@@ -1515,6 +1549,7 @@ class BundleCLI(object):
         worker.run_loop(args.num_iterations, args.sleep_time)
 
     def do_cleanup_command(self, argv, parser):
+        self._fail_if_headless('cleanup')
         # This command only works if client is a LocalBundleClient.
         '''
         Removes data hash directories which are not used by any bundle.
@@ -1525,12 +1560,9 @@ class BundleCLI(object):
         client.bundle_store.full_cleanup(client.model, args.dry_run)
 
     def do_reset_command(self, argv, parser):
+        self._fail_if_headless('reset')
         # This command only works if client is a LocalBundleClient.
-        parser.add_argument(
-          '--commit',
-          action='store_true',
-          help='reset is a no-op unless committed',
-        )
+        parser.add_argument('--commit', action='store_true', help='reset is a no-op unless committed')
         args = parser.parse_args(argv)
         if not args.commit:
             raise UsageError('If you really want to delete EVERYTHING, use --commit')
@@ -1539,3 +1571,7 @@ class BundleCLI(object):
         client.bundle_store._reset()
         print 'Deleting entire database...'
         client.model._reset()
+
+    def _fail_if_headless(self, message):
+        if self.headless:
+            raise UsageError('Cannot execute CLI command: %s' % message)
