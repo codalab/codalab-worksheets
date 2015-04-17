@@ -10,6 +10,7 @@ This function takes an argument list and an ArgumentParser and does the action.
 '''
 import argparse
 import collections
+import copy
 import itertools
 import os
 import re
@@ -673,6 +674,7 @@ class BundleCLI(object):
     def do_edit_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT)
         parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
+        parser.add_argument('-d', '--description', help='new description', nargs='?')
         parser.add_argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='?')
         args = parser.parse_args(argv)
 
@@ -680,24 +682,21 @@ class BundleCLI(object):
         bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.bundle_spec)
         info = client.get_bundle_info(bundle_uuid)
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
+
+        metadata = info['metadata']
+        new_metadata = copy.deepcopy(metadata)
         if args.name:
-            # Just change the name
-            new_metadata = info['metadata']
             new_metadata['name'] = args.name
+        if args.description:
+            new_metadata['description'] = args.description
+
+        # Prompt user for all information
+        if not self.headless and metadata == new_metadata:
+            new_metadata = metadata_util.request_missing_metadata(bundle_subclass, args, new_metadata)
+
+        if metadata != new_metadata:
             client.update_bundle_metadata(bundle_uuid, new_metadata)
-        else:
-            # Prompt user for all information
-            if self.headless:
-                new_metadata = metadata
-            else:
-                new_metadata = metadata_util.request_missing_metadata(
-                  bundle_subclass,
-                  args,
-                  info['metadata'],
-                )
-            if new_metadata != info['metadata']:
-                client.update_bundle_metadata(bundle_uuid, new_metadata)
-                print "Saved metadata for bundle %s." % (bundle_uuid)
+            print "Saved metadata for bundle %s." % (bundle_uuid)
 
     def do_detach_command(self, argv, parser):
         '''
