@@ -124,7 +124,7 @@ class LocalBundleClient(BundleClient):
             try:
                 return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
             except UsageError:
-                return self.new_worksheet(worksheet_spec)
+                return self.new_worksheet(worksheet_spec, None)
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
