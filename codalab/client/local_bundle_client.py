@@ -124,7 +124,7 @@ class LocalBundleClient(BundleClient):
             try:
                 return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
             except UsageError:
-                return self.new_worksheet(worksheet_spec)
+                return self.new_worksheet(worksheet_spec, None)
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
@@ -231,7 +231,7 @@ class LocalBundleClient(BundleClient):
         return bundle.uuid
 
     def _bundle_inherit_workheet_permissions(self, bundle_uuid, worksheet_uuid):
-        group_permissions = self.model.get_group_worksheet_permissions(worksheet_uuid)
+        group_permissions = self.model.get_group_worksheet_permissions(self._current_user_id(), worksheet_uuid)
         for permissions in group_permissions:
             self.set_bundles_perm([bundle_uuid], permissions['group_uuid'], permission_str(permissions['permission']))
 
@@ -383,7 +383,7 @@ class LocalBundleClient(BundleClient):
 
         if get_permissions:
             # Fill the info
-            group_result = self.model.batch_get_group_bundle_permissions(uuids)
+            group_result = self.model.batch_get_group_bundle_permissions(self._current_user_id(), uuids)
             result = self.model.get_user_bundle_permissions(self._current_user_id(), uuids, self.model.get_bundle_owner_ids(uuids))
             for uuid, info in bundle_dict.items():
                 info['group_permissions'] = group_result[uuid]
@@ -690,7 +690,7 @@ class LocalBundleClient(BundleClient):
         # Note that these group_permissions is universal and permissions are relative to the current user.
         # Need to make another database query.
         if fetch_permission:
-            result['group_permissions'] = self.model.get_group_worksheet_permissions(worksheet.uuid)
+            result['group_permissions'] = self.model.get_group_worksheet_permissions(self._current_user_id(), worksheet.uuid)
             result['permission'] = self.model.get_user_worksheet_permissions(self._current_user_id(), [worksheet.uuid], {worksheet.uuid: worksheet.owner_id})[worksheet.uuid]
 
         return result
