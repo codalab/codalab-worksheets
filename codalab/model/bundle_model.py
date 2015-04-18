@@ -409,7 +409,10 @@ class BundleModel(object):
 
         # Aggregate (sum)
         if sum_key[0] is not None:
-            query = select([func.sum(sum_key[0])]).distinct().where(clause).offset(offset).limit(limit)
+            # Construct a table with only the uuid and the num (and make sure it's distinct!)
+            query = alias(select([cl_bundle.c.uuid, sum_key[0].label('num')]).distinct().where(clause))
+            # Sum the numbers
+            query = select([func.sum(query.c.num)])
         else:
             query = select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(limit)
 
@@ -423,9 +426,9 @@ class BundleModel(object):
 
         #print 'QUERY', self._render_query(query)
         result = self._execute_query(query)
+        #print 'RESULT', result
         if count or sum_key[0] is not None:  # Just returning a single number
             return result[0]
-        #print 'RESULT', result
         return result
 
     def get_bundle_uuids(self, conditions, max_results):
@@ -840,7 +843,7 @@ class BundleModel(object):
 
         # Get permissions of the worksheets
         worksheet_uuids = [row.uuid for row in rows]
-        uuid_group_permissions = self.batch_get_group_worksheet_permissions(worksheet_uuids)
+        uuid_group_permissions = self.batch_get_group_worksheet_permissions(user_id, worksheet_uuids)
 
         # Put the permissions into the worksheets
         row_dicts = []
@@ -1205,39 +1208,49 @@ class BundleModel(object):
     def update_worksheet_permission(self, group_uuid, worksheet_uuid, permission):
         self.update_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid, permission)
 
-    def batch_get_group_permissions(self, table, object_uuids):
+    def batch_get_group_permissions(self, table, user_id, object_uuids):
         '''
         Return map from object_uuid to list of {group_uuid: ..., group_name: ..., permission: ...}
+        Note: if user_id != None, only involve groups that user_id is in.
         '''
         with self.engine.begin() as connection:
+            if user_id != None and user_id != self.root_user_id:
+                group_restrict = or_(
+                    table.c.group_uuid == self.public_group_uuid,  # Public group
+                    table.c.group_uuid.in_(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)) # Private group
+                )
+            else:
+                group_restrict = true()
             rows = connection.execute(select([table, cl_group.c.name])
                 .where(table.c.group_uuid == cl_group.c.uuid)
+                .where(group_restrict)
                 .where(table.c.object_uuid.in_(object_uuids))
             ).fetchall()
             result = collections.defaultdict(list)  # object_uuid => list of rows
             for row in rows:
                 result[row.object_uuid].append({'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
             return result
-    def batch_get_group_bundle_permissions(self, bundle_uuids):
-        return self.batch_get_group_permissions(cl_group_bundle_permission, bundle_uuids)
-    def batch_get_group_worksheet_permissions(self, worksheet_uuids):
-        return self.batch_get_group_permissions(cl_group_worksheet_permission, worksheet_uuids)
+    def batch_get_group_bundle_permissions(self, user_id, bundle_uuids):
+        return self.batch_get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuids)
+    def batch_get_group_worksheet_permissions(self, user_id, worksheet_uuids):
+        return self.batch_get_group_permissions(cl_group_worksheet_permission, user_id, worksheet_uuids)
 
-    def get_group_permissions(self, table, object_uuid):
+    def get_group_permissions(self, table, user_id, object_uuid):
         '''
         Return list of {group_uuid: ..., group_name: ..., permission: ...} entries for the given object.
+        Restrict to groups that user_id is a part of.
         '''
-        return self.batch_get_group_permissions(table, [object_uuid])[object_uuid]
-    def get_group_bundle_permissions(self, bundle_uuid):
-        return self.get_group_permissions(cl_group_bundle_permission, bundle_uuid)
-    def get_group_worksheet_permissions(self, worksheet_uuid):
-        return self.get_group_permissions(cl_group_worksheet_permission, worksheet_uuid)
+        return self.batch_get_group_permissions(table, user_id, [object_uuid])[object_uuid]
+    def get_group_bundle_permissions(self, user_id, bundle_uuid):
+        return self.get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuid)
+    def get_group_worksheet_permissions(self, user_id, worksheet_uuid):
+        return self.get_group_permissions(cl_group_worksheet_permission, user_id, worksheet_uuid)
 
     def get_group_permission(self, table, group_uuid, object_uuid):
         '''
         Get permission for the given (group, object) pair.
         '''
-        for row in self.get_group_permissions(table, object_uuid):
+        for row in self.get_group_permissions(table, None, object_uuid):
             if row['group_uuid'] == group_uuid:
                 return row['permission']
         return GROUP_OBJECT_PERMISSION_NONE
@@ -1267,7 +1280,7 @@ class BundleModel(object):
                 remaining_object_uuids.append(object_uuid)
 
         if len(remaining_object_uuids) > 0:
-            result = self.batch_get_group_permissions(table, remaining_object_uuids)
+            result = self.batch_get_group_permissions(table, user_id, remaining_object_uuids)
             user_groups = self._get_user_groups(user_id)
             for object_uuid, permissions in result.items():
                 for row in permissions:
