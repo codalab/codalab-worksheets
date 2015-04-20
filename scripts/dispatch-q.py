@@ -73,7 +73,7 @@ if mode == 'start':
         else:
             launch_script = args.script
 
-    stdout = get_output('q%s -add bash %s' % (resource_args, launch_script))
+    stdout = get_output('q%s -add bash %s use_script_for_temp_dir' % (resource_args, launch_script))
     m = re.match(r'Job (J-.+) added successfully', stdout)
     handle = m.group(1) if m else None
     response = {'raw': stdout, 'handle': handle}

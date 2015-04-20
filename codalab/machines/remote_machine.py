@@ -102,11 +102,11 @@ class RemoteMachine(Machine):
         if bundle.metadata.request_queue:
             request_queue = bundle.metadata.request_queue
 
-        # script_file uses its location to determine the temp_dir variable,
-        # which is just script_file without the '.sh'.
         script_file = temp_dir + '.sh'  # main entry point
         ptr_temp_dir = '$temp_dir'
-        set_temp_dir_header = 'temp_dir=`readlink -f $0 | sed -e \'s/\\.sh$//\'`\n'
+        # 1) If no argument to script_file, use the temp_dir (e.g., Torque, master/worker share file system).
+        # 2) If argument is 'use_script_for_temp_dir', use the script to determine temp_dir (e.g., qsub, no master/worker do not share file system).
+        set_temp_dir_header = 'if [ -z "$1" ]; then temp_dir=' + temp_dir + '; else temp_dir=`readlink -f $0 | sed -e \'s/\\.sh$//\'`; fi\n'
 
         # Write the command to be executed to a script.
         if docker_image:
