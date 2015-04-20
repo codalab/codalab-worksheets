@@ -35,16 +35,45 @@ if mode == 'start':
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
     parser.add_argument('--request_gpus', type=int, help='request this many GPUs')
     parser.add_argument('--request_queue', type=int, help='submit job to this queue')
+    parser.add_argument('--share_working_path', help='whether we should run the job directly in the script directory', action='store_true')
     parser.add_argument('script', type=str, help='script to run')
     args = parser.parse_args(sys.argv[2:])
 
     resource_args = ''
     if args.request_time:
         resource_args += ' -time %ds' % int(args.request_time)
+
+    # Note: if running in docker container, this doesn't do anything since q
+    # doesn't know about docker, and the script is not the thing actually
+    # taking memory.
     if args.request_memory:
         resource_args += ' -mem %dm' % int(args.request_memory / (1024*1024)) # convert to MB
 
-    stdout = get_output('q%s -shareWorkingPath -add bash %s' % (resource_args, args.script))
+    if args.share_working_path:
+        # Run directly in the same directory.
+        resource_args += ' -shareWorkingPath true'
+        launch_script = args.script
+    else:
+        # q will run the script in a <scratch> directory.
+        # args.script: <path>/<uuid>.sh
+        # Tell q to copy everything related <uuid> back.
+        orig_path = os.path.dirname(args.script)
+        uuid = os.path.basename(args.script).split('.')[0]
+        resource_args += ' -shareWorkingPath false'
+        resource_args += ' -inPaths %s/%s*' % (orig_path, uuid)
+        resource_args += ' -realtimeInPaths %s/%s.action' % (orig_path, uuid)  # To send messages (e.g., kill)
+        resource_args += ' -outPath %s' % orig_path
+        resource_args += ' -outFiles full:%s*' % uuid
+        # Need to point to new script
+        if args.script.startswith('/'):
+            # Strip leading / to make path relative.
+            # This way, q will run the right script.
+            os.chdir('/')
+            launch_script = args.script[1:]
+        else:
+            launch_script = args.script
+
+    stdout = get_output('q%s -add bash %s' % (resource_args, launch_script))
     m = re.match(r'Job (J-.+) added successfully', stdout)
     handle = m.group(1) if m else None
     response = {'raw': stdout, 'handle': handle}
@@ -56,8 +85,8 @@ elif mode == 'info':
     stdout = get_output('q -list%s -tabs' % list_args)
     response = {'raw': stdout}
     # Example output:
-    # handle    worker              status  exitcode   time    mem    disk    outName     command
-    # J-ifnrj9  mazurka-37 mazurka  done    0          1m40s   1m     -1m                 sleep 100
+    # handle    worker              status  exitCode   exitReason   time    mem    disk    outName     command
+    # J-ifnrj9  mazurka-37 mazurka  done    0          ....         1m40s   1m     -1m                 sleep 100
     infos = []
     for line in stdout.strip().split("\n"):
         if line == '': continue
@@ -74,11 +103,15 @@ elif mode == 'info':
         if exitcode != '':
             info['exitcode'] = int(exitcode)
 
-        time = tokens[4]
+        exitreason = tokens[4]
+        if exitreason != '':
+            info['exitreason'] = exitreason
+
+        time = tokens[5]
         if time:
             info['time'] = int(time)
 
-        memory = tokens[5]
+        memory = tokens[6]
         if memory:
             info['memory'] = int(memory) * 1024 * 1024  # Convert to bytes
 

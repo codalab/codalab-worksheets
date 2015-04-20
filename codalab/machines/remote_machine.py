@@ -82,7 +82,7 @@ class RemoteMachine(Machine):
         for (source, target) in pairs:
             path_util.copy(source, target, follow_symlinks=False)
 
-        # Set defaults
+        # Set defaults for the dispatcher.
         docker_image = self.default_docker_image
         if bundle.metadata.request_docker_image:
             docker_image = bundle.metadata.request_docker_image
@@ -102,13 +102,21 @@ class RemoteMachine(Machine):
         if bundle.metadata.request_queue:
             request_queue = bundle.metadata.request_queue
 
+        # script_file uses its location to determine the temp_dir variable,
+        # which is just script_file without the '.sh'.
+        script_file = temp_dir + '.sh'  # main entry point
+        ptr_temp_dir = '$temp_dir'
+        set_temp_dir_header = 'temp_dir=`readlink -f $0 | sed -e \'s/\\.sh$//\'`\n'
+
         # Write the command to be executed to a script.
         if docker_image:
-            container_file = temp_dir + '.cid'  # contains the docker container id
-            action_file = temp_dir + '.action'  # send actions to the container (e.g., kill)
-            status_dir = temp_dir + '.status'  # receive information from the container (e.g., memory)
-            script_file = temp_dir + '.sh'  # main entry point
             internal_script_file = temp_dir + '-internal.sh'  # run inside the docker container
+            # These paths depend on $temp_dir, an environment variable which will be set (referenced inside script_file)
+            ptr_container_file = ptr_temp_dir + '.cid'  # contains the docker container id
+            ptr_action_file = ptr_temp_dir + '.action'  # send actions to the container (e.g., kill)
+            ptr_status_dir = ptr_temp_dir + '.status'  # receive information from the container (e.g., memory)
+            ptr_script_file = ptr_temp_dir + '.sh'  # main entry point
+            ptr_internal_script_file = ptr_temp_dir + '-internal.sh'  # run inside the docker container
             # Names of file inside the docker container
             docker_temp_dir = bundle.uuid
             docker_internal_script_file = bundle.uuid + '-internal.sh'
@@ -118,25 +126,30 @@ class RemoteMachine(Machine):
             # -v mounts the internal and user scripts and the temp directory
             # Trap SIGTERM and forward it to docker.
             with open(script_file, 'w') as f:
-                # trap doesn't quite work reliably with Torque, so don't use it
-                #f.write('trap \'echo Killing docker container $(cat %s); docker kill $(cat %s); echo Killed: $?; exit 143\' TERM\n' % (container_file, container_file))
-                # Inspect doesn't tell us a lot, so don't use it
-                #f.write('while [ -e %s ]; do docker inspect $(cat %s) > %s; sleep 1; done &\n' % (temp_dir, container_file, status_dir))
-                
-                # Monitor CPU/memory/disk
-                monitor_commands = [
-                    # Report on status
-                    'mkdir -p %s' % status_dir,
-                    'if [ -e /cgroup ]; then cgroup=/cgroup; else cgroup=/sys/fs/cgroup; fi',  # find where cgroup is
-                    'cp -f $cgroup/cpuacct/docker/$(cat %s)/cpuacct.stat %s' % (container_file, status_dir),
-                    'cp -f $cgroup/memory/docker/$(cat %s)/memory.usage_in_bytes %s' % (container_file, status_dir),
-                    'cp -f $cgroup/blkio/docker/$(cat %s)/blkio.throttle.io_service_bytes %s' % (container_file, status_dir),
-                    # Respond to actions
-                    '[ -e %s ] && [ "$(cat %s)" == "kill" ] && docker kill $(cat %s) && rm %s' % (action_file, action_file, container_file, action_file),
-                ]
-                f.write('while [ -e %s ]; do %s; sleep 1; done &\n' % (temp_dir, '; '. join(monitor_commands)))
+                f.write(set_temp_dir_header)
 
-                # Constrain resources
+                # Monitor CPU/memory/disk
+                def copy_if_exists(source_template, arg, target):
+                    source = source_template % arg
+                    # -f because target might be read-only
+                    return 'if [ -e %s ] && [ -e %s ]; then cp -f %s %s; fi' % (arg, source, source, target)
+                monitor_commands = [
+                    # Report on status (memory, cpu, etc.)
+                    'mkdir -p %s' % ptr_status_dir,
+                    'if [ -e /cgroup ]; then cgroup=/cgroup; else cgroup=/sys/fs/cgroup; fi',  # find where cgroup is
+                    copy_if_exists('$cgroup/cpuacct/docker/$(cat %s)/cpuacct.stat', ptr_container_file, ptr_status_dir),
+                    copy_if_exists('$cgroup/memory/docker/$(cat %s)/memory.usage_in_bytes', ptr_container_file, ptr_status_dir),
+                    copy_if_exists('$cgroup/blkio/docker/$(cat %s)/blkio.throttle.io_service_bytes', ptr_container_file, ptr_status_dir),
+                    # Respond to kill action
+                    '[ -e %s ] && [ "$(cat %s)" == "kill" ] && docker kill $(cat %s) && rm %s' % (ptr_action_file, ptr_action_file, ptr_container_file, ptr_action_file),
+                    # Sleep
+                    'sleep 1',
+                ]
+                f.write('while [ -e %s ]; do\n  %s\ndone &\n' % (ptr_temp_dir, '\n  '. join(monitor_commands)))
+
+                # Tell docker to constrain resources (memory).
+                # Note: limiting memory is not always supported. See:
+                # http://programster.blogspot.com/2014/09/docker-implementing-container-memory.html
                 resource_args = ''
                 if bundle.metadata.request_memory:
                     resource_args += ' -m %s' % int(formatting.parse_size(bundle.metadata.request_memory))
@@ -144,10 +157,12 @@ class RemoteMachine(Machine):
 
                 f.write("docker run%s --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s & wait $!\n" % (
                     resource_args,
-                    container_file, os.geteuid(),
-                    temp_dir, docker_temp_dir,
-                    internal_script_file, docker_internal_script_file,
-                    docker_image, docker_internal_script_file))
+                    ptr_container_file,
+                    os.geteuid(),
+                    ptr_temp_dir, docker_temp_dir,
+                    ptr_internal_script_file, docker_internal_script_file,
+                    docker_image,
+                    docker_internal_script_file))
 
             # 2) internal_script_file runs the actual command inside the docker container
             with open(internal_script_file, 'w') as f:
@@ -162,9 +177,9 @@ class RemoteMachine(Machine):
                 f.write('(%s) > stdout 2>stderr\n' % bundle.command)
         else:
             # Just run the command regularly without docker
-            script_file = temp_dir + '.sh'
             with open(script_file, 'w') as f:
-                f.write("cd %s &&\n" % temp_dir)
+                f.write(set_temp_dir_header)
+                f.write("cd %s &&\n" % ptr_temp_dir)
                 f.write('(%s) > stdout 2>stderr\n' % bundle.command)
 
         # Determine resources to request
@@ -209,6 +224,7 @@ class RemoteMachine(Machine):
             for info in response['infos']:
                 status = {
                     'exitcode': info.get('exitcode'),
+                    'failure_message': 'Exit reason: ' + info.get('exitreason') if info.get('exitreason') else None,
                     'remote': info.get('hostname'),
                     'time': info.get('time'),
                     'memory': info.get('memory'),
@@ -266,7 +282,8 @@ class RemoteMachine(Machine):
         if self.verbose >= 1: print '=== kill_bundle(%s)' % (bundle.uuid)
         try:
             if getattr(bundle.metadata, 'docker_image', None):
-                # If running docker, we kill by writing a file
+                # If running docker, we kill by writing a file.
+                # This is a much more preferred way to kill a job.
                 action_file = bundle.metadata.temp_dir + '.action'
                 with open(action_file, 'w') as f:
                     print >>f, 'kill'
@@ -281,12 +298,16 @@ class RemoteMachine(Machine):
 
     def finalize_bundle(self, bundle):
         if self.verbose >= 1: print '=== finalize_bundle(%s)' % bundle.uuid
+        # If no job handle, then something must have failed early, so don't fail again.
+        job_handle = getattr(bundle.metadata, 'job_handle', None)
+        if not job_handle:
+            return True
         try:
-            args = self.dispatch_command.split() + ['cleanup', bundle.metadata.job_handle]
+            args = self.dispatch_command.split() + ['cleanup', job_handle]
             result = self.run_command_get_stdout_json(args)
             # Sync this with files created in start_bundle
             temp_dir = bundle.metadata.temp_dir
-            if bundle.metadata.docker_image:
+            if getattr(bundle.metadata, 'docker_image', None):
                 container_file = temp_dir + '.cid'
                 action_file = temp_dir + '.action'
                 status_dir = temp_dir + '.status'
