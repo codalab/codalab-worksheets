@@ -90,7 +90,7 @@ class BundleCLI(object):
       'status': 'Show current client status.',
       'logout': 'Logout of the current worksheet.',
       'alias': 'Manage CodaLab instance aliases.',
-      'worker': 'Run the CodaLab bundle worker.',
+      'work-manager': 'Run the CodaLab bundle work manager.',
       # Internal commands wihch are used for debugging.
       'cleanup': 'Clean up the CodaLab bundle store.',
       'reset': 'Delete the CodaLab bundle store and reset the database.',
@@ -145,7 +145,7 @@ class BundleCLI(object):
         'help',
         'status',
         'alias',
-        'worker',
+        'work-manager',
         'server',
     )
 
@@ -1525,8 +1525,8 @@ class BundleCLI(object):
     # LocalBundleClient-only commands follow!
     #############################################################################
 
-    def do_worker_command(self, argv, parser):
-        self._fail_if_headless('worker')
+    def do_work_manager_command(self, argv, parser):
+        self._fail_if_headless('work-manager')
         # This command only works if client is a LocalBundleClient.
         parser.add_argument('-t', '--worker-type', type=str, help="worker type (defined in config.json)", default='local')
         parser.add_argument('--num-iterations', help="number of bundles to process before exiting", type=int, default=None)

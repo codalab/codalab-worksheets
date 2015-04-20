@@ -191,7 +191,7 @@ Now let's actually execute these run bundles.  In general, a CodaLab instance
 would already have workers constantly executing run bundles, but we're running
 locally, so we have to start up our own worker.  Run this in another shell:
 
-    cl worker
+    cl work-manager
 
 (See `~/.codalab/config.json` to customize the worker.)  You should see that this
 shell immediately executes the run.  In our original shell, we can check that
@@ -1110,5 +1110,5 @@ are orthogonal choices).  Edit the `.codalab/config.json` as follows:
 
 To test it out:
 
-    cl worker                            # Run in a different terminal
+    cl work-manager                      # Run in a different terminal
     cl run 'cat /proc/self/cgroup' -t    # Should eventually print out lines containing the string `docker`

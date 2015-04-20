@@ -118,7 +118,7 @@ class Worker(object):
                     # (even if it's not the bundle's fault).
                     temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
                     path_util.make_directory(temp_dir)
-                    status = {'bundle': bundle, 'success': False, 'failure_message': str(e), 'temp_dir': temp_dir}
+                    status = {'bundle': bundle, 'success': False, 'failure_message': 'Internal error: ' + str(e), 'temp_dir': temp_dir}
                     print '=== INTERNAL ERROR: %s' % e
                     started = True  # Force failing
                     traceback.print_exc()
@@ -265,7 +265,7 @@ class Worker(object):
                 print '=== INTERNAL ERROR: %s' % e
                 traceback.print_exc()
                 success = False
-                metadata['failure_message'] = e.message
+                metadata['failure_message'] = 'Internal error: ' + e.message
 
             # Clean up any state for RunBundles.
             if isinstance(bundle, RunBundle):
