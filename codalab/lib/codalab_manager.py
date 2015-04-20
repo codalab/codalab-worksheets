@@ -33,11 +33,13 @@ import os
 import sys
 import time
 import psutil
+import tempfile
 
 from codalab.client import is_local_address
 from codalab.common import UsageError, PermissionError
 from codalab.objects.worksheet import Worksheet
 from codalab.server.auth import User
+from codalab.lib.bundle_store import BundleStore
 
 def cached(fn):
     def inner(self):
@@ -88,7 +90,7 @@ class CodaLabManager(object):
                 'workers': {
                     'q': {
                         'verbose': 1,
-                        #'docker_image': 'codalab/ubuntu:1.6',
+                        #'docker_image': 'codalab/ubuntu:1.7',
                         'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
                     }
                 }
@@ -130,12 +132,12 @@ class CodaLabManager(object):
         home = os.getenv('CODALAB_HOME', '~/.codalab')
         home = path_util.normalize(home)
         path_util.make_directory(home)
+        tempfile.tempdir = os.path.join(home, BundleStore.TEMP_SUBDIRECTORY)  # Global!  Set temp directory.
         return home
 
     @cached
     def bundle_store(self):
         codalab_home = self.codalab_home()
-        from codalab.lib.bundle_store import BundleStore
         direct_upload_paths = self.config['server'].get('direct_upload_paths', [])
         return BundleStore(codalab_home, direct_upload_paths)
 

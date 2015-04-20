@@ -491,8 +491,9 @@ class LocalBundleClient(BundleClient):
             } for dep in info['dependencies']]
 
             # If there are no inputs or if we're downstream of any inputs, we need to make a new bundle.
+            lone_output = (len(old_inputs) == 0 and old_bundle_uuid == old_output)
             downstream_of_inputs = any(dep['parent_uuid'] in downstream for dep in info['dependencies'])
-            if len(old_inputs) == 0 or downstream_of_inputs:
+            if lone_output or downstream_of_inputs:
                 # Now create a new bundle that mimics the old bundle.
                 # Only change the name if the output name is supplied.
                 old_bundle_name = info['metadata']['name']

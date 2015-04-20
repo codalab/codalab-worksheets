@@ -9,8 +9,9 @@ import os
 import time
 import sys
 import uuid
+import tempfile
 
-from codalab.lib import path_util, file_util
+from codalab.lib import path_util, file_util, print_util
 from codalab.common import UsageError
 
 class BundleStore(object):
@@ -112,8 +113,9 @@ class BundleStore(object):
                 path_util.check_isvalid(absolute_path, 'upload')
 
             # Recursively copy the directory into a new BundleStore temp directory.
-            print >>sys.stderr, 'BundleStore.upload: copying %s to %s' % (absolute_path, temp_path)
+            print_util.open_line('BundleStore.upload: copying %s to %s' % (absolute_path, temp_path))
             path_util.copy(absolute_path, temp_path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
+            print_util.clear_line()
 
         # Multiplex between uploading a directory and uploading a file here.
         # All other path_util calls will use these lists of directories and files.
@@ -124,9 +126,12 @@ class BundleStore(object):
 
         # Hash the contents of the temporary directory, and then if there is no
         # data with this hash value, move this directory into the data directory.
-        print >>sys.stderr, 'BundleStore.upload: hashing %s' % (temp_path)
+        print_util.open_line('BundleStore.upload: hashing %s' % temp_path)
         data_hash = '0x%s' % (path_util.hash_directory(temp_path, dirs_and_files),)
+        print_util.clear_line()
+        print_util.open_line('BundleStore.upload: computing size of %s' % temp_path)
         data_size = path_util.get_size(temp_path, dirs_and_files)
+        print_util.clear_line()
         final_path = os.path.join(self.data, data_hash)
         final_path_exists = False
         try:
