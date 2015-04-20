@@ -132,7 +132,10 @@ class CodaLabManager(object):
         home = os.getenv('CODALAB_HOME', '~/.codalab')
         home = path_util.normalize(home)
         path_util.make_directory(home)
-        tempfile.tempdir = os.path.join(home, BundleStore.TEMP_SUBDIRECTORY)  # Global!  Set temp directory.
+        # Global setting!  Make temp directory the same as the bundle store
+        # temporary directory.  The default /tmp generally doesn't have enough
+        # space.
+        tempfile.tempdir = os.path.join(home, BundleStore.TEMP_SUBDIRECTORY)
         return home
 
     @cached
