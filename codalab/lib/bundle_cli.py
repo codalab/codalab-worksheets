@@ -469,10 +469,13 @@ class BundleCLI(object):
 
         # If contents of file are specified on the command-line, then just use that.
         if args.contents:
-            tmp = tempfile.NamedTemporaryFile()
-            print >>tmp, args.contents
-            tmp.flush()
-            args.path.append(tmp.name)
+            if not args.md_name:
+                args.md_name = 'contents'
+            tmp_path = tempfile.mkstemp()[1]
+            f = open(tmp_path, 'w')
+            print >>f, args.contents
+            f.close()
+            args.path.append(tmp_path)
 
         if len(args.path) == 0:
             raise UsageError('Nothing to upload')
@@ -509,9 +512,10 @@ class BundleCLI(object):
         # Finally, once everything has been checked, then call the client to upload.
         print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks, args.exclude_patterns)
 
-        # Clean up if necessary
+        # Clean up if necessary (might have been deleted if we put it in the CodaLab temp directory)
         if args.contents:
-            tmp.close()
+            if os.path.exists(tmp_path):
+                os.unlink(tmp_path)
 
     def do_download_command(self, argv, parser):
         self._fail_if_headless('download')

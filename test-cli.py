@@ -122,6 +122,12 @@ def test():
 add_test('upload2', test)
 
 def test():
+    uuid = run_command([cl, 'upload', 'dataset', '-c', 'hello'])
+    check_equals('hello', run_command([cl, 'cat', uuid]))
+    run_command([cl, 'rm', uuid])
+add_test('upload3', test)
+
+def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
     run_command([cl, 'cp', uuid, '.'])  # Duplicate
     run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
