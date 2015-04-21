@@ -188,8 +188,8 @@ class LocalBundleClient(BundleClient):
         if path:
             (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
             metadata.update(bundle_store_metadata)
-            precondition(construct_args.get('data_hash', data_hash) == data_hash, \
-                'Provided data_hash doesn\'t match: %s versus %s' % (construct_args.get('data_hash'), data_hash))
+            if construct_args.get('data_hash', data_hash) != data_hash:
+                print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' % (construct_args.get('data_hash'), data_hash)
             construct_args['data_hash'] = data_hash
         # Set the owner
         construct_args['owner_id'] = self._current_user_id()
