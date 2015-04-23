@@ -522,6 +522,7 @@ def interpret_items(schemas, items):
         for arg in args:
             schema += schemas[arg]
         return schema
+    def is_missing(info): return 'metadata' not in info
     def flush():
         '''
         Gathered a group of bundles (in a table), which we can group together.
@@ -546,6 +547,9 @@ def interpret_items(schemas, items):
                 })
         elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
             for bundle_info in bundle_infos:
+                if is_missing(bundle_info):
+                    continue
+
                 # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
                 interpreted = interpret_genpath(bundle_info, args[0])
 

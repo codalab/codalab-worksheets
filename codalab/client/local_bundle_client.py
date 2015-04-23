@@ -320,7 +320,6 @@ class LocalBundleClient(BundleClient):
         return relevant_uuids
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
-        check_bundles_have_read_permission(self.model, self._current_user(), [uuid])
         return self.get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
 
     def get_bundle_infos(self, uuids, get_children=False, get_host_worksheets=False, get_permissions=False):

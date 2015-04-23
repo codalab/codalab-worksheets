@@ -200,7 +200,6 @@ class BundleCLI(object):
         result = []
         for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
             if item_type == worksheet_util.TYPE_BUNDLE:
-            #if bundle_info and 'metadata' in bundle_info:  # Test if this bundle is valid
                 result.append(bundle_info)
         return result
 
