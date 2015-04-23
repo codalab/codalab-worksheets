@@ -235,7 +235,7 @@ class RemoteBundleClient(BundleClient):
         file_util.copy(source, dest, autoflush=False, print_status='Copying %s from %s to %s' % (source_bundle_uuid, self.address, dest_client.address))
         dest.close()
         # Finally, install the zip file (this will be in charge of deleting that zip file).
-        result = dest_client.upload_bundle_zip(dest_file_uuid, info, dest_worksheet_uuid, False)
+        result = dest_client.upload_bundle_zip(dest_file_uuid, info, dest_worksheet_uuid, False, add_to_worksheet)
 
         self.finalize_file(source_file_uuid, True)  # Delete remote zip file
         return result
