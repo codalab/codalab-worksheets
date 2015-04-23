@@ -13,6 +13,7 @@ class MySQLModel(BundleModel):
     def __init__(self, engine_url):
         if not engine_url.startswith('mysql://'):
             raise UsageError('Engine URL should start with %s' % engine_url)
+        # pool_recycle: prevent the 'MySQL server has gone away' error
         engine = create_engine(engine_url, strategy='threadlocal', pool_recycle=3600)
         super(MySQLModel, self).__init__(engine)
 
