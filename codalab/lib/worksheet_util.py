@@ -159,18 +159,19 @@ def get_worksheet_lines(worksheet_info):
         elif item_type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
-                lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
-                continue
-            metadata = bundle_info['metadata']
-            description = bundle_info['bundle_type']
-            description += ' ' + metadata['name']
-            deps = interpret_genpath(bundle_info, 'dependencies')
-            if deps: description += ' -- ' + deps
-            command = bundle_info.get('command')
-            if command: description += ' : ' + command
+                #lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
+                description = 'MISSING'
+            else:
+                metadata = bundle_info['metadata']
+                description = bundle_info['bundle_type']
+                description += ' ' + metadata['name']
+                deps = interpret_genpath(bundle_info, 'dependencies')
+                if deps: description += ' -- ' + deps
+                command = bundle_info.get('command')
+                if command: description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
-            lines.append(worksheet_line('worksheet ' + subworksheet_info['name'], subworksheet_info['uuid']))
+            lines.append(worksheet_line('worksheet ' + subworksheet_info.get('name', 'MISSING'), subworksheet_info['uuid']))
         else:
             raise InternalError('Invalid worksheet item type: %s' % type)
     return lines

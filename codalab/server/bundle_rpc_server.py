@@ -54,7 +54,7 @@ class BundleRPCServer(FileServer):
         for command in RemoteBundleClient.SERVER_COMMANDS:
             self.register_function(wrap(command, getattr(self, command)), command)
 
-    def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks):
+    def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks, add_to_worksheet):
         '''
         Unzip the zip in the temp file identified by the given file uuid and then
         upload the unzipped directory. Return the new bundle's id.
@@ -68,7 +68,7 @@ class BundleRPCServer(FileServer):
             path = zip_util.unzip(zip_path, container_path, file_name=name)  # Unzip
         else:
             path = None
-        result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks, exclude_patterns=[])
+        result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks, exclude_patterns=[], add_to_worksheet=add_to_worksheet)
         if file_uuid:
             path_util.remove(container_path)  # Remove temporary directory
             self.finalize_file(file_uuid, True)  # Remove temporary zip

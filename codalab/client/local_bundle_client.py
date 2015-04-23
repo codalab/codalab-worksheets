@@ -166,7 +166,7 @@ class LocalBundleClient(BundleClient):
         return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
 
     @authentication_required
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns, add_to_worksheet):
         check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
 
         bundle_type = info['bundle_type']
@@ -200,7 +200,8 @@ class LocalBundleClient(BundleClient):
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
 
         # Add to worksheet
-        self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
+        if add_to_worksheet:
+            self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle.uuid))
 
         return bundle.uuid
 
@@ -735,9 +736,9 @@ class LocalBundleClient(BundleClient):
                     subworksheet_info = self.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
                 except UsageError, e:
                     # If can't get the subworksheet, it's probably invalid, so just replace it with an error
-                    type = worksheet_util.TYPE_MARKUP
-                    subworksheet_info = None
-                    value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
+                    #type = worksheet_util.TYPE_MARKUP
+                    subworksheet_info = {'uuid': subworksheet_uuid}
+                    #value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
             else:
                 subworksheet_info = None
             value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value

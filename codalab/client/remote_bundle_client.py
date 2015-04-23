@@ -155,7 +155,7 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
+    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns, add_to_worksheet):
         # URLs can be directly passed to the local client.
         if path and not isinstance(path, list) and path_util.path_is_url(path):
             return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
@@ -177,7 +177,7 @@ class RemoteBundleClient(BundleClient):
             zip_path = None
 
         # Finally, install the zip file (this will be in charge of deleting that zip file).
-        result = self.upload_bundle_zip(remote_file_uuid, info, worksheet_uuid, follow_symlinks)
+        result = self.upload_bundle_zip(remote_file_uuid, info, worksheet_uuid, follow_symlinks, add_to_worksheet)
 
         if zip_path:
             path_util.remove(zip_path)  # Remove local zip
@@ -219,7 +219,7 @@ class RemoteBundleClient(BundleClient):
 
         return (result_path, container_path)
 
-    def copy_bundle(self, source_bundle_uuid, info, dest_client, dest_worksheet_uuid):
+    def copy_bundle(self, source_bundle_uuid, info, dest_client, dest_worksheet_uuid, add_to_worksheet):
         '''
         A streamlined combination of download_target and upload_bundle.
         Copy from self to dest_client.

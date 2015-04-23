@@ -187,11 +187,11 @@ class BundleCLI(object):
             parser.formatter_class = mock_formatter_class
 
     def simple_bundle_str(self, info):
-        return '%s(%s)' % (info['metadata']['name'], info['uuid'])
+        return '%s(%s)' % (info.get('metadata', {}).get('name', 'MISSING'), info['uuid'])
     def simple_worksheet_str(self, info):
-        return '%s(%s)' % (info['name'], info['uuid'])
+        return '%s(%s)' % (info.get('name', 'MISSING'), info['uuid'])
     def simple_user_str(self, info):
-        return '%s(%s)' % (info['name'], info['id'])
+        return '%s(%s)' % (info.get('name', 'MISSING'), info['id'])
 
     def get_worksheet_bundles(self, worksheet_info):
         '''
@@ -511,7 +511,7 @@ class BundleCLI(object):
         if len(args.path) == 1: args.path = args.path[0]
 
         # Finally, once everything has been checked, then call the client to upload.
-        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks, args.exclude_patterns)
+        print client.upload_bundle(args.path, {'bundle_type': args.bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks, args.exclude_patterns, True)
 
         # Clean up if necessary (might have been deleted if we put it in the CodaLab temp directory)
         if args.contents:
@@ -570,9 +570,9 @@ class BundleCLI(object):
 
         # Copy!
         for source_bundle_uuid in source_bundle_uuids:
-            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies)
+            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
 
-    def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies):
+    def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies, add_to_worksheet):
         '''
         Helper function that supports cp and wcp.
         Copies the source bundle to the target worksheet.
@@ -607,7 +607,7 @@ class BundleCLI(object):
 
                 if isinstance(source_client, RemoteBundleClient) and isinstance(dest_client, RemoteBundleClient):
                     # If copying from remote to remote, can streamline the process
-                    source_client.copy_bundle(source_bundle_uuid, info, dest_client, dest_worksheet_uuid)
+                    source_client.copy_bundle(source_bundle_uuid, info, dest_client, dest_worksheet_uuid, add_to_worksheet)
                 else:
                     # Download from source
                     if source_info['data_hash']:
@@ -617,14 +617,13 @@ class BundleCLI(object):
                         source_path = temp_path = None
 
                     # Upload to dest
-                    print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False, [])
+                    print dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False, [], add_to_worksheet)
 
                     # Clean up
                     if temp_path: path_util.remove(temp_path)
         else:
-            #print "%s already exists on destination client" % source_desc
-            # Just need to add it to the worksheet
-            dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(source_bundle_uuid))
+            if add_to_worksheet:
+                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(source_bundle_uuid))
 
     def do_make_command(self, argv, parser):
         parser.add_argument('target_spec', help=self.TARGET_SPEC_FORMAT, nargs='+')
@@ -1390,34 +1389,29 @@ class BundleCLI(object):
 
     def do_wcp_command(self, argv, parser):
         parser.add_argument('source_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT)
-        parser.add_argument('dest_worksheet_spec', help='%s (default: current worksheet)' % self.WORKSHEET_SPEC_FORMAT)
+        parser.add_argument('dest_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT)
+        parser.add_argument('-c', '--clobber', help='clobber everything on destination worksheet with source (instead of appending)', action='store_true')
         args = parser.parse_args(argv)
 
         # Source worksheet
         (source_client, source_worksheet_uuid) = self.parse_client_worksheet_uuid(args.source_worksheet_spec)
-        items = source_client.get_worksheet_info(source_worksheet_uuid, True)['items']
+        source_items = source_client.get_worksheet_info(source_worksheet_uuid, True)['items']
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.dest_worksheet_spec)
+        dest_worksheet_info = dest_client.get_worksheet_info(dest_worksheet_uuid, True)
+        dest_items = [] if args.clobber else dest_worksheet_info['items']
 
-        for item in items:
+        # Save all items.
+        dest_client.update_worksheet(dest_worksheet_info, dest_items + source_items)
+
+        # Copy over the bundles
+        for item in source_items:
             (source_bundle_info, source_worksheet_info, value_obj, item_type) = item
             if item_type == worksheet_util.TYPE_BUNDLE:
-                # Copy bundle
-                self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid, copy_dependencies=False)
-            elif item_type == worksheet_util.TYPE_WORKSHEET:
-                # We currently don't have a mechanism for copying worksheets, only contents of worksheets.
-                if source_client == dest_client:
-                    new_item = item
-                else:
-                    new_item = worksheet_util.markup_item( \
-                        'WARNING: did not copy worksheet %s' % self.simple_worksheet_str(source_worksheet_info))
-                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.convert_item_to_db(new_item))
-            else:
-                # Copy non-bundle
-                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.convert_item_to_db(item))
+                self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid, copy_dependencies=False, add_to_worksheet=False)
 
-        print 'Copied %s worksheet items to %s.' % (len(items), dest_worksheet_uuid)
+        print 'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid)
 
 
     #############################################################################
