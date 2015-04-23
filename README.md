@@ -826,7 +826,8 @@ There are some special commands:
 Operations that return a single number rather than a list of bundles:
 
     cl search .count                       # return total number of bundles in the system
-    cl search size=.sum                    # return total number of bytes
+    cl search size=.sum                    # return total number of bytes (nominal)
+    cl search size=.sum data_hash=0x%      # return total number of bytes (actual, where we only count bundles with data)
 
 We can combine these keywords to yield the following handy queries:
 

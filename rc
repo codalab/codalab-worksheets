@@ -6,6 +6,10 @@ clhist() {
   history -s cl $(cl info -f args $1)
 }
 
+clwdiff() {
+  vimdiff <(cl print -r $1) <(cl print -r $2)
+}
+
 # Useful for chaining cl commands.
 # Example: cl search .orphan -u | xcl info
 alias xcl='xargs cl'
