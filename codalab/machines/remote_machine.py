@@ -280,6 +280,8 @@ class RemoteMachine(Machine):
 
     def kill_bundle(self, bundle):
         if self.verbose >= 1: print '=== kill_bundle(%s)' % (bundle.uuid)
+        if not self._exists(bundle): return True
+
         try:
             if getattr(bundle.metadata, 'docker_image', None):
                 # If running docker, we kill by writing a file.
@@ -298,12 +300,10 @@ class RemoteMachine(Machine):
 
     def finalize_bundle(self, bundle):
         if self.verbose >= 1: print '=== finalize_bundle(%s)' % bundle.uuid
-        # If no job handle, then something must have failed early, so don't fail again.
-        job_handle = getattr(bundle.metadata, 'job_handle', None)
-        if not job_handle:
-            return True
+        if not self._exists(bundle): return True
+
         try:
-            args = self.dispatch_command.split() + ['cleanup', job_handle]
+            args = self.dispatch_command.split() + ['cleanup', bundle.metadata.job_handle]
             result = self.run_command_get_stdout_json(args)
             # Sync this with files created in start_bundle
             temp_dir = bundle.metadata.temp_dir
@@ -327,3 +327,9 @@ class RemoteMachine(Machine):
             ok = False
 
         return ok
+
+    def _exists(self, bundle):
+        if not getattr(bundle.metadata, 'job_handle', None):
+            print 'ERROR: bundle %s does not have job handle' % (bundle.uuid, bundle.metadata)
+            return False
+        return True
