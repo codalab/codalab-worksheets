@@ -17,13 +17,10 @@ from zipfile import ZipFile
 from codalab.common import UsageError
 from codalab.lib import path_util, print_util
 
-ZIP_SUBPATH = 'zip_subpath'
-
-
-def zip(path, follow_symlinks, exclude_patterns=[], file_name=None):
+def zip(path, follow_symlinks, exclude_patterns, file_name):
     '''
-    Take a path to a file or directory and return the path to a zip archive
-    containing its contents.
+    Take a path to a file or directory |path| and return the path to a zip archive
+    containing its contents.  |file_name| is what the zip archive contains.
     '''
     if isinstance(path, list):
         for p in path:
@@ -33,15 +30,9 @@ def zip(path, follow_symlinks, exclude_patterns=[], file_name=None):
         absolute_path = path_util.normalize(path)
         path_util.check_isvalid(absolute_path, 'zip_directory')
 
-    # Add proper name
-    if file_name:
-        sub_path = file_name
-    else:
-        sub_path = ZIP_SUBPATH
-
     # Recursively copy the directory into a temp directory.
     temp_path = tempfile.mkdtemp()
-    temp_subpath = os.path.join(temp_path, sub_path)
+    temp_subpath = os.path.join(temp_path, file_name)
 
     print_util.open_line('Copying %s to %s' % (path, temp_subpath))
     if isinstance(path, list):
@@ -58,29 +49,30 @@ def zip(path, follow_symlinks, exclude_patterns=[], file_name=None):
     opts = '-qr'
     if not follow_symlinks: opts += ' --symlinks'
     print_util.open_line('Zipping to %s' % zip_path)
-    if os.system("cd %s && zip %s %s %s" % (temp_path, opts, zip_path, sub_path)) != 0:
+    if os.system("cd %s && zip %s %s %s" % (temp_path, opts, zip_path, file_name)) != 0:
         raise UsageError('zip failed')
 
     path_util.remove(temp_path)
-    return zip_path, sub_path
+    return zip_path
 
 
-def unzip(zip_path, temp_path, sub_path=ZIP_SUBPATH):
+def unzip(zip_path, temp_path, file_name):
     '''
-    Take an absolute path to a zip file and return the path to a file or
-    directory containing its unzipped contents.
-    The returned contents should live in temp_path.
+    Take an absolute path to a zip file |zip_path| and return the path to a file or
+    directory called |file_name| in |temp_path| containing its unzipped
+    contents.
+    Assume the zip file really contains one thing called |file_name|.
     '''
     path_util.check_isfile(zip_path, 'unzip_directory')
-    temp_subpath = os.path.join(temp_path, sub_path)
+    temp_subpath = os.path.join(temp_path, file_name)
 
-    print_util.open_line('Unzipping %s to %s' % (zip_path, temp_path))
+    print_util.open_line('Unzipping %s to %s' % (zip_path, temp_subpath))
     if os.system("cd %s && unzip -q %s" % (temp_path, zip_path)) != 0:
         raise UsageError('unzip failed')
     print_util.clear_line()
     # Corner case: note that the temp_subpath might not 'exist' because it is a
     # symlink (which is broken until it's put in the right place).
     if not os.path.exists(temp_subpath) and not os.path.islink(temp_subpath):
-        raise UsageError('Zip file %s missing %s (%s doesn\'t exist)' % (zip_path, ZIP_SUBPATH, temp_subpath))
+        raise UsageError('Zip file %s missing %s (%s doesn\'t exist)' % (zip_path, file_name, temp_subpath))
 
     return temp_subpath

@@ -54,7 +54,7 @@ class BundleRPCServer(FileServer):
         for command in RemoteBundleClient.SERVER_COMMANDS:
             self.register_function(wrap(command, getattr(self, command)), command)
 
-    def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks):
+    def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks, add_to_worksheet):
         '''
         Unzip the zip in the temp file identified by the given file uuid and then
         upload the unzipped directory. Return the new bundle's id.
@@ -64,10 +64,11 @@ class BundleRPCServer(FileServer):
             zip_path = self.file_paths[file_uuid]  # Note: cheat and look at file_server's data
             precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
             container_path = tempfile.mkdtemp()  # Make temporary directory
-            path = zip_util.unzip(zip_path, container_path)  # Unzip
+            name = construct_args['metadata']['name']
+            path = zip_util.unzip(zip_path, container_path, file_name=name)  # Unzip
         else:
             path = None
-        result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks, exclude_patterns=[])
+        result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks, exclude_patterns=[], add_to_worksheet=add_to_worksheet)
         if file_uuid:
             path_util.remove(container_path)  # Remove temporary directory
             self.finalize_file(file_uuid, True)  # Remove temporary zip
@@ -82,11 +83,14 @@ class BundleRPCServer(FileServer):
         return self.open_file(path, 'rb')
 
     def open_target_zip(self, target, follow_symlinks):
+        '''
+        Return a file uuid for the zip file and the name that the zip file contains.
+        '''
         bundle_uuid = target[0]
         path = self.client.get_target_path(target)
         name = self.client.get_bundle_info(bundle_uuid)['metadata']['name']
-        zip_path, sub_path = zip_util.zip(path, follow_symlinks=follow_symlinks, file_name=name)  # Create temporary zip file
-        return self.open_file(zip_path, 'rb'), sub_path
+        zip_path = zip_util.zip(path, follow_symlinks=follow_symlinks, exclude_patterns=[], file_name=name)  # Create temporary zip file
+        return self.open_file(zip_path, 'rb'), name
 
     def serve_forever(self):
         print 'BundleRPCServer serving to %s at port %s...' % ('ALL hosts' if self.host == '' else 'host ' + self.host, self.port)

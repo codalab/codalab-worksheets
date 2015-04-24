@@ -97,8 +97,10 @@ worksheet_item = Table(
   # - type = worksheet (subworksheet_uuid != null)
   # - type = markup (value != null)
   # - type = directive (value != null)
-  Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=True),
-  Column('subworksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=True),
+  # Deliberately omit ForeignKey(bundle.c.uuid), because worksheets can contain
+  # bundles and worksheets not (yet) in the system.
+  Column('bundle_uuid', String(63), nullable=True),
+  Column('subworksheet_uuid', String(63), nullable=True),
   Column('value', Text, nullable=False),  # TODO: make this nullable
   Column('type', String(20), nullable=False),
 
