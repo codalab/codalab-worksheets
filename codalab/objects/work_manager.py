@@ -156,6 +156,8 @@ class Worker(object):
             processed = False
             if x.action == Command.KILL:
                 bundle = self._safe_get_bundle(x.bundle_uuid)
+                if not bundle:
+                    continue
                 if not self.machine.kill_bundle(bundle):
                     print 'Killing %s failed' % x.bundle_uuid
             else:
