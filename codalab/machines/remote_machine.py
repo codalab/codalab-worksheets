@@ -330,6 +330,6 @@ class RemoteMachine(Machine):
 
     def _exists(self, bundle):
         if not getattr(bundle.metadata, 'job_handle', None):
-            print 'ERROR: bundle %s does not have job handle' % (bundle.uuid, bundle.metadata)
+            print 'ERROR: bundle %s does not have job handle; metadata is %s' % (bundle.uuid, bundle.metadata)
             return False
         return True
