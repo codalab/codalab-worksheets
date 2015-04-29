@@ -583,8 +583,8 @@ class BundleCLI(object):
             source_info = source_client.get_bundle_info(source_bundle_uuid)
             # Copy all the dependencies, but only for run dependencies.
             for dep in source_info['dependencies']:
-                self.copy_bundle(source_client, dep['parent_uuid'], dest_client, dest_worksheet_uuid, False)
-            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, False)
+                self.copy_bundle(source_client, dep['parent_uuid'], dest_client, dest_worksheet_uuid, False, add_to_worksheet)
+            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, False, add_to_worksheet)
             return
 
         # Check if the bundle already exists on the destination, then don't copy it
