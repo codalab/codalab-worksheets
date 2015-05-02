@@ -53,7 +53,7 @@ class RemoteMachine(Machine):
         if self.verbose >= 4: print "=== run_command_get_stdout: exitcode = %s" % exit_code
         if exit_code != 0:
             print '=== run_command_get_stdout failed: %s' % (args,)
-            raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, args))
+            raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, ' '.join(args)))
         return stdout
 
     def run_command_get_stdout_json(self, args):
