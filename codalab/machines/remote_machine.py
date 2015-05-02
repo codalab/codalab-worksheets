@@ -280,9 +280,10 @@ class RemoteMachine(Machine):
 
     def kill_bundle(self, bundle):
         if self.verbose >= 1: print '=== kill_bundle(%s)' % (bundle.uuid)
-        if not self._exists(bundle): return True
 
         try:
+            # Note: in some cases, even if we are using docker, bundle.metadata
+            # might be empty, and we won't be able to kill the bundle.
             if getattr(bundle.metadata, 'docker_image', None):
                 # If running docker, we kill by writing a file.
                 # This is a much more preferred way to kill a job.
@@ -290,8 +291,9 @@ class RemoteMachine(Machine):
                 with open(action_file, 'w') as f:
                     print >>f, 'kill'
             else:
-                args = self.dispatch_command.split() + ['kill', bundle.metadata.job_handle]
-                result = self.run_command_get_stdout_json(args)
+                if self._exists(bundle):
+                    args = self.dispatch_command.split() + ['kill', bundle.metadata.job_handle]
+                    result = self.run_command_get_stdout_json(args)
             return True
         except Exception, e:
             print '=== INTERNAL ERROR: %s' % e

@@ -91,9 +91,9 @@ class Worker(object):
         Run the given bundle using an available Machine.
         Return whether something was started.
         '''
-        # Check that we're running a bundle in the RUNNING state.
+        # Check that we're running a bundle in the QUEUED state.
         state_message = 'Unexpected bundle state: %s' % (bundle.state,)
-        precondition(bundle.state == State.RUNNING, state_message)
+        precondition(bundle.state == State.QUEUED, state_message)
         data_hash_message = 'Unexpected bundle data_hash: %s' % (bundle.data_hash,)
         precondition(bundle.data_hash is None, data_hash_message)
 
@@ -201,8 +201,8 @@ class Worker(object):
         status_bundle_uuids = set(status['bundle'].uuid for status in statuses)
         running_bundles = self.model.batch_get_bundles(state=State.RUNNING)
         for bundle in running_bundles:
-            if bundle.uuid in status_bundle_uuids: continue
-            if Command.KILL not in getattr(bundle.metadata, 'actions', set()): continue
+            if bundle.uuid in status_bundle_uuids: continue  # Exists, skip
+            if Command.KILL not in getattr(bundle.metadata, 'actions', set()): continue  # Not killing
             status = {'state': State.FAILED, 'bundle': bundle}
             print 'work_manager: %s (%s): killing zombie %s' % (bundle.uuid, bundle.state, status)
             self.update_running_bundle(status)
@@ -343,7 +343,8 @@ class Worker(object):
     def update_staged_bundles(self):
         '''
         If there are any STAGED bundles, pick one and try to lock it.
-        If we get a lock, move the locked bundle to RUNNING and then run it.
+        If we get a lock, move the locked bundle to QUEUED.
+        The status will be changed to RUNNING later.
         '''
         #print '-- Updating STAGED bundles! --'
         with self.profile('Getting STAGED bundles...'):
@@ -352,7 +353,7 @@ class Worker(object):
                 self.pretty_print('Staging %s bundles.' % (len(bundles),))
         new_running_bundles = 0
         for bundle in bundles:
-            if not self.update_bundle_states([bundle], State.RUNNING):
+            if not self.update_bundle_states([bundle], State.QUEUED):
                 self.pretty_print('WARNING: Bundle running, but state failed to update')
             else:
                 if self.start_bundle(bundle):

@@ -623,9 +623,9 @@ class BundleModel(object):
         # Make sure we don't delete running bundles.
         with self.engine.begin() as connection:
             rows = connection.execute(select([cl_bundle.c.uuid, cl_bundle.c.state]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
-            running_uuids = [r.uuid for r in rows if r.state == State.RUNNING]
+            running_uuids = [r.uuid for r in rows if r.state in [State.QUEUED, State.RUNNING]]
             if len(running_uuids) > 0:
-                raise UsageError('Can\'t delete running bundles: %s' % ' '.join(running_uuids))
+                raise UsageError('Can\'t delete queued or running bundles: %s' % ' '.join(running_uuids))
 
     def delete_bundles(self, uuids):
         '''

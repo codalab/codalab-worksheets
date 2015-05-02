@@ -51,11 +51,12 @@ class State(object):
     '''
     An enumeration of states that a bundle can be in.
     '''
-    CREATED = 'created'
-    STAGED = 'staged'
-    RUNNING = 'running'
-    READY = 'ready'
-    FAILED = 'failed'
+    CREATED = 'created'   # Just created
+    STAGED = 'staged'     # All the dependencies are met
+    QUEUED = 'queued'     # Submitted to the queue (and possibly copying files around)
+    RUNNING = 'running'   # Actually running
+    READY = 'ready'       # Done running and succeeded
+    FAILED = 'failed'     # Done running and failed
 
     OPTIONS = set([CREATED, STAGED, RUNNING, READY, FAILED])
     FINAL_STATES = set([READY, FAILED])
