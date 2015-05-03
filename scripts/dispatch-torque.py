@@ -71,13 +71,15 @@ elif mode == 'info':
             completed = False
             continue
 
-        if line == '':
+        if line == '' and info:
             # Ensure exitcode if job is completed
             if completed and 'exitcode' not in info:
                 info['exitcode'] = -1
+            if completed:
+                info['state'] = 'ready' if info['exitcode'] == 0 else 'failed'
 
             # Flush
-            if info: infos.append(info)
+            infos.append(info)
             info = None
             continue
 
@@ -93,8 +95,11 @@ elif mode == 'info':
             info['exitcode'] = int(value)
         elif key == 'job_state':
             if value == 'C':
-                completed = True
-            info['state'] = {'R': 'running'}.get(value, 'queued')
+                completed = True  # Don't know if it's ready or failed yet
+            elif value == 'R':
+                info['state'] = 'running'
+            else:  # 'Q' (or anything else)
+                info['state'] = 'queued'
         elif key == 'resources_used.mem':
             m = re.match(r'(\d+)kb', value)
             if m:
