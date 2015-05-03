@@ -26,7 +26,6 @@ if len(sys.argv) <= 1:
     print '    => {handle: ...}'
     sys.exit(1)
 
-result = {}
 handle = None
 
 mode = sys.argv[1]
@@ -74,8 +73,8 @@ elif mode == 'info':
 
         if line == '':
             # Ensure exitcode if job is completed
-            if completed and 'exitcode' not in result:
-                result['exitcode'] = -1
+            if completed and 'exitcode' not in info:
+                info['exitcode'] = -1
 
             # Flush
             if info: infos.append(info)
@@ -95,7 +94,7 @@ elif mode == 'info':
         elif key == 'job_state':
             if value == 'C':
                 completed = True
-            result['state'] = {'R': 'running'}.get(value, 'queued')
+            info['state'] = {'R': 'running'}.get(value, 'queued')
         elif key == 'resources_used.mem':
             m = re.match(r'(\d+)kb', value)
             if m:
