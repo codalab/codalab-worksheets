@@ -53,7 +53,7 @@ class RemoteMachine(Machine):
         if self.verbose >= 4: print "=== run_command_get_stdout: exitcode = %s" % exit_code
         if exit_code != 0:
             print '=== run_command_get_stdout failed: %s' % (args,)
-            raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, args))
+            raise SystemError('Command failed (exitcode = %s): %s' % (exit_code, ' '.join(args)))
         return stdout
 
     def run_command_get_stdout_json(self, args):
@@ -280,9 +280,10 @@ class RemoteMachine(Machine):
 
     def kill_bundle(self, bundle):
         if self.verbose >= 1: print '=== kill_bundle(%s)' % (bundle.uuid)
-        if not self._exists(bundle): return True
 
         try:
+            # Note: in some cases, even if we are using docker, bundle.metadata
+            # might be empty, and we won't be able to kill the bundle.
             if getattr(bundle.metadata, 'docker_image', None):
                 # If running docker, we kill by writing a file.
                 # This is a much more preferred way to kill a job.
@@ -290,8 +291,9 @@ class RemoteMachine(Machine):
                 with open(action_file, 'w') as f:
                     print >>f, 'kill'
             else:
-                args = self.dispatch_command.split() + ['kill', bundle.metadata.job_handle]
-                result = self.run_command_get_stdout_json(args)
+                if self._exists(bundle):
+                    args = self.dispatch_command.split() + ['kill', bundle.metadata.job_handle]
+                    result = self.run_command_get_stdout_json(args)
             return True
         except Exception, e:
             print '=== INTERNAL ERROR: %s' % e
@@ -330,6 +332,6 @@ class RemoteMachine(Machine):
 
     def _exists(self, bundle):
         if not getattr(bundle.metadata, 'job_handle', None):
-            print 'ERROR: bundle %s does not have job handle' % (bundle.uuid, bundle.metadata)
+            print 'ERROR: bundle %s does not have job handle; metadata is %s' % (bundle.uuid, bundle.metadata)
             return False
         return True
