@@ -342,7 +342,7 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
             file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
         #command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
-        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else ''), source, '/' if os.path.isdir(source) else '', dest_path)
+        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else 'l'), source, '/' if os.path.isdir(source) else '', dest_path)
         if exclude_patterns:
             for pattern in exclude_patterns:
                 command += ' --exclude "' + pattern + '"'
