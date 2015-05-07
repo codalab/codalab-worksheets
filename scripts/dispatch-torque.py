@@ -37,19 +37,22 @@ if mode == 'start':
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
     parser.add_argument('--request_gpus', type=int, help='request this many GPUs')
     parser.add_argument('--request_queue', type=str, help='submit job to this queue')
+    parser.add_argument('--request_priority', type=int, help='priority of this job (higher is more important)')
     parser.add_argument('script', type=str, help='script to run')
 
     args = parser.parse_args(sys.argv[2:])
 
     resource_args = ''
-    if args.username:
+    if args.username != None:
         resource_args += ' -N codalab-%s' % args.username
-    if args.request_cpus:
+    if args.request_cpus != None:
         resource_args += ' -l nodes=1:ppn=%d' % args.request_cpus
-    if args.request_memory:
+    if args.request_memory != None:
         resource_args += ' -l mem=%d' % int(args.request_memory)
-    if args.request_queue:
+    if args.request_queue != None:
         resource_args += ' -q %s' % args.request_queue
+    if args.request_priority != None:
+        resource_args += ' -p %s' % args.request_priority
 
     stdout = get_output('qsub -o /dev/null -e /dev/null%s %s' % (resource_args, args.script))
     handle = stdout.strip()
