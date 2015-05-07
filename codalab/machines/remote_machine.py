@@ -44,6 +44,7 @@ class RemoteMachine(Machine):
         self.default_request_cpus = config.get('request_cpus')
         self.default_request_gpus = config.get('request_gpus')
         self.default_request_queue = config.get('request_queue')
+        self.default_request_priority = config.get('request_priority')
 
     def run_command_get_stdout(self, args):
         if self.verbose >= 3: print "=== run_command_get_stdout: %s" % (args,)
@@ -101,6 +102,9 @@ class RemoteMachine(Machine):
         request_queue = self.default_request_queue
         if bundle.metadata.request_queue:
             request_queue = bundle.metadata.request_queue
+        request_priority = self.default_request_priority
+        if bundle.metadata.request_priority:
+            request_priority = bundle.metadata.request_priority
 
         script_file = temp_dir + '.sh'  # main entry point
         ptr_temp_dir = '$temp_dir'
@@ -194,6 +198,8 @@ class RemoteMachine(Machine):
             resource_args.extend(['--request_gpus', request_gpus])
         if request_queue:
             resource_args.extend(['--request_queue', request_queue])
+        if request_priority:
+            resource_args.extend(['--request_priority', request_priority])
         if username:
             resource_args.extend(['--username', username])
 

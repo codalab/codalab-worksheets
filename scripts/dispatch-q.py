@@ -35,19 +35,23 @@ if mode == 'start':
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
     parser.add_argument('--request_gpus', type=int, help='request this many GPUs')
     parser.add_argument('--request_queue', type=int, help='submit job to this queue')
+    parser.add_argument('--request_priority', type=int, help='priority of this job (higher is more important)')
     parser.add_argument('--share_working_path', help='whether we should run the job directly in the script directory', action='store_true')
     parser.add_argument('script', type=str, help='script to run')
     args = parser.parse_args(sys.argv[2:])
 
     resource_args = ''
-    if args.request_time:
+    if args.request_time != None:
         resource_args += ' -time %ds' % int(args.request_time)
 
     # Note: if running in docker container, this doesn't do anything since q
     # doesn't know about docker, and the script is not the thing actually
     # taking memory.
-    if args.request_memory:
+    if args.request_memory != None:
         resource_args += ' -mem %dm' % int(args.request_memory / (1024*1024)) # convert to MB
+
+    if args.request_priority != None:
+        resource_args += ' -priority -- %d' % (-args.request_priority)  # Note: need to invert
 
     if args.share_working_path:
         # Run directly in the same directory.

@@ -36,6 +36,7 @@ class RunBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'number of CPUs allowed for this run'))
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'number of GPUs allowed for this run'))
     METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'submit job to this queue'))
+    METADATA_SPECS.append(MetadataSpec('request_priority', int, 'job priority (higher is more important)'))
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'actions performed on this run', generated=True))
 
