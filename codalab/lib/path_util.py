@@ -376,7 +376,8 @@ def set_write_permissions(path):
 
 def rename(old_path, new_path):
     set_write_permissions(old_path)  # Allow permissions (TODO: this is a hack)
-    os.rename(old_path, new_path)
+    #os.rename(old_path, new_path)  # Can't deal with cross-device links
+    shutil.move(old_path, new_path)
 
 def remove(path):
     '''
