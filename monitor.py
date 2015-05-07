@@ -31,6 +31,9 @@ parser.add_argument('--data-path', help='where the CodaLab data is stored', defa
 parser.add_argument('--log-path', help='email address to send to', default='monitor.log')
 parser.add_argument('--backup-path', help='directory to backup database', default='backup')
 parser.add_argument('--mysql-conf-path', help='contains username/password for database', default='mysql.cnf')
+parser.add_argument('--ping-interval', help='ping the server every this many seconds', default=30)
+parser.add_argument('--run-interval', help='run a job every this many seconds', default=5*60)
+parser.add_argument('--email-interval', help='email a report every this many seconds', default=24*60*60)
 args = parser.parse_args()
 
 if not os.path.exists(args.mysql_conf_path):
@@ -114,17 +117,18 @@ def run_command(args, time_limit=5):
     return output.rstrip()
 
 timer = 0
-def ping_time():  # Every 5 seconds
+def ping_time():
     global timer
-    return timer % 5 == 0
-def run_time():  # Every 5 minutes
+    return timer % args.ping_interval == 0
+def run_time():
     global timer
-    return timer % (5 * 60) == 0
-def email_time():  # Every day
+    return timer % args.run_interval == 0
+def email_time():
     global timer
-    return timer % (60 * 60 * 24) == 0
+    return timer % args.email_interval == 0
 
 # Begin monitoring loop
+run_command(['cl', 'work', 'local::codalab'])
 while True:
     if ping_time():
         log('=== BEGIN REPORT')
@@ -139,7 +143,7 @@ while True:
         
         # Check remaining space
         if ping_time():
-            result = int(run_command(['df', '--output=avail', args.data_path]).split('\n')[1])
+            result = int(run_command(['df', args.data_path]).split('\n')[1].split()[3])
             if result < 500 * 1024:  # Less than 500 MB, start to worry
                 error_logs('low disk space', 'Only %s MB of disk space left!' % (result / 1024))
 
@@ -153,9 +157,8 @@ while True:
         
         # Try to run a job
         if run_time():
-            run_command(['cl', 'work', 'local::codalab'])
             uuid = run_command(['cl', 'run', 'echo hello'])
-            run_command(['cl', 'wait', uuid], 40)
+            run_command(['cl', 'wait', uuid], 60)
             run_command(['cl', 'rm', uuid])
     except Exception, e:
         error_logs('exception', 'Exception: %s' % e)
