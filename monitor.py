@@ -130,6 +130,7 @@ def email_time():
 # Begin monitoring loop
 run_command(['cl', 'work', 'local::codalab'])
 while True:
+    del report[:]
     if ping_time():
         log('=== BEGIN REPORT')
 
@@ -169,7 +170,6 @@ while True:
     # Email the report
     if email_time():
         send_email('report', report)
-        del report[:]
 
     if ping_time():
         print
