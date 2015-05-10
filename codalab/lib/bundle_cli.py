@@ -983,8 +983,9 @@ class BundleCLI(object):
             raise UsageError('Target doesn\'t exist: %s/%s' % target)
         if info['type'] == 'file':
             if decorate:
+                import base64
                 for line in client.head_target(target, maxlines):
-                    print line,
+                    print base64.b64decode(line),
             else:
                 client.cat_target(target, sys.stdout)
         def size(x):
