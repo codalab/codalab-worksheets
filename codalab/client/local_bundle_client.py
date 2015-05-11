@@ -406,8 +406,10 @@ class LocalBundleClient(BundleClient):
     def head_target(self, target, num_lines):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
+        lines = path_util.read_lines(path, num_lines)
+        if lines == None: return None
         import base64
-        return map(base64.b64encode, path_util.read_lines(path, num_lines))
+        return map(base64.b64encode, lines)
 
     def open_target_handle(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
