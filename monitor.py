@@ -34,6 +34,8 @@ parser.add_argument('--mysql-conf-path', help='contains username/password for da
 parser.add_argument('--ping-interval', help='ping the server every this many seconds', default=30)
 parser.add_argument('--run-interval', help='run a job every this many seconds', default=5*60)
 parser.add_argument('--email-interval', help='email a report every this many seconds', default=24*60*60)
+parser.add_argument('--website-db', help='website database')
+parser.add_argument('--bundles-db', help='bundles database')
 args = parser.parse_args()
 
 if not os.path.exists(args.mysql_conf_path):
@@ -139,8 +141,10 @@ while True:
         if email_time():
             log('Backup files')
             date = get_date()
-            run_command(['bash', '-c', 'mysqldump --defaults-file=%s codalab_website > %s/codalab_website-%s.mysqldump' % (args.mysql_conf_path, args.backup_path, date)])
-            run_command(['bash', '-c', 'mysqldump --defaults-file=%s codalab_bundles > %s/codalab_bundles-%s.mysqldump' % (args.mysql_conf_path, args.backup_path, date)])
+            if args.website_db:
+                run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/codalab_website-%s.mysqldump' % (args.mysql_conf_path, args.website_db, args.backup_path, date)])
+            if args.bundles_db:
+                run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/codalab_bundles-%s.mysqldump' % (args.mysql_conf_path, args.bundles_db, args.backup_path, date)])
         
         # Check remaining space
         if ping_time():
