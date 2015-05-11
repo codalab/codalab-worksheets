@@ -377,6 +377,8 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
         contents = client.head_target(target, MAX_LINES)
         # Try to interpret the structure of the file by looking inside it.
         if contents != None:
+            import base64
+            contents = map(base64.b64decode, contents)
             if all('\t' in x for x in contents):
                 # Tab-separated file (key\tvalue\nkey\tvalue...)
                 info = {}
