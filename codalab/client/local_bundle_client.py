@@ -406,7 +406,8 @@ class LocalBundleClient(BundleClient):
     def head_target(self, target, num_lines):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
-        return path_util.read_lines(path, num_lines)
+        import base64
+        return map(base64.b64encode, path_util.read_lines(path, num_lines))
 
     def open_target_handle(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
@@ -867,15 +868,15 @@ class LocalBundleClient(BundleClient):
                         target_info = self.get_target_info(target, 2)
                         target_info['stdout'] = None
                         target_info['stderr'] = None
-                        # if we have std out or err update it.
+                        # If we have stdout or stderr, update it.
                         contents = target_info.get('contents')
                         if contents:
                             for item in contents:
                                 if item['name'] in ['stdout', 'stderr']:
                                     lines = self.head_target((info['uuid'], item['name']), 100)
                                     if lines:
-                                        lines = ' '.join(lines)
-                                        info[item['name']] = lines
+                                        import base64
+                                        info[item['name']] = base64.b64encode(' '.join(lines))
 
             is_last_newline = is_newline
 
