@@ -707,7 +707,7 @@ class LocalBundleClient(BundleClient):
         if not results[user_name]:
             raise UsageError('Unknown user: %s' % user_name)
         return results[user_name].unique_id
-        
+
     def _user_id_to_names(self, user_ids):
         if len(user_ids) == 0: return []
         results = self.auth_handler.get_users('ids', user_ids)
@@ -877,8 +877,8 @@ class LocalBundleClient(BundleClient):
                                 if item['name'] in ['stdout', 'stderr']:
                                     lines = self.head_target((info['uuid'], item['name']), 100)
                                     if lines:
-                                        import base64
-                                        info[item['name']] = base64.b64encode(' '.join(lines))
+                                        lines = ' '.join(lines)
+                                        info[item['name']] = lines
 
             is_last_newline = is_newline
 
