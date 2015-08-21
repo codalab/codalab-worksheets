@@ -995,11 +995,13 @@ class BundleCLI(object):
             return t
         if info['type'] == 'directory':
             contents = [
-                {'name': x['name'] + (' -> ' + x['link'] if x['type'] == 'link' else ''), 'size': size(x)}
+                {'name': x['name'] + (' -> ' + x['link'] if x['type'] == 'link' else ''),
+                'size': size(x),
+                'perm': oct(x['perm']) if 'perm' in x else ''}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'size'), contents, justify={'size':1}, indent='')
+            self.print_table(('name', 'perm', 'size'), contents, justify={'size':1}, indent='')
         return info
 
     def do_wait_command(self, argv, parser):

@@ -261,15 +261,17 @@ def get_info(path, depth):
     result['name'] = os.path.basename(path)
     if os.path.islink(path):
         result['type'] = 'link'
-        result['link'] = os.path.realpath(path)
+        result['link'] = os.readlink(path)
         result['size'] = get_size(path)
-    if os.path.isfile(path):
+    elif os.path.isfile(path):
         result['type'] = 'file'
         result['size'] = get_size(path)
     elif os.path.isdir(path):
         result['type'] = 'directory'
         if depth > 0:
             result['contents'] = [get_info(os.path.join(path, file_name), depth-1) for file_name in os.listdir(path)]
+    if os.path.exists(path):
+        result['perm'] = os.stat(path).st_mode & 0777
     return result
 
 def hash_directory(path, dirs_and_files=None):
