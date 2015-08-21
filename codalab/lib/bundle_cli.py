@@ -989,13 +989,13 @@ class BundleCLI(object):
             else:
                 client.cat_target(target, sys.stdout)
         def size(x):
-            t = x.get('type', 'MISSING')
-            if t == 'file': return formatting.size_str(x['size'])
+            t = x.get('type', '???')
+            if t == 'file' or t == 'link': return formatting.size_str(x['size'])
             if t == 'directory': return 'dir'
             return t
         if info['type'] == 'directory':
             contents = [
-                {'name': x['name'], 'size': size(x)}
+                {'name': x['name'] + (' -> ' + x['link'] if x['type'] == 'link' else ''), 'size': size(x)}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
