@@ -95,15 +95,14 @@ def get_target_path(bundle_store, model, target):
     (uuid, path) = target
     bundle = model.get_bundle(uuid)
     if not bundle.data_hash:
-        # Note that the bundle might not be done, but return the location anyway to the temporary directory
+        # Note that the bundle might not be ready, but return the location anyway to the temporary directory.
         bundle_root = get_current_location(bundle_store, uuid)
     else:
         bundle_root = bundle_store.get_location(bundle.data_hash)
     final_path = path_util.safe_join(bundle_root, path)
 
-    # This is too restrictive because it means we can't follow any of the
-    # components of a make bundle.
-    #path_util.check_under_path(final_path, bundle_root)
+    # Make sure that we're not following symlinks to some crazy place.
+    path_util.check_under_path(final_path, bundle_root)
 
     result = path_util.TargetPath(final_path)
     result.target = target

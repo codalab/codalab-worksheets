@@ -990,12 +990,12 @@ class BundleCLI(object):
                 client.cat_target(target, sys.stdout)
         def size(x):
             t = x.get('type', '???')
-            if t == 'file' or t == 'link': return formatting.size_str(x['size'])
+            if t == 'file': return formatting.size_str(x['size'])
             if t == 'directory': return 'dir'
             return t
         if info['type'] == 'directory':
             contents = [
-                {'name': x['name'] + (' -> ' + x['link'] if x['type'] == 'link' else ''),
+                {'name': x['name'] + (' -> ' + x['link'] if 'link' in x else ''),
                 'size': size(x),
                 'perm': oct(x['perm']) if 'perm' in x else ''}
                 for x in info['contents']

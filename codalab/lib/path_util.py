@@ -204,7 +204,6 @@ def cat(path, out):
     '''
     Copy data from the file at the given path to the file descriptor |out|.
     '''
-    if os.path.islink(path): return None  # Don't follow symlinks
     if not os.path.isfile(path): return None
     with open(path, 'rb') as file_handle:
         file_util.copy(file_handle, out)
@@ -213,7 +212,6 @@ def read_lines(path, num_lines=None):
     '''
     Return list of lines (up to num_lines).
     '''
-    if os.path.islink(path): return None  # Don't follow symlinks
     if not os.path.isfile(path): return None
     with open(path, 'rb') as file_handle:
         if num_lines == None:
@@ -260,10 +258,8 @@ def get_info(path, depth):
     result = {}
     result['name'] = os.path.basename(path)
     if os.path.islink(path):
-        result['type'] = 'link'
         result['link'] = os.readlink(path)
-        result['size'] = get_size(path)
-    elif os.path.isfile(path):
+    if os.path.isfile(path):
         result['type'] = 'file'
         result['size'] = get_size(path)
     elif os.path.isdir(path):
