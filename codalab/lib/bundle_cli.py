@@ -539,9 +539,9 @@ class BundleCLI(object):
             print 'Local file/directory', local_dir, 'already exists.'
             return
 
-        # Download first to a local location path.
-        local_path, temp_path = client.download_target(target, True)
-        path_util.copy(local_path, final_path, follow_symlinks=True)
+        # Download first to a local location path.  Note: don't follow symlinks.
+        local_path, temp_path = client.download_target(target, False)
+        path_util.copy(local_path, final_path, follow_symlinks=False)
         if temp_path:
           path_util.remove(temp_path)
         print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
@@ -989,17 +989,19 @@ class BundleCLI(object):
             else:
                 client.cat_target(target, sys.stdout)
         def size(x):
-            t = x.get('type', 'MISSING')
+            t = x.get('type', '???')
             if t == 'file': return formatting.size_str(x['size'])
             if t == 'directory': return 'dir'
             return t
         if info['type'] == 'directory':
             contents = [
-                {'name': x['name'], 'size': size(x)}
+                {'name': x['name'] + (' -> ' + x['link'] if 'link' in x else ''),
+                'size': size(x),
+                'perm': oct(x['perm']) if 'perm' in x else ''}
                 for x in info['contents']
             ]
             contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'size'), contents, justify={'size':1}, indent='')
+            self.print_table(('name', 'perm', 'size'), contents, justify={'size':1}, indent='')
         return info
 
     def do_wait_command(self, argv, parser):

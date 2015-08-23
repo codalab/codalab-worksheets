@@ -159,14 +159,15 @@ class RemoteMachine(Machine):
                     resource_args += ' -m %s' % int(formatting.parse_size(bundle.metadata.request_memory))
                 # TODO: would constrain --cpuset=0, but difficult because don't know the CPU ids
 
-                f.write("docker run%s --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s & wait $!\n" % (
+                f.write("docker run%s --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s >%s/stdout 2>%s/stderr & wait $!\n" % (
                     resource_args,
                     ptr_container_file,
                     os.geteuid(),
                     ptr_temp_dir, docker_temp_dir,
                     ptr_internal_script_file, docker_internal_script_file,
                     docker_image,
-                    docker_internal_script_file))
+                    docker_internal_script_file,
+                    ptr_temp_dir, ptr_temp_dir))
 
             # 2) internal_script_file runs the actual command inside the docker container
             with open(internal_script_file, 'w') as f:
@@ -178,13 +179,13 @@ class RemoteMachine(Machine):
                 # Go into the temp directory
                 f.write("cd %s &&\n" % docker_temp_dir)
                 # Run the actual command
-                f.write('(%s) > stdout 2>stderr\n' % bundle.command)
+                f.write('(%s) >>stdout 2>>stderr\n' % bundle.command)
         else:
             # Just run the command regularly without docker
             with open(script_file, 'w') as f:
                 f.write(set_temp_dir_header)
                 f.write("cd %s &&\n" % ptr_temp_dir)
-                f.write('(%s) > stdout 2>stderr\n' % bundle.command)
+                f.write('(%s) >stdout 2>stderr\n' % bundle.command)
 
         # Determine resources to request
         resource_args = []

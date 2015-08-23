@@ -204,7 +204,7 @@ def cat(path, out):
     '''
     Copy data from the file at the given path to the file descriptor |out|.
     '''
-    check_isfile(path, 'cat')
+    if not os.path.isfile(path): return None
     with open(path, 'rb') as file_handle:
         file_util.copy(file_handle, out)
 
@@ -213,7 +213,6 @@ def read_lines(path, num_lines=None):
     Return list of lines (up to num_lines).
     '''
     if not os.path.isfile(path): return None
-    #check_isfile(path, 'read_lines')
     with open(path, 'rb') as file_handle:
         if num_lines == None:
             return file_handle.readlines()
@@ -258,6 +257,8 @@ def get_info(path, depth):
     '''
     result = {}
     result['name'] = os.path.basename(path)
+    if os.path.islink(path):
+        result['link'] = os.readlink(path)
     if os.path.isfile(path):
         result['type'] = 'file'
         result['size'] = get_size(path)
@@ -265,6 +266,8 @@ def get_info(path, depth):
         result['type'] = 'directory'
         if depth > 0:
             result['contents'] = [get_info(os.path.join(path, file_name), depth-1) for file_name in os.listdir(path)]
+    if os.path.exists(path):
+        result['perm'] = os.stat(path).st_mode & 0777
     return result
 
 def hash_directory(path, dirs_and_files=None):
