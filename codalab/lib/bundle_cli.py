@@ -1326,7 +1326,7 @@ class BundleCLI(object):
                         try:
                             self.print_target_info(client, data, decorate=True, maxlines=maxlines)
                         except UsageError, e:
-                            print 'ERROR:', e
+                            print 'MISSING'
                     else:
                         print data
             elif mode == 'record' or mode == 'table':
