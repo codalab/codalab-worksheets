@@ -45,6 +45,7 @@ from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_READ,
 )
 
+from codalab.lib.formatting import contents_str
 
 def authentication_required(func):
     def decorate(self, *args, **kwargs):
@@ -808,7 +809,7 @@ class LocalBundleClient(BundleClient):
         target_cache = {}
         responses = []
         for (bundle_uuid, genpath, post) in requests:
-            value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath, post)
+            value = contents_str(worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath, post))
             #print 'interpret_file_genpaths', bundle_uuid, genpath, value
             responses.append(value)
         return responses

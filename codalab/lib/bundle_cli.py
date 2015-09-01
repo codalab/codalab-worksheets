@@ -46,6 +46,7 @@ from codalab.objects.work_manager import Worker
 from codalab.machines.remote_machine import RemoteMachine
 from codalab.machines.local_machine import LocalMachine
 from codalab.client.remote_bundle_client import RemoteBundleClient
+from codalab.lib.formatting import contents_str
 
 class BundleCLI(object):
     DESCRIPTIONS = {
@@ -873,7 +874,7 @@ class BundleCLI(object):
                 values = []
                 for genpath in args.field.split(','):
                     if worksheet_util.is_file_genpath(genpath):
-                        value = worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None)
+                        value = contents_str(worksheet_util.interpret_file_genpath(client, {}, bundle_uuid, genpath, None))
                     else:
                         value = worksheet_util.interpret_genpath(info, genpath)
                     values.append(value)
@@ -974,14 +975,18 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        self.print_target_info(client, target, decorate=False)
+        self.print_target_info(client, target, decorate=False, fail_if_not_exist=True)
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, target, decorate, maxlines=10):
+    def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
         info = client.get_target_info(target, 1)
-        if 'type' not in info:
-            raise UsageError('Target doesn\'t exist: %s/%s' % target)
-        if info['type'] == 'file':
+        info_type = info.get('type')
+        if info_type is None:
+            if fail_if_not_exist:
+                raise UsageError('Target doesn\'t exist: %s/%s' % target)
+            else:
+                print "MISSING"
+        if info_type == 'file':
             if decorate:
                 import base64
                 for line in client.head_target(target, maxlines):
@@ -993,7 +998,7 @@ class BundleCLI(object):
             if t == 'file': return formatting.size_str(x['size'])
             if t == 'directory': return 'dir'
             return t
-        if info['type'] == 'directory':
+        if info_type == 'directory':
             contents = [
                 {'name': x['name'] + (' -> ' + x['link'] if 'link' in x else ''),
                 'size': size(x),
