@@ -927,15 +927,15 @@ themselves are not removed and will be floating):
     cl wedit -f /dev/null -w worksheet2
     cl wcp worksheet1 worksheet2
 
-To change the metadata of a worksheet:
+To change the metadata of a worksheet (e.g., rename or change the owner):
 
     cl wedit <worksheet> -n <new name>
     cl wedit <worksheet> -o <new owner>
 
-To change the metadata of a bundle:
+To change the metadata of a bundle (e.g., rename or change the description):
 
     cl edit <bundle> -n <new name>
-    cl edit <bundle> -o <new description>
+    cl edit <bundle> -d <new description>
 
 ## Editing worksheets
 
