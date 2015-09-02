@@ -927,6 +927,16 @@ themselves are not removed and will be floating):
     cl wedit -f /dev/null -w worksheet2
     cl wcp worksheet1 worksheet2
 
+To change the metadata of a worksheet:
+
+    cl wedit <worksheet> -n <new name>
+    cl wedit <worksheet> -o <new owner>
+
+To change the metadata of a bundle:
+
+    cl edit <bundle> -n <new name>
+    cl edit <bundle> -o <new description>
+
 ## Editing worksheets
 
 By default, you will use `cl wedit` to edit worksheets.  However, it is
