@@ -133,24 +133,31 @@ class RemoteBundleClient(BundleClient):
         self.proxy = xmlrpclib.ServerProxy(host, transport=transport, allow_none=True)
         def do_command(command):
             def inner(*args, **kwargs):
-                try:
-                    if self.verbose >= 2:
-                        print 'remote_bundle_client: %s %s %s' % (command, args, kwargs)
-                    return getattr(self.proxy, command)(*args, **kwargs)
-                except xmlrpclib.ProtocolError, e:
-                    raise UsageError("Could not authenticate on %s: %s" % (host, e))
-                except xmlrpclib.Fault, e:
-                    # Transform server-side UsageErrors into client-side UsageErrors.
-                    if 'codalab.common.UsageError' in e.faultString:
-                        index = e.faultString.find(':')
-                        raise UsageError(e.faultString[index + 1:])
-                    elif 'codalab.common.PermissionError' in e.faultString:
-                        index = e.faultString.find(':')
-                        raise PermissionError(e.faultString[index + 1:])
-                    else:
-                        raise
-                except socket.error, e:
-                    raise UsageError('Failed to connect to %s: %s' % (host, e))
+                import time
+                time_delay = 1
+                if self.verbose >= 2:
+                    print 'remote_bundle_client: %s %s %s' % (command, args, kwargs)
+                while True:
+                    try:
+                        return getattr(self.proxy, command)(*args, **kwargs)
+                    except xmlrpclib.ProtocolError, e:
+                        raise UsageError("Could not authenticate on %s: %s" % (host, e))
+                    except xmlrpclib.Fault, e:
+                        # Transform server-side UsageErrors into client-side UsageErrors.
+                        if 'codalab.common.UsageError' in e.faultString:
+                            index = e.faultString.find(':')
+                            raise UsageError(e.faultString[index + 1:])
+                        elif 'codalab.common.PermissionError' in e.faultString:
+                            index = e.faultString.find(':')
+                            raise PermissionError(e.faultString[index + 1:])
+                        else:
+                            raise
+                    except socket.error, e:
+                        print "Failed to connect to %s: %s. Trying to re-connect in %s seconds" % (host, e, time_delay)
+                        time.sleep(time_delay)
+                        time_delay *= 2
+                        if time_delay > 512:
+                            raise UsageError('Failed to connect to %s: %s' % (host, e))
             return inner
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
