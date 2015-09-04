@@ -292,13 +292,20 @@ class LocalBundleClient(BundleClient):
             relevant_uuids = uuids
         check_bundles_have_all_permission(self.model, self._current_user(), relevant_uuids)
 
+        # Make sure we don't delete bundles which are active.
+        if not force:
+            states = self.model.get_bundle_states(uuids)
+            active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
+            if len(active_uuids) > 0:
+                raise UsageError('Can\'t delete queued or running bundles (-f to override): %s' % ' '.join(active_uuids))
+
         # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
         if not force:
             result = self.model.get_host_worksheet_uuids(relevant_uuids)
             for uuid, host_worksheet_uuids in result.items():
                 if len(set(host_worksheet_uuids)) > 1:
                     worksheets = self.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
-                    raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets:\n  %s' % (
+                    raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (-f to override):\n  %s' % (
                         uuid,
                         '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
