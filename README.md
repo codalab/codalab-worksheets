@@ -879,7 +879,7 @@ To kill the last bundle:
 Most CodaLab commands generate one or more bundle UUIDs.  These can be piped to
 further commands.  To kill all running bundles (be careful!):
 
-    cl search state=running | xargs cl kill
+    cl search state=running -u | xargs cl kill
 
 To delete all *floating* bundles that do not appear on a worksheet (be careful!):
 
