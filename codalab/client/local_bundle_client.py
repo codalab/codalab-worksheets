@@ -843,7 +843,7 @@ class LocalBundleClient(BundleClient):
             elif mode == 'contents':
                 info = self.get_target_info(data, 1)
                 if 'type' not in info:
-                    pass
+                    data = None
                 elif info['type'] == 'file':
                     data = self.head_target(data, int(properties.get('maxlines', 10)))
             elif mode == 'html':
