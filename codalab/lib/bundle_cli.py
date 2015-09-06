@@ -461,12 +461,17 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        if len(args.path) > 0:
-            self._fail_if_headless('upload')
-
         # Expand shortcuts
         if args.bundle_type == 'd': args.bundle_type = 'dataset'
         if args.bundle_type == 'p': args.bundle_type = 'program'
+        if args.bundle_type not in ['program', 'dataset']:
+            raise UsageError("Expected bundle type 'program' or 'dataset', but got '%s'" % args.bundle_type)
+
+        # Check that the upload path exists.
+        for path in args.path:
+            if not path_util.path_is_url(path):
+                self._fail_if_headless('upload')  # Important: don't allow uploading files if headless.
+                path_util.check_isvalid(path_util.normalize(path), 'upload')
 
         # If contents of file are specified on the command-line, then just use that.
         if args.contents:
@@ -480,11 +485,6 @@ class BundleCLI(object):
 
         if len(args.path) == 0:
             raise UsageError('Nothing to upload')
-
-        # Check that the upload path exists.
-        for path in args.path:
-            if not path_util.path_is_url(path):
-                path_util.check_isvalid(path_util.normalize(path), 'upload')
 
         # Pull out the upload bundle type from the arguments and validate it.
         if args.bundle_type not in UPLOADED_TYPES:

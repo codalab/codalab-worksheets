@@ -61,10 +61,14 @@ def unzip(zip_path, temp_path, file_name):
     Take an absolute path to a zip file |zip_path| and return the path to a file or
     directory called |file_name| in |temp_path| containing its unzipped
     contents.
-    Assume the zip file really contains one thing called |file_name|.
+    Assume the zip file contains one file/directory called |file_name|.
+    If |file_name| is not specified, then return the temp_path itself.
     '''
     path_util.check_isfile(zip_path, 'unzip_directory')
-    temp_subpath = os.path.join(temp_path, file_name)
+    if file_name:
+        temp_subpath = os.path.join(temp_path, file_name)
+    else:
+        temp_subpath = temp_path
 
     print_util.open_line('Unzipping %s to %s' % (zip_path, temp_subpath))
     if os.system("cd %s && unzip -q %s" % (temp_path, zip_path)) != 0:
@@ -76,3 +80,10 @@ def unzip(zip_path, temp_path, file_name):
         raise UsageError('Zip file %s missing %s (%s doesn\'t exist)' % (zip_path, file_name, temp_subpath))
 
     return temp_subpath
+
+def is_zip_file(path):
+    try:
+        ZipFile(path)
+        return True
+    except:
+        return False

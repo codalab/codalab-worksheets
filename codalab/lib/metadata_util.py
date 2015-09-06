@@ -80,9 +80,9 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
             new_initial_metadata[spec.key] = default
     initial_metadata = new_initial_metadata
 
-    # If args.edit doesn't exist (when doing 'cl edit'), then we want to show
+    # If args.edit exists (when doing 'cl edit'), then we want to show
     # the editor.
-    if not getattr(args, 'edit', True):
+    if not getattr(args, 'edit', False):
         return initial_metadata
 
     # Construct a form template with the required keys, prefilled with the
