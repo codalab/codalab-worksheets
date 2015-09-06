@@ -164,7 +164,7 @@ class LocalBundleClient(BundleClient):
     # Only used to expose uploading URLs directly to the RemoteBundleClient.
     @authentication_required
     def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
-        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
+        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns, True)
 
     @authentication_required
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns, add_to_worksheet):

@@ -15,6 +15,7 @@ have a matching call to finalize_file.
 '''
 import tempfile
 import traceback
+import os
 
 from codalab.common import (
     precondition,
@@ -56,22 +57,39 @@ class BundleRPCServer(FileServer):
 
     def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks, add_to_worksheet):
         '''
+        |file_uuid| specifies a pointer to the temporary file X.
+        - If X is a non-zip file, then just upload X as an ordinary file
+        - If X is a zip file containing one file/directory Y representing bundle, then upload Y.
+        - If X is a zip file containing multiple files/directories, then upload X.
         Unzip the zip in the temp file identified by the given file uuid and then
         upload the unzipped directory. Return the new bundle's id.
         Note: delete the file_uuid file, because it's temporary!
+        Cases:
         '''
         if file_uuid:
-            zip_path = self.file_paths[file_uuid]  # Note: cheat and look at file_server's data
-            precondition(zip_path, 'Unexpected file uuid: %s' % (file_uuid,))
-            container_path = tempfile.mkdtemp()  # Make temporary directory
-            name = construct_args['metadata']['name']
-            path = zip_util.unzip(zip_path, container_path, file_name=name)  # Unzip
+            orig_path = self.file_paths[file_uuid]  # Note: cheat and look at file_server's data
+            precondition(orig_path, 'Unexpected file uuid: %s' % (file_uuid,))
+            if zip_util.is_zip_file(orig_path):
+                container_path = tempfile.mkdtemp()  # Make temporary directory
+                zip_util.unzip(orig_path, container_path, file_name=None)  # Unzip into a directory
+                # If the container path only has one item, then make that the final path
+                sub_files = os.listdir(container_path)
+                if len(sub_files) == 1:
+                    final_path = os.path.join(container_path, sub_files[0])
+                else:  # Otherwise, use the container path
+                    final_path = container_path
+                    container_path = None
+            else:
+                # Not a zip file!  Just upload it normally as a file.
+                final_path = orig_path
+                container_path = None  # Don't need to delete
         else:
-            path = None
-        result = self.client.upload_bundle(path, construct_args, worksheet_uuid, follow_symlinks, exclude_patterns=[], add_to_worksheet=add_to_worksheet)
+            final_path = None
+        result = self.client.upload_bundle(final_path, construct_args, worksheet_uuid, follow_symlinks, exclude_patterns=[], add_to_worksheet=add_to_worksheet)
         if file_uuid:
-            path_util.remove(container_path)  # Remove temporary directory
-            self.finalize_file(file_uuid, True)  # Remove temporary zip
+            if container_path:
+                path_util.remove(container_path)  # Remove temporary directory
+            self.finalize_file(file_uuid, final_path != orig_path)  # Remove temporary file
         return result
 
     def open_target(self, target):
