@@ -58,13 +58,11 @@ class BundleRPCServer(FileServer):
     def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks, add_to_worksheet):
         '''
         |file_uuid| specifies a pointer to the temporary file X.
-        - If X is a non-zip file, then just upload X as an ordinary file
+        - If X is a non-zip file, then just upload X as an ordinary file.
         - If X is a zip file containing one file/directory Y representing bundle, then upload Y.
         - If X is a zip file containing multiple files/directories, then upload X.
-        Unzip the zip in the temp file identified by the given file uuid and then
-        upload the unzipped directory. Return the new bundle's id.
-        Note: delete the file_uuid file, because it's temporary!
-        Cases:
+        Return the new bundle's uuid.
+        Note: delete the file_uuid file and X if needed (these are temporary files).
         '''
         if file_uuid:
             orig_path = self.file_paths[file_uuid]  # Note: cheat and look at file_server's data
