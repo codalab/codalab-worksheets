@@ -45,6 +45,7 @@ from codalab.model.tables import (
     user_group as cl_user_group,
     worksheet as cl_worksheet,
     worksheet_item as cl_worksheet_item,
+    event as cl_event,
     db_metadata,
 )
 from codalab.objects.worksheet import (
@@ -54,6 +55,7 @@ from codalab.objects.worksheet import (
 from codalab.objects.permission import parse_permission
 
 import re, collections
+import datetime
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -1286,6 +1288,110 @@ class BundleModel(object):
                         object_permissions[object_uuid] = max(object_permissions[object_uuid], row['permission'])
         return object_permissions
     def get_user_bundle_permissions(self, user_id, bundle_uuids, owner_ids):
-        return self.get_user_permissions(cl_group_bundle_permission, user_id, bundle_uuids, owner_ids) 
+        return self.get_user_permissions(cl_group_bundle_permission, user_id, bundle_uuids, owner_ids)
     def get_user_worksheet_permissions(self, user_id, worksheet_uuids, owner_ids):
-        return self.get_user_permissions(cl_group_worksheet_permission, user_id, worksheet_uuids, owner_ids) 
+        return self.get_user_permissions(cl_group_worksheet_permission, user_id, worksheet_uuids, owner_ids)
+
+    # Operations on the events log.
+
+    def get_events_log_info(self, query_info, offset, limit):
+        '''
+        Return an info object with
+        - |max_entries| entries matching the given |query|.
+        '''
+        # Group by
+        field_name = query_info.get('group_by')
+        field = None
+        if field_name != None:
+            if field_name == 'user':
+                field = cl_event.c.user_name
+            elif field_name == 'command':
+                field = cl_event.c.command
+            elif field_name == 'uuid':
+                field = cl_event.c.uuid
+            elif field_name == 'date':
+                field = cl_event.c.date
+            else:
+                raise UsageError("Invalid field: '%s', expected user|command|uuid|date" % field_name)
+
+        # Build up query
+        if query_info.get('count'):
+            select_args = []
+            if field is not None:
+                select_args.append(field)
+            select_args.append(func.count(cl_event.c.id).label('cnt'))
+        else:
+            select_args = [cl_event]
+        query = select(select_args)
+        if query_info.get('user') != None:
+            query = query.where(or_(cl_event.c.user_id == query_info['user'], cl_event.c.user_name == query_info['user']))
+        if query_info.get('command') != None:
+            query = query.where(cl_event.c.command == query_info['command'])
+        if query_info.get('args') != None:
+            query = query.where(cl_event.c.args.like(query_info['args']))
+        if query_info.get('uuid') != None:
+            query = query.where(cl_event.c.uuid == query_info['uuid'])
+        if query_info.get('date') != None:
+            query = query.where(cl_event.c.date == query_info['date'])
+
+        if query_info.get('count'):
+            # Sort by decreasing count
+            query = query.order_by('cnt DESC')
+        else:
+            # Sort from latest event to earliest
+            query = query.order_by(cl_event.c.id.desc())
+
+        if field is not None:
+            query = query.group_by(field)
+
+        if offset != None:
+            query = query.offset(offset)
+        if limit != None:
+            query = query.limit(limit)
+
+        # Make query
+        info = {}
+        with self.engine.begin() as connection:
+            #print query
+            rows = connection.execute(query).fetchall()
+            if query_info.get('count'):
+                info['counts'] = rows
+            else:
+                info['events'] = reversed(rows)
+        return info
+
+    def update_events_log(self, user_id, user_name, command, args, start_time=None, uuid=None):
+        # Find the first uuid in args, so we can index that as a separate column in the DB.
+        # Note that the uuid could be either a worksheet or a bundle.
+        def find_uuid(x):
+            if isinstance(x, basestring):
+                if spec_util.UUID_REGEX.match(x):
+                    return x
+            elif isinstance(x, tuple):
+                return find_uuid(list(x))
+            elif isinstance(x, list):
+                for y in x:
+                    z = find_uuid(y)
+                    if z != None:
+                        return z
+            return None
+
+        with self.engine.begin() as connection:
+            import time, json
+            end_time = time.time()
+            if start_time == None:
+                start_time = end_time
+            if uuid == None:
+                uuid = find_uuid(args)
+            info = {
+                'start_time': datetime.datetime.fromtimestamp(start_time),
+                'end_time': datetime.datetime.fromtimestamp(end_time),
+                'date': datetime.datetime.fromtimestamp(end_time).strftime('%Y-%m-%d'),
+                'duration': end_time - start_time,
+                'user_id': user_id,
+                'user_name': user_name,
+                'command': command,
+                'args': json.dumps(args),
+                'uuid': uuid,
+            }
+            connection.execute(cl_event.insert().values(info))

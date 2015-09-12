@@ -14,6 +14,8 @@ from sqlalchemy.types import (
   String,
   Text,
   Boolean,
+  DateTime,
+  Float,
 )
 
 db_metadata = MetaData()
@@ -168,3 +170,26 @@ group_object_permission = Table(
 GROUP_OBJECT_PERMISSION_NONE = 0x00
 GROUP_OBJECT_PERMISSION_READ = 0x01
 GROUP_OBJECT_PERMISSION_ALL = 0x02
+
+# Keep track of events that happen.
+event = Table(
+  'event',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('date', String(63), nullable=False),  # Deterministic function (e.g., 2015-09-11) of the start_time
+  Column('start_time', DateTime, nullable=False),  # When did this event start?
+  Column('end_time', DateTime, nullable=False),  # When did this event end?
+  Column('duration', Float, nullable=False),  # How much time did this event take?
+  Column('user_id', String(63), nullable=True),  # Who did it?
+  Column('user_name', String(63), nullable=True),  # Who did it?
+  Column('command', String(63), nullable=False),  # The command (gotten in bundle_rpc_server)
+  Column('args', Text, nullable=False),  # JSON string
+  Column('uuid', String(63), nullable=True),  # Either bundle or worksheet id (no ForeignKey because might not be in system anymore)
+  # Indices
+  Index('events_date_index', 'date'),
+  Index('events_user_id_index', 'user_id'),
+  Index('events_user_name_index', 'user_name'),
+  Index('events_command_index', 'command'),
+  Index('events_uuid_index', 'uuid'),
+  sqlite_autoincrement=True,
+)

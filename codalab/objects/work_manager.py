@@ -124,7 +124,9 @@ class Worker(object):
                     traceback.print_exc()
             else:  # MakeBundle
                 started = True
-            if started: print '-- START BUNDLE: %s' % (bundle,)
+            if started:
+                print '-- START BUNDLE: %s' % (bundle,)
+                self._update_events_log('start_bundle', bundle, (bundle.uuid,))
 
             # If we have a MakeBundle, then just process it immediately.
             if isinstance(bundle, MakeBundle):
@@ -284,6 +286,7 @@ class Worker(object):
             db_update['state'] = state
             print '-- END BUNDLE: %s [%s]' % (bundle, state)
             print ''
+            self._update_events_log('finalize_bundle', bundle, (bundle.uuid, state, metadata))
 
         # Update database!
         self.model.update_bundle(bundle, db_update)
@@ -388,3 +391,11 @@ class Worker(object):
             else:
                 # Advance counter only if something interesting happened
                 iteration += 1
+
+    def _update_events_log(self, command, bundle, args):
+      self.model.update_events_log(
+        user_id=bundle.owner_id,
+        user_name=None,  # Don't know
+        command=command,
+        args=args,
+        uuid=bundle.uuid)
