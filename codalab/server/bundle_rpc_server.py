@@ -16,6 +16,8 @@ have a matching call to finalize_file.
 import tempfile
 import traceback
 import os
+import time
+import datetime
 
 from codalab.common import (
     precondition,
@@ -34,14 +36,43 @@ class BundleRPCServer(FileServer):
         # This server is backed by a LocalBundleClient that processes client commands
         self.client = manager.client('local', is_cli=False)
 
+        # args might be a large object; summarize it (e.g., take prefixes of lists)
+        def compress_args(args):
+            if isinstance(args, basestring):
+                if len(args) > 100:
+                    args = args[:100] + '...'
+            if isinstance(args, list):
+                if len(args) > 4:
+                    args = args[:4] + ['...']
+            if isinstance(args, tuple):
+                return tuple(map(compress_args, args))
+            elif isinstance(args, list):
+                return map(compress_args, args)
+            elif isinstance(args, dict):
+                return dict((compress_args(k), compress_args(v)) for k, v in args.items())
+            return args
+
         tempdir = tempfile.gettempdir()  # Consider using CodaLab's temp directory
         FileServer.__init__(self, (self.host, self.port), tempdir, manager.auth_handler())
         def wrap(command, func):
             def inner(*args, **kwargs):
+                if command == 'login':
+                    log_args = args[:2]  # Don't log password
+                else:
+                    log_args = compress_args(args)
                 if self.verbose >= 1:
-                    print "bundle_rpc_server: %s %s" % (command, args if command != 'login' else '...')
+                    print "bundle_rpc_server: %s %s" % (command, log_args)
                 try:
-                    return func(*args, **kwargs)
+                    start_time = time.time()
+                    result = func(*args, **kwargs)
+                    # Log this activity.
+                    self.client.model.update_events_log(
+                        start_time=start_time,
+                        user_id=self.client._current_user_id(),
+                        user_name=self.client._current_user_name(),
+                        command=command,
+                        args=log_args)
+                    return result
                 except Exception, e:
                     if not (isinstance(e, UsageError) or isinstance(e, PermissionError)):
                         # This is really bad and shouldn't happen.

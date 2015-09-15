@@ -1076,3 +1076,6 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Cannot modify the public group %s.' % group_spec)
 
         return group_info
+
+    def get_events_log_info(self, query_info, offset, limit):
+        return self.model.get_events_log_info(query_info, offset, limit)

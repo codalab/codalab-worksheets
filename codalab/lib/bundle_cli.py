@@ -94,8 +94,9 @@ class BundleCLI(object):
       'alias': 'Manage CodaLab instance aliases.',
       'work-manager': 'Run the CodaLab bundle work manager.',
       # Internal commands wihch are used for debugging.
-      'cleanup': 'Clean up the CodaLab bundle store.',
-      'reset': 'Delete the CodaLab bundle store and reset the database.',
+      'events': 'Print the history of commands on this CodaLab instance (local only).',
+      'cleanup': 'Clean up the CodaLab bundle store (local only).',
+      'reset': 'Delete the CodaLab bundle store and reset the database (local only).',
       # Note: this is not actually handled in BundleCLI, but here just to show the help
       'server': 'Start an instance of the CodaLab server.',
     }
@@ -1558,11 +1559,44 @@ class BundleCLI(object):
         worker = Worker(client.bundle_store, client.model, machine, client.auth_handler)
         worker.run_loop(args.num_iterations, args.sleep_time)
 
+    def do_events_command(self, argv, parser):
+        self._fail_if_headless('events')
+        self._fail_if_not_local('events')
+        # This command only works if client is a LocalBundleClient.
+        parser.add_argument('-u', '--user', help='Filter by user id or username')
+        parser.add_argument('-c', '--command', help='Filter by command')
+        parser.add_argument('-a', '--args', help='Filter by arguments')
+        parser.add_argument('--uuid', help='Filter by bundle or worksheet uuid')
+        parser.add_argument('-o', '--offset', help='Offset in the result list', type=int, default=0)
+        parser.add_argument('-l', '--limit', help='Limit in the result list', type=int, default=20)
+        parser.add_argument('-n', '--count', help='Just count', action='store_true')
+        parser.add_argument('-g', '--group_by', help='Group by this field (e.g., date)')
+        args = parser.parse_args(argv)
+        client = self.manager.current_client()
+
+        # Build query
+        query_info = {
+            'user': args.user, 'command': args.command, 'args': args.args, 'uuid': args.uuid,
+            'count': args.count, 'group_by': args.group_by
+        }
+        info = client.get_events_log_info(query_info, args.offset, args.limit)
+        if 'counts' in info:
+            for row in info['counts']:
+                print '\t'.join(map(str, list(row)))
+        if 'events' in info:
+            for event in info['events']:
+                row = [
+                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time != None else '',
+                    '%.3f' % event.duration if event.duration != None else '',
+                    '%s(%s)' % (event.user_name, event.user_id),
+                    event.command, event.args]
+                print '\t'.join(row)
+
     def do_cleanup_command(self, argv, parser):
         self._fail_if_headless('cleanup')
-        # This command only works if client is a LocalBundleClient.
+        self._fail_if_not_local('cleanup')
         '''
-        Removes data hash directories which are not used by any bundle.
+        Delete unused data and temp files (be careful!).
         '''
         parser.add_argument('-i', '--dry-run', action='store_true', help='don\'t actually do it, but see what the command would do')
         args = parser.parse_args(argv)
@@ -1570,8 +1604,11 @@ class BundleCLI(object):
         client.bundle_store.full_cleanup(client.model, args.dry_run)
 
     def do_reset_command(self, argv, parser):
+        '''
+        Delete everything - be careful!
+        '''
         self._fail_if_headless('reset')
-        # This command only works if client is a LocalBundleClient.
+        self._fail_if_not_local('reset')
         parser.add_argument('--commit', action='store_true', help='reset is a no-op unless committed')
         args = parser.parse_args(argv)
         if not args.commit:
@@ -1585,3 +1622,8 @@ class BundleCLI(object):
     def _fail_if_headless(self, message):
         if self.headless:
             raise UsageError('Cannot execute CLI command: %s' % message)
+
+    def _fail_if_not_local(self, message):
+        from codalab.client.local_bundle_client import LocalBundleClient
+        if not isinstance(self.manager.current_client(), LocalBundleClient):
+            raise UsageError('Cannot execute CLI command in non-local mode: %s' % message)
