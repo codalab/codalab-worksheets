@@ -12,7 +12,7 @@ from codalab.model.orm_object import ORMObject
 
 
 # We will keep worksheet items sorted in the database by maintining a sort_key
-# for each item that was batch-added to a worksheet by a call to update_worksheet.
+# for each item that was batch-added to a worksheet by a call to update_worksheet_items.
 # These sort keys will be strictly upper-bounded by the maximum id at the time
 # at which the edit was BEGUN. This ensures that any worksheet items appended to
 # the sheet between the time the edit was begun and committed will have ids
@@ -21,7 +21,7 @@ def item_sort_key(item):
     return item['id'] if item['sort_key'] is None else item['sort_key']
 
 class Worksheet(ORMObject):
-    COLUMNS = ('uuid', 'name', 'owner_id')
+    COLUMNS = ('uuid', 'name', 'owner_id', 'title', 'frozen')
 
     def validate(self):
         '''
@@ -53,8 +53,10 @@ class Worksheet(ORMObject):
     def get_info_dict(self):
         return {
           'uuid': self.uuid,
-          'owner_id': self.owner_id,
           'name': self.name,
+          'owner_id': self.owner_id,
+          'title': self.title,
+          'frozen': self.frozen,
           'items': self.items,
           'last_item_id': self.last_item_id,
         }

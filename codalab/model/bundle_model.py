@@ -194,6 +194,9 @@ class BundleModel(object):
         result = dict((uuid, []) for uuid in bundle_uuids)
         for row in rows:
             result[row.bundle_uuid].append(row.worksheet_uuid)
+        # Deduplicate entries
+        for uuid in result.keys():
+            result[uuid] = list(set(result[uuid]))
         return result
 
     def get_self_and_descendants(self, uuids, depth):
@@ -912,7 +915,7 @@ class BundleModel(object):
             # sqlite doesn't support batch insertion
             #connection.execute(cl_worksheet_item.insert().values(new_items))
 
-    def update_worksheet(self, worksheet_uuid, last_item_id, length, new_items):
+    def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
         '''
         Updates the worksheet with the given uuid. If there were exactly
         `last_length` items with database id less than `last_id`, replaces them all
@@ -950,27 +953,23 @@ class BundleModel(object):
                 raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
             self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
 
-    def rename_worksheet(self, worksheet, name):
+    def update_worksheet_metadata(self, worksheet, info):
         '''
         Update the given worksheet's name.
         '''
-        worksheet.name = name
+        if 'name' in info:
+            worksheet.name = info['name']
+        if 'title' in info:
+            worksheet.title = info['title']
+        if 'frozen' in info:
+            worksheet.title = info['frozen']
+        if 'owner_id' in info:
+            worksheet.owner_id = info['owner_id']
         worksheet.validate()
         with self.engine.begin() as connection:
             connection.execute(cl_worksheet.update().where(
               cl_worksheet.c.uuid == worksheet.uuid
-            ).values({'name': name}))
-
-    def chown_worksheet(self, worksheet, owner_id):
-        '''
-        Update the given worksheet's owner_id.
-        '''
-        worksheet.owner_id = owner_id
-        worksheet.validate()
-        with self.engine.begin() as connection:
-            connection.execute(cl_worksheet.update().where(
-              cl_worksheet.c.uuid == worksheet.uuid
-            ).values({'owner_id': owner_id}))
+            ).values(info))
 
     def delete_worksheet(self, worksheet_uuid):
         '''

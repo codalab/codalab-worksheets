@@ -7,6 +7,7 @@ import contextlib
 import os, sys, re
 import copy
 import types
+import datetime
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -168,7 +169,9 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns, add_to_worksheet):
-        check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
+        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
+        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        self._check_worksheet_not_frozen(worksheet)
 
         bundle_type = info['bundle_type']
         if 'uuid' in info:
@@ -212,7 +215,9 @@ class LocalBundleClient(BundleClient):
         For both make and run bundles.
         Add the resulting bundle to the given worksheet_uuid.
         '''
-        check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
+        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
+        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        self._check_worksheet_not_frozen(worksheet)
         bundle_uuid = self._derive_bundle(bundle_type, targets, command, metadata, worksheet_uuid)
         # Add to worksheet
         self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
@@ -297,17 +302,21 @@ class LocalBundleClient(BundleClient):
             states = self.model.get_bundle_states(uuids)
             active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
             if len(active_uuids) > 0:
-                raise UsageError('Can\'t delete queued or running bundles (-f to override): %s' % ' '.join(active_uuids))
+                raise UsageError('Can\'t delete queued or running bundles (--force to override): %s' % ' '.join(active_uuids))
 
         # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
-        if not force:
-            result = self.model.get_host_worksheet_uuids(relevant_uuids)
-            for uuid, host_worksheet_uuids in result.items():
-                if len(set(host_worksheet_uuids)) > 1:
-                    worksheets = self.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
-                    raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (-f to override):\n  %s' % (
-                        uuid,
-                        '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
+        result = self.model.get_host_worksheet_uuids(relevant_uuids)
+        for uuid, host_worksheet_uuids in result.items():
+            worksheets = self.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
+            frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]
+            if len(frozen_worksheets) > 0:
+                raise UsageError('Can\'t delete bundle %s because it appears in frozen worksheets (need to delete worksheet first):\n  %s' % (
+                    uuid,
+                    '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
+            if len(host_worksheet_uuids) > 1:
+                raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (detach all but one first):\n  %s' % (
+                    uuid,
+                    '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
         # Get data hashes
         relevant_data_hashes = set(bundle.data_hash for bundle in self.model.batch_get_bundles(uuid=relevant_uuids) if bundle.data_hash)
@@ -444,7 +453,9 @@ class LocalBundleClient(BundleClient):
         depth: how far to do a BFS up from old_output.
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
         '''
-        check_worksheet_has_all_permission(self.model, self._current_user(), self.model.get_worksheet(worksheet_uuid, fetch_items=False))
+        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
+        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        self._check_worksheet_not_frozen(worksheet)
         #print 'old_inputs: %s, new_inputs: %s, old_output: %s, new_output_name: %s' % (old_inputs, new_inputs, old_output, new_output_name)
 
         # Build the graph (get all the infos).
@@ -659,7 +670,7 @@ class LocalBundleClient(BundleClient):
             # Hack: strip off last character so we force a lookup of the uuid
             self.ensure_unused_worksheet_name(uuid[0:-1])
         # Don't need any permissions to do this.
-        worksheet = Worksheet({'name': name, 'uuid': uuid, 'items': [], 'owner_id': self._current_user_id()})
+        worksheet = Worksheet({'name': name, 'uuid': uuid, 'title': None, 'frozen': None, 'items': [], 'owner_id': self._current_user_id()})
         self.model.save_worksheet(worksheet)
 
         # Make worksheet publicly readable by default
@@ -762,10 +773,11 @@ class LocalBundleClient(BundleClient):
         '''
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        self._check_worksheet_not_frozen(worksheet)
         self.model.add_worksheet_item(worksheet_uuid, item)
 
     @authentication_required
-    def update_worksheet(self, worksheet_info, new_items):
+    def update_worksheet_items(self, worksheet_info, new_items):
         '''
         Set the worksheet to have items |new_items|.
         '''
@@ -774,37 +786,46 @@ class LocalBundleClient(BundleClient):
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        self._check_worksheet_not_frozen(worksheet)
         try:
             new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
-            self.model.update_worksheet(worksheet_uuid, last_item_id, length, new_items)
+            self.model.update_worksheet_items(worksheet_uuid, last_item_id, length, new_items)
         except UsageError:
             # Turn the model error into a more readable one using the object.
             raise UsageError('%s was updated concurrently!' % (worksheet,))
 
     @authentication_required
-    def rename_worksheet(self, uuid, name):
-        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        self.ensure_unused_worksheet_name(name)
-        self.model.rename_worksheet(worksheet, name)
-
-    @authentication_required
-    def chown_worksheet(self, uuid, owner_spec):
+    def update_worksheet_metadata(self, uuid, info):
         '''
-        Change the owner of the given worksheet |uuid| to |owner|.
+        Change the metadata of the worksheet |uuid| to |info|,
+        where |info| specifies name, title, owner, etc.
         '''
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        owner_id = self.user_info(owner_spec)['id']
-        self.model.chown_worksheet(worksheet, owner_id)
+        metadata = {}
+        for key, value in info.items():
+            if key == 'owner_spec':
+                metadata['owner_id'] = self.user_info(value)['id']
+            elif key == 'name':
+                self.ensure_unused_worksheet_name(value)
+                metadata[key] = value
+            elif key == 'title':
+                metadata[key] = value
+            elif key == 'freeze':
+                metadata['frozen'] = datetime.datetime.now()
+            else:
+                raise UsageError('Unknown key: %s' % key)
+        self.model.update_worksheet_metadata(worksheet, metadata)
 
     @authentication_required
-    def delete_worksheet(self, uuid):
+    def delete_worksheet(self, uuid, force):
         worksheet = self.model.get_worksheet(uuid, fetch_items=True)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        # Be safe!
-        if len(worksheet.items) > 0:
-            raise UsageError("Can\'t delete worksheet %s because it is not empty" % worksheet.uuid)
+        if not force:
+            if worksheet.frozen:
+                raise UsageError("Can\'t delete worksheet %s because it is frozen (--force to override)." % worksheet.uuid)
+            if len(worksheet.items) > 0:
+                raise UsageError("Can\'t delete worksheet %s because it is not empty (--force to override)." % worksheet.uuid)
         self.model.delete_worksheet(uuid)
 
     def interpret_file_genpaths(self, requests):
@@ -1079,3 +1100,7 @@ class LocalBundleClient(BundleClient):
 
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
+
+    def _check_worksheet_not_frozen(self, worksheet):
+        if worksheet.frozen:
+            raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))

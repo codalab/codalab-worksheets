@@ -148,7 +148,7 @@ def test():
     check_contains([uuid3], run_command([cl, 'info', uuid3]))
     # Cleanup
     run_command([cl, 'rm', uuid1], 1)  # should fail
-    run_command([cl, 'rm', '-f', uuid2])  # force the deletion
+    run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
 add_test('make', test)
 
@@ -204,6 +204,29 @@ def test():
     run_command([cl, 'wrm', wuuid])
     run_command([cl, 'work', orig_wuuid])
 add_test('worksheet', test)
+
+def test():
+    orig_wuuid = run_command([cl, 'work', '-u'])
+    wname = random_name()
+    wuuid = run_command([cl, 'new', wname])
+    check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
+    # Before freezing: can modify everything
+    uuid1 = run_command([cl, 'upload', 'dataset', '-c', 'hello'])
+    run_command([cl, 'add', '-m' 'message'])
+    run_command([cl, 'wedit', '-t', 'new_title'])
+    run_command([cl, 'wperm', wuuid, 'public', 'n'])
+    run_command([cl, 'wedit', '--freeze'])
+    # After freezing: can only modify contents
+    run_command([cl, 'detach', uuid1], 1)  # would remove an item
+    run_command([cl, 'rm', uuid1], 1)  # would remove an item
+    run_command([cl, 'add', '-m', 'message'], 1)  # would add an item
+    run_command([cl, 'wedit', '-t', 'new_title']) # can edit
+    run_command([cl, 'wperm', wuuid, 'public', 'a']) # can edit
+    # cleanup
+    run_command([cl, 'wrm', '--force', wuuid])
+    run_command([cl, 'rm', uuid1])
+    run_command([cl, 'work', orig_wuuid])
+add_test('freeze', test)
 
 def test():
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '/etc/issue'])

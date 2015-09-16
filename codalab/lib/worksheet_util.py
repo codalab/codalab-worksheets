@@ -120,8 +120,7 @@ def get_worksheet_lines(worksheet_info):
 // worksheet.  You can enter:
 // - Arbitrary Markdown (see http://daringfireball.net/projects/markdown/syntax)
 // - References to bundles: {<bundle_spec>}
-// - Directives (%% title|schema|add|display)
-//   * title <title-text>
+// - Directives (%% schema|add|display)
 //   * schema <schema-name>
 //   * add <key> <generalized-path> [<post-processor>]
 //   * addschema <schema-name>
@@ -651,8 +650,6 @@ def interpret_items(schemas, items):
             command = get_command(value_obj)
             if command == '%' or command == '' or command == None:  # Comment
                 pass
-            elif command == 'title':
-                result['title'] = value_obj[1]
             elif command == 'schema':
                 name = value_obj[1]
                 schemas[name] = current_schema = []
