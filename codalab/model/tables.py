@@ -82,6 +82,8 @@ worksheet = Table(
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
   Column('owner_id', String(255), nullable=True),
+  Column('title', String(255), nullable=True), # Short human-readable description of the worksheet
+  Column('frozen', DateTime, nullable=True), # When the worksheet was frozen (forever immutable) if it is.
   UniqueConstraint('uuid', name='uix_1'),
   Index('worksheet_name_index', 'name'),
   Index('worksheet_owner_index', 'owner_id'),

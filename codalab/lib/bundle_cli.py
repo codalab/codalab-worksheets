@@ -757,11 +757,11 @@ class BundleCLI(object):
             if not detach:
                 new_items.append(item)
 
-        client.update_worksheet(worksheet_info, new_items)
+        client.update_worksheet_items(worksheet_info, new_items)
 
     def do_rm_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='+')
-        parser.add_argument('-f', '--force', action='store_true', help='delete bundle (DANGEROUS - breaking dependencies!)')
+        parser.add_argument('--force', action='store_true', help='delete bundle (DANGEROUS - breaking dependencies!)')
         parser.add_argument('-r', '--recursive', action='store_true', help='delete all bundles downstream that depend on this bundle')
         parser.add_argument('-d', '--data-only', action='store_true', help='keep the bundle metadata, but remove the bundle contents')
         parser.add_argument('-i', '--dry-run', action='store_true', help='delete all bundles downstream that depend on this bundle')
@@ -827,9 +827,12 @@ class BundleCLI(object):
             self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True)
 
     def _worksheet_description(self, worksheet_info):
-        return '### Worksheet: %s\n### Owner: %s(%s)\n### Permissions: %s' % \
-            (self.worksheet_str(worksheet_info), worksheet_info['owner_name'], worksheet_info['owner_id'], \
-            group_permissions_str(worksheet_info['group_permissions']))
+        return '### Worksheet: %s\n### Title: %s\n### Owner: %s(%s)\n### Permissions: %s%s' % \
+            (self.worksheet_str(worksheet_info),
+            worksheet_info['title'],
+            worksheet_info['owner_name'], worksheet_info['owner_id'], \
+            group_permissions_str(worksheet_info['group_permissions']),
+            ' [frozen]' if worksheet_info['frozen'] else '')
 
     def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
         '''
@@ -1242,18 +1245,29 @@ class BundleCLI(object):
     def do_wedit_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT, nargs='?')
         parser.add_argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?')
-        parser.add_argument('-o', '--owner', help='new owner', nargs='?')
+        parser.add_argument('-t', '--title', help='change title')
+        parser.add_argument('-o', '--owner_spec', help='change owner', nargs='?')
+        parser.add_argument('--freeze', help='freeze worksheet', action='store_true')
         parser.add_argument('-f', '--file', help='overwrite the given worksheet with this file', nargs='?')
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
-        if args.name or args.owner:
+        if args.name or args.title or args.owner_spec or args.freeze:
+            # Update the worksheet metadata.
+            info = {}
             if args.name:
-                client.rename_worksheet(worksheet_uuid, args.name)
-            if args.owner:
-                client.chown_worksheet(worksheet_uuid, args.owner)
+                info['name'] = args.name
+            if args.title:
+                info['title'] = args.title
+            if args.owner_spec:
+                info['owner_spec'] = args.owner_spec
+            if args.freeze:
+                info['freeze'] = True
+            client.update_worksheet_metadata(worksheet_uuid, info)
+            print 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
         else:
+            # Update the worksheet items.
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
                 lines = [line.rstrip() for line in open(args.file).readlines()]
@@ -1264,8 +1278,8 @@ class BundleCLI(object):
             new_items, commands = worksheet_util.parse_worksheet_form(lines, client, worksheet_info['uuid'])
 
             # Save the worksheet.
-            client.update_worksheet(worksheet_info, new_items)
-            print 'Saved worksheet %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
+            client.update_worksheet_items(worksheet_info, new_items)
+            print 'Saved worksheet items for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
             # Batch the rm commands so that we can handle the recursive
             # dependencies properly (and it's faster).
@@ -1310,9 +1324,6 @@ class BundleCLI(object):
             self.display_interpreted(client, worksheet_info, interpreted)
 
     def display_interpreted(self, client, worksheet_info, interpreted):
-        title = interpreted.get('title')
-        if title:
-            print '[[', title, ']]'
         is_last_newline = False
         for item in interpreted['items']:
             mode = item['mode']
@@ -1389,11 +1400,12 @@ class BundleCLI(object):
 
     def do_wrm_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='identifier: [<uuid>|<name>]', nargs='+')
+        parser.add_argument('--force', action='store_true', help='delete even if non-empty and frozen')
         args = parser.parse_args(argv)
 
         for worksheet_spec in args.worksheet_spec:
             client, worksheet_uuid = self.parse_client_worksheet_uuid(worksheet_spec)
-            client.delete_worksheet(worksheet_uuid)
+            client.delete_worksheet(worksheet_uuid, args.force)
 
     def do_wcp_command(self, argv, parser):
         parser.add_argument('source_worksheet_spec', help=self.WORKSHEET_SPEC_FORMAT)
@@ -1411,7 +1423,7 @@ class BundleCLI(object):
         dest_items = [] if args.clobber else dest_worksheet_info['items']
 
         # Save all items.
-        dest_client.update_worksheet(dest_worksheet_info, dest_items + source_items)
+        dest_client.update_worksheet_items(dest_worksheet_info, dest_items + source_items)
 
         # Copy over the bundles
         for item in source_items:
