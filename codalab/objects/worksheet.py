@@ -50,13 +50,8 @@ class Worksheet(ORMObject):
             self.items = None
             self.last_item_id = None
 
-    def get_info_dict(self):
-        return {
-          'uuid': self.uuid,
-          'name': self.name,
-          'owner_id': self.owner_id,
-          'title': self.title,
-          'frozen': self.frozen,
-          'items': self.items,
-          'last_item_id': self.last_item_id,
-        }
+    def to_dict(self):
+        result = super(Worksheet, self).to_dict()
+        result['items'] = self.items
+        result['last_item_id'] = self.last_item_id
+        return result

@@ -857,7 +857,7 @@ class BundleModel(object):
 
         return row_dicts
 
-    def save_worksheet(self, worksheet):
+    def new_worksheet(self, worksheet):
         '''
         Save the given (empty) worksheet to the database. On success, set its id.
         '''
@@ -865,6 +865,8 @@ class BundleModel(object):
         precondition(not worksheet.items, message)
         worksheet.validate()
         worksheet_value = worksheet.to_dict()
+        worksheet_value.pop('items')
+        worksheet_value.pop('last_item_id')
         with self.engine.begin() as connection:
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
@@ -955,14 +957,14 @@ class BundleModel(object):
 
     def update_worksheet_metadata(self, worksheet, info):
         '''
-        Update the given worksheet's name.
+        Update the given worksheet's metadata.
         '''
         if 'name' in info:
             worksheet.name = info['name']
         if 'title' in info:
             worksheet.title = info['title']
         if 'frozen' in info:
-            worksheet.title = info['frozen']
+            worksheet.frozen = info['frozen']
         if 'owner_id' in info:
             worksheet.owner_id = info['owner_id']
         worksheet.validate()

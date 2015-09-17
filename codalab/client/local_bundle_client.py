@@ -671,7 +671,7 @@ class LocalBundleClient(BundleClient):
             self.ensure_unused_worksheet_name(uuid[0:-1])
         # Don't need any permissions to do this.
         worksheet = Worksheet({'name': name, 'uuid': uuid, 'title': None, 'frozen': None, 'items': [], 'owner_id': self._current_user_id()})
-        self.model.save_worksheet(worksheet)
+        self.model.new_worksheet(worksheet)
 
         # Make worksheet publicly readable by default
         self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
@@ -703,7 +703,7 @@ class LocalBundleClient(BundleClient):
         check_worksheet_has_read_permission(self.model, self._current_user(), worksheet)
 
         # Create the info by starting out with the metadata.
-        result = worksheet.get_info_dict()
+        result = worksheet.to_dict()
 
         result['owner_name'] = self._user_id_to_name(result['owner_id'])
 

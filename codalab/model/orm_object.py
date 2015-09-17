@@ -7,7 +7,7 @@ To use this class, subclass it and set its COLUMNS class attribute to be the
 non-id columns of a SQLAlchemy table.
 '''
 from codalab.common import precondition
-
+import datetime
 
 class ORMObject(object):
     COLUMNS = None
@@ -35,4 +35,11 @@ class ORMObject(object):
         Return a JSON-serializable and database-uploadable dictionary that
         represents this object.
         '''
-        return {column: getattr(self, column) for column in self.COLUMNS}
+        result = {}
+        for column in self.COLUMNS:
+            value = getattr(self, column)
+            # Note: DateTime doesn't serialize, so replace it with string.
+            if isinstance(value, datetime.datetime):
+                value = str(value)
+            result[column] = value
+        return result
