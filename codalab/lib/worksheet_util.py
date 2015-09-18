@@ -675,7 +675,12 @@ def interpret_items(schemas, items):
                     'properties': {},
                 })
             else:
-                raise UsageError('Unknown directive command in %s' % value_obj)
+                new_items.append({
+                    'mode': TYPE_MARKUP,
+                    'interpreted': 'ERROR: unknown directive **%% %s**' % ' '.join(value_obj),
+                    'properties': {},
+                })
+                #raise UsageError('Unknown directive command in %s' % value_obj)
         else:
             raise InternalError('Unknown worksheet item type: %s' % item_type)
 
