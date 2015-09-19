@@ -59,6 +59,15 @@ import datetime
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
+def str_key_dict(row):
+    '''
+    row comes out of an element of a database query.
+    For some versions of SqlAlchemy, the keys are of type sqlalchemy.sql.elements.quoted_name,
+    which can be serialized to JSON.
+    This function converts the keys to strings.
+    '''
+    return dict((str(k), v) for k, v in row.items())
+
 class BundleModel(object):
     def __init__(self, engine):
         '''
@@ -503,7 +512,7 @@ class BundleModel(object):
             )).fetchall()
 
         # Make a dictionary for each bundle with both data and metadata.
-        bundle_values = {row.uuid: dict(row) for row in bundle_rows}
+        bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
         for bundle_value in bundle_values.itervalues():
             bundle_value['dependencies'] = []
             bundle_value['metadata'] = []
@@ -703,7 +712,7 @@ class BundleModel(object):
                   cl_worksheet_item.c.worksheet_uuid.in_(uuids)
                 )).fetchall()
         # Make a dictionary for each worksheet with both its main row and its items.
-        worksheet_values = {row.uuid: dict(row) for row in worksheet_rows}
+        worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         if fetch_items:
             for value in worksheet_values.itervalues():
                 value['items'] = []
@@ -851,7 +860,7 @@ class BundleModel(object):
         # Put the permissions into the worksheets
         row_dicts = []
         for row in rows:
-            row = dict(row)
+            row = str_key_dict(row)
             row['group_permissions'] = uuid_group_permissions[row['uuid']]
             row_dicts.append(row)
 
@@ -1017,7 +1026,7 @@ class BundleModel(object):
             rows = connection.execute(cl_group.select().where(
                 cl_group.c.owner_id == owner_id
             )).fetchall()
-        return [dict(row) for row in sorted(rows, key=lambda row: row.id)]
+        return [str_key_dict(row) for row in sorted(rows, key=lambda row: row.id)]
 
     def create_group(self, group_dict):
         '''
@@ -1039,7 +1048,7 @@ class BundleModel(object):
             ).fetchall()
             if not rows:
                 return []
-        values = {row.uuid: dict(row) for row in rows}
+        values = {row.uuid: str_key_dict(row) for row in rows}
         return [value for value in values.itervalues()]
 
     def batch_get_all_groups(self, spec_filters, group_filters, user_group_filters):
@@ -1088,12 +1097,12 @@ class BundleModel(object):
             if not rows:
                 return []
             for i, row in enumerate(rows):
-                row = dict(row)
+                row = str_key_dict(row)
                 # TODO: remove these conversions once database schema is changed from int to str
                 if isinstance(row['user_id'], int): row['user_id'] = str(row['user_id'])
                 if isinstance(row['owner_id'], int): row['owner_id'] = str(row['owner_id'])
                 rows[i] = row
-            values = {row['uuid']: dict(row) for row in rows}
+            values = {row['uuid']: row for row in rows}
             return [value for value in values.itervalues()]
 
     def delete_group(self, uuid):
@@ -1157,7 +1166,7 @@ class BundleModel(object):
             ).fetchall()
             if not rows:
                 return []
-        return [dict(row) for row in rows]
+        return [str_key_dict(row) for row in rows]
 
     # Helper function: return list of group uuids that |user_id| is in.
     def _get_user_groups(self, user_id):
