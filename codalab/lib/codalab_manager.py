@@ -86,6 +86,7 @@ class CodaLabManager(object):
                     'auth': {'class': 'MockAuthHandler'}, 'verbose': 1},
                 'aliases': {
                     'localhost': 'http://localhost:2800',
+                    'main': 'https://codalab.org/bundleservice',
                 },
                 'workers': {
                     'q': {
