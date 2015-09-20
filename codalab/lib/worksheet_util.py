@@ -116,35 +116,8 @@ def get_worksheet_lines(worksheet_info):
     '''
     header = '''
 // Editing worksheet %s(%s).
-// The coments (//) are simply instructions to you and not part of the actual
-// worksheet.  You can enter:
-// - Arbitrary Markdown (see http://daringfireball.net/projects/markdown/syntax)
-// - References to bundles: {<bundle_spec>}
-// - Directives (%% schema|add|display)
-//   * schema <schema-name>
-//   * add <key> <generalized-path> [<post-processor>]
-//   * addschema <schema-name>
-//   * display hidden
-//   * display link <text>
-//   * display inline|contents|image|html <generalized-path (e.g., /stats:errorRate)> [<key>=<value>,<key>=<value>,...]
-//   * display record|table <schema-name-1> ... <schema-name-n>
-//   * search <keyword-1> ... <keyword-n>
-//   The post-processor is optional and is a sequence of the following, separated by " | ":
-//   * 'link' for getting the file name
-//   * 'duration', 'date', 'size' for special formatting
-//   * '%%...' for sprintf-style formatting
-//   * s/<old>/<new> for regular expression substitution
-//   * [<start-index>:<end-index>] for taking substrings
-//   Examples of <key>=<value>: height=100, width=50, maxlines=500
-// For example, you can define a schema for a table and then set the display mode to using that schema:
-// %% schema s1
-// %% add name
-// %% add /stats:errorRate %%.3f
-// %% add method /options.map:method "s/-method// | [0:5]"
-// %% add time
-// %% display table s1
-// %% {run1}
-// %% {run2}
+// https://github.com/codalab/codalab-cli/worksheet-syntax.md
+//
     '''.strip() % (worksheet_info['name'], worksheet_info['uuid'],)
     lines = header.split('\n')
 
