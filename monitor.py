@@ -104,13 +104,14 @@ def error_logs(error_type, s):
     num_errors[error_type] += 1
     n = num_errors[error_type]
     if is_power_of_two(n):  # Send email only on powers of two to prevent sending too many emails
-        send_email(error_type + " #" + str(n), s.split('\n'))
+        send_email('%s [%d times]' % (error_type, n), s.split('\n'))
 
 durations = defaultdict(list)
-def run_command(args, time_limit=5):
+def run_command(args, soft_time_limit=5, hard_time_limit=60):
+    # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
     try:
-        args = ['timeout', '%ss' % time_limit] + args
+        args = ['timeout', '%ss' % hard_time_limit] + args
         output = subprocess.check_output(args)
         exitcode = 0
     except subprocess.CalledProcessError, e:
@@ -127,12 +128,17 @@ def run_command(args, time_limit=5):
     average_duration = sum(l) / len(l)
     max_duration = max(l)
 
-    message = '>> %s (exit code %s, time %.2fs; avg %.2fs; max %.2fs)\n%s' % \
-        (' '.join(args), exitcode, duration, average_duration, max_duration, output)
+    message = '>> %s (exit code %s, time %.2fs [limit: %ds,%ds]; avg %.2fs; max %.2fs)\n%s' % \
+        (' '.join(args), exitcode, duration, soft_time_limit, hard_time_limit,
+        average_duration, max_duration, output)
     if exitcode == 0:
         logs(message)
     else:
-        error_logs('command failed', message)
+        error_logs('command failed: ' + ' '.join(args), message)
+
+    if duration > soft_time_limit:
+        error_logs('command too slow: ' + ' '.join(args), message)
+
     return output.rstrip()
 
 timer = 0
@@ -183,7 +189,7 @@ while True:
         # Try to run a job
         if run_time():
             uuid = run_command(['cl', 'run', 'echo hello'])
-            run_command(['cl', 'wait', uuid], 60)  # Shouldn't wait more than this long!
+            run_command(['cl', 'wait', uuid], 30, 300)  # Running might take a while
             run_command(['cl', 'rm', uuid])
     except Exception, e:
         error_logs('exception', 'Exception: %s' % e)
