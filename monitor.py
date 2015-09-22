@@ -28,12 +28,12 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--sender', help='email address to send to')
 parser.add_argument('--recipient', help='email address to send from')
 parser.add_argument('--data-path', help='where the CodaLab data is stored', default=os.getenv('HOME') + '/.codalab/data')
-parser.add_argument('--log-path', help='email address to send to', default='monitor.log')
+parser.add_argument('--log-path', help='file to write the log', default='monitor.log')
 parser.add_argument('--backup-path', help='directory to backup database', default='backup')
 parser.add_argument('--mysql-conf-path', help='contains username/password for database', default='mysql.cnf')
-parser.add_argument('--ping-interval', help='ping the server every this many seconds', default=30)
-parser.add_argument('--run-interval', help='run a job every this many seconds', default=5*60)
-parser.add_argument('--email-interval', help='email a report every this many seconds', default=24*60*60)
+parser.add_argument('--ping-interval', help='ping the server every this many seconds', type=int, default=30)
+parser.add_argument('--run-interval', help='run a job every this many seconds', type=int, default=5*60)
+parser.add_argument('--email-interval', help='email a report every this many seconds', type=int, default=24*60*60)
 parser.add_argument('--website-db', help='website database')
 parser.add_argument('--bundles-db', help='bundles database')
 args = parser.parse_args()
@@ -93,13 +93,20 @@ def logs(s):
     for line in s.split('\n'):
         log(line)
 
+def is_power_of_two(n):
+    while n % 2 == 0:
+        n /= 2
+    return n == 1
+
 num_errors = defaultdict(int)
 def error_logs(error_type, s):
     logs(s)
     num_errors[error_type] += 1
-    if num_errors[error_type] == 1:  # Send email only on first error of the type
-        send_email(error_type, s.split('\n'))
+    n = num_errors[error_type]
+    if is_power_of_two(n):  # Send email only on powers of two to prevent sending too many emails
+        send_email(error_type + " #" + str(n), s.split('\n'))
 
+durations = defaultdict(list)
 def run_command(args, time_limit=5):
     start_time = time.time()
     try:
@@ -111,7 +118,17 @@ def run_command(args, time_limit=5):
         exitcode = e.returncode
     end_time = time.time()
 
-    message = '>> %s (exit code %s, time %.2fs)\n%s' % (' '.join(args), exitcode, end_time - start_time, output)
+    # Add to the list
+    duration = end_time - start_time
+    l = durations[str(args)]
+    l.append(duration)
+    while len(l) > 1000:  # Keep the list bounded
+        l.pop(0)
+    average_duration = sum(l) / len(l)
+    max_duration = max(l)
+
+    message = '>> %s (exit code %s, time %.2fs; avg %.2fs; max %.2fs)\n%s' % \
+        (' '.join(args), exitcode, duration, average_duration, max_duration, output)
     if exitcode == 0:
         logs(message)
     else:
@@ -130,6 +147,7 @@ def email_time():
     return timer % args.email_interval == 0
 
 # Begin monitoring loop
+run_command(['cl', 'ls', 'localhost::codalab'])  # Access the server
 run_command(['cl', 'work', 'local::codalab'])
 while True:
     del report[:]
@@ -154,8 +172,12 @@ while True:
 
         # Get statistics
         if ping_time():
+            # Simple things
+            run_command(['cl', 'work'])
+            run_command(['cl', 'ls', 'localhost::codalab'])  # Access the server
             run_command(['cl', 'search', '.count'])
         if run_time():
+            # More intense
             run_command(['cl', 'search', 'size=.sum'], 20)
             run_command(['cl', 'search', 'size=.sort-', '.limit=5'], 20)
             run_command(['cl', 'search', '.last', '.limit=5'])
@@ -163,7 +185,7 @@ while True:
         # Try to run a job
         if run_time():
             uuid = run_command(['cl', 'run', 'echo hello'])
-            run_command(['cl', 'wait', uuid], 60)
+            run_command(['cl', 'wait', uuid], 60)  # Shouldn't wait more than this long!
             run_command(['cl', 'rm', uuid])
     except Exception, e:
         error_logs('exception', 'Exception: %s' % e)
