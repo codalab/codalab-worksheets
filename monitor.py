@@ -68,7 +68,7 @@ def send_email(subject, message):
     s.ehlo()
     s.starttls()
     s.ehlo()
-    msg = MIMEText('\n'.join(message))
+    msg = MIMEText('<pre style="font: monospace">' + '\n'.join(message) + '</pre>', 'html')
     msg['Subject'] = 'CodaLab on %s: %s' % (hostname, subject)
     msg['To'] = recipient
     s.login(sender, password)
@@ -147,8 +147,7 @@ def email_time():
     return timer % args.email_interval == 0
 
 # Begin monitoring loop
-run_command(['cl', 'ls', 'localhost::codalab'])  # Access the server
-run_command(['cl', 'work', 'local::codalab'])
+run_command(['cl', 'work', 'localhost::'])  # Access the server on home directory (need to first log in)
 while True:
     del report[:]
     if ping_time():
@@ -174,7 +173,6 @@ while True:
         if ping_time():
             # Simple things
             run_command(['cl', 'work'])
-            run_command(['cl', 'ls', 'localhost::codalab'])  # Access the server
             run_command(['cl', 'search', '.count'])
         if run_time():
             # More intense
