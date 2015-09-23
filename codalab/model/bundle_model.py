@@ -403,14 +403,13 @@ class BundleModel(object):
         if user_id != self.root_user_id:
             # Restrict to the bundles that we have access to.
             access_via_owner = (cl_bundle.c.owner_id == user_id)
-            access_via_group = and_(
-                cl_group_bundle_permission.c.object_uuid == cl_bundle.c.uuid,  # Join constraint (bundle)
+            access_via_group = cl_bundle.c.uuid.in_(select([cl_group_bundle_permission.c.object_uuid]).where(and_(
                 or_(  # Join constraint (group)
                     cl_group_bundle_permission.c.group_uuid == self.public_group_uuid,  # Public group
                     cl_group_bundle_permission.c.group_uuid.in_(alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)))  # Private group
                 ),
                 cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ,  # Match the uuid of the parent
-            )
+            )))
             clause = and_(clause, or_(access_via_owner, access_via_group))
 
         # Aggregate (sum)
@@ -813,14 +812,11 @@ class BundleModel(object):
         # Enforce permissions
         if user_id != self.root_user_id:
             access_via_owner = (cl_worksheet.c.owner_id == user_id)
-            access_via_group = and_(
-                cl_worksheet.c.uuid == cl_group_worksheet_permission.c.object_uuid,
-                or_(
-                    cl_group_worksheet_permission.c.group_uuid == self.public_group_uuid, # Public group
-                    cl_group_worksheet_permission.c.group_uuid.in_(  # Private group
-                        alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)))
-                ),
-            )
+            access_via_group = cl_worksheet.c.uuid.in_(select([cl_group_worksheet_permission.c.object_uuid]).where(or_(
+                cl_group_worksheet_permission.c.group_uuid == self.public_group_uuid, # Public group
+                cl_group_worksheet_permission.c.group_uuid.in_(  # Private group
+                    alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)))
+            )))
             clause = and_(clause, or_(access_via_owner, access_via_group))
 
         cols_to_select = [cl_worksheet.c.id,
