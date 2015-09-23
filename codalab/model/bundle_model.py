@@ -284,7 +284,7 @@ class BundleModel(object):
                     return field.like(value)
                 else:
                     return field == value
-            return true()
+            return None
 
         shortcuts = {
             'type': 'bundle_type',
@@ -342,21 +342,17 @@ class BundleModel(object):
             elif key == 'dependency':
                 # Match uuid of dependency
                 condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
-                if condition == true():  # top-level
-                    clause = and_(
-                        cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,
-                        condition,
-                    )
+                if condition is None:  # top-level
+                    clause = cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid
                 else:  # embedded
                     clause = cl_bundle.c.uuid.in_(alias(select([cl_bundle_dependency.c.child_uuid]).where(condition)))
             elif key.startswith('dependency/'):
                 _, name = key.split('/', 1)
                 condition = make_condition(key, cl_bundle_dependency.c.parent_uuid, value)
-                if condition == true():  # top-level
+                if condition is None:  # top-level
                     clause = and_(
                         cl_bundle_dependency.c.child_uuid == cl_bundle.c.uuid,  # Join constraint
                         cl_bundle_dependency.c.child_path == name,  # Match the 'type' of dependent (child_path)
-                        condition,
                     )
                 else:  # embedded
                     clause = cl_bundle.c.uuid.in_(alias(select([cl_bundle_dependency.c.child_uuid]).where(and_(
@@ -365,11 +361,8 @@ class BundleModel(object):
                     ))))
             elif key == 'host_worksheet':
                 condition = make_condition(key, cl_worksheet_item.c.worksheet_uuid, value)
-                if condition == true():  # top-level
-                    clause = and_(
-                        cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid,  # Join constraint
-                        condition,
-                    )
+                if condition is None:  # top-level
+                    clause = cl_worksheet_item.c.bundle_uuid == cl_bundle.c.uuid  # Join constraint
                 else:
                     clause = cl_bundle.c.uuid.in_(alias(select([cl_worksheet_item.c.bundle_uuid]).where(condition)))
             elif key == 'uuid_name': # Search uuid and name by default
@@ -391,11 +384,10 @@ class BundleModel(object):
             # Otherwise, assume metadata.
             else:
                 condition = make_condition(key, cl_bundle_metadata.c.metadata_value, value)
-                if condition == true():  # top-level
+                if condition is None:  # top-level
                     clause = and_(
                         cl_bundle.c.uuid == cl_bundle_metadata.c.bundle_uuid,
                         cl_bundle_metadata.c.metadata_key == key,
-                        condition,
                     )
                 else:  # embedded
                     clause = cl_bundle.c.uuid.in_(select([cl_bundle_metadata.c.bundle_uuid]).where(and_(
@@ -754,7 +746,7 @@ class BundleModel(object):
                     return field.like(value)
                 else:
                     return field == value
-            return true()
+            return None
 
         clauses = []
         for keyword in keywords:
@@ -788,20 +780,14 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.owner_id, value)
             elif key == 'bundle':  # contains bundle?
                 condition = make_condition(cl_worksheet_item.c.bundle_uuid, value)
-                if condition == true():  # top-level
-                    clause = and_(
-                        cl_worksheet_item.c.worksheet_uuid == cl_worksheet.c.uuid,  # Join constraint
-                        condition,
-                    )
+                if condition is None:  # top-level
+                    clause = cl_worksheet_item.c.worksheet_uuid == cl_worksheet.c.uuid  # Join constraint
                 else:
                     clause = cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_item.c.worksheet_uuid]).where(condition)))
             elif key == 'worksheet':  # contains worksheet?
                 condition = make_condition(cl_worksheet_item.c.subworksheet_uuid, value)
-                if condition == true():  # top-level
-                    clause = and_(
-                        cl_worksheet_item.c.worksheet_uuid == cl_worksheet.c.uuid,  # Join constraint
-                        condition,
-                    )
+                if condition is None:  # top-level
+                    clause = cl_worksheet_item.c.worksheet_uuid == cl_worksheet.c.uuid  # Join constraint
                 else:
                     clause = cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_item.c.worksheet_uuid]).where(condition)))
             elif key == 'uuid_name': # Search uuid and name by default
