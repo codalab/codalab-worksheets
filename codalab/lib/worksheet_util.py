@@ -167,24 +167,30 @@ def request_lines(worksheet_info, client):
         raise UsageError('No change made; aborting')
     return form_result
 
-
-def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
+def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
     '''
-    Return the bundle_uuid corresponding to bundle_spec.
-    Important difference from client.get_bundle_uuid: if bundle_spec is already
+    Return the bundle_uuids corresponding to bundle_specs.
+    Important difference from client.get_bundle_uuid: if a bundle_spec is already
     a uuid, then just return it directly.  This avoids an extra call to the
     client.
     '''
-    bundle_spec = bundle_spec.strip()
-    if spec_util.UUID_REGEX.match(bundle_spec):
-        bundle_uuid = bundle_spec  # Already uuid, don't need to look up specification
-    else:
-        if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
-            # Shift to new worksheet
-            worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
-            worksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, worksheet_spec)
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
-    return bundle_uuid
+    resolved = []
+    unresolved = []
+    for bundle_spec in bundle_specs:
+        bundle_spec = bundle_spec.strip()
+
+        if spec_util.UUID_REGEX.match(bundle_spec):
+            resolved.append(bundle_spec)
+        else:
+            unresolved.append(bundle_spec)
+
+    return resolved + client.get_bundle_uuids(worksheet_uuid, unresolved)
+
+def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
+    '''
+    Return the bundle_uuid corresponding to a single bundle_spec.
+    '''
+    return get_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
 
 def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
     '''

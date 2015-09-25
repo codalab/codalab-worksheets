@@ -721,7 +721,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
 
         # Number the bundles: c c a b c => 3 2 1 1 1
@@ -772,7 +772,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec) for bundle_spec in args.bundle_spec]
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         deleted_uuids = client.delete_bundles(bundle_uuids, args.force, args.recursive, args.data_only, args.dry_run)
         if args.dry_run:
             print 'This command would permanently remove the following bundles (not doing so yet):'
@@ -867,8 +867,8 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        for i, bundle_spec in enumerate(args.bundle_spec):
-            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        for i, bundle_uuid in enumerate(bundle_uuids):
             info = client.get_bundle_info(bundle_uuid, args.verbose, args.verbose, args.verbose)
             if info is None:
                 raise UsageError('Unable to retrieve information about bundle with uuid %s' % bundle_uuid)
@@ -1143,7 +1143,7 @@ class BundleCLI(object):
         '''
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundles]
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundles)
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -1177,10 +1177,8 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = []
-        for bundle_spec in args.bundle_spec:
-            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
-            bundle_uuids.append(bundle_uuid)
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        for bundle_uuid in bundle_uuids:
             print bundle_uuid
         client.kill_bundles(bundle_uuids)
 
@@ -1211,8 +1209,8 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        for spec in args.bundle_spec:
-            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec)
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        for bundle_uuid in bundle_uuids:
             client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
         if args.message != None:
             if args.message.startswith('%'):
@@ -1511,7 +1509,8 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundle_spec]
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+
         result = client.set_bundles_perm(bundle_uuids, args.group_spec, args.permission_spec)
         print "Group %s(%s) has %s permission on %d bundles." % \
             (result['group_info']['name'], result['group_info']['uuid'],
@@ -1540,7 +1539,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = [worksheet_util.get_bundle_uuid(client, worksheet_uuid, spec) for spec in args.bundle_spec]
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         client.chown_bundles(bundle_uuids, args.user_spec)
         for uuid in bundle_uuids: print uuid
 
