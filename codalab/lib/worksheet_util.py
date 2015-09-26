@@ -170,26 +170,20 @@ def request_lines(worksheet_info, client):
 def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
     '''
     Return the bundle_uuids corresponding to bundle_specs.
-    Important difference from client.get_bundle_uuids: if a bundle_spec is already
-    a uuid, then just return it directly.  This avoids an extra call to the
-    client.
+    Important difference from client.get_bundle_uuids: if all bundle_specs are already
+    uuids, then just return them directly.  This avoids an extra call to the client.
     '''
-    resolved = []
-    unresolved = []
-    for bundle_spec in bundle_specs:
-        bundle_spec = bundle_spec.strip()
+    bundle_specs = [bundle_spec.strip() for bundle_spec in bundle_specs]
 
-        if spec_util.UUID_REGEX.match(bundle_spec):
-            resolved.append(bundle_spec)
-        else:
-            unresolved.append(bundle_spec)
+    if all(spec_util.UUID_REGEX.match(bundle_spec) for bundle_spec in bundle_specs):
+        return bundle_specs
 
-    return resolved + client.get_bundle_uuids(worksheet_uuid, unresolved)
+    return client.get_bundle_uuids(worksheet_uuid, bundle_specs)
 
 def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
     '''
     Return the bundle_uuid corresponding to a single bundle_spec.
-    Important difference from client.get_bundle_uuid: if a bundle_spec is already
+    Important difference from client.get_bundle_uuid: if bundle_spec is already
     a uuid, then just return it directly.  This avoids an extra call to the
     client.
     '''
