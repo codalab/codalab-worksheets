@@ -36,7 +36,7 @@ if mode == 'start':
     parser.add_argument('--request_memory', type=float, help='request this much memory (in bytes)')
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
     parser.add_argument('--request_gpus', type=int, help='request this many GPUs')
-    parser.add_argument('--request_queue', type=str, help='submit job to this queue')
+    parser.add_argument('--request_queue', type=str, help='submit job to this queue', default='john')
     parser.add_argument('--request_priority', type=int, help='priority of this job (higher is more important)')
     parser.add_argument('script', type=str, help='script to run')
 
