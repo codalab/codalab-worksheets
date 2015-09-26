@@ -173,12 +173,20 @@ def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
     Important difference from client.get_bundle_uuids: if all bundle_specs are already
     uuids, then just return them directly.  This avoids an extra call to the client.
     '''
-    bundle_specs = [bundle_spec.strip() for bundle_spec in bundle_specs]
+    bundle_uuids = {}
+    unresolved = []
+    for spec in bundle_specs:
+        spec = spec.strip()
+        if spec_util.UUID_REGEX.match(spec):
+            bundle_uuids[spec] = spec
+        else:
+            unresolved.append(spec)
 
-    if all(spec_util.UUID_REGEX.match(bundle_spec) for bundle_spec in bundle_specs):
-        return bundle_specs
+    # Resolve uuids with a batch call to the client and update dict
+    bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
 
-    return client.get_bundle_uuids(worksheet_uuid, bundle_specs)
+    # Return uuids for the bundle_specs in the original order provided
+    return [bundle_uuids[spec] for spec in bundle_specs]
 
 def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
     '''
