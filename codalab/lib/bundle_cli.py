@@ -250,7 +250,7 @@ class BundleCLI(object):
                 cell = row_dict.get(col)
                 func = post_funcs.get(col)
                 if func: cell = worksheet_util.apply_func(func, cell)
-                if cell == None: cell = ''
+                if cell == None: cell = 'MISSING'
                 row.append(cell)
             rows.append(row)
 
