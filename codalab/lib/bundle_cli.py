@@ -815,16 +815,23 @@ class BundleCLI(object):
         return self.create_structured_info_map([('refs', reference_map),])
 
     def create_structured_info_map(self, structured_info_list):
+        '''
+        Return dict of info dicts (eg. bundle/worksheet reference_map) containing
+        information associated to bundles/worksheets. cl wls, ls, etc. show uuids
+        which are too short. This dict contains additional information that is
+        needed to recover URL on the client side.
+        '''
         return { k: v for k, v in structured_info_list}
 
-    def shorten_uuid(self, uuid):
-        return uuid[0:8]
-
     def create_reference_map(self, info_type, info_list):
+        '''
+        Return dict of dicts containing name, uuid and type for each bundle/worksheet
+        in the info_list. This information is needed to recover URL on the cient side.
+        '''
         if len(info_list) == 0:
             return None
         return {
-            self.shorten_uuid(info['uuid']) : {
+            worksheet_util.apply_func(self.UUID_POST_FUNC, info['uuid']) : {
                 'type': info_type,
                 'uuid': info['uuid'],
                 'name': info['metadata']['name'] if 'metadata' in info else info['name']
