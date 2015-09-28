@@ -34,8 +34,7 @@ def run_command(args, expected_exit_code=0):
         output = e.output
         exitcode = e.returncode
     print '>> %s (exit code %s, expected %s)\n%s' % (args, exitcode, expected_exit_code, output)
-    if expected_exit_code != exitcode:
-        error('Exit codes don\'t match')
+    assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
 def get_info(uuid, key):
@@ -44,13 +43,8 @@ def get_info(uuid, key):
 def wait(uuid):
     run_command([cl, 'wait', uuid])
 
-def error(message):
-    print 'ERROR:', message
-    sys.exit(1)
-
 def check_equals(true_value, pred_value):
-    if true_value != pred_value:
-        error("expected '%s', but got '%s'" % (true_value, pred_value))
+    assert true_value == pred_value, "expected '%s', but got '%s'" % (true_value, pred_value)
     return pred_value
 
 def check_contains(true_value, pred_value):
@@ -58,24 +52,32 @@ def check_contains(true_value, pred_value):
         for v in true_value:
             check_contains(v, pred_value)
     else:
-        if not re.search(true_value, pred_value):
-            error("expected something that contains '%s', but got '%s'" % (true_value, pred_value))
+        assert re.search(true_value, pred_value), "expected something that contains '%s', but got '%s'" % (true_value, pred_value)
     return pred_value
 
 def check_num_lines(true_value, pred_value):
     num_lines = len(pred_value.split('\n'))
-    if num_lines != true_value:
-        error("expected %d lines, but got %s" % (true_value, num_lines))
+    assert num_lines == true_value, "expected %d lines, but got %s" % (true_value, num_lines)
     return pred_value
 
 tests = []
 def add_test(name, func):
     tests.append((name, func))
 def run_test(query_name):
+    failed = []
     for name, func in tests:
         if query_name == 'all' or query_name == name:
             print '============= ' + name
-            func()
+            try:
+                func()
+            except AssertionError as e:
+                print "ERROR: %s" % e.message
+                failed.append(name)
+
+    if failed:
+        print "Tests failed: %s" % ', '.join(failed)
+    else:
+        print "All tests passed."
 
 ############################################################
 
@@ -112,10 +114,10 @@ add_test('upload1', test)
 
 def test():
     # Upload two files
-    uuid = run_command([cl, 'upload', 'program', '/etc/hosts', '/etc/issue', '--description', 'hello'])
+    uuid = run_command([cl, 'upload', 'program', '/etc/hosts', '/etc/group', '--description', 'hello'])
     check_contains('127.0.0.1', run_command([cl, 'cat', uuid + '/hosts']))
     # Upload with base
-    uuid2 = run_command([cl, 'upload', 'program', '/etc/hosts', '/etc/issue', '--base', uuid])
+    uuid2 = run_command([cl, 'upload', 'program', '/etc/hosts', '/etc/group', '--base', uuid])
     check_equals('hello', get_info(uuid2, 'description'))
     # Cleanup
     run_command([cl, 'rm', uuid, uuid2])
@@ -135,7 +137,7 @@ add_test('rm', test)
 
 def test():
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
-    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue'])
+    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group'])
     # make
     uuid3 = run_command([cl, 'make', 'dep1:'+uuid1, 'dep2:'+uuid2])
     wait(uuid3)
@@ -229,7 +231,7 @@ def test():
 add_test('freeze', test)
 
 def test():
-    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '/etc/issue'])
+    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '/etc/group'])
     # download
     run_command([cl, 'download', uuid, '-o', uuid])
     run_command(['ls', '-R', uuid])
@@ -240,7 +242,7 @@ add_test('copy', test)
 
 def test():
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
-    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue'])
+    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group'])
     run_command([cl, 'add', uuid1])
     run_command([cl, 'add', uuid2])
     # State after the above: 1 2 1 2
@@ -266,7 +268,7 @@ add_test('perm', test)
 def test():
     name = random_name()
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', name])
-    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/issue', '-n', name])
+    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group', '-n', name])
     check_equals(uuid1, run_command([cl, 'search', uuid1, '-u']))
     check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, '-u']))
     check_equals('', run_command([cl, 'search', 'uuid='+uuid1[0:8], '-u']))
@@ -334,6 +336,32 @@ def test():
     run_command([cl, 'events', '-o', '1', '-l', '2'])
     run_command([cl, 'events', '-a', '%true%', '-n'])
 add_test('events', test)
+
+def test():
+    wother = random_name()
+    bnames = [random_name() for _ in range(2)]
+    buuids = []
+
+    # Create worksheets and bundles
+    run_command([cl, 'new', wother])
+    buuids.append(run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[0]]))
+    buuids.append(run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[1]]))
+    buuids.append(run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[0], '-w', wother]))
+    buuids.append(run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[1], '-w', wother]))
+
+    # Test batch info call
+    output = run_command([cl, 'info', '-f', 'uuid', bnames[0], bnames[1],
+        '%s/%s' % (wother, bnames[0]), '%s/%s' % (wother, bnames[1])])
+    check_equals('\n'.join(buuids), output)
+
+    # Test batch info call with combination of uuids and names
+    output = run_command([cl, 'info', '-f', 'uuid', buuids[0], bnames[0], bnames[0], buuids[0]])
+    check_equals('\n'.join([buuids[0]] * 4), output)
+
+    # Cleanup
+    run_command([cl, 'rm'] + buuids)
+    run_command([cl, 'wrm', '--force', wother])
+add_test('batch', test)
 
 if len(sys.argv) == 1:
     print 'Usage: python %s <module> ... <module>' % sys.argv[0]

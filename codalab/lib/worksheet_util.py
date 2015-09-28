@@ -167,24 +167,35 @@ def request_lines(worksheet_info, client):
         raise UsageError('No change made; aborting')
     return form_result
 
+def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
+    '''
+    Return the bundle_uuids corresponding to bundle_specs.
+    Important difference from client.get_bundle_uuids: if all bundle_specs are already
+    uuids, then just return them directly.  This avoids an extra call to the client.
+    '''
+    bundle_uuids = {}
+    unresolved = []
+    for spec in bundle_specs:
+        spec = spec.strip()
+        if spec_util.UUID_REGEX.match(spec):
+            bundle_uuids[spec] = spec
+        else:
+            unresolved.append(spec)
+
+    # Resolve uuids with a batch call to the client and update dict
+    bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
+
+    # Return uuids for the bundle_specs in the original order provided
+    return [bundle_uuids[spec] for spec in bundle_specs]
 
 def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
     '''
-    Return the bundle_uuid corresponding to bundle_spec.
+    Return the bundle_uuid corresponding to a single bundle_spec.
     Important difference from client.get_bundle_uuid: if bundle_spec is already
     a uuid, then just return it directly.  This avoids an extra call to the
     client.
     '''
-    bundle_spec = bundle_spec.strip()
-    if spec_util.UUID_REGEX.match(bundle_spec):
-        bundle_uuid = bundle_spec  # Already uuid, don't need to look up specification
-    else:
-        if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
-            # Shift to new worksheet
-            worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
-            worksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, worksheet_spec)
-        bundle_uuid = client.get_bundle_uuid(worksheet_uuid, bundle_spec)
-    return bundle_uuid
+    return get_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
 
 def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
     '''
