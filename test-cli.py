@@ -2,9 +2,13 @@
 '''
 Tests all the CLI functionality end-to-end.
 
-Currently, the tests will operate on your current worksheet.  In theory, it
-shouldn't mutate anything, but this is not guaranteed, and you should run this
-command in an unimportant CodaLab account.
+Tests will operate on temporary worksheets created during testing.  In theory, it
+shouldn't mutate preexisting data on your instance, but this is not guaranteed,
+and you should run this command in an unimportant CodaLab account.
+
+For full coverage of testing, be sure to run this over a remote connection (i.e. while
+connected to localhost::) in addition to local testing, in order to test the full RPC
+pipeline.
 
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
@@ -62,12 +66,21 @@ def check_num_lines(true_value, pred_value):
     return pred_value
 
 class ModuleContext(object):
+    '''ModuleContext objects manage the context of a test module.
+
+    Instances of ModuleContext are meant to be used with the Python
+    'with' statement (PEP 343).
+
+    For documentation on with statement context managers:
+    https://docs.python.org/2/reference/datamodel.html#with-statement-context-managers
+    '''
     def __init__(self):
         self.worksheets = []
         self.bundles = []
         self.error = None
 
     def __enter__(self):
+        '''Prepares clean environment for test module.'''
         print 'SWITCHING TO TEMPORARY WORKSHEET'
         print
 
@@ -82,6 +95,8 @@ class ModuleContext(object):
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
+        '''Tears down temporary environment for test module.'''
+        # Check for and handle exceptions if any
         if exc_type is not None:
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
@@ -108,12 +123,19 @@ class ModuleContext(object):
         return True
 
     def collect_worksheet(self, uuid):
+        '''Mark a worksheet for cleanup on exit.'''
         self.worksheets.append(uuid)
 
     def collect_bundle(self, uuid):
+        '''Mark a bundle for cleanup on exit.'''
         self.bundles.append(uuid)
 
 class TestModule(object):
+    '''Instances of TestModule each encapsulate a test module and its metadata.
+
+    The class itself also maintains a registry of the existing modules, providing
+    a decorator to register new modules and a class method to run modules by name.
+    '''
     modules = OrderedDict()
 
     def __init__(self, name, func, description):
@@ -123,12 +145,24 @@ class TestModule(object):
 
     @classmethod
     def register(cls, name):
+        '''Returns a decorator to register new test modules.
+
+        The decorator will add a given function as test modules to the registry
+        under the name provided here. The function's docstring (PEP 257) will
+        be used as the prose description of the test module.
+        '''
         def add_module(func):
             cls.modules[name] = TestModule(name, func, func.__doc__)
         return add_module
 
     @classmethod
     def run(cls, query):
+        '''Run the modules named in query.
+
+        query should be a list of strings, each of which is either 'all'
+        or the name of an existing test module.
+        '''
+        # Build list of modules to run based on query
         modules_to_run = []
         for name in query:
             if name == 'all':
@@ -143,6 +177,7 @@ class TestModule(object):
         print 'Running modules ' + ' '.join([m.name for m in modules_to_run])
         print
 
+        # Run modules, continuing onto the next test module regardless of failure
         failed = []
         for module in modules_to_run:
             print '============= BEGIN MODULE: ' + module.name
@@ -156,6 +191,7 @@ class TestModule(object):
             if ctx.error:
                 failed.append(module.name)
 
+        # Provide a (currently very rudimentary) summary
         print '============= SUMMARY'
         if failed:
             print 'Tests failed: %s' % ', '.join(failed)
