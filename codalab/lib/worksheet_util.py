@@ -191,9 +191,8 @@ def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
 def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
     '''
     Return the bundle_uuid corresponding to a single bundle_spec.
-    Important difference from client.get_bundle_uuid: if bundle_spec is already
-    a uuid, then just return it directly.  This avoids an extra call to the
-    client.
+    If bundle_spec is already a uuid, then just return it directly.
+    This avoids an extra call to the client.
     '''
     return get_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
 

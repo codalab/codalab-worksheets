@@ -94,9 +94,9 @@ class LocalBundleClient(BundleClient):
         return result
 
     def get_bundle_uuids(self, worksheet_uuid, bundle_specs):
-        return [self.get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
+        return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
 
-    def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
+    def _get_bundle_uuid(self, worksheet_uuid, bundle_spec):
         if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
             # Shift to new worksheet
             worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
