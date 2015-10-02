@@ -1357,13 +1357,9 @@ class BundleCLI(object):
             data = item['interpreted']
             properties = item['properties']
             is_newline = (data == '')
-            if mode == 'link' or mode == 'inline' or mode == 'markup' or mode == 'contents':
+            if mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
-                    if mode == 'inline':
-                        if isinstance(data, tuple):
-                            data = client.interpret_file_genpaths([data])[0]
-                        print '[' + str(data) + ']'
-                    elif mode == 'contents':
+                    if mode == 'contents':
                         maxlines = properties.get('maxlines')
                         if maxlines:
                             maxlines = int(maxlines)
@@ -1373,12 +1369,12 @@ class BundleCLI(object):
                             print 'ERROR:', e
                     else:
                         print data
-            elif mode == 'record' or mode == 'table':
+            elif mode == 'Parameters' or mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
                 contents = worksheet_util.interpret_genpath_table_contents(client, contents)
                 # Print the table
-                self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
+                self.print_table(header, contents, show_header=(mode == 'table' or mode == 'Parameters'), indent='  ')
             elif mode == 'html' or mode == 'image':
                 # Placeholder
                 print '[' + mode + ' ' + str(data) + ']'
