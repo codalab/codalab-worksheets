@@ -793,14 +793,14 @@ class BundleCLI(object):
         bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords)
         if not isinstance(bundle_uuids, list):  # Direct result
             print bundle_uuids
-            return
+            return self.create_structured_info_map([('refs', None)])
 
         # Print out bundles
+        bundle_infos = client.get_bundle_infos(bundle_uuids)
+        bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids if uuid in bundle_infos]
+        reference_map = self.create_reference_map('bundle', bundle_info_list)
         if args.uuid_only:
             bundle_info_list = [{'uuid': uuid} for uuid in bundle_uuids]
-        else:
-            bundle_infos = client.get_bundle_infos(bundle_uuids)
-            bundle_info_list = [bundle_infos[uuid] for uuid in bundle_uuids if uuid in bundle_infos]
 
         if len(bundle_info_list) > 0:
             self.print_bundle_info_list(bundle_info_list, uuid_only=args.uuid_only, print_ref=False)
@@ -812,6 +812,31 @@ class BundleCLI(object):
                 client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
             print 'Added %d bundles to %s' % (len(bundle_uuids), self.worksheet_str(worksheet_info))
+        return self.create_structured_info_map([('refs', reference_map)])
+
+    def create_structured_info_map(self, structured_info_list):
+        '''
+        Return dict of info dicts (eg. bundle/worksheet reference_map) containing
+        information associated to bundles/worksheets. cl wls, ls, etc. show uuids
+        which are too short. This dict contains additional information that is
+        needed to recover URL on the client side.
+        '''
+        return dict(structured_info_list)
+
+    def create_reference_map(self, info_type, info_list):
+        '''
+        Return dict of dicts containing name, uuid and type for each bundle/worksheet
+        in the info_list. This information is needed to recover URL on the cient side.
+        '''
+        if len(info_list) == 0:
+            return {}
+        return {
+            worksheet_util.apply_func(self.UUID_POST_FUNC, info['uuid']) : {
+                'type': info_type,
+                'uuid': info['uuid'],
+                'name': info['metadata']['name'] if 'metadata' in info else info['name']
+            } for info in info_list
+        }
 
     def do_ls_command(self, argv, parser):
         parser.add_argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT, nargs='?')
@@ -825,6 +850,8 @@ class BundleCLI(object):
             print self._worksheet_description(worksheet_info)
         if len(bundle_info_list) > 0:
             self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True)
+        reference_map = self.create_reference_map('bundle', bundle_info_list)
+        return self.create_structured_info_map([('refs', reference_map)])
 
     def _worksheet_description(self, worksheet_info):
         return '### Worksheet: %s\n### Title: %s\n### Owner: %s(%s)\n### Permissions: %s%s' % \
@@ -1385,6 +1412,8 @@ class BundleCLI(object):
                     row['permissions'] = group_permissions_str(row['group_permissions'])
                 post_funcs = {'uuid': self.UUID_POST_FUNC}
                 self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
+        reference_map = self.create_reference_map('worksheet', worksheet_dicts)
+        return self.create_structured_info_map([('refs', reference_map)])
 
     def do_wadd_command(self, argv, parser):
         parser.add_argument('subworksheet_spec', help='worksheets to add (%s)' % self.WORKSHEET_SPEC_FORMAT, nargs='+')
