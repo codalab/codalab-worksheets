@@ -457,10 +457,15 @@ def apply_func(func, arg):
                     arg = arg[start:end]
                 else:
                     return '<invalid function: %s>' % f
-            elif f.startswith('add'):
-                k, v = f.split(' ')[1:]
-                arg[k] = v
-            elif f.startswith('key'):
+            elif f.startswith('add '):
+                # 'add k v' checks if arg is a dictionary and updates it with arg[k] = v
+                if isinstance(arg, dict):
+                    k, v = f.split(' ')[1:]
+                    arg[k] = v
+                else:
+                    return 'arg (%s) not a dictionary' % type(arg)
+            elif f.startswith('key '):
+                # 'key k' converts arg into a dictionary where arg[k] = arg
                 arg = {f.split(' ')[1]: arg}
             else:
                 return '<invalid function: %s>' % f
