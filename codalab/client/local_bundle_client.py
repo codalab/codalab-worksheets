@@ -859,7 +859,7 @@ class LocalBundleClient(BundleClient):
             if mode == 'markup':
                 # no need to do anything
                 pass
-            elif mode== 'Parameters' or mode == 'record' or mode == 'table':
+            elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
                 # Request information
@@ -906,6 +906,7 @@ class LocalBundleClient(BundleClient):
                                         info[item['name']] = lines
 
             is_last_newline = is_newline
+
         return interpreted_items
 
     #############################################################################

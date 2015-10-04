@@ -577,22 +577,6 @@ def interpret_items(schemas, items):
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_infos)
                 })
-        elif mode == 'Parameters':
-            rows = []
-            schema = [(args[0], args[0], args[1] )]
-            header = ('text',)
-            for bundle_info in bundle_infos:
-                if is_missing(bundle_info):
-                    continue
-
-                # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
-                rows.extend(apply_func(post, interpret_genpath(bundle_info, genpath)) for (_, genpath, post) in schema)
-            new_items.append({
-                    'mode': mode,
-                    'interpreted': (header, rows),
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_infos)
-                })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear

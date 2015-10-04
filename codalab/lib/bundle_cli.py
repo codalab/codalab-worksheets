@@ -793,7 +793,7 @@ class BundleCLI(object):
         bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords)
         if not isinstance(bundle_uuids, list):  # Direct result
             print bundle_uuids
-            return create_structured_info([('refs', None),])
+            return self.create_structured_info_map([('refs', None)])
 
         # Print out bundles
         bundle_infos = client.get_bundle_infos(bundle_uuids)
@@ -812,7 +812,7 @@ class BundleCLI(object):
                 client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
             print 'Added %d bundles to %s' % (len(bundle_uuids), self.worksheet_str(worksheet_info))
-        return self.create_structured_info_map([('refs', reference_map),])
+        return self.create_structured_info_map([('refs', reference_map)])
 
     def create_structured_info_map(self, structured_info_list):
         '''
@@ -821,7 +821,7 @@ class BundleCLI(object):
         which are too short. This dict contains additional information that is
         needed to recover URL on the client side.
         '''
-        return { k: v for k, v in structured_info_list}
+        return dict(structured_info_list)
 
     def create_reference_map(self, info_type, info_list):
         '''
@@ -829,7 +829,7 @@ class BundleCLI(object):
         in the info_list. This information is needed to recover URL on the cient side.
         '''
         if len(info_list) == 0:
-            return None
+            return {}
         return {
             worksheet_util.apply_func(self.UUID_POST_FUNC, info['uuid']) : {
                 'type': info_type,
@@ -851,7 +851,7 @@ class BundleCLI(object):
         if len(bundle_info_list) > 0:
             self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True)
         reference_map = self.create_reference_map('bundle', bundle_info_list)
-        return self.create_structured_info_map([('refs', reference_map),])
+        return self.create_structured_info_map([('refs', reference_map)])
 
     def _worksheet_description(self, worksheet_info):
         return '### Worksheet: %s\n### Title: %s\n### Owner: %s(%s)\n### Permissions: %s%s' % \
@@ -1369,12 +1369,12 @@ class BundleCLI(object):
                             print 'ERROR:', e
                     else:
                         print data
-            elif mode == 'Parameters' or mode == 'record' or mode == 'table':
+            elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
                 contents = worksheet_util.interpret_genpath_table_contents(client, contents)
                 # Print the table
-                self.print_table(header, contents, show_header=(mode == 'table' or mode == 'Parameters'), indent='  ')
+                self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image':
                 # Placeholder
                 print '[' + mode + ' ' + str(data) + ']'
