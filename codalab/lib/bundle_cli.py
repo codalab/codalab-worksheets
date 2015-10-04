@@ -1355,13 +1355,9 @@ class BundleCLI(object):
             data = item['interpreted']
             properties = item['properties']
             is_newline = (data == '')
-            if mode == 'link' or mode == 'inline' or mode == 'markup' or mode == 'contents':
+            if mode == 'markup' or mode == 'contents':
                 if not (is_newline and is_last_newline):
-                    if mode == 'inline':
-                        if isinstance(data, tuple):
-                            data = client.interpret_file_genpaths([data])[0]
-                        print '[' + str(data) + ']'
-                    elif mode == 'contents':
+                    if mode == 'contents':
                         maxlines = properties.get('maxlines')
                         if maxlines:
                             maxlines = int(maxlines)
