@@ -457,6 +457,16 @@ def apply_func(func, arg):
                     arg = arg[start:end]
                 else:
                     return '<invalid function: %s>' % f
+            elif f.startswith('add '):
+                # 'add k v' checks if arg is a dictionary and updates it with arg[k] = v
+                if isinstance(arg, dict):
+                    k, v = f.split(' ')[1:]
+                    arg[k] = v
+                else:
+                    return 'arg (%s) not a dictionary' % type(arg)
+            elif f.startswith('key '):
+                # 'key k' converts arg into a dictionary where arg[k] = arg
+                arg = {f.split(' ')[1]: arg}
             else:
                 return '<invalid function: %s>' % f
         return arg
@@ -486,7 +496,7 @@ def interpret_items(schemas, items):
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
     Return a list of interpreted items, where each item is either:
-    - ('markup'|'inline'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
+    - ('markup'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
       where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
     - ('search', [keyword, ...])
@@ -519,17 +529,7 @@ def interpret_items(schemas, items):
         properties = {}
         if mode == 'hidden':
             pass
-        elif mode == 'link':
-            for bundle_info in bundle_infos:
-                if len(args) == 0:
-                    args = [bundle_info['metadata']['name']]
-                new_items.append({
-                    'mode': mode,
-                    'interpreted': '[%s](%s)' % (args[0], bundle_info['uuid']),
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_info)
-                })
-        elif mode == 'inline' or mode == 'contents' or mode == 'image' or mode == 'html':
+        elif mode == 'contents' or mode == 'image' or mode == 'html':
             for bundle_info in bundle_infos:
                 if is_missing(bundle_info):
                     continue
@@ -545,8 +545,6 @@ def interpret_items(schemas, items):
                     bundle_uuid, genpath = interpreted
                     if not is_file_genpath(genpath):
                         raise UsageError('Expected a file genpath, but got %s' % genpath)
-                    if mode == 'inline':
-                        interpreted = (bundle_uuid, genpath, None)
                     else:
                         # interpreted is a target: strip off the leading /
                         interpreted = (bundle_uuid, genpath[1:])
