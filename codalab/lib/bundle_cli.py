@@ -694,13 +694,16 @@ class BundleCLI(object):
 
         metadata = info['metadata']
         new_metadata = copy.deepcopy(metadata)
+        is_new_metadata_updated = False
         if args.name:
             new_metadata['name'] = args.name
+            is_new_metadata_updated = True
         if args.description:
             new_metadata['description'] = args.description
+            is_new_metadata_updated = True
 
         # Prompt user for all information
-        if not self.headless and metadata == new_metadata:
+        if not is_new_metadata_updated and not self.headless and metadata == new_metadata:
             new_metadata = metadata_util.request_missing_metadata(bundle_subclass, args, new_metadata)
 
         if metadata != new_metadata:
