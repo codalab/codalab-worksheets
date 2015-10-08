@@ -340,7 +340,7 @@ class BundleCLI(object):
             self.exit(message)
         parser = self.create_parser(command)
         if self.verbose >= 2:
-            command_fn(remaining_args, parser)
+            structured_result = command_fn(remaining_args, parser)
         else:
             message = None
             try:
@@ -356,13 +356,14 @@ class BundleCLI(object):
                     stats.sort_stats('time', 'calls')
                     stats.print_stats(20)
                 else:
-                    command_fn(remaining_args, parser)
+                    structured_result = command_fn(remaining_args, parser)
             except PermissionError, e:
                 if self.headless: raise e
                 self.exit(e.message)
             except UsageError, e:
                 if self.headless: raise e
                 self.exit('%s: %s' % (e.__class__.__name__, e))
+        return structured_result
 
     def do_help_command(self, argv, parser):
         if argv:
