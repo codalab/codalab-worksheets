@@ -116,8 +116,9 @@ class ModuleContext(object):
             self.bundles.extend(run_command([cl, 'ls', worksheet, '-u']).split())
             run_command([cl, 'wrm', '--force', worksheet])
 
-        for bundle in self.bundles:
-            run_command([cl, 'rm', '--force', bundle])
+        # Delete all bundles (dedup first)
+        if len(self.bundles) > 0:
+            run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
 
         # Do not reraise exception
         return True
