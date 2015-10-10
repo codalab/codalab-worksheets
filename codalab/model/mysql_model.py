@@ -2,8 +2,6 @@
 MySQLModel is a subclass of BundleModel that stores metadata on a MySQL
 server that it connects to with the given connect parameters.
 '''
-import os
-
 from sqlalchemy import (
     create_engine,
     event,
@@ -42,37 +40,11 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
         else:
             raise
 
-@event.listens_for(Pool, "connect")
-def set_connection_pid(dbapi_connection, connection_record):
-    '''
-    Save the pid of this process in the connection record.
-    '''
-    connection_record.info['pid'] = os.getpid()
-
-@event.listens_for(Pool, "checkout")
-def invalidate_foreign_connections(dbapi_connection, connection_record, connection_proxy):
-    '''
-    Invalidate connection if its pid doesn't match this process.
-    Guarantees that multiple processes do not share the same connections.
-
-    From this recipe for multiprocessing:
-    http://docs.sqlalchemy.org/en/rel_0_9/core/pooling.html#using-connection-pools-with-multiprocessing
-    '''
-    pid = os.getpid()
-    if connection_record.info['pid'] != pid:
-        connection_record.connection = connection_proxy.connection = None
-        raise exc.DisconnectionError(
-                "Connection record belongs to pid %s, "
-                "attempting to check out in pid %s" %
-                (connection_record.info['pid'], pid)
-        )
-
 class MySQLModel(BundleModel):
     def __init__(self, engine_url):
         if not engine_url.startswith('mysql://'):
             raise UsageError('Engine URL should start with %s' % engine_url)
         engine = create_engine(engine_url, strategy='threadlocal', pool_recycle=3600)
-        event.listen(engine, 'checkout', ping_connection)
         super(MySQLModel, self).__init__(engine)
 
     def do_multirow_insert(self, connection, table, values):
