@@ -8,7 +8,7 @@ and you should run this command in an unimportant CodaLab account.
 
 For full coverage of testing, be sure to run this over a remote connection (i.e. while
 connected to localhost::) in addition to local testing, in order to test the full RPC
-pipeline.
+pipeline, and also as a non-root user, to hammer out unanticipated permission issues.
 
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
