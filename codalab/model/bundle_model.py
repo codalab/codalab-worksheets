@@ -1203,16 +1203,23 @@ class BundleModel(object):
     def batch_get_group_permissions(self, table, user_id, object_uuids):
         '''
         Return map from object_uuid to list of {group_uuid: ..., group_name: ..., permission: ...}
-        Note: if user_id != None, only involve groups that user_id is in.
+        Note: if user_id != None, only involve groups that user_id is in. If user_id is None (i.e.
+        user is not logged in), involve only the public group.
         '''
         with self.engine.begin() as connection:
-            if user_id != None and user_id != self.root_user_id:
+            if user_id is None:
+                # Not logged in: include only public group
+                group_restrict = (table.c.group_uuid == self.public_group_uuid)
+            elif user_id != self.root_user_id:
+                # Logged in but not root: include only public group and groups that user_id is in
                 group_restrict = or_(
-                    table.c.group_uuid == self.public_group_uuid,  # Public group
-                    table.c.group_uuid.in_(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)) # Private group
+                    table.c.group_uuid == self.public_group_uuid,
+                    table.c.group_uuid.in_(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id))
                 )
             else:
+                # Logged in as root: include all groups
                 group_restrict = true()
+
             rows = connection.execute(select([table, cl_group.c.name])
                 .where(table.c.group_uuid == cl_group.c.uuid)
                 .where(group_restrict)
