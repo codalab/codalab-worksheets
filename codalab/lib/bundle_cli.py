@@ -90,7 +90,7 @@ class BundleCLI(object):
       # Commands that can only be executed on a LocalBundleClient.
       'help': 'Show a usage message for cl or for a particular command.',
       'status': 'Show current client status.',
-      'logout': 'Logout of the current worksheet.',
+      'logout': 'Logout of the current session (remote only).',
       'alias': 'Manage CodaLab instance aliases.',
       'work-manager': 'Run the CodaLab bundle work manager.',
       # Internal commands wihch are used for debugging.
@@ -150,6 +150,7 @@ class BundleCLI(object):
         'alias',
         'work-manager',
         'server',
+        'logout',
     )
 
     SHORTCUTS = {
