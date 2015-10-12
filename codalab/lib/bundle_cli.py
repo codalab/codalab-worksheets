@@ -322,6 +322,21 @@ class BundleCLI(object):
         self.hack_formatter(parser)
         return parser
 
+    def get_missing_metadata(self, bundle_subclass, args, initial_metadata=None):
+        '''
+        Return missing metadata for bundles by either returning default metadata values or
+        pop up an editor and request that data from the user.
+        '''
+        if not initial_metadata:
+            initial_metadata = {
+                spec.key: getattr(args, metadata_util.metadata_key_to_argument(spec.key,))
+                for spec in bundle_subclass.get_user_defined_metadata()
+            }
+        if not getattr(args, 'edit', True):
+            return metadata_util.fill_missing_metadata(bundle_subclass, args, initial_metadata)
+        else:
+            return metadata_util.request_missing_metadata(bundle_subclass, initial_metadata)
+
     #############################################################################
     # CLI methods
     #############################################################################
@@ -502,7 +517,7 @@ class BundleCLI(object):
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.base)
             info = client.get_bundle_info(bundle_uuid)
             metadata = info['metadata']
-        metadata = metadata_util.request_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
+        metadata = self.get_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
         # pass in a null owner to validate. Will be set to the correct owner in the client upload_bundle below.
@@ -636,7 +651,7 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
-        metadata = metadata_util.request_missing_metadata(MakeBundle, args)
+        metadata = self.get_missing_metadata(MakeBundle, args)
         print client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
     # After running a bundle, we can wait for it, possibly observing it's output.
@@ -676,7 +691,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
         targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
-        metadata = metadata_util.request_missing_metadata(RunBundle, args)
+        metadata = self.get_missing_metadata(RunBundle, args)
         uuid = client.derive_bundle('run', targets, args.command, metadata, worksheet_uuid)
         print uuid
         self.wait(client, args, uuid)
@@ -705,7 +720,7 @@ class BundleCLI(object):
 
         # Prompt user for all information
         if not is_new_metadata_updated and not self.headless and metadata == new_metadata:
-            new_metadata = metadata_util.request_missing_metadata(bundle_subclass, args, new_metadata)
+            new_metadata = self.get_missing_metadata(bundle_subclass, args, new_metadata)
 
         if metadata != new_metadata:
             client.update_bundle_metadata(bundle_uuid, new_metadata)
