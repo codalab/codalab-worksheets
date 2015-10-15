@@ -154,8 +154,7 @@ class BundleModel(object):
                 and_(cl_bundle_metadata.c.metadata_key == 'name',
                      cl_bundle_metadata.c.bundle_uuid.in_(uuids))
             )).fetchall()
-        connection.close()
-        return dict((row.bundle_uuid, row.metadata_value) for row in rows)
+            return dict((row.bundle_uuid, row.metadata_value) for row in rows)
 
     def get_owner_ids(self, table, uuids):
         '''
@@ -169,8 +168,7 @@ class BundleModel(object):
                 table.c.uuid,
                 table.c.owner_id,
             ]).where(table.c.uuid.in_(uuids))).fetchall()
-        connection.close()
-        return dict((row.uuid, row.owner_id) for row in rows)
+            return dict((row.uuid, row.owner_id) for row in rows)
     def get_bundle_owner_ids(self, uuids):
         return self.get_owner_ids(cl_bundle, uuids)
     def get_worksheet_owner_ids(self, uuids):
@@ -186,7 +184,6 @@ class BundleModel(object):
               cl_bundle_dependency.c.parent_uuid,
               cl_bundle_dependency.c.child_uuid,
             ]).where(cl_bundle_dependency.c.parent_uuid.in_(uuids))).fetchall()
-        connection.close()
         result = dict((uuid, []) for uuid in uuids)
         for row in rows:
             result[row.parent_uuid].append(row.child_uuid)
@@ -203,7 +200,6 @@ class BundleModel(object):
               cl_worksheet_item.c.worksheet_uuid,
               cl_worksheet_item.c.bundle_uuid,
             ]).where(cl_worksheet_item.c.bundle_uuid.in_(bundle_uuids))).fetchall()
-        connection.close()
         result = dict((uuid, []) for uuid in bundle_uuids)
         for row in rows:
             result[row.bundle_uuid].append(row.worksheet_uuid)
@@ -485,7 +481,6 @@ class BundleModel(object):
     def _execute_query(self, query):
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
-        connection.close()
         return [row[0] for row in rows]
 
     def batch_get_bundles(self, **kwargs):
@@ -497,17 +492,15 @@ class BundleModel(object):
             bundle_rows = connection.execute(
               cl_bundle.select().where(clause)
             ).fetchall()
-            if bundle_rows:
-                uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
-                dependency_rows = connection.execute(cl_bundle_dependency.select().where(
-                  cl_bundle_dependency.c.child_uuid.in_(uuids)
-                ).order_by(cl_bundle_dependency.c.id)).fetchall()
-                metadata_rows = connection.execute(cl_bundle_metadata.select().where(
-                  cl_bundle_metadata.c.bundle_uuid.in_(uuids)
-                )).fetchall()
-        connection.close()
-        if not bundle_rows:
-            return []
+            if not bundle_rows:
+                return []
+            uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
+            dependency_rows = connection.execute(cl_bundle_dependency.select().where(
+              cl_bundle_dependency.c.child_uuid.in_(uuids)
+            ).order_by(cl_bundle_dependency.c.id)).fetchall()
+            metadata_rows = connection.execute(cl_bundle_metadata.select().where(
+              cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+            )).fetchall()
 
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
@@ -559,14 +552,12 @@ class BundleModel(object):
                 if success:
                     for bundle in bundles:
                         bundle.update_in_memory(update)
-            connection.close()
-            return success
+                return success
         return True
 
     def add_bundle_action(self, uuid, action):
         with self.engine.begin() as connection:
             connection.execute(cl_bundle_action.insert().values({"bundle_uuid": uuid, "action": action}))
-        connection.close()
 
     def add_bundle_actions(self, bundle_actions):
         with self.engine.begin() as connection:
@@ -576,8 +567,7 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             results = connection.execute(cl_bundle_action.select()).fetchall()  # Get the actions
             connection.execute(cl_bundle_action.delete())  # Delete all actions
-        connection.close()
-        return [x for x in results]
+            return [x for x in results]
 
     def save_bundle(self, bundle):
         '''
@@ -595,7 +585,7 @@ class BundleModel(object):
                 self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
                 bundle.id = result.lastrowid
-            connection.close()
+
 
     def update_bundle(self, bundle, update):
         '''
@@ -633,7 +623,6 @@ class BundleModel(object):
             if metadata_update:
                 connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-        connection.close()
 
     def get_bundle_states(self, uuids):
         '''
@@ -641,9 +630,7 @@ class BundleModel(object):
         '''
         with self.engine.begin() as connection:
             rows = connection.execute(select([cl_bundle.c.uuid, cl_bundle.c.state]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
-            states = dict((r.uuid, r.state) for r in rows)
-        connection.close()
-        return states
+            return dict((r.uuid, r.state) for r in rows)
 
     def delete_bundles(self, uuids):
         '''
@@ -667,12 +654,10 @@ class BundleModel(object):
             connection.execute(cl_bundle.delete().where(
                 cl_bundle.c.uuid.in_(uuids)
             ))
-        connection.close()
 
     def remove_data_hash_references(self, uuids):
         with self.engine.begin() as connection:
             connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
-        connection.close()
 
     #############################################################################
     # Worksheet-related model methods follow!
@@ -705,19 +690,18 @@ class BundleModel(object):
             worksheet_rows = connection.execute(
               cl_worksheet.select().distinct().where(clause)
             ).fetchall()
+            if not worksheet_rows:
+                if base_worksheet_uuid != None:
+                    # We didn't find any results restricting to base_worksheet_uuid,
+                    # so do a global search
+                    return self.batch_get_worksheets(fetch_items, **kwargs)
+                return []
             # Fetch the items of all the worksheets
-            if worksheet_rows and fetch_items:
+            if fetch_items:
                 uuids = set(row.uuid for row in worksheet_rows)
                 item_rows = connection.execute(cl_worksheet_item.select().where(
                   cl_worksheet_item.c.worksheet_uuid.in_(uuids)
                 )).fetchall()
-        connection.close()
-        if not worksheet_rows:
-            if base_worksheet_uuid != None:
-                # We didn't find any results restricting to base_worksheet_uuid,
-                # so do a global search
-                return self.batch_get_worksheets(fetch_items, **kwargs)
-            return []
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         if fetch_items:
@@ -848,9 +832,8 @@ class BundleModel(object):
         #print self._render_query(query)
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
-        connection.close()
-        if not rows:
-            return []
+            if not rows:
+                return []
 
         # Get permissions of the worksheets
         worksheet_uuids = [row.uuid for row in rows]
@@ -878,7 +861,6 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             result = connection.execute(cl_worksheet.insert().values(worksheet_value))
             worksheet.id = result.lastrowid
-        connection.close()
 
     def add_worksheet_item(self, worksheet_uuid, item):
         '''
@@ -898,7 +880,6 @@ class BundleModel(object):
         }
         with self.engine.begin() as connection:
             connection.execute(cl_worksheet_item.insert().values(item_value))
-        connection.close()
 
     def add_shadow_worksheet_items(self, old_bundle_uuid, new_bundle_uuid):
         '''
@@ -926,7 +907,6 @@ class BundleModel(object):
                 connection.execute(cl_worksheet_item.insert().values(new_item))
             # sqlite doesn't support batch insertion
             #connection.execute(cl_worksheet_item.insert().values(new_items))
-        connection.close()
 
     def update_worksheet_items(self, worksheet_uuid, last_item_id, length, new_items):
         '''
@@ -962,11 +942,9 @@ class BundleModel(object):
             result = connection.execute(cl_worksheet_item.delete().where(clause))
             message = 'Found extra items for worksheet %s' % (worksheet_uuid,)
             precondition(result.rowcount <= length, message)
-            if result.rowcount == length:
-                self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
-        connection.close()
-        if result.rowcount < length:
-            raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
+            if result.rowcount < length:
+                raise UsageError('Worksheet %s was updated concurrently!' % (worksheet_uuid,))
+            self.do_multirow_insert(connection, cl_worksheet_item, new_item_values)
 
     def update_worksheet_metadata(self, worksheet, info):
         '''
@@ -985,7 +963,6 @@ class BundleModel(object):
             connection.execute(cl_worksheet.update().where(
               cl_worksheet.c.uuid == worksheet.uuid
             ).values(info))
-        connection.close()
 
     def delete_worksheet(self, worksheet_uuid):
         '''
@@ -1004,7 +981,6 @@ class BundleModel(object):
             connection.execute(cl_worksheet.delete().where(
                 cl_worksheet.c.uuid == worksheet_uuid
             ))
-        connection.close()
 
     #############################################################################
     # Commands related to groups and permissions follow!
@@ -1032,7 +1008,6 @@ class BundleModel(object):
             rows = connection.execute(cl_group.select().where(
                 cl_group.c.owner_id == owner_id
             )).fetchall()
-        connection.close()
         return [str_key_dict(row) for row in sorted(rows, key=lambda row: row.id)]
 
     def create_group(self, group_dict):
@@ -1042,7 +1017,6 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             result = connection.execute(cl_group.insert().values(group_dict))
             group_dict['id'] = result.lastrowid
-        connection.close()
         return group_dict
 
     def batch_get_groups(self, **kwargs):
@@ -1054,9 +1028,8 @@ class BundleModel(object):
             rows = connection.execute(
               cl_group.select().where(clause)
             ).fetchall()
-        connection.close()
-        if not rows:
-            return []
+            if not rows:
+                return []
         values = {row.uuid: str_key_dict(row) for row in rows}
         return [value for value in values.itervalues()]
 
@@ -1103,17 +1076,16 @@ class BundleModel(object):
 
         with self.engine.begin() as connection:
             rows = connection.execute(q0).fetchall()
-        connection.close()
-        if not rows:
-            return []
-        for i, row in enumerate(rows):
-            row = str_key_dict(row)
-            # TODO: remove these conversions once database schema is changed from int to str
-            if isinstance(row['user_id'], int): row['user_id'] = str(row['user_id'])
-            if isinstance(row['owner_id'], int): row['owner_id'] = str(row['owner_id'])
-            rows[i] = row
-        values = {row['uuid']: row for row in rows}
-        return [value for value in values.itervalues()]
+            if not rows:
+                return []
+            for i, row in enumerate(rows):
+                row = str_key_dict(row)
+                # TODO: remove these conversions once database schema is changed from int to str
+                if isinstance(row['user_id'], int): row['user_id'] = str(row['user_id'])
+                if isinstance(row['owner_id'], int): row['owner_id'] = str(row['owner_id'])
+                rows[i] = row
+            values = {row['uuid']: row for row in rows}
+            return [value for value in values.itervalues()]
 
     def delete_group(self, uuid):
         '''
@@ -1132,7 +1104,6 @@ class BundleModel(object):
             connection.execute(cl_group.delete().where(
               cl_group.c.uuid == uuid
             ))
-        connection.close()
 
     def add_user_in_group(self, user_id, group_uuid, is_admin):
         '''
@@ -1142,7 +1113,6 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             result = connection.execute(cl_user_group.insert().values(row))
             row['id'] = result.lastrowid
-        connection.close()
         return row
 
     def delete_user_in_group(self, user_id, group_uuid):
@@ -1154,7 +1124,6 @@ class BundleModel(object):
                 where(cl_user_group.c.user_id == user_id).\
                 where(cl_user_group.c.group_uuid == group_uuid)
             )
-        connection.close()
 
     def update_user_in_group(self, user_id, group_uuid, is_admin):
         '''
@@ -1165,7 +1134,6 @@ class BundleModel(object):
                 where(cl_user_group.c.user_id == user_id).\
                 where(cl_user_group.c.group_uuid == group_uuid).\
                 values({'is_admin': is_admin}))
-        connection.close()
 
     def batch_get_user_in_group(self, **kwargs):
         '''
@@ -1178,9 +1146,8 @@ class BundleModel(object):
             rows = connection.execute(
               cl_user_group.select().where(clause)
             ).fetchall()
-        connection.close()
-        if not rows:
-            return []
+            if not rows:
+                return []
         return [str_key_dict(row) for row in rows]
 
     # Helper function: return list of group uuids that |user_id| is in.
@@ -1198,7 +1165,6 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             result = connection.execute(table.insert().values(row))
             row['id'] = result.lastrowid
-        connection.close()
         return row
     def add_bundle_permission(self, group_uuid, bundle_uuid, permission):
         self.add_permission(cl_group_bundle_permission, group_uuid, bundle_uuid, permission)
@@ -1214,7 +1180,6 @@ class BundleModel(object):
                 where(table.c.group_uuid == group_uuid). \
                 where(table.c.object_uuid == object_uuid)
             )
-        connection.close()
     def delete_bundle_permission(self, group_uuid, bundle_uuid):
         self.delete_permission(cl_group_bundle_permission, group_uuid, bundle_uuid)
     def delete_worksheet_permission(self, group_uuid, worksheet_uuid):
@@ -1230,7 +1195,6 @@ class BundleModel(object):
                 where(table.c.group_uuid == group_uuid). \
                 where(table.c.object_uuid == object_uuid). \
                 values({'permission': permission}))
-        connection.close()
     def update_bundle_permission(self, group_uuid, bundle_uuid, permission):
         self.update_permission(cl_group_bundle_permission, group_uuid, bundle_uuid, permission)
     def update_worksheet_permission(self, group_uuid, worksheet_uuid, permission):
@@ -1257,8 +1221,7 @@ class BundleModel(object):
             result = collections.defaultdict(list)  # object_uuid => list of rows
             for row in rows:
                 result[row.object_uuid].append({'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
-        connection.close()
-        return result
+            return result
     def batch_get_group_bundle_permissions(self, user_id, bundle_uuids):
         return self.batch_get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuids)
     def batch_get_group_worksheet_permissions(self, user_id, worksheet_uuids):
