@@ -60,17 +60,12 @@ def add_edit_argument(parser):
     )
 
 
-def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
+def fill_missing_metadata(bundle_subclass, args, initial_metadata):
     '''
-    For any metadata arguments that were not supplied through the command line,
-    pop up an editor and request that data from the user.
+    Return metadata for bundles by filling in the missing metadata with default values.
+    args: Namespace object created from attributes parsed out of the command line. See
+        `argparse` for more information
     '''
-    if not initial_metadata:
-        initial_metadata = {
-          spec.key: getattr(args, metadata_key_to_argument(spec.key,))
-          for spec in bundle_subclass.get_user_defined_metadata()
-        }
-
     # Fill in default values for all unsupplied metadata keys.
     new_initial_metadata = {}
     for spec in bundle_subclass.get_user_defined_metadata():
@@ -78,13 +73,13 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
         if not new_initial_metadata[spec.key]:
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)
             new_initial_metadata[spec.key] = default
-    initial_metadata = new_initial_metadata
+    return new_initial_metadata
 
-    # If args.edit exists (when doing 'cl edit'), then we want to show
-    # the editor.
-    if not getattr(args, 'edit', True):
-        return initial_metadata
 
+def request_missing_metadata(bundle_subclass, initial_metadata):
+    '''
+    Pop up an editor and request data from the user.
+    '''
     # Construct a form template with the required keys, prefilled with the
     # command-line metadata options.
     template_lines = []
@@ -105,6 +100,7 @@ def request_missing_metadata(bundle_subclass, args, initial_metadata=None):
     # Show the form to the user in their editor of choice and parse the result.
     form_result = editor_util.open_and_edit(suffix='.c', template=template)
     return parse_metadata_form(bundle_subclass, form_result)
+
 
 def parse_metadata_form(bundle_subclass, form_result):
     '''
