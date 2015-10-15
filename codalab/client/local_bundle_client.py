@@ -94,9 +94,9 @@ class LocalBundleClient(BundleClient):
         return result
 
     def get_bundle_uuids(self, worksheet_uuid, bundle_specs):
-        return [self.get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
+        return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
 
-    def get_bundle_uuid(self, worksheet_uuid, bundle_spec):
+    def _get_bundle_uuid(self, worksheet_uuid, bundle_spec):
         if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
             # Shift to new worksheet
             worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
@@ -873,10 +873,6 @@ class LocalBundleClient(BundleClient):
                 # Request information
                 contents = worksheet_util.interpret_genpath_table_contents(self, contents)
                 data = (header, contents)
-            elif mode == 'inline':
-                if not (is_newline and is_last_newline):
-                    if isinstance(data, tuple) or isinstance(data, type):
-                        data = self.interpret_file_genpaths([data])[0]
             elif mode == 'contents':
                 info = self.get_target_info(data, 1)
                 if 'type' not in info:
