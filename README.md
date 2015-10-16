@@ -19,6 +19,8 @@ access to the CodaLab Bundle Service.  The [CodaLab
 website](https://github.com/codalab/codalab) provides a graphical interface to
 the service, as well as supporting competitions.
 
+Try the CLI now online on [CodaLab.org](http://codalab.org/).
+
 ## Documentation
 * [CodaLab Wiki](https://github.com/codalab/codalab/wiki)
 * [CodaLab CLI Tutorial](https://github.com/codalab/codalab/wiki/User_CodaLab%20CLI%20Tutorial)
