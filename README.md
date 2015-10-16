@@ -1,4 +1,4 @@
-# CodaLab Bundle Service [![Build Status](https://travis-ci.org/codalab/codalab-cli.png?branch=master)](https://travis-ci.org/codalab/codalab-cli)
+# CodaLab Bundle Service
 
 The goal of CodaLab is to faciliate transparent, reproducible, and
 collaborative research in computation- and data-intensive areas such as machine
