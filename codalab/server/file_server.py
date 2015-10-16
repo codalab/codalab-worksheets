@@ -84,9 +84,16 @@ class FileServer(AsyncXMLRPCServer):
         for command in RemoteBundleClient.FILE_COMMANDS:
             self.register_function(wrap(command, getattr(self, command)), command)
 
-    def open_file(self, path, mode):
+    def open_file(self, path):
         '''
-        Open a file handle to the given path and return a uuid identifying it.
+        Open a read-only file handle to the given path and return a uuid identifying it.
+        '''
+        return self._open_file(path, 'rb')
+
+    def _open_file(self, path, mode):
+        '''
+        Open a file handleto the given path with the given mode and return a uuid identifying it.
+        Should not be used directly, as opening non-temp files for writing can cause race conditions.
         '''
         if os.path.exists(path):
             file_uuid = uuid.uuid4().hex
@@ -101,7 +108,7 @@ class FileServer(AsyncXMLRPCServer):
         '''
         (fd, path) = tempfile.mkstemp(dir=self.temp)
         os.close(fd)
-        return self.open_file(path, 'wb')
+        return self._open_file(path, 'wb')
 
     def read_file(self, file_uuid, num_bytes=None):
         '''

@@ -127,7 +127,7 @@ class BundleRPCServer(FileServer):
         uuid identifying it.
         '''
         path = self.client.get_target_path(target)
-        return self.open_file(path, 'rb')
+        return self.open_file(path)
 
     def open_target_zip(self, target, follow_symlinks):
         '''
@@ -137,7 +137,7 @@ class BundleRPCServer(FileServer):
         path = self.client.get_target_path(target)
         name = self.client.get_bundle_info(bundle_uuid)['metadata']['name']
         zip_path = zip_util.zip(path, follow_symlinks=follow_symlinks, exclude_patterns=[], file_name=name)  # Create temporary zip file
-        return self.open_file(zip_path, 'rb'), name
+        return self.open_file(zip_path), name
 
     def serve_forever(self):
         print 'BundleRPCServer serving to %s at port %s...' % ('ALL hosts' if self.host == '' else 'host ' + self.host, self.port)
