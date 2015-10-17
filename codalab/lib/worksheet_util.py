@@ -397,6 +397,16 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
             if info == None: break
     return apply_func(post, info)
 
+def format_metadata(metadata):
+    '''
+    Format worksheet item metadata based on field type specified in the schema.
+    '''
+    if metadata:
+        unformatted_fields = [(name, func) for (_, name, func) in get_default_schemas()['default'] if func]
+        for (name, func) in unformatted_fields:
+            if metadata.get(name):
+                metadata[name] = apply_func(func, metadata[name])
+
 def canonicalize_schema_item(args):
     '''
     Users who type in schema items can specify a partial argument list.

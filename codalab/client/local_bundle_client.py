@@ -895,24 +895,6 @@ class LocalBundleClient(BundleClient):
             # Assign the interpreted from the processed data
             item['interpreted'] = data
 
-            # We need to get check if this is a run and we can get the stdout and stderr
-            if 'bundle_info' in item:  # making sure this is a bundle, not markdown or something else
-                for info in item['bundle_info']:
-                    if isinstance(info, dict) and info.get('bundle_type', None) == 'run':
-                        target = (info['uuid'], '')
-                        target_info = self.get_target_info(target, 2)
-                        target_info['stdout'] = None
-                        target_info['stderr'] = None
-                        # If we have stdout or stderr, update it.
-                        contents = target_info.get('contents')
-                        if contents:
-                            for item in contents:
-                                if item['name'] in ['stdout', 'stderr']:
-                                    lines = self.head_target((info['uuid'], item['name']), 100)
-                                    if lines:
-                                        lines = ' '.join(lines)
-                                        info[item['name']] = lines
-
             is_last_newline = is_newline
 
         return interpreted_items
