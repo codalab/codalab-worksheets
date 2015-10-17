@@ -152,7 +152,7 @@ class RemoteBundleClient(BundleClient):
                         else:
                             raise
                     except socket.error, e:
-                        print "Failed to connect to %s: %s. Trying to reconnect in %s seconds..." % (host, e, time_delay)
+                        print >>sys.stderr, "Failed to connect to %s: %s. Trying to reconnect in %s seconds..." % (host, e, time_delay)
                         time.sleep(time_delay)
                         time_delay *= 2
                         if time_delay > 512:
