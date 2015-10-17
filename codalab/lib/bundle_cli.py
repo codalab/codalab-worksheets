@@ -1244,9 +1244,7 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         uuid = client.new_worksheet(args.name, args.uuid)
-        client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(uuid))  # Add new to current
-        worksheet_info = client.get_worksheet_info(uuid, False)
-        print worksheet_info['uuid']
+        print uuid
 
     def do_add_command(self, argv, parser):
         parser.add_argument('bundle_spec', help=self.BUNDLE_SPEC_FORMAT, nargs='*')
