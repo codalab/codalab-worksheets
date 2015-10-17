@@ -52,9 +52,6 @@ class MetadataDefaults(object):
 
     @staticmethod
     def get_default_description(bundle_subclass, args):
-        if bundle_subclass.BUNDLE_TYPE in UPLOADED_TYPES:
-            description = ' '.join(path_util.normalize(path) for path in args.path)
-            return 'Upload %s' % (description,)
         return ''
 
     @staticmethod
