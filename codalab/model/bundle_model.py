@@ -822,6 +822,8 @@ class BundleModel(object):
         cols_to_select = [cl_worksheet.c.id,
                           cl_worksheet.c.uuid,
                           cl_worksheet.c.name,
+                          cl_worksheet.c.title,
+                          cl_worksheet.c.frozen,
                           cl_worksheet.c.owner_id]
         query = select(cols_to_select).distinct().where(clause).offset(offset).limit(limit)
 
