@@ -1,0 +1,4 @@
+PyYAML==3.11
+SQLAlchemy==1.0.8
+alembic==0.8.2
+watchdog==0.8.3

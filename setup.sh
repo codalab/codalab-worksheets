@@ -12,7 +12,8 @@ if ! which virtualenv; then
 fi
 echo
 
-env=`dirname $0`/venv
+codalabdir=`dirname $0`
+env=$codalabdir/venv
 
 if [ ! -e $env ]; then
   echo "=== Setup a Python virtual environment (in $env)..."
@@ -21,7 +22,7 @@ if [ ! -e $env ]; then
 fi
 
 echo "=== Install Python packages into $env..."
-$env/bin/pip install sqlalchemy alembic pyyaml watchdog || exit 1
+$env/bin/pip install -r $codalabdir/requirements.txt || exit 1
 
 ( # try
     $env/bin/pip install psutil || exit 1
