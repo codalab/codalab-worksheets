@@ -852,7 +852,6 @@ class BundleCLI(object):
             worksheet_util.apply_func(self.UUID_POST_FUNC, info['uuid']) : {
                 'type': info_type,
                 'uuid': info['uuid'],
-                # 'name': info['metadata']['name'] or info['name'] or None
                 'name': info.get('metadata', info).get('name', None)
             } for info in info_list
         }
