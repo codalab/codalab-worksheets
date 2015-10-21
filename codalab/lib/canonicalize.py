@@ -64,7 +64,7 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
         if bundle_spec:
             bundle_spec = bundle_spec.replace('.*', '%')  # Convert regular expression syntax to SQL syntax
             if '%' in bundle_spec:
-                bundle_spec_query = LikeQuery(bundle_spec) 
+                bundle_spec_query = LikeQuery(bundle_spec)
             else:
                 bundle_spec_query = bundle_spec
         else:
