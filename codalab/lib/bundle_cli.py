@@ -848,13 +848,11 @@ class BundleCLI(object):
         Return dict of dicts containing name, uuid and type for each bundle/worksheet
         in the info_list. This information is needed to recover URL on the cient side.
         '''
-        if len(info_list) == 0:
-            return {}
         return {
             worksheet_util.apply_func(self.UUID_POST_FUNC, info['uuid']) : {
                 'type': info_type,
                 'uuid': info['uuid'],
-                'name': info['metadata']['name'] if 'metadata' in info else info['name']
+                'name': info.get('metadata', info).get('name', None)
             } for info in info_list
         }
 

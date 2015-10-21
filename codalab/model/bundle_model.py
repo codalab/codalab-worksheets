@@ -456,9 +456,11 @@ class BundleModel(object):
                 clause = true()
             if conditions['worksheet_uuid']:
                 # Select things on the given worksheet
+                # WARNING: Will also include invalid bundle ids that are listed on the worksheet
                 clause = and_(clause, self.make_clause(cl_worksheet_item.c.worksheet_uuid, conditions['worksheet_uuid']))
-                clause = and_(clause, cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid)  # Join
-                query = select([cl_bundle_metadata.c.bundle_uuid, cl_worksheet_item.c.id]).distinct().where(clause)
+                clause = and_(clause, cl_worksheet_item.c.bundle_uuid != None)
+                join = cl_worksheet_item.outerjoin(cl_bundle_metadata, cl_worksheet_item.c.bundle_uuid == cl_bundle_metadata.c.bundle_uuid)
+                query = select([cl_worksheet_item.c.bundle_uuid, cl_worksheet_item.c.id]).select_from(join).distinct().where(clause)
                 query = query.order_by(cl_worksheet_item.c.id.desc()).limit(max_results)
             else:
                 if not conditions['name']:
