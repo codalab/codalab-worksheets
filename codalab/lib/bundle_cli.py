@@ -960,15 +960,7 @@ class BundleCLI(object):
 
         # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
-        for spec in cls.METADATA_SPECS:
-            key = spec.key
-            if not raw:
-                if key not in metadata: continue
-                if metadata[key] == '' or metadata[key] == []: continue
-                value = worksheet_util.apply_func(spec.formatting, metadata.get(key))
-                if isinstance(value, list): value = ' | '.join(value)
-            else:
-                value = metadata.get(key)
+        for key, value in worksheet_util.get_formatted_metadata(cls, metadata, raw):
             lines.append(self.key_value_str(key, value))
 
         # Metadata fields (non-standard)

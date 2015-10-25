@@ -148,6 +148,41 @@ def get_worksheet_lines(worksheet_info):
             raise InternalError('Invalid worksheet item type: %s' % type)
     return lines
 
+def get_formatted_metadata(cls, metadata, raw=False):
+    '''
+    Input:
+        cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
+        metadata: bundle metadata
+        raw: boolean value indicating if the raw value needs to be returned
+    Return a list of tuples containing the key and formatted value of metadata.
+    '''
+    result = []
+    for spec in cls.METADATA_SPECS:
+        key = spec.key
+        if not raw:
+            if key not in metadata: continue
+            if metadata[key] == '' or metadata[key] == []: continue
+            value = apply_func(spec.formatting, metadata.get(key))
+            if isinstance(value, list): value = ' | '.join(value)
+        else:
+            value = metadata.get(key)
+        result.append((key, value))
+    return result
+
+def get_editable_metadata_fields(cls, metadata):
+    '''
+    Input:
+        cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
+        metadata: bundle metadata
+    Return a list of metadata fields that are editable by the owner.
+    '''
+    result = []
+    for spec in cls.METADATA_SPECS:
+        key = spec.key
+        if not spec.generated:
+            result.append(key)
+    return result
+
 def request_lines(worksheet_info, client):
     '''
     Input: worksheet_info, client (which is used to get bundle_infos)
