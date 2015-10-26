@@ -44,7 +44,7 @@ class MySQLModel(BundleModel):
     def __init__(self, engine_url):
         if not engine_url.startswith('mysql://'):
             raise UsageError('Engine URL should start with %s' % engine_url)
-        engine = create_engine(engine_url, strategy='threadlocal', pool_recycle=3600)
+        engine = create_engine(engine_url, strategy='threadlocal', pool_size=20, max_overflow=100, pool_recycle=3600)
         super(MySQLModel, self).__init__(engine)
 
     def do_multirow_insert(self, connection, table, values):
