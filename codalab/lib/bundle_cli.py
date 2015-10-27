@@ -419,7 +419,7 @@ class BundleCLI(object):
         Commands.Argument('-d', '--depth', type=int, default=10, help="number of parents to look back from the old output in search of the old input"),
         Commands.Argument('-s', '--shadow', action='store_true', help="add the newly created bundles right after the old bundles that are being mimicked"),
         Commands.Argument('-i', '--dry-run', help='dry run (just show what will be done without doing it)', action='store_true'),
-        Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+        Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
     ) + WAIT_ARGUMENTS
 
     @staticmethod
@@ -602,7 +602,7 @@ class BundleCLI(object):
             Commands.Argument('-L', '--follow-symlinks', help='always dereference symlinks', action='store_true'),
             Commands.Argument('-x', '--exclude-patterns', help='exclude these file patterns', nargs='*'),
             Commands.Argument('-c', '--contents', help='specify the contents of the bundle'),
-            Commands.Argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='upload to this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ) + Commands.metadata_arguments([UploadedBundle] + [get_bundle_subclass(bundle_type) for bundle_type in UPLOADED_TYPES])
         + EDIT_ARGUMENTS,
     )
@@ -674,7 +674,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT),
             Commands.Argument('-o', '--output-dir', help='Directory to download file.  By default, the bundle or subpath name is used.'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_download_command(self, args):
@@ -707,8 +707,8 @@ class BundleCLI(object):
         help='Copy bundles across instances.',
         arguments=(
             Commands.Argument('-d', '--copy-dependencies', help='Whether to copy dependencies of the bundles.', action='store_true'),
-            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+'),
-            Commands.Argument('worksheet_spec', help='%s (copy to this worksheet)' % WORKSHEET_SPEC_FORMAT),
+            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=WorksheetsCompleter),
+            Commands.Argument('worksheet_spec', help='%s (copy to this worksheet)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_cp_command(self, args):
@@ -790,7 +790,7 @@ class BundleCLI(object):
         help='Create a bundle out of existing bundles.',
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, nargs='+'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ) + Commands.metadata_arguments([MakeBundle]) + EDIT_ARGUMENTS,
     )
     def do_make_command(self, args):
@@ -814,7 +814,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, nargs='*'),
             Commands.Argument('command', metavar='[---] command', help='Command-line'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
@@ -832,9 +832,9 @@ class BundleCLI(object):
         help='Edit an existing bundle\'s metadata.',
         arguments=(
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT),
-            Commands.Argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?'),
-            Commands.Argument('-d', '--description', help='new description', nargs='?'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern),
+            Commands.Argument('-d', '--description', help='new description'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_edit_command(self, args):
@@ -868,7 +868,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+'),
             Commands.Argument('-n', '--index', help='index (1, 2, ...) of the bundle to delete', type=int),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_detach_command(self, args):
@@ -928,7 +928,7 @@ class BundleCLI(object):
             Commands.Argument('-r', '--recursive', action='store_true', help='delete all bundles downstream that depend on this bundle'),
             Commands.Argument('-d', '--data-only', action='store_true', help='keep the bundle metadata, but remove the bundle contents'),
             Commands.Argument('-i', '--dry-run', action='store_true', help='delete all bundles downstream that depend on this bundle'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_rm_command(self, args):
@@ -955,7 +955,7 @@ class BundleCLI(object):
             Commands.Argument('keywords', help='keywords to search for', nargs='+'),
             Commands.Argument('-a', '--append', help='append these bundles to the given worksheet', action='store_true'),
             Commands.Argument('-u', '--uuid-only', help='print only uuids', action='store_true'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_search_command(self, args):
@@ -1010,7 +1010,7 @@ class BundleCLI(object):
         name='ls',
         help='List bundles in a worksheet.',
         arguments=(
-            Commands.Argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % GLOBAL_SPEC_FORMAT, nargs='?', completer=WorksheetsCompleter),
+            Commands.Argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % GLOBAL_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('-u', '--uuid-only', help='only print uuids', action='store_true'),
         ),
     )
@@ -1062,10 +1062,10 @@ class BundleCLI(object):
         help='Show detailed information for a bundle.',
         arguments=(
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+'),
-            Commands.Argument('-f', '--field', help='print out these fields', nargs='?'),
+            Commands.Argument('-f', '--field', help='print out these fields'),
             Commands.Argument('-r', '--raw', action='store_true', help='print out raw information (no rendering)'),
             Commands.Argument('-v', '--verbose', action='store_true', help="print top-level contents of bundle, children bundles, and host worksheets"),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_info_command(self, args):
@@ -1173,7 +1173,7 @@ class BundleCLI(object):
         help='Print the contents of a file/directory in a bundle.',
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_cat_command(self, args):
@@ -1221,7 +1221,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT),
             Commands.Argument('-t', '--tail', action='store_true', help="print out the tail of the file or bundle and block until the bundle is done"),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_wait_command(self, args):
@@ -1367,7 +1367,7 @@ class BundleCLI(object):
         help='Instruct the worker to terminate a running bundle.',
         arguments=(
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_kill_command(self, args):
@@ -1392,7 +1392,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('name', help='name: ' + spec_util.NAME_REGEX.pattern),
             Commands.Argument('-u', '--uuid', help='specify the uuid of worksheet (if really want this)'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_new_command(self, args):
@@ -1405,8 +1405,8 @@ class BundleCLI(object):
         help='Append a bundle to a worksheet.',
         arguments=(
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*'),
-            Commands.Argument('-m', '--message', help='add a text element', nargs='?'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-m', '--message', help='add a text element'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_add_command(self, args):
@@ -1428,7 +1428,7 @@ class BundleCLI(object):
         help='Set the current instance/worksheet.',
         arguments=(
             Commands.Argument('-u', '--uuid-only', help='print worksheet uuid', action='store_true'),
-            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_work_command(self, args):
@@ -1454,12 +1454,12 @@ class BundleCLI(object):
         aliases=('we',),
         help='Edit the contents of a worksheet.',
         arguments=(
-            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?'),
-            Commands.Argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern, nargs='?'),
+            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?', completer=WorksheetsCompleter),
+            Commands.Argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern),
             Commands.Argument('-t', '--title', help='change title'),
-            Commands.Argument('-o', '--owner_spec', help='change owner', nargs='?'),
+            Commands.Argument('-o', '--owner_spec', help='change owner'),
             Commands.Argument('--freeze', help='freeze worksheet', action='store_true'),
-            Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file', nargs='?'),
+            Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file'),
         ),
     )
     def do_wedit_command(self, args):
@@ -1522,7 +1522,7 @@ class BundleCLI(object):
         aliases=('p',),
         help='Print the contents of a worksheet.',
         arguments=(
-            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?', completer=WorksheetsCompleter),
             Commands.Argument('-r', '--raw', action='store_true', help='print out the raw contents'),
         ),
     )
@@ -1582,7 +1582,7 @@ class BundleCLI(object):
         help='List all worksheets.',
         arguments=(
             Commands.Argument('keywords', help='keywords to search for', nargs='*'),
-            Commands.Argument('-a', '--address', help=ADDRESS_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-a', '--address', help=ADDRESS_SPEC_FORMAT),
             Commands.Argument('-u', '--uuid-only', help='only print uuids', action='store_true'),
         ),
     )
@@ -1612,7 +1612,7 @@ class BundleCLI(object):
         help='Append a worksheet to a worksheet.',
         arguments=(
             Commands.Argument('subworksheet_spec', help='worksheets to add (%s)' % WORKSHEET_SPEC_FORMAT, nargs='+'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_wadd_command(self, args):
@@ -1766,7 +1766,7 @@ class BundleCLI(object):
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*'),
             Commands.Argument('group_spec', help=GROUP_SPEC_FORMAT),
             Commands.Argument('permission_spec', help=PERMISSION_SPEC_FORMAT),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_perm_command(self, args):
@@ -1803,7 +1803,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('user_spec', help='username'),
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
+            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_chown_command(self, args):
