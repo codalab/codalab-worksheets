@@ -463,11 +463,11 @@ class BundleCLI(object):
         except SystemExit as e:
             self.exit("Try 'cl help'.")
 
-        # Bind self (BundleCLI instance) to command function
-        command_fn = lambda args: args.function(self, args)
+        # Bind self (BundleCLI instance) and args to command function
+        command_fn = lambda: args.function(self, args)
 
         if self.verbose >= 2:
-            structured_result = command_fn(args)
+            structured_result = command_fn()
         else:
             try:
                 # Profiling (off by default)
@@ -475,14 +475,14 @@ class BundleCLI(object):
                     import hotshot, hotshot.stats
                     prof_path = 'codalab.prof'
                     prof = hotshot.Profile(prof_path)
-                    prof.runcall(command_fn, args)
+                    prof.runcall(command_fn)
                     prof.close()
                     stats = hotshot.stats.load(prof_path)
                     #stats.strip_dirs()
                     stats.sort_stats('time', 'calls')
                     stats.print_stats(20)
                 else:
-                    structured_result = command_fn(args)
+                    structured_result = command_fn()
             except PermissionError, e:
                 if self.headless: raise e
                 self.exit(e.message)
@@ -1010,7 +1010,7 @@ class BundleCLI(object):
         name='ls',
         help='List bundles in a worksheet.',
         arguments=(
-            Commands.Argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % GLOBAL_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % GLOBAL_SPEC_FORMAT, nargs='?', completer=WorksheetsCompleter),
             Commands.Argument('-u', '--uuid-only', help='only print uuids', action='store_true'),
         ),
     )
