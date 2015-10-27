@@ -63,14 +63,10 @@ GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
-
-
-# TODO: make this the arg parser builder class (get instance of argparser from here)
 class Commands(object):
     '''
-    FIXME
-    Static class initialized once at interpretation-time that registers all the
-    functions for building parsers and actions etc.
+    Class initialized once at interpretation-time that registers all the functions
+    for building parsers and actions etc.
     '''
     commands = {}
 
@@ -139,8 +135,6 @@ class Commands(object):
         parser.register('action', 'parsers', cls.AliasedSubParsersAction)
         cls.hack_formatter(parser)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
-
-        # FIXME: REIMPLEMENT SHORTCUTS
 
         # Build subparser for each command
         for command in cls.commands.itervalues():
@@ -429,9 +423,8 @@ class BundleCLI(object):
     ) + WAIT_ARGUMENTS
 
     def do_command(self, argv):
-        # FIXME:
-        # Usually, the last argument is the command, but we use a special notation '---' to allow
-        # us to specify the command across multiple tokens.
+        # In order to allow specifying a command (i.e. for `cl run`) across multiple tokens,
+        # we use a special notation '---' to indicate the start of a single contiguous argument.
         #   key:target ... key:target "command_1 ... command_n"
         #   <==>
         #   key:target ... key:target --- command_1 ... command_n
