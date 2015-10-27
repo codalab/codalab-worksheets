@@ -180,9 +180,9 @@ class Commands(object):
                     kwargs = {
                         'dest': metadata_util.metadata_key_to_argument(spec.key),
                         'metavar': spec.metavar,
-                        'nargs': '*' if spec.type == list else None,
+                        'nargs': '*' if issubclass(spec.type, list) else None,
                         'help': spec.description + help_suffix,
-                        'type': str if issubclass(spec.type, list) else spec.type,
+                        'type': str if issubclass(spec.type, list) or issubclass(spec.type, basestring) else spec.type,
                     }
                     arguments.append(Commands.Argument(*args, **kwargs))
 
@@ -1428,7 +1428,7 @@ class BundleCLI(object):
         help='Set the current instance/worksheet.',
         arguments=(
             Commands.Argument('-u', '--uuid-only', help='print worksheet uuid', action='store_true'),
-            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?', completer=WorksheetsCompleter),
         ),
     )
     def do_work_command(self, args):
