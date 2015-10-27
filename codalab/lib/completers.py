@@ -1,7 +1,7 @@
 '''
 completers.py
 '''
-import itertools
+from codalab.lib import spec_util
 
 class CodaLabCompleter(object):
     def __init__(self, manager):
@@ -12,8 +12,8 @@ class WorksheetsCompleter(CodaLabCompleter):
         client = self.manager.current_client()
         worksheets = client.search_worksheets([prefix])
 
-        return itertools.chain(
-            (w['uuid'] for w in worksheets if w['uuid'].startswith(prefix)),
-            (w['name'] for w in worksheets if w['name'].startswith(prefix)),
-        )
+        if spec_util.UUID_PREFIX_REGEX.match(prefix):
+            return (w['uuid'] for w in worksheets if w['uuid'].startswith(prefix))
+        else:
+            return (w['name'] for w in worksheets if w['name'].startswith(prefix))
 
