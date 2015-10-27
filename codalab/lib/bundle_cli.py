@@ -422,24 +422,42 @@ class BundleCLI(object):
         Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, nargs='?'),
     ) + WAIT_ARGUMENTS
 
-    def do_command(self, argv):
-        # In order to allow specifying a command (i.e. for `cl run`) across multiple tokens,
-        # we use a special notation '---' to indicate the start of a single contiguous argument.
-        #   key:target ... key:target "command_1 ... command_n"
-        #   <==>
-        #   key:target ... key:target --- command_1 ... command_n
+    @staticmethod
+    def collapse_bare_command(argv):
+        '''
+        In order to allow specifying a command (i.e. for `cl run`) across multiple tokens,
+        we use a special notation '---' to indicate the start of a single contiguous argument.
+          key:target ... key:target "command_1 ... command_n"
+          <==>
+          key:target ... key:target --- command_1 ... command_n
+        '''
         try:
             i = argv.index('---')
             argv = argv[0:i] + [' '.join(argv[i+1:])]  # TODO: quote command properly
         except:
             pass
 
+        return argv
+
+    def complete_command(self, command):
+        '''
+        Given a command string, return a list of suggestions to complete the last token.
+        '''
+        parser = Commands.build_parser(self)
+        cf = argcomplete.CompletionFinder(parser)
+
+        cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
+
+        return cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)
+
+    def do_command(self, argv):
         parser = Commands.build_parser(self)
 
         # Call autocompleter (no side effect if os.environ['_ARGCOMPLETE'] is not set)
         argcomplete.autocomplete(parser)
 
         # Parse arguments
+        argv = self.collapse_bare_command(argv)
         try:
             args = parser.parse_args(argv)
         except SystemExit as e:
