@@ -18,6 +18,9 @@ import sys
 import time
 import tempfile
 
+import argcomplete
+from argcomplete.completers import FilesCompleter, EnvironCompleter
+
 from codalab.bundles import (
   get_bundle_subclass,
   UPLOADED_TYPES,
@@ -47,6 +50,43 @@ from codalab.machines.remote_machine import RemoteMachine
 from codalab.machines.local_machine import LocalMachine
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.lib.formatting import contents_str
+from codalab.lib.completers import WorksheetsCompleter
+
+
+class CommandRegistry(object):
+    parser_builders = {}
+    actions = {}
+
+    @classmethod
+    def parser_builder(cls, command_name):
+        '''
+        Return a decorator function that registers the decoratee as the parser
+        builder for the cl command of the given command_name.
+        '''
+        def register_command_parser_builder(build_parser):
+            # Curry the self object
+            # build_parser = lambda p: build_parser(self, p)
+
+            # Register the command parser builder
+            cls.parser_builders[command_name] = build_parser
+
+        return register_command_parser_builder
+
+    @classmethod
+    def action(cls, command_name):
+        '''
+        Return a decorator function that registers the decoratee as the action
+        function for the cl command of the given command_name.
+        '''
+        def register_command_action(do_command):
+            # Curry the self object
+            # do_command = lambda args: do_command(self, args)
+
+            # Register the command parser builder
+            cls.actions[command_name] = do_command
+
+        return register_command_action
+
 
 class BundleCLI(object):
     DESCRIPTIONS = {
@@ -315,11 +355,10 @@ class BundleCLI(object):
             worksheet_uuid = worksheet_util.get_worksheet_uuid(client, base_worksheet_uuid, spec)
         return (client, worksheet_uuid)
 
-    def create_parser(self, command):
-        parser = argparse.ArgumentParser(
-          prog='cl %s' % (command,),
-          description=self.DESCRIPTIONS[command],
-        )
+    def create_parser(self):
+
+
+        parser = argparse.ArgumentParser()
         self.hack_formatter(parser)
         return parser
 
@@ -343,18 +382,28 @@ class BundleCLI(object):
     #############################################################################
 
     def do_command(self, argv):
-        if argv:
-            (command, remaining_args) = (argv[0], argv[1:])
-        else:
-            (command, remaining_args) = ('help', [])
-        command = self.SHORTCUTS.get(command, command)
+        # FIXME: REIMPLEMENT SHORTCUTS
+        parser = self.create_parser()
+        subparsers = parser.add_subparsers()
+
+        # Build subparser for each command
+        for command_name, parser_builder in CommandRegistry.parser_builders.iteritems():
+            command_subparser = subparsers.add_parser(command_name, help="") # add help
+            parser_builder(self, command_subparser)
+
+            # Associate subcommand with its action function
+            command_subparser.set_defaults(func=CommandRegistry.actions[command_name])
+
+        argcomplete.autocomplete(parser)
+        args = parser.parse_args(argv)
+
+        args.func(self, args)
+
+        sys.exit(0)
+
 
         command_fn = getattr(self, 'do_%s_command' % (command.replace('-', '_'),), None)
-        if not command_fn:
-            message = "'%s' is not a CodaLab command. Try 'cl help'." % (command,)
-            if self.headless: raise UsageError(message)
-            self.exit(message)
-        parser = self.create_parser(command)
+
         if self.verbose >= 2:
             structured_result = command_fn(remaining_args, parser)
         else:
@@ -475,6 +524,7 @@ class BundleCLI(object):
             bundle_subclass = get_bundle_subclass(bundle_type)
             metadata_util.add_arguments(bundle_subclass, metadata_keys, parser)
         metadata_util.add_edit_argument(parser)
+
         args = parser.parse_args(argv)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -856,11 +906,13 @@ class BundleCLI(object):
             } for info in info_list
         }
 
-    def do_ls_command(self, argv, parser):
-        parser.add_argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT, nargs='?')
+    @CommandRegistry.parser_builder('ls')
+    def parse_ls_command(self, parser):
+        parser.add_argument('worksheet_spec', help='identifier: %s (default: current worksheet)' % self.GLOBAL_SPEC_FORMAT, nargs='?').completer = WorksheetsCompleter(self.manager)
         parser.add_argument('-u', '--uuid-only', help='only print uuids', action='store_true')
-        args = parser.parse_args(argv)
 
+    @CommandRegistry.action('ls')
+    def do_ls_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True, True)
         bundle_info_list = self.get_worksheet_bundles(worksheet_info)
