@@ -3,10 +3,11 @@ completers.py
 '''
 import itertools
 
-class WorksheetsCompleter(object):
+class CodaLabCompleter(object):
     def __init__(self, manager):
         self.manager = manager
 
+class WorksheetsCompleter(CodaLabCompleter):
     def __call__(self, prefix, **kwargs):
         client = self.manager.current_client()
         worksheets = client.search_worksheets([prefix])
