@@ -71,11 +71,21 @@ class Commands(object):
     commands = {}
 
     class Argument(object):
+        '''
+        Dummy container class to hold the arguments that we will eventually pass into
+        `ArgumentParser.add_argument`.
+        '''
         def __init__(self, *args, **kwargs):
             self.args = args
             self.kwargs = kwargs
 
     class Command(object):
+        '''
+        A Commands.Command object defines a subcommand in the program argument parser.
+        Created by the `Commands.command` function decorator and used internally
+        to store information about the subcommands that will eventually be used to
+        build a parser for the program.
+        '''
         def __init__(self, name, aliases, help, arguments, function):
             self.name = name
             self.aliases = aliases
@@ -117,8 +127,14 @@ class Commands(object):
     @classmethod
     def command(cls, name, aliases=(), help='', arguments=()):
         '''
-        Return a decorator function that registers the decoratee as the parser
-        builder for the cl command of the given command_name.
+        Return a decorator function that registers the decoratee as the action function
+        for the subcommand defined by the arguments passed here.
+
+        `name`      - name of the subcommand
+        `aliases`   - iterable of aliases for the subcommand
+        `help`      - help string for the subcommand
+        `arguments` - iterable of `Commands.Argument` instances defining the arguments
+                      to this subcommand
         '''
         def register_command(function):
             cls.commands[name] = cls.Command(name, aliases, help, arguments, function)
@@ -127,20 +143,29 @@ class Commands(object):
 
     @classmethod
     def get_help(cls, name):
+        '''
+        Returns the help string for the subcommand of the given `name`, or
+        return None if the command doesn't exist or if the command doesn't have
+        a help string.
+        '''
         return getattr(cls.commands.get(name, None), 'help', None)
 
     @classmethod
     def build_parser(cls, cli):
+        '''
+        Builds an `ArgumentParser` for the cl program, with all the subcommands registered
+        through the `Commands.command` decorator.
+        '''
         parser = argparse.ArgumentParser(prog='cl', add_help=False)
         parser.register('action', 'parsers', cls.AliasedSubParsersAction)
         cls.hack_formatter(parser)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
-        # Build subparser for each command
+        # Build subparser for each subcommand
         for command in cls.commands.itervalues():
             subparser = subparsers.add_parser(command.name, help=command.help, description=command.help, aliases=command.aliases, add_help=True)
 
-            # Register arguments for the command
+            # Register arguments for the subcommand
             for argument in command.arguments:
                 completer = argument.kwargs.pop('completer', None)
                 argument = subparser.add_argument(*argument.args, **argument.kwargs)
