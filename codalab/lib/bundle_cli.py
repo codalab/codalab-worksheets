@@ -491,10 +491,7 @@ class BundleCLI(object):
 
         # Parse arguments
         argv = self.collapse_bare_command(argv)
-        try:
-            args = parser.parse_args(argv)
-        except SystemExit as e:
-            self.exit("Try 'cl help'.")
+        args = parser.parse_args(argv)
 
         # Bind self (BundleCLI instance) and args to command function
         command_fn = lambda: args.function(self, args)

@@ -18,11 +18,7 @@ alias xcl='xargs cl'
 # If you are using zsh, you will also need to include the following in your .zshrc:
 #   autoload -U +X compinit && compinit
 #   autoload -U +X bashcompinit && bashcompinit
-#
 codalabdir=$(dirname $0)
-
-# if [ -z ${CODALAB_PATH+x} ]; then
-#     echo "Please set your \$CODALAB_PATH to the path to your clone of the codalab-cli repository before sourcing this codalab-cli/rc file."
 if [ ! -e "$codalabdir/venv/bin/register-python-argcomplete" ]; then
     echo "Could not find register-python-argcomplete script, have you run \$codalabdir/setup.sh yet?"
 else
