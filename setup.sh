@@ -1,6 +1,8 @@
 #!/bin/bash
-
 # Setup script for Linux.
+
+# Exit immediately if any command fails
+set -e
 
 echo "=== Checking for virtualenv..."
 if ! which virtualenv; then
@@ -17,12 +19,12 @@ env=$codalabdir/venv
 
 if [ ! -e $env ]; then
   echo "=== Setup a Python virtual environment (in $env)..."
-  virtualenv -p /usr/bin/python2.7 $env || exit 1
+  virtualenv -p /usr/bin/python2.7 $env
   echo
 fi
 
 echo "=== Install Python packages into $env..."
-$env/bin/pip install -r $codalabdir/requirements.txt || exit 1
+$env/bin/pip install -r $codalabdir/requirements.txt
 
 # Use sckoo@stanford.edu's patched argcomplete, until pull request has been accepted
 # https://github.com/kislyuk/argcomplete/pull/118
