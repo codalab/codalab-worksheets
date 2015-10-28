@@ -1611,7 +1611,7 @@ class BundleCLI(object):
         'wadd',
         help='Append a worksheet to a worksheet.',
         arguments=(
-            Commands.Argument('subworksheet_spec', help='worksheets to add (%s)' % WORKSHEET_SPEC_FORMAT, nargs='+'),
+            Commands.Argument('subworksheet_spec', help='worksheets to add (%s)' % WORKSHEET_SPEC_FORMAT, nargs='+', completer=WorksheetsCompleter),
             Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1784,7 +1784,7 @@ class BundleCLI(object):
         'wperm',
         help='Set a group\'s permissions for a worksheet.',
         arguments=(
-            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT),
+            Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('group_spec', help=GROUP_SPEC_FORMAT),
             Commands.Argument('permission_spec', help=PERMISSION_SPEC_FORMAT),
         ),
