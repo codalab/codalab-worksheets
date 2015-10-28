@@ -26,10 +26,6 @@ fi
 echo "=== Install Python packages into $env..."
 $env/bin/pip install -r $codalabdir/requirements.txt
 
-# Use sckoo@stanford.edu's patched argcomplete, until pull request has been accepted
-# https://github.com/kislyuk/argcomplete/pull/118
-$env/bin/pip install git+https://github.com/kashizui/argcomplete.git@allow-overridden-subparsersaction
-
 ( # try
     $env/bin/pip install psutil || exit 1
 ) || ( # catch
