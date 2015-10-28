@@ -16,49 +16,7 @@ from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
 from codalab.lib import path_util, editor_util
 
-
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
-
-
-def add_arguments(bundle_subclass, metadata_keys, parser):
-    '''
-    Add arguments to a command-line argument parser for all metadata keys
-    needed by the given bundle subclass. Skip keys already in metadata_keys.
-    '''
-    help_suffix = ''
-    if bundle_subclass.BUNDLE_TYPE:
-        help_suffix = ' (for %ss)' % (bundle_subclass.BUNDLE_TYPE,)
-    for spec in bundle_subclass.get_user_defined_metadata():
-        if spec.key not in metadata_keys:
-            metadata_keys.add(spec.key)
-            args = []
-            if spec.short_key:
-                args.append('-%s' % spec.short_key)
-            args.append('--%s' % (spec.key))
-            nargs = None
-            type = spec.type
-            if spec.type == list:
-                nargs = '*'
-                type = str
-            elif spec.type == basestring:
-                type = str
-            kwargs = {
-                'dest': metadata_key_to_argument(spec.key,),
-                'metavar': spec.metavar,
-                'nargs': nargs,
-                'help': spec.description + help_suffix,
-                'type': type,
-            }
-            parser.add_argument(*args, **kwargs)
-
-
-def add_edit_argument(parser):
-    parser.add_argument(
-      '-e', '--edit',
-      action='store_true',
-      help="show an editor to allow changing the metadata information",
-    )
-
 
 def fill_missing_metadata(bundle_subclass, args, initial_metadata):
     '''

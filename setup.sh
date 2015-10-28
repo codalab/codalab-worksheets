@@ -1,6 +1,8 @@
 #!/bin/bash
-
 # Setup script for Linux.
+
+# Exit immediately if any command fails
+set -e
 
 echo "=== Checking for virtualenv..."
 if ! which virtualenv; then
@@ -12,16 +14,17 @@ if ! which virtualenv; then
 fi
 echo
 
-env=`dirname $0`/venv
+codalabdir=`dirname $0`
+env=$codalabdir/venv
 
 if [ ! -e $env ]; then
   echo "=== Setup a Python virtual environment (in $env)..."
-  virtualenv -p /usr/bin/python2.7 $env || exit 1
+  virtualenv -p /usr/bin/python2.7 $env
   echo
 fi
 
 echo "=== Install Python packages into $env..."
-$env/bin/pip install sqlalchemy alembic pyyaml watchdog || exit 1
+$env/bin/pip install -r $codalabdir/requirements.txt
 
 ( # try
     $env/bin/pip install psutil || exit 1

@@ -13,3 +13,14 @@ clwdiff() {
 # Useful for chaining cl commands.
 # Example: cl search .orphan -u | xcl info
 alias xcl='xargs cl'
+
+# Activate autocomplete
+# If you are using zsh, you will also need to include the following in your .zshrc:
+#   autoload -U +X compinit && compinit
+#   autoload -U +X bashcompinit && bashcompinit
+codalabdir=$(dirname $0)
+if [ ! -e "$codalabdir/venv/bin/register-python-argcomplete" ]; then
+    echo "Could not find register-python-argcomplete script, have you run \$codalabdir/setup.sh yet?"
+else
+    eval "$($codalabdir/venv/bin/register-python-argcomplete cl)"
+fi
