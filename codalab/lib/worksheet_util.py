@@ -116,7 +116,7 @@ def get_worksheet_lines(worksheet_info):
     '''
     header = '''
 // Editing worksheet %s(%s).
-// https://github.com/codalab/codalab-cli/worksheet-syntax.md
+// https://github.com/codalab/codalab/wiki/User_Worksheet-Markdown
 //
     '''.strip() % (worksheet_info['name'], worksheet_info['uuid'],)
     lines = header.split('\n')
