@@ -132,7 +132,7 @@ def get_worksheet_lines(worksheet_info):
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
                 #lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
-                description = 'MISSING'
+                description = formatting.contents_str(None)
             else:
                 metadata = bundle_info['metadata']
                 description = bundle_info['bundle_type']
@@ -143,7 +143,7 @@ def get_worksheet_lines(worksheet_info):
                 if command: description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
-            lines.append(worksheet_line('worksheet ' + subworksheet_info.get('name', 'MISSING'), subworksheet_info['uuid']))
+            lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')), subworksheet_info['uuid']))
         else:
             raise InternalError('Invalid worksheet item type: %s' % type)
     return lines
@@ -478,13 +478,13 @@ def apply_func(func, arg):
         # String encoding of a function: size s/a/b
         for f in func.split(FUNC_DELIM):
             if f == 'date':
-                arg = formatting.date_str(float(arg)) if arg != None else ''
+                arg = formatting.date_str(float(arg)) if arg != None else None
             elif f == 'duration':
-                arg = formatting.duration_str(float(arg)) if arg != None else ''
+                arg = formatting.duration_str(float(arg)) if arg != None else None
             elif f == 'size':
-                arg = formatting.size_str(float(arg)) if arg != None else ''
+                arg = formatting.size_str(float(arg)) if arg != None else None
             elif f.startswith('%'):
-                arg = (f % float(arg)) if arg != None else ''
+                arg = (f % float(arg)) if arg != None else None
             elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
                 esc_slash = '_ESC_SLASH_'  # Assume this doesn't occur in s
                 # Preserve escaped characters: \/

@@ -8,9 +8,9 @@ import sys
 def contents_str(input_string):
     '''
     input_string: raw string (may be None)
-    Return 'MISSING' if input_string is None.
+    Return '' if input_string is None.
     '''
-    return input_string if input_string is not None else 'MISSING'
+    return input_string if input_string is not None else ''
 
 def size_str(size):
     '''

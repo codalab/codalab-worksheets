@@ -190,11 +190,11 @@ class BundleCLI(object):
             parser.formatter_class = mock_formatter_class
 
     def simple_bundle_str(self, info):
-        return '%s(%s)' % (info.get('metadata', {}).get('name', 'MISSING'), info['uuid'])
+        return '%s(%s)' % (contents_str(info.get('metadata', {}).get('name')), info['uuid'])
     def simple_worksheet_str(self, info):
-        return '%s(%s)' % (info.get('name', 'MISSING'), info['uuid'])
+        return '%s(%s)' % (contents_str(info.get('name')), info['uuid'])
     def simple_user_str(self, info):
-        return '%s(%s)' % (info.get('name', 'MISSING'), info['id'])
+        return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
     def get_worksheet_bundles(self, worksheet_info):
         '''
@@ -251,7 +251,7 @@ class BundleCLI(object):
                 cell = row_dict.get(col)
                 func = post_funcs.get(col)
                 if func: cell = worksheet_util.apply_func(func, cell)
-                if cell == None: cell = 'MISSING'
+                if cell == None: cell = contents_str(cell)
                 row.append(cell)
             rows.append(row)
 
@@ -972,7 +972,7 @@ class BundleCLI(object):
             lines.append(label + ':')
             for dep in deps:
                 child = dep['child_path']
-                parent = path_util.safe_join((dep['parent_name'] or 'MISSING') + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
+                parent = path_util.safe_join(contents_str(dep['parent_name']) + '(' + dep['parent_uuid'] + ')', dep['parent_path'])
                 lines.append('  %s: %s' % (child, parent))
         if info['dependencies']:
             deps = info['dependencies']
