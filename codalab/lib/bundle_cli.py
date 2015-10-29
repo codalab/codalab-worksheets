@@ -578,7 +578,7 @@ class BundleCLI(object):
     )
     def do_status_command(self, args):
         self._fail_if_headless('status')
-        print "codalab_home: %s" % self.manager.codalab_home()
+        print "codalab_home: %s" % self.manager.codalab_home
         print "session: %s" % self.manager.session_name()
         address = self.manager.session()['address']
         print "address: %s" % address
@@ -1898,7 +1898,7 @@ class BundleCLI(object):
             machine = RemoteMachine(worker_config[args.worker_type])
         else:
             print '\'' + args.worker_type + '\'' + \
-                  ' is not specified in your config file: ' + self.manager.config_path()
+                  ' is not specified in your config file: ' + self.manager.config_path
             print 'Options are ' + str(map(str, worker_config.keys()))
             return
 

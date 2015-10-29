@@ -34,6 +34,7 @@ import sys
 import time
 import psutil
 import tempfile
+from distutils.util import strtobool
 
 from codalab.client import is_local_address
 from codalab.common import UsageError, PermissionError
@@ -49,9 +50,8 @@ def cached(fn):
     return inner
 
 def write_pretty_json(data, path):
-    out = open(path, 'w')
-    print >>out, json.dumps(data, sort_keys=True, indent=4, separators=(',', ': '))
-    out.close()
+    with open(path, 'w') as f:
+        json.dump(data, f, sort_keys=True, indent=4, separators=(',', ': '))
 
 def read_json_or_die(path):
     try:
@@ -62,6 +62,39 @@ def read_json_or_die(path):
         print "Invalid JSON in %s:\n%s" % (path, string)
         print e
         sys.exit(1)
+
+def prompt_bool(prompt, default=None):
+    if default is None:
+        prompt = "%s [yn] " % prompt
+    elif default is True:
+        prompt = "%s [Yn] " % prompt
+    elif default is False:
+        prompt = "%s [yN] " % prompt
+    else:
+        raise ValueError("default must be None, True, or False")
+
+    while True:
+        response = raw_input(prompt).strip()
+        if default is not None and len(response) == 0:
+            return default
+        try:
+            return bool(strtobool(response))
+        except ValueError:
+            print "Please enter y(es) or n(o)."
+            continue
+
+def prompt_str(prompt, default=None):
+    if default is not None:
+        prompt = "%s [default: %s] " % (prompt, default)
+    else:
+        prompt = "%s " % (prompt,)
+
+    while True:
+        response = raw_input(prompt).strip()
+        if len(response) > 0:
+            return response
+        elif default is not None:
+            return default
 
 class CodaLabManager(object):
     '''
@@ -78,25 +111,9 @@ class CodaLabManager(object):
             return
 
         # Read config file, creating if it doesn't exist.
-        config_path = self.config_path()
-        if not os.path.exists(config_path):
-            write_pretty_json({
-                'cli': {'verbose': 1},
-                'server': {'class': 'SQLiteModel', 'host': 'localhost', 'port': 2800,
-                    'auth': {'class': 'MockAuthHandler'}, 'verbose': 1},
-                'aliases': {
-                    'localhost': 'http://localhost:2800',
-                    'main': 'https://codalab.org/bundleservice',
-                },
-                'workers': {
-                    'q': {
-                        'verbose': 1,
-                        #'docker_image': 'codalab/ubuntu:1.7',
-                        'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
-                    }
-                }
-            }, config_path)
-        self.config = read_json_or_die(config_path)
+        if not os.path.exists(self.config_path):
+            self.init_config()
+        self.config = read_json_or_die(self.config_path)
 
         # Substitute environment variables
         codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -119,12 +136,93 @@ class CodaLabManager(object):
 
         self.clients = {}  # map from address => client
 
+    def init_config(self, dry_run=False):
+        '''
+        Initialize configurations.
+        TODO: create nice separate abstraction for building/modifying config
+        '''
+        print r"""
+   ____          _       _            _
+ / ____|___   __| | __ _| |     T T  | |__
+| |    / _ \ / _` |/ _` | |     |o|  | '_ \
+| |___| (_) | (_| | (_| | |___ /__o\ | |_) |
+ \_____\___/ \__,_|\__,_|_____/_____\|_.__/
+
+Welcome to the CodaLab CLI!
+
+Your CodaLab data will be stored in: {0.codalab_home}
+
+Initializing your configurations at: {0.config_path}
+
+""".format(self)
+        config = {
+            'cli': {
+                'verbose': 1,
+            },
+            'server': {
+                'host': 'localhost',
+                'port': 2800,
+                'auth': {
+                    'class': 'MockAuthHandler'
+                },
+                'verbose': 1,
+            },
+            'aliases': {},
+            'workers': {
+                'q': {
+                    'verbose': 1,
+                    #'docker_image': 'codalab/ubuntu:1.7',
+                    'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
+                }
+            }
+        }
+
+        if prompt_bool("Would you like to connect to codalab.org by default?", default=True):
+            config['cli']['default_address'] = 'https://codalab.org/bundleservice'
+            print "Set 'https://codalab.org/bundleservice' as the default bundle service."
+        else:
+            config['cli']['default_address'] = 'local'
+            print "Using local bundle service as default."
+
+            print r"""
+The local bundle service can use either MySQL or SQLite as the backing store
+for the bundle metadata. Note that some actions are not guaranteed to work as
+expected on SQLite, so it is recommended that you use MySQL if possible.
+"""
+            if prompt_bool("Would you like to connect to a MySQL server?", default=True):
+                config['server']['class'] = 'MySQLModel'
+                config['server']['engine_url'] = "mysql://{username}:{password}@{host}/{database}".format(**{
+                    'host': prompt_str("Host:"),
+                    'database': prompt_str("Database:", default='codalab_bundles'),
+                    'username': prompt_str("Username:"),
+                    'password': getpass.getpass(),
+                })
+            else:
+                config['server']['class'] = 'SQLiteModel'
+                sqlite_db_path = os.path.join(self.codalab_home, 'bundle.db')
+                config['server']['engine_url'] = "sqlite:///{}".format(sqlite_db_path)
+                print "Using SQLite database at: {}".format(sqlite_db_path)
+
+            print r"""
+The local bundle service by default executes run bundles directly on your machine.
+As you can imagine, this is kind of dangerous. Please follow these instructions
+online to set up execution with Docker:
+https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Docker
+"""
+
+        if not dry_run:
+            write_pretty_json(config, self.config_path)
+
+        return config
+
+    @property
     @cached
-    def config_path(self): return os.path.join(self.codalab_home(), 'config.json')
+    def config_path(self): return os.path.join(self.codalab_home, 'config.json')
 
     @cached
-    def state_path(self): return os.path.join(self.codalab_home(), 'state.json')
+    def state_path(self): return os.path.join(self.codalab_home, 'state.json')
 
+    @property
     @cached
     def codalab_home(self):
         from codalab.lib import path_util
@@ -141,9 +239,8 @@ class CodaLabManager(object):
 
     @cached
     def bundle_store(self):
-        codalab_home = self.codalab_home()
         direct_upload_paths = self.config['server'].get('direct_upload_paths', [])
-        return BundleStore(codalab_home, direct_upload_paths)
+        return BundleStore(self.codalab_home, direct_upload_paths)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)
@@ -202,9 +299,8 @@ class CodaLabManager(object):
             from codalab.model.mysql_model import MySQLModel
             model = MySQLModel(engine_url=self.config['server']['engine_url'])
         elif model_class == 'SQLiteModel':
-            codalab_home = self.codalab_home()
             from codalab.model.sqlite_model import SQLiteModel
-            model = SQLiteModel(codalab_home)
+            model = SQLiteModel(engine_url=self.config['server']['engine_url'])
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,))
         model.root_user_id = self.root_user_id()
