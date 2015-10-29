@@ -110,7 +110,7 @@ def get_worksheet_info_edit_command(raw_command_map):
     '''
     if not raw_command_map.get('k') or not raw_command_map.get('v') or not raw_command_map.get('action') == 'worksheet-edit':
         return None
-    return 'wedit -' + raw_command_map['k'][0] + ' "' + raw_command_map['v'] + '"'
+    return 'wedit -{k[0]} "{v}"'.format(**raw_command_map)
 
 def convert_item_to_db(item):
     (bundle_info, subworksheet_info, value_obj, type) = item
