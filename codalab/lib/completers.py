@@ -20,7 +20,6 @@ class WorksheetsCompleter(CodaLabCompleter):
     Complete worksheet specs with suggestions pulled from the current client.
     '''
     def __call__(self, prefix, **kwargs):
-        print "pinpon!!!!"
         client = self.cli.manager.current_client()
         worksheets = client.search_worksheets([prefix])
 
