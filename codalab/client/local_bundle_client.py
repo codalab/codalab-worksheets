@@ -131,10 +131,7 @@ class LocalBundleClient(BundleClient):
         if worksheet_spec == '':
             # Default worksheet name: take the username.
             worksheet_spec = spec_util.home_worksheet(self._current_user_name())
-            try:
-                return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
-            except UsageError:
-                return self.new_worksheet(worksheet_spec)
+            return self.new_worksheet(worksheet_spec, True)
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
@@ -679,7 +676,17 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Worksheet with name %s already exists' % name)
 
     @authentication_required
-    def new_worksheet(self, name):
+    def new_worksheet(self, name, ensure_exists):
+        '''
+        Create a new worksheet with the given |name|.
+        '''
+        # If |ensure_exists| = True, then quit if worksheet already exists.
+        if ensure_exists:
+            try:
+                return self.get_worksheet_uuid(None, name)
+            except UsageError:
+                pass
+
         self.ensure_unused_worksheet_name(name)
 
         # Don't need any permissions to do this.
