@@ -15,6 +15,7 @@ import inspect
 import itertools
 import os
 import re
+import shlex
 import sys
 import time
 import tempfile
@@ -487,7 +488,9 @@ class BundleCLI(object):
         parser = Commands.build_parser(self)
         cf = argcomplete.CompletionFinder(parser)
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
-        return [c.strip() for c in cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)]
+        # Strip whitespace and parse according to shell escaping rules
+        clean = lambda s: shlex.split(s.strip())[0] if s else ''
+        return map(clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos))
 
     def do_command(self, argv):
         parser = Commands.build_parser(self)
