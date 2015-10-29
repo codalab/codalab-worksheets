@@ -15,6 +15,7 @@ import inspect
 import itertools
 import os
 import re
+import shlex
 import sys
 import time
 import tempfile
@@ -42,7 +43,8 @@ from codalab.lib import (
   worksheet_util,
   cli_util,
   canonicalize,
-  formatting
+  formatting,
+  ui_actions,
 )
 from codalab.objects.permission import permission_str, group_permissions_str
 from codalab.objects.worksheet import Worksheet
@@ -57,6 +59,8 @@ from codalab.lib.completers import (
   BundlesCompleter,
   AddressesCompleter,
   GroupsCompleter,
+  NullCompleter,
+  require_not_headless,
 )
 
 
@@ -174,8 +178,9 @@ class Commands(object):
 
             # Register arguments for the subcommand
             for argument in command.arguments:
-                completer = argument.kwargs.pop('completer', None)
-                argument = subparser.add_argument(*argument.args, **argument.kwargs)
+                argument_kwargs = argument.kwargs.copy()
+                completer = argument_kwargs.pop('completer', None)
+                argument = subparser.add_argument(*argument.args, **argument_kwargs)
 
                 if completer is not None:
                     # If the completer is subclass of CodaLabCompleter, give it the BundleCLI instance
@@ -184,6 +189,11 @@ class Commands(object):
                         completer = completer(cli)
 
                     argument.completer = completer
+                elif cli.headless:
+                    # If there's no completer, but the CLI is headless, put in a dummy completer to
+                    # prevent argcomplete's fallback onto bash autocomplete (which will display
+                    # the files in the current working directory by default).
+                    argument.completer = NullCompleter
 
             # Associate subcommand with its action function
             subparser.set_defaults(function=command.function)
@@ -231,7 +241,6 @@ class Commands(object):
             def mock_formatter_class(*args, **kwargs):
                 return formatter_class(max_help_position=30, *args, **kwargs)
             parser.formatter_class = mock_formatter_class
-
 
 
 class BundleCLI(object):
@@ -478,10 +487,10 @@ class BundleCLI(object):
         '''
         parser = Commands.build_parser(self)
         cf = argcomplete.CompletionFinder(parser)
-
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
-
-        return cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)
+        # Strip whitespace and parse according to shell escaping rules
+        clean = lambda s: shlex.split(s.strip())[0] if s else ''
+        return map(clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos))
 
     def do_command(self, argv):
         parser = Commands.build_parser(self)
@@ -626,7 +635,7 @@ class BundleCLI(object):
         help='Create a bundle by uploading an existing file/directory.',
         arguments=(
             Commands.Argument('bundle_type', help='bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES))), choices=UPLOADED_TYPES, metavar='bundle_type'),
-            Commands.Argument('path', help='path(s) of the file/directory to upload', nargs='*', completer=FilesCompleter),
+            Commands.Argument('path', help='path(s) of the file/directory to upload', nargs='*', completer=require_not_headless(FilesCompleter)),
             Commands.Argument('-b', '--base', help='Inherit the metadata from this bundle specification.', completer=BundlesCompleter),
             Commands.Argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true'),
             Commands.Argument('-L', '--follow-symlinks', help='always dereference symlinks', action='store_true'),
@@ -637,6 +646,8 @@ class BundleCLI(object):
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
+        if self.headless:
+            return ui_actions.serialize([ui_actions.Upload()])
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
@@ -993,7 +1004,7 @@ class BundleCLI(object):
         bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords)
         if not isinstance(bundle_uuids, list):  # Direct result
             print bundle_uuids
-            return self.create_structured_info_map([('refs', None)])
+            return
 
         # Print out bundles
         bundle_infos = client.get_bundle_infos(bundle_uuids)
@@ -1012,7 +1023,9 @@ class BundleCLI(object):
                 client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
             print 'Added %d bundles to %s' % (len(bundle_uuids), self.worksheet_str(worksheet_info))
-        return self.create_structured_info_map([('refs', reference_map)])
+        return {
+            'refs': reference_map
+        }
 
     def create_structured_info_map(self, structured_info_list):
         '''
@@ -1128,6 +1141,8 @@ class BundleCLI(object):
                     self.print_host_worksheets(info)
                     self.print_permissions(info)
                     self.print_contents(client, info)
+
+        return ui_actions.serialize([ui_actions.OpenBundle(uuid) for uuid in bundle_uuids])
 
     def key_value_str(self, key, value):
         return '%-21s: %s' % (key, value if value != None else '<none>')
@@ -1421,13 +1436,18 @@ class BundleCLI(object):
         help='Create a new worksheet and add it to the current worksheet.',
         arguments=(
             Commands.Argument('name', help='name: ' + spec_util.NAME_REGEX.pattern),
+            Commands.Argument('-p', '--ensure_exists', help='no error if the worksheet already exists', action='store_true'),
             Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_new_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name)
+        uuid = client.new_worksheet(args.name, args.ensure_exists)
         print uuid
+        if self.headless:
+            return ui_actions.serialize([
+                ui_actions.OpenWorksheet(uuid)
+            ])
 
     @Commands.command(
         'add',
@@ -1464,6 +1484,11 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         if args.worksheet_spec:
+            if self.headless:
+                return ui_actions.serialize([
+                    ui_actions.OpenWorksheet(worksheet_uuid)
+                ])
+
             self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
             if args.uuid_only:
                 print worksheet_info['uuid']
@@ -1488,7 +1513,7 @@ class BundleCLI(object):
             Commands.Argument('-t', '--title', help='change title'),
             Commands.Argument('-o', '--owner_spec', help='change owner'),
             Commands.Argument('--freeze', help='freeze worksheet', action='store_true'),
-            Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file', completer=FilesCompleter(directories=False)),
+            Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file', completer=require_not_headless(FilesCompleter(directories=False))),
         ),
     )
     def do_wedit_command(self, args):
@@ -1508,6 +1533,9 @@ class BundleCLI(object):
             client.update_worksheet_metadata(worksheet_uuid, info)
             print 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
         else:
+            if self.headless:
+                return ui_actions.serialize([ui_actions.SetEditMode(True)])
+
             # Update the worksheet items.
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
