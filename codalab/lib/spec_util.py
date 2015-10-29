@@ -62,6 +62,11 @@ def shorten_name(name, n=32):
     return name[0:n/2-1] + '..' + name[len(name)-n/2+1:]
 
 def create_default_name(bundle_type, raw_material):
+    '''
+    Takes a complicated raw_material like the run command and return something simple.
+    Example: 'java HelloWorld -n 3' => 'java'
+    '''
+    raw_material = raw_material.split(' ')[0]
     name = bundle_type + '-' + NOT_NAME_CHAR_REGEX.sub('-', raw_material)
     name = re.compile('\-+').sub('-', name)
     name = shorten_name(name)  # Shorten
@@ -69,3 +74,8 @@ def create_default_name(bundle_type, raw_material):
 
 def client_is_explicit(spec):
     return '::' in spec
+
+def home_worksheet(username):
+    return 'home-' + username
+def is_home_worksheet(name):
+    return name.startswith('home-')

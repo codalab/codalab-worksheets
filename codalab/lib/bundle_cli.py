@@ -1421,13 +1421,12 @@ class BundleCLI(object):
         help='Create a new worksheet and add it to the current worksheet.',
         arguments=(
             Commands.Argument('name', help='name: ' + spec_util.NAME_REGEX.pattern),
-            Commands.Argument('-u', '--uuid', help='specify the uuid of worksheet (if really want this)'),
             Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_new_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name, args.uuid)
+        uuid = client.new_worksheet(args.name)
         print uuid
 
     @Commands.command(
