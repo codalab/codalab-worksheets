@@ -57,6 +57,8 @@ from codalab.lib.completers import (
   BundlesCompleter,
   AddressesCompleter,
   GroupsCompleter,
+  NullCompleter,
+  require_not_headless,
 )
 
 
@@ -174,8 +176,9 @@ class Commands(object):
 
             # Register arguments for the subcommand
             for argument in command.arguments:
-                completer = argument.kwargs.pop('completer', None)
-                argument = subparser.add_argument(*argument.args, **argument.kwargs)
+                argument_kwargs = argument.kwargs.copy()
+                completer = argument_kwargs.pop('completer', None)
+                argument = subparser.add_argument(*argument.args, **argument_kwargs)
 
                 if completer is not None:
                     # If the completer is subclass of CodaLabCompleter, give it the BundleCLI instance
@@ -184,6 +187,11 @@ class Commands(object):
                         completer = completer(cli)
 
                     argument.completer = completer
+                elif cli.headless:
+                    # If there's no completer, but the CLI is headless, put in a dummy completer to
+                    # prevent argcomplete's fallback onto bash autocomplete (which will display
+                    # the files in the current working directory by default).
+                    argument.completer = NullCompleter
 
             # Associate subcommand with its action function
             subparser.set_defaults(function=command.function)
@@ -478,10 +486,8 @@ class BundleCLI(object):
         '''
         parser = Commands.build_parser(self)
         cf = argcomplete.CompletionFinder(parser)
-
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
-
-        return cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)
+        return [c.strip() for c in cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)]
 
     def do_command(self, argv):
         parser = Commands.build_parser(self)
@@ -626,7 +632,7 @@ class BundleCLI(object):
         help='Create a bundle by uploading an existing file/directory.',
         arguments=(
             Commands.Argument('bundle_type', help='bundle_type: [%s]' % ('|'.join(sorted(UPLOADED_TYPES))), choices=UPLOADED_TYPES, metavar='bundle_type'),
-            Commands.Argument('path', help='path(s) of the file/directory to upload', nargs='*', completer=FilesCompleter),
+            Commands.Argument('path', help='path(s) of the file/directory to upload', nargs='*', completer=require_not_headless(FilesCompleter)),
             Commands.Argument('-b', '--base', help='Inherit the metadata from this bundle specification.', completer=BundlesCompleter),
             Commands.Argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true'),
             Commands.Argument('-L', '--follow-symlinks', help='always dereference symlinks', action='store_true'),
@@ -1489,7 +1495,7 @@ class BundleCLI(object):
             Commands.Argument('-t', '--title', help='change title'),
             Commands.Argument('-o', '--owner_spec', help='change owner'),
             Commands.Argument('--freeze', help='freeze worksheet', action='store_true'),
-            Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file', completer=FilesCompleter(directories=False)),
+            Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file', completer=require_not_headless(FilesCompleter(directories=False))),
         ),
     )
     def do_wedit_command(self, args):

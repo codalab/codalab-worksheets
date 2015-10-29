@@ -1,7 +1,10 @@
 '''
 completers.py
 '''
+import inspect
+
 from argcomplete import warn
+from argcomplete.completers import FilesCompleter
 
 from codalab.lib import spec_util, worksheet_util
 
@@ -17,6 +20,7 @@ class WorksheetsCompleter(CodaLabCompleter):
     Complete worksheet specs with suggestions pulled from the current client.
     '''
     def __call__(self, prefix, **kwargs):
+        print "pinpon!!!!"
         client = self.cli.manager.current_client()
         worksheets = client.search_worksheets([prefix])
 
@@ -61,3 +65,24 @@ class GroupsCompleter(CodaLabCompleter):
         else:
             return (g['name'] for g in group_dicts if g['name'].startswith(prefix))
 
+def require_not_headless(completer):
+    '''
+    Given a completer, return a CodaLabCompleter that will only call the
+    given completer if the client is not headless.
+    '''
+    class SafeCompleter(CodaLabCompleter):
+        def __call__(self, *args, **kwargs):
+            if self.cli.headless:
+                return ()
+            elif inspect.isclass(completer):
+                return completer()(*args, **kwargs)
+            else:
+                return completer(*args, **kwargs)
+
+    return SafeCompleter
+
+def NullCompleter(*args, **kwargs):
+    '''
+    Completer that always returns nothing.
+    '''
+    return ()
