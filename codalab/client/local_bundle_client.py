@@ -130,11 +130,11 @@ class LocalBundleClient(BundleClient):
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
         if worksheet_spec == '':
             # Default worksheet name: take the username.
-            worksheet_spec = self._current_user_name()
+            worksheet_spec = spec_util.home_worksheet(self._current_user_name())
             try:
                 return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
             except UsageError:
-                return self.new_worksheet(worksheet_spec, None)
+                return self.new_worksheet(worksheet_spec)
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
@@ -660,6 +660,13 @@ class LocalBundleClient(BundleClient):
         # Ensure worksheet names are unique.  Note: for simplicity, we are
         # ensuring uniqueness across the system, even on worksheet names that
         # the user may not have access to.
+        
+        # If trying to set the name to a home worksheet, then it better be
+        # user's home worksheet.
+        username = self._current_user_name()
+        if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(username) != name:
+            raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
+
         try:
             self.get_worksheet_uuid(None, name)
             exists = True
@@ -672,13 +679,11 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Worksheet with name %s already exists' % name)
 
     @authentication_required
-    def new_worksheet(self, name, uuid):
+    def new_worksheet(self, name):
         self.ensure_unused_worksheet_name(name)
-        if uuid:
-            # Hack: strip off last character so we force a lookup of the uuid
-            self.ensure_unused_worksheet_name(uuid[0:-1])
+
         # Don't need any permissions to do this.
-        worksheet = Worksheet({'name': name, 'uuid': uuid, 'title': None, 'frozen': None, 'items': [], 'owner_id': self._current_user_id()})
+        worksheet = Worksheet({'name': name, 'title': None, 'frozen': None, 'items': [], 'owner_id': self._current_user_id()})
         self.model.new_worksheet(worksheet)
 
         # Make worksheet publicly readable by default
