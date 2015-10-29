@@ -43,7 +43,8 @@ from codalab.lib import (
   worksheet_util,
   cli_util,
   canonicalize,
-  formatting
+  formatting,
+  ui_actions,
 )
 from codalab.objects.permission import permission_str, group_permissions_str
 from codalab.objects.worksheet import Worksheet
@@ -240,7 +241,6 @@ class Commands(object):
             def mock_formatter_class(*args, **kwargs):
                 return formatter_class(max_help_position=30, *args, **kwargs)
             parser.formatter_class = mock_formatter_class
-
 
 
 class BundleCLI(object):
@@ -646,6 +646,8 @@ class BundleCLI(object):
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
+        if self.headless:
+            return ui_actions.serialize([ui_actions.Upload()])
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
@@ -1002,7 +1004,7 @@ class BundleCLI(object):
         bundle_uuids = client.search_bundle_uuids(worksheet_uuid, args.keywords)
         if not isinstance(bundle_uuids, list):  # Direct result
             print bundle_uuids
-            return self.create_structured_info_map([('refs', None)])
+            return
 
         # Print out bundles
         bundle_infos = client.get_bundle_infos(bundle_uuids)
@@ -1021,7 +1023,9 @@ class BundleCLI(object):
                 client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
             print 'Added %d bundles to %s' % (len(bundle_uuids), self.worksheet_str(worksheet_info))
-        return self.create_structured_info_map([('refs', reference_map)])
+        return {
+            'refs': reference_map
+        }
 
     def create_structured_info_map(self, structured_info_list):
         '''
@@ -1137,6 +1141,8 @@ class BundleCLI(object):
                     self.print_host_worksheets(info)
                     self.print_permissions(info)
                     self.print_contents(client, info)
+
+        return ui_actions.serialize([ui_actions.OpenBundle(uuid) for uuid in bundle_uuids])
 
     def key_value_str(self, key, value):
         return '%-21s: %s' % (key, value if value != None else '<none>')
@@ -1438,6 +1444,10 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         uuid = client.new_worksheet(args.name, args.uuid)
         print uuid
+        if self.headless:
+            return ui_actions.serialize([
+                ui_actions.OpenWorksheet(uuid)
+            ])
 
     @Commands.command(
         'add',
@@ -1474,6 +1484,11 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         if args.worksheet_spec:
+            if self.headless:
+                return ui_actions.serialize([
+                    ui_actions.OpenWorksheet(worksheet_uuid)
+                ])
+
             self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
             if args.uuid_only:
                 print worksheet_info['uuid']
@@ -1518,6 +1533,9 @@ class BundleCLI(object):
             client.update_worksheet_metadata(worksheet_uuid, info)
             print 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
         else:
+            if self.headless:
+                return ui_actions.serialize([ui_actions.SetEditMode(True)])
+
             # Update the worksheet items.
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
