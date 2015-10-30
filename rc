@@ -18,9 +18,15 @@ alias xcl='xargs cl'
 # If you are using zsh, you will also need to include the following in your .zshrc:
 #   autoload -U +X compinit && compinit
 #   autoload -U +X bashcompinit && bashcompinit
-codalabdir=$PWD
+if [[ -z "${BASH_SOURCE[0]}" ]]; then
+    # Assume zsh
+    codalabdir=$(dirname $0)
+else
+    # Assume bash
+    codalabdir=$(dirname ${BASH_SOURCE[0]})
+fi
 if [ ! -e "$codalabdir/venv/bin/register-python-argcomplete" ]; then
-    echo "Could not find register-python-argcomplete script, have you run \$codalabdir/setup.sh yet?"
+    echo "Could not find register-python-argcomplete script, have you run $codalabdir/setup.sh yet?"
 else
     eval "$($codalabdir/venv/bin/register-python-argcomplete cl)"
 fi
