@@ -9,11 +9,7 @@ from codalab.model.bundle_model import BundleModel
 
 
 class SQLiteModel(BundleModel):
-    SQLITE_DB_FILE_NAME = 'bundle.db'
-
-    def __init__(self, home):
-        sqlite_db_path = os.path.join(home, self.SQLITE_DB_FILE_NAME)
-        engine_url = 'sqlite:///%s' % (sqlite_db_path,)
+    def __init__(self, engine_url):
         engine = create_engine(engine_url, strategy='threadlocal')
         super(SQLiteModel, self).__init__(engine)
 
