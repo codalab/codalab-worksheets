@@ -300,7 +300,10 @@ https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Doc
             model = MySQLModel(engine_url=self.config['server']['engine_url'])
         elif model_class == 'SQLiteModel':
             from codalab.model.sqlite_model import SQLiteModel
-            model = SQLiteModel(engine_url=self.config['server']['engine_url'])
+            # Patch for backwards-compatibility until we have a cleaner abstraction around config
+            # that can update configs to newer "versions"
+            engine_url = self.config['server'].get('engine_url', "sqlite:///{}".format(os.path.join(self.codalab_home, 'bundle.db')))
+            model = SQLiteModel(engine_url=engine_url)
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,))
         model.root_user_id = self.root_user_id()
