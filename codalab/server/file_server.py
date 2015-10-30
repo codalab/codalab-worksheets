@@ -58,9 +58,9 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
         SimpleXMLRPCRequestHandler.send_response(self, code, message)
 
 # Turn on multi-threading
-import SocketServer
-class AsyncXMLRPCServer(SocketServer.ThreadingMixIn,SimpleXMLRPCServer): pass
-class FileServer(AsyncXMLRPCServer):
+# import SocketServer
+# class AsyncXMLRPCServer(SocketServer.ThreadingMixIn,): pass
+class FileServer(SimpleXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
 
     def __init__(self, address, temp, auth_handler):
