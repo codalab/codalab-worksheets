@@ -1069,9 +1069,10 @@ class BundleCLI(object):
         return self.create_structured_info_map([('refs', reference_map)])
 
     def _worksheet_description(self, worksheet_info):
-        return '### Worksheet: %s\n### Title: %s\n### Owner: %s(%s)\n### Permissions: %s%s' % \
+        return '### Worksheet: %s\n### Title: %s\n### Tags: %s\n### Owner: %s(%s)\n### Permissions: %s%s' % \
             (self.worksheet_str(worksheet_info),
             worksheet_info['title'],
+            '-' if len(worksheet_info['tags']) == 0 else ' '.join(worksheet_info['tags']),
             worksheet_info['owner_name'], worksheet_info['owner_id'], \
             group_permissions_str(worksheet_info['group_permissions']),
             ' [frozen]' if worksheet_info['frozen'] else '')
@@ -1511,6 +1512,7 @@ class BundleCLI(object):
             Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?', completer=WorksheetsCompleter),
             Commands.Argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern),
             Commands.Argument('-t', '--title', help='change title'),
+            Commands.Argument('-T', '--tags', help='change tags', nargs='*'),
             Commands.Argument('-o', '--owner_spec', help='change owner'),
             Commands.Argument('--freeze', help='freeze worksheet', action='store_true'),
             Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file', completer=require_not_headless(FilesCompleter(directories=False))),
@@ -1519,14 +1521,16 @@ class BundleCLI(object):
     def do_wedit_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
-        if args.name or args.title or args.owner_spec or args.freeze:
+        if args.name != None or args.title != None or args.tags != None or args.owner_spec != None or args.freeze:
             # Update the worksheet metadata.
             info = {}
-            if args.name:
+            if args.name != None:
                 info['name'] = args.name
-            if args.title:
+            if args.title != None:
                 info['title'] = args.title
-            if args.owner_spec:
+            if args.tags != None:
+                info['tags'] = args.tags
+            if args.owner_spec != None:
                 info['owner_spec'] = args.owner_spec
             if args.freeze:
                 info['freeze'] = True
@@ -1636,6 +1640,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'wls',
+        aliases=('wsearch', 'ws'),
         help='List all worksheets.',
         arguments=(
             Commands.Argument('keywords', help='keywords to search for', nargs='*'),
