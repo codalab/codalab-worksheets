@@ -333,13 +333,13 @@ def test(ctx):
     ctx.collect_worksheet(wuuid)
     # Add tags
     run_command([cl, 'wedit', wname, '--tags', 'foo', 'bar', 'baz'])
-    check_contains(['Tags: foo bar baz'], run_command([cl, 'ls', wuuid]))
+    check_contains(['Tags: \\[\'foo\', \'bar\', \'baz\'\\]'], run_command([cl, 'ls', wuuid]))
     # Modify tags
     run_command([cl, 'wedit', wname, '--tags', 'bar', 'foo'])
-    check_contains(['Tags: bar foo'], run_command([cl, 'ls', wuuid]))
+    check_contains(['Tags: \\[\'bar\', \'foo\'\\]'], run_command([cl, 'ls', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
-    check_contains(['Tags: -'], run_command([cl, 'ls', wuuid]))
+    check_contains(['Tags: \\[\\]'], run_command([cl, 'ls', wuuid]))
 
 @TestModule.register('freeze')
 def test(ctx):
