@@ -8,9 +8,16 @@ import sys
 def contents_str(input_string):
     '''
     input_string: raw string (may be None)
-    Return '' if input_string is None.
+    Return a friendly string (if input_string is None, replace with '' for now).
     '''
     return input_string if input_string is not None else ''
+
+def verbose_contents_str(input_string):
+    '''
+    input_string: raw string (may be None)
+    Return a friendly string (which is more verbose than contents_str).
+    '''
+    return input_string if input_string is not None else '<none>'
 
 def size_str(size):
     '''

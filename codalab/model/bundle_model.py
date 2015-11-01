@@ -44,6 +44,7 @@ from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_NONE,
     user_group as cl_user_group,
     worksheet as cl_worksheet,
+    worksheet_tag as cl_worksheet_tag,
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     db_metadata,
@@ -698,14 +699,25 @@ class BundleModel(object):
                     # so do a global search
                     return self.batch_get_worksheets(fetch_items, **kwargs)
                 return []
+            # Get the tags
+            uuids = set(row.uuid for row in worksheet_rows)
+            tag_rows = connection.execute(cl_worksheet_tag.select().where(
+              cl_worksheet_tag.c.worksheet_uuid.in_(uuids)
+            )).fetchall()
             # Fetch the items of all the worksheets
             if fetch_items:
-                uuids = set(row.uuid for row in worksheet_rows)
                 item_rows = connection.execute(cl_worksheet_item.select().where(
                   cl_worksheet_item.c.worksheet_uuid.in_(uuids)
                 )).fetchall()
+
+
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
+        # Set tags
+        for value in worksheet_values.itervalues():
+            value['tags'] = []
+        for row in tag_rows:
+            worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
         if fetch_items:
             for value in worksheet_values.itervalues():
                 value['items'] = []
@@ -791,6 +803,12 @@ class BundleModel(object):
                     clause = cl_worksheet_item.c.worksheet_uuid == cl_worksheet.c.uuid  # Join constraint
                 else:
                     clause = cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_item.c.worksheet_uuid]).where(condition)))
+            elif key == 'tag':  # has tag?
+                condition = make_condition(cl_worksheet_tag.c.tag, value)
+                if condition is None:  # top-level
+                    clause = cl_worksheet_tag.c.worksheet_uuid == cl_worksheet.c.uuid  # Join constraint
+                else:
+                    clause = cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_tag.c.worksheet_uuid]).where(condition)))
             elif key == 'uuid_name': # Search uuid and name by default
                 clause = or_(
                     cl_worksheet.c.uuid.like('%' + value + '%'),
@@ -860,6 +878,7 @@ class BundleModel(object):
         precondition(not worksheet.items, message)
         worksheet.validate()
         worksheet_value = worksheet.to_dict()
+        worksheet_value.pop('tags')
         worksheet_value.pop('items')
         worksheet_value.pop('last_item_id')
         with self.engine.begin() as connection:
@@ -964,9 +983,17 @@ class BundleModel(object):
             worksheet.owner_id = info['owner_id']
         worksheet.validate()
         with self.engine.begin() as connection:
-            connection.execute(cl_worksheet.update().where(
-              cl_worksheet.c.uuid == worksheet.uuid
-            ).values(info))
+            if 'tags' in info:
+                # Delete old tags
+                result = connection.execute(cl_worksheet_tag.delete().where(cl_worksheet_tag.c.worksheet_uuid == worksheet.uuid))
+                # Add new tags
+                new_tag_values = [{'worksheet_uuid': worksheet.uuid, 'tag': tag} for tag in info['tags']]
+                self.do_multirow_insert(connection, cl_worksheet_tag, new_tag_values)
+                del info['tags']
+            if len(info) > 0:
+                connection.execute(cl_worksheet.update().where(
+                    cl_worksheet.c.uuid == worksheet.uuid
+                ).values(info))
 
     def delete_worksheet(self, worksheet_uuid):
         '''
@@ -981,6 +1008,9 @@ class BundleModel(object):
             ))
             connection.execute(cl_worksheet_item.delete().where(
                 cl_worksheet_item.c.subworksheet_uuid == worksheet_uuid
+            ))
+            connection.execute(cl_worksheet_tag.delete().where(
+                cl_worksheet_tag.c.worksheet_uuid == worksheet_uuid
             ))
             connection.execute(cl_worksheet.delete().where(
                 cl_worksheet.c.uuid == worksheet_uuid

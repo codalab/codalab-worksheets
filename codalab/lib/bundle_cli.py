@@ -1069,12 +1069,15 @@ class BundleCLI(object):
         return self.create_structured_info_map([('refs', reference_map)])
 
     def _worksheet_description(self, worksheet_info):
-        return '### Worksheet: %s\n### Title: %s\n### Owner: %s(%s)\n### Permissions: %s%s' % \
-            (self.worksheet_str(worksheet_info),
-            worksheet_info['title'],
-            worksheet_info['owner_name'], worksheet_info['owner_id'], \
-            group_permissions_str(worksheet_info['group_permissions']),
-            ' [frozen]' if worksheet_info['frozen'] else '')
+        fields = [
+            ('Worksheet', self.worksheet_str(worksheet_info)),
+            ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
+            ('Tags', worksheet_info['tags']),
+            ('Owner', '%s(%s)' % (worksheet_info['owner_name'], worksheet_info['owner_id'])),
+            ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions']),
+                                      ' [frozen]' if worksheet_info['frozen'] else ''))
+        ]
+        return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
     def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
         '''
@@ -1145,7 +1148,7 @@ class BundleCLI(object):
         return ui_actions.serialize([ui_actions.OpenBundle(uuid) for uuid in bundle_uuids])
 
     def key_value_str(self, key, value):
-        return '%-21s: %s' % (key, value if value != None else '<none>')
+        return '%-21s: %s' % (key, formatting.verbose_contents_str(value))
 
     def print_basic_info(self, client, info, raw):
         '''
@@ -1236,7 +1239,7 @@ class BundleCLI(object):
             if fail_if_not_exist:
                 raise UsageError('Target doesn\'t exist: %s/%s' % target)
             else:
-                print "MISSING"
+                print formatting.verbose_contents_str(None)
         if info_type == 'file':
             if decorate:
                 import base64
@@ -1511,6 +1514,7 @@ class BundleCLI(object):
             Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?', completer=WorksheetsCompleter),
             Commands.Argument('-n', '--name', help='new name: ' + spec_util.NAME_REGEX.pattern),
             Commands.Argument('-t', '--title', help='change title'),
+            Commands.Argument('-T', '--tags', help='change tags (must appear after worksheet_spec)', nargs='*'),
             Commands.Argument('-o', '--owner_spec', help='change owner'),
             Commands.Argument('--freeze', help='freeze worksheet', action='store_true'),
             Commands.Argument('-f', '--file', help='overwrite the given worksheet with this file', completer=require_not_headless(FilesCompleter(directories=False))),
@@ -1519,17 +1523,20 @@ class BundleCLI(object):
     def do_wedit_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
-        if args.name or args.title or args.owner_spec or args.freeze:
+        if args.name != None or args.title != None or args.tags != None or args.owner_spec != None or args.freeze:
             # Update the worksheet metadata.
             info = {}
-            if args.name:
+            if args.name != None:
                 info['name'] = args.name
-            if args.title:
+            if args.title != None:
                 info['title'] = args.title
-            if args.owner_spec:
+            if args.tags != None:
+                info['tags'] = args.tags
+            if args.owner_spec != None:
                 info['owner_spec'] = args.owner_spec
             if args.freeze:
                 info['freeze'] = True
+            print args.tags, worksheet_uuid
             client.update_worksheet_metadata(worksheet_uuid, info)
             print 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
         else:
@@ -1636,6 +1643,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'wls',
+        aliases=('wsearch', 'ws'),
         help='List all worksheets.',
         arguments=(
             Commands.Argument('keywords', help='keywords to search for', nargs='*'),

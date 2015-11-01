@@ -115,6 +115,18 @@ worksheet_item = Table(
   sqlite_autoincrement=True,
 )
 
+# Worksheet tags
+worksheet_tag = Table(
+  'worksheet_tag',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('worksheet_uuid', String(63), ForeignKey(worksheet.c.uuid), nullable=False),
+  Column('tag', String(63), nullable=False),
+  Index('worksheet_tag_worksheet_uuid_index', 'worksheet_uuid'),
+  Index('worksheet_tag_tag_index', 'tag'),
+  sqlite_autoincrement=True,
+)
+
 group = Table(
   'group',
   db_metadata,

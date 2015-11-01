@@ -326,6 +326,21 @@ def test(ctx):
     # cleanup
     run_command([cl, 'rm', uuid])
 
+@TestModule.register('worksheet_tags')
+def test(ctx):
+    wname = random_name()
+    wuuid = run_command([cl, 'new', wname])
+    ctx.collect_worksheet(wuuid)
+    # Add tags
+    run_command([cl, 'wedit', wname, '--tags', 'foo', 'bar', 'baz'])
+    check_contains(['Tags: \\[\'foo\', \'bar\', \'baz\'\\]'], run_command([cl, 'ls', wuuid]))
+    # Modify tags
+    run_command([cl, 'wedit', wname, '--tags', 'bar', 'foo'])
+    check_contains(['Tags: \\[\'bar\', \'foo\'\\]'], run_command([cl, 'ls', wuuid]))
+    # Delete tags
+    run_command([cl, 'wedit', wname, '--tags'])
+    check_contains(['Tags: \\[\\]'], run_command([cl, 'ls', wuuid]))
+
 @TestModule.register('freeze')
 def test(ctx):
     orig_wuuid = run_command([cl, 'work', '-u'])

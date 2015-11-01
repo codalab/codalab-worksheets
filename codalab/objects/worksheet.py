@@ -40,6 +40,7 @@ class Worksheet(ORMObject):
 
     def update_in_memory(self, row, strict=False):
         items = row.pop('items', None)
+        self.tags = row.pop('tags', None)
         if not row.get('uuid'):
             row['uuid'] = spec_util.generate_uuid()
         super(Worksheet, self).update_in_memory(row)
@@ -52,6 +53,7 @@ class Worksheet(ORMObject):
 
     def to_dict(self):
         result = super(Worksheet, self).to_dict()
+        result['tags'] = self.tags
         result['items'] = self.items
         result['last_item_id'] = self.last_item_id
         return result
