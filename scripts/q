@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-$version = 75
+$version = 76
 
 <<EOF
 A simple workqueue system for distributed jobs over many machines.
@@ -1137,12 +1137,28 @@ class Worker
     runJobsLoop
   end
 
+  def makeCallMultiple(*args)
+    waitTime = 1
+    while true
+      begin
+        return makeCall(*args)
+      rescue Exception => e
+        puts "NASTY ERROR on #{args[0]}: #{e}"
+        #puts "#{e.message}\n#{e.backtrace.join("\n")}" if $verbose >= 2
+        puts "Waiting for #{waitTime} seconds..."
+        sleep waitTime
+        waitTime *= 2
+        #@server = connectToMaster
+      end
+    end
+  end
+
   def makeCall(*args)
     ensureNoNulls(args)
-    puts "call: #{args[0]}" if $verbose >= 2
+    puts "call #{args[0]} request: #{args.inspect}" if $verbose >= 2
     response = nil
     @mutex.synchronize { response = @server.call(*args) }
-    puts response['message'] if response['message'] && $verbose >= 2 && $verbose >= 2
+    puts "call #{args[0]} response: #{response['message']}" if response['message'] && $verbose >= 2 && $verbose >= 2
     response
   end
 
@@ -1311,7 +1327,7 @@ class Worker
     map['outPathContents'], newSentState = getOutPathContents(isLast) if @job
 
     #puts map.inspect
-    response = makeCall("WorkerSetState", @state.handle, map)
+    response = makeCallMultiple("WorkerSetState", @state.handle, map)
     #puts response.inspect
 
     if response['success']
@@ -1405,7 +1421,7 @@ class Worker
       path
     }.compact
     if needPaths.size > 0
-      response = makeCall('WorkerFetchPaths', @state.handle, needPaths, File.expand_path(@basePath))
+      response = makeCallMultiple('WorkerFetchPaths', @state.handle, needPaths, File.expand_path(@basePath))
     end
 
     if response && (not response['success'])
@@ -1461,7 +1477,7 @@ class Worker
         updateVersion(@updateVersionInfo) if @updateVersionInfo
 
         # Contact master to get job
-        map = makeCall("WorkerGetJob", @state.handle)
+        map = makeCallMultiple("WorkerGetJob", @state.handle)
         if map['success']
           if map['jobSpec']
             jobSpec = JobSpec.new.fromMap(map['jobSpec'])
