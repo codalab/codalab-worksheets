@@ -1536,7 +1536,6 @@ class BundleCLI(object):
                 info['owner_spec'] = args.owner_spec
             if args.freeze:
                 info['freeze'] = True
-            print args.tags, worksheet_uuid
             client.update_worksheet_metadata(worksheet_uuid, info)
             print 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
         else:
