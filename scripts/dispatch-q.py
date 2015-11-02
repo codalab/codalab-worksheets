@@ -8,6 +8,11 @@ import sys, os, json, re
 import subprocess
 import argparse
 
+q_path = os.path.join(os.path.dirname(__file__), 'q')
+if not os.path.exists(q_path):
+    print 'Missing %s' % q_path
+    sys.exit(1)
+
 def get_output(command):
     print >>sys.stderr, 'dispatch-q.py: ' + command,
     output = subprocess.check_output(command, shell=True)
@@ -34,7 +39,7 @@ if mode == 'start':
     parser.add_argument('--request_memory', type=float, help='request this much memory (in bytes)')
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
     parser.add_argument('--request_gpus', type=int, help='request this many GPUs')
-    parser.add_argument('--request_queue', type=int, help='submit job to this queue')
+    parser.add_argument('--request_queue', help='submit job to this queue')
     parser.add_argument('--request_priority', type=int, help='priority of this job (higher is more important)')
     parser.add_argument('--share_working_path', help='whether we should run the job directly in the script directory', action='store_true')
     parser.add_argument('script', type=str, help='script to run')
@@ -60,7 +65,7 @@ if mode == 'start':
     else:
         # q will run the script in a <scratch> directory.
         # args.script: <path>/<uuid>.sh
-        # Tell q to copy everything related <uuid> back.
+        # Tell q to copy everything related to <uuid> back.
         orig_path = os.path.dirname(args.script)
         uuid = os.path.basename(args.script).split('.')[0]
         resource_args += ' -shareWorkingPath false'
@@ -77,7 +82,7 @@ if mode == 'start':
         else:
             launch_script = args.script
 
-    stdout = get_output('q%s -add bash %s use_script_for_temp_dir' % (resource_args, launch_script))
+    stdout = get_output('%s%s -add bash %s use_script_for_temp_dir' % (q_path, resource_args, launch_script))
     m = re.match(r'Job (J-.+) added successfully', stdout)
     handle = m.group(1) if m else None
     response = {'raw': stdout, 'handle': handle}
@@ -86,7 +91,7 @@ elif mode == 'info':
     list_args = ''
     if len(handles) > 0:
         list_args += ' ' + ' '.join(handles)
-    stdout = get_output('q -list%s -tabs' % list_args)
+    stdout = get_output('%s -list%s -tabs' % (q_path, list_args))
     response = {'raw': stdout}
     # Example output:
     # handle    worker              status  exitCode   exitReason   time    mem    disk    outName     command
@@ -125,13 +130,13 @@ elif mode == 'kill':
     handle = sys.argv[2]
     response = {
         'handle': handle,
-        'raw': get_output('q -kill %s' % handle)
+        'raw': get_output('%s -kill %s' % (q_path, handle))
     }
 elif mode == 'cleanup':
     handle = sys.argv[2]
     response = {
         'handle': handle,
-        'raw': get_output('q -del %s' % handle)
+        'raw': get_output('%s -del %s' % (q_path, handle))
     }
 else:
     print 'Invalid mode: %s' % mode
