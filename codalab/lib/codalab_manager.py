@@ -126,13 +126,12 @@ class CodaLabManager(object):
         self.config = replace(self.config)
 
         # Read state file, creating if it doesn't exist.
-        state_path = self.state_path()
-        if not os.path.exists(state_path):
+        if not os.path.exists(self.state_path):
             write_pretty_json({
                 'auth': {},      # address -> {username, auth_token}
                 'sessions': {},  # session_name -> {address, worksheet_uuid, last_modified}
-            }, state_path)
-        self.state = read_json_or_die(state_path)
+            }, self.state_path)
+        self.state = read_json_or_die(self.state_path)
 
         self.clients = {}  # map from address => client
 
@@ -209,6 +208,8 @@ As you can imagine, this is kind of dangerous. Please follow these instructions
 online to set up execution with Docker:
 https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Docker
 """
+            if prompt_bool("Would you like to configure a Docker image to use?", default=False):
+                config['workers']['q']['docker_image'] = prompt_str("Docker image:", default='codalab/ubuntu:1.8')
 
         if not dry_run:
             write_pretty_json(config, self.config_path)
@@ -219,6 +220,7 @@ https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Doc
     @cached
     def config_path(self): return os.path.join(self.codalab_home, 'config.json')
 
+    @property
     @cached
     def state_path(self): return os.path.join(self.codalab_home, 'state.json')
 
@@ -472,8 +474,8 @@ https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Doc
 
     def save_config(self):
         if self.temporary: return
-        write_pretty_json(self.config, self.config_path())
+        write_pretty_json(self.config, self.config_path)
 
     def save_state(self):
         if self.temporary: return
-        write_pretty_json(self.state, self.state_path())
+        write_pretty_json(self.state, self.state_path)
