@@ -34,6 +34,7 @@ import sys
 import time
 import psutil
 import tempfile
+import textwrap
 from distutils.util import strtobool
 
 from codalab.client import is_local_address
@@ -96,6 +97,9 @@ def prompt_str(prompt, default=None):
         elif default is not None:
             return default
 
+def print_block(text):
+    print textwrap.dedent(text)
+
 class CodaLabManager(object):
     '''
     temporary: don't use config files
@@ -126,13 +130,12 @@ class CodaLabManager(object):
         self.config = replace(self.config)
 
         # Read state file, creating if it doesn't exist.
-        state_path = self.state_path()
-        if not os.path.exists(state_path):
+        if not os.path.exists(self.state_path):
             write_pretty_json({
                 'auth': {},      # address -> {username, auth_token}
                 'sessions': {},  # session_name -> {address, worksheet_uuid, last_modified}
-            }, state_path)
-        self.state = read_json_or_die(state_path)
+            }, self.state_path)
+        self.state = read_json_or_die(self.state_path)
 
         self.clients = {}  # map from address => client
 
@@ -141,20 +144,21 @@ class CodaLabManager(object):
         Initialize configurations.
         TODO: create nice separate abstraction for building/modifying config
         '''
-        print r"""
-   ____          _       _            _
- / ____|___   __| | __ _| |     T T  | |__
-| |    / _ \ / _` |/ _` | |     |o|  | '_ \
-| |___| (_) | (_| | (_| | |___ /__o\ | |_) |
- \_____\___/ \__,_|\__,_|_____/_____\|_.__/
+        print_block(r"""
+           ____          _       _            _
+         / ____|___   __| | __ _| |     T T  | |__
+        | |    / _ \ / _` |/ _` | |     |o|  | '_ \
+        | |___| (_) | (_| | (_| | |___ /__o\ | |_) |
+         \_____\___/ \__,_|\__,_|_____/_____\|_.__/
 
-Welcome to the CodaLab CLI!
+        Welcome to the CodaLab CLI!
 
-Your CodaLab data will be stored in: {0.codalab_home}
+        Your CodaLab data will be stored in: {0.codalab_home}
 
-Initializing your configurations at: {0.config_path}
+        Initializing your configurations at: {0.config_path}
 
-""".format(self)
+        """.format(self))
+
         config = {
             'cli': {
                 'verbose': 1,
@@ -171,7 +175,6 @@ Initializing your configurations at: {0.config_path}
             'workers': {
                 'q': {
                     'verbose': 1,
-                    #'docker_image': 'codalab/ubuntu:1.7',
                     'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
                 }
             }
@@ -179,17 +182,25 @@ Initializing your configurations at: {0.config_path}
 
         if prompt_bool("Would you like to connect to codalab.org by default?", default=True):
             config['cli']['default_address'] = 'https://codalab.org/bundleservice'
-            print "Set 'https://codalab.org/bundleservice' as the default bundle service."
+            print_block("""
+            Set 'https://codalab.org/bundleservice' as the default bundle service.
+            You may still optionally configure a local bundle service (available as 'local').
+            """)
+            using_local = False
+
         else:
             config['cli']['default_address'] = 'local'
             print "Using local bundle service as default."
+            using_local = True
 
-            print r"""
-The local bundle service can use either MySQL or SQLite as the backing store
-for the bundle metadata. Note that some actions are not guaranteed to work as
-expected on SQLite, so it is recommended that you use MySQL if possible.
-"""
-            if prompt_bool("Would you like to connect to a MySQL server?", default=True):
+        if prompt_bool("Would you like to configure your local bundle service now?", default=using_local):
+            print_block(r"""
+            The local bundle service can use either MySQL or SQLite as the backing store
+            for the bundle metadata. Note that some actions are not guaranteed to work as
+            expected on SQLite, so it is recommended that you use MySQL if possible.
+            """)
+
+            if prompt_bool("Would you like to use a MySQL database for your local bundle service?", default=True):
                 config['server']['class'] = 'MySQLModel'
                 config['server']['engine_url'] = "mysql://{username}:{password}@{host}/{database}".format(**{
                     'host': prompt_str("Host:"),
@@ -203,12 +214,34 @@ expected on SQLite, so it is recommended that you use MySQL if possible.
                 config['server']['engine_url'] = "sqlite:///{}".format(sqlite_db_path)
                 print "Using SQLite database at: {}".format(sqlite_db_path)
 
-            print r"""
-The local bundle service by default executes run bundles directly on your machine.
-As you can imagine, this is kind of dangerous. Please follow these instructions
-online to set up execution with Docker:
-https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Docker
-"""
+            print_block(r"""
+            The local bundle service by default executes run bundles directly on your machine.
+            As you can imagine, this is kind of dangerous. Please follow these instructions
+            online to set up execution with Docker if possible:
+            https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Docker
+            """)
+
+            if prompt_bool("Would you like to configure a Docker image to use now?", default=False):
+                config['workers']['q']['docker_image'] = prompt_str("Docker image:", default='codalab/ubuntu:1.8')
+
+            if prompt_bool("Are you planning to run an instance of the CodaLab website?", default=False):
+                print_block(r"""
+                The bundle service uses a mock authentication handler by default, which has a single user that also
+                has root privileges to the entire service. The web application provides an OAuth authentication
+                server that can be integrated with the bundle service.
+                """)
+
+                if prompt_bool("Would you like to set up the OAuth integration now?", default=True):
+                    print_block(r"""
+                    Please follow these instructions online first to generate the sample server configurations and
+                    get the necessary keys:
+                    https://github.com/codalab/codalab/wiki/Dev_Linux%20Quickstart
+                    """)
+
+                    config['server']['auth']['class'] = 'OAuthHandler'
+                    config['server']['auth']['address'] = prompt_str("Server Address:", default='http://localhost:8000')
+                    config['server']['auth']['app_id'] = prompt_str("App ID:")
+                    config['server']['auth']['app_key'] = prompt_str("App key:")
 
         if not dry_run:
             write_pretty_json(config, self.config_path)
@@ -219,6 +252,7 @@ https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Doc
     @cached
     def config_path(self): return os.path.join(self.codalab_home, 'config.json')
 
+    @property
     @cached
     def state_path(self): return os.path.join(self.codalab_home, 'state.json')
 
@@ -472,8 +506,8 @@ https://github.com/codalab/codalab/wiki/Dev_CodaLab%20CLI%20Execution%20in%20Doc
 
     def save_config(self):
         if self.temporary: return
-        write_pretty_json(self.config, self.config_path())
+        write_pretty_json(self.config, self.config_path)
 
     def save_state(self):
         if self.temporary: return
-        write_pretty_json(self.state, self.state_path())
+        write_pretty_json(self.state, self.state_path)
