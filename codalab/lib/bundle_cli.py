@@ -1458,21 +1458,29 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter),
             Commands.Argument('-m', '--message', help='add a text element'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('-w', '--worksheet_spec', help='destination worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_add_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        client, source_worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        dest_client, dest_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        if args.bundle_spec and client is not dest_client:
+            raise UsageError("Cannot add bundles across instances (trying to add bundles from {.address} to {.address}). Please use `cl cp` to copy bundles across instances.".format(client, dest_client))
+
+        bundle_uuids = worksheet_util.get_bundle_uuids(client, source_worksheet_uuid, args.bundle_spec)
+
+        # Add bundles to destination worksheet
         for bundle_uuid in bundle_uuids:
-            client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
+            client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
+
+        # Add text items to destination worksheet
         if args.message != None:
             if args.message.startswith('%'):
-                client.add_worksheet_item(worksheet_uuid, worksheet_util.directive_item(args.message[1:].strip()))
+                client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.directive_item(args.message[1:].strip()))
             else:
-                client.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(args.message))
+                client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.markup_item(args.message))
 
     @Commands.command(
         'work',
