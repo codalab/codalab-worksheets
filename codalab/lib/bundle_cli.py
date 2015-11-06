@@ -189,10 +189,13 @@ class Commands(object):
                         completer = completer(cli)
 
                     argument.completer = completer
-                elif cli.headless:
+
+                elif cli.headless and 'choices' not in argument_kwargs:
                     # If there's no completer, but the CLI is headless, put in a dummy completer to
                     # prevent argcomplete's fallback onto bash autocomplete (which will display
                     # the files in the current working directory by default).
+                    # If the 'choices' kwarg is set, we don't have to worry, because argcomplete
+                    # will fill in a ChoicesCompleter for us.
                     argument.completer = NullCompleter
 
             # Associate subcommand with its action function
