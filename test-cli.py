@@ -308,16 +308,16 @@ def test(ctx):
     check_contains(uuid[0:5], run_command([cl, 'ls']))
     run_command([cl, 'add', '-m', 'testing'])
     run_command([cl, 'add', '-m', '% display contents / maxlines=10'])
-    run_command([cl, 'add', uuid])
+    run_command([cl, 'cp', uuid, '.'])
     run_command([cl, 'add', '-m', '%% comment'])
     run_command([cl, 'add', '-m', '% schema foo'])
     run_command([cl, 'add', '-m', '% add uuid'])
     run_command([cl, 'add', '-m', '% add data_hash data_hash s/0x/HEAD'])
     run_command([cl, 'add', '-m', '% add CREATE created "date | [0:5]"'])
     run_command([cl, 'add', '-m', '% display table foo'])
-    run_command([cl, 'add', uuid])
+    run_command([cl, 'cp', uuid, '.'])
     run_command([cl, 'cp', uuid, wuuid])  # not testing real copying ability
-    run_command([cl, 'wadd', wuuid])
+    run_command([cl, 'add', wuuid])
     check_contains(['Worksheet', 'testing', 'hosts', '127.0.0.1', uuid, 'HEAD', 'CREATE'], run_command([cl, 'print']))
     run_command([cl, 'wcp', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
@@ -375,9 +375,9 @@ def test(ctx):
 def test(ctx):
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
     uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group'])
-    run_command([cl, 'add', uuid1])
+    run_command([cl, 'cp', uuid1, '.'])
     ctx.collect_bundle(uuid1)
-    run_command([cl, 'add', uuid2])
+    run_command([cl, 'cp', uuid2, '.'])
     ctx.collect_bundle(uuid2)
     # State after the above: 1 2 1 2
     run_command([cl, 'detach', uuid1], 1) # multiple indices

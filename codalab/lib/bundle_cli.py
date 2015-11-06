@@ -269,7 +269,6 @@ class BundleCLI(object):
         'work',
         'print',
         'wedit',
-        'wadd',
         'wrm',
         'wls',
         'wcp',
@@ -745,11 +744,11 @@ class BundleCLI(object):
 
     @Commands.command(
         'cp',
-        help='Copy bundles across instances.',
+        help='Copy bundles across worksheets and instances.',
         arguments=(
-            Commands.Argument('-d', '--copy-dependencies', help='Whether to copy dependencies of the bundles.', action='store_true'),
+            Commands.Argument('-d', '--copy-dependencies', help='copies dependencies of the bundles as well if set', action='store_true'),
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
-            Commands.Argument('worksheet_spec', help='%s (copy to this worksheet)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('worksheet_spec', help='destination worksheet %s' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_cp_command(self, args):
@@ -1454,25 +1453,26 @@ class BundleCLI(object):
 
     @Commands.command(
         'add',
-        help='Append a bundle to a worksheet.',
+        help='Append worksheet links and/or text items to a worksheet.',
         arguments=(
-            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter),
-            Commands.Argument('-m', '--message', help='add a text element'),
+            Commands.Argument('subworksheet_spec', help='worksheets to add links to (%s)' % WORKSHEET_SPEC_FORMAT, nargs='*', completer=WorksheetsCompleter),
+            Commands.Argument('-m', '--message', help='add a text element (must appear after subworksheet_specs)', nargs='+'),
             Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_add_command(self, args):
-        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
-
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
-        for bundle_uuid in bundle_uuids:
-            client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
-        if args.message != None:
-            if args.message.startswith('%'):
-                client.add_worksheet_item(worksheet_uuid, worksheet_util.directive_item(args.message[1:].strip()))
-            else:
-                client.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(args.message))
+
+        for spec in args.subworksheet_spec:
+            subworksheet_uuid = worksheet_util.get_worksheet_uuid(client, worksheet_uuid, spec)
+            client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
+
+        if args.message is not None:
+            for message in args.message:
+                if message.startswith('%'):
+                    client.add_worksheet_item(worksheet_uuid, worksheet_util.directive_item(message[1:].strip()))
+                else:
+                    client.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(message))
 
     @Commands.command(
         'work',
@@ -1670,20 +1670,6 @@ class BundleCLI(object):
                 self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
         reference_map = self.create_reference_map('worksheet', worksheet_dicts)
         return self.create_structured_info_map([('refs', reference_map)])
-
-    @Commands.command(
-        'wadd',
-        help='Append a worksheet to a worksheet.',
-        arguments=(
-            Commands.Argument('subworksheet_spec', help='worksheets to add (%s)' % WORKSHEET_SPEC_FORMAT, nargs='+', completer=WorksheetsCompleter),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ),
-    )
-    def do_wadd_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        for spec in args.subworksheet_spec:
-            subworksheet_uuid = worksheet_util.get_worksheet_uuid(client, worksheet_uuid, spec)
-            client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
 
     @Commands.command(
         'wrm',
