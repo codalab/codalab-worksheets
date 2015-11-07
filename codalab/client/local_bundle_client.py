@@ -3,6 +3,7 @@ LocalBundleClient is BundleClient implementation that interacts directly with a
 BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from time import sleep
+from collections import defaultdict
 import contextlib
 import os, sys, re
 import copy
@@ -92,6 +93,15 @@ class LocalBundleClient(BundleClient):
             dep['parent_name'] = self.model.get_bundle_names([uuid]).get(uuid)
 
         return result
+
+    def _mask_bundle_info(self, bundle_info):
+        '''
+        Return a copy of the bundle_info dict that returns '<hidden>'
+        for all fields except 'uuid'.
+        '''
+        masked = defaultdict(lambda: '<hidden>')
+        masked['uuid'] = bundle_info['uuid']
+        return masked
 
     def get_bundle_uuids(self, worksheet_uuid, bundle_specs):
         return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
@@ -365,7 +375,7 @@ class LocalBundleClient(BundleClient):
         # Remove bundles that we can't access
         for uuid in select_unreadable_bundles(uuids):
             if uuid in bundle_dict:
-                del bundle_dict[uuid]
+                bundle_dict[uuid] = self._mask_bundle_info(bundle_dict[uuid])
 
         # Lookup the user names of all the owners
         user_ids = [info['owner_id'] for info in bundle_dict.values()]
