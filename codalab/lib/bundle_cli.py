@@ -1703,11 +1703,11 @@ class BundleCLI(object):
 
     @Commands.command(
         'wadd',
-        help='Append all the items on one worksheet to another. Bundles that do not yet exist on the destination service will be copied over.',
+        help='Append all the items of the source worksheet to the destination worksheet, without modifying the existing items on the destination worksheet. Bundles that do not yet exist on the destination service will be copied over.',
         arguments=(
             Commands.Argument('source_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('dest_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-            Commands.Argument('-c', '--clobber', help='clobber everything on destination worksheet with source (instead of appending)', action='store_true'),
+            Commands.Argument('-r', '--replace', help='replace everything on the destination worksheet with the items from the source worksheet, instead of appending', action='store_true'),
         ),
     )
     def do_wadd_command(self, args):
