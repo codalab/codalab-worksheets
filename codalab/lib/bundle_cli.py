@@ -89,7 +89,6 @@ BUNDLE_COMMANDS = (
     'cat',
     'wait',
     'download',
-    'cp',
     'mimic',
     'macro',
     'kill',
@@ -98,12 +97,12 @@ BUNDLE_COMMANDS = (
 WORKSHEET_COMMANDS = (
     'new',
     'add',
+    'wadd',
     'work',
     'print',
     'wedit',
     'wrm',
     'wls',
-    'wcp',
 )
 
 GROUP_AND_PERMISSION_COMMANDS = (
@@ -758,39 +757,9 @@ class BundleCLI(object):
           path_util.remove(temp_path)
         print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
-    @Commands.command(
-        'cp',
-        help='Copy bundles across worksheets and instances. Copying across instances will transfer bundle data to the destination instance, while copying within the same instance will only copy a reference to the same bundle.',
-        arguments=(
-            Commands.Argument('-d', '--copy-dependencies', help='copies dependencies of the bundles as well if set', action='store_true'),
-            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
-            Commands.Argument('worksheet_spec', help='destination worksheet %s' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ),
-    )
-    def do_cp_command(self, args):
-        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
-
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-
-        # Source bundle
-        source_bundle_uuids = []
-        for bundle_spec in args.bundle_spec:
-            (source_client, source_spec) = self.parse_spec(bundle_spec)
-            # worksheet_uuid is only applicable if we're on the source client
-            if source_client != client: worksheet_uuid = None
-            source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
-            source_bundle_uuids.append(source_bundle_uuid)
-
-        # Destination worksheet
-        (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.worksheet_spec)
-
-        # Copy!
-        for source_bundle_uuid in source_bundle_uuids:
-            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
-
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies, add_to_worksheet):
         '''
-        Helper function that supports cp and wcp.
+        Helper function that supports cp and wadd.
         Copies the source bundle to the target worksheet.
         Currently, this goes between two clients by downloading to the local
         disk and then uploading, which is not the most efficient.
@@ -1480,27 +1449,46 @@ class BundleCLI(object):
             Commands.Argument('item_type', help='type of item(s) to add {text, bundle, worksheet}', choices=('text', 'bundle', 'worksheet'), metavar='item_type'),
             Commands.Argument('item_spec', help=ITEM_DESCRIPTION, nargs='+', completer=UnionCompleter(WorksheetsCompleter, BundlesCompleter)),
             Commands.Argument('dest_worksheet', help='worksheet to which to add items %s' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('-d', '--copy-dependencies', help='if adding bundles, will also add dependencies of the bundles if set', action='store_true'),
         ),
     )
     def do_add_command(self, args):
-        client, dest_worksheet_uuid = self.parse_client_worksheet_uuid(args.dest_worksheet)
+        curr_client, curr_worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        dest_client, dest_worksheet_uuid = self.parse_client_worksheet_uuid(args.dest_worksheet)
+
+        if args.item_type != 'bundle' and args.copy_dependencies:
+            raise UsageError("-d/--copy-dependencies flag only applies when adding bundles.")
 
         if args.item_type == 'text':
             for item_spec in args.item_spec:
                 if item_spec.startswith('%'):
-                    client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.directive_item(item_spec[1:].strip()))
+                    dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.directive_item(item_spec[1:].strip()))
                 else:
-                    client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.markup_item(item_spec))
+                    dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.markup_item(item_spec))
 
         elif args.item_type == 'bundle':
-            bundle_uuids = worksheet_util.get_bundle_uuids(client, dest_worksheet_uuid, args.item_spec)
-            for bundle_uuid in bundle_uuids:
-                client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
+            for bundle_spec in args.item_spec:
+                source_client, source_spec = self.parse_spec(bundle_spec)
+
+                # a base_worksheet_uuid is only applicable if we're on the source client
+                base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
+                source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, base_worksheet_uuid, source_spec)
+
+                # copy (or add only if bundle already exists on destination)
+                self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
 
         elif args.item_type == 'worksheet':
-            for item_spec in args.item_spec:
-                subworksheet_uuid = worksheet_util.get_worksheet_uuid(client, dest_worksheet_uuid, item_spec)
-                client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
+            for worksheet_spec in args.item_spec:
+                source_client, worksheet_spec = self.parse_spec(worksheet_spec)
+                if source_client is not dest_client:
+                    raise UsageError("You cannot add worksheet links across instances.")
+
+                # a base_worksheet_uuid is only applicable if we're on the source client
+                base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
+                subworksheet_uuid = worksheet_util.get_worksheet_uuid(source_client, base_worksheet_uuid, worksheet_spec)
+
+                # add worksheet
+                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
 
     @Commands.command(
         'work',
@@ -1713,15 +1701,15 @@ class BundleCLI(object):
             client.delete_worksheet(worksheet_uuid, args.force)
 
     @Commands.command(
-        'wcp',
-        help='Copy the contents from one worksheet to another.',
+        'wadd',
+        help='Append all the items on one worksheet to another.',
         arguments=(
             Commands.Argument('source_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('dest_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('-c', '--clobber', help='clobber everything on destination worksheet with source (instead of appending)', action='store_true'),
         ),
     )
-    def do_wcp_command(self, args):
+    def do_wadd_command(self, args):
         # Source worksheet
         (source_client, source_worksheet_uuid) = self.parse_client_worksheet_uuid(args.source_worksheet_spec)
         source_items = source_client.get_worksheet_info(source_worksheet_uuid, True)['items']

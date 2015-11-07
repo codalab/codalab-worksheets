@@ -316,10 +316,10 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"', '.'])
     run_command([cl, 'add', 'text', '% display table foo', '.'])
     run_command([cl, 'add', 'bundle', uuid, '.'])
-    run_command([cl, 'cp', uuid, wuuid])  # not testing real copying ability
+    run_command([cl, 'add', 'bundle', uuid, wuuid])  # not testing real copying ability
     run_command([cl, 'add', 'worksheet', wuuid, '.'])
     check_contains(['Worksheet', 'testing', 'hosts', '127.0.0.1', uuid, 'HEAD', 'CREATE'], run_command([cl, 'print']))
-    run_command([cl, 'wcp', wuuid, wuuid])
+    run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
