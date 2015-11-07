@@ -66,10 +66,11 @@ from codalab.lib.completers import (
 )
 
 ## Formatting Constants
-GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::]|(<uuid>|<name>)"
+GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
 TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
 BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
+GLOBAL_BUNDLE_SPEC_FORMAT = '((<uuid>|<name>|^<index>)|(<alias>|<address>)::(<uuid>|<name>))'
 WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
@@ -1440,7 +1441,7 @@ class BundleCLI(object):
     item specifications, with the format depending on the specified item_type.
         text:      (<text>|%%<directive>)
         bundle:    {0}
-        worksheet: {1}""").format(BUNDLE_SPEC_FORMAT, WORKSHEET_SPEC_FORMAT).strip()
+        worksheet: {1}""").format(GLOBAL_BUNDLE_SPEC_FORMAT, WORKSHEET_SPEC_FORMAT).strip()
 
     @Commands.command(
         'add',
