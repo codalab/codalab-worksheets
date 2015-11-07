@@ -764,7 +764,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'cp',
-        help='Copy bundles across worksheets and instances.',
+        help='Copy bundles across worksheets and instances. Copying across instances will transfer bundle data to the destination instance, while copying within the same instance will only copy a reference to the same bundle.',
         arguments=(
             Commands.Argument('-d', '--copy-dependencies', help='copies dependencies of the bundles as well if set', action='store_true'),
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
