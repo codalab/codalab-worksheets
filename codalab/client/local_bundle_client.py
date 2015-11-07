@@ -285,6 +285,7 @@ class LocalBundleClient(BundleClient):
     def delete_bundles(self, uuids, force, recursive, data_only, dry_run):
         '''
         Delete the bundles specified by |uuids|.
+        If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
         If |recursive|, add all bundles downstream too.
         If |data_only|, only remove from the bundle store, not the bundle metadata.
         '''
@@ -318,8 +319,8 @@ class LocalBundleClient(BundleClient):
                 raise UsageError('Can\'t delete bundle %s because it appears in frozen worksheets (need to delete worksheet first):\n  %s' % (
                     uuid,
                     '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
-            if len(host_worksheet_uuids) > 1:
-                raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (detach all but one first):\n  %s' % (
+            if not force and len(host_worksheet_uuids) > 1:
+                raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (--force to override):\n  %s' % (
                     uuid,
                     '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
