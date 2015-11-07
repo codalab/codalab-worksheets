@@ -1481,7 +1481,7 @@ class BundleCLI(object):
         'add',
         help='Append text items, bundles, or subworksheets to a worksheet.',
         arguments=(
-            Commands.Argument('item_type', help='{text, bundle, worksheet}', choices=('text', 'bundle', 'worksheet'), metavar='item_type'),
+            Commands.Argument('item_type', help='type of item(s) to add {text, bundle, worksheet}', choices=('text', 'bundle', 'worksheet'), metavar='item_type'),
             Commands.Argument('item_spec', help=ITEM_DESCRIPTION, nargs='+', completer=UnionCompleter(WorksheetsCompleter, BundlesCompleter)),
             Commands.Argument('dest_worksheet', help='worksheet to which to add items %s' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
