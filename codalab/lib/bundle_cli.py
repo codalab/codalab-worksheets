@@ -544,10 +544,6 @@ class BundleCLI(object):
         argv = self.collapse_bare_command(argv)
         args = parser.parse_args(argv)
 
-        # print args.help
-        # print args.command
-        # sys.exit()
-
         # Bind self (BundleCLI instance) and args to command function
         command_fn = lambda: args.function(self, args)
 
