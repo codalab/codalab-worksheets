@@ -1444,7 +1444,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'add',
-        help='Append text items, bundles, or subworksheets to a worksheet.',
+        help='Append text items, bundles, or subworksheets to a worksheet. Bundles that do not yet exist on the destination service will be copied over.',
         arguments=(
             Commands.Argument('item_type', help='type of item(s) to add {text, bundle, worksheet}', choices=('text', 'bundle', 'worksheet'), metavar='item_type'),
             Commands.Argument('item_spec', help=ITEM_DESCRIPTION, nargs='+', completer=UnionCompleter(WorksheetsCompleter, BundlesCompleter)),
@@ -1702,7 +1702,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'wadd',
-        help='Append all the items on one worksheet to another.',
+        help='Append all the items on one worksheet to another. Bundles that do not yet exist on the destination service will be copied over.',
         arguments=(
             Commands.Argument('source_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('dest_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
