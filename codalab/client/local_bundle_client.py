@@ -130,6 +130,7 @@ class LocalBundleClient(BundleClient):
 
     # Helper
     def get_target_path(self, target):
+        check_bundles_have_read_permission(self.model, self._current_user(), target[0])
         return canonicalize.get_target_path(self.bundle_store, self.model, target)
 
     # Helper
