@@ -381,7 +381,6 @@ class LocalBundleClient(BundleClient):
             return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
 
         # Mask bundles that we can't access
-        print select_unreadable_bundles(uuids) #FIXME remove
         for uuid in select_unreadable_bundles(uuids):
             if uuid in bundle_dict:
                 bundle_dict[uuid] = self._mask_bundle_info(bundle_dict[uuid])
