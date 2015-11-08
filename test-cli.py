@@ -117,7 +117,7 @@ class ModuleContext(object):
             run_command([cl, 'wrm', '--force', worksheet])
 
         # Delete all bundles (dedup first)
-        if len(set(self.bundles)) > 0:
+        if len(self.bundles) > 0:
             run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
 
         # Do not reraise exception
