@@ -2,6 +2,7 @@
 completers.py
 '''
 import inspect
+import itertools
 
 from argcomplete import warn
 from argcomplete.completers import FilesCompleter
@@ -85,3 +86,23 @@ def NullCompleter(*args, **kwargs):
     Completer that always returns nothing.
     '''
     return ()
+
+def UnionCompleter(*completers):
+    '''
+    Return a CodaLabCompleter that suggests the union of the suggestions provided
+    by the given completers.
+    '''
+    class _UnionCompleter(CodaLabCompleter):
+        def __call__(self, *args, **kwargs):
+            ready_completers = []
+            for completer in completers:
+                completer_class = completer if inspect.isclass(completer) else completer.__class__
+                if issubclass(completer_class, CodaLabCompleter):
+                    completer = completer(self.cli)
+
+                ready_completers.append(completer)
+
+            return set(itertools.chain(*[completer(*args, **kwargs) for completer in ready_completers]))
+
+    return _UnionCompleter
+

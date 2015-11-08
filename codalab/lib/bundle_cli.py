@@ -19,6 +19,7 @@ import shlex
 import sys
 import time
 import tempfile
+import textwrap
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -59,20 +60,72 @@ from codalab.lib.completers import (
   BundlesCompleter,
   AddressesCompleter,
   GroupsCompleter,
+  UnionCompleter,
   NullCompleter,
   require_not_headless,
 )
 
-
 ## Formatting Constants
-GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::]|(<uuid>|<name>)"
+GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
 TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
 BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
+GLOBAL_BUNDLE_SPEC_FORMAT = '((<uuid>|<name>|^<index>)|(<alias>|<address>)::(<uuid>|<name>))'
 WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
+
+## Command groupings
+BUNDLE_COMMANDS = (
+    'upload',
+    'make',
+    'run',
+    'edit',
+    'detach',
+    'rm',
+    'search',
+    'ls',
+    'info',
+    'cat',
+    'wait',
+    'download',
+    'mimic',
+    'macro',
+    'kill',
+)
+
+WORKSHEET_COMMANDS = (
+    'new',
+    'add',
+    'wadd',
+    'work',
+    'print',
+    'wedit',
+    'wrm',
+    'wls',
+)
+
+GROUP_AND_PERMISSION_COMMANDS = (
+    'gls',
+    'gnew',
+    'grm',
+    'ginfo',
+    'uadd',
+    'urm',
+    'perm',
+    'wperm',
+    'chown',
+)
+
+OTHER_COMMANDS = (
+    'help',
+    'status',
+    'alias',
+    'work-manager',
+    'server',
+    'logout',
+)
 
 class Commands(object):
     '''
@@ -113,8 +166,6 @@ class Commands(object):
         class _AliasedPseudoAction(argparse.Action):
             def __init__(self, name, aliases=None, help=None):
                 dest = name
-                if aliases:
-                    dest += ' (%s)' % ','.join(aliases)
                 sup = super(Commands.AliasedSubParsersAction._AliasedPseudoAction, self)
                 sup.__init__(option_strings=[], dest=dest, help=help)
 
@@ -153,13 +204,55 @@ class Commands(object):
         return register_command
 
     @classmethod
-    def get_help(cls, name):
-        '''
-        Returns the help string for the subcommand of the given `name`, or
-        return None if the command doesn't exist or if the command doesn't have
-        a help string.
-        '''
-        return getattr(cls.commands.get(name, None), 'help', None)
+    def help_text(cls):
+        def command_name(command):
+            name = command
+            aliases = cls.commands[command].aliases
+            if aliases:
+                name += ' (%s)' % ', '.join(list(aliases))
+            return name
+
+        indent = 2
+        max_length = max(
+          len(command_name(command)) for command in itertools.chain(
+              BUNDLE_COMMANDS,
+              WORKSHEET_COMMANDS,
+              GROUP_AND_PERMISSION_COMMANDS,
+              OTHER_COMMANDS)
+        )
+
+        def command_help_text(command):
+            name = command_name(command)
+            return '%s%s%s%s' % (
+              ' ' * indent,
+              name,
+              ' ' * (indent + max_length - len(name)),
+              cls.commands[command].help,
+            )
+
+        def command_group_help_text(commands):
+            return '\n'.join([command_help_text(command) for command in commands])
+
+        return textwrap.dedent("""
+        Usage: cl <command> <arguments>
+
+        Commands for bundles:
+        {bundle_commands}
+
+        Commands for worksheets:
+        {worksheet_commands}
+
+        Commands for groups and permissions:
+        {group_and_permission_commands}
+
+        Other commands:
+        {other_commands}
+        """).format(
+            bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
+            worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
+            group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
+            other_commands=command_group_help_text(OTHER_COMMANDS),
+        ).strip()
 
     @classmethod
     def build_parser(cls, cli):
@@ -167,14 +260,14 @@ class Commands(object):
         Builds an `ArgumentParser` for the cl program, with all the subcommands registered
         through the `Commands.command` decorator.
         '''
-        parser = argparse.ArgumentParser(prog='cl', add_help=False)
+        parser = argparse.ArgumentParser(prog='cl', add_help=False, formatter_class=argparse.RawTextHelpFormatter)
         parser.register('action', 'parsers', cls.AliasedSubParsersAction)
         cls.hack_formatter(parser)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         # Build subparser for each subcommand
         for command in cls.commands.itervalues():
-            subparser = subparsers.add_parser(command.name, help=command.help, description=command.help, aliases=command.aliases, add_help=True)
+            subparser = subparsers.add_parser(command.name, help=command.help, description=command.help, aliases=command.aliases, add_help=True, formatter_class=argparse.RawTextHelpFormatter)
 
             # Register arguments for the subcommand
             for argument in command.arguments:
@@ -189,10 +282,13 @@ class Commands(object):
                         completer = completer(cli)
 
                     argument.completer = completer
-                elif cli.headless:
+
+                elif cli.headless and 'choices' not in argument_kwargs:
                     # If there's no completer, but the CLI is headless, put in a dummy completer to
                     # prevent argcomplete's fallback onto bash autocomplete (which will display
                     # the files in the current working directory by default).
+                    # If the 'choices' kwarg is set, we don't have to worry, because argcomplete
+                    # will fill in a ChoicesCompleter for us.
                     argument.completer = NullCompleter
 
             # Associate subcommand with its action function
@@ -244,57 +340,6 @@ class Commands(object):
 
 
 class BundleCLI(object):
-    BUNDLE_COMMANDS = (
-        'upload',
-        'make',
-        'run',
-        'edit',
-        'detach',
-        'rm',
-        'search',
-        'ls',
-        'info',
-        'cat',
-        'wait',
-        'download',
-        'cp',
-        'mimic',
-        'macro',
-        'kill',
-    )
-
-    WORKSHEET_COMMANDS = (
-        'new',
-        'add',
-        'work',
-        'print',
-        'wedit',
-        'wadd',
-        'wrm',
-        'wls',
-        'wcp',
-    )
-
-    GROUP_AND_PERMISSION_COMMANDS = (
-        'gls',
-        'gnew',
-        'grm',
-        'ginfo',
-        'uadd',
-        'urm',
-        'perm',
-        'wperm',
-        'chown',
-    )
-
-    OTHER_COMMANDS = (
-        'help',
-        'status',
-        'alias',
-        'work-manager',
-        'server',
-        'logout',
-    )
 
     def __init__(self, manager, headless=False):
         self.manager = manager
@@ -542,34 +587,7 @@ class BundleCLI(object):
             self.do_command([args.command, '--help'])
             return
 
-        print 'Usage: cl <command> <arguments>'
-        max_length = max(
-          len(command) for command in
-          itertools.chain(self.BUNDLE_COMMANDS,
-                          self.WORKSHEET_COMMANDS,
-                          self.GROUP_AND_PERMISSION_COMMANDS,
-                          self.OTHER_COMMANDS)
-        )
-        indent = 2
-        def print_command(command):
-            print '%s%s%s%s' % (
-              indent*' ',
-              command,
-              (indent + max_length - len(command))*' ',
-              Commands.get_help(command),
-            )
-        print '\nCommands for bundles:'
-        for command in self.BUNDLE_COMMANDS:
-            print_command(command)
-        print '\nCommands for worksheets:'
-        for command in self.WORKSHEET_COMMANDS:
-            print_command(command)
-        print '\nCommands for groups and permissions:'
-        for command in self.GROUP_AND_PERMISSION_COMMANDS:
-            print_command(command)
-        print '\nOther commands:'
-        for command in self.OTHER_COMMANDS:
-            print_command(command)
+        print Commands.help_text()
 
     @Commands.command(
         'status',
@@ -743,39 +761,9 @@ class BundleCLI(object):
           path_util.remove(temp_path)
         print 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
-    @Commands.command(
-        'cp',
-        help='Copy bundles across instances.',
-        arguments=(
-            Commands.Argument('-d', '--copy-dependencies', help='Whether to copy dependencies of the bundles.', action='store_true'),
-            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
-            Commands.Argument('worksheet_spec', help='%s (copy to this worksheet)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ),
-    )
-    def do_cp_command(self, args):
-        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
-
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-
-        # Source bundle
-        source_bundle_uuids = []
-        for bundle_spec in args.bundle_spec:
-            (source_client, source_spec) = self.parse_spec(bundle_spec)
-            # worksheet_uuid is only applicable if we're on the source client
-            if source_client != client: worksheet_uuid = None
-            source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, worksheet_uuid, source_spec)
-            source_bundle_uuids.append(source_bundle_uuid)
-
-        # Destination worksheet
-        (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.worksheet_spec)
-
-        # Copy!
-        for source_bundle_uuid in source_bundle_uuids:
-            self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
-
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies, add_to_worksheet):
         '''
-        Helper function that supports cp and wcp.
+        Helper function that supports cp and wadd.
         Copies the source bundle to the target worksheet.
         Currently, this goes between two clients by downloading to the local
         disk and then uploading, which is not the most efficient.
@@ -1452,27 +1440,59 @@ class BundleCLI(object):
                 ui_actions.OpenWorksheet(uuid)
             ])
 
+    ITEM_DESCRIPTION = textwrap.dedent("""
+    item specifications, with the format depending on the specified item_type.
+        text:      (<text>|%%<directive>)
+        bundle:    {0}
+        worksheet: {1}""").format(GLOBAL_BUNDLE_SPEC_FORMAT, WORKSHEET_SPEC_FORMAT).strip()
+
     @Commands.command(
         'add',
-        help='Append a bundle to a worksheet.',
+        help='Append text items, bundles, or subworksheets to a worksheet. Bundles that do not yet exist on the destination service will be copied over.',
         arguments=(
-            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='*', completer=BundlesCompleter),
-            Commands.Argument('-m', '--message', help='add a text element'),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('item_type', help='type of item(s) to add {text, bundle, worksheet}', choices=('text', 'bundle', 'worksheet'), metavar='item_type'),
+            Commands.Argument('item_spec', help=ITEM_DESCRIPTION, nargs='+', completer=UnionCompleter(WorksheetsCompleter, BundlesCompleter)),
+            Commands.Argument('dest_worksheet', help='worksheet to which to add items %s' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('-d', '--copy-dependencies', help='if adding bundles, will also add dependencies of the bundles if set', action='store_true'),
         ),
     )
     def do_add_command(self, args):
-        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        curr_client, curr_worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        dest_client, dest_worksheet_uuid = self.parse_client_worksheet_uuid(args.dest_worksheet)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
-        for bundle_uuid in bundle_uuids:
-            client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
-        if args.message != None:
-            if args.message.startswith('%'):
-                client.add_worksheet_item(worksheet_uuid, worksheet_util.directive_item(args.message[1:].strip()))
-            else:
-                client.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(args.message))
+        if args.item_type != 'bundle' and args.copy_dependencies:
+            raise UsageError("-d/--copy-dependencies flag only applies when adding bundles.")
+
+        if args.item_type == 'text':
+            for item_spec in args.item_spec:
+                if item_spec.startswith('%'):
+                    dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.directive_item(item_spec[1:].strip()))
+                else:
+                    dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.markup_item(item_spec))
+
+        elif args.item_type == 'bundle':
+            for bundle_spec in args.item_spec:
+                source_client, source_spec = self.parse_spec(bundle_spec)
+
+                # a base_worksheet_uuid is only applicable if we're on the source client
+                base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
+                source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, base_worksheet_uuid, source_spec)
+
+                # copy (or add only if bundle already exists on destination)
+                self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
+
+        elif args.item_type == 'worksheet':
+            for worksheet_spec in args.item_spec:
+                source_client, worksheet_spec = self.parse_spec(worksheet_spec)
+                if source_client is not dest_client:
+                    raise UsageError("You cannot add worksheet links across instances.")
+
+                # a base_worksheet_uuid is only applicable if we're on the source client
+                base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
+                subworksheet_uuid = worksheet_util.get_worksheet_uuid(source_client, base_worksheet_uuid, worksheet_spec)
+
+                # add worksheet
+                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
 
     @Commands.command(
         'work',
@@ -1672,20 +1692,6 @@ class BundleCLI(object):
         return self.create_structured_info_map([('refs', reference_map)])
 
     @Commands.command(
-        'wadd',
-        help='Append a worksheet to a worksheet.',
-        arguments=(
-            Commands.Argument('subworksheet_spec', help='worksheets to add (%s)' % WORKSHEET_SPEC_FORMAT, nargs='+', completer=WorksheetsCompleter),
-            Commands.Argument('-w', '--worksheet_spec', help='operate on this worksheet (%s)' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ),
-    )
-    def do_wadd_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        for spec in args.subworksheet_spec:
-            subworksheet_uuid = worksheet_util.get_worksheet_uuid(client, worksheet_uuid, spec)
-            client.add_worksheet_item(worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
-
-    @Commands.command(
         'wrm',
         help='Delete a worksheet.',
         arguments=(
@@ -1699,15 +1705,15 @@ class BundleCLI(object):
             client.delete_worksheet(worksheet_uuid, args.force)
 
     @Commands.command(
-        'wcp',
-        help='Copy the contents from one worksheet to another.',
+        'wadd',
+        help='Append all the items of the source worksheet to the destination worksheet, without modifying the existing items on the destination worksheet. Bundles that do not yet exist on the destination service will be copied over.',
         arguments=(
             Commands.Argument('source_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
             Commands.Argument('dest_worksheet_spec', help=WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-            Commands.Argument('-c', '--clobber', help='clobber everything on destination worksheet with source (instead of appending)', action='store_true'),
+            Commands.Argument('-r', '--replace', help='replace everything on the destination worksheet with the items from the source worksheet, instead of appending', action='store_true'),
         ),
     )
-    def do_wcp_command(self, args):
+    def do_wadd_command(self, args):
         # Source worksheet
         (source_client, source_worksheet_uuid) = self.parse_client_worksheet_uuid(args.source_worksheet_spec)
         source_items = source_client.get_worksheet_info(source_worksheet_uuid, True)['items']

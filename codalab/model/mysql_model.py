@@ -43,7 +43,7 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
 class MySQLModel(BundleModel):
     def __init__(self, engine_url):
         if not engine_url.startswith('mysql://'):
-            raise UsageError('Engine URL should start with %s' % engine_url)
+            raise UsageError('Engine URL should start with mysql://')
         engine = create_engine(engine_url, strategy='threadlocal', pool_size=20, max_overflow=100, pool_recycle=3600)
         super(MySQLModel, self).__init__(engine)
 
