@@ -105,7 +105,9 @@ class LocalBundleClient(BundleClient):
           'command': 'private',
           'data_hash': 'private',
           'state': 'private',
-          'metadata': {},
+          'metadata': {
+              'name': 'private'
+          },
           'dependencies': [],
         }
 
