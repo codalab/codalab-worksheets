@@ -748,7 +748,7 @@ class BundleCLI(object):
         if args.output_dir:
             local_dir = args.output_dir
         else:
-            local_dir = info['metadata']['name'] if subpath == '' else os.path.basename(subpath)
+            local_dir = info['metadata'].get('name', 'untitled') if subpath == '' else os.path.basename(subpath)
         final_path = os.path.join(os.getcwd(), local_dir)
         if os.path.exists(final_path):
             print 'Local file/directory', local_dir, 'already exists.'
