@@ -117,7 +117,7 @@ class ModuleContext(object):
             run_command([cl, 'wrm', '--force', worksheet])
 
         # Delete all bundles (dedup first)
-        if len(self.bundles) > 0:
+        if len(set(self.bundles)) > 0:
             run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
 
         # Do not reraise exception
@@ -253,7 +253,7 @@ def test(ctx):
 @TestModule.register('rm')
 def test(ctx):
     uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
-    run_command([cl, 'cp', uuid, '.'])  # Duplicate
+    run_command([cl, 'add', 'bundle', uuid, '.'])  # Duplicate
     run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
 
 @TestModule.register('make')
@@ -306,20 +306,20 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'ls', '-u']))
     # create worksheet
     check_contains(uuid[0:5], run_command([cl, 'ls']))
-    run_command([cl, 'add', '-m', 'testing'])
-    run_command([cl, 'add', '-m', '% display contents / maxlines=10'])
-    run_command([cl, 'add', uuid])
-    run_command([cl, 'add', '-m', '%% comment'])
-    run_command([cl, 'add', '-m', '% schema foo'])
-    run_command([cl, 'add', '-m', '% add uuid'])
-    run_command([cl, 'add', '-m', '% add data_hash data_hash s/0x/HEAD'])
-    run_command([cl, 'add', '-m', '% add CREATE created "date | [0:5]"'])
-    run_command([cl, 'add', '-m', '% display table foo'])
-    run_command([cl, 'add', uuid])
-    run_command([cl, 'cp', uuid, wuuid])  # not testing real copying ability
-    run_command([cl, 'wadd', wuuid])
+    run_command([cl, 'add', 'text', 'testing', '.'])
+    run_command([cl, 'add', 'text', '% display contents / maxlines=10', '.'])
+    run_command([cl, 'add', 'bundle', uuid, '.'])
+    run_command([cl, 'add', 'text', '%% comment', '.'])
+    run_command([cl, 'add', 'text', '% schema foo', '.'])
+    run_command([cl, 'add', 'text', '% add uuid', '.'])
+    run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD', '.'])
+    run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"', '.'])
+    run_command([cl, 'add', 'text', '% display table foo', '.'])
+    run_command([cl, 'add', 'bundle', uuid, '.'])
+    run_command([cl, 'add', 'bundle', uuid, wuuid])  # not testing real copying ability
+    run_command([cl, 'add', 'worksheet', wuuid, '.'])
     check_contains(['Worksheet', 'testing', 'hosts', '127.0.0.1', uuid, 'HEAD', 'CREATE'], run_command([cl, 'print']))
-    run_command([cl, 'wcp', wuuid, wuuid])
+    run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
@@ -350,14 +350,14 @@ def test(ctx):
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
     # Before freezing: can modify everything
     uuid1 = run_command([cl, 'upload', 'dataset', '-c', 'hello'])
-    run_command([cl, 'add', '-m' 'message'])
+    run_command([cl, 'add', 'text', 'message', '.'])
     run_command([cl, 'wedit', '-t', 'new_title'])
     run_command([cl, 'wperm', wuuid, 'public', 'n'])
     run_command([cl, 'wedit', '--freeze'])
     # After freezing: can only modify contents
     run_command([cl, 'detach', uuid1], 1)  # would remove an item
     run_command([cl, 'rm', uuid1], 1)  # would remove an item
-    run_command([cl, 'add', '-m', 'message'], 1)  # would add an item
+    run_command([cl, 'add', 'text', 'message', '.'], 1)  # would add an item
     run_command([cl, 'wedit', '-t', 'new_title']) # can edit
     run_command([cl, 'wperm', wuuid, 'public', 'a']) # can edit
 
@@ -375,9 +375,9 @@ def test(ctx):
 def test(ctx):
     uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
     uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group'])
-    run_command([cl, 'add', uuid1])
+    run_command([cl, 'add', 'bundle', uuid1, '.'])
     ctx.collect_bundle(uuid1)
-    run_command([cl, 'add', uuid2])
+    run_command([cl, 'add', 'bundle', uuid2, '.'])
     ctx.collect_bundle(uuid2)
     # State after the above: 1 2 1 2
     run_command([cl, 'detach', uuid1], 1) # multiple indices

@@ -1,6 +1,7 @@
 '''
 Local bundle client tests.
 '''
+import os
 import unittest
 
 from codalab.common import UsageError
@@ -20,7 +21,7 @@ class GroupsAndPermsTest(unittest.TestCase):
         cls.test_root = path_util.normalize("~/.codalab_tests")
         path_util.make_directory(cls.test_root)
         cls.bundle_store = BundleStore(cls.test_root, [])
-        cls.model = SQLiteModel(cls.test_root)
+        cls.model = SQLiteModel("sqlite:///{}".format(os.path.join(cls.test_root, 'bundle.db')))
         cls.model.root_user_id = '0'
         users = [User('root', '0'), User('user1', '1'), User('user2', '2'), User('user4', '4')]
         cls.auth_handler = MockAuthHandler(users)

@@ -93,6 +93,22 @@ class LocalBundleClient(BundleClient):
 
         return result
 
+    def _mask_bundle_info(self, bundle_info):
+        '''
+        Return a copy of the bundle_info dict that returns '<hidden>'
+        for all fields except 'uuid'.
+        '''
+        return {
+          'uuid': bundle_info['uuid'],
+          'bundle_type': 'private',
+          'owner_id': 'private',
+          'command': 'private',
+          'data_hash': 'private',
+          'state': 'private',
+          'metadata': {},
+          'dependencies': [],
+        }
+
     def get_bundle_uuids(self, worksheet_uuid, bundle_specs):
         return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
 
@@ -120,6 +136,7 @@ class LocalBundleClient(BundleClient):
 
     # Helper
     def get_target_path(self, target):
+        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         return canonicalize.get_target_path(self.bundle_store, self.model, target)
 
     # Helper
@@ -285,6 +302,7 @@ class LocalBundleClient(BundleClient):
     def delete_bundles(self, uuids, force, recursive, data_only, dry_run):
         '''
         Delete the bundles specified by |uuids|.
+        If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
         If |recursive|, add all bundles downstream too.
         If |data_only|, only remove from the bundle store, not the bundle metadata.
         '''
@@ -318,8 +336,8 @@ class LocalBundleClient(BundleClient):
                 raise UsageError('Can\'t delete bundle %s because it appears in frozen worksheets (need to delete worksheet first):\n  %s' % (
                     uuid,
                     '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
-            if len(host_worksheet_uuids) > 1:
-                raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (detach all but one first):\n  %s' % (
+            if not force and len(host_worksheet_uuids) > 1:
+                raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (--force to override):\n  %s' % (
                     uuid,
                     '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
@@ -362,10 +380,10 @@ class LocalBundleClient(BundleClient):
             permissions = self.model.get_user_worksheet_permissions(self._current_user_id(), uuids, self.model.get_worksheet_owner_ids(uuids))
             return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
 
-        # Remove bundles that we can't access
+        # Mask bundles that we can't access
         for uuid in select_unreadable_bundles(uuids):
             if uuid in bundle_dict:
-                del bundle_dict[uuid]
+                bundle_dict[uuid] = self._mask_bundle_info(bundle_dict[uuid])
 
         # Lookup the user names of all the owners
         user_ids = [info['owner_id'] for info in bundle_dict.values()]
@@ -500,12 +518,10 @@ class LocalBundleClient(BundleClient):
         # Return corresponding new_bundle_uuid
         def recurse(old_bundle_uuid):
             if old_bundle_uuid in old_to_new:
-                #print old_bundle_uuid, 'cached'
                 return old_to_new[old_bundle_uuid]
 
             # Don't have any more information (because we probably hit the maximum depth)
             if old_bundle_uuid not in infos:
-                #print old_bundle_uuid, 'no information'
                 return old_bundle_uuid
 
             # Get information about the old bundle.
@@ -523,7 +539,6 @@ class LocalBundleClient(BundleClient):
             if lone_output or downstream_of_inputs:
                 # Now create a new bundle that mimics the old bundle.
                 # Only change the name if the output name is supplied.
-                old_bundle_name = info['metadata']['name']
                 new_info = copy.deepcopy(info)
                 new_metadata = new_info['metadata']
                 if new_output_name:
