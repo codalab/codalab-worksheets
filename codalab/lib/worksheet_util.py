@@ -393,11 +393,6 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
     else:
         subpath, key = genpath, None
 
-    # Just a link
-    if post == 'link':
-        # TODO: need to synchronize with frontend
-        return '/%s' % os.path.join('api', 'bundles', 'filecontent', bundle_uuid, subpath)
-
     target = (bundle_uuid, subpath)
     if target not in target_cache:
         #print 'LOAD', target
@@ -571,12 +566,20 @@ def interpret_items(schemas, items):
         for arg in args:
             schema += schemas[arg]
         return schema
+    def reset_display_schema():
+        # Reset display to minimize the long distance dependencies of directives
+        if item_type != TYPE_BUNDLE:
+            current_display_ref[0] = default_display
+        # Reset schema to minimize long distance dependencies of directives
+        if item_type != TYPE_DIRECTIVE:
+            current_schema = None
     def is_missing(info): return 'metadata' not in info
     def flush():
         '''
         Gathered a group of bundles (in a table), which we can group together.
         '''
         if len(bundle_infos) == 0:
+            reset_display_schema()
             return
         # Print out the curent bundles somehow
         mode = current_display_ref[0][0]
@@ -642,21 +645,15 @@ def interpret_items(schemas, items):
                     continue
                 rows.append({name: apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
             new_items.append({
-                    'mode': mode,
-                    'interpreted': (header, rows),
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_infos)
-                })
+                'mode': mode,
+                'interpreted': (header, rows),
+                'properties': properties,
+                'bundle_info': copy.deepcopy(bundle_infos)
+            })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
-
-        # Reset display to minimize the long distance dependencies of directives
-        if item_type != TYPE_BUNDLE:
-            current_display_ref[0] = default_display
-        # Reset schema to minimize long distance dependencies of directives
-        if item_type != TYPE_DIRECTIVE:
-            current_schema = None
+        reset_display_schema()
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
