@@ -326,6 +326,20 @@ def test(ctx):
     # cleanup
     run_command([cl, 'rm', uuid])
 
+@TestModule.register('worksheet_search')
+def test(ctx):
+    wname = random_name()
+    # Create new worksheet
+    wuuid = run_command([cl, 'new', wname])
+    ctx.collect_worksheet(wuuid)
+    check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
+    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    print uuid, wuuid
+    run_command([cl, 'add', 'text', '% search ' + uuid, '.'])
+    run_command([cl, 'add', 'text', '% wsearch ' + wuuid, '.'])
+    check_contains([uuid[0:8], wuuid[0:8]], run_command([cl, 'print']))
+    run_command([cl, 'rm', uuid])
+
 @TestModule.register('worksheet_tags')
 def test(ctx):
     wname = random_name()

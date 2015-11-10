@@ -545,7 +545,8 @@ def interpret_items(schemas, items):
     '''
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
-    Return a list of interpreted items, where each item is either:
+    Return {'items': items}, where items is a list of interpreted items.
+    Each item is one of the following:
     - ('markup'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
       where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
@@ -707,6 +708,15 @@ def interpret_items(schemas, items):
                     'interpreted': data,
                     'properties': {},
                 })
+            elif command == 'wsearch':
+                keywords = value_obj[1:]
+                mode = command
+                data = {'keywords': keywords}
+                new_items.append({
+                    'mode': mode,
+                    'interpreted': data,
+                    'properties': {},
+                })
             else:
                 new_items.append({
                     'mode': TYPE_MARKUP,
@@ -771,3 +781,17 @@ def interpret_search(client, worksheet_uuid, data):
 
     # Finally, interpret the items
     return interpret_items(data['schemas'], items)
+
+def interpret_wsearch(client, data):
+    '''
+    Input: specification of a worksheet search query.
+    Output: worksheet items based on the result of issuing the search query.
+    '''
+    # Get the worksheet uuids
+    worksheet_infos = client.search_worksheets(data['keywords'])
+    items = []
+    for worksheet_info in worksheet_infos:
+        items.append(subworksheet_item(worksheet_info))
+
+    # Finally, interpret the items
+    return interpret_items([], items)
