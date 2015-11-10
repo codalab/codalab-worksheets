@@ -766,14 +766,16 @@ def interpret_search(client, worksheet_uuid, data):
     Input: specification of a search query.
     Output: worksheet items based on the result of issuing the search query.
     '''
-    # First item determines the display
-    items = [directive_item(('display',) + tuple(data['display']))]
-
-    # Next come the actual bundles
     bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'])
-    if not isinstance(bundle_uuids, list):  # Single number, just print it out...
+
+    # Single number, just print it out...
+    if not isinstance(bundle_uuids, list):
         return interpret_items(data['schemas'], [markup_item(str(bundle_uuids))])
 
+    # Set display
+    items = [directive_item(('display',) + tuple(data['display']))]
+
+    # Show bundles
     bundle_infos = client.get_bundle_infos(bundle_uuids)
     for bundle_uuid in bundle_uuids:
         items.append(bundle_item(bundle_infos[bundle_uuid]))
