@@ -1703,24 +1703,22 @@ class BundleCLI(object):
             self.display_interpreted(client, worksheet_info, interpreted)
 
     def display_interpreted(self, client, worksheet_info, interpreted):
-        is_last_newline = False
         for item in interpreted['items']:
             mode = item['mode']
             data = item['interpreted']
             properties = item['properties']
-            is_newline = (data == '')
+            print ''  # Separate interpreted items
             if mode == 'markup' or mode == 'contents':
-                if not (is_newline and is_last_newline):
-                    if mode == 'contents':
-                        maxlines = properties.get('maxlines')
-                        if maxlines:
-                            maxlines = int(maxlines)
-                        try:
-                            self.print_target_info(client, data, decorate=True, maxlines=maxlines)
-                        except UsageError, e:
-                            print 'ERROR:', e
-                    else:
-                        print data
+                if mode == 'contents':
+                    maxlines = properties.get('maxlines')
+                    if maxlines:
+                        maxlines = int(maxlines)
+                    try:
+                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                    except UsageError, e:
+                        print 'ERROR:', e
+                else:
+                    print data
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
@@ -1737,7 +1735,6 @@ class BundleCLI(object):
                 print '[Worksheet ' + self.simple_worksheet_str(data) + ']'
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
-            is_last_newline = is_newline
 
     @Commands.command(
         'wls',

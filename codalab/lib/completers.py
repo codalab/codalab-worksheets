@@ -50,7 +50,7 @@ class AddressesCompleter(CodaLabCompleter):
     Complete address with suggestions from the current worksheet.
     '''
     def __call__(self, prefix, action=None, parsed_args=None):
-        return (a for a in self.cli.manager.config['aliases'] if a.startswith(prefix))
+        return (a for a in self.cli.manager.config.get('aliases', {}) if a.startswith(prefix))
 
 class GroupsCompleter(CodaLabCompleter):
     '''

@@ -579,11 +579,15 @@ def interpret_items(schemas, items):
         if mode == 'hidden':
             pass
         elif mode == 'contents' or mode == 'image' or mode == 'html':
+            def raiseUsageError():
+                raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join([mode] + args) + '\'')
             for bundle_info in bundle_infos:
                 if is_missing(bundle_info):
                     continue
 
                 # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
+                if len(args) == 0:
+                    raiseUsageError()
                 interpreted = interpret_genpath(bundle_info, args[0])
 
                 # Properties - e.g., height, width, maxlines (optional)
@@ -593,7 +597,7 @@ def interpret_items(schemas, items):
                 if isinstance(interpreted, tuple):  # Not rendered yet
                     bundle_uuid, genpath = interpreted
                     if not is_file_genpath(genpath):
-                        raise UsageError('Expected a file genpath, but got %s' % genpath)
+                        raiseUsageError()
                     else:
                         # interpreted is a target: strip off the leading /
                         interpreted = (bundle_uuid, genpath[1:])
@@ -654,9 +658,11 @@ def interpret_items(schemas, items):
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
+    last_was_empty_line = False
     for item in items:
         (bundle_info, subworksheet_info, value_obj, item_type) = item
         properties = {}
+        new_last_was_empty_line = True
 
         if item_type == TYPE_BUNDLE:
             bundle_infos.append(bundle_info)
@@ -670,11 +676,16 @@ def interpret_items(schemas, items):
             })
         elif item_type == TYPE_MARKUP:
             flush()
-            new_items.append({
-                'mode': TYPE_MARKUP,
-                'interpreted': value_obj,
-                'properties': {},
-            })
+            new_last_was_empty_line = (value_obj == '')
+            if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line:
+                # Combine all consecutive markup items
+                new_items[-1]['interpreted'] += '\n' + value_obj
+            elif not new_last_was_empty_line:
+                new_items.append({
+                    'mode': TYPE_MARKUP,
+                    'interpreted': value_obj,
+                    'properties': {},
+                })
         elif item_type == TYPE_DIRECTIVE:
             flush()
             command = get_command(value_obj)
@@ -713,6 +724,7 @@ def interpret_items(schemas, items):
                 #raise UsageError('Unknown directive command in %s' % value_obj)
         else:
             raise InternalError('Unknown worksheet item type: %s' % item_type)
+        last_was_empty_line = new_last_was_empty_line
 
     flush()
     result['items'] = new_items
