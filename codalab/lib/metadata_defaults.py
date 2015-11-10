@@ -38,7 +38,7 @@ class MetadataDefaults(object):
             for path in args.path:
                 absolute_path = path_util.normalize(path)
                 items.append(os.path.basename(absolute_path))
-            return '-'.join(items)
+            return spec_util.create_default_name(None, '-'.join(items))
         elif bundle_subclass is MakeBundle:
             if len(args.target_spec) == 1 and ':' not in args.target_spec[0]:  # direct link
                 return os.path.basename(args.target_spec[0])
