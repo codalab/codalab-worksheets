@@ -15,12 +15,12 @@ class NamedBundle(Bundle):
     NAME_LENGTH = 32
 
     METADATA_SPECS = (
-      MetadataSpec('name', basestring, 'short variable name (not necessarily unique); must conform to ' + spec_util.NAME_REGEX.pattern, short_key='n'),
-      MetadataSpec('description', basestring, 'full description of the bundle', short_key='d'),
-      MetadataSpec('tags', list, 'space-separated list of tags used for search (e.g., machine-learning)', metavar='TAG'),
-      MetadataSpec('created', int, 'time when this bundle was created', generated=True, formatting='date'),
-      MetadataSpec('data_size', int, 'size of this bundle (in bytes)', generated=True, formatting='size'),
-      MetadataSpec('failure_message', basestring, 'error message if bundle failed', generated=True),
+      MetadataSpec('name', basestring, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, short_key='n'),
+      MetadataSpec('description', basestring, 'Full description of the bundle.', short_key='d'),
+      MetadataSpec('tags', list, 'Space-separated list of tags used for search (e.g., machine-learning).', metavar='TAG'),
+      MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),
+      MetadataSpec('data_size', int, 'Size of this bundle (in bytes).', generated=True, formatting='size'),
+      MetadataSpec('failure_message', basestring, 'Error message if this run bundle failed.', generated=True),
     )
 
     @classmethod

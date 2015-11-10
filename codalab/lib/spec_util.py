@@ -12,6 +12,7 @@ from codalab.common import (
 UUID_REGEX = re.compile('^0x[0-9a-f]{32}$')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
 
+BEGIN_NAME_STR = '[a-zA-Z_]'
 NAME_STR = '[a-zA-Z_][a-zA-Z0-9_\.\-]*'
 NAME_PATTERN_STR = '[%\*a-zA-Z0-9_\.\-]+'  # Allow % for matching wildcard (SQL syntax), and * (regular expressions)
 
@@ -66,9 +67,12 @@ def create_default_name(bundle_type, raw_material):
     Takes a complicated raw_material like the run command and return something simple.
     Example: 'java HelloWorld -n 3' => 'java'
     '''
-    raw_material = raw_material.split(' ')[0]
-    name = bundle_type + '-' + NOT_NAME_CHAR_REGEX.sub('-', raw_material)
-    name = re.compile('\-+').sub('-', name)
+    if bundle_type == 'run':
+        raw_material = raw_material.split(' ')[0]
+    name = (bundle_type + '-' if bundle_type else '') + NOT_NAME_CHAR_REGEX.sub('-', raw_material)
+    name = re.compile('\-+').sub('-', name)  # Collapse '---' => '-'
+    if not re.match(BEGIN_NAME_STR, name):
+        name = '_' + name
     name = shorten_name(name)  # Shorten
     return name
 

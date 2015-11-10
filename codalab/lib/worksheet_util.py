@@ -124,13 +124,7 @@ def get_worksheet_lines(worksheet_info):
     '''
     Generator that returns pretty-printed lines of text for the given worksheet.
     '''
-    header = '''
-// Editing worksheet %s(%s).
-// https://github.com/codalab/codalab/wiki/User_Worksheet-Markdown
-//
-    '''.strip() % (worksheet_info['name'], worksheet_info['uuid'],)
-    lines = header.split('\n')
-
+    lines = []
     for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)

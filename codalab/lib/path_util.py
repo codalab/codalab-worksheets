@@ -324,42 +324,36 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
+def quote_arg(arg):
+    return '"' + arg.replace('"', '\\"') + '"'
+
 def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
     '''
     source_path can be a list of files, in which case we need to create a
     directory first.  Assume dest_path doesn't exist.
     Don't copy things that match |exclude_patterns|.
     '''
+
     # Note: this only works in Linux.
     if os.path.exists(dest_path):
         raise path_error('already exists', dest_path)
 
     if isinstance(source_path, list):
         os.mkdir(dest_path)
-        source = ' '.join(source_path)
+        source = ' '.join(quote_arg(p) for p in source_path)
     else:
-        source = source_path
+        source = quote_arg(source_path)
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
             file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
-        #command = "cp -pR%s %s %s" % (('L' if follow_symlinks else 'P'), source, dest_path)
-        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else 'l'), source, '/' if os.path.isdir(source) else '', dest_path)
+        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else 'l'), source, '/' if os.path.isdir(source) else '', quote_arg(dest_path))
         if exclude_patterns:
             for pattern in exclude_patterns:
                 command += ' --exclude "' + pattern + '"'
-        #print command
         if os.system(command) != 0:
             raise path_error('Unable to copy %s to' % source_path, dest_path)
-
-    #if os.path.islink(source_path):
-    #    link_target = os.readlink(source_path)
-    #    os.symlink(link_target, dest_path)
-    #elif os.path.isdir(source_path):
-    #    shutil.copytree(source_path, dest_path, symlinks=True)
-    #else:
-    #    shutil.copyfile(source_path, dest_path)
 
 def make_directory(path):
     '''

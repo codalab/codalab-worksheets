@@ -113,7 +113,7 @@ class ModuleContext(object):
         print
         run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
-            self.bundles.extend(run_command([cl, 'ls', worksheet, '-u']).split())
+            self.bundles.extend(run_command([cl, 'ls', '-w', worksheet, '-u']).split())
             run_command([cl, 'wrm', '--force', worksheet])
 
         # Delete all bundles (dedup first)
@@ -209,7 +209,7 @@ def test(ctx):
 @TestModule.register('upload1')
 def test(ctx):
     # upload
-    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '--description', 'hello', '--tags', 'a', 'b'])
+    uuid = run_command([cl, 'upload', '/etc/hosts', '--description', 'hello', '--tags', 'a', 'b'])
     check_equals('hosts', get_info(uuid, 'name'))
     check_equals('hello', get_info(uuid, 'description'))
     check_contains(['a', 'b'], get_info(uuid, 'tags'))
@@ -236,30 +236,30 @@ def test(ctx):
 @TestModule.register('upload2')
 def test(ctx):
     # Upload two files
-    uuid = run_command([cl, 'upload', 'program', '/etc/hosts', '/etc/group', '--description', 'hello'])
+    uuid = run_command([cl, 'upload', '/etc/hosts', '/etc/group', '--description', 'hello'])
     check_contains('127.0.0.1', run_command([cl, 'cat', uuid + '/hosts']))
     # Upload with base
-    uuid2 = run_command([cl, 'upload', 'program', '/etc/hosts', '/etc/group', '--base', uuid])
+    uuid2 = run_command([cl, 'upload', '/etc/hosts', '/etc/group', '--base', uuid])
     check_equals('hello', get_info(uuid2, 'description'))
     # Cleanup
     run_command([cl, 'rm', uuid, uuid2])
 
 @TestModule.register('upload3')
 def test(ctx):
-    uuid = run_command([cl, 'upload', 'dataset', '-c', 'hello'])
+    uuid = run_command([cl, 'upload', '-c', 'hello'])
     check_equals('hello', run_command([cl, 'cat', uuid]))
     run_command([cl, 'rm', uuid])
 
 @TestModule.register('rm')
 def test(ctx):
-    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    uuid = run_command([cl, 'upload', '/etc/hosts'])
     run_command([cl, 'add', 'bundle', uuid, '.'])  # Duplicate
     run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
 
 @TestModule.register('make')
 def test(ctx):
-    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
-    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group'])
+    uuid1 = run_command([cl, 'upload', '/etc/hosts'])
+    uuid2 = run_command([cl, 'upload', '/etc/group'])
     # make
     uuid3 = run_command([cl, 'make', 'dep1:'+uuid1, 'dep2:'+uuid2])
     wait(uuid3)
@@ -302,7 +302,7 @@ def test(ctx):
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
     # ls
     check_equals('', run_command([cl, 'ls', '-u']))
-    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    uuid = run_command([cl, 'upload', '/etc/hosts'])
     check_equals(uuid, run_command([cl, 'ls', '-u']))
     # create worksheet
     check_contains(uuid[0:5], run_command([cl, 'ls']))
@@ -333,13 +333,13 @@ def test(ctx):
     ctx.collect_worksheet(wuuid)
     # Add tags
     run_command([cl, 'wedit', wname, '--tags', 'foo', 'bar', 'baz'])
-    check_contains(['Tags: \\[\'foo\', \'bar\', \'baz\'\\]'], run_command([cl, 'ls', wuuid]))
+    check_contains(['Tags: \\[\'foo\', \'bar\', \'baz\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
     # Modify tags
     run_command([cl, 'wedit', wname, '--tags', 'bar', 'foo'])
-    check_contains(['Tags: \\[\'bar\', \'foo\'\\]'], run_command([cl, 'ls', wuuid]))
+    check_contains(['Tags: \\[\'bar\', \'foo\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
-    check_contains(['Tags: \\[\\]'], run_command([cl, 'ls', wuuid]))
+    check_contains(['Tags: \\[\\]'], run_command([cl, 'ls', '-w', wuuid]))
 
 @TestModule.register('freeze')
 def test(ctx):
@@ -349,7 +349,7 @@ def test(ctx):
     ctx.collect_worksheet(wuuid)
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
     # Before freezing: can modify everything
-    uuid1 = run_command([cl, 'upload', 'dataset', '-c', 'hello'])
+    uuid1 = run_command([cl, 'upload', '-c', 'hello'])
     run_command([cl, 'add', 'text', 'message', '.'])
     run_command([cl, 'wedit', '-t', 'new_title'])
     run_command([cl, 'wperm', wuuid, 'public', 'n'])
@@ -363,7 +363,7 @@ def test(ctx):
 
 @TestModule.register('copy')
 def test(ctx):
-    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts', '/etc/group'])
+    uuid = run_command([cl, 'upload', '/etc/hosts', '/etc/group'])
     # download
     run_command([cl, 'download', uuid, '-o', uuid])
     run_command(['ls', '-R', uuid])
@@ -373,8 +373,8 @@ def test(ctx):
 
 @TestModule.register('detach')
 def test(ctx):
-    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
-    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group'])
+    uuid1 = run_command([cl, 'upload', '/etc/hosts'])
+    uuid2 = run_command([cl, 'upload', '/etc/group'])
     run_command([cl, 'add', 'bundle', uuid1, '.'])
     ctx.collect_bundle(uuid1)
     run_command([cl, 'add', 'bundle', uuid2, '.'])
@@ -389,7 +389,7 @@ def test(ctx):
 
 @TestModule.register('perm')
 def test(ctx):
-    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    uuid = run_command([cl, 'upload', '/etc/hosts'])
     check_equals('all', run_command([cl, 'info', '-v', '-f', 'permission', uuid]))
     check_contains('none', run_command([cl, 'perm', uuid, 'public', 'n']))
     check_contains('read', run_command([cl, 'perm', uuid, 'public', 'r']))
@@ -399,8 +399,8 @@ def test(ctx):
 @TestModule.register('search')
 def test(ctx):
     name = random_name()
-    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', name])
-    uuid2 = run_command([cl, 'upload', 'dataset', '/etc/group', '-n', name])
+    uuid1 = run_command([cl, 'upload', '/etc/hosts', '-n', name])
+    uuid2 = run_command([cl, 'upload', '/etc/group', '-n', name])
     check_equals(uuid1, run_command([cl, 'search', uuid1, '-u']))
     check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, '-u']))
     check_equals('', run_command([cl, 'search', 'uuid='+uuid1[0:8], '-u']))
@@ -429,9 +429,9 @@ def test(ctx):
     def data_hash(uuid):
         run_command([cl, 'wait', uuid])
         return get_info(uuid, 'data_hash')
-    uuid1 = run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', name + '-in1'])
+    uuid1 = run_command([cl, 'upload', '/etc/hosts', '-n', name + '-in1'])
     uuid2 = run_command([cl, 'make', uuid1, '-n', name + '-out'])
-    uuid3 = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    uuid3 = run_command([cl, 'upload', '/etc/hosts'])
     # Try three ways of mimicing, should all produce the same answer
     uuid4 = run_command([cl, 'mimic', uuid1, uuid3, '-n', 'new'])
     check_equals(data_hash(uuid2), data_hash(uuid4))
@@ -467,10 +467,10 @@ def test(ctx):
     wuuid = run_command([cl, 'new', wother])
     ctx.collect_worksheet(wuuid)
     buuids = [
-        run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[0]]),
-        run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[1]]),
-        run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[0], '-w', wother]),
-        run_command([cl, 'upload', 'dataset', '/etc/hosts', '-n', bnames[1], '-w', wother])
+        run_command([cl, 'upload', '/etc/hosts', '-n', bnames[0]]),
+        run_command([cl, 'upload', '/etc/hosts', '-n', bnames[1]]),
+        run_command([cl, 'upload', '/etc/hosts', '-n', bnames[0], '-w', wother]),
+        run_command([cl, 'upload', '/etc/hosts', '-n', bnames[1], '-w', wother])
     ]
 
     # Test batch info call
