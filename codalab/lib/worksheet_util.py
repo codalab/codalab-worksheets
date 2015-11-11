@@ -577,9 +577,9 @@ def interpret_items(schemas, items):
     result = {}
 
     # Set default schema
-    current_schema_ref = [None]
+    current_schema = None
     default_display = ('table', 'default')
-    current_display_ref = [default_display]
+    current_display = default_display
     new_items = []
     bundle_infos = []
     def get_schema(args):  # args is a list of schema names
@@ -588,24 +588,17 @@ def interpret_items(schemas, items):
         for arg in args:
             schema += schemas[arg]
         return schema
-    def reset_display_schema(item_type):
-        # Reset display to minimize the long distance dependencies of directives
-        if item_type != TYPE_BUNDLE:
-            current_display_ref[0] = default_display
-        # Reset schema to minimize long distance dependencies of directives
-        if item_type != TYPE_DIRECTIVE:
-            current_schema_ref[0] = None
     def is_missing(info): return 'metadata' not in info
-    def flush(item_type):
+    def flush_bundles():
         '''
-        Gathered a group of bundles (in a table), which we can group together.
+        Having collected bundles in |bundle_infos|, flush them into |new_items|,
+        potentially as a single table depending on the mode.
         '''
         if len(bundle_infos) == 0:
-            reset_display_schema(item_type)
             return
         # Print out the curent bundles somehow
-        mode = current_display_ref[0][0]
-        args = current_display_ref[0][1:]
+        mode = current_display[0]
+        args = current_display[1:]
         properties = {}
         if mode == 'hidden':
             pass
@@ -694,7 +687,6 @@ def interpret_items(schemas, items):
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
-        reset_display_schema(item_type)
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
@@ -704,18 +696,28 @@ def interpret_items(schemas, items):
         properties = {}
         new_last_was_empty_line = True
 
+        is_bundle = (item_type == TYPE_BUNDLE)
+        is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
+        is_directive = (item_type == TYPE_DIRECTIVE)
+        if not is_bundle:
+            flush_bundles()
+        # Reset display to minimize long distance dependencies of directives
+        if not (is_bundle or is_search):
+            current_display = default_display
+        # Reset schema to minimize long distance dependencies of directives
+        if not is_directive:
+            current_schema = None
+
         if item_type == TYPE_BUNDLE:
             bundle_infos.append(bundle_info)
         elif item_type == TYPE_WORKSHEET:
-            flush(item_type)
             new_items.append({
                 'mode': TYPE_WORKSHEET,
-                'interpreted': subworksheet_info,  # TODO: convert into something more useful?
+                'interpreted': subworksheet_info,
                 'properties': {},
                 'subworksheet_info': subworksheet_info,
             })
         elif item_type == TYPE_MARKUP:
-            flush(item_type)
             new_last_was_empty_line = (value_obj == '')
             if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line:
                 # Combine all consecutive markup items
@@ -727,35 +729,41 @@ def interpret_items(schemas, items):
                     'properties': {},
                 })
         elif item_type == TYPE_DIRECTIVE:
-            flush(item_type)
             command = get_command(value_obj)
-            if command == '%' or command == '' or command == None:  # Comment
+            if command == '%' or command == '' or command == None:
+                # Comment
                 pass
             elif command == 'schema':
+                # Start defining new schema
                 name = value_obj[1]
-                schemas[name] = current_schema_ref[0] = []
+                schemas[name] = current_schema = []
             elif command == 'addschema':
-                if current_schema_ref[0] == None:
+                # Add to schema
+                if current_schema == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 name = value_obj[1]
-                current_schema_ref[0] += schemas[name]
+                current_schema += schemas[name]
             elif command == 'add':
-                if current_schema_ref[0] == None:
+                # Add to schema
+                if current_schema == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 schema_item = canonicalize_schema_item(value_obj[1:])
-                current_schema_ref[0].append(schema_item)
+                current_schema.append(schema_item)
             elif command == 'display':
-                current_display_ref[0] = value_obj[1:]
+                # Set display
+                current_display = value_obj[1:]
             elif command == 'search':
+                # Display bundles based on query
                 keywords = value_obj[1:]
                 mode = command
-                data = {'keywords': keywords, 'display': current_display_ref[0], 'schemas': schemas}
+                data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
                 new_items.append({
                     'mode': mode,
                     'interpreted': data,
                     'properties': {},
                 })
             elif command == 'wsearch':
+                # Display worksheets based on query
                 keywords = value_obj[1:]
                 mode = command
                 data = {'keywords': keywords}
@@ -765,17 +773,17 @@ def interpret_items(schemas, items):
                     'properties': {},
                 })
             else:
+                # Error
                 new_items.append({
                     'mode': TYPE_MARKUP,
                     'interpreted': 'ERROR: unknown directive **%% %s**' % ' '.join(value_obj),
                     'properties': {},
                 })
-                #raise UsageError('Unknown directive command in %s' % value_obj)
         else:
             raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line
 
-    flush(None)
+    flush_bundles()
     result['items'] = new_items
 
     return result
