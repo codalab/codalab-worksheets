@@ -555,8 +555,7 @@ def interpret_items(schemas, items):
     result = {}
 
     # Set default schema
-    current_schema = None
-
+    current_schema_ref = [None]
     default_display = ('table', 'default')
     current_display_ref = [default_display]
     new_items = []
@@ -573,7 +572,7 @@ def interpret_items(schemas, items):
             current_display_ref[0] = default_display
         # Reset schema to minimize long distance dependencies of directives
         if item_type != TYPE_DIRECTIVE:
-            current_schema = None
+            current_schema_ref[0] = None
     def is_missing(info): return 'metadata' not in info
     def flush():
         '''
@@ -686,17 +685,17 @@ def interpret_items(schemas, items):
                 pass
             elif command == 'schema':
                 name = value_obj[1]
-                schemas[name] = current_schema = []
+                schemas[name] = current_schema_ref[0] = []
             elif command == 'addschema':
-                if current_schema == None:
+                if current_schema_ref[0] == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 name = value_obj[1]
-                current_schema += schemas[name]
+                current_schema_ref[0] += schemas[name]
             elif command == 'add':
-                if current_schema == None:
+                if current_schema_ref[0] == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 schema_item = canonicalize_schema_item(value_obj[1:])
-                current_schema.append(schema_item)
+                current_schema_ref[0].append(schema_item)
             elif command == 'display':
                 current_display_ref[0] = value_obj[1:]
             elif command == 'search':
@@ -789,9 +788,7 @@ def interpret_wsearch(client, data):
     '''
     # Get the worksheet uuids
     worksheet_infos = client.search_worksheets(data['keywords'])
-    items = []
-    for worksheet_info in worksheet_infos:
-        items.append(subworksheet_item(worksheet_info))
+    items = [subworksheet_item(worksheet_info) for worksheet_info in worksheet_infos]
 
     # Finally, interpret the items
     return interpret_items([], items)
