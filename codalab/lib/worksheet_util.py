@@ -29,12 +29,10 @@ See get_worksheet_lines for documentation on the specification of the directives
 import copy
 import os
 import re
-import subprocess
-import sys
-import tempfile
 import types
 import yaml
 import json
+from itertools import izip
 
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
@@ -50,6 +48,7 @@ def markup_item(x): return (None, None, x, TYPE_MARKUP)
 def directive_item(x): return (None, None, x, TYPE_DIRECTIVE)
 def bundle_item(x): return (x, None, '', TYPE_BUNDLE)  # TODO: replace '' with None when tables.py schema is updated
 def subworksheet_item(x): return (None, x, '', TYPE_WORKSHEET)  # TODO: replace '' with None when tables.py schema is updated
+
 
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
@@ -113,12 +112,14 @@ def get_worksheet_info_edit_command(raw_command_map):
     return 'wedit -{k[0]} "{v}"'.format(**raw_command_map)
 
 def convert_item_to_db(item):
-    (bundle_info, subworksheet_info, value_obj, type) = item
-    bundle_uuid = bundle_info['uuid'] if bundle_info else None
-    subworksheet_uuid = subworksheet_info['uuid'] if subworksheet_info else None
-    value = tokens_to_string(value_obj) if type == TYPE_DIRECTIVE else value_obj
-    if not value: value = ''  # TODO: change tables.py so that None's are allowed
-    return (bundle_uuid, subworksheet_uuid, value, type)
+    (bundle_info, subworksheet_info, value_obj, item_type) = item
+    return (
+        bundle_info['uuid'] if bundle_info else None,
+        subworksheet_info['uuid'] if subworksheet_info else None,
+        # TODO: change tables.py so that None's are allowed
+        (tokens_to_string(value_obj) if item_type == TYPE_DIRECTIVE else value_obj) or '',
+        item_type,
+    )
 
 def get_worksheet_lines(worksheet_info):
     '''
@@ -129,9 +130,15 @@ def get_worksheet_lines(worksheet_info):
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
-            value = tokens_to_string(value_obj)
-            value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
-            lines.append(value)
+            print value_obj
+            if value_obj[0] == DIRECTIVE_CHAR:
+                # A comment directive
+                lines.append('//' + ' '.join(value_obj[1:]))
+            else:
+                # A normal directive
+                value = tokens_to_string(value_obj)
+                value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
+                lines.append(value)
         elif item_type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
@@ -149,7 +156,7 @@ def get_worksheet_lines(worksheet_info):
         elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')), subworksheet_info['uuid']))
         else:
-            raise InternalError('Invalid worksheet item type: %s' % type)
+            raise RuntimeError('Invalid worksheet item type: %s' % type)
     return lines
 
 def get_formatted_metadata(cls, metadata, raw=False):
@@ -249,49 +256,64 @@ def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
 def parse_worksheet_form(form_result, client, worksheet_uuid):
     '''
     Input: form_result is a list of lines.
-    Return (list of (bundle_uuid, value, type) triples, commands to execute)
+    Return (list of (bundle_info, subworksheet_info, value, type) tuples, commands to execute)
     '''
-    bundle_uuids = [] # The user can specify '!<command> ^', which perform actions on the previous bundle.
-    commands = []
-    def parse(line):
-        m = BUNDLE_REGEX.match(line)
-        if m:
-            try:
-                bundle_uuid = get_bundle_uuid(client, worksheet_uuid, m.group(3))
-                bundle_info = {'uuid': bundle_uuid}  # info doesn't need anything other than uuid
-                bundle_uuids.append(bundle_uuid)
-                return (bundle_info, None, None, TYPE_BUNDLE)
-            except UsageError, e:
-                return markup_item(line + ': ' + e.message)
-
-        m = SUBWORKSHEET_REGEX.match(line)
-        if m:
-            try:
-                subworksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, m.group(3))
-                subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
-                return subworksheet_item(subworksheet_info)
-            except UsageError, e:
-                return markup_item(e.message + ': ' + line)
-
-        m = DIRECTIVE_REGEX.match(line)
-        if m:
-            return directive_item(string_to_tokens(m.group(1)))
-
-        return markup_item(line)
-
-    result = []
-    for line in form_result:
-        if line.startswith('//'):  # Comments
-            pass
-        elif line.startswith('!'):  # Run commands
-            command = string_to_tokens(line[1:].strip())
-            # Replace ^ with the reference to the last bundle.
-            command = [(bundle_uuids[-1] if arg == '^' else arg) for arg in command]
-            commands.append(command)
+    def get_line_type(line):
+        if line.startswith('!'):  # Run commands
+            return 'command'
+        elif line.startswith('//'):
+            return 'comment'
+        elif BUNDLE_REGEX.match(line) is not None:
+            return TYPE_BUNDLE
+        elif SUBWORKSHEET_REGEX.match(line) is not None:
+            return TYPE_WORKSHEET
+        elif DIRECTIVE_REGEX.match(line) is not None:
+            return TYPE_DIRECTIVE
         else:
-            result.append(parse(line))
+            return TYPE_MARKUP
 
-    return (result, commands)
+    line_types = [get_line_type(line) for line in form_result]
+
+    # Extract bundle specs and resolve uuids in one batch
+    # bundle_specs = (line_indices, bundle_specs)
+    bundle_specs = zip(*[(i, BUNDLE_REGEX.match(line).group(3))
+                    for i, line in enumerate(form_result)
+                    if line_types[i] == TYPE_BUNDLE])
+    # bundle_uuids = {line_i: bundle_uuid, ...}
+    bundle_uuids = dict(zip(bundle_specs[0], get_bundle_uuids(client, worksheet_uuid, bundle_specs[1])))
+
+    commands = []
+    items = []
+    for line_i, (line_type, line) in enumerate(izip(line_types, form_result)):
+        if line_type == 'command':
+            command = string_to_tokens(line[1:].strip())
+            # The user can specify '!<command> ^', which perform actions on the previous bundle.
+            # Replace ^ with the reference to the last bundle.
+            command = [(bundle_uuids[-1][1] if arg == '^' else arg) for arg in command]
+            commands.append(command)
+        elif line_type == 'comment':
+            comment = line[2:]
+            items.append(directive_item([DIRECTIVE_CHAR, comment]))
+        elif line_type == TYPE_BUNDLE:
+            bundle_info = {'uuid': bundle_uuids[line_i]}  # info doesn't need anything other than uuid
+            items.append(bundle_item(bundle_info))
+        elif line_type == TYPE_WORKSHEET:
+            subworksheet_spec = SUBWORKSHEET_REGEX.match(line).group(3)
+            try:
+                subworksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, subworksheet_spec)
+                subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
+                items.append(subworksheet_item(subworksheet_info))
+            except UsageError, e:
+                items.append(markup_item(e.message + ': ' + line))
+        elif line_type == TYPE_DIRECTIVE:
+            directive = DIRECTIVE_REGEX.match(line).group(1)
+            items.append(directive_item(string_to_tokens(directive)))
+        elif line_type == TYPE_MARKUP:
+            items.append(markup_item(line))
+        else:
+            raise RuntimeError("Invalid line type %s: this should not happen." % line_type)
+
+    return items, commands
 
 def is_file_genpath(genpath):
     # Return whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
@@ -712,7 +734,7 @@ def interpret_items(schemas, items):
                 })
                 #raise UsageError('Unknown directive command in %s' % value_obj)
         else:
-            raise InternalError('Unknown worksheet item type: %s' % item_type)
+            raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
     flush()
     result['items'] = new_items
