@@ -40,8 +40,7 @@ class BundlesCompleter(CodaLabCompleter):
 
         if spec_util.UUID_PREFIX_REGEX.match(prefix):
             # uuids are matched globally
-            bundle_uuids = client.search_bundle_uuids(worksheet_uuid, ['uuid=' + prefix + '%'])
-            return map(short_uuid, bundle_uuids)
+            return client.search_bundle_uuids(worksheet_uuid, ['uuid=' + prefix + '%'])
         else:
             # Names are matched locally on worksheet
             worksheet_info = client.get_worksheet_info(worksheet_uuid, True, True)
