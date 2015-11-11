@@ -588,7 +588,7 @@ def interpret_items(schemas, items):
         for arg in args:
             schema += schemas[arg]
         return schema
-    def reset_display_schema():
+    def reset_display_schema(item_type):
         # Reset display to minimize the long distance dependencies of directives
         if item_type != TYPE_BUNDLE:
             current_display_ref[0] = default_display
@@ -596,12 +596,12 @@ def interpret_items(schemas, items):
         if item_type != TYPE_DIRECTIVE:
             current_schema_ref[0] = None
     def is_missing(info): return 'metadata' not in info
-    def flush():
+    def flush(item_type):
         '''
         Gathered a group of bundles (in a table), which we can group together.
         '''
         if len(bundle_infos) == 0:
-            reset_display_schema()
+            reset_display_schema(item_type)
             return
         # Print out the curent bundles somehow
         mode = current_display_ref[0][0]
@@ -694,7 +694,7 @@ def interpret_items(schemas, items):
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
-        reset_display_schema()
+        reset_display_schema(item_type)
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
@@ -707,7 +707,7 @@ def interpret_items(schemas, items):
         if item_type == TYPE_BUNDLE:
             bundle_infos.append(bundle_info)
         elif item_type == TYPE_WORKSHEET:
-            flush()
+            flush(item_type)
             new_items.append({
                 'mode': TYPE_WORKSHEET,
                 'interpreted': subworksheet_info,  # TODO: convert into something more useful?
@@ -715,7 +715,7 @@ def interpret_items(schemas, items):
                 'subworksheet_info': subworksheet_info,
             })
         elif item_type == TYPE_MARKUP:
-            flush()
+            flush(item_type)
             new_last_was_empty_line = (value_obj == '')
             if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line:
                 # Combine all consecutive markup items
@@ -727,7 +727,7 @@ def interpret_items(schemas, items):
                     'properties': {},
                 })
         elif item_type == TYPE_DIRECTIVE:
-            flush()
+            flush(item_type)
             command = get_command(value_obj)
             if command == '%' or command == '' or command == None:  # Comment
                 pass
@@ -775,7 +775,7 @@ def interpret_items(schemas, items):
             raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line
 
-    flush()
+    flush(None)
     result['items'] = new_items
 
     return result
