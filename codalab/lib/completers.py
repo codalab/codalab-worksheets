@@ -37,12 +37,15 @@ class BundlesCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
         worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
         client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, True, True)
-        bundle_infos = self.cli.get_worksheet_bundles(worksheet_info)
 
         if spec_util.UUID_PREFIX_REGEX.match(prefix):
-            return (short_uuid(b['uuid']) for b in bundle_infos if b['uuid'].startswith(prefix))
+            # uuids are matched globally
+            bundle_uuids = client.search_bundle_uuids(worksheet_uuid, ['uuid=' + prefix + '%'])
+            return map(short_uuid, bundle_uuids)
         else:
+            # Names are matched locally on worksheet
+            worksheet_info = client.get_worksheet_info(worksheet_uuid, True, True)
+            bundle_infos = self.cli.get_worksheet_bundles(worksheet_info)
             return (b['metadata']['name'] for b in bundle_infos if b['metadata']['name'].startswith(prefix))
 
 class AddressesCompleter(CodaLabCompleter):
