@@ -29,12 +29,10 @@ See get_worksheet_lines for documentation on the specification of the directives
 import copy
 import os
 import re
-import subprocess
-import sys
-import tempfile
 import types
 import yaml
 import json
+from itertools import izip
 
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
@@ -50,6 +48,7 @@ def markup_item(x): return (None, None, x, TYPE_MARKUP)
 def directive_item(x): return (None, None, x, TYPE_DIRECTIVE)
 def bundle_item(x): return (x, None, '', TYPE_BUNDLE)  # TODO: replace '' with None when tables.py schema is updated
 def subworksheet_item(x): return (None, x, '', TYPE_WORKSHEET)  # TODO: replace '' with None when tables.py schema is updated
+
 
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
@@ -113,12 +112,14 @@ def get_worksheet_info_edit_command(raw_command_map):
     return 'wedit -{k[0]} "{v}"'.format(**raw_command_map)
 
 def convert_item_to_db(item):
-    (bundle_info, subworksheet_info, value_obj, type) = item
-    bundle_uuid = bundle_info['uuid'] if bundle_info else None
-    subworksheet_uuid = subworksheet_info['uuid'] if subworksheet_info else None
-    value = tokens_to_string(value_obj) if type == TYPE_DIRECTIVE else value_obj
-    if not value: value = ''  # TODO: change tables.py so that None's are allowed
-    return (bundle_uuid, subworksheet_uuid, value, type)
+    (bundle_info, subworksheet_info, value_obj, item_type) = item
+    return (
+        bundle_info['uuid'] if bundle_info else None,
+        subworksheet_info['uuid'] if subworksheet_info else None,
+        # TODO: change tables.py so that None's are allowed
+        (tokens_to_string(value_obj) if item_type == TYPE_DIRECTIVE else value_obj) or '',
+        item_type,
+    )
 
 def get_worksheet_lines(worksheet_info):
     '''
@@ -129,9 +130,15 @@ def get_worksheet_lines(worksheet_info):
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
-            value = tokens_to_string(value_obj)
-            value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
-            lines.append(value)
+            print value_obj
+            if value_obj[0] == DIRECTIVE_CHAR:
+                # A comment directive
+                lines.append('//' + ' '.join(value_obj[1:]))
+            else:
+                # A normal directive
+                value = tokens_to_string(value_obj)
+                value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
+                lines.append(value)
         elif item_type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
@@ -149,7 +156,7 @@ def get_worksheet_lines(worksheet_info):
         elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')), subworksheet_info['uuid']))
         else:
-            raise InternalError('Invalid worksheet item type: %s' % type)
+            raise RuntimeError('Invalid worksheet item type: %s' % type)
     return lines
 
 def get_formatted_metadata(cls, metadata, raw=False):
@@ -249,49 +256,64 @@ def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
 def parse_worksheet_form(form_result, client, worksheet_uuid):
     '''
     Input: form_result is a list of lines.
-    Return (list of (bundle_uuid, value, type) triples, commands to execute)
+    Return (list of (bundle_info, subworksheet_info, value, type) tuples, commands to execute)
     '''
-    bundle_uuids = [] # The user can specify '!<command> ^', which perform actions on the previous bundle.
-    commands = []
-    def parse(line):
-        m = BUNDLE_REGEX.match(line)
-        if m:
-            try:
-                bundle_uuid = get_bundle_uuid(client, worksheet_uuid, m.group(3))
-                bundle_info = {'uuid': bundle_uuid}  # info doesn't need anything other than uuid
-                bundle_uuids.append(bundle_uuid)
-                return (bundle_info, None, None, TYPE_BUNDLE)
-            except UsageError, e:
-                return markup_item(line + ': ' + e.message)
-
-        m = SUBWORKSHEET_REGEX.match(line)
-        if m:
-            try:
-                subworksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, m.group(3))
-                subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
-                return subworksheet_item(subworksheet_info)
-            except UsageError, e:
-                return markup_item(e.message + ': ' + line)
-
-        m = DIRECTIVE_REGEX.match(line)
-        if m:
-            return directive_item(string_to_tokens(m.group(1)))
-
-        return markup_item(line)
-
-    result = []
-    for line in form_result:
-        if line.startswith('//'):  # Comments
-            pass
-        elif line.startswith('!'):  # Run commands
-            command = string_to_tokens(line[1:].strip())
-            # Replace ^ with the reference to the last bundle.
-            command = [(bundle_uuids[-1] if arg == '^' else arg) for arg in command]
-            commands.append(command)
+    def get_line_type(line):
+        if line.startswith('!'):  # Run commands
+            return 'command'
+        elif line.startswith('//'):
+            return 'comment'
+        elif BUNDLE_REGEX.match(line) is not None:
+            return TYPE_BUNDLE
+        elif SUBWORKSHEET_REGEX.match(line) is not None:
+            return TYPE_WORKSHEET
+        elif DIRECTIVE_REGEX.match(line) is not None:
+            return TYPE_DIRECTIVE
         else:
-            result.append(parse(line))
+            return TYPE_MARKUP
 
-    return (result, commands)
+    line_types = [get_line_type(line) for line in form_result]
+
+    # Extract bundle specs and resolve uuids in one batch
+    # bundle_specs = (line_indices, bundle_specs)
+    bundle_specs = zip(*[(i, BUNDLE_REGEX.match(line).group(3))
+                    for i, line in enumerate(form_result)
+                    if line_types[i] == TYPE_BUNDLE])
+    # bundle_uuids = {line_i: bundle_uuid, ...}
+    bundle_uuids = dict(zip(bundle_specs[0], get_bundle_uuids(client, worksheet_uuid, bundle_specs[1])))
+
+    commands = []
+    items = []
+    for line_i, (line_type, line) in enumerate(izip(line_types, form_result)):
+        if line_type == 'command':
+            command = string_to_tokens(line[1:].strip())
+            # The user can specify '!<command> ^', which perform actions on the previous bundle.
+            # Replace ^ with the reference to the last bundle.
+            command = [(bundle_uuids[-1][1] if arg == '^' else arg) for arg in command]
+            commands.append(command)
+        elif line_type == 'comment':
+            comment = line[2:]
+            items.append(directive_item([DIRECTIVE_CHAR, comment]))
+        elif line_type == TYPE_BUNDLE:
+            bundle_info = {'uuid': bundle_uuids[line_i]}  # info doesn't need anything other than uuid
+            items.append(bundle_item(bundle_info))
+        elif line_type == TYPE_WORKSHEET:
+            subworksheet_spec = SUBWORKSHEET_REGEX.match(line).group(3)
+            try:
+                subworksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, subworksheet_spec)
+                subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
+                items.append(subworksheet_item(subworksheet_info))
+            except UsageError, e:
+                items.append(markup_item(e.message + ': ' + line))
+        elif line_type == TYPE_DIRECTIVE:
+            directive = DIRECTIVE_REGEX.match(line).group(1)
+            items.append(directive_item(string_to_tokens(directive)))
+        elif line_type == TYPE_MARKUP:
+            items.append(markup_item(line))
+        else:
+            raise RuntimeError("Invalid line type %s: this should not happen." % line_type)
+
+    return items, commands
 
 def is_file_genpath(genpath):
     # Return whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
@@ -386,11 +408,6 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
         subpath, key = genpath.split(':')
     else:
         subpath, key = genpath, None
-
-    # Just a link
-    if post == 'link':
-        # TODO: need to synchronize with frontend
-        return '/%s' % os.path.join('api', 'bundles', 'filecontent', bundle_uuid, subpath)
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
@@ -544,7 +561,8 @@ def interpret_items(schemas, items):
     '''
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
-    Return a list of interpreted items, where each item is either:
+    Return {'items': items}, where items is a list of interpreted items.
+    Each item is one of the following:
     - ('markup'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
       where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
@@ -553,8 +571,7 @@ def interpret_items(schemas, items):
     result = {}
 
     # Set default schema
-    current_schema = None
-
+    current_schema_ref = [None]
     default_display = ('table', 'default')
     current_display_ref = [default_display]
     new_items = []
@@ -565,12 +582,20 @@ def interpret_items(schemas, items):
         for arg in args:
             schema += schemas[arg]
         return schema
+    def reset_display_schema():
+        # Reset display to minimize the long distance dependencies of directives
+        if item_type != TYPE_BUNDLE:
+            current_display_ref[0] = default_display
+        # Reset schema to minimize long distance dependencies of directives
+        if item_type != TYPE_DIRECTIVE:
+            current_schema_ref[0] = None
     def is_missing(info): return 'metadata' not in info
     def flush():
         '''
         Gathered a group of bundles (in a table), which we can group together.
         '''
         if len(bundle_infos) == 0:
+            reset_display_schema()
             return
         # Print out the curent bundles somehow
         mode = current_display_ref[0][0]
@@ -635,26 +660,35 @@ def interpret_items(schemas, items):
             schema = get_schema(args)
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
+            processed_bundle_infos = []
             for bundle_info in bundle_infos:
-                if 'metadata' not in bundle_info:
-                    continue
-                rows.append({name: apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
+                if 'metadata' in bundle_info:
+                    rows.append({
+                        name: apply_func(post, interpret_genpath(bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
+                    processed_bundle_infos.append(copy.deepcopy(bundle_info))
+                else:
+                    # The front-end relies on the name metadata field existing
+                    processed_bundle_info = copy.deepcopy(bundle_info)
+                    processed_bundle_info['metadata'] = {
+                        'name': '<invalid>'
+                    }
+                    rows.append({
+                        name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
+                    processed_bundle_infos.append(processed_bundle_info)
             new_items.append({
-                    'mode': mode,
-                    'interpreted': (header, rows),
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_infos)
-                })
+                'mode': mode,
+                'interpreted': (header, rows),
+                'properties': properties,
+                'bundle_info': processed_bundle_infos
+            })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
-
-        # Reset display to minimize the long distance dependencies of directives
-        if item_type != TYPE_BUNDLE:
-            current_display_ref[0] = default_display
-        # Reset schema to minimize long distance dependencies of directives
-        if item_type != TYPE_DIRECTIVE:
-            current_schema = None
+        reset_display_schema()
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
@@ -693,23 +727,32 @@ def interpret_items(schemas, items):
                 pass
             elif command == 'schema':
                 name = value_obj[1]
-                schemas[name] = current_schema = []
+                schemas[name] = current_schema_ref[0] = []
             elif command == 'addschema':
-                if current_schema == None:
+                if current_schema_ref[0] == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 name = value_obj[1]
-                current_schema += schemas[name]
+                current_schema_ref[0] += schemas[name]
             elif command == 'add':
-                if current_schema == None:
+                if current_schema_ref[0] == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 schema_item = canonicalize_schema_item(value_obj[1:])
-                current_schema.append(schema_item)
+                current_schema_ref[0].append(schema_item)
             elif command == 'display':
                 current_display_ref[0] = value_obj[1:]
             elif command == 'search':
                 keywords = value_obj[1:]
                 mode = command
                 data = {'keywords': keywords, 'display': current_display_ref[0], 'schemas': schemas}
+                new_items.append({
+                    'mode': mode,
+                    'interpreted': data,
+                    'properties': {},
+                })
+            elif command == 'wsearch':
+                keywords = value_obj[1:]
+                mode = command
+                data = {'keywords': keywords}
                 new_items.append({
                     'mode': mode,
                     'interpreted': data,
@@ -723,7 +766,7 @@ def interpret_items(schemas, items):
                 })
                 #raise UsageError('Unknown directive command in %s' % value_obj)
         else:
-            raise InternalError('Unknown worksheet item type: %s' % item_type)
+            raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line
 
     flush()
@@ -782,3 +825,15 @@ def interpret_search(client, worksheet_uuid, data):
 
     # Finally, interpret the items
     return interpret_items(data['schemas'], items)
+
+def interpret_wsearch(client, data):
+    '''
+    Input: specification of a worksheet search query.
+    Output: worksheet items based on the result of issuing the search query.
+    '''
+    # Get the worksheet uuids
+    worksheet_infos = client.search_worksheets(data['keywords'])
+    items = [subworksheet_item(worksheet_info) for worksheet_info in worksheet_infos]
+
+    # Finally, interpret the items
+    return interpret_items([], items)
