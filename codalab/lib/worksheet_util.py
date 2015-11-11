@@ -311,7 +311,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         elif line_type == TYPE_MARKUP:
             items.append(markup_item(line))
         else:
-            raise RuntimeError("Invalid line type: this should not happen.")
+            raise RuntimeError("Invalid line type %s: this should not happen." % line_type)
 
     return items, commands
 
