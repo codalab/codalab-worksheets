@@ -256,6 +256,7 @@ class BundleModel(object):
         clauses = []
         offset = 0
         limit = 10
+        format_func = None
         count = False
         sort_key = [None]
         sum_key = [None]
@@ -324,6 +325,8 @@ class BundleModel(object):
                 offset = int(value)
             elif key == '.limit':
                 limit = int(value)
+            elif key == '.format':
+                format_func = value
             # Bundle fields
             elif key == 'bundle_type':
                 clause = make_condition(key, cl_bundle.c.bundle_type, value)
@@ -434,7 +437,7 @@ class BundleModel(object):
         result = self._execute_query(query)
         #print 'RESULT', result
         if count or sum_key[0] is not None:  # Just returning a single number
-            return result[0]
+            return worksheet_util.apply_func(format_func, result[0])
         return result
 
     def get_bundle_uuids(self, conditions, max_results):
