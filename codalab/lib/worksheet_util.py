@@ -116,6 +116,7 @@ def convert_item_to_db(item):
     return (
         bundle_info['uuid'] if bundle_info else None,
         subworksheet_info['uuid'] if subworksheet_info else None,
+        # TODO: change tables.py so that None's are allowed
         (tokens_to_string(value_obj) if item_type == TYPE_DIRECTIVE else value_obj) or '',
         item_type,
     )
@@ -129,9 +130,15 @@ def get_worksheet_lines(worksheet_info):
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
-            value = tokens_to_string(value_obj)
-            value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
-            lines.append(value)
+            print value_obj
+            if value_obj[0] == DIRECTIVE_CHAR:
+                # A comment directive
+                lines.append('//' + ' '.join(value_obj[1:]))
+            else:
+                # A normal directive
+                value = tokens_to_string(value_obj)
+                value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
+                lines.append(value)
         elif item_type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
@@ -149,7 +156,7 @@ def get_worksheet_lines(worksheet_info):
         elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')), subworksheet_info['uuid']))
         else:
-            raise InternalError('Invalid worksheet item type: %s' % type)
+            raise RuntimeError('Invalid worksheet item type: %s' % type)
     return lines
 
 def get_formatted_metadata(cls, metadata, raw=False):
@@ -272,6 +279,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     bundle_specs = zip(*[(i, BUNDLE_REGEX.match(line).group(3))
                     for i, line in enumerate(form_result)
                     if line_types[i] == TYPE_BUNDLE])
+    # bundle_uuids = {line_i: bundle_uuid, ...}
     bundle_uuids = dict(zip(bundle_specs[0], get_bundle_uuids(client, worksheet_uuid, bundle_specs[1])))
 
     commands = []
@@ -284,7 +292,8 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
             command = [(bundle_uuids[-1][1] if arg == '^' else arg) for arg in command]
             commands.append(command)
         elif line_type == 'comment':
-            raise NotImplementedError
+            comment = line[2:]
+            items.append(directive_item([DIRECTIVE_CHAR, comment]))
         elif line_type == TYPE_BUNDLE:
             bundle_info = {'uuid': bundle_uuids[line_i]}  # info doesn't need anything other than uuid
             items.append(bundle_item(bundle_info))
@@ -302,7 +311,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         elif line_type == TYPE_MARKUP:
             items.append(markup_item(line))
         else:
-            raise Exception("Invalid line type: this should not happen.")
+            raise RuntimeError("Invalid line type: this should not happen.")
 
     return items, commands
 
@@ -725,7 +734,7 @@ def interpret_items(schemas, items):
                 })
                 #raise UsageError('Unknown directive command in %s' % value_obj)
         else:
-            raise InternalError('Unknown worksheet item type: %s' % item_type)
+            raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
     flush()
     result['items'] = new_items
