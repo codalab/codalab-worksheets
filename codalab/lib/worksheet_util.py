@@ -653,15 +653,30 @@ def interpret_items(schemas, items):
             schema = get_schema(args)
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
+            processed_bundle_infos = []
             for bundle_info in bundle_infos:
-                if 'metadata' not in bundle_info:
-                    continue
-                rows.append({name: apply_func(post, interpret_genpath(bundle_info, genpath)) for (name, genpath, post) in schema})
+                if 'metadata' in bundle_info:
+                    rows.append({
+                        name: apply_func(post, interpret_genpath(bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
+                    processed_bundle_infos.append(copy.deepcopy(bundle_info))
+                else:
+                    rows.append({
+                        name: '?'
+                        for (name, genpath, post) in schema
+                    })
+                    # The front-end relies on the name metadata field existing
+                    processed_bundle_info = copy.deepcopy(bundle_info)
+                    processed_bundle_info['metadata'] = {
+                        'name': '?'
+                    }
+                    processed_bundle_infos.append(processed_bundle_info)
             new_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
                     'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_infos)
+                    'bundle_info': processed_bundle_infos
                 })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
