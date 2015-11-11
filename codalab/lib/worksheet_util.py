@@ -276,9 +276,12 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
 
     # Extract bundle specs and resolve uuids in one batch
     # bundle_specs = (line_indices, bundle_specs)
-    bundle_specs = zip(*[(i, BUNDLE_REGEX.match(line).group(3))
-                    for i, line in enumerate(form_result)
-                    if line_types[i] == TYPE_BUNDLE])
+    bundle_lines = [
+        (i, BUNDLE_REGEX.match(line).group(3))
+        for i, line in enumerate(form_result)
+        if line_types[i] == TYPE_BUNDLE
+    ]
+    bundle_specs = zip(*bundle_lines) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
     bundle_uuids = dict(zip(bundle_specs[0], get_bundle_uuids(client, worksheet_uuid, bundle_specs[1])))
 
