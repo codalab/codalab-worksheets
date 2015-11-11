@@ -1733,6 +1733,9 @@ class BundleCLI(object):
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 self.display_interpreted(client, worksheet_info, search_interpreted)
+            elif mode == 'wsearch':
+                wsearch_interpreted = worksheet_util.interpret_wsearch(client, data)
+                self.display_interpreted(client, worksheet_info, wsearch_interpreted)
             elif mode == 'worksheet':
                 print '[Worksheet ' + self.simple_worksheet_str(data) + ']'
             else:

@@ -11,6 +11,7 @@ import datetime
 
 from codalab.bundles import (
     get_bundle_subclass,
+    PrivateBundle,
     UPLOADED_TYPES,
 )
 from codalab.common import (
@@ -98,17 +99,18 @@ class LocalBundleClient(BundleClient):
         Return a copy of the bundle_info dict that returns '<hidden>'
         for all fields except 'uuid'.
         '''
+        private_str = '<private>'
         return {
-          'uuid': bundle_info['uuid'],
-          'bundle_type': 'private',
-          'owner_id': 'private',
-          'command': 'private',
-          'data_hash': 'private',
-          'state': 'private',
-          'metadata': {
-              'name': 'private'
-          },
-          'dependencies': [],
+            'uuid': bundle_info['uuid'],
+            'bundle_type': PrivateBundle.BUNDLE_TYPE,
+            'owner_id': None,
+            'command': None,
+            'data_hash': None,
+            'state': None,
+            'metadata': {
+                'name': private_str
+            },
+            'dependencies': [],
         }
 
     def get_bundle_uuids(self, worksheet_uuid, bundle_specs):
@@ -916,9 +918,9 @@ class LocalBundleClient(BundleClient):
                 path = self.get_target_path(data)
                 data = path_util.base64_encode(path)
             elif mode == 'search':
-                worksheet_uuid = None
-                search_interpreted = worksheet_util.interpret_search(self, worksheet_uuid, data)
-                data = search_interpreted
+                data = worksheet_util.interpret_search(self, None, data)
+            elif mode == 'wsearch':
+                data = worksheet_util.interpret_wsearch(self, data)
             elif mode == 'worksheet':
                 pass
             else:

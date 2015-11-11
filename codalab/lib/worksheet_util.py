@@ -409,11 +409,6 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
     else:
         subpath, key = genpath, None
 
-    # Just a link
-    if post == 'link':
-        # TODO: need to synchronize with frontend
-        return '/%s' % os.path.join('api', 'bundles', 'filecontent', bundle_uuid, subpath)
-
     target = (bundle_uuid, subpath)
     if target not in target_cache:
         #print 'LOAD', target
@@ -566,7 +561,8 @@ def interpret_items(schemas, items):
     '''
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
-    Return a list of interpreted items, where each item is either:
+    Return {'items': items}, where items is a list of interpreted items.
+    Each item is one of the following:
     - ('markup'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
       where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
@@ -575,8 +571,7 @@ def interpret_items(schemas, items):
     result = {}
 
     # Set default schema
-    current_schema = None
-
+    current_schema_ref = [None]
     default_display = ('table', 'default')
     current_display_ref = [default_display]
     new_items = []
@@ -587,12 +582,20 @@ def interpret_items(schemas, items):
         for arg in args:
             schema += schemas[arg]
         return schema
+    def reset_display_schema():
+        # Reset display to minimize the long distance dependencies of directives
+        if item_type != TYPE_BUNDLE:
+            current_display_ref[0] = default_display
+        # Reset schema to minimize long distance dependencies of directives
+        if item_type != TYPE_DIRECTIVE:
+            current_schema_ref[0] = None
     def is_missing(info): return 'metadata' not in info
     def flush():
         '''
         Gathered a group of bundles (in a table), which we can group together.
         '''
         if len(bundle_infos) == 0:
+            reset_display_schema()
             return
         # Print out the curent bundles somehow
         mode = current_display_ref[0][0]
@@ -662,32 +665,26 @@ def interpret_items(schemas, items):
                     })
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
-                    rows.append({
-                        name: '?'
-                        for (name, genpath, post) in schema
-                    })
                     # The front-end relies on the name metadata field existing
                     processed_bundle_info = copy.deepcopy(bundle_info)
                     processed_bundle_info['metadata'] = {
-                        'name': '?'
+                        'name': '<invalid>'
                     }
+                    rows.append({
+                        name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
                     processed_bundle_infos.append(processed_bundle_info)
             new_items.append({
-                    'mode': mode,
-                    'interpreted': (header, rows),
-                    'properties': properties,
-                    'bundle_info': processed_bundle_infos
-                })
+                'mode': mode,
+                'interpreted': (header, rows),
+                'properties': properties,
+                'bundle_info': processed_bundle_infos
+            })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
-
-        # Reset display to minimize the long distance dependencies of directives
-        if item_type != TYPE_BUNDLE:
-            current_display_ref[0] = default_display
-        # Reset schema to minimize long distance dependencies of directives
-        if item_type != TYPE_DIRECTIVE:
-            current_schema = None
+        reset_display_schema()
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
@@ -719,23 +716,32 @@ def interpret_items(schemas, items):
                 pass
             elif command == 'schema':
                 name = value_obj[1]
-                schemas[name] = current_schema = []
+                schemas[name] = current_schema_ref[0] = []
             elif command == 'addschema':
-                if current_schema == None:
+                if current_schema_ref[0] == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 name = value_obj[1]
-                current_schema += schemas[name]
+                current_schema_ref[0] += schemas[name]
             elif command == 'add':
-                if current_schema == None:
+                if current_schema_ref[0] == None:
                     raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 schema_item = canonicalize_schema_item(value_obj[1:])
-                current_schema.append(schema_item)
+                current_schema_ref[0].append(schema_item)
             elif command == 'display':
                 current_display_ref[0] = value_obj[1:]
             elif command == 'search':
                 keywords = value_obj[1:]
                 mode = command
                 data = {'keywords': keywords, 'display': current_display_ref[0], 'schemas': schemas}
+                new_items.append({
+                    'mode': mode,
+                    'interpreted': data,
+                    'properties': {},
+                })
+            elif command == 'wsearch':
+                keywords = value_obj[1:]
+                mode = command
+                data = {'keywords': keywords}
                 new_items.append({
                     'mode': mode,
                     'interpreted': data,
@@ -805,3 +811,15 @@ def interpret_search(client, worksheet_uuid, data):
 
     # Finally, interpret the items
     return interpret_items(data['schemas'], items)
+
+def interpret_wsearch(client, data):
+    '''
+    Input: specification of a worksheet search query.
+    Output: worksheet items based on the result of issuing the search query.
+    '''
+    # Get the worksheet uuids
+    worksheet_infos = client.search_worksheets(data['keywords'])
+    items = [subworksheet_item(worksheet_info) for worksheet_info in worksheet_infos]
+
+    # Finally, interpret the items
+    return interpret_items([], items)
