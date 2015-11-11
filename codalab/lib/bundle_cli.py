@@ -484,7 +484,7 @@ class BundleCLI(object):
         '''
         Return the worksheet referred to by |spec|.
         '''
-        if not spec or spec == '.':
+        if not spec or spec == worksheet_util.CURRENT_WORKSHEET:
             # Empty spec, just return current worksheet.
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         else:

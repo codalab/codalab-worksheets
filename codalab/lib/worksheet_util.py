@@ -38,6 +38,10 @@ from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
 from codalab.objects.permission import permission_str, group_permissions_str
 
+# Special characters to point to worksheets
+HOME_WORKSHEET = '/'
+CURRENT_WORKSHEET = '.'  # Note: this is part of the client's session, not server side.
+
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
 TYPE_DIRECTIVE = 'directive'
@@ -130,7 +134,6 @@ def get_worksheet_lines(worksheet_info):
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
-            print value_obj
             if value_obj[0] == DIRECTIVE_CHAR:
                 # A comment directive
                 lines.append('//' + ' '.join(value_obj[1:]))

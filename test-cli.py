@@ -333,7 +333,7 @@ def test(ctx):
     wuuid = run_command([cl, 'new', wname])
     ctx.collect_worksheet(wuuid)
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
-    uuid = run_command([cl, 'upload', 'dataset', '/etc/hosts'])
+    uuid = run_command([cl, 'upload', '/etc/hosts'])
     print uuid, wuuid
     run_command([cl, 'add', 'text', '% search ' + uuid, '.'])
     run_command([cl, 'add', 'text', '% wsearch ' + wuuid, '.'])

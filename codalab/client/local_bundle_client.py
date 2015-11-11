@@ -149,7 +149,7 @@ class LocalBundleClient(BundleClient):
         return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        if worksheet_spec == '':
+        if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
             # Default worksheet name: take the username.
             worksheet_spec = spec_util.home_worksheet(self._current_user_name())
             return self.new_worksheet(worksheet_spec, True)
