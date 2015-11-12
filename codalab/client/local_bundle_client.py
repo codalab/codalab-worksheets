@@ -801,7 +801,7 @@ class LocalBundleClient(BundleClient):
                     #value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
             else:
                 subworksheet_info = None
-            value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
+            value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
             new_items.append((bundle_info, subworksheet_info, value_obj, type))
         return new_items
 
