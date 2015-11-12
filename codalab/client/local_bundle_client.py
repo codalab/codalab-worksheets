@@ -29,6 +29,7 @@ from codalab.lib import (
     file_util,
     worksheet_util,
     spec_util,
+    formatting,
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
