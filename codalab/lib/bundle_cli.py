@@ -718,7 +718,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         # Currently only support uploading one URL by itself
-        if (len(args.path) > 1 or args.contents) and any(path_util.path_is_url(path) for path in args.path):
+        if (len(args.path) > 1 or args.contents is not None) and any(path_util.path_is_url(path) for path in args.path):
             raise UsageError("CodaLab currently only supports uploading one URL alone as one bundle.")
 
         for path in args.path:
