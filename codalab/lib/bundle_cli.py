@@ -711,7 +711,7 @@ class BundleCLI(object):
     )
     def do_upload_command(self, args):
         # If headless and no args provided, request an Upload dialog on the front end.
-        if self.headless and not args.contents and not args.path:
+        if self.headless and not args.path and args.contents is None:
             return ui_actions.serialize([ui_actions.Upload()])
 
         # Add metadata arguments for UploadedBundle and all of its subclasses.
@@ -733,7 +733,7 @@ class BundleCLI(object):
                 path_util.check_isvalid(path_util.normalize(path), 'upload')
 
         # If contents of file are specified on the command-line, then include that with the bundles to upload
-        if args.contents:
+        if args.contents is not None:
             if not args.md_name:
                 args.md_name = 'contents'
             tmp_path = tempfile.mkstemp()[1]
@@ -780,7 +780,7 @@ class BundleCLI(object):
         )
 
         # Clean up if necessary (might have been deleted if we put it in the CodaLab temp directory)
-        if args.contents:
+        if args.contents is not None:
             if os.path.exists(tmp_path):
                 os.unlink(tmp_path)
 
