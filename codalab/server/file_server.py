@@ -16,16 +16,18 @@ from SimpleXMLRPCServer import (
     SimpleXMLRPCServer,
     SimpleXMLRPCRequestHandler,
 )
+import SocketServer
 import tempfile
+import threading
 import uuid
 import xmlrpclib
-xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)  # Hack to allow 64-bit integers
 
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.lib import (
-  path_util,
-  file_util,
-)
+from codalab.lib import path_util
+
+# Hack to allow 64-bit integers
+xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)
+
 
 class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
     """
@@ -41,6 +43,7 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
         if 'Authorization' in self.headers:
             value = self.headers.get("Authorization", "")
             token = value[8:] if value.startswith("Bearer: ") else ""
+
         if self.server.auth_handler.validate_token(token):
             return SimpleXMLRPCRequestHandler.decode_request_content(self, data)
         else:
@@ -57,21 +60,24 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
         self.server.auth_handler.validate_token(None)
         SimpleXMLRPCRequestHandler.send_response(self, code, message)
 
-# Turn on multi-threading
-# import SocketServer
-# class AsyncXMLRPCServer(SocketServer.ThreadingMixIn,): pass
-class FileServer(SimpleXMLRPCServer):
+
+class AsyncXMLRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
+    pass
+
+
+class FileServer(AsyncXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
 
-    def __init__(self, address, temp, auth_handler):
+    def __init__(self, address, temp, manager):
         # Keep a dictionary mapping file uuids to open file handles and a
         # dictionary mapping temporary file's file uuids to their absolute paths.
         self.file_paths = {}
         self.file_handles = {}
         self.temp = temp
-        self.auth_handler = auth_handler
-        # Register file-like RPC methods to allow for file transfer.
+        self.manager = manager
+        self._threadlocal = threading.local()
 
+        # Register file-like RPC methods to allow for file transfer.
         SimpleXMLRPCServer.__init__(self, address, allow_none=True,
                                     requestHandler=AuthenticatedXMLRPCRequestHandler,
                                     logRequests=(self.verbose >= 1))
@@ -83,6 +89,18 @@ class FileServer(SimpleXMLRPCServer):
             return inner
         for command in RemoteBundleClient.FILE_COMMANDS:
             self.register_function(wrap(command, getattr(self, command)), command)
+
+    @property
+    def auth_handler(self):
+        """
+        Getter for the thread-local AuthHandler instance.
+
+        :return: an AuthHandler instance local to the current thread
+        """
+        if not hasattr(self._threadlocal, 'auth_handler'):
+            self._threadlocal.auth_handler = self.manager.auth_handler()
+
+        return self._threadlocal.auth_handler
 
     def _open_file(self, path, mode):
         '''

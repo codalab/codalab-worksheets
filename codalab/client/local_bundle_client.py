@@ -49,12 +49,15 @@ from codalab.model.tables import (
 
 from codalab.lib.formatting import contents_str
 
+
 def authentication_required(func):
-    def decorate(self, *args, **kwargs):
+    def decorated(self, *args, **kwargs):
         if self.auth_handler.current_user() is None:
             raise AuthorizationError("Not authenticated")
         return func(self, *args, **kwargs)
-    return decorate
+
+    return decorated
+
 
 class LocalBundleClient(BundleClient):
     def __init__(self, address, bundle_store, model, auth_handler, verbose):
@@ -66,9 +69,11 @@ class LocalBundleClient(BundleClient):
 
     def _current_user(self):
         return self.auth_handler.current_user()
+
     def _current_user_id(self):
         user = self._current_user()
         return user.unique_id if user else None
+
     def _current_user_name(self):
         user = self._current_user()
         return user.name if user else None

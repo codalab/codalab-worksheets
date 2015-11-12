@@ -373,6 +373,7 @@ class CodaLabManager(object):
 
     def root_user_name(self):
         return self.config['server'].get('root_user_name', 'codalab')
+
     def root_user_id(self):
         return self.config['server'].get('root_user_id', '0')
 
@@ -391,7 +392,7 @@ class CodaLabManager(object):
         '''
         if address in self.clients:
             return self.clients[address]
-        # if local force mockauth or if locl server use correct auth
+        # if local force mockauth or if local server use correct auth
         if is_local_address(address):
             bundle_store = self.bundle_store()
             model = self.model()
@@ -406,12 +407,14 @@ class CodaLabManager(object):
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose())
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client), self.cli_verbose)
             self.clients[address] = client
             self._authenticate(client)
         return client
 
-    def cli_verbose(self): return self.config.get('cli', {}).get('verbose')
+    @property
+    def cli_verbose(self):
+        return self.config.get('cli', {}).get('verbose')
 
     def _authenticate(self, client):
         '''

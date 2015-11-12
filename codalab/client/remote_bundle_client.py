@@ -10,7 +10,6 @@ import urllib
 import tempfile
 import xmlrpclib
 import socket
-xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)  # Hack to allow 64-bit integers
 
 from codalab.client import get_address_host
 from codalab.client.bundle_client import BundleClient
@@ -24,6 +23,10 @@ from codalab.lib import (
   zip_util,
 )
 from codalab.server.rpc_file_handle import RPCFileHandle
+
+# Hack to allow 64-bit integers
+xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)
+
 
 class AuthenticatedTransport(xmlrpclib.SafeTransport):
     '''
