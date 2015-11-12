@@ -82,7 +82,8 @@ elif mode == 'info':
                 info['state'] = 'ready' if info['exitcode'] == 0 else 'failed'
 
             # Flush
-            infos.append(info)
+            if info.get('job_name', '').startswith('codalab-'):
+                infos.append(info)
             info = None
             continue
 
@@ -111,6 +112,8 @@ elif mode == 'info':
             m = re.match('(\d+):(\d+):(\d+)', value)
             if m:
                 info['time'] = int(m.group(1)) * 3600 + int(m.group(2)) * 60 + int(m.group(3))
+        elif key == 'Job_Name':
+            info['job_name'] = value
     response['infos'] = infos
 
 elif mode == 'kill':
