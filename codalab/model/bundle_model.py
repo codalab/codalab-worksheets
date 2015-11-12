@@ -282,7 +282,9 @@ class BundleModel(object):
                 sum_key[0] = field * 1
             else:
                 # Ordinary value
-                if '%' in value:
+                if isinstance(value, list):
+                    return field.in_(value)
+                elif '%' in value:
                     return field.like(value)
                 else:
                     return field == value
@@ -316,6 +318,8 @@ class BundleModel(object):
             if m:
                 key, value = m.group(1), m.group(2)
                 key = shortcuts.get(key, key)
+                if ',' in value:  # value is value1,value2
+                    value = value.split(',')
             else:
                 key, value = 'uuid_name', keyword
 
@@ -758,7 +762,9 @@ class BundleModel(object):
                 sort_key[0] = desc(field)
             else:
                 # Ordinary value
-                if '%' in value:
+                if isinstance(value, list):
+                    return field.in_(value)
+                elif '%' in value:
                     return field.like(value)
                 else:
                     return field == value
@@ -776,6 +782,8 @@ class BundleModel(object):
             m = SEARCH_KEYWORD_REGEX.match(keyword) # key=value
             if m:
                 key, value = m.group(1), m.group(2)
+                if ',' in value:  # value is value1,value2
+                    value = value.split(',')
             else:
                 key, value = 'uuid_name', keyword
 
