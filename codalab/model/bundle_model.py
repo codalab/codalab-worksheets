@@ -300,7 +300,7 @@ class BundleModel(object):
             keyword = keyword.replace('.*', '%')
             # Sugar
             if keyword == '.mine':
-                keyword = 'owner_id=' + user_id
+                keyword = 'owner_id=' + (user_id or '')
             elif keyword == '.last':
                 keyword = 'id=.sort-'
             elif keyword == '.count':
@@ -775,7 +775,7 @@ class BundleModel(object):
             keyword = keyword.replace('.*', '%')
             # Sugar
             if keyword == '.mine':
-                keyword = 'owner_id=' + user_id
+                keyword = 'owner_id=' + (user_id or '')
             elif keyword == '.last':
                 keyword = 'id=.sort-'
 
