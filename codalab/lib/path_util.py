@@ -27,7 +27,7 @@ from codalab.common import (
   precondition,
   UsageError,
 )
-from codalab.lib import file_util
+from codalab.lib import file_util, formatting
 
 
 # Block sizes and canonical strings used when hashing files.
@@ -324,9 +324,6 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
-def quote_arg(arg):
-    return '"' + arg.replace('"', '\\"') + '"'
-
 def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
     '''
     source_path can be a list of files, in which case we need to create a
@@ -340,15 +337,15 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
 
     if isinstance(source_path, list):
         os.mkdir(dest_path)
-        source = ' '.join(quote_arg(p) for p in source_path)
+        source = ' '.join(formatting.quote(p) for p in source_path)
     else:
-        source = quote_arg(source_path)
+        source = formatting.quote(source_path)
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
             file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
-        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else 'l'), source, '/' if os.path.isdir(source_path) else '', quote_arg(dest_path))
+        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else 'l'), source, '/' if os.path.isdir(source_path) else '', formatting.quote(dest_path))
         if exclude_patterns:
             for pattern in exclude_patterns:
                 command += ' --exclude "' + pattern + '"'

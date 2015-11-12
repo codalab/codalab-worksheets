@@ -62,47 +62,6 @@ def worksheet_line(description, uuid): return '[%s]{{%s}}' % (description, uuid)
 DIRECTIVE_CHAR = '%'
 DIRECTIVE_REGEX = re.compile(r'^' + DIRECTIVE_CHAR + '\s*(.*)$')
 
-# Tokens are serialized as a space-separated list, where we use " to quote.
-# "first token" "\"second token\"" third
-
-def quote(token):
-    if ' ' in token or '"' in token:
-        return '"' + token.replace('"', '\\"') + '"'
-    return token
-def tokens_to_string(tokens):
-    return ' '.join(quote(token) for token in tokens)
-
-def string_to_tokens(s):
-    '''
-    Input (string): a b 'c d' e
-    Output (array): ["a", "b", "c d", "e"]
-    Both single and double quotes are supported.
-    '''
-    tokens = []
-    i = 0
-    while i < len(s):
-        # Every time we enter the loop, we're at the beginning of a token.
-        if s[i] == '"' or s[i] == '\'':
-            j = i
-            while True:
-                try:
-                    j = s.index(s[i], j+1)
-                except:
-                    raise UsageError('Unclosed quote: %s' % s)
-                if s[j-1] != '\\': break
-            tokens.append(s[i+1:j].replace('\\'+s[i], s[i]))
-            j += 1 # Skip over the last quote
-        else:
-            try:
-                j = s.index(' ', i+1)
-            except:
-                j = len(s)
-            tokens.append(s[i:j])
-        i = j
-        # Skip over spaces
-        while i < len(s) and s[i] == ' ': i += 1
-    return tokens
-
 ############################################################
 
 def get_worksheet_info_edit_command(raw_command_map):
@@ -121,7 +80,7 @@ def convert_item_to_db(item):
         bundle_info['uuid'] if bundle_info else None,
         subworksheet_info['uuid'] if subworksheet_info else None,
         # TODO: change tables.py so that None's are allowed
-        (tokens_to_string(value_obj) if item_type == TYPE_DIRECTIVE else value_obj) or '',
+        (formatting.tokens_to_string(value_obj) if item_type == TYPE_DIRECTIVE else value_obj) or '',
         item_type,
     )
 
@@ -139,7 +98,7 @@ def get_worksheet_lines(worksheet_info):
                 lines.append('//' + ' '.join(value_obj[1:]))
             else:
                 # A normal directive
-                value = tokens_to_string(value_obj)
+                value = formatting.tokens_to_string(value_obj)
                 value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
                 lines.append(value)
         elif item_type == TYPE_BUNDLE:
@@ -292,7 +251,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     items = []
     for line_i, (line_type, line) in enumerate(izip(line_types, form_result)):
         if line_type == 'command':
-            command = string_to_tokens(line[1:].strip())
+            command = formatting.string_to_tokens(line[1:].strip())
             # The user can specify '!<command> ^', which perform actions on the previous bundle.
             # Replace ^ with the reference to the last bundle.
             command = [(bundle_uuids[-1][1] if arg == '^' else arg) for arg in command]
@@ -313,7 +272,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
                 items.append(markup_item(e.message + ': ' + line))
         elif line_type == TYPE_DIRECTIVE:
             directive = DIRECTIVE_REGEX.match(line).group(1)
-            items.append(directive_item(string_to_tokens(directive)))
+            items.append(directive_item(formatting.string_to_tokens(directive)))
         elif line_type == TYPE_MARKUP:
             items.append(markup_item(line))
         else:
@@ -361,17 +320,24 @@ def interpret_genpath(bundle_info, genpath):
         for dep in deps:
             if dep['child_path'] == name:
                 return render_dep(dep, show_key=False)
-        return 'n/a'
+        return formatting.verbose_contents_str(None)
     elif genpath == 'args':
         # Arguments that we would pass to 'cl'
         args = []
         bundle_type = bundle_info.get('bundle_type')
         if bundle_type not in ('make', 'run'): return None
         args += [bundle_type]
+        # Dependencies
         for dep in deps:
             args.append(render_dep(dep, show_uuid=True))
+        # Command
         if bundle_info['command']:
-            args.append(quote(bundle_info['command']))
+            args.append(formatting.quote(bundle_info['command']))
+        # Add request arguments from metadta
+        metadata = bundle_info['metadata']
+        for key, value in metadata.items():
+            if key.startswith('request_') and value:
+                args.extend(['--' + key, formatting.quote(value)])
         return ' '.join(args)
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:

@@ -99,3 +99,46 @@ def parse_duration(s):
     # If error, ignore unit
     print >>sys.stderr, 'Warning: invalid unit in ', s
     raise n
+
+############################################################
+
+# Tokens are serialized as a space-separated list, where we use " to quote.
+# "first token" "\"second token\"" third
+
+def quote(token):
+    if ' ' in token or '"' in token:
+        return '"' + token.replace('"', '\\"') + '"'
+    return token
+def tokens_to_string(tokens):
+    return ' '.join(quote(token) for token in tokens)
+
+def string_to_tokens(s):
+    '''
+    Input (string): a b 'c d' e
+    Output (array): ["a", "b", "c d", "e"]
+    Both single and double quotes are supported.
+    '''
+    tokens = []
+    i = 0
+    while i < len(s):
+        # Every time we enter the loop, we're at the beginning of a token.
+        if s[i] == '"' or s[i] == '\'':
+            j = i
+            while True:
+                try:
+                    j = s.index(s[i], j+1)
+                except:
+                    raise UsageError('Unclosed quote: %s' % s)
+                if s[j-1] != '\\': break
+            tokens.append(s[i+1:j].replace('\\'+s[i], s[i]))
+            j += 1 # Skip over the last quote
+        else:
+            try:
+                j = s.index(' ', i+1)
+            except:
+                j = len(s)
+            tokens.append(s[i:j])
+        i = j
+        # Skip over spaces
+        while i < len(s) and s[i] == ' ': i += 1
+    return tokens
