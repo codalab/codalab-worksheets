@@ -372,7 +372,7 @@ class BundleCLI(object):
 
     def __init__(self, manager, headless=False):
         self.manager = manager
-        self.verbose = manager.cli_verbose()
+        self.verbose = manager.cli_verbose
         self.headless = headless
 
     def exit(self, message, error_code=1):

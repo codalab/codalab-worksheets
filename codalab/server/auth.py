@@ -2,6 +2,7 @@
 AuthHandler encapsulates the logic to authenticate users on the server-side.
 '''
 import json
+import threading
 import time
 import urllib
 import urllib2
@@ -74,9 +75,14 @@ class MockAuthHandler(object):
         return self._user
 
 
-class OAuthHandler(object):
+class OAuthHandler(threading.local):
     '''
     Handles user authentication with an OAuth authorization server.
+
+    Inherits from threading.local, which makes all instance attributes thread-local.
+    When an OAuthHandler instance is used from a new thread, __init__ will be called
+    again, and from thereon all attributes may be different between threads.
+    https://hg.python.org/cpython/file/2.7/Lib/_threading_local.py
     '''
     def __init__(self, address, app_id, app_key):
         '''
