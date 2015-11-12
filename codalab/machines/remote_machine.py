@@ -173,9 +173,9 @@ class RemoteMachine(Machine):
             with open(internal_script_file, 'w') as f:
                 # Make sure I have a username
                 username = pwd.getpwuid(os.getuid())[0]  # do this because os.getlogin() doesn't always work
-                f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (username, os.geteuid(), os.getgid()))
+                f.write("[ -w /etc/passwd ] && echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (username, os.geteuid(), os.getgid()))
                 # Do this because .bashrc isn't sourced automatically (even with --login, though it works with docker -t -i, strange...)
-                f.write(". .bashrc || exit 1\n")
+                f.write("[ -e .bashrc ] && . .bashrc\n")
                 # Go into the temp directory
                 f.write("cd %s &&\n" % docker_temp_dir)
                 # Run the actual command
