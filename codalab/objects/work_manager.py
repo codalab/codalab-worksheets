@@ -177,13 +177,17 @@ class Worker(object):
 
         # Lookup the bundle given the uuid from the status
         new_statuses = []
+        # Lookup all the uuids and bundles of the relevant job handles
+        handles = [status['job_handle'] for status in statuses]
+        uuids = self.model.search_bundle_uuids(worksheet_uuid=None, user_id=self.model.root_user_id, keywords=['job_handle='+','.join(handles)])
+        bundles = self.model.batch_get_bundles(uuid=uuids)
+        handle_to_bundles = {}
+        for bundle in bundles:
+            handle = bundle.metadata.job_handle
+            handle_to_bundles[handle] = bundle
         for status in statuses:
             handle = status['job_handle']
-            # Note: should probably have a more specalized way of getting this.
-            uuids = self.model.search_bundle_uuids(worksheet_uuid=None, user_id=self.model.root_user_id, keywords=['job_handle='+handle])
-            if len(uuids) == 0:
-                continue
-            bundle = self._safe_get_bundle(uuids[0])
+            bundle = handle_to_bundles.get(handle)
             if not bundle:
                 continue
             status['bundle'] = bundle
