@@ -695,6 +695,7 @@ class BundleCLI(object):
             '  upload <path> ... <path> : Upload one bundle whose directory contents contain <path> ... <path>.',
             '  upload -c <text>         : Upload one bundle whose file contents is <text>.',
             '  upload <url>             : Upload one bundle whose file contents is downloaded from <url>.',
+            '  upload                   : Open file browser dialog and upload contents of the selected file as a bundle (website only).',
             'Most of the other arguments specify metadata fields.',
         ],
         arguments=(
@@ -709,18 +710,29 @@ class BundleCLI(object):
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
-        if self.headless:
+        # If headless and no args provided, request an Upload dialog on the front end.
+        if self.headless and not args.contents and not args.path:
             return ui_actions.serialize([ui_actions.Upload()])
+
         # Add metadata arguments for UploadedBundle and all of its subclasses.
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        # Check that the upload path exists.
+        # Currently only support uploading one URL by itself
+        if (len(args.path) > 1 or args.contents) and any(path_util.path_is_url(path) for path in args.path):
+            raise UsageError("CodaLab currently only supports uploading one URL alone as one bundle.")
+
         for path in args.path:
-            if not path_util.path_is_url(path):
-                self._fail_if_headless('upload')  # Important: don't allow uploading files if headless.
+            if path_util.path_is_url(path):
+                # OK: We have already checked that there are no other bundles to upload.
+                pass
+            elif self.headless:
+                # Important: don't allow uploading files if headless.
+                raise UsageError("Cannot upload from path %s: no filesystem available." % path)
+            else:
+                # Check that the upload path exists.
                 path_util.check_isvalid(path_util.normalize(path), 'upload')
 
-        # If contents of file are specified on the command-line, then just use that.
+        # If contents of file are specified on the command-line, then include that with the bundles to upload
         if args.contents:
             if not args.md_name:
                 args.md_name = 'contents'
@@ -731,7 +743,7 @@ class BundleCLI(object):
             args.path.append(tmp_path)
 
         if len(args.path) == 0:
-            raise UsageError('Nothing to upload')
+            raise UsageError('Nothing to upload.')
 
         # Pull out the upload bundle type from the arguments and validate it.
         # Note: only allow dataset bundles (eventually deprecate the program bundle and just have )
@@ -740,12 +752,13 @@ class BundleCLI(object):
         # Get metadata
         metadata = None
         if not args.base and args.base_use_default_name:
-            args.base = os.path.basename(args.path[0]) # Use default name
+            args.base = os.path.basename(args.path[0])  # Use default name
         if args.base:
             bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.base)
             info = client.get_bundle_info(bundle_uuid)
             metadata = info['metadata']
         metadata = self.get_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
+
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
         # pass in a null owner to validate. Will be set to the correct owner in the client upload_bundle below.
@@ -753,10 +766,18 @@ class BundleCLI(object):
 
         # If only one path, strip away the list so that we make a bundle that
         # is this path rather than contains it.
-        if len(args.path) == 1: args.path = args.path[0]
+        if len(args.path) == 1:
+            args.path = args.path[0]
 
         # Finally, once everything has been checked, then call the client to upload.
-        print client.upload_bundle(args.path, {'bundle_type': bundle_type, 'metadata': metadata}, worksheet_uuid, args.follow_symlinks, args.exclude_patterns, True)
+        print client.upload_bundle(
+            args.path,
+            {'bundle_type': bundle_type, 'metadata': metadata},
+            worksheet_uuid,
+            args.follow_symlinks,
+            args.exclude_patterns,
+            add_to_worksheet=True
+        )
 
         # Clean up if necessary (might have been deleted if we put it in the CodaLab temp directory)
         if args.contents:
@@ -2096,7 +2117,7 @@ class BundleCLI(object):
         help='Start an instance of the CodaLab bundle service.',
     )
     def do_server_command(self, args):
-        pass
+        raise UsageError('Cannot execute CLI command: server')
 
     def _fail_if_headless(self, message):
         if self.headless:
