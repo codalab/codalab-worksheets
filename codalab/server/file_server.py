@@ -68,14 +68,13 @@ class AsyncXMLRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
 class FileServer(AsyncXMLRPCServer):
     FILE_SUBDIRECTORY = 'file'
 
-    def __init__(self, address, temp, manager):
+    def __init__(self, address, temp, auth_handler):
         # Keep a dictionary mapping file uuids to open file handles and a
         # dictionary mapping temporary file's file uuids to their absolute paths.
         self.file_paths = {}
         self.file_handles = {}
         self.temp = temp
-        self.manager = manager
-        self._threadlocal = threading.local()
+        self.auth_handler = auth_handler
 
         # Register file-like RPC methods to allow for file transfer.
         SimpleXMLRPCServer.__init__(self, address, allow_none=True,
@@ -89,18 +88,6 @@ class FileServer(AsyncXMLRPCServer):
             return inner
         for command in RemoteBundleClient.FILE_COMMANDS:
             self.register_function(wrap(command, getattr(self, command)), command)
-
-    @property
-    def auth_handler(self):
-        """
-        Getter for the thread-local AuthHandler instance.
-
-        :return: an AuthHandler instance local to the current thread
-        """
-        if not hasattr(self._threadlocal, 'auth_handler'):
-            self._threadlocal.auth_handler = self.manager.auth_handler()
-
-        return self._threadlocal.auth_handler
 
     def _open_file(self, path, mode):
         '''

@@ -2,6 +2,7 @@
 AuthHandler encapsulates the logic to authenticate users on the server-side.
 '''
 import json
+import threading
 import time
 import urllib
 import urllib2
@@ -74,7 +75,7 @@ class MockAuthHandler(object):
         return self._user
 
 
-class OAuthHandler(object):
+class OAuthHandler(threading.local):
     '''
     Handles user authentication with an OAuth authorization server.
     '''

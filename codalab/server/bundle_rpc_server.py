@@ -23,7 +23,6 @@ from codalab.common import (
     UsageError,
     PermissionError,
 )
-from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.lib import zip_util, path_util
 from codalab.server.file_server import FileServer
@@ -34,8 +33,8 @@ class BundleRPCServer(FileServer):
         self.host = manager.config['server']['host']
         self.port = manager.config['server']['port']
         self.verbose = manager.config['server']['verbose']
-        self.bundle_store = manager.bundle_store()
-        self.model = manager.model()
+        # This server is backed by a LocalBundleClient that processes client commands
+        self.client = manager.client('local', is_cli=False)
 
         # args might be a large object; summarize it (e.g., take prefixes of lists)
         def compress_args(args):
@@ -54,41 +53,31 @@ class BundleRPCServer(FileServer):
             return args
 
         tempdir = tempfile.gettempdir()  # Consider using CodaLab's temp directory
-        FileServer.__init__(self, (self.host, self.port), tempdir, manager)
+        FileServer.__init__(self, (self.host, self.port), tempdir, manager.auth_handler())
 
-        def wrap(target_type, method_name):
+        def wrap(target, command):
             def function_to_register(*args, **kwargs):
-                client = self._get_local_client()
-
-                # Select the recipient object of the method call
-                if target_type == 'client':
-                    target = client
-                elif target_type == 'server':
-                    target = self
-                else:
-                    raise RuntimeError("Invalid target_type %s" % target_type)
-
                 # Process args for logging
-                if method_name == 'login':
+                if command == 'login':
                     log_args = args[:2]  # Don't log password
                 else:
                     log_args = compress_args(args)
 
                 if self.verbose >= 1:
-                    print "bundle_rpc_server: %s %s" % (method_name, log_args)
+                    print "bundle_rpc_server: %s %s" % (command, log_args)
 
                 try:
                     start_time = time.time()
 
-                    # Dynamically get the bound method and call it
-                    result = getattr(target, method_name)(*args, **kwargs)
+                    # Dynamically bind method and call it
+                    result = getattr(target, command)(*args, **kwargs)
 
                     # Log this activity.
-                    client.model.update_events_log(
+                    self.client.model.update_events_log(
                         start_time=start_time,
-                        user_id=client._current_user_id(),
-                        user_name=client._current_user_name(),
-                        command=method_name,
+                        user_id=self.client._current_user_id(),
+                        user_name=self.client._current_user_name(),
+                        command=command,
                         args=log_args)
 
                     return result
@@ -103,18 +92,10 @@ class BundleRPCServer(FileServer):
             return function_to_register
 
         for command in RemoteBundleClient.CLIENT_COMMANDS:
-            self.register_function(wrap('client', command), command)
+            self.register_function(wrap(self.client, command), command)
 
         for command in RemoteBundleClient.SERVER_COMMANDS:
-            self.register_function(wrap('server', command), command)
-
-    def _get_local_client(self):
-        """
-        Create and return a new instance LocalBundleClient with a thread-local AuthHandler instance.
-
-        :return: a LocalBundleClient instance
-        """
-        return LocalBundleClient('local', self.bundle_store, self.model, self.auth_handler, self.verbose)
+            self.register_function(wrap(self, command), command)
 
     def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks, add_to_worksheet):
         '''
