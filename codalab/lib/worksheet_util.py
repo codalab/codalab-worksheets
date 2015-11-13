@@ -333,7 +333,7 @@ def interpret_genpath(bundle_info, genpath):
         # Command
         if bundle_info['command']:
             args.append(formatting.quote(bundle_info['command']))
-        # Add request arguments from metadta
+        # Add request arguments from metadata
         metadata = bundle_info['metadata']
         for key, value in metadata.items():
             if key.startswith('request_') and value:
