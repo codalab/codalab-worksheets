@@ -1208,7 +1208,9 @@ class BundleCLI(object):
                     self.print_permissions(info)
                     self.print_contents(client, info)
 
-        return ui_actions.serialize([ui_actions.OpenBundle(uuid) for uuid in bundle_uuids])
+        # Headless client should fire OpenBundle UI action if no special flags used
+        if self.headless and not (args.field or args.raw or args.verbose):
+            return ui_actions.serialize([ui_actions.OpenBundle(uuid) for uuid in bundle_uuids])
 
     def key_value_str(self, key, value):
         return '%-21s: %s' % (key, formatting.verbose_contents_str(value))
