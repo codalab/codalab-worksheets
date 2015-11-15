@@ -17,7 +17,6 @@ import tempfile
 import traceback
 import os
 import time
-import datetime
 
 from codalab.common import (
     precondition,
@@ -27,6 +26,7 @@ from codalab.common import (
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.lib import zip_util, path_util
 from codalab.server.file_server import FileServer
+
 
 class BundleRPCServer(FileServer):
     def __init__(self, manager):
@@ -54,17 +54,24 @@ class BundleRPCServer(FileServer):
 
         tempdir = tempfile.gettempdir()  # Consider using CodaLab's temp directory
         FileServer.__init__(self, (self.host, self.port), tempdir, manager.auth_handler())
-        def wrap(command, func):
-            def inner(*args, **kwargs):
+
+        def wrap(target, command):
+            def function_to_register(*args, **kwargs):
+                # Process args for logging
                 if command == 'login':
                     log_args = args[:2]  # Don't log password
                 else:
                     log_args = compress_args(args)
+
                 if self.verbose >= 1:
                     print "bundle_rpc_server: %s %s" % (command, log_args)
+
                 try:
                     start_time = time.time()
-                    result = func(*args, **kwargs)
+
+                    # Dynamically bind method and call it
+                    result = getattr(target, command)(*args, **kwargs)
+
                     # Log this activity.
                     self.client.model.update_events_log(
                         start_time=start_time,
@@ -72,6 +79,7 @@ class BundleRPCServer(FileServer):
                         user_name=self.client._current_user_name(),
                         command=command,
                         args=log_args)
+
                     return result
                 except Exception, e:
                     if not (isinstance(e, UsageError) or isinstance(e, PermissionError)):
@@ -80,11 +88,14 @@ class BundleRPCServer(FileServer):
                         print '=== INTERNAL ERROR:', e
                         traceback.print_exc()
                     raise e
-            return inner
+
+            return function_to_register
+
         for command in RemoteBundleClient.CLIENT_COMMANDS:
-            self.register_function(wrap(command, getattr(self.client, command)), command)
+            self.register_function(wrap(self.client, command), command)
+
         for command in RemoteBundleClient.SERVER_COMMANDS:
-            self.register_function(wrap(command, getattr(self, command)), command)
+            self.register_function(wrap(self, command), command)
 
     def upload_bundle_zip(self, file_uuid, construct_args, worksheet_uuid, follow_symlinks, add_to_worksheet):
         '''

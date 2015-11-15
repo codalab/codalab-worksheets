@@ -173,9 +173,9 @@ class RemoteMachine(Machine):
             with open(internal_script_file, 'w') as f:
                 # Make sure I have a username
                 username = pwd.getpwuid(os.getuid())[0]  # do this because os.getlogin() doesn't always work
-                f.write("echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (username, os.geteuid(), os.getgid()))
+                f.write("[ -w /etc/passwd ] && echo %s::%s:%s::/:/bin/bash >> /etc/passwd\n" % (username, os.geteuid(), os.getgid()))
                 # Do this because .bashrc isn't sourced automatically (even with --login, though it works with docker -t -i, strange...)
-                f.write(". .bashrc || exit 1\n")
+                f.write("[ -e .bashrc ] && . .bashrc\n")
                 # Go into the temp directory
                 f.write("cd %s &&\n" % docker_temp_dir)
                 # Run the actual command
@@ -209,6 +209,9 @@ class RemoteMachine(Machine):
         if self.verbose >= 1: print '=== start_bundle(): running %s' % args
         result = json.loads(self.run_command_get_stdout(args))
         if self.verbose >= 1: print '=== start_bundle(): got %s' % result
+
+        if not result['handle']:
+            raise SystemError('Starting bundle failed')
 
         # Return the information about the job.
         return {
@@ -339,6 +342,6 @@ class RemoteMachine(Machine):
 
     def _exists(self, bundle):
         if not getattr(bundle.metadata, 'job_handle', None):
-            print 'ERROR: bundle %s does not have job handle; metadata is %s' % (bundle.uuid, bundle.metadata)
+            print 'remote_machine._exists: bundle %s does not have job handle' % bundle.uuid
             return False
         return True

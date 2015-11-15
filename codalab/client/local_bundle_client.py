@@ -29,6 +29,7 @@ from codalab.lib import (
     file_util,
     worksheet_util,
     spec_util,
+    formatting,
 )
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
@@ -49,12 +50,15 @@ from codalab.model.tables import (
 
 from codalab.lib.formatting import contents_str
 
+
 def authentication_required(func):
-    def decorate(self, *args, **kwargs):
+    def decorated(self, *args, **kwargs):
         if self.auth_handler.current_user() is None:
             raise AuthorizationError("Not authenticated")
         return func(self, *args, **kwargs)
-    return decorate
+
+    return decorated
+
 
 class LocalBundleClient(BundleClient):
     def __init__(self, address, bundle_store, model, auth_handler, verbose):
@@ -66,9 +70,11 @@ class LocalBundleClient(BundleClient):
 
     def _current_user(self):
         return self.auth_handler.current_user()
+
     def _current_user_id(self):
         user = self._current_user()
         return user.unique_id if user else None
+
     def _current_user_name(self):
         user = self._current_user()
         return user.name if user else None
@@ -801,7 +807,7 @@ class LocalBundleClient(BundleClient):
                     #value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
             else:
                 subworksheet_info = None
-            value_obj = worksheet_util.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
+            value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
             new_items.append((bundle_info, subworksheet_info, value_obj, type))
         return new_items
 
