@@ -164,11 +164,9 @@ def request_lines(worksheet_info, client):
     '''
     # Construct a form template with the current value of the worksheet.
     template_lines = get_worksheet_lines(worksheet_info)
-    template = os.linesep.join(template_lines) + os.linesep
+    template = ''.join([line + os.linesep for line in template_lines])
 
     lines = editor_util.open_and_edit(suffix='.md', template=template)
-    if not lines:
-        lines = template_lines
     # Process the result
     form_result = [line.rstrip() for line in lines]
     if form_result == template_lines:
