@@ -69,7 +69,6 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
                 bundle_spec_query = bundle_spec
         else:
             bundle_spec_query = None
-        #print bundle_spec_query, last_index
 
         bundle_uuids = model.get_bundle_uuids({
             'name': bundle_spec_query,
