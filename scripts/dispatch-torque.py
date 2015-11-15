@@ -9,9 +9,9 @@ import subprocess
 import argparse
 
 def get_output(command):
-    print >>sys.stderr, 'dispatch-torque.py: ' + command,
-    output = subprocess.check_output(command, shell=True)
-    print >>sys.stderr, ('=> %d lines' % len(output.split('\n')))
+    print >>sys.stderr, 'dispatch-torque.py: %s' % ' '.join(command),
+    output = subprocess.check_output(command)
+    print >>sys.stderr, ('=> %d lines' % (len(output.split('\n')) - 1))
     return output
 
 if len(sys.argv) <= 1:
@@ -28,6 +28,11 @@ if len(sys.argv) <= 1:
 
 handle = None
 
+def ssh(args):
+    # ssh into scail to run all PBS commands
+    args = ['"' + arg.replace('"', '\\"') + '"' for arg in args]  # Quote arguments
+    return ['ssh', '-oBatchMode=yes', '-x', 'scail'] + args
+
 mode = sys.argv[1]
 if mode == 'start':
     parser = argparse.ArgumentParser()
@@ -42,28 +47,25 @@ if mode == 'start':
 
     args = parser.parse_args(sys.argv[2:])
 
-    resource_args = ''
+    resource_args = []
     if args.username != None:
-        resource_args += ' -N codalab-%s' % args.username
+        resource_args.extend(['-N', 'codalab-%s' % args.username])
     if args.request_cpus != None:
-        resource_args += ' -l nodes=1:ppn=%d' % args.request_cpus
+        resource_args.extend(['-l', 'nodes=1:ppn=%d' % args.request_cpus])
     if args.request_memory != None:
-        resource_args += ' -l mem=%d' % int(args.request_memory)
+        resource_args.extend(['-l', 'mem=%d' % int(args.request_memory)])
     if args.request_queue != None:
-        resource_args += ' -q %s' % args.request_queue
+        resource_args.extend(['-q', args.request_queue])
     if args.request_priority != None:
-        resource_args += ' -p %s' % args.request_priority
+        resource_args.extend(['-p', args.request_priority])
 
-    stdout = get_output('qsub -o /dev/null -e /dev/null%s %s' % (resource_args, args.script))
+    stdout = get_output(ssh(['/usr/local/bin/qsub', '-o', '/dev/null', '-e', '/dev/null', '-q', 'nlp'] + resource_args + [args.script]))
     handle = stdout.strip()
     response = {'raw': stdout, 'handle': handle}
 elif mode == 'info':
     handles = sys.argv[2:]  # If empty, then get info about everything
-    list_args = ''
-    if len(handles) > 0:
-        list_args += ' ' + ' '.join(handles)
-    stdout = get_output('qstat -f%s' % list_args)
-    response = {'raw': ''}
+    stdout = get_output(ssh(['/usr/bin/qstat', '-f'] + handles))
+    response = {'raw': ''}  # Suppress output
 
     infos = []
     for line in stdout.split("\n"):
@@ -120,7 +122,7 @@ elif mode == 'kill':
     handle = sys.argv[2]
     response = {
         'handle': handle,
-        'raw': get_output('qdel %s' % handle)
+        'raw': get_output(ssh(['/usr/bin/qdel', handle]))
     }
 elif mode == 'cleanup':
     # Do nothing
