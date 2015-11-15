@@ -541,6 +541,7 @@ def interpret_items(schemas, items):
     - ('search', [keyword, ...])
     '''
     result = {}
+    raw_items_interpreted_items_map = {}
 
     # Set default schema
     current_schema = None
@@ -571,8 +572,9 @@ def interpret_items(schemas, items):
         elif mode == 'contents' or mode == 'image' or mode == 'html':
             def raiseUsageError():
                 raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join([mode] + args) + '\'')
-            for bundle_info in bundle_infos:
+            for i, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
+                    raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
                     continue
 
                 # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
@@ -597,13 +599,14 @@ def interpret_items(schemas, items):
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
+                raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
             # key2: value2
             # ...
             schema = get_schema(args)
-            for bundle_info in bundle_infos:
+            for i, bundle_info in bundle_infos:
                 header = ('key', 'value')
                 rows = []
                 for (name, genpath, post) in schema:
@@ -617,6 +620,7 @@ def interpret_items(schemas, items):
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
+                raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -626,12 +630,13 @@ def interpret_items(schemas, items):
             header = tuple(name for (name, genpath, post) in schema)
             rows = []
             processed_bundle_infos = []
-            for bundle_info in bundle_infos:
+            for i, bundle_info in bundle_infos:
                 if 'metadata' in bundle_info:
                     rows.append({
                         name: apply_func(post, interpret_genpath(bundle_info, genpath))
                         for (name, genpath, post) in schema
                     })
+                    raw_items_interpreted_items_map[i] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
                     # The front-end relies on the name metadata field existing
@@ -643,6 +648,7 @@ def interpret_items(schemas, items):
                         name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
                         for (name, genpath, post) in schema
                     })
+                    raw_items_interpreted_items_map[i] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(processed_bundle_info)
             new_items.append({
                 'mode': mode,
@@ -657,7 +663,7 @@ def interpret_items(schemas, items):
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
     last_was_empty_line = False
-    for item in items:
+    for i, item in enumerate(items):
         (bundle_info, subworksheet_info, value_obj, item_type) = item
         properties = {}
         new_last_was_empty_line = True
@@ -675,7 +681,7 @@ def interpret_items(schemas, items):
             current_schema = None
 
         if item_type == TYPE_BUNDLE:
-            bundle_infos.append(bundle_info)
+            bundle_infos.append((i, bundle_info))
         elif item_type == TYPE_WORKSHEET:
             new_items.append({
                 'mode': TYPE_WORKSHEET,
@@ -683,17 +689,20 @@ def interpret_items(schemas, items):
                 'properties': {},
                 'subworksheet_info': subworksheet_info,
             })
+            raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
         elif item_type == TYPE_MARKUP:
             new_last_was_empty_line = (value_obj == '')
             if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line:
                 # Combine all consecutive markup items
                 new_items[-1]['interpreted'] += '\n' + value_obj
+                raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
             elif not new_last_was_empty_line:
                 new_items.append({
                     'mode': TYPE_MARKUP,
                     'interpreted': value_obj,
                     'properties': {},
                 })
+                raw_items_interpreted_items_map[i] = (len(new_items) -1, 0)
         elif item_type == TYPE_DIRECTIVE:
             command = get_command(value_obj)
             if command == '%' or command == '' or command == None:
@@ -745,12 +754,14 @@ def interpret_items(schemas, items):
                     'interpreted': 'ERROR: unknown directive **%% %s**' % ' '.join(value_obj),
                     'properties': {},
                 })
+            raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
         else:
             raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line
 
     flush_bundles()
     result['items'] = new_items
+    result['raw_items_interpreted_items_map'] = raw_items_interpreted_items_map
 
     return result
 
