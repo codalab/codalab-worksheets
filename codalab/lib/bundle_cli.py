@@ -47,12 +47,10 @@ from codalab.lib import (
   spec_util,
   worksheet_util,
   cli_util,
-  canonicalize,
   formatting,
   ui_actions,
 )
 from codalab.objects.permission import permission_str, group_permissions_str
-from codalab.objects.worksheet import Worksheet
 from codalab.objects.work_manager import Worker
 from codalab.machines.remote_machine import RemoteMachine
 from codalab.machines.local_machine import LocalMachine
@@ -69,7 +67,7 @@ from codalab.lib.completers import (
   require_not_headless,
 )
 
-## Formatting Constants
+# Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
 TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
@@ -80,7 +78,7 @@ GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
-## Command groupings
+# Command groupings
 BUNDLE_COMMANDS = (
     'upload',
     'make',
@@ -130,6 +128,7 @@ OTHER_COMMANDS = (
     'server',
     'logout',
 )
+
 
 class ArgumentError(Exception):
     pass
@@ -384,7 +383,6 @@ class Commands(object):
 
 
 class BundleCLI(object):
-
     def __init__(self, manager, headless=False, stdout=sys.stdout, stderr=sys.stderr):
         self.manager = manager
         self.verbose = manager.cli_verbose
