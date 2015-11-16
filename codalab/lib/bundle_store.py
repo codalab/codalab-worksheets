@@ -107,7 +107,8 @@ class BundleStore(object):
             # Copy |path| into the temp_path.
             if isinstance(path, list):
                 absolute_path = [path_util.normalize(p) for p in path]
-                for p in absolute_path: path_util.check_isvalid(p, 'upload')
+                for p in absolute_path:
+                    path_util.check_isvalid(p, 'upload')
             else:
                 absolute_path = path_util.normalize(path)
                 path_util.check_isvalid(absolute_path, 'upload')

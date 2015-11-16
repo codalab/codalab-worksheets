@@ -345,11 +345,16 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
         with open(dest_path, 'wb') as dest:
             file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
-        command = "rsync -pr%s %s%s %s" % (('L' if follow_symlinks else 'l'), source, '/' if os.path.isdir(source_path) else '', formatting.quote(dest_path))
+        command = [
+            'rsync',
+            '-pr%s' % ('L' if follow_symlinks else 'l'),
+            source + ('/' if not isinstance(source_path, list) and os.path.isdir(source_path) else ''),
+            formatting.quote(dest_path),
+        ]
         if exclude_patterns:
             for pattern in exclude_patterns:
-                command += ' --exclude "' + pattern + '"'
-        if os.system(command) != 0:
+                command.extend(['--exclude', formatting.quote(pattern)])
+        if os.system(' '.join(command)) != 0:
             raise path_error('Unable to copy %s to' % source_path, dest_path)
 
 def make_directory(path):

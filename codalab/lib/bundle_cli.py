@@ -764,9 +764,10 @@ class BundleCLI(object):
             raise UsageError('Nothing to upload.')
 
         # Pull out the upload bundle type from the arguments and validate it.
-        # Note: only allow dataset bundles (eventually deprecate the program bundle and just have )
+        # Note: only allow dataset bundles (eventually deprecate the program bundle and just have uploaded bundles)
         bundle_type = 'dataset'
         bundle_subclass = get_bundle_subclass(bundle_type)
+
         # Get metadata
         metadata = None
         if not args.base and args.base_use_default_name:
