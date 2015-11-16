@@ -14,9 +14,9 @@ if not os.path.exists(q_path):
     sys.exit(1)
 
 def get_output(command):
-    print >>sys.stderr, 'dispatch-q.py: ' + command,
-    output = subprocess.check_output(command, shell=True)
-    print >>sys.stderr, ('=> %d lines' % len(output.split('\n')))
+    print >>sys.stderr, 'dispatch-q.py: %s' % ' '.join(command),
+    output = subprocess.check_output(command)
+    print >>sys.stderr, ('=> %d lines' % (len(output.split('\n')) - 1))
     return output
 
 if len(sys.argv) <= 1:
@@ -45,22 +45,22 @@ if mode == 'start':
     parser.add_argument('script', type=str, help='script to run')
     args = parser.parse_args(sys.argv[2:])
 
-    resource_args = ''
+    resource_args = []
     if args.request_time != None:
-        resource_args += ' -time %ds' % int(args.request_time)
+        resource_args.extend(['-time', '%ds' % int(args.request_time)])
 
-    # Note: if running in docker container, this doesn't do anything since q
+    # TODO: if running in docker container, this doesn't do anything since q
     # doesn't know about docker, and the script is not the thing actually
     # taking memory.
     if args.request_memory != None:
-        resource_args += ' -mem %dm' % int(args.request_memory / (1024*1024)) # convert to MB
+        resource_args.extend(['-mem', '%dm' % int(args.request_memory / (1024*1024))]) # convert to MB
 
     if args.request_priority != None:
-        resource_args += ' -priority -- %d' % (-args.request_priority)  # Note: need to invert
+        resource_args.extend(['-priority', '--', '%d' % (-args.request_priority)])  # Note: need to invert
 
     if args.share_working_path:
         # Run directly in the same directory.
-        resource_args += ' -shareWorkingPath true'
+        resource_args.extend(['-shareWorkingPath', 'true'])
         launch_script = args.script
     else:
         # q will run the script in a <scratch> directory.
@@ -68,11 +68,11 @@ if mode == 'start':
         # Tell q to copy everything related to <uuid> back.
         orig_path = os.path.dirname(args.script)
         uuid = os.path.basename(args.script).split('.')[0]
-        resource_args += ' -shareWorkingPath false'
-        resource_args += ' -inPaths %s/%s*' % (orig_path, uuid)
-        resource_args += ' -realtimeInPaths %s/%s.action' % (orig_path, uuid)  # To send messages (e.g., kill)
-        resource_args += ' -outPath %s' % orig_path
-        resource_args += ' -outFiles full:%s*' % uuid
+        resource_args.extend(['-shareWorkingPath', 'false'])
+        resource_args.extend(['-inPaths'] + ['%s/%s' % (orig_path, f) for f in os.listdir(orig_path) if f.startswith(uuid)])
+        resource_args.extend(['-realtimeInPaths', '%s/%s.action' % (orig_path, uuid)])  # To send messages (e.g., kill)
+        resource_args.extend(['-outPath', '%s' % orig_path])
+        resource_args.extend(['-outFiles', 'full:%s*' % uuid])
         # Need to point to new script
         if args.script.startswith('/'):
             # Strip leading / to make path relative.
@@ -82,16 +82,13 @@ if mode == 'start':
         else:
             launch_script = args.script
 
-    stdout = get_output('%s%s -add bash %s use_script_for_temp_dir' % (q_path, resource_args, launch_script))
+    stdout = get_output([q_path] + resource_args + ['-add', 'bash', launch_script, 'use_script_for_temp_dir'])
     m = re.match(r'Job (J-.+) added successfully', stdout)
     handle = m.group(1) if m else None
     response = {'raw': stdout, 'handle': handle}
 elif mode == 'info':
     handles = sys.argv[2:]  # If empty, then get info about everything
-    list_args = ''
-    if len(handles) > 0:
-        list_args += ' ' + ' '.join(handles)
-    stdout = get_output('%s -list%s -tabs' % (q_path, list_args))
+    stdout = get_output([q_path, '-list'] + handles + ['-tabs'])
     response = {'raw': stdout}
     # Example output:
     # handle    worker              status  exitCode   exitReason   time    mem    disk    outName     command
@@ -130,13 +127,13 @@ elif mode == 'kill':
     handle = sys.argv[2]
     response = {
         'handle': handle,
-        'raw': get_output('%s -kill %s' % (q_path, handle))
+        'raw': get_output([q_path, '-kill', handle])
     }
 elif mode == 'cleanup':
     handle = sys.argv[2]
     response = {
         'handle': handle,
-        'raw': get_output('%s -del %s' % (q_path, handle))
+        'raw': get_output([q_path, '-del', handle])
     }
 else:
     print 'Invalid mode: %s' % mode
