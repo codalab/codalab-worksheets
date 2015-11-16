@@ -15,7 +15,8 @@ from codalab.client import get_address_host
 from codalab.client.bundle_client import BundleClient
 from codalab.common import (
     PermissionError,
-    UsageError
+    UsageError,
+    AuthorizationError,
 )
 from codalab.lib import (
   file_util,
@@ -152,6 +153,9 @@ class RemoteBundleClient(BundleClient):
                         elif 'codalab.common.PermissionError' in e.faultString:
                             index = e.faultString.find(':')
                             raise PermissionError(e.faultString[index + 1:])
+                        elif 'codalab.common.AuthorizationError' in e.faultString:
+                            index = e.faultString.find(':')
+                            raise AuthorizationError(e.faultString[index + 1:])
                         else:
                             raise
                     except socket.error, e:
