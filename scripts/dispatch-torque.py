@@ -59,12 +59,12 @@ if mode == 'start':
     if args.request_priority != None:
         resource_args.extend(['-p', args.request_priority])
 
-    stdout = get_output(ssh(['/usr/local/bin/qsub', '-o', '/dev/null', '-e', '/dev/null', '-q', 'nlp'] + resource_args + [args.script]))
+    stdout = get_output(ssh(['/usr/bin/env', 'qsub', '-o', '/dev/null', '-e', '/dev/null', '-q', 'nlp'] + resource_args + [args.script]))
     handle = stdout.strip()
     response = {'raw': stdout, 'handle': handle}
 elif mode == 'info':
     handles = sys.argv[2:]  # If empty, then get info about everything
-    stdout = get_output(ssh(['/usr/bin/qstat', '-f'] + handles))
+    stdout = get_output(ssh(['/usr/bin/env', 'qstat', '-f'] + handles))
     response = {'raw': ''}  # Suppress output
 
     infos = []
@@ -122,7 +122,7 @@ elif mode == 'kill':
     handle = sys.argv[2]
     response = {
         'handle': handle,
-        'raw': get_output(ssh(['/usr/bin/qdel', handle]))
+        'raw': get_output(ssh(['/usr/bin/env', 'qdel', handle]))
     }
 elif mode == 'cleanup':
     # Do nothing
