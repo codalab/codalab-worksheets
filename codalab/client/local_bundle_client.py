@@ -179,7 +179,6 @@ class LocalBundleClient(BundleClient):
         # the bundle.  This is a bit ad-hoc.  Future: would be nice to have a more
         # uniform way of serializing bundle information.
         bundle_type = info['bundle_type']
-        #print 'CONVERT', bundle_type, info
         if bundle_type == 'program' or bundle_type == 'dataset':
             construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash']}
@@ -225,6 +224,7 @@ class LocalBundleClient(BundleClient):
             (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
             metadata.update(bundle_store_metadata)
             if construct_args.get('data_hash', data_hash) != data_hash:
+                # TODO should raise an exception or warning?
                 print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' % (construct_args.get('data_hash'), data_hash)
             construct_args['data_hash'] = data_hash
         # Set the owner
@@ -489,7 +489,6 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
-        #print 'old_inputs: %s, new_inputs: %s, old_output: %s, new_output_name: %s' % (old_inputs, new_inputs, old_output, new_output_name)
 
         # Build the graph (get all the infos).
         # If old_output is given, look at ancestors of old_output until we
@@ -885,7 +884,6 @@ class LocalBundleClient(BundleClient):
         responses = []
         for (bundle_uuid, genpath, post) in requests:
             value = worksheet_util.interpret_file_genpath(self, target_cache, bundle_uuid, genpath, post)
-            #print 'interpret_file_genpaths', bundle_uuid, genpath, value
             responses.append(value)
         return responses
 

@@ -383,7 +383,6 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
-        #print 'LOAD', target
         contents = client.head_target(target, MAX_LINES)
         # Try to interpret the structure of the file by looking inside it.
         if contents != None:
