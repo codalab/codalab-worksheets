@@ -210,6 +210,9 @@ class RemoteMachine(Machine):
         result = json.loads(self.run_command_get_stdout(args))
         if self.verbose >= 1: print '=== start_bundle(): got %s' % result
 
+        if not result['handle']:
+            raise SystemError('Starting bundle failed')
+
         # Return the information about the job.
         return {
             'bundle': bundle,
@@ -339,6 +342,6 @@ class RemoteMachine(Machine):
 
     def _exists(self, bundle):
         if not getattr(bundle.metadata, 'job_handle', None):
-            print 'ERROR: bundle %s does not have job handle; metadata is %s' % (bundle.uuid, bundle.metadata)
+            print 'remote_machine._exists: bundle %s does not have job handle' % bundle.uuid
             return False
         return True
