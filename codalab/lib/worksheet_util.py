@@ -506,13 +506,13 @@ def apply_func(func, arg):
         # String encoding of a function: size s/a/b
         for f in func.split(FUNC_DELIM):
             if f == 'date':
-                arg = formatting.date_str(float(arg)) if arg != None else None
+                arg = formatting.date_str(float(arg)) if arg is not None else None
             elif f == 'duration':
-                arg = formatting.duration_str(float(arg)) if arg != None else None
+                arg = formatting.duration_str(float(arg)) if arg is not None else None
             elif f == 'size':
-                arg = formatting.size_str(float(arg)) if arg != None else None
+                arg = formatting.size_str(float(arg)) if arg is not None else None
             elif f.startswith('%'):
-                arg = (f % float(arg)) if arg != None else None
+                arg = (f % float(arg)) if arg is not None else None
             elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
                 esc_slash = '_ESC_SLASH_'  # Assume this doesn't occur in s
                 # Preserve escaped characters: \/
