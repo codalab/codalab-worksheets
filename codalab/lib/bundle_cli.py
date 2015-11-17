@@ -1290,7 +1290,7 @@ class BundleCLI(object):
 
     def print_contents(self, client, info):
         def wrap(string):
-            return '=== ' + string + ' ==='
+            return '=== ' + string + ' preview ==='
 
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
