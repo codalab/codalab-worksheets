@@ -1334,7 +1334,7 @@ class BundleCLI(object):
                 for line in client.head_target(target, maxlines):
                     print >>self.stdout, base64.b64decode(line),
             else:
-                client.cat_target(target, sys.stdout)
+                client.cat_target(target, self.stdout)
         def size(x):
             t = x.get('type', '???')
             if t == 'file': return formatting.size_str(x['size'])
@@ -1408,8 +1408,8 @@ class BundleCLI(object):
                     result = handle.read(16384)
                     if result == '': break
                     change = True
-                    sys.stdout.write(result)
-            sys.stdout.flush()
+                    self.stdout.write(result)
+            self.stdout.flush()
 
             # Update bundle info
             info = client.get_bundle_info(bundle_uuid)
@@ -1421,12 +1421,16 @@ class BundleCLI(object):
                 period = min(backoff*period, max_period)
 
         for handle in handles:
-            if not handle: continue
+            if not handle:
+                continue
+
             # Read the remainder of the file
             while True:
                 result = handle.read(16384)
-                if result == '': break
-                sys.stdout.write(result)
+                if result == '':
+                    break
+                self.stdout.write(result)
+
             client.close_target_handle(handle)
 
         return info['state']

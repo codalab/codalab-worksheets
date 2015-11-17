@@ -1,4 +1,4 @@
-'''
+"""
 path_util contains helpers for working with local filesystem paths.
 There are a few classes of methods provided here:
 
@@ -13,7 +13,7 @@ There are a few classes of methods provided here:
 
   Functions that modify that filesystem in controlled ways:
     copy, make_directory, remove, remove_symlinks, set_permissions
-'''
+"""
 import contextlib
 import errno
 import hashlib
@@ -35,21 +35,24 @@ BLOCK_SIZE = 0x40000
 FILE_PREFIX = 'file'
 LINK_PREFIX = 'link'
 
+# Maximum number of bytes to read per line requested
+MAX_BYTES_PER_LINE = 128
+
 
 class TargetPath(unicode):
-    '''
+    """
     Wrapper around unicode objects that allows us to add extra attributes to them.
     In particular, canonicalize.get_target_path will return a TargetPath with the
     'target' attribute set to the un-canonicalized target.
-    '''
+    """
 
 
 def path_error(message, path):
-    '''
+    """
     Raised when a user-supplied path causes an exception. If the path passed to
     this error's constructor came from a call to get_target_path, the target will
     be appended to the message instead of the computed path.
-    '''
+    """
     if isinstance(path, TargetPath):
         path = safe_join(*path.target)
     return UsageError(message + ': ' + path)
@@ -57,10 +60,10 @@ def path_error(message, path):
 
 @contextlib.contextmanager
 def chdir(new_dir):
-    '''
+    """
     Context manager that changes the current working directory of this process
     for the duration of the context.
-    '''
+    """
     cur_dir = os.getcwd()
     try:
         os.chdir(new_dir)
@@ -75,20 +78,20 @@ def chdir(new_dir):
 
 
 def normalize(path):
-    '''
+    """
     Return the absolute path of the location specified by the given path.
     This path is returned in a "canonical form", without ~'s, .'s, ..'s.
-    '''
+    """
     if path == '-': return '/dev/stdin'
     if path_is_url(path): return path
     return os.path.abspath(os.path.expanduser(path))
 
 
 def check_isvalid(path, fn_name):
-    '''
+    """
     Raise a PreconditionViolation if the path is not absolute or normalized.
     Raise a UsageError if the file at that path does not exist.
-    '''
+    """
     precondition(os.path.isabs(path), '%s got relative path: %s' % (fn_name, path))
     # Broken symbolic links are valid paths, so we use lexists instead of exists.
     # This case will come up when executing a make bundle with an anonymous target,
@@ -98,33 +101,35 @@ def check_isvalid(path, fn_name):
 
 
 def check_isdir(path, fn_name):
-    '''
+    """
     Check that the path is valid, then raise UsageError if the path is a file.
-    '''
+    """
     check_isvalid(path, fn_name)
     if not os.path.isdir(path):
         raise path_error('%s got non-directory:' % (fn_name,), path)
 
 
 def check_isfile(path, fn_name):
-    '''
+    """
     Check that the path is valid, then raise UsageError if the path is a file.
-    '''
+    """
     check_isvalid(path, fn_name)
     if os.path.isdir(path):
         raise path_error('%s got directory:' % (fn_name,), path)
 
+
 def check_under_path(path, parent_path):
-    '''
+    """
     Check that the path is under its parent path.
-    '''
+    """
     if not os.path.realpath(path).startswith(os.path.realpath(parent_path)):
         raise path_error('Path not under %s' % (parent_path,), path)
 
+
 def check_for_symlinks(root, dirs_and_files=None):
-    '''
+    """
     Raise UsageError if there are any symlinks under the given path.
-    '''
+    """
     (directories, files) = dirs_and_files or recursive_ls(root)
     for path in itertools.chain(directories, files):
         if os.path.islink(path):
@@ -138,26 +143,26 @@ def check_for_symlinks(root, dirs_and_files=None):
 
 
 def safe_join(*paths):
-    '''
+    """
     Join a sequence of paths but filter out any that are empty. Used for targets.
     Note that os.path.join has this functionality EXCEPT at the end of the list,
     which causes problems when a target subpath is empty.
-    '''
+    """
     return os.path.join(*filter(None, paths))
 
 
 def get_relative_path(root, path):
-    '''
+    """
     Return the relative path from root to path, which should be nested under root.
-    '''
+    """
     precondition(path.startswith(root), '%s is not under %s' % (path, root))
     return path[len(root):]
 
 
 def ls(path):
-    '''
+    """
     Return a (list of directories, list of files) in the given directory.
-    '''
+    """
     check_isdir(path, 'ls')
     (directories, files) = ([], [])
     for file_name in os.listdir(path):
@@ -169,7 +174,7 @@ def ls(path):
 
 
 def recursive_ls(path):
-    '''
+    """
     Return a (list of directories, list of files) in the given directory and
     all of its nested subdirectories. All paths returned are absolute.
 
@@ -177,7 +182,7 @@ def recursive_ls(path):
     This makes it possible to distinguish between real and symlinked directories
     when computing the hash of a directory. This function will NOT descend into
     symlinked directories.
-    '''
+    """
     check_isdir(path, 'recursive_ls')
     (directories, files) = ([], [])
     for (root, _, file_names) in os.walk(path):
@@ -201,60 +206,88 @@ def recursive_ls(path):
 ################################################################################
 
 def cat(path, out):
-    '''
+    """
     Copy data from the file at the given path to the file descriptor |out|.
-    '''
-    if not os.path.isfile(path): return None
+    """
+    if not os.path.isfile(path):
+        return None
+
     with open(path, 'rb') as file_handle:
         file_util.copy(file_handle, out)
 
+
+def safe_read_lines(file_handle, max_bytes):
+    """
+    :param file_handle: file object to read from
+    :param max_bytes: integer cap on number of bytes to read
+    :return: a generator that yields all lines from the file up to MAX_BYTES
+    """
+    last_pos = file_handle.tell()
+    for line in file_handle:
+        if file_handle.tell() > max_bytes:
+            file_handle.seek(last_pos)
+            yield file_handle.read(max_bytes - last_pos)
+            return
+        else:
+            last_pos = file_handle.tell()
+            yield line
+
+
 def read_lines(path, num_lines=None):
-    '''
+    """
     Return list of lines (up to num_lines).
-    '''
-    if not os.path.isfile(path): return None
+
+    :param path:
+    :param num_lines:
+    :return:
+    """
+    if not os.path.isfile(path):
+        return None
+
     with open(path, 'rb') as file_handle:
-        if num_lines == None:
+        if num_lines is None:
             return file_handle.readlines()
         else:
-            return list(itertools.islice(file_handle, num_lines))
+            return list(itertools.islice(safe_read_lines(file_handle, num_lines * MAX_BYTES_PER_LINE), num_lines))
+
 
 def base64_encode(path):
-    '''
-        takes a file and returns a base64 encoded version
-    '''
-    if not os.path.isfile(path): return None
+    """
+    takes a file and returns a base64 encoded version
+    """
+    if not os.path.isfile(path):
+        return None
 
-    encoded_string = None
     with open(path, 'rb') as file_handle:
         import base64
-        encoded_string = base64.b64encode(file_handle.read())
-    return encoded_string
+        return base64.b64encode(file_handle.read())
+
 
 def getmtime(path):
-    '''
+    """
     Like os.path.getmtime, but does not follow symlinks.
-    '''
+    """
     return os.lstat(path).st_mtime
 
 
 def get_size(path, dirs_and_files=None):
-    '''
+    """
     Get the size (in bytes) of the file or directory at or under the given path.
     Does not include symlinked files and directories.
-    '''
+    """
     if os.path.islink(path) or not os.path.isdir(path):
         return os.lstat(path).st_size
     dirs_and_files = dirs_and_files or recursive_ls(path)
     return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
 
+
 def get_info(path, depth):
-    '''
+    """
     Return a hash containing properties of the path:
         type: one of {'file', 'directory'}
         size: size of all files
         contents: list of files
-    '''
+    """
     result = {}
     result['name'] = os.path.basename(path)
     if os.path.islink(path):
@@ -270,12 +303,13 @@ def get_info(path, depth):
         result['perm'] = os.stat(path).st_mode & 0777
     return result
 
+
 def hash_directory(path, dirs_and_files=None):
-    '''
+    """
     Return the hash of the contents of the folder at the given path.
     This hash is independent of the path itself - if you were to move the
     directory and call get_hash again, you would get the same result.
-    '''
+    """
     (directories, files) = dirs_and_files or recursive_ls(path)
     # Sort and then hash all directories and then compute a hash of the hashes.
     # This two-level hash is necessary so that the overall hash is unambiguous -
@@ -300,9 +334,9 @@ def hash_directory(path, dirs_and_files=None):
 
 
 def hash_file_contents(path):
-    '''
+    """
     Return the hash of the file's contents, read in blocks of size BLOCK_SIZE.
-    '''
+    """
     message = 'hash_file called with relative path: %s' % (path,)
     precondition(os.path.isabs(path), message)
     contents_hash = hashlib.sha1()
@@ -325,11 +359,11 @@ def hash_file_contents(path):
 ################################################################################
 
 def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
-    '''
+    """
     source_path can be a list of files, in which case we need to create a
     directory first.  Assume dest_path doesn't exist.
     Don't copy things that match |exclude_patterns|.
-    '''
+    """
 
     # Note: this only works in Linux.
     if os.path.exists(dest_path):
@@ -357,10 +391,11 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
         if os.system(' '.join(command)) != 0:
             raise path_error('Unable to copy %s to' % source_path, dest_path)
 
+
 def make_directory(path):
-    '''
+    """
     Create the directory at the given path.
-    '''
+    """
     try:
         os.mkdir(path)
     except OSError, e:
@@ -368,20 +403,23 @@ def make_directory(path):
             raise
     check_isdir(path, 'make_directories')
 
+
 def set_write_permissions(path):
     # Recursively give give write permissions to |path|, so that we can operate
     # on it.
     subprocess.call(['chmod', '-R', 'u+w', path])
+
 
 def rename(old_path, new_path):
     set_write_permissions(old_path)  # Allow permissions (TODO: this is a hack)
     #os.rename(old_path, new_path)  # Can't deal with cross-device links
     shutil.move(old_path, new_path)
 
+
 def remove(path):
-    '''
+    """
     Remove the given path, whether it is a directory, file, or link.
-    '''
+    """
     check_isvalid(path, 'remove')
     set_write_permissions(path)  # Allow permissions
     if os.path.islink(path):
@@ -398,9 +436,9 @@ def remove(path):
 
 
 def remove_symlinks(root, dirs_and_files=None):
-    '''
+    """
     Delete any existing symlinks under the given path.
-    '''
+    """
     (directories, files) = dirs_and_files or recursive_ls(root)
     for path in itertools.chain(directories, files):
         if os.path.islink(path):
@@ -408,9 +446,9 @@ def remove_symlinks(root, dirs_and_files=None):
 
 
 def set_permissions(path, permissions, dirs_and_files=None):
-    '''
+    """
     Sets the permissions bits for all directories and files under the path.
-    '''
+    """
     (directories, files) = dirs_and_files or recursive_ls(path)
     for subpath in itertools.chain(directories, files):
         try:
@@ -419,6 +457,7 @@ def set_permissions(path, permissions, dirs_and_files=None):
             # chmod-ing a broken symlink will raise ENOENT, so we pass on this case.
             if not (e.errno == errno.ENOENT and os.path.islink(subpath)):
                 raise
+
 
 def path_is_url(path):
     for prefix in ['http', 'https', 'ftp', 'file']:
