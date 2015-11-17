@@ -3,11 +3,12 @@ LocalBundleClient is BundleClient implementation that interacts directly with a
 BundleStore and a BundleModel. All filesystem operations are handled locally.
 '''
 from time import sleep
-import contextlib
-import os, sys, re
+import base64
 import copy
-import types
 import datetime
+import os
+import re
+import sys
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -26,7 +27,6 @@ from codalab.client.bundle_client import BundleClient
 from codalab.lib import (
     canonicalize,
     path_util,
-    file_util,
     worksheet_util,
     spec_util,
     formatting,
@@ -47,8 +47,6 @@ from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
 )
-
-from codalab.lib.formatting import contents_str
 
 
 def authentication_required(func):
@@ -453,18 +451,23 @@ class LocalBundleClient(BundleClient):
         path = self.get_target_path(target)
         path_util.cat(path, out)
 
-    def head_target(self, target, num_lines):
+    # Maximum number of bytes to read per line requested
+    MAX_BYTES_PER_LINE = 128
+
+    def head_target(self, target, max_num_lines):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
-        lines = path_util.read_lines(path, num_lines)
-        if lines == None: return None
-        import base64
+        lines = path_util.read_lines(path, max_num_lines, max_num_lines * self.MAX_BYTES_PER_LINE)
+        if lines is None:
+            return None
+
         return map(base64.b64encode, lines)
 
     def open_target_handle(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
         return open(path) if path and os.path.exists(path) else None
+
     def close_target_handle(self, handle):
         handle.close()
 

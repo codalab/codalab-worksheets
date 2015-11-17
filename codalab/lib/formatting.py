@@ -1,30 +1,45 @@
-'''
+"""
 Provides basic formatting utilities.
-'''
+"""
 
 import datetime
 import sys
 
+
 def contents_str(input_string):
-    '''
+    """
     input_string: raw string (may be None)
     Return a friendly string (if input_string is None, replace with '' for now).
-    '''
-    return input_string if input_string is not None else ''
+    """
+    if input_string is None:
+        return ''
+    try:
+        return input_string.encode('utf-8')
+    except UnicodeDecodeError:
+        return ''
+
 
 def verbose_contents_str(input_string):
-    '''
+    """
     input_string: raw string (may be None)
     Return a friendly string (which is more verbose than contents_str).
-    '''
-    return input_string if input_string is not None else '<none>'
+    """
+    if input_string is None:
+        return '<none>'
+    try:
+        return input_string.encode('utf-8')
+    except UnicodeDecodeError:
+        return '<binary>'
+
 
 def size_str(size):
-    '''
+    """
     size: number of bytes
     Return a human-readable string.
-    '''
-    if size == None: return None
+    """
+    if size is None:
+        return None
+
     for unit in ('', 'K', 'M', 'G'):
         if size < 100 and size != int(size):
             return '%.1f%s' % (size, unit)
@@ -32,15 +47,17 @@ def size_str(size):
             return '%d%s' % (size, unit)
         size /= 1024.0
 
+
 def date_str(ts):
     return datetime.datetime.fromtimestamp(ts).isoformat().replace('T', ' ')
 
+
 def duration_str(s):
-    '''
+    """
     s: number of seconds
     Return a human-readable string.
     Example: 100 => "1m40s", 10000 => "2h46m"
-    '''
+    """
     if s == None: return None
     m = int(s / 60)
     if m == 0: return "%.1fs" % s
@@ -60,11 +77,12 @@ def duration_str(s):
 
     return "%dy%dd" % (y, d)
 
+
 def parse_size(s):
-    '''
+    """
     s: <number><k|m|g>
     Returns the number of bytes.
-    '''
+    """
     if s[-1].isdigit():
         return float(s)
     n, unit = float(s[0:-1]), s[-1].lower()
@@ -78,11 +96,12 @@ def parse_size(s):
     print >>sys.stderr, 'Warning: invalid unit in ', s
     raise n
 
+
 def parse_duration(s):
-    '''
+    """
     s: <number><s|m|h|d|y>
     Returns the number of seconds
-    '''
+    """
     if s[-1].isdigit():
         return float(s)
     n, unit = float(s[0:-1]), s[-1].lower()
@@ -105,19 +124,23 @@ def parse_duration(s):
 # Tokens are serialized as a space-separated list, where we use " to quote.
 # "first token" "\"second token\"" third
 
+
 def quote(token):
     if ' ' in token or '"' in token:
         return '"' + token.replace('"', '\\"') + '"'
     return token
+
+
 def tokens_to_string(tokens):
     return ' '.join(quote(token) for token in tokens)
 
+
 def string_to_tokens(s):
-    '''
+    """
     Input (string): a b 'c d' e
     Output (array): ["a", "b", "c d", "e"]
     Both single and double quotes are supported.
-    '''
+    """
     tokens = []
     i = 0
     while i < len(s):
