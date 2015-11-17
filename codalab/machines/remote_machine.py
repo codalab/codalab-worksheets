@@ -159,6 +159,11 @@ class RemoteMachine(Machine):
                     resource_args += ' -m %s' % int(formatting.parse_size(bundle.metadata.request_memory))
                 # TODO: would constrain --cpuset=0, but difficult because don't know the CPU ids
 
+                # Attach all GPUs if any
+                f.write('devices=$(/bin/ls /dev/nvidia* 2>/dev/null)\n')
+                f.write('if [ -n "$devices" ]; then devices=$(for d in $devices; do echo --device $d:$d; done); fi\n')
+                resource_args += ' $devices'
+
                 f.write("docker run%s --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s >%s/stdout 2>%s/stderr & wait $!\n" % (
                     resource_args,
                     ptr_container_file,
