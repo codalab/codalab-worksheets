@@ -33,7 +33,7 @@ from codalab.lib import (
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
 from codalab.objects.permission import (
-    check_bundles_have_read_permission,  # unused
+    check_bundles_have_read_permission,
     check_bundles_have_all_permission,
     check_worksheet_has_read_permission,
     check_worksheet_has_all_permission,
