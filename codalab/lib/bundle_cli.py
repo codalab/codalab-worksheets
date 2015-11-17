@@ -1,4 +1,4 @@
-'''
+"""
 BundleCLI is a class that provides one major API method, do_command, which takes
 a list of CodaLab bundle system command-line arguments and executes them.
 
@@ -13,7 +13,7 @@ results in the following:
 
   BundleCLI.do_command(['upload', 'foo'])
   BundleCLI.do_upload_command(['foo'])
-'''
+"""
 import argparse
 import copy
 import inspect
@@ -47,12 +47,10 @@ from codalab.lib import (
   spec_util,
   worksheet_util,
   cli_util,
-  canonicalize,
   formatting,
   ui_actions,
 )
 from codalab.objects.permission import permission_str, group_permissions_str
-from codalab.objects.worksheet import Worksheet
 from codalab.objects.work_manager import Worker
 from codalab.machines.remote_machine import RemoteMachine
 from codalab.machines.local_machine import LocalMachine
@@ -69,7 +67,7 @@ from codalab.lib.completers import (
   require_not_headless,
 )
 
-## Formatting Constants
+# Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
 TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
@@ -80,7 +78,7 @@ GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
-## Command groupings
+# Command groupings
 BUNDLE_COMMANDS = (
     'upload',
     'make',
@@ -131,29 +129,87 @@ OTHER_COMMANDS = (
     'logout',
 )
 
+
+class ArgumentError(Exception):
+    pass
+
+
+class CodaLabArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        # Get a reference to the CLI
+        self.cli = kwargs.pop('cli')
+        argparse.ArgumentParser.__init__(self, *args, **kwargs)
+
+    def print_help(self, out_file=None):
+        # Adapted from original:
+        # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
+        if out_file is None:
+            out_file = self.cli.stdout
+        self._print_message(self.format_help(), out_file)
+
+    def error(self, message):
+        if self.cli.headless:
+            raise ArgumentError(message)
+        else:
+            # Adapted from original:
+            # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
+            self.print_usage(self.cli.stderr)
+            self.exit(2, '%s: error: %s\n' % (self.prog, message))
+
+
+class AliasedSubParsersAction(argparse._SubParsersAction):
+    """
+    Enables aliases for subcommands.
+    Stolen from:
+    https://gist.github.com/sampsyo/471779
+    """
+    class _AliasedPseudoAction(argparse.Action):
+        def __init__(self, name, aliases=None, help=None):
+            dest = name
+            sup = super(AliasedSubParsersAction._AliasedPseudoAction, self)
+            sup.__init__(option_strings=[], dest=dest, help=help)
+
+    def add_parser(self, name, **kwargs):
+        aliases = kwargs.pop('aliases', [])
+
+        parser = super(AliasedSubParsersAction, self).add_parser(name, **kwargs)
+
+        # Make the aliases work.
+        for alias in aliases:
+            self._name_parser_map[alias] = parser
+        # Make the help text reflect them, first removing old help entry.
+        if 'help' in kwargs:
+            help = kwargs.pop('help')[0]
+            self._choices_actions.pop()
+            pseudo_action = self._AliasedPseudoAction(name, aliases, help)
+            self._choices_actions.append(pseudo_action)
+
+        return parser
+
+
 class Commands(object):
-    '''
+    """
     Class initialized once at interpretation-time that registers all the functions
     for building parsers and actions etc.
-    '''
+    """
     commands = {}
 
     class Argument(object):
-        '''
+        """
         Dummy container class to hold the arguments that we will eventually pass into
         `ArgumentParser.add_argument`.
-        '''
+        """
         def __init__(self, *args, **kwargs):
             self.args = args
             self.kwargs = kwargs
 
     class Command(object):
-        '''
+        """
         A Commands.Command object defines a subcommand in the program argument parser.
         Created by the `Commands.command` function decorator and used internally
         to store information about the subcommands that will eventually be used to
         build a parser for the program.
-        '''
+        """
         def __init__(self, name, aliases, help, arguments, function):
             self.name = name
             self.aliases = aliases
@@ -161,45 +217,9 @@ class Commands(object):
             self.arguments = arguments
             self.function = function
 
-    class ArgumentError(Exception):
-        pass
-
-    class ThrowingArgumentParser(argparse.ArgumentParser):
-        def error(self, message):
-            raise Commands.ArgumentError(message)
-
-    class AliasedSubParsersAction(argparse._SubParsersAction):
-        '''
-        Enables aliases for subcommands.
-        Stolen from:
-        https://gist.github.com/sampsyo/471779
-        '''
-        class _AliasedPseudoAction(argparse.Action):
-            def __init__(self, name, aliases=None, help=None):
-                dest = name
-                sup = super(Commands.AliasedSubParsersAction._AliasedPseudoAction, self)
-                sup.__init__(option_strings=[], dest=dest, help=help)
-
-        def add_parser(self, name, **kwargs):
-            aliases = kwargs.pop('aliases', [])
-
-            parser = super(Commands.AliasedSubParsersAction, self).add_parser(name, **kwargs)
-
-            # Make the aliases work.
-            for alias in aliases:
-                self._name_parser_map[alias] = parser
-            # Make the help text reflect them, first removing old help entry.
-            if 'help' in kwargs:
-                help = kwargs.pop('help')[0]
-                self._choices_actions.pop()
-                pseudo_action = self._AliasedPseudoAction(name, aliases, help)
-                self._choices_actions.append(pseudo_action)
-
-            return parser
-
     @classmethod
     def command(cls, name, aliases=(), help='', arguments=()):
-        '''
+        """
         Return a decorator function that registers the decoratee as the action function
         for the subcommand defined by the arguments passed here.
 
@@ -208,7 +228,7 @@ class Commands(object):
         `help`      - help string for the subcommand
         `arguments` - iterable of `Commands.Argument` instances defining the arguments
                       to this subcommand
-        '''
+        """
         def register_command(function):
             cls.commands[name] = cls.Command(name, aliases, help, arguments, function)
 
@@ -235,6 +255,7 @@ class Commands(object):
         def command_help_text(command):
             name = command_name(command)
             command_obj = cls.commands[command]
+
             def render_args(arguments):
                 table = []
                 for arg in arguments:
@@ -289,23 +310,18 @@ class Commands(object):
 
     @classmethod
     def build_parser(cls, cli):
-        '''
+        """
         Builds an `ArgumentParser` for the cl program, with all the subcommands registered
         through the `Commands.command` decorator.
-        '''
-        if cli.headless:
-            parser_cls = Commands.ThrowingArgumentParser
-        else:
-            parser_cls = argparse.ArgumentParser
-
-        parser = parser_cls(prog='cl', add_help=False, formatter_class=argparse.RawTextHelpFormatter)
-        parser.register('action', 'parsers', cls.AliasedSubParsersAction)
+        """
+        parser = CodaLabArgumentParser(prog='cl', cli=cli, add_help=False, formatter_class=argparse.RawTextHelpFormatter)
+        parser.register('action', 'parsers', AliasedSubParsersAction)
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         # Build subparser for each subcommand
         for command in cls.commands.itervalues():
             help = '\n'.join(command.help)
-            subparser = subparsers.add_parser(command.name, help=help, description=help, aliases=command.aliases, add_help=True, formatter_class=argparse.RawTextHelpFormatter)
+            subparser = subparsers.add_parser(command.name, cli=cli, help=help, description=help, aliases=command.aliases, add_help=True, formatter_class=argparse.RawTextHelpFormatter)
 
             # Register arguments for the subcommand
             for argument in command.arguments:
@@ -336,10 +352,10 @@ class Commands(object):
 
     @staticmethod
     def metadata_arguments(bundle_subclasses):
-        '''
+        """
         Build arguments to a command-line argument parser for all metadata keys
         needed by the given bundle subclasses.
-        '''
+        """
         arguments = []
         added_keys = set()
         for bundle_subclass in bundle_subclasses:
@@ -367,7 +383,6 @@ class Commands(object):
 
 
 class BundleCLI(object):
-
     def __init__(self, manager, headless=False, stdout=sys.stdout, stderr=sys.stderr):
         self.manager = manager
         self.verbose = manager.cli_verbose
@@ -376,9 +391,9 @@ class BundleCLI(object):
         self.stderr = stderr
 
     def exit(self, message, error_code=1):
-        '''
+        """
         print >>self.stdout, the message to stderr and exit with the given error code.
-        '''
+        """
         precondition(error_code, 'exit called with error_code == 0')
         print >>self.stderr, message
         sys.exit(error_code)
@@ -391,9 +406,9 @@ class BundleCLI(object):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
     def get_worksheet_bundles(self, worksheet_info):
-        '''
+        """
         Return list of info dicts of distinct bundles in the worksheet.
-        '''
+        """
         result = []
         for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
             if item_type == worksheet_util.TYPE_BUNDLE:
@@ -401,9 +416,9 @@ class BundleCLI(object):
         return result
 
     def parse_target(self, client, worksheet_uuid, target_spec):
-        '''
+        """
         Helper: A target_spec is a bundle_spec[/subpath].
-        '''
+        """
         if os.sep in target_spec:
             bundle_spec, subpath = tuple(target_spec.split(os.sep, 1))
         else:
@@ -413,9 +428,9 @@ class BundleCLI(object):
         return (bundle_uuid, subpath)
 
     def parse_key_targets(self, client, worksheet_uuid, items):
-        '''
+        """
         Helper: items is a list of strings which are [<key>]:<target>
-        '''
+        """
         targets = []
         # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
         for item in items:
@@ -434,9 +449,9 @@ class BundleCLI(object):
         return targets
 
     def print_table(self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''):
-        '''
+        """
         Pretty-print a list of columns from each row in the given list of dicts.
-        '''
+        """
         # Get the contents of the table
         rows = [columns]
         for row_dict in row_dicts:
@@ -466,11 +481,11 @@ class BundleCLI(object):
                 print >>self.stdout, indent + (sum(lengths) + 2*(len(columns) - 1)) * '-'
 
     def parse_spec(self, spec):
-        '''
+        """
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
         Example: http://codalab.org/bundleservice::wine
         Return (client, spec)
-        '''
+        """
         tokens = spec.split('::')
         if len(tokens) == 1:
             address = self.manager.session()['address']
@@ -481,9 +496,9 @@ class BundleCLI(object):
         return (self.manager.client(address), spec)
 
     def parse_client_worksheet_uuid(self, spec):
-        '''
+        """
         Return the worksheet referred to by |spec|.
-        '''
+        """
         if not spec or spec == worksheet_util.CURRENT_WORKSHEET:
             # Empty spec, just return current worksheet.
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
@@ -500,10 +515,10 @@ class BundleCLI(object):
         return (client, worksheet_uuid)
 
     def get_missing_metadata(self, bundle_subclass, args, initial_metadata=None):
-        '''
+        """
         Return missing metadata for bundles by either returning default metadata values or
         pop up an editor and request that data from the user.
-        '''
+        """
         if not initial_metadata:
             initial_metadata = {
                 spec.key: getattr(args, metadata_util.metadata_key_to_argument(spec.key))
@@ -540,13 +555,13 @@ class BundleCLI(object):
 
     @staticmethod
     def collapse_bare_command(argv):
-        '''
+        """
         In order to allow specifying a command (i.e. for `cl run`) across multiple tokens,
         we use a special notation '---' to indicate the start of a single contiguous argument.
           key:target ... key:target "command_1 ... command_n"
           <==>
           key:target ... key:target --- command_1 ... command_n
-        '''
+        """
         try:
             i = argv.index('---')
             argv = argv[0:i] + [' '.join(argv[i+1:])]  # TODO: quote command properly
@@ -556,9 +571,9 @@ class BundleCLI(object):
         return argv
 
     def complete_command(self, command):
-        '''
+        """
         Given a command string, return a list of suggestions to complete the last token.
-        '''
+        """
         parser = Commands.build_parser(self)
         cf = argcomplete.CompletionFinder(parser)
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
@@ -669,10 +684,10 @@ class BundleCLI(object):
         ),
     )
     def do_alias_command(self, args):
-        '''
+        """
         Show, add, modify, delete aliases (mappings from names to instances).
         Only modifies the CLI configuration, doesn't need a BundleClient.
-        '''
+        """
         self._fail_if_headless('alias')
         aliases = self.manager.config['aliases']
         if args.name:
@@ -749,9 +764,10 @@ class BundleCLI(object):
             raise UsageError('Nothing to upload.')
 
         # Pull out the upload bundle type from the arguments and validate it.
-        # Note: only allow dataset bundles (eventually deprecate the program bundle and just have )
+        # Note: only allow dataset bundles (eventually deprecate the program bundle and just have uploaded bundles)
         bundle_type = 'dataset'
         bundle_subclass = get_bundle_subclass(bundle_type)
+
         # Get metadata
         metadata = None
         if not args.base and args.base_use_default_name:
@@ -823,13 +839,13 @@ class BundleCLI(object):
         print >>self.stdout, 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
 
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies, add_to_worksheet):
-        '''
+        """
         Helper function that supports cp and wadd.
         Copies the source bundle to the target worksheet.
         Currently, this goes between two clients by downloading to the local
         disk and then uploading, which is not the most efficient.
         But having two clients talk directly to each other is complicated...
-        '''
+        """
         if copy_dependencies:
             source_info = source_client.get_bundle_info(source_bundle_uuid)
             # Copy all the dependencies, but only for run dependencies.
@@ -969,10 +985,10 @@ class BundleCLI(object):
         ),
     )
     def do_detach_command(self, args):
-        '''
+        """
         Removes the given bundles from the given worksheet (but importantly
         doesn't delete the actual bundles, unlike rm).
-        '''
+        """
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
@@ -1095,19 +1111,19 @@ class BundleCLI(object):
         }
 
     def create_structured_info_map(self, structured_info_list):
-        '''
+        """
         Return dict of info dicts (eg. bundle/worksheet reference_map) containing
         information associated to bundles/worksheets. cl wls, ls, etc. show uuids
         which are too short. This dict contains additional information that is
         needed to recover URL on the client side.
-        '''
+        """
         return dict(structured_info_list)
 
     def create_reference_map(self, info_type, info_list):
-        '''
+        """
         Return dict of dicts containing name, uuid and type for each bundle/worksheet
         in the info_list. This information is needed to recover URL on the cient side.
-        '''
+        """
         return {
             worksheet_util.apply_func(UUID_POST_FUNC, info['uuid']) : {
                 'type': info_type,
@@ -1147,9 +1163,9 @@ class BundleCLI(object):
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
     def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
-        '''
+        """
         Helper function: print >>self.stdout, a nice table showing all provided bundles.
-        '''
+        """
         if uuid_only:
             for bundle_info in bundle_info_list:
                 print >>self.stdout, bundle_info['uuid']
@@ -1220,9 +1236,9 @@ class BundleCLI(object):
         return '%-21s: %s' % (key, formatting.verbose_contents_str(value))
 
     def print_basic_info(self, client, info, raw):
-        '''
+        """
         print >>self.stdout, the basic information for a bundle (key/value pairs).
-        '''
+        """
 
         metadata = info['metadata']
         lines = []  # The output that we're accumulating
@@ -1273,15 +1289,17 @@ class BundleCLI(object):
         print >>self.stdout, '  %s' % group_permissions_str(info['group_permissions'])
 
     def print_contents(self, client, info):
-        def wrap(string): return '=== ' + string + ' ==='
+        def wrap(string):
+            return '=== ' + string + ' preview ==='
+
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
         info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
-        # print >>self.stdout, first 10 lines of stdout and stderr
         contents = info.get('contents')
         if contents:
             for item in contents:
-                if item['name'] not in ['stdout', 'stderr']: continue
+                if item['name'] not in ['stdout', 'stderr']:
+                    continue
                 print >>self.stdout, wrap(item['name'])
                 self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
 
@@ -1307,32 +1325,42 @@ class BundleCLI(object):
     def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
         info = client.get_target_info(target, 1)
         info_type = info.get('type')
+
         if info_type is None:
             if fail_if_not_exist:
                 raise UsageError('Target doesn\'t exist: %s/%s' % target)
             else:
                 print >>self.stdout, formatting.verbose_contents_str(None)
+
         if info_type == 'file':
             if decorate:
                 import base64
                 for line in client.head_target(target, maxlines):
-                    print >>self.stdout, base64.b64decode(line),
+                    print >>self.stdout, formatting.verbose_contents_str(base64.b64decode(line))
             else:
-                client.cat_target(target, sys.stdout)
+                client.cat_target(target, self.stdout)
+
         def size(x):
             t = x.get('type', '???')
-            if t == 'file': return formatting.size_str(x['size'])
-            if t == 'directory': return 'dir'
-            return t
+            if t == 'file':
+                return formatting.size_str(x['size'])
+            elif t == 'directory':
+                return 'dir'
+            else:
+                return t
+
         if info_type == 'directory':
             contents = [
-                {'name': x['name'] + (' -> ' + x['link'] if 'link' in x else ''),
-                'size': size(x),
-                'perm': oct(x['perm']) if 'perm' in x else ''}
+                {
+                    'name': x['name'] + (' -> ' + x['link'] if 'link' in x else ''),
+                    'size': size(x),
+                    'perm': oct(x['perm']) if 'perm' in x else ''
+                }
                 for x in info['contents']
             ]
-            contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'perm', 'size'), contents, justify={'size':1}, indent='')
+            contents = sorted(contents, key=lambda r: r['name'])
+            self.print_table(('name', 'perm', 'size'), contents, justify={'size': 1}, indent='')
+
         return info
 
     @Commands.command(
@@ -1364,11 +1392,11 @@ class BundleCLI(object):
         print >>self.stdout, bundle_uuid
 
     def follow_targets(self, client, bundle_uuid, subpaths):
-        '''
+        """
         Block on the execution of the given bundle.
         subpaths: list of files to print >>self.stdout, out output as we go along.
         Return READY or FAILED based on whether it was computed successfully.
-        '''
+        """
         handles = [None] * len(subpaths)
 
         # Constants for a simple exponential backoff routine that will decrease the
@@ -1392,8 +1420,8 @@ class BundleCLI(object):
                     result = handle.read(16384)
                     if result == '': break
                     change = True
-                    sys.stdout.write(result)
-            sys.stdout.flush()
+                    self.stdout.write(result)
+            self.stdout.flush()
 
             # Update bundle info
             info = client.get_bundle_info(bundle_uuid)
@@ -1405,12 +1433,16 @@ class BundleCLI(object):
                 period = min(backoff*period, max_period)
 
         for handle in handles:
-            if not handle: continue
+            if not handle:
+                continue
+
             # Read the remainder of the file
             while True:
                 result = handle.read(16384)
-                if result == '': break
-                sys.stdout.write(result)
+                if result == '':
+                    break
+                self.stdout.write(result)
+
             client.close_target_handle(handle)
 
         return info['state']
@@ -1442,9 +1474,9 @@ class BundleCLI(object):
         ) + MIMIC_ARGUMENTS,
     )
     def do_macro_command(self, args):
-        '''
+        """
         Just like do_mimic_command.
-        '''
+        """
         # For a macro, it's important that the name be not-null, so that we
         # don't create bundles called '<macro_name>-out', which would clash
         # next time we try to use the macro.
@@ -1458,9 +1490,9 @@ class BundleCLI(object):
         self.add_wait_args(parser)
 
     def mimic(self, args):
-        '''
+        """
         Use args.bundles to generate a mimic call to the BundleClient.
-        '''
+        """
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundles)
@@ -1614,7 +1646,7 @@ class BundleCLI(object):
 
             self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
             if args.uuid_only:
-                print >>self.stdout, workseet_info['uuid']
+                print >>self.stdout, worksheet_info['uuid']
             else:
                 print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
         else:
@@ -1997,9 +2029,9 @@ class BundleCLI(object):
         ),
     )
     def do_chown_command(self, args):
-        '''
+        """
         Change the owner of bundles.
-        '''
+        """
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
@@ -2089,9 +2121,9 @@ class BundleCLI(object):
         ),
     )
     def do_cleanup_command(self, args):
-        '''
+        """
         Delete unused data and temp files (be careful!).
-        '''
+        """
         self._fail_if_headless('cleanup')
         self._fail_if_not_local('cleanup')
         client = self.manager.current_client()
@@ -2105,9 +2137,9 @@ class BundleCLI(object):
         ),
     )
     def do_reset_command(self, args):
-        '''
+        """
         Delete everything - be careful!
-        '''
+        """
         self._fail_if_headless('reset')
         self._fail_if_not_local('reset')
         if not args.commit:
