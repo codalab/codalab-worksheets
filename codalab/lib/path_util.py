@@ -35,9 +35,6 @@ BLOCK_SIZE = 0x40000
 FILE_PREFIX = 'file'
 LINK_PREFIX = 'link'
 
-# Maximum number of bytes to read per line requested
-MAX_BYTES_PER_LINE = 128
-
 
 class TargetPath(unicode):
     """
@@ -216,39 +213,47 @@ def cat(path, out):
         file_util.copy(file_handle, out)
 
 
-def safe_read_lines(file_handle, max_bytes):
+def truncated_read_lines(file_handle, max_total_bytes):
     """
+    Reads lines from the file up to the given total number of bytes.
+
     :param file_handle: file object to read from
-    :param max_bytes: integer cap on number of bytes to read
-    :return: a generator that yields all lines from the file up to MAX_BYTES
+    :param max_total_bytes: integer cap on the total number of bytes to read
+    :return: a generator of strings read from the file
     """
     last_pos = file_handle.tell()
     for line in file_handle:
-        if file_handle.tell() > max_bytes:
+        if file_handle.tell() > max_total_bytes:
             file_handle.seek(last_pos)
-            yield file_handle.read(max_bytes - last_pos)
+            yield file_handle.read(max_total_bytes - last_pos)
             return
         else:
             last_pos = file_handle.tell()
             yield line
 
 
-def read_lines(path, num_lines=None):
+def read_lines(path, max_num_lines=None, max_total_bytes=None):
     """
     Return list of lines (up to num_lines).
 
-    :param path:
-    :param num_lines:
-    :return:
+    :param path: string path to file to read
+    :param max_num_lines: maximum number of lines to read from path
+    :param max_total_bytes: maximum total number of bytes to read from path
+    :return: list of strings read from path
     """
     if not os.path.isfile(path):
         return None
 
     with open(path, 'rb') as file_handle:
-        if num_lines is None:
-            return file_handle.readlines()
+        if max_total_bytes is None:
+            lines = (line for line in file_handle)
         else:
-            return list(itertools.islice(safe_read_lines(file_handle, num_lines * MAX_BYTES_PER_LINE), num_lines))
+            lines = truncated_read_lines(file_handle, max_total_bytes)
+
+        if max_num_lines is None:
+            return list(lines)
+        else:
+            return list(itertools.islice(lines, max_num_lines))
 
 
 def base64_encode(path):

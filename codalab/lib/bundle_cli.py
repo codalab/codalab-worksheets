@@ -1335,11 +1335,8 @@ class BundleCLI(object):
         if info_type == 'file':
             if decorate:
                 import base64
-                try:
-                    for line in client.head_target(target, maxlines):
-                        print >>self.stdout, base64.b64decode(line).decode('utf-8')
-                except UnicodeDecodeError:
-                    print >>self.stdout, "... truncated binary content ..."
+                for line in client.head_target(target, maxlines):
+                    print >>self.stdout, formatting.verbose_contents_str(base64.b64decode(line))
             else:
                 client.cat_target(target, self.stdout)
 
