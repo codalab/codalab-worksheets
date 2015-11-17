@@ -42,6 +42,10 @@ class TargetPath(unicode):
     In particular, canonicalize.get_target_path will return a TargetPath with the
     'target' attribute set to the un-canonicalized target.
     """
+    def __new__(cls, value, target):
+        self = super(TargetPath, cls).__new__(cls, value)
+        self.target = target
+        return self
 
 
 def path_error(message, path):
@@ -52,6 +56,7 @@ def path_error(message, path):
     """
     if isinstance(path, TargetPath):
         path = safe_join(*path.target)
+
     return UsageError(message + ': ' + path)
 
 
@@ -79,9 +84,12 @@ def normalize(path):
     Return the absolute path of the location specified by the given path.
     This path is returned in a "canonical form", without ~'s, .'s, ..'s.
     """
-    if path == '-': return '/dev/stdin'
-    if path_is_url(path): return path
-    return os.path.abspath(os.path.expanduser(path))
+    if path == '-':
+        return '/dev/stdin'
+    elif path_is_url(path):
+        return path
+    else:
+        return os.path.abspath(os.path.expanduser(path))
 
 
 def check_isvalid(path, fn_name):
@@ -344,7 +352,6 @@ def hash_file_contents(path):
     """
     message = 'hash_file called with relative path: %s' % (path,)
     precondition(os.path.isabs(path), message)
-    contents_hash = hashlib.sha1()
     if os.path.islink(path):
         contents_hash = hashlib.sha1(LINK_PREFIX)
         contents_hash.update(os.readlink(path))
@@ -363,7 +370,7 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
-def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
+def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
     """
     source_path can be a list of files, in which case we need to create a
     directory first.  Assume dest_path doesn't exist.
@@ -390,7 +397,7 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=[]):
             source + ('/' if not isinstance(source_path, list) and os.path.isdir(source_path) else ''),
             formatting.quote(dest_path),
         ]
-        if exclude_patterns:
+        if exclude_patterns is not None:
             for pattern in exclude_patterns:
                 command.extend(['--exclude', formatting.quote(pattern)])
         if os.system(' '.join(command)) != 0:
@@ -417,8 +424,7 @@ def set_write_permissions(path):
 
 def rename(old_path, new_path):
     set_write_permissions(old_path)  # Allow permissions (TODO: this is a hack)
-    #os.rename(old_path, new_path)  # Can't deal with cross-device links
-    shutil.move(old_path, new_path)
+    shutil.move(old_path, new_path)  # Can't deal with cross-device links
 
 
 def remove(path):
@@ -432,7 +438,7 @@ def remove(path):
     elif os.path.isdir(path):
         try:
             shutil.rmtree(path)
-        except:
+        except shutil.Error:
             pass
     else:
         os.remove(path)

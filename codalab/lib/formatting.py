@@ -4,6 +4,7 @@ Provides basic formatting utilities.
 
 import datetime
 import sys
+import shlex
 
 
 def contents_str(input_string):
@@ -58,23 +59,29 @@ def duration_str(s):
     Return a human-readable string.
     Example: 100 => "1m40s", 10000 => "2h46m"
     """
-    if s == None: return None
+    if s is None:
+        return None
+
     m = int(s / 60)
-    if m == 0: return "%.1fs" % s
+    if m == 0:
+        return "%.1fs" % s
+
     s -= m * 60
-
     h = int(m / 60)
-    if h == 0: return "%dm%ds" % (m, s)
+    if h == 0:
+        return "%dm%ds" % (m, s)
+
     m -= h * 60
-
     d = int(h / 24)
-    if d == 0: return "%dh%dm" % (h, m)
+    if d == 0:
+        return "%dh%dm" % (h, m)
+
     h -= d * 24
-
     y = int(d / 365)
-    if y == 0: return "%dd%dh" % (d, h)
-    d -= y * 365
+    if y == 0:
+        return "%dd%dh" % (d, h)
 
+    d -= y * 365
     return "%dy%dd" % (y, d)
 
 
@@ -126,42 +133,34 @@ def parse_duration(s):
 
 
 def quote(token):
+    """
+    :param token: string token
+    :return: properly-quoted string token
+    """
     if ' ' in token or '"' in token:
         return '"' + token.replace('"', '\\"') + '"'
     return token
 
 
 def tokens_to_string(tokens):
+    """
+    Build string from tokens with proper quoting.
+
+    :param tokens: list of string tokens
+    :return: space-separated string of tokens
+    """
     return ' '.join(quote(token) for token in tokens)
 
 
 def string_to_tokens(s):
     """
-    Input (string): a b 'c d' e
-    Output (array): ["a", "b", "c d", "e"]
-    Both single and double quotes are supported.
+    Converts string to list of tokens, with support for quotes.
+    Defined here for convenience.
+
+    See shlex documentation for more information on parsing rules:
+    https://docs.python.org/2/library/shlex.html#parsing-rules
+
+    :param s: string "a b 'c d' e"
+    :return: list ["a", "b", "c d", "e"]
     """
-    tokens = []
-    i = 0
-    while i < len(s):
-        # Every time we enter the loop, we're at the beginning of a token.
-        if s[i] == '"' or s[i] == '\'':
-            j = i
-            while True:
-                try:
-                    j = s.index(s[i], j+1)
-                except:
-                    raise UsageError('Unclosed quote: %s' % s)
-                if s[j-1] != '\\': break
-            tokens.append(s[i+1:j].replace('\\'+s[i], s[i]))
-            j += 1 # Skip over the last quote
-        else:
-            try:
-                j = s.index(' ', i+1)
-            except:
-                j = len(s)
-            tokens.append(s[i:j])
-        i = j
-        # Skip over spaces
-        while i < len(s) and s[i] == ' ': i += 1
-    return tokens
+    return shlex.split(s, comments=False, posix=True)

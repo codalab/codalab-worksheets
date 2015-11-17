@@ -1,4 +1,4 @@
-'''
+"""
 worksheet_util contains the following public functions:
 - request_lines: pops up an editor to allow for full-text editing of a worksheet.
 - parse_worksheet_form: takes those lines and generates a set of items (triples)
@@ -25,7 +25,7 @@ A genpath (generalized path) is either:
 - a path (starts with '/'), but can descend into a YAML file (e.g., /stats:train/errorRate)
 
 See get_worksheet_lines for documentation on the specification of the directives.
-'''
+"""
 import copy
 import os
 import re
@@ -33,7 +33,6 @@ import types
 import yaml
 import json
 from itertools import izip
-
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
 from codalab.objects.permission import permission_str, group_permissions_str
@@ -48,31 +47,51 @@ TYPE_DIRECTIVE = 'directive'
 TYPE_BUNDLE = 'bundle'
 TYPE_WORKSHEET = 'worksheet'
 
-def markup_item(x): return (None, None, x, TYPE_MARKUP)
-def directive_item(x): return (None, None, x, TYPE_DIRECTIVE)
-def bundle_item(x): return (x, None, '', TYPE_BUNDLE)  # TODO: replace '' with None when tables.py schema is updated
-def subworksheet_item(x): return (None, x, '', TYPE_WORKSHEET)  # TODO: replace '' with None when tables.py schema is updated
-
-
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
-def bundle_line(description, uuid): return '[%s]{%s}' % (description, uuid)
-def worksheet_line(description, uuid): return '[%s]{{%s}}' % (description, uuid)
 
 DIRECTIVE_CHAR = '%'
 DIRECTIVE_REGEX = re.compile(r'^' + DIRECTIVE_CHAR + '\s*(.*)$')
 
+
+def markup_item(x):
+    return (None, None, x, TYPE_MARKUP)
+
+
+def directive_item(x):
+    return (None, None, x, TYPE_DIRECTIVE)
+
+
+def bundle_item(x):
+    return (x, None, '', TYPE_BUNDLE)  # TODO: replace '' with None when tables.py schema is updated
+
+
+def subworksheet_item(x):
+    return (None, x, '', TYPE_WORKSHEET)  # TODO: replace '' with None when tables.py schema is updated
+
+
+def bundle_line(description, uuid):
+    return '[%s]{%s}' % (description, uuid)
+
+
+def worksheet_line(description, uuid):
+    return '[%s]{{%s}}' % (description, uuid)
+
+
 ############################################################
 
+
 def get_worksheet_info_edit_command(raw_command_map):
-    '''
+    """
     Return a cli-command for editing worksheet-info. Return None if raw_command_map contents are invalid.
     Input:
         raw_command: a map containing the info to edit, new_value and the action to perform
-    '''
-    if not raw_command_map.get('k') or not raw_command_map.get('v') or not raw_command_map.get('action') == 'worksheet-edit':
+    """
+    if not raw_command_map.get('k') or not raw_command_map.get('v') or not raw_command_map.get(
+            'action') == 'worksheet-edit':
         return None
     return 'wedit -{k[0]} "{v}"'.format(**raw_command_map)
+
 
 def convert_item_to_db(item):
     (bundle_info, subworksheet_info, value_obj, item_type) = item
@@ -84,10 +103,11 @@ def convert_item_to_db(item):
         item_type,
     )
 
+
 def get_worksheet_lines(worksheet_info):
-    '''
+    """
     Generator that returns pretty-printed lines of text for the given worksheet.
-    '''
+    """
     lines = []
     for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
         if item_type == TYPE_MARKUP:
@@ -104,7 +124,7 @@ def get_worksheet_lines(worksheet_info):
         elif item_type == TYPE_BUNDLE:
             if 'metadata' not in bundle_info:
                 # This happens when we add bundles by uuid and don't actually make sure they exist
-                #lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
+                # lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
                 description = formatting.contents_str(None)
             else:
                 metadata = bundle_info['metadata']
@@ -116,19 +136,21 @@ def get_worksheet_lines(worksheet_info):
                 if command: description += ' : ' + command
             lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
-            lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')), subworksheet_info['uuid']))
+            lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')),
+                                        subworksheet_info['uuid']))
         else:
             raise RuntimeError('Invalid worksheet item type: %s' % type)
     return lines
 
+
 def get_formatted_metadata(cls, metadata, raw=False):
-    '''
+    """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
         metadata: bundle metadata
         raw: boolean value indicating if the raw value needs to be returned
     Return a list of tuples containing the key and formatted value of metadata.
-    '''
+    """
     result = []
     for spec in cls.METADATA_SPECS:
         key = spec.key
@@ -142,13 +164,14 @@ def get_formatted_metadata(cls, metadata, raw=False):
         result.append((key, value))
     return result
 
+
 def get_editable_metadata_fields(cls, metadata):
-    '''
+    """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
         metadata: bundle metadata
     Return a list of metadata fields that are editable by the owner.
-    '''
+    """
     result = []
     for spec in cls.METADATA_SPECS:
         key = spec.key
@@ -156,12 +179,13 @@ def get_editable_metadata_fields(cls, metadata):
             result.append(key)
     return result
 
+
 def request_lines(worksheet_info, client):
-    '''
+    """
     Input: worksheet_info, client (which is used to get bundle_infos)
     Popup an editor, populated with the current worksheet contents.
     Return a list of new items (bundle_uuid, value, type) that the user typed into the editor.
-    '''
+    """
     # Construct a form template with the current value of the worksheet.
     template_lines = get_worksheet_lines(worksheet_info)
     template = ''.join([line + os.linesep for line in template_lines])
@@ -173,12 +197,13 @@ def request_lines(worksheet_info, client):
         raise UsageError('No change made; aborting')
     return form_result
 
+
 def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
-    '''
+    """
     Return the bundle_uuids corresponding to bundle_specs.
     Important difference from client.get_bundle_uuids: if all bundle_specs are already
     uuids, then just return them directly.  This avoids an extra call to the client.
-    '''
+    """
     bundle_uuids = {}
     unresolved = []
     for spec in bundle_specs:
@@ -194,18 +219,20 @@ def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
     # Return uuids for the bundle_specs in the original order provided
     return [bundle_uuids[spec] for spec in bundle_specs]
 
+
 def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
-    '''
+    """
     Return the bundle_uuid corresponding to a single bundle_spec.
     If bundle_spec is already a uuid, then just return it directly.
     This avoids an extra call to the client.
-    '''
+    """
     return get_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
 
+
 def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
-    '''
+    """
     Same thing as get_bundle_uuid, but for worksheets.
-    '''
+    """
     worksheet_spec = worksheet_spec.strip()
     if spec_util.UUID_REGEX.match(worksheet_spec):
         worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
@@ -213,11 +240,13 @@ def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
         worksheet_uuid = client.get_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
     return worksheet_uuid
 
+
 def parse_worksheet_form(form_result, client, worksheet_uuid):
-    '''
+    """
     Input: form_result is a list of lines.
     Return (list of (bundle_info, subworksheet_info, value, type) tuples, commands to execute)
-    '''
+    """
+
     def get_line_type(line):
         if line.startswith('!'):  # Run commands
             return 'command'
@@ -240,7 +269,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         (i, BUNDLE_REGEX.match(line).group(3))
         for i, line in enumerate(form_result)
         if line_types[i] == TYPE_BUNDLE
-    ]
+        ]
     bundle_specs = zip(*bundle_lines) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
     bundle_uuids = dict(zip(bundle_specs[0], get_bundle_uuids(client, worksheet_uuid, bundle_specs[1])))
@@ -278,17 +307,19 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
 
     return items, commands
 
+
 def is_file_genpath(genpath):
     # Return whether the genpath is a file (e.g., '/stdout') or not (e.g., 'command')
     return genpath.startswith('/')
 
+
 def interpret_genpath(bundle_info, genpath):
-    '''
+    """
     This function is called in the first server call to a BundleClient to
     quickly interpret the genpaths (generalized path) that only require looking
     bundle_info (e.g., 'time', 'command').  The interpretation of generalized
     paths that require reading files is done by interpret_file_genpath.
-    '''
+    """
     # If genpath is referring to a file, then just returns instructions for
     # fetching that file rather than actually doing it.
     if is_file_genpath(genpath):
@@ -297,6 +328,7 @@ def interpret_genpath(bundle_info, genpath):
     # Render dependencies
     deps = bundle_info.get('dependencies', [])
     anonymous = len(deps) == 1 and deps[0]['child_path'] == ''
+
     def render_dep(dep, show_key=True, show_uuid=False):
         if show_key and not anonymous:
             if show_uuid or dep['child_path'] != dep['parent_name']:
@@ -357,8 +389,9 @@ def interpret_genpath(bundle_info, genpath):
 
     return None
 
+
 def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
-    '''
+    """
     |client|: used to read files
     |cache| is a mapping from target (bundle_uuid, subpath) to the info map,
     which is to be read/written to avoid reading/parsing the same file many
@@ -367,7 +400,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
     /stats:train/errorRate, subpath = 'stats', key = 'train/errorRate').
     |post| function to apply to the resulting value.
     Return the string value.
-    '''
+    """
     MAX_LINES = 1000  # Maximum number of lines we need to read from a file.
 
     # Load the file
@@ -422,21 +455,23 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
             if info == None: break
     return apply_func(post, info)
 
+
 def format_metadata(metadata):
-    '''
+    """
     Format worksheet item metadata based on field type specified in the schema.
-    '''
+    """
     if metadata:
         unformatted_fields = [(name, func) for (_, name, func) in get_default_schemas()['default'] if func]
         for (name, func) in unformatted_fields:
             if metadata.get(name):
                 metadata[name] = apply_func(func, metadata[name])
 
+
 def canonicalize_schema_item(args):
-    '''
+    """
     Users who type in schema items can specify a partial argument list.
     Return the canonicalize version (a triple).
-    '''
+    """
     if len(args) == 1:  # genpath
         return (os.path.basename(args[0]).split(":")[-1], args[0], None)
     elif len(args) == 2:  # name genpath
@@ -446,11 +481,13 @@ def canonicalize_schema_item(args):
     else:
         raise UsageError('Invalid number of arguments: %s' % (args,))
 
+
 def canonicalize_schema_items(items):
     return [canonicalize_schema_item(item) for item in items]
 
+
 def apply_func(func, arg):
-    '''
+    """
     Apply post-processing function |func| to |arg|.
     |func| is a string representing a list of functions (which are to be
     applied to |arg| in succession).  Each function is either:
@@ -458,23 +495,24 @@ def apply_func(func, arg):
     - '%...' for sprintf-style formatting
     - s/.../... for regular expression substitution
     - [a:b] for taking substrings
-    '''
+    """
     FUNC_DELIM = ' | '
     if isinstance(arg, tuple):
         # tuples are (bundle_uuid, genpath) which have not been fleshed out
         return arg + (func,)
     try:
-        if func == None: return arg
+        if func is None:
+            return arg
         # String encoding of a function: size s/a/b
         for f in func.split(FUNC_DELIM):
             if f == 'date':
-                arg = formatting.date_str(float(arg)) if arg != None else None
+                arg = formatting.date_str(float(arg)) if arg is not None else None
             elif f == 'duration':
-                arg = formatting.duration_str(float(arg)) if arg != None else None
+                arg = formatting.duration_str(float(arg)) if arg is not None else None
             elif f == 'size':
-                arg = formatting.size_str(float(arg)) if arg != None else None
+                arg = formatting.size_str(float(arg)) if arg is not None else None
             elif f.startswith('%'):
-                arg = (f % float(arg)) if arg != None else None
+                arg = (f % float(arg)) if arg is not None else None
             elif f.startswith('s/'):  # regular expression: s/<old string>/<new string>
                 esc_slash = '_ESC_SLASH_'  # Assume this doesn't occur in s
                 # Preserve escaped characters: \/
@@ -509,6 +547,7 @@ def apply_func(func, arg):
         # Applying the function failed, so just return the arg.
         return arg
 
+
 def get_default_schemas():
     uuid = ['uuid', 'uuid', '[0:8]']
     created = ['created', 'created', 'date']
@@ -517,17 +556,20 @@ def get_default_schemas():
     description = ['description']
     schemas = {}
 
-    schemas['default'] = canonicalize_schema_items([uuid, ['name'], description, ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
+    schemas['default'] = canonicalize_schema_items(
+        [uuid, ['name'], description, ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
 
     schemas['program'] = canonicalize_schema_items([uuid, ['name'], description, created, data_size])
     schemas['dataset'] = canonicalize_schema_items([uuid, ['name'], description, created, data_size])
 
     schemas['make'] = canonicalize_schema_items([uuid, ['name'], description, created, ['dependencies'], ['state']])
-    schemas['run'] = canonicalize_schema_items([uuid, ['name'], description, created, ['dependencies'], ['command'], ['state'], time])
+    schemas['run'] = canonicalize_schema_items(
+        [uuid, ['name'], description, created, ['dependencies'], ['command'], ['state'], time])
     return schemas
 
+
 def interpret_items(schemas, items):
-    '''
+    """
     schemas: initial mapping from name to list of schema items (columns of a table)
     items: list of worksheet items (triples) to interpret
     Return {'items': items}, where items is a list of interpreted items.
@@ -536,7 +578,7 @@ def interpret_items(schemas, items):
     - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
       where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
     - ('search', [keyword, ...])
-    '''
+    """
     result = {}
 
     # Mapping from worksheet_info['raw'] index to |(focusIndex, subFocusIndex)| based on interpreted_items.
@@ -553,18 +595,22 @@ def interpret_items(schemas, items):
     current_display = default_display
     new_items = []
     bundle_infos = []
+
     def get_schema(args):  # args is a list of schema names
         args = args if len(args) > 0 else ['default']
         schema = []
         for arg in args:
             schema += schemas[arg]
         return schema
-    def is_missing(info): return 'metadata' not in info
+
+    def is_missing(info):
+        return 'metadata' not in info
+
     def flush_bundles():
-        '''
+        """
         Having collected bundles in |bundle_infos|, flush them into |new_items|,
         potentially as a single table depending on the mode.
-        '''
+        """
         if len(bundle_infos) == 0:
             return
         # Print out the curent bundles somehow
@@ -575,7 +621,9 @@ def interpret_items(schemas, items):
             pass
         elif mode == 'contents' or mode == 'image' or mode == 'html':
             def raiseUsageError():
-                raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join([mode] + args) + '\'')
+                raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join(
+                    [mode] + args) + '\'')
+
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
                     raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, 0)
@@ -637,9 +685,9 @@ def interpret_items(schemas, items):
             for item_index, bundle_info in bundle_infos:
                 if 'metadata' in bundle_info:
                     rows.append({
-                        name: apply_func(post, interpret_genpath(bundle_info, genpath))
-                        for (name, genpath, post) in schema
-                    })
+                                    name: apply_func(post, interpret_genpath(bundle_info, genpath))
+                                    for (name, genpath, post) in schema
+                                    })
                     raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
@@ -649,9 +697,9 @@ def interpret_items(schemas, items):
                         'name': '<invalid>'
                     }
                     rows.append({
-                        name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
-                        for (name, genpath, post) in schema
-                    })
+                                    name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
+                                    for (name, genpath, post) in schema
+                                    })
                     raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(processed_bundle_info)
             new_items.append({
@@ -666,6 +714,7 @@ def interpret_items(schemas, items):
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
+
     last_was_empty_line = False
     for i, item in enumerate(items):
         (bundle_info, subworksheet_info, value_obj, item_type) = item
@@ -719,13 +768,15 @@ def interpret_items(schemas, items):
             elif command == 'addschema':
                 # Add to schema
                 if current_schema == None:
-                    raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
+                    raise UsageError(
+                        "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 name = value_obj[1]
                 current_schema += schemas[name]
             elif command == 'add':
                 # Add to schema
                 if current_schema == None:
-                    raise UsageError("%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
+                    raise UsageError(
+                        "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 schema_item = canonicalize_schema_item(value_obj[1:])
                 current_schema.append(schema_item)
             elif command == 'display':
@@ -772,11 +823,12 @@ def interpret_items(schemas, items):
 
     return result
 
+
 def interpret_genpath_table_contents(client, contents):
-    '''
+    """
     contents represents a table, but some of the elements might not be interpreted.
     Interpret them by calling the client.
-    '''
+    """
     # if called after an RPC call tuples may become lists
     need_gen_types = (types.TupleType, types.ListType)
 
@@ -802,11 +854,12 @@ def interpret_genpath_table_contents(client, contents):
         new_contents.append(new_row)
     return new_contents
 
+
 def interpret_search(client, worksheet_uuid, data):
-    '''
+    """
     Input: specification of a search query.
     Output: worksheet items based on the result of issuing the search query.
-    '''
+    """
     bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'])
 
     # Single number, just print it out...
@@ -824,11 +877,12 @@ def interpret_search(client, worksheet_uuid, data):
     # Finally, interpret the items
     return interpret_items(data['schemas'], items)
 
+
 def interpret_wsearch(client, data):
-    '''
+    """
     Input: specification of a worksheet search query.
     Output: worksheet items based on the result of issuing the search query.
-    '''
+    """
     # Get the worksheet uuids
     worksheet_infos = client.search_worksheets(data['keywords'])
     items = [subworksheet_item(worksheet_info) for worksheet_info in worksheet_infos]

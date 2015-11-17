@@ -462,6 +462,7 @@ class BundleModel(object):
                 )
             else:
                 clause = true()
+
             if conditions['worksheet_uuid']:
                 # Select things on the given worksheet
                 # WARNING: Will also include invalid bundle ids that are listed on the worksheet
