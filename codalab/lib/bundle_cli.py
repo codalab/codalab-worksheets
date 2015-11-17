@@ -1289,15 +1289,17 @@ class BundleCLI(object):
         print >>self.stdout, '  %s' % group_permissions_str(info['group_permissions'])
 
     def print_contents(self, client, info):
-        def wrap(string): return '=== ' + string + ' ==='
+        def wrap(string):
+            return '=== ' + string + ' ==='
+
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
         info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
-        # print >>self.stdout, first 10 lines of stdout and stderr
         contents = info.get('contents')
         if contents:
             for item in contents:
-                if item['name'] not in ['stdout', 'stderr']: continue
+                if item['name'] not in ['stdout', 'stderr']:
+                    continue
                 print >>self.stdout, wrap(item['name'])
                 self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
 
@@ -1323,32 +1325,45 @@ class BundleCLI(object):
     def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
         info = client.get_target_info(target, 1)
         info_type = info.get('type')
+
         if info_type is None:
             if fail_if_not_exist:
                 raise UsageError('Target doesn\'t exist: %s/%s' % target)
             else:
                 print >>self.stdout, formatting.verbose_contents_str(None)
+
         if info_type == 'file':
             if decorate:
                 import base64
-                for line in client.head_target(target, maxlines):
-                    print >>self.stdout, base64.b64decode(line),
+                try:
+                    for line in client.head_target(target, maxlines):
+                        print >>self.stdout, base64.b64decode(line).decode('utf-8')
+                except UnicodeDecodeError:
+                    print >>self.stdout, "... truncated binary content ..."
             else:
                 client.cat_target(target, self.stdout)
+
         def size(x):
             t = x.get('type', '???')
-            if t == 'file': return formatting.size_str(x['size'])
-            if t == 'directory': return 'dir'
-            return t
+            if t == 'file':
+                return formatting.size_str(x['size'])
+            elif t == 'directory':
+                return 'dir'
+            else:
+                return t
+
         if info_type == 'directory':
             contents = [
-                {'name': x['name'] + (' -> ' + x['link'] if 'link' in x else ''),
-                'size': size(x),
-                'perm': oct(x['perm']) if 'perm' in x else ''}
+                {
+                    'name': x['name'] + (' -> ' + x['link'] if 'link' in x else ''),
+                    'size': size(x),
+                    'perm': oct(x['perm']) if 'perm' in x else ''
+                }
                 for x in info['contents']
             ]
-            contents = sorted(contents, key=lambda r : r['name'])
-            self.print_table(('name', 'perm', 'size'), contents, justify={'size':1}, indent='')
+            contents = sorted(contents, key=lambda r: r['name'])
+            self.print_table(('name', 'perm', 'size'), contents, justify={'size': 1}, indent='')
+
         return info
 
     @Commands.command(
