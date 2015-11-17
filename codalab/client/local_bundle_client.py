@@ -455,9 +455,10 @@ class LocalBundleClient(BundleClient):
     MAX_BYTES_PER_LINE = 128
 
     def head_target(self, target, max_num_lines):
+        max_total_bytes = None if max_num_lines is None else max_num_lines * self.MAX_BYTES_PER_LINE
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
-        lines = path_util.read_lines(path, max_num_lines, max_num_lines * self.MAX_BYTES_PER_LINE)
+        lines = path_util.read_lines(path, max_num_lines, max_total_bytes)
         if lines is None:
             return None
 
