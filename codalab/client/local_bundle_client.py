@@ -1,8 +1,7 @@
-'''
+"""
 LocalBundleClient is BundleClient implementation that interacts directly with a
 BundleStore and a BundleModel. All filesystem operations are handled locally.
-'''
-from time import sleep
+"""
 import base64
 import copy
 import datetime
@@ -34,7 +33,7 @@ from codalab.lib import (
 from codalab.objects.worksheet import Worksheet
 from codalab.objects import permission
 from codalab.objects.permission import (
-    check_bundles_have_read_permission, # unused
+    check_bundles_have_read_permission,  # unused
     check_bundles_have_all_permission,
     check_worksheet_has_read_permission,
     check_worksheet_has_all_permission,
@@ -44,12 +43,15 @@ from codalab.objects.permission import (
 )
 
 from codalab.model.tables import (
-    GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
 )
 
 
 def authentication_required(func):
+    """
+    Functions decorated by authentication_required will fail fast with an AuthorizationError if the request
+    it not authenticated (i.e. the auth_handler doesn't have a current user set).
+    """
     def decorated(self, *args, **kwargs):
         if self.auth_handler.current_user() is None:
             raise AuthorizationError("Not authenticated")
@@ -78,9 +80,9 @@ class LocalBundleClient(BundleClient):
         return user.name if user else None
 
     def _bundle_to_bundle_info(self, bundle):
-        '''
+        """
         Helper: Convert bundle to bundle_info.
-        '''
+        """
         # See tables.py
         result = {
           'uuid': bundle.uuid,
@@ -98,11 +100,12 @@ class LocalBundleClient(BundleClient):
 
         return result
 
-    def _mask_bundle_info(self, bundle_info):
-        '''
+    @staticmethod
+    def _mask_bundle_info(bundle_info):
+        """
         Return a copy of the bundle_info dict that returns '<hidden>'
         for all fields except 'uuid'.
-        '''
+        """
         private_str = '<private>'
         return {
             'uuid': bundle_info['uuid'],
@@ -160,29 +163,33 @@ class LocalBundleClient(BundleClient):
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
-    def validate_user_metadata(self, bundle_subclass, metadata):
-        '''
+    @staticmethod
+    def validate_user_metadata(bundle_subclass, metadata):
+        """
         Check that the user did not supply values for any auto-generated metadata.
         Raise a UsageError with the offending keys if they are.
-        '''
+        """
         # Allow generated keys as well
         legal_keys = set(spec.key for spec in bundle_subclass.METADATA_SPECS)
         illegal_keys = [key for key in metadata if key not in legal_keys]
         if illegal_keys:
             raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-    def bundle_info_to_construct_args(self, info):
-        # Helper function.
-        # Convert info (see bundle_model) to the actual information to construct
-        # the bundle.  This is a bit ad-hoc.  Future: would be nice to have a more
-        # uniform way of serializing bundle information.
+    @staticmethod
+    def bundle_info_to_construct_args(info):
+        """
+        Helper function.
+        Convert info (see bundle_model) to the actual information to construct
+        the bundle.  This is a bit ad-hoc.  Future: would be nice to have a more
+        uniform way of serializing bundle information.
+        """
         bundle_type = info['bundle_type']
         if bundle_type == 'program' or bundle_type == 'dataset':
             construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash']}
         elif bundle_type == 'make' or bundle_type == 'run':
             targets = [(item['child_path'], (item['parent_uuid'], item['parent_path']))
-                        for item in info['dependencies']]
+                       for item in info['dependencies']]
             construct_args = {'targets': targets, 'command': info['command'],
                               'metadata': info['metadata'], 'uuid': info['uuid'],
                               'data_hash': info['data_hash'], 'state': info['state']}
@@ -190,10 +197,12 @@ class LocalBundleClient(BundleClient):
             raise UsageError('Invalid bundle_type: %s' % bundle_type)
         return construct_args
 
-    # Called when |path| is a url.
-    # Only used to expose uploading URLs directly to the RemoteBundleClient.
     @authentication_required
     def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
+        """
+        Called when |path| is a url.
+        Only used to expose uploading URLs directly to the RemoteBundleClient.
+        """
         return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns, True)
 
     @authentication_required
@@ -219,12 +228,15 @@ class LocalBundleClient(BundleClient):
 
         # Upload the given path and record additional metadata from the upload.
         if path:
-            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
+            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks,
+                                                                          exclude_patterns=exclude_patterns)
             metadata.update(bundle_store_metadata)
             if construct_args.get('data_hash', data_hash) != data_hash:
                 # TODO should raise an exception or warning?
-                print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' % (construct_args.get('data_hash'), data_hash)
+                print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' %\
+                                    (construct_args.get('data_hash'), data_hash)
             construct_args['data_hash'] = data_hash
+
         # Set the owner
         construct_args['owner_id'] = self._current_user_id()
         bundle = bundle_subclass.construct(**construct_args)
@@ -241,23 +253,24 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
-        '''
+        """
         For both make and run bundles.
         Add the resulting bundle to the given worksheet_uuid.
-        '''
+        """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
         bundle_uuid = self._derive_bundle(bundle_type, targets, command, metadata, worksheet_uuid)
+
         # Add to worksheet
         self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
         return bundle_uuid
 
     def _derive_bundle(self, bundle_type, targets, command, metadata, worksheet_uuid):
-        '''
+        """
         Helper function that creates the bundle but doesn't add it to the worksheet.
         Returns the uuid.
-        '''
+        """
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
         owner_id = self._current_user_id()
@@ -274,18 +287,18 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def kill_bundles(self, bundle_uuids):
-        '''
+        """
         Send a kill command to all the given bundles.
-        '''
+        """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
             self.model.add_bundle_action(bundle_uuid, Command.KILL)
 
     @authentication_required
     def chown_bundles(self, bundle_uuids, user_spec):
-        '''
+        """
         Set the owner of the bundles to the user.
-        '''
+        """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         user_info = self.user_info(user_spec)
         # Update bundles
@@ -308,12 +321,12 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def delete_bundles(self, uuids, force, recursive, data_only, dry_run):
-        '''
+        """
         Delete the bundles specified by |uuids|.
         If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
         If |recursive|, add all bundles downstream too.
         If |data_only|, only remove from the bundle store, not the bundle metadata.
-        '''
+        """
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
         uuids_set = set(uuids)
         relevant_uuids_set = set(relevant_uuids)
@@ -333,7 +346,8 @@ class LocalBundleClient(BundleClient):
             states = self.model.get_bundle_states(uuids)
             active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
             if len(active_uuids) > 0:
-                raise UsageError('Can\'t delete queued or running bundles (--force to override): %s' % ' '.join(active_uuids))
+                raise UsageError('Can\'t delete queued or running bundles (--force to override): %s' %
+                                 ' '.join(active_uuids))
 
         # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
         result = self.model.get_host_worksheet_uuids(relevant_uuids)
@@ -341,16 +355,18 @@ class LocalBundleClient(BundleClient):
             worksheets = self.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
             frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]
             if len(frozen_worksheets) > 0:
-                raise UsageError('Can\'t delete bundle %s because it appears in frozen worksheets (need to delete worksheet first):\n  %s' % (
-                    uuid,
-                    '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
+                raise UsageError("Can't delete bundle %s because it appears in frozen worksheets "
+                                 "(need to delete worksheet first):\n  %s" %
+                                 (uuid, '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
             if not force and len(host_worksheet_uuids) > 1:
-                raise UsageError('Can\'t delete bundle %s because it appears in multiple worksheets (--force to override):\n  %s' % (
-                    uuid,
-                    '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
+                raise UsageError("Can't delete bundle %s because it appears in multiple worksheets "
+                                 "(--force to override):\n  %s" %
+                                 (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
         # Get data hashes
-        relevant_data_hashes = set(bundle.data_hash for bundle in self.model.batch_get_bundles(uuid=relevant_uuids) if bundle.data_hash)
+        relevant_data_hashes = set(bundle.data_hash
+                                   for bundle in self.model.batch_get_bundles(uuid=relevant_uuids)
+                                   if bundle.data_hash)
 
         # Delete the actual bundle
         if not dry_run:
@@ -371,10 +387,10 @@ class LocalBundleClient(BundleClient):
         return self.get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
 
     def get_bundle_infos(self, uuids, get_children=False, get_host_worksheets=False, get_permissions=False):
-        '''
+        """
         get_children, get_host_worksheets, get_permissions: whether we want to return more detailed information.
         Return map from bundle uuid to info.
-        '''
+        """
         if len(uuids) == 0:
             return {}
         bundles = self.model.batch_get_bundles(uuid=uuids)
@@ -384,6 +400,7 @@ class LocalBundleClient(BundleClient):
         def select_unreadable_bundles(uuids):
             permissions = self.model.get_user_bundle_permissions(self._current_user_id(), uuids, self.model.get_bundle_owner_ids(uuids))
             return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
+
         def select_unreadable_worksheets(uuids):
             permissions = self.model.get_user_worksheet_permissions(self._current_user_id(), uuids, self.model.get_worksheet_owner_ids(uuids))
             return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
@@ -469,7 +486,8 @@ class LocalBundleClient(BundleClient):
         path = self.get_target_path(target)
         return open(path) if path and os.path.exists(path) else None
 
-    def close_target_handle(self, handle):
+    @staticmethod
+    def close_target_handle(handle):
         handle.close()
 
     def download_target(self, target, follow_symlinks):
@@ -481,7 +499,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow, dry_run):
-        '''
+        """
         old_inputs: list of bundle uuids
         old_output: bundle uuid that we produced
         new_inputs: list of bundle uuids that are analogous to old_inputs
@@ -489,7 +507,7 @@ class LocalBundleClient(BundleClient):
         worksheet_uuid: add newly created bundles to this worksheet
         depth: how far to do a BFS up from old_output.
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
-        '''
+        """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
@@ -606,7 +624,8 @@ class LocalBundleClient(BundleClient):
             else:
                 def newline():
                     self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
-                # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup, directives, etc.)
+                # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup,
+                # directives, etc.)
                 # Let W be the first worksheet containing the old_inputs[0].
                 # Add all items on that worksheet that appear in old_to_new along with their preludes.
                 # For items not on this worksheet, add them at the end (instead of making them floating).
@@ -616,7 +635,10 @@ class LocalBundleClient(BundleClient):
                     anchor_uuid = old_inputs[0]
                 host_worksheet_uuids = self.model.get_host_worksheet_uuids([anchor_uuid])[anchor_uuid]
                 new_bundle_uuids_added = set()
-                skipped = True  # Whether there were items that we didn't include in the prelude (in which case we want to put '')
+
+                # Whether there were items that we didn't include in the prelude (in which case we want to put '')
+                skipped = True
+
                 if len(host_worksheet_uuids) > 0:
                     # Choose a single worksheet.
                     if worksheet_uuid in host_worksheet_uuids:
@@ -705,9 +727,9 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def new_worksheet(self, name, ensure_exists):
-        '''
+        """
         Create a new worksheet with the given |name|.
-        '''
+        """
         # If |ensure_exists| = True, then quit if worksheet already exists.
         if ensure_exists:
             try:
@@ -718,7 +740,13 @@ class LocalBundleClient(BundleClient):
         self.ensure_unused_worksheet_name(name)
 
         # Don't need any permissions to do this.
-        worksheet = Worksheet({'name': name, 'title': None, 'frozen': None, 'items': [], 'owner_id': self._current_user_id()})
+        worksheet = Worksheet({
+            'name': name,
+            'title': None,
+            'frozen': None,
+            'items': [],
+            'owner_id': self._current_user_id()
+        })
         self.model.new_worksheet(worksheet)
 
         # Make worksheet publicly readable by default
@@ -736,17 +764,17 @@ class LocalBundleClient(BundleClient):
         return results
 
     def _set_owner_names(self, results):
-        '''
+        """
         Helper function: Set owner_name given owner_id of each item in results.
-        '''
+        """
         owner_names = self._user_id_to_names([r['owner_id'] for r in results])
         for r, owner_name in zip(results, owner_names):
             r['owner_name'] = owner_name
 
     def get_worksheet_info(self, uuid, fetch_items=False, fetch_permission=True):
-        '''
+        """
         The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
-        '''
+        """
         worksheet = self.model.get_worksheet(uuid, fetch_items=fetch_items)
         check_worksheet_has_read_permission(self.model, self._current_user(), worksheet)
 
@@ -761,8 +789,11 @@ class LocalBundleClient(BundleClient):
         # Note that these group_permissions is universal and permissions are relative to the current user.
         # Need to make another database query.
         if fetch_permission:
-            result['group_permissions'] = self.model.get_group_worksheet_permissions(self._current_user_id(), worksheet.uuid)
-            result['permission'] = self.model.get_user_worksheet_permissions(self._current_user_id(), [worksheet.uuid], {worksheet.uuid: worksheet.owner_id})[worksheet.uuid]
+            result['group_permissions'] = self.model.get_group_worksheet_permissions(
+                self._current_user_id(), worksheet.uuid)
+            result['permission'] = self.model.get_user_worksheet_permissions(
+                self._current_user_id(), [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}
+            )[worksheet.uuid]
 
         return result
 
@@ -776,16 +807,21 @@ class LocalBundleClient(BundleClient):
         return results[user_name].unique_id
 
     def _user_id_to_names(self, user_ids):
-        if len(user_ids) == 0: return []
+        if len(user_ids) == 0:
+            return []
+
         results = self.auth_handler.get_users('ids', user_ids)
-        def get_name(r): return r.name if r else None
+
+        def get_name(r):
+            return r.name if r else None
+
         return [get_name(results[user_id] if results else None) for user_id in user_ids]
 
     def _convert_items_from_db(self, items):
-        '''
+        """
         Helper function.
         (bundle_uuid, subworksheet_uuid, value, type) -> (bundle_info, subworksheet_info, value_obj, type)
-        '''
+        """
         # Database only contains the uuid; need to expand to info.
         # We need to do to convert the bundle_uuids into bundle_info dicts.
         # However, we still make O(1) database calls because we use the
@@ -805,9 +841,9 @@ class LocalBundleClient(BundleClient):
                     subworksheet_info = self.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
                 except UsageError, e:
                     # If can't get the subworksheet, it's probably invalid, so just replace it with an error
-                    #type = worksheet_util.TYPE_MARKUP
+                    # type = worksheet_util.TYPE_MARKUP
                     subworksheet_info = {'uuid': subworksheet_uuid}
-                    #value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
+                    # value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
             else:
                 subworksheet_info = None
             value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
@@ -816,9 +852,9 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def add_worksheet_item(self, worksheet_uuid, item):
-        '''
+        """
         Add the given item to the worksheet.
-        '''
+        """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
@@ -826,9 +862,9 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def update_worksheet_items(self, worksheet_info, new_items):
-        '''
+        """
         Set the worksheet to have items |new_items|.
-        '''
+        """
         worksheet_uuid = worksheet_info['uuid']
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
@@ -844,10 +880,10 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def update_worksheet_metadata(self, uuid, info):
-        '''
+        """
         Change the metadata of the worksheet |uuid| to |info|,
         where |info| specifies name, title, owner, etc.
-        '''
+        """
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         metadata = {}
@@ -873,17 +909,19 @@ class LocalBundleClient(BundleClient):
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         if not force:
             if worksheet.frozen:
-                raise UsageError("Can\'t delete worksheet %s because it is frozen (--force to override)." % worksheet.uuid)
+                raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %
+                                 worksheet.uuid)
             if len(worksheet.items) > 0:
-                raise UsageError("Can\'t delete worksheet %s because it is not empty (--force to override)." % worksheet.uuid)
+                raise UsageError("Can't delete worksheet %s because it is not empty (--force to override)." %
+                                 worksheet.uuid)
         self.model.delete_worksheet(uuid)
 
     def interpret_file_genpaths(self, requests):
-        '''
+        """
         Helper function.
         requests: list of (bundle_uuid, genpath, post-processing-func)
         Return responses: corresponding list of strings
-        '''
+        """
         target_cache = {}
         responses = []
         for (bundle_uuid, genpath, post) in requests:
@@ -898,12 +936,10 @@ class LocalBundleClient(BundleClient):
         appropriate information, replacing the 'interpreted' field in each item.
         The result can be serialized via JSON.
         """
-        is_last_newline = False
         for item in interpreted_items:
             mode = item['mode']
             data = item['interpreted']
             properties = item['properties']
-            is_newline = (data == '')
             # if's in order of most frequent
             if mode == 'markup':
                 # no need to do anything
@@ -936,8 +972,6 @@ class LocalBundleClient(BundleClient):
             # Assign the interpreted from the processed data
             item['interpreted'] = data
 
-            is_last_newline = is_newline
-
         return interpreted_items
 
     #############################################################################
@@ -956,7 +990,7 @@ class LocalBundleClient(BundleClient):
                 {'user_id': self._current_user_id()})
         for group_dict in group_dicts:
             role = 'member'
-            if group_dict['is_admin'] == True:
+            if group_dict['is_admin']:
                 if group_dict['owner_id'] == group_dict['user_id']:
                     role = 'owner'
                 else:
@@ -982,10 +1016,10 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def user_info(self, user_spec):
-        '''
+        """
         Return {'name': ..., 'id': ...}
-        '''
-        if user_spec == None:
+        """
+        if user_spec is None:
             user = self.auth_handler.current_user()
         elif spec_util.ID_REGEX.match(user_spec):
             user = self.auth_handler.get_users('ids', [user_spec])[user_spec]
@@ -997,10 +1031,10 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def group_info(self, group_spec):
-        '''
+        """
         Return information about the given group.
         In particular, we get all its members.
-        '''
+        """
         group_info = self._get_group_info(group_spec, need_admin=False)
 
         # Get all the members
@@ -1021,10 +1055,10 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def add_user(self, user_spec, group_spec, is_admin):
-        '''
+        """
         Add the given |user_spec| to the |group_spec| with |is_admin| privileges.
         Return information about the operation performed.
-        '''
+        """
         # Lookup group and user
         group_info = self._get_group_info(group_spec, need_admin=True)
         user_info = self.user_info(user_spec)
@@ -1043,9 +1077,9 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def rm_user(self, user_spec, group_spec):
-        '''
+        """
         Remove given |user_spec| from the given |group_spec|.
-        '''
+        """
         # Lookup group and user
         group_info = self._get_group_info(group_spec, need_admin=True)
         user_info = self.user_info(user_spec)
@@ -1061,9 +1095,9 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def set_bundles_perm(self, bundle_uuids, group_spec, permission_spec):
-        '''
+        """
         Give the given |group_spec| the desired |permission_spec| on |bundle_uuids|.
-        '''
+        """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         group_info = self._get_group_info(group_spec, need_admin=False)
 
@@ -1078,13 +1112,14 @@ class LocalBundleClient(BundleClient):
             else:
                 if old_permission > 0:
                     self.model.delete_bundle_permission(group_info['uuid'], bundle_uuid)
+
         return {'group_info': group_info, 'permission': new_permission}
 
     @authentication_required
     def set_worksheet_perm(self, worksheet_uuid, group_spec, permission_spec):
-        '''
+        """
         Give the given |group_spec| the desired |permission_spec| on |worksheet_uuid|.
-        '''
+        """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         group_info = self._get_group_info(group_spec, need_admin=False)
@@ -1104,9 +1139,9 @@ class LocalBundleClient(BundleClient):
                 'permission': new_permission}
 
     def _get_group_info(self, group_spec, need_admin):
-        '''
+        """
         Resolve |group_spec| and return the associated group_info.
-        '''
+        """
         user_id = self._current_user_id()
 
         # If we're root, then we can access any group.
@@ -1128,6 +1163,7 @@ class LocalBundleClient(BundleClient):
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
 
-    def _check_worksheet_not_frozen(self, worksheet):
+    @staticmethod
+    def _check_worksheet_not_frozen(worksheet):
         if worksheet.frozen:
             raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))

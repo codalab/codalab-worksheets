@@ -398,14 +398,20 @@ class BundleCLI(object):
         print >>self.stderr, message
         sys.exit(error_code)
 
-    def simple_bundle_str(self, info):
+    @staticmethod
+    def simple_bundle_str(info):
         return '%s(%s)' % (contents_str(info.get('metadata', {}).get('name')), info['uuid'])
-    def simple_worksheet_str(self, info):
+
+    @staticmethod
+    def simple_worksheet_str(info):
         return '%s(%s)' % (contents_str(info.get('name')), info['uuid'])
-    def simple_user_str(self, info):
+
+    @staticmethod
+    def simple_user_str(info):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
-    def get_worksheet_bundles(self, worksheet_info):
+    @staticmethod
+    def get_worksheet_bundles(worksheet_info):
         """
         Return list of info dicts of distinct bundles in the worksheet.
         """
@@ -415,7 +421,8 @@ class BundleCLI(object):
                 result.append(bundle_info)
         return result
 
-    def parse_target(self, client, worksheet_uuid, target_spec):
+    @staticmethod
+    def parse_target(client, worksheet_uuid, target_spec):
         """
         Helper: A target_spec is a bundle_spec[/subpath].
         """
@@ -436,7 +443,8 @@ class BundleCLI(object):
         for item in items:
             if ':' in item:
                 (key, target) = item.split(':', 1)
-                if key == '': key = target  # Set default key to be same as target
+                if key == '':
+                    key = target  # Set default key to be same as target
             else:
                 # Provide syntactic sugar for a make bundle with a single anonymous target.
                 (key, target) = ('', item)
@@ -459,8 +467,10 @@ class BundleCLI(object):
             for col in columns:
                 cell = row_dict.get(col)
                 func = post_funcs.get(col)
-                if func: cell = worksheet_util.apply_func(func, cell)
-                if cell == None: cell = contents_str(cell)
+                if func:
+                    cell = worksheet_util.apply_func(func, cell)
+                if cell is None:
+                    cell = contents_str(cell)
                 row.append(cell)
             rows.append(row)
 
@@ -514,7 +524,8 @@ class BundleCLI(object):
             worksheet_uuid = worksheet_util.get_worksheet_uuid(client, base_worksheet_uuid, spec)
         return (client, worksheet_uuid)
 
-    def get_missing_metadata(self, bundle_subclass, args, initial_metadata=None):
+    @staticmethod
+    def get_missing_metadata(bundle_subclass, args, initial_metadata=None):
         """
         Return missing metadata for bundles by either returning default metadata values or
         pop up an editor and request that data from the user.
@@ -1232,8 +1243,9 @@ class BundleCLI(object):
         if self.headless and not (args.field or args.raw or args.verbose):
             return ui_actions.serialize([ui_actions.OpenBundle(uuid) for uuid in bundle_uuids])
 
-    def key_value_str(self, key, value):
-        return '%-21s: %s' % (key, formatting.verbose_contents_str(value))
+    @staticmethod
+    def key_value_str(key, value):
+        return '%-21s: %s' % (key, formatting.verbose_contents_str(unicode(value) if value is not None else None))
 
     def print_basic_info(self, client, info, raw):
         """
