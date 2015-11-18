@@ -85,18 +85,21 @@ class LocalBundleClient(BundleClient):
         """
         # See tables.py
         result = {
-          'uuid': bundle.uuid,
-          'bundle_type': bundle.bundle_type,
-          'owner_id': bundle.owner_id,
-          'command': bundle.command,
-          'data_hash': bundle.data_hash,
-          'state': bundle.state,
-          'metadata': bundle.metadata.to_dict(),
-          'dependencies': [dep.to_dict() for dep in bundle.dependencies],
+            'uuid': bundle.uuid,
+            'bundle_type': bundle.bundle_type,
+            'owner_id': bundle.owner_id,
+            'command': bundle.command,
+            'data_hash': bundle.data_hash,
+            'state': bundle.state,
+            'metadata': bundle.metadata.to_dict(),
+            'dependencies': [dep.to_dict() for dep in bundle.dependencies],
         }
         for dep in result['dependencies']:
             uuid = dep['parent_uuid']
             dep['parent_name'] = self.model.get_bundle_names([uuid]).get(uuid)
+
+        # Shim in args
+        result['args'] = worksheet_util.interpret_genpath(result, 'args')
 
         return result
 
