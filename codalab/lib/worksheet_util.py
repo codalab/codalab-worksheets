@@ -817,8 +817,8 @@ def interpret_items(schemas, items):
     flush_bundles()
     result['items'] = new_items
     result['raw_items_interpreted_items_map'] = raw_items_interpreted_items_map
-    for k, v in raw_items_interpreted_items_map.iteritems():
-        interpreted_items_raw_items_map[str(v[0])] = k
+    for k in sorted([int(k) for k in raw_items_interpreted_items_map.keys()]):
+        interpreted_items_raw_items_map[str(raw_items_interpreted_items_map[str(k)][0])] = int(k)
     result['interpreted_items_raw_items_map'] = interpreted_items_raw_items_map
 
     return result
