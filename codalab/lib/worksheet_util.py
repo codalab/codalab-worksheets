@@ -626,7 +626,7 @@ def interpret_items(schemas, items):
 
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
-                    raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, 0)
+                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
                     continue
 
                 # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
@@ -651,7 +651,7 @@ def interpret_items(schemas, items):
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, 0)
+                raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -672,7 +672,7 @@ def interpret_items(schemas, items):
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, 0)
+                raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -688,7 +688,7 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, len(rows) - 1)
+                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
                     # The front-end relies on the name metadata field existing
@@ -700,7 +700,7 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    raw_items_interpreted_items_map[item_index] = (len(new_items) - 1, len(rows) - 1)
+                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(processed_bundle_info)
             new_items.append({
                 'mode': mode,
@@ -742,10 +742,10 @@ def interpret_items(schemas, items):
                 'properties': {},
                 'subworksheet_info': subworksheet_info,
             })
-            raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
+            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
         elif item_type == TYPE_MARKUP:
             new_last_was_empty_line = (value_obj == '')
-            raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
+            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
             if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line:
                 # Combine all consecutive markup items
                 new_items[-1]['interpreted'] += '\n' + value_obj
@@ -755,7 +755,7 @@ def interpret_items(schemas, items):
                     'interpreted': value_obj,
                     'properties': {},
                 })
-                raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
+                raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
         elif item_type == TYPE_DIRECTIVE:
             command = get_command(value_obj)
             if command == '%' or command == '' or command == None:
@@ -809,7 +809,7 @@ def interpret_items(schemas, items):
                     'interpreted': 'ERROR: unknown directive **%% %s**' % ' '.join(value_obj),
                     'properties': {},
                 })
-            raw_items_interpreted_items_map[i] = (len(new_items) - 1, 0)
+            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
         else:
             raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line
@@ -818,7 +818,7 @@ def interpret_items(schemas, items):
     result['items'] = new_items
     result['raw_items_interpreted_items_map'] = raw_items_interpreted_items_map
     for k, v in raw_items_interpreted_items_map.iteritems():
-        interpreted_items_raw_items_map[v[0]] = k
+        interpreted_items_raw_items_map[str(v[0])] = k
     result['interpreted_items_raw_items_map'] = interpreted_items_raw_items_map
 
     return result
