@@ -42,8 +42,8 @@ if [ $? = 3 ]; then
   exit
 fi
 
-echo "=== Initializing the database..."
-$env/bin/alembic stamp head
+#echo "=== Initializing the database..."
+#$env/bin/alembic stamp head
 
 echo
 echo "=== Add the following line to your .bashrc to put CodaLab in your path:"
