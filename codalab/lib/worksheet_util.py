@@ -367,7 +367,7 @@ def interpret_genpath(bundle_info, genpath):
         metadata = bundle_info['metadata']
         for key, value in metadata.items():
             if key.startswith('request_') and value:
-                args.extend(['--' + key, formatting.quote(value)])
+                args.extend(['--' + key, formatting.quote(str(value))])
         return ' '.join(args)
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:
