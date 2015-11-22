@@ -40,6 +40,7 @@ from codalab.common import (
   State,
   PermissionError,
   UsageError,
+  CODALAB_VERSION
 )
 from codalab.lib import (
   metadata_util,
@@ -647,6 +648,7 @@ class BundleCLI(object):
         ),
     )
     def do_help_command(self, args):
+        print >>self.stdout, 'CodaLab CLI version %s' % CODALAB_VERSION
         if args.command:
             self.do_command([args.command, '--help'])
             return
