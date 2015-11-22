@@ -416,7 +416,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
     if target not in target_cache:
         contents = client.head_target(target, MAX_LINES)
         # Try to interpret the structure of the file by looking inside it.
-        if contents != None:
+        if contents is not None:
             import base64
             contents = map(base64.b64decode, contents)
             if all('\t' in x for x in contents):
@@ -620,7 +620,7 @@ def interpret_items(schemas, items):
         if mode == 'hidden':
             pass
         elif mode == 'contents' or mode == 'image' or mode == 'html':
-            def raiseUsageError():
+            def raise_usage_error():
                 raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join(
                     [mode] + args) + '\'')
 
@@ -631,7 +631,7 @@ def interpret_items(schemas, items):
 
                 # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
                 if len(args) == 0:
-                    raiseUsageError()
+                    raise_usage_error()
                 interpreted = interpret_genpath(bundle_info, args[0])
 
                 # Properties - e.g., height, width, maxlines (optional)
@@ -641,7 +641,7 @@ def interpret_items(schemas, items):
                 if isinstance(interpreted, tuple):  # Not rendered yet
                     bundle_uuid, genpath = interpreted
                     if not is_file_genpath(genpath):
-                        raiseUsageError()
+                        raise_usage_error()
                     else:
                         # interpreted is a target: strip off the leading /
                         interpreted = (bundle_uuid, genpath[1:])
@@ -718,7 +718,6 @@ def interpret_items(schemas, items):
     last_was_empty_line = False
     for i, item in enumerate(items):
         (bundle_info, subworksheet_info, value_obj, item_type) = item
-        properties = {}
         new_last_was_empty_line = True
 
         is_bundle = (item_type == TYPE_BUNDLE)
@@ -758,7 +757,7 @@ def interpret_items(schemas, items):
                 raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
         elif item_type == TYPE_DIRECTIVE:
             command = get_command(value_obj)
-            if command == '%' or command == '' or command == None:
+            if command == '%' or command == '' or command is None:
                 # Comment
                 pass
             elif command == 'schema':
@@ -767,14 +766,14 @@ def interpret_items(schemas, items):
                 schemas[name] = current_schema = []
             elif command == 'addschema':
                 # Add to schema
-                if current_schema == None:
+                if current_schema is None:
                     raise UsageError(
                         "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 name = value_obj[1]
                 current_schema += schemas[name]
             elif command == 'add':
                 # Add to schema
-                if current_schema == None:
+                if current_schema is None:
                     raise UsageError(
                         "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
                 schema_item = canonicalize_schema_item(value_obj[1:])
