@@ -1857,9 +1857,24 @@ class BundleCLI(object):
         ),
     )
     def do_wrm_command(self, args):
+        delete_current = False
         for worksheet_spec in args.worksheet_spec:
             client, worksheet_uuid = self.parse_client_worksheet_uuid(worksheet_spec)
+            if (client, worksheet_uuid) == self.manager.get_current_worksheet_uuid():
+                delete_current = True
             client.delete_worksheet(worksheet_uuid, args.force)
+
+        if delete_current:
+            # Go to home worksheet
+            client, _ = self.parse_client_worksheet_uuid('')
+            home_worksheet_uuid = client.get_worksheet_uuid(None, '')
+
+            if self.headless:
+                return ui_actions.serialize([ui_actions.OpenWorksheet(home_worksheet_uuid)])
+            else:
+                home_worksheet_info = client.get_worksheet_info(home_worksheet_uuid, False)
+                self.manager.set_current_worksheet_uuid(client, home_worksheet_uuid)
+                print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(home_worksheet_info))
 
     @Commands.command(
         'wadd',
