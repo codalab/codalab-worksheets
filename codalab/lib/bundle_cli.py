@@ -1653,16 +1653,9 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         if args.worksheet_spec:
-            if self.headless:
-                return ui_actions.serialize([
-                    ui_actions.OpenWorksheet(worksheet_uuid)
-                ])
-
-            self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
             if args.uuid_only:
                 print >>self.stdout, worksheet_info['uuid']
-            else:
-                print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
+            return self.change_current_worksheet(client, worksheet_uuid, verbose=(not args.uuid_only))
         else:
             if worksheet_info:
                 if args.uuid_only:
@@ -1671,6 +1664,25 @@ class BundleCLI(object):
                     print >>self.stdout, 'Currently on worksheet %s.' % (self.worksheet_str(worksheet_info))
             else:
                 print >>self.stdout, 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
+
+    def change_current_worksheet(self, client, worksheet_uuid, verbose=False):
+        """
+        :param client: client of the target worksheet
+        :param worksheet_uuid: UUID of worksheet to change to, or None to indicate home worksheet
+        :param verbose: print feedback to self.stdout if True
+        :return: None, or a UI action to open the worksheet if self.headless
+        """
+        if worksheet_uuid is None:
+            worksheet_uuid = client.get_worksheet_uuid(None, '')
+
+        if self.headless:
+            return ui_actions.serialize([ui_actions.OpenWorksheet(worksheet_uuid)])
+
+        self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
+
+        if verbose:
+            worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
+            print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     @Commands.command(
         'wedit',
@@ -1859,9 +1871,17 @@ class BundleCLI(object):
         ),
     )
     def do_wrm_command(self, args):
+        delete_current = False
+        current_client, current_worksheet = self.manager.get_current_worksheet_uuid()
         for worksheet_spec in args.worksheet_spec:
             client, worksheet_uuid = self.parse_client_worksheet_uuid(worksheet_spec)
+            if (client, worksheet_uuid) == (current_client, current_worksheet):
+                delete_current = True
             client.delete_worksheet(worksheet_uuid, args.force)
+
+        if delete_current:
+            # Go to home worksheet
+            return self.change_current_worksheet(current_client, None, verbose=True)
 
     @Commands.command(
         'wadd',
