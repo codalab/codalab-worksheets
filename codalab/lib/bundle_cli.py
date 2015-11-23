@@ -1879,8 +1879,7 @@ class BundleCLI(object):
 
         if delete_current:
             # Go to home worksheet
-            client, _ = self.parse_client_worksheet_uuid('')
-            return self.change_current_worksheet(client, None, verbose=True)
+            return self.change_current_worksheet(current_client, None, verbose=True)
 
     @Commands.command(
         'wadd',
