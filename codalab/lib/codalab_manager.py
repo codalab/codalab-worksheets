@@ -273,19 +273,22 @@ class CodaLabManager(object):
         if session:
             return session
 
-        # Otherwise, go up process hierarchy to the *highest up shell*.  This
-        # way, it's easy to write scripts that have embedded 'cl' commands
+        # Otherwise, go up process hierarchy to the *highest up shell* out of
+        # the consecutive shells.
+        #   cl bash bash screen bash gnome-terminal init
+        #            ^
+        #            | return this
+        # This way, it's easy to write scripts that have embedded 'cl' commands
         # which modify the current session.
         process = psutil.Process(os.getppid())
         session = 'top'
         max_depth = 10
         while process and max_depth:
-            # TODO: test this on Windows
-            if process.name() in ('bash', 'csh', 'zsh'):
-                session = str(process.pid)
+            if process.name() not in ('bash', 'csh', 'zsh'):
+                break
+            session = str(process.pid)
             process = process.parent()
             max_depth = max_depth - 1
-
         return session
 
     @cached
