@@ -474,7 +474,7 @@ class LocalBundleClient(BundleClient):
     # Maximum number of bytes to read per line requested
     MAX_BYTES_PER_LINE = 128
 
-    def head_target(self, target, max_num_lines, sanitize=False):
+    def head_target(self, target, max_num_lines, replace_non_unicode=False):
         max_total_bytes = None if max_num_lines is None else max_num_lines * self.MAX_BYTES_PER_LINE
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
@@ -482,7 +482,7 @@ class LocalBundleClient(BundleClient):
         if lines is None:
             return None
 
-        if sanitize:
+        if replace_non_unicode:
             lines = map(formatting.verbose_contents_str, lines)
 
         return map(base64.b64encode, lines)
@@ -935,6 +935,8 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
+    DEFAULT_MAX_CONTENT_LINES = 10
+
     def resolve_interpreted_items(self, interpreted_items):
         """
         Called by the web interface.  Takes a list of interpreted worksheet
@@ -961,7 +963,10 @@ class LocalBundleClient(BundleClient):
                 if 'type' not in info:
                     data = None
                 elif info['type'] == 'file':
-                    data = self.head_target(data, int(properties.get('maxlines', 10)), sanitize=True)
+                    data = self.head_target(
+                        data,
+                        int(properties.get('maxlines', self.DEFAULT_MAX_CONTENT_LINES)),
+                        replace_non_unicode=True)
             elif mode == 'html':
                 data = self.head_target(data, None)
             elif mode == 'image':
