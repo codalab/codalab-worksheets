@@ -27,10 +27,13 @@ def verbose_contents_str(input_string):
     """
     if input_string is None:
         return '<none>'
+
     try:
-        return input_string.encode('utf-8')
+        input_string.decode('utf-8')
     except UnicodeDecodeError:
         return '<binary>'
+
+    return input_string
 
 
 def size_str(size):

@@ -254,7 +254,7 @@ def read_lines(path, max_num_lines=None, max_total_bytes=None):
 
     with open(path, 'rb') as file_handle:
         if max_total_bytes is None:
-            lines = (line for line in file_handle)
+            lines = file_handle.__iter__()
         else:
             lines = truncated_read_lines(file_handle, max_total_bytes)
 
