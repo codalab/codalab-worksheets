@@ -620,11 +620,18 @@ def interpret_items(schemas, items):
 
     # Mapping from worksheet_info['raw'] index to |(focusIndex, subFocusIndex)| based on interpreted_items.
     # Used to intelligently focus on the worksheet_item where the cursor was present when exiting the editor.
-    raw_items_interpreted_items_map = {}
+    raw_interpreted_map = {}
 
     # Reverse mapping from interpreted_items indexes to worksheet_info['raw'] indexes.
     # Used to intelligently place the cursor at the focused worksheet item while entering the 'edit' mode.
-    interpreted_items_raw_items_map = {}
+    interpreted_raw_map = {}
+
+    # A list to store |((focus_index, sub_focus_index), end_index)| which is used to populate raw_interpreted_map.
+    raw_interpreted_list = []
+    last_was_empty_line = False
+    start_index = 0
+    focus_index = 0
+    sub_focus_index = -1
 
     # Set default schema
     current_schema = None
@@ -644,13 +651,15 @@ def interpret_items(schemas, items):
     def is_missing(info):
         return 'metadata' not in info
 
-    def flush_bundles():
+    def flush_bundles(start_index, focus_index, sub_focus_index):
         """
         Having collected bundles in |bundle_infos|, flush them into |new_items|,
         potentially as a single table depending on the mode.
+
+        Returns updated indeces as |(end_index, focus_index, sub_focus_index)| after adding items to |new_items|.
         """
         if len(bundle_infos) == 0:
-            return
+            return (start_index, focus_index, -1)
         # Print out the curent bundles somehow
         mode = current_display[0]
         args = current_display[1:]
@@ -664,7 +673,8 @@ def interpret_items(schemas, items):
 
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
-                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
+                    update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
+                    (start_index, focus_index, sub_focus_index) = updated_indeces(item_index, focus_index)
                     continue
 
                 # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
@@ -689,7 +699,7 @@ def interpret_items(schemas, items):
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
+                update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -710,7 +720,8 @@ def interpret_items(schemas, items):
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
+                update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
+                (start_index, focus_index, sub_focus_index) = updated_indeces(item_index, focus_index)
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -726,7 +737,8 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, len(rows) - 1)
+                    update_interpreted_raw_map(start_index, item_index, focus_index, len(rows) - 1)
+                    start_index += 1
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
                     # The front-end relies on the name metadata field existing
@@ -738,7 +750,7 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, len(rows) - 1)
+                    update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
                     processed_bundle_infos.append(processed_bundle_info)
             new_items.append({
                 'mode': mode,
@@ -749,11 +761,22 @@ def interpret_items(schemas, items):
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
+        return (start_index, focus_index + 1, -1)
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
 
-    last_was_empty_line = False
+    def update_interpreted_raw_map(start_index, end_index, focus_index, sub_focus_index=-1):
+        interpreted_raw_map[str(focus_index) + ',' + str(sub_focus_index)] = end_index
+        raw_interpreted_list.append(((focus_index, sub_focus_index), end_index))
+
+    def updated_indeces(end_index, focus_index):
+        return (
+            end_index + 1,
+            focus_index + 1,
+            -1
+        )
+
     for i, item in enumerate(items):
         (bundle_info, subworksheet_info, value_obj, item_type) = item
         new_last_was_empty_line = True
@@ -762,7 +785,7 @@ def interpret_items(schemas, items):
         is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
         is_directive = (item_type == TYPE_DIRECTIVE)
         if not is_bundle:
-            flush_bundles()
+            (start_index, focus_index, sub_focus_index) = flush_bundles(start_index, focus_index, sub_focus_index)
         # Reset display to minimize long distance dependencies of directives
         if not (is_bundle or is_search):
             current_display = default_display
@@ -779,20 +802,24 @@ def interpret_items(schemas, items):
                 'properties': {},
                 'subworksheet_info': subworksheet_info,
             })
-            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
+            update_interpreted_raw_map(start_index, i, focus_index)
+            (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
         elif item_type == TYPE_MARKUP:
             new_last_was_empty_line = (value_obj == '')
-            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
-            if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line:
+            raw_interpreted_map[str(i)] = (focus_index, 0)
+            if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line and not new_last_was_empty_line:
                 # Combine all consecutive markup items
                 new_items[-1]['interpreted'] += '\n' + value_obj
+                update_interpreted_raw_map(start_index, i, focus_index-1)
+                start_index = i + 1
             elif not new_last_was_empty_line:
                 new_items.append({
                     'mode': TYPE_MARKUP,
                     'interpreted': value_obj,
                     'properties': {},
                 })
-                raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
+                update_interpreted_raw_map(start_index, i, focus_index)
+                (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
         elif item_type == TYPE_DIRECTIVE:
             command = get_command(value_obj)
             if command == '%' or command == '' or command is None:
@@ -829,6 +856,8 @@ def interpret_items(schemas, items):
                     'interpreted': data,
                     'properties': {},
                 })
+                update_interpreted_raw_map(start_index, i, focus_index)
+                (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
             elif command == 'wsearch':
                 # Display worksheets based on query
                 keywords = value_obj[1:]
@@ -839,6 +868,8 @@ def interpret_items(schemas, items):
                     'interpreted': data,
                     'properties': {},
                 })
+                update_interpreted_raw_map(start_index, i, focus_index)
+                (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
             else:
                 # Error
                 new_items.append({
@@ -846,17 +877,25 @@ def interpret_items(schemas, items):
                     'interpreted': 'ERROR: unknown directive **%% %s**' % ' '.join(value_obj),
                     'properties': {},
                 })
-            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
         else:
             raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line
 
-    flush_bundles()
+    (start_index, focus_index, sub_focus_index) = flush_bundles(start_index, focus_index, sub_focus_index)
     result['items'] = new_items
-    result['raw_items_interpreted_items_map'] = raw_items_interpreted_items_map
-    for k in sorted([int(k) for k in raw_items_interpreted_items_map.keys()]):
-        interpreted_items_raw_items_map[str(raw_items_interpreted_items_map[str(k)][0])] = int(k)
-    result['interpreted_items_raw_items_map'] = interpreted_items_raw_items_map
+
+    def update_raw_interpreted_map(start_index, end_index, value):
+        for i in xrange(start_index, end_index+1):
+            raw_interpreted_map[str(i)] = value
+
+
+    last_value = 0
+    for v in raw_interpreted_list:
+        update_raw_interpreted_map(last_value, v[1], v[0])
+        last_value = v[1] + 1
+
+    result['raw_interpreted_map'] = raw_interpreted_map
+    result['interpreted_raw_map'] = interpreted_raw_map
 
     return result
 
