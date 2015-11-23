@@ -369,6 +369,27 @@ def interpret_genpath(bundle_info, genpath):
             if key.startswith('request_') and value:
                 args.extend(['--' + key, formatting.quote(str(value))])
         return ' '.join(args)
+    elif genpath == 'summary':
+        def friendly_render_dep(dep):
+            key = dep['child_path'] or dep['parent_name']
+            value = key + '{' + (dep['parent_name'] + ':' if key != dep['parent_name'] else '') + \
+                dep['parent_uuid'][0:4] + '}'
+            return key, value
+        # Nice easy-to-ready description of how this bundle got created.
+        bundle_type = bundle_info.get('bundle_type')
+        if bundle_type in ('dataset', 'program'):
+            return '[uploaded]'
+        if bundle_type == 'make':
+            args = []
+            for dep in deps:
+                args.append(friendly_render_dep(dep)[1])
+            return '= ' + ' '.join(args)
+        elif bundle_type == 'run':
+            command = bundle_info['command']
+            for dep in deps:
+                key, value = friendly_render_dep(dep)
+                command = command.replace(key, value)
+            return '! ' + command
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:
             return ' '.join('%s(%s)' % (info['name'], info['uuid']) for info in bundle_info['host_worksheets'])
@@ -549,22 +570,38 @@ def apply_func(func, arg):
 
 
 def get_default_schemas():
+    # Single fields
     uuid = ['uuid', 'uuid', '[0:8]']
-    created = ['created', 'created', 'date']
+    name = ['name']
+    summary = ['summary']
     data_size = ['data_size', 'data_size', 'size']
     time = ['time', 'time', 'duration']
-    description = ['description']
+    state = ['state']
+    description = ['desc.', 'description']
+    created = ['created', 'created', 'date']
+
     schemas = {}
 
-    schemas['default'] = canonicalize_schema_items(
-        [uuid, ['name'], description, ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
+    # Schemas corresponding to one field
+    schemas['uuid'] = [uuid]
+    schemas['name'] = [name]
+    schemas['summary'] = [summary]
+    schemas['data_size'] = [data_size]
+    schemas['time'] = [time]
+    schemas['state'] = [state]
+    schemas['description'] = [description]
+    schemas['created'] = [created]
 
-    schemas['program'] = canonicalize_schema_items([uuid, ['name'], description, created, data_size])
-    schemas['dataset'] = canonicalize_schema_items([uuid, ['name'], description, created, data_size])
+    # Schemas involving multiple fields
+    schemas['default'] = [uuid, name, summary, state, description]
+    schemas['program'] = [uuid, name, data_size, description]
+    schemas['dataset'] = [uuid, name, data_size, description]
+    schemas['make'] = [uuid, name, summary, data_size, state, description]
+    schemas['run'] = [uuid, name, summary, data_size, time, state, description]
 
-    schemas['make'] = canonicalize_schema_items([uuid, ['name'], description, created, ['dependencies'], ['state']])
-    schemas['run'] = canonicalize_schema_items(
-        [uuid, ['name'], description, created, ['dependencies'], ['command'], ['state'], time])
+    for key in schemas:
+        schemas[key] = canonicalize_schema_items(schemas[key])
+
     return schemas
 
 
@@ -600,7 +637,8 @@ def interpret_items(schemas, items):
         args = args if len(args) > 0 else ['default']
         schema = []
         for arg in args:
-            schema += schemas[arg]
+            # If schema doesn't exist, then treat as item (e.g., uuid).
+            schema += schemas.get(arg, canonicalize_schema_items([arg.split(':', 2)]))
         return schema
 
     def is_missing(info):
