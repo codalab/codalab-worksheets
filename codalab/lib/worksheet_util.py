@@ -811,7 +811,7 @@ def interpret_items(schemas, items):
                 current_schema = None
                 new_items.append({
                     'mode': TYPE_MARKUP,
-                    'interpreted': 'Error while parsing directive **%% %s**: %s' % (' '.join(value_obj), e.message),
+                    'interpreted': 'Line %d: Error while parsing directive **%% %s**: %s' % (i, ' '.join(value_obj), e.message),
                     'properties': {},
                 })
 
@@ -821,7 +821,7 @@ def interpret_items(schemas, items):
                 traceback.print_exc()
                 new_items.append({
                     'mode': TYPE_MARKUP,
-                    'interpreted': 'Unexpected error while parsing directive **%% %s**' % ' '.join(value_obj),
+                    'interpreted': 'Line %d: Unexpected error while parsing directive **%% %s**' % (i, ' '.join(value_obj)),
                     'properties': {},
                 })
 

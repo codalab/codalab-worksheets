@@ -945,43 +945,52 @@ class LocalBundleClient(BundleClient):
         The result can be serialized via JSON.
         """
         for item in interpreted_items:
-            mode = item['mode']
-            data = item['interpreted']
-            properties = item['properties']
-            # if's in order of most frequent
-            if mode == 'markup':
-                # no need to do anything
-                pass
-            elif mode == 'record' or mode == 'table':
-                # header_name_posts is a list of (name, post-processing) pairs.
-                header, contents = data
-                # Request information
-                contents = worksheet_util.interpret_genpath_table_contents(self, contents)
-                data = (header, contents)
-            elif mode == 'contents':
-                info = self.get_target_info(data, 1)
-                if 'type' not in info:
-                    data = None
-                elif info['type'] == 'file':
-                    data = self.head_target(
-                        data,
-                        int(properties.get('maxlines', self.DEFAULT_MAX_CONTENT_LINES)),
-                        replace_non_unicode=True)
-                elif info['type'] == 'directory':
-                    data = [base64.b64encode('<directory>')]
-            elif mode == 'html':
-                data = self.head_target(data, None)
-            elif mode == 'image':
-                path = self.get_target_path(data)
-                data = path_util.base64_encode(path)
-            elif mode == 'search':
-                data = worksheet_util.interpret_search(self, None, data)
-            elif mode == 'wsearch':
-                data = worksheet_util.interpret_wsearch(self, data)
-            elif mode == 'worksheet':
-                pass
-            else:
-                raise UsageError('Invalid display mode: %s' % mode)
+            try:
+                mode = item['mode']
+                data = item['interpreted']
+                properties = item['properties']
+                # if's in order of most frequent
+                if mode == 'markup':
+                    # no need to do anything
+                    pass
+                elif mode == 'record' or mode == 'table':
+                    # header_name_posts is a list of (name, post-processing) pairs.
+                    header, contents = data
+                    # Request information
+                    contents = worksheet_util.interpret_genpath_table_contents(self, contents)
+                    data = (header, contents)
+                elif mode == 'contents':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_MAX_CONTENT_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+
+                    info = self.get_target_info(data, 1)
+                    if 'type' not in info:
+                        data = None
+                    elif info['type'] == 'file':
+                        data = self.head_target(data, max_lines, replace_non_unicode=True)
+                    elif info['type'] == 'directory':
+                        data = [base64.b64encode('<directory>')]
+                elif mode == 'html':
+                    data = self.head_target(data, None)
+                elif mode == 'image':
+                    path = self.get_target_path(data)
+                    data = path_util.base64_encode(path)
+                elif mode == 'search':
+                    data = worksheet_util.interpret_search(self, None, data)
+                elif mode == 'wsearch':
+                    data = worksheet_util.interpret_wsearch(self, data)
+                elif mode == 'worksheet':
+                    pass
+                else:
+                    raise UsageError('Invalid display mode: %s' % mode)
+            except UsageError as e:
+                data = [base64.b64encode("Error: %s" % e.message)]
+            except StandardError as e:
+                import traceback
+                traceback.print_exc()
+                data = [base64.b64encode("Unexpected error interpreting item")]
             # Assign the interpreted from the processed data
             item['interpreted'] = data
 
