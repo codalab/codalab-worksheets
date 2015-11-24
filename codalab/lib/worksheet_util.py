@@ -441,18 +441,18 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
 
     # Traverse the info object.
     info = target_cache.get(target, None)
-    if key != None and info != None:
+    if key is not None and info is not None:
         for k in key.split('/'):
             if isinstance(info, dict):
                 info = info.get(k, None)
             elif isinstance(info, list):
                 try:
                     info = info[int(k)]
-                except:
+                except KeyError:
                     info = None
             else:
                 info = None
-            if info == None: break
+            if info is None: break
     return apply_func(post, info)
 
 
@@ -756,59 +756,78 @@ def interpret_items(schemas, items):
                 })
                 raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
         elif item_type == TYPE_DIRECTIVE:
-            command = get_command(value_obj)
-            if command == '%' or command == '' or command is None:
-                # Comment
-                pass
-            elif command == 'schema':
-                # Start defining new schema
-                name = value_obj[1]
-                schemas[name] = current_schema = []
-            elif command == 'addschema':
-                # Add to schema
-                if current_schema is None:
-                    raise UsageError(
-                        "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
-                name = value_obj[1]
-                current_schema += schemas[name]
-            elif command == 'add':
-                # Add to schema
-                if current_schema is None:
-                    raise UsageError(
-                        "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
-                schema_item = canonicalize_schema_item(value_obj[1:])
-                current_schema.append(schema_item)
-            elif command == 'display':
-                # Set display
-                current_display = value_obj[1:]
-            elif command == 'search':
-                # Display bundles based on query
-                keywords = value_obj[1:]
-                mode = command
-                data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
-                new_items.append({
-                    'mode': mode,
-                    'interpreted': data,
-                    'properties': {},
-                })
-            elif command == 'wsearch':
-                # Display worksheets based on query
-                keywords = value_obj[1:]
-                mode = command
-                data = {'keywords': keywords}
-                new_items.append({
-                    'mode': mode,
-                    'interpreted': data,
-                    'properties': {},
-                })
-            else:
-                # Error
+            try:
+                command = get_command(value_obj)
+                if command == '%' or command == '' or command is None:
+                    # Comment
+                    pass
+                elif command == 'schema':
+                    # Start defining new schema
+                    if len(value_obj) < 2:
+                        raise UsageError("missing name")
+                    name = value_obj[1]
+                    schemas[name] = current_schema = []
+                elif command == 'addschema':
+                    # Add to schema
+                    if current_schema is None:
+                        raise UsageError("must be preceded by **schema** directive")
+                    if len(value_obj) < 2:
+                        raise UsageError("missing name")
+                    name = value_obj[1]
+                    current_schema += schemas[name]
+                elif command == 'add':
+                    # Add to schema
+                    if current_schema is None:
+                        raise UsageError("must be preceded by **schema** directive")
+                    schema_item = canonicalize_schema_item(value_obj[1:])
+                    current_schema.append(schema_item)
+                elif command == 'display':
+                    # Set display
+                    current_display = value_obj[1:]
+                elif command == 'search':
+                    # Display bundles based on query
+                    keywords = value_obj[1:]
+                    mode = command
+                    data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
+                    new_items.append({
+                        'mode': mode,
+                        'interpreted': data,
+                        'properties': {},
+                    })
+                elif command == 'wsearch':
+                    # Display worksheets based on query
+                    keywords = value_obj[1:]
+                    mode = command
+                    data = {'keywords': keywords}
+                    new_items.append({
+                        'mode': mode,
+                        'interpreted': data,
+                        'properties': {},
+                    })
+                else:
+                    raise UsageError("unknown directive")
+
+            except UsageError as e:
+                current_schema = None
                 new_items.append({
                     'mode': TYPE_MARKUP,
-                    'interpreted': 'ERROR: unknown directive **%% %s**' % ' '.join(value_obj),
+                    'interpreted': 'Error while parsing directive **%% %s**: %s' % (' '.join(value_obj), e.message),
                     'properties': {},
                 })
-            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
+
+            except StandardError:
+                current_schema = None
+                import traceback
+                traceback.print_exc()
+                new_items.append({
+                    'mode': TYPE_MARKUP,
+                    'interpreted': 'Unexpected error while parsing directive **%% %s**' % ' '.join(value_obj),
+                    'properties': {},
+                })
+
+            finally:
+                raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
+
         else:
             raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line

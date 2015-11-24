@@ -967,6 +967,8 @@ class LocalBundleClient(BundleClient):
                         data,
                         int(properties.get('maxlines', self.DEFAULT_MAX_CONTENT_LINES)),
                         replace_non_unicode=True)
+                elif info['type'] == 'directory':
+                    data = [base64.b64encode('<directory>')]
             elif mode == 'html':
                 data = self.head_target(data, None)
             elif mode == 'image':
