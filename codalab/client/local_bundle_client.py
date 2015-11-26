@@ -485,11 +485,15 @@ class LocalBundleClient(BundleClient):
     def get_target_info(self, target, depth):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
+        if path is None:
+            return None
         return path_util.get_info(path, depth)
 
     def cat_target(self, target, out):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
+        if path is None:
+            return
         path_util.cat(path, out)
 
     # Maximum number of bytes to read per line requested
