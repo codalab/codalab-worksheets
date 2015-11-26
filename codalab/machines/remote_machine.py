@@ -122,8 +122,8 @@ class RemoteMachine(Machine):
             ptr_script_file = ptr_temp_dir + '.sh'  # main entry point
             ptr_internal_script_file = ptr_temp_dir + '-internal.sh'  # run inside the docker container
             # Names of file inside the docker container
-            docker_temp_dir = bundle.uuid
-            docker_internal_script_file = bundle.uuid + '-internal.sh'
+            docker_temp_dir = '/' + bundle.uuid
+            docker_internal_script_file = '/' + bundle.uuid + '-internal.sh'
 
             # 1) script_file starts the docker container and runs internal_script_file in docker.
             # --rm removes the docker container once the job terminates (note that this makes things slow)
@@ -164,12 +164,13 @@ class RemoteMachine(Machine):
                 f.write('if [ -n "$devices" ]; then devices=$(for d in $devices; do echo --device $d:$d; done); fi\n')
                 resource_args += ' $devices'
 
-                f.write("docker run%s --rm --cidfile %s -u %s -v %s:/%s -v %s:/%s %s bash %s >%s/stdout 2>%s/stderr & wait $!\n" % (
+                f.write("docker run%s --rm --cidfile %s -u %s -v %s:%s -v %s:%s -e HOME=%s %s bash %s >%s/stdout 2>%s/stderr & wait $!\n" % (
                     resource_args,
                     ptr_container_file,
                     os.geteuid(),
                     ptr_temp_dir, docker_temp_dir,
                     ptr_internal_script_file, docker_internal_script_file,
+                    docker_temp_dir,
                     docker_image,
                     docker_internal_script_file,
                     ptr_temp_dir, ptr_temp_dir))
