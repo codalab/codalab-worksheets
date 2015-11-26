@@ -59,31 +59,6 @@ class PathUtilFSTest(unittest.TestCase):
     self.assertEqual(set(directories), set(self.bundle_directories))
     self.assertEqual(set(files), set(self.bundle_files))
 
-  def test_check_for_symlinks(self):
-    '''
-    Test that check_for_symlinks raises a ValueError iff there is a symlink
-    underneat the given path.
-    '''
-    path_util.check_for_symlinks(self.bundle_path)
-    link_target = '../some/random/thing/to/symlink/to'
-    symlink_path = os.path.join(self.bundle_directories[-1], 'my_symlink')
-    os.symlink(link_target, symlink_path)
-    self.assertRaises(
-      ValueError,
-      lambda: path_util.check_for_symlinks(self.bundle_path),
-    )
-
-  def test_set_permissions(self):
-    '''
-    Test that set_permissions sets permissions for all files in a directory.
-    '''
-    # This test will NOT work if the r and w bits for the user are not on!
-    # If r is 0, stat will fail. If w is 0, tearDown will fail post the test.
-    permissions = 0o723
-    path_util.set_permissions(self.bundle_path, permissions)
-    for path in self.bundle_directories + self.bundle_files:
-      self.assertEqual(stat.S_IMODE(os.lstat(path).st_mode), permissions)
-
   def test_hash_file_contests(self):
     '''
     Test that hash_file_contents reads a file and hashes its contents.

@@ -3,7 +3,7 @@ path_util contains helpers for working with local filesystem paths.
 There are a few classes of methods provided here:
 
   Functions to normalize paths and check that they are in normal form:
-    normalize, check_isvalid, check_isdir, check_isfile, check_for_symlinks
+    normalize, check_isvalid, check_isdir, check_isfile, path_is_url
 
   Functions to list directories and to deal with subpaths of paths:
     safe_join, get_relative_path, ls, recursive_ls
@@ -12,7 +12,7 @@ There are a few classes of methods provided here:
     cat, getmtime, get_size, hash_directory, hash_file_contents
 
   Functions that modify that filesystem in controlled ways:
-    copy, make_directory, remove, remove_symlinks, set_permissions
+    copy, make_directory, set_write_permissions, rename, remove
 """
 import contextlib
 import errno
@@ -99,8 +99,6 @@ def check_isvalid(path, fn_name):
     """
     precondition(os.path.isabs(path), '%s got relative path: %s' % (fn_name, path))
     # Broken symbolic links are valid paths, so we use lexists instead of exists.
-    # This case will come up when executing a make bundle with an anonymous target,
-    # because the symlink will be broken until it is moved into the bundle store.
     if not os.path.lexists(path):
         raise path_error('%s got non-existent path:' % (fn_name,), path)
 
@@ -131,16 +129,12 @@ def check_under_path(path, parent_path):
         raise path_error('Path not under %s' % (parent_path,), path)
 
 
-def check_for_symlinks(root, dirs_and_files=None):
-    """
-    Raise UsageError if there are any symlinks under the given path.
-    """
-    (directories, files) = dirs_and_files or recursive_ls(root)
-    for path in itertools.chain(directories, files):
-        if os.path.islink(path):
-            relative_path = get_relative_path(root, path)
-            raise UsageError('Found symlink %s under path:' % (relative_path,), root)
-
+def path_is_url(path):
+    if isinstance(path, basestring):
+        for prefix in ['http', 'https', 'ftp', 'file']:
+            if path.startswith(prefix + '://'):
+                return True
+    return False
 
 ################################################################################
 # Functions to list directories and to deal with subpaths of paths.
@@ -372,20 +366,14 @@ def hash_file_contents(path):
 
 def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
     """
-    source_path can be a list of files, in which case we need to create a
-    directory first.  Assume dest_path doesn't exist.
-    Don't copy things that match |exclude_patterns|.
+    Copy |source_path| to |dest_path|.
+    Assume dest_path doesn't exist.
+    |follow_symlinks|: whether to follow symlinks
+    |exclude_patterns|: patterns to not copy
+    Note: this only works in Linux.
     """
-
-    # Note: this only works in Linux.
     if os.path.exists(dest_path):
         raise path_error('already exists', dest_path)
-
-    if isinstance(source_path, list):
-        os.mkdir(dest_path)
-        source = ' '.join(formatting.quote(p) for p in source_path)
-    else:
-        source = formatting.quote(source_path)
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
@@ -394,13 +382,13 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
         command = [
             'rsync',
             '-pr%s' % ('L' if follow_symlinks else 'l'),
-            source + ('/' if not isinstance(source_path, list) and os.path.isdir(source_path) else ''),
-            formatting.quote(dest_path),
+            source_path + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
+            dest_path,
         ]
         if exclude_patterns is not None:
             for pattern in exclude_patterns:
-                command.extend(['--exclude', formatting.quote(pattern)])
-        if os.system(' '.join(command)) != 0:
+                command.extend(['--exclude', pattern])
+        if subprocess.call(command) != 0:
             raise path_error('Unable to copy %s to' % source_path, dest_path)
 
 
@@ -419,12 +407,14 @@ def make_directory(path):
 def set_write_permissions(path):
     # Recursively give give write permissions to |path|, so that we can operate
     # on it.
-    subprocess.call(['chmod', '-R', 'u+w', path])
+    if not os.path.islink(path):  # Don't need write permissions if symlink
+        subprocess.call(['chmod', '-R', 'u+w', path])
 
 
 def rename(old_path, new_path):
-    set_write_permissions(old_path)  # Allow permissions (TODO: this is a hack)
-    shutil.move(old_path, new_path)  # Can't deal with cross-device links
+    # Allow write permissions, or else the move will fail.
+    set_write_permissions(old_path)
+    subprocess.call(['mv', old_path, new_path])
 
 
 def remove(path):
@@ -444,34 +434,3 @@ def remove(path):
         os.remove(path)
     if os.path.exists(path):
         print 'Failed to remove %s' % path
-
-
-def remove_symlinks(root, dirs_and_files=None):
-    """
-    Delete any existing symlinks under the given path.
-    """
-    (directories, files) = dirs_and_files or recursive_ls(root)
-    for path in itertools.chain(directories, files):
-        if os.path.islink(path):
-            os.unlink(path)
-
-
-def set_permissions(path, permissions, dirs_and_files=None):
-    """
-    Sets the permissions bits for all directories and files under the path.
-    """
-    (directories, files) = dirs_and_files or recursive_ls(path)
-    for subpath in itertools.chain(directories, files):
-        try:
-            os.chmod(subpath, permissions)
-        except OSError, e:
-            # chmod-ing a broken symlink will raise ENOENT, so we pass on this case.
-            if not (e.errno == errno.ENOENT and os.path.islink(subpath)):
-                raise
-
-
-def path_is_url(path):
-    for prefix in ['http', 'https', 'ftp', 'file']:
-        if path.startswith(prefix + '://'):
-            return True
-    return False

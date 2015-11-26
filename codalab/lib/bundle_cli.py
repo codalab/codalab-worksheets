@@ -44,7 +44,9 @@ from codalab.common import (
 )
 from codalab.lib import (
   metadata_util,
+  file_util,
   path_util,
+  zip_util,
   spec_util,
   worksheet_util,
   cli_util,
@@ -55,7 +57,8 @@ from codalab.objects.permission import permission_str, group_permissions_str
 from codalab.objects.work_manager import Worker
 from codalab.machines.remote_machine import RemoteMachine
 from codalab.machines.local_machine import LocalMachine
-from codalab.client.remote_bundle_client import RemoteBundleClient
+from codalab.client.local_bundle_client import LocalBundleClient
+from codalab.server.rpc_file_handle import RPCFileHandle
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
   CodaLabCompleter,
@@ -494,7 +497,7 @@ class BundleCLI(object):
     def parse_spec(self, spec):
         """
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
-        Example: http://codalab.org/bundleservice::wine
+        Example: https://worksheets.codalab.org/bundleservice::wine
         Return (client, spec)
         """
         tokens = spec.split('::')
@@ -561,7 +564,7 @@ class BundleCLI(object):
         Commands.Argument('-n', '--name', help='Name of the output bundle.'),
         Commands.Argument('-d', '--depth', type=int, default=10, help='Number of parents to look back from the old output in search of the old input.'),
         Commands.Argument('-s', '--shadow', action='store_true', help='Add the newly created bundles right after the old bundles that are being mimicked.'),
-        Commands.Argument('-i', '--dry-run', help='Perform a dry run (just show what will be done without doing it)', action='store_true'),
+        Commands.Argument('-i', '--dry_run', help='Perform a dry run (just show what will be done without doing it)', action='store_true'),
         Commands.Argument('-w', '--worksheet_spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
     ) + WAIT_ARGUMENTS
 
@@ -730,12 +733,12 @@ class BundleCLI(object):
             'Most of the other arguments specify metadata fields.',
         ],
         arguments=(
-            Commands.Argument('path', help='Path(s) of the file/directory to upload.', nargs='*', completer=require_not_headless(FilesCompleter)),
-            Commands.Argument('-b', '--base', help='Inherit the metadata from this bundle specification.', completer=BundlesCompleter),
-            Commands.Argument('-B', '--base-use-default-name', help='Inherit the metadata from the bundle with the same name as the path.', action='store_true'),
-            Commands.Argument('-L', '--follow-symlinks', help='Always dereference (follow) symlinks.', action='store_true'),
-            Commands.Argument('-x', '--exclude-patterns', help='Exclude these file patterns.', nargs='*'),
+            Commands.Argument('path', help='Paths (or URLs) of the files/directories to upload.', nargs='*', completer=require_not_headless(FilesCompleter)),
             Commands.Argument('-c', '--contents', help='Specify the string contents of the bundle.'),
+            Commands.Argument('-L', '--follow_symlinks', help='Always dereference (follow) symlinks.', action='store_true'),
+            Commands.Argument('-x', '--exclude_patterns', help='Exclude these file patterns.', nargs='*'),
+            Commands.Argument('-g', '--git', help='Path is a git repository, git clone it.', action='store_true'),
+            Commands.Argument('-p', '--pack', help='If path is an archive file (e.g., zip, tar.gz), keep it packed.', action='store_true', default=False),
             Commands.Argument('-w', '--worksheet_spec', help='Upload to this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ) + Commands.metadata_arguments([UploadedBundle] + [get_bundle_subclass(bundle_type) for bundle_type in UPLOADED_TYPES])
         + EDIT_ARGUMENTS,
@@ -745,13 +748,9 @@ class BundleCLI(object):
         if self.headless and not args.path and args.contents is None:
             return ui_actions.serialize([ui_actions.Upload()])
 
-        # Add metadata arguments for UploadedBundle and all of its subclasses.
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        # Currently only support uploading one URL by itself
-        if (len(args.path) > 1 or args.contents is not None) and any(path_util.path_is_url(path) for path in args.path):
-            raise UsageError("CodaLab currently only supports uploading one URL alone as one bundle.")
-
+        # Verify arguments are valid.
         for path in args.path:
             if path_util.path_is_url(path):
                 # OK: We have already checked that there are no other bundles to upload.
@@ -763,7 +762,7 @@ class BundleCLI(object):
                 # Check that the upload path exists.
                 path_util.check_isvalid(path_util.normalize(path), 'upload')
 
-        # If contents of file are specified on the command-line, then include that with the bundles to upload
+        # If contents of file are specified on the command-line, then include that with the bundles to upload.
         if args.contents is not None:
             if not args.md_name:
                 args.md_name = 'contents'
@@ -773,48 +772,37 @@ class BundleCLI(object):
             f.close()
             args.path.append(tmp_path)
 
-        if len(args.path) == 0:
-            raise UsageError('Nothing to upload.')
+        # Canonicalize (e.g., removing trailing /)
+        sources = [path_util.normalize(path) for path in args.path]
 
         # Pull out the upload bundle type from the arguments and validate it.
-        # Note: only allow dataset bundles (eventually deprecate the program bundle and just have uploaded bundles)
+        # Note: only allow dataset bundles (eventually deprecate the program bundle and just have uploaded bundles).
         bundle_type = 'dataset'
         bundle_subclass = get_bundle_subclass(bundle_type)
-
-        # Get metadata
-        metadata = None
-        if not args.base and args.base_use_default_name:
-            args.base = os.path.basename(args.path[0])  # Use default name
-        if args.base:
-            bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, args.base)
-            info = client.get_bundle_info(bundle_uuid)
-            metadata = info['metadata']
-        metadata = self.get_missing_metadata(bundle_subclass, args, initial_metadata=metadata)
+        metadata = self.get_missing_metadata(bundle_subclass, args, initial_metadata={})
+        # name = 'test.zip' => name = 'test'
+        if not args.pack and zip_util.path_is_archive(metadata['name']):
+            metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
 
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
         # pass in a null owner to validate. Will be set to the correct owner in the client upload_bundle below.
         bundle_subclass.construct(owner_id=0, data_hash='', metadata=metadata).validate()
-
-        # If only one path, strip away the list so that we make a bundle that
-        # is this path rather than contains it.
-        if len(args.path) == 1:
-            args.path = args.path[0]
+        info = {'bundle_type': bundle_type, 'metadata': metadata}
 
         # Finally, once everything has been checked, then call the client to upload.
-        print >>self.stdout, client.upload_bundle(
-            args.path,
-            {'bundle_type': bundle_type, 'metadata': metadata},
-            worksheet_uuid,
-            args.follow_symlinks,
-            args.exclude_patterns,
-            add_to_worksheet=True
+        uuid = client.upload_bundle(
+            sources=sources,
+            follow_symlinks=args.follow_symlinks,
+            exclude_patterns=args.exclude_patterns,
+            git=args.git,
+            unpack=not args.pack,
+            remove_sources=(args.contents is not None),
+            info=info,
+            worksheet_uuid=worksheet_uuid,
+            add_to_worksheet=True,
         )
-
-        # Clean up if necessary (might have been deleted if we put it in the CodaLab temp directory)
-        if args.contents is not None:
-            if os.path.exists(tmp_path):
-                os.unlink(tmp_path)
+        print >>self.stdout, uuid
 
     @Commands.command(
         'download',
@@ -822,7 +810,7 @@ class BundleCLI(object):
         help='Download bundle from a CodaLab instance.',
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=BundlesCompleter),
-            Commands.Argument('-o', '--output-dir', help='Directory to download bundle to.  By default, the bundle or subpath name is used.'),
+            Commands.Argument('-o', '--output_path', help='Path to download bundle to.  By default, the bundle or subpath name in the current directory is used.'),
             Commands.Argument('-w', '--worksheet_spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -833,23 +821,20 @@ class BundleCLI(object):
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
         bundle_uuid, subpath = target
 
-        # Copy into desired directory.
+        # Copy into desired path.
         info = client.get_bundle_info(bundle_uuid)
-        if args.output_dir:
-            local_dir = args.output_dir
+        if args.output_path:
+            local_path = args.output_path
         else:
-            local_dir = info['metadata'].get('name', 'untitled') if subpath == '' else os.path.basename(subpath)
-        final_path = os.path.join(os.getcwd(), local_dir)
+            local_path = info['metadata'].get('name', 'untitled') if subpath == '' else os.path.basename(subpath)
+        final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
-            print >>self.stdout, 'Local file/directory', local_dir, 'already exists.'
+            print >>self.stdout, 'Local file/directory \'%s\' already exists.' % local_path
             return
 
-        # Download first to a local location path.  Note: don't follow symlinks.
-        local_path, temp_path = client.download_target(target, False)
-        path_util.copy(local_path, final_path, follow_symlinks=False)
-        if temp_path:
-          path_util.remove(temp_path)
-        print >>self.stdout, 'Downloaded %s to %s.' % (self.simple_bundle_str(info), final_path)
+        # Download first to a local location path.
+        client.download_target(target, final_path)
+        print >>self.stdout, 'Downloaded %s/%s => %s' % (self.simple_bundle_str(info), target[1], final_path)
 
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies, add_to_worksheet):
         """
@@ -869,40 +854,90 @@ class BundleCLI(object):
 
         # Check if the bundle already exists on the destination, then don't copy it
         # (although metadata could be different on source and destination).
+        # TODO: sync the metadata.
         bundle = None
         try:
             bundle = dest_client.get_bundle_info(source_bundle_uuid)
         except:
             pass
 
-        source_info = source_client.get_bundle_info(source_bundle_uuid)
-        source_desc = self.simple_bundle_str(source_info)
-        if not bundle:
-            if source_info['state'] not in [State.READY, State.FAILED]:
-                print >>self.stdout, 'Not copying %s because it has non-final state %s' % (source_desc, source_info['state'])
-            else:
-                print >>self.stdout, "Copying %s..." % source_desc
-                info = source_client.get_bundle_info(source_bundle_uuid)
-
-                if isinstance(source_client, RemoteBundleClient) and isinstance(dest_client, RemoteBundleClient):
-                    # If copying from remote to remote, can streamline the process
-                    source_client.copy_bundle(source_bundle_uuid, info, dest_client, dest_worksheet_uuid, add_to_worksheet)
-                else:
-                    # Download from source
-                    if source_info['data_hash']:
-                        source_path, temp_path = source_client.download_target((source_bundle_uuid, ''), False)
-                    else:
-                        # Would want to pass in None, but the upload process expects real files, so use this placeholder.
-                        source_path = temp_path = None
-
-                    # Upload to dest
-                    print >>self.stdout, dest_client.upload_bundle(source_path, info, dest_worksheet_uuid, False, [], add_to_worksheet)
-
-                    # Clean up
-                    if temp_path: path_util.remove(temp_path)
-        else:
+        # Bundle already exists, just need to add to worksheet if desired.
+        if bundle:
             if add_to_worksheet:
                 dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(source_bundle_uuid))
+            return
+
+        source_info = source_client.get_bundle_info(source_bundle_uuid)
+        if source_info is None:
+            print >>self.stdout, 'Unable to read bundle %s' % source_bundle_uuid
+            return
+
+        source_desc = self.simple_bundle_str(source_info)
+        if source_info['state'] not in [State.READY, State.FAILED]:
+            print >>self.stdout, 'Not copying %s because it has non-final state %s' % (source_desc, source_info['state'])
+            return
+
+        print >>self.stdout, "Copying %s..." % source_desc
+        target = (source_bundle_uuid, '')
+
+        if source_info['data_hash']:
+            # Open source (as archive)
+            if isinstance(source_client, LocalBundleClient):
+                source = zip_util.open_packed_path(source_client.get_target_path(target), follow_symlinks=False, exclude_patterns=None)
+            else:
+                source_file_uuid = source_client.open_target_archive((source_bundle_uuid, ''))
+                source = RPCFileHandle(source_file_uuid, source_client.proxy)
+
+            # Open target (temporary file)
+            if isinstance(dest_client, LocalBundleClient):
+                dest_path = tempfile.mkstemp('.tar.gz')[1]
+                dest = open(dest_path, 'w')
+            else:
+                dest_file_uuid = dest_client.open_temp_file('bundle.tar.gz')
+                dest = RPCFileHandle(dest_file_uuid, dest_client.proxy)
+
+            # Copy contents over from source to target.
+            file_util.copy(
+                source,
+                dest,
+                autoflush=False,
+                print_status='Copying %s from %s to %s' % (source_bundle_uuid, source_client.address, dest_client.address))
+            dest.close()
+            
+            # Set sources
+            if isinstance(dest_client, LocalBundleClient):
+                sources = [dest_path]
+            else:
+                sources = [dest_file_uuid]
+        else:
+            sources = None
+
+        # Finally, install the archive (this function will delete it).
+        if isinstance(dest_client, LocalBundleClient):
+            result = dest_client.upload_bundle(
+                sources=sources,
+                follow_symlinks=False,
+                exclude_patterns=None,
+                git=False,
+                unpack=True,
+                remove_sources=True,
+                info=source_info,
+                worksheet_uuid=dest_worksheet_uuid,
+                add_to_worksheet=add_to_worksheet,
+            )
+        else:
+            result = dest_client.finish_upload_bundle(
+                sources,
+                True,
+                source_info,
+                dest_worksheet_uuid,
+                add_to_worksheet)
+
+        if source_info['data_hash']:
+            if not isinstance(source_client, LocalBundleClient):
+                source_client.finalize_file(source_file_uuid)
+        return result
+
 
     @Commands.command(
         'make',
@@ -1052,8 +1087,8 @@ class BundleCLI(object):
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
             Commands.Argument('--force', action='store_true', help='Delete bundle (DANGEROUS - breaking dependencies!)'),
             Commands.Argument('-r', '--recursive', action='store_true', help='Delete all bundles downstream that depend on this bundle (DANGEROUS - could be a lot!).'),
-            Commands.Argument('-d', '--data-only', action='store_true', help='Keep the bundle metadata, but remove the bundle contents on disk.'),
-            Commands.Argument('-i', '--dry-run', help='Perform a dry run (just show what will be done without doing it).', action='store_true'),
+            Commands.Argument('-d', '--data_only', action='store_true', help='Keep the bundle metadata, but remove the bundle contents on disk.'),
+            Commands.Argument('-i', '--dry_run', help='Perform a dry run (just show what will be done without doing it).', action='store_true'),
             Commands.Argument('-w', '--worksheet_spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1068,7 +1103,7 @@ class BundleCLI(object):
         if args.dry_run:
             print >>self.stdout, 'This command would permanently remove the following bundles (not doing so yet):'
             bundle_infos = client.get_bundle_infos(deleted_uuids)
-            bundle_info_list = [bundle_infos[uuid] for uuid in deleted_uuids]
+            bundle_info_list = [bundle_infos[uuid] for uuid in deleted_uuids for uuid in bundle_infos]
             self.print_bundle_info_list(bundle_info_list, uuid_only=False, print_ref=False)
         else:
             for uuid in deleted_uuids:
@@ -1091,7 +1126,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('keywords', help='Keywords to search for.', nargs='+'),
             Commands.Argument('-a', '--append', help='Append these bundles to the current worksheet.', action='store_true'),
-            Commands.Argument('-u', '--uuid-only', help='Print only uuids.', action='store_true'),
+            Commands.Argument('-u', '--uuid_only', help='Print only uuids.', action='store_true'),
             Commands.Argument('-w', '--worksheet_spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1149,7 +1184,7 @@ class BundleCLI(object):
         name='ls',
         help='List bundles in a worksheet.',
         arguments=(
-            Commands.Argument('-u', '--uuid-only', help='Print only uuids.', action='store_true'),
+            Commands.Argument('-u', '--uuid_only', help='Print only uuids.', action='store_true'),
             Commands.Argument('-w', '--worksheet_spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1189,7 +1224,7 @@ class BundleCLI(object):
                 else:
                     return info.get(col, info.get('metadata', {}).get(col))
 
-            columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'bundle_type', 'owner', 'created', 'data_size', 'state')
+            columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'summary', 'owner', 'created', 'data_size', 'state')
             post_funcs = {'uuid': UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
             justify = {'data_size': 1, 'ref': 1}
             bundle_dicts = [
@@ -1350,7 +1385,7 @@ class BundleCLI(object):
             if decorate:
                 import base64
                 for line in client.head_target(target, maxlines):
-                    print >>self.stdout, formatting.verbose_contents_str(base64.b64decode(line))
+                    print >>self.stdout, formatting.verbose_contents_str(base64.b64decode(line)),
             else:
                 client.cat_target(target, self.stdout)
 
@@ -1594,7 +1629,7 @@ class BundleCLI(object):
             Commands.Argument('item_type', help='Type of item(s) to add {text, bundle, worksheet}.', choices=('text', 'bundle', 'worksheet'), metavar='item_type'),
             Commands.Argument('item_spec', help=ITEM_DESCRIPTION, nargs='+', completer=UnionCompleter(WorksheetsCompleter, BundlesCompleter)),
             Commands.Argument('dest_worksheet', help='Worksheet to which to add items (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-            Commands.Argument('-d', '--copy-dependencies', help='If adding bundles, also add dependencies of the bundles.', action='store_true'),
+            Commands.Argument('-d', '--copy_dependencies', help='If adding bundles, also add dependencies of the bundles.', action='store_true'),
         ),
     )
     def do_add_command(self, args):
@@ -1602,7 +1637,7 @@ class BundleCLI(object):
         dest_client, dest_worksheet_uuid = self.parse_client_worksheet_uuid(args.dest_worksheet)
 
         if args.item_type != 'bundle' and args.copy_dependencies:
-            raise UsageError("-d/--copy-dependencies flag only applies when adding bundles.")
+            raise UsageError("-d/--copy_dependencies flag only applies when adding bundles.")
 
         if args.item_type == 'text':
             for item_spec in args.item_spec:
@@ -1645,7 +1680,7 @@ class BundleCLI(object):
             '  work <alias>::<worksheet> : Switch to the given worksheet on instance <alias>.',
         ],
         arguments=(
-            Commands.Argument('-u', '--uuid-only', help='Print only the worksheet uuid.', action='store_true'),
+            Commands.Argument('-u', '--uuid_only', help='Print only the worksheet uuid.', action='store_true'),
             Commands.Argument('worksheet_spec', help=WORKSHEET_SPEC_FORMAT, nargs='?', completer=UnionCompleter(AddressesCompleter, WorksheetsCompleter)),
         ),
     )
@@ -1835,7 +1870,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('keywords', help='Keywords to search for.', nargs='*'),
             Commands.Argument('-a', '--address', help=ADDRESS_SPEC_FORMAT, completer=AddressesCompleter),
-            Commands.Argument('-u', '--uuid-only', help='Print only uuids.', action='store_true'),
+            Commands.Argument('-u', '--uuid_only', help='Print only uuids.', action='store_true'),
         ),
     )
     def do_wls_command(self, args):
@@ -2082,9 +2117,9 @@ class BundleCLI(object):
         'work-manager',
         help='Run the CodaLab bundle work manager (to execute run bundles).',
         arguments=(
-            Commands.Argument('-t', '--worker-type', type=str, help='Worker type (defined in config.json).', default='local'),
-            Commands.Argument('--num-iterations', help='Number of bundles to process before exiting (for debugging).', type=int, default=None),
-            Commands.Argument('--sleep-time', type=int, help='Number of seconds to wait between successive actions.', default=1),
+            Commands.Argument('-t', '--worker_type', type=str, help='Worker type (defined in config.json).', default='local'),
+            Commands.Argument('--num_iterations', help='Number of bundles to process before exiting (for debugging).', type=int, default=None),
+            Commands.Argument('--sleep_time', type=int, help='Number of seconds to wait between successive actions.', default=1),
         ),
     )
     def do_work_manager_command(self, args):
@@ -2151,7 +2186,7 @@ class BundleCLI(object):
             'Note: do not do this operation when you have running bundles.',
         ],
         arguments=(
-            Commands.Argument('-i', '--dry-run', action='store_true', help='Perform dry run (don\'t actually do it, but see what the command would do).'),
+            Commands.Argument('-i', '--dry_run', action='store_true', help='Perform dry run (don\'t actually do it, but see what the command would do).'),
         ),
     )
     def do_cleanup_command(self, args):
