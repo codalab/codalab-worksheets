@@ -17,7 +17,12 @@ import tempfile
 from codalab.common import UsageError
 from codalab.lib import path_util, print_util, file_util
 
+# Files with these extensions are considered archive.
 ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip']
+
+# When deciding whether an archive contains a single file/directory, ignore
+# these contents.
+IGNORE_FILES = ['.DS_Store', '__MACOSX']
 
 def path_is_archive(path):
     if isinstance(path, basestring):
@@ -88,7 +93,7 @@ def unpack(source, dest_path):
 
     # Move files into the right place.
     # If archive only contains one path, then use that.
-    files = [f for f in os.listdir(tmp_path) if f != '.DS_Store']
+    files = [f for f in os.listdir(tmp_path) if f not in IGNORE_FILES]
     if len(files) == 1:
         path_util.rename(os.path.join(tmp_path, files[0]), dest_path)
         path_util.remove(tmp_path)
