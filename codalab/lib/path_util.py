@@ -241,7 +241,7 @@ def read_lines(path, max_num_lines=None, max_total_bytes=None):
               (max_total_bytes is None or len(lines) < max_num_lines):
             # Read a line
             line = file_handle.readline(max_total_bytes - num_bytes_read)
-            if line is None:
+            if not line:
                 break
             # Update buffer and counts.
             lines.append(line)
