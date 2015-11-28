@@ -1810,9 +1810,9 @@ class BundleCLI(object):
                 contents = worksheet_util.interpret_genpath_table_contents(client, contents)
                 # print >>self.stdout, the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
-            elif mode == 'html' or mode == 'image':
+            elif mode == 'html' or mode == 'image' or mode == 'graph':
                 # Placeholder
-                print >>self.stdout, '[' + mode + ' ' + str(data) + ']'
+                print >>self.stdout, '[' + mode + ']'
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
                 self.display_interpreted(client, worksheet_info, search_interpreted)
