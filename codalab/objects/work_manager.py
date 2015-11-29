@@ -111,6 +111,7 @@ class Worker(object):
 
                     status = self.machine.start_bundle(bundle, self.bundle_store, self.get_parent_dict(bundle), username)
                     if status != None:
+                        status['started'] = int(time.time())
                         started = True
 
                 except Exception as e:
@@ -226,6 +227,8 @@ class Worker(object):
         Update the database with information about the bundle given by |status|.
         If the bundle is completed, then we need to install the bundle and clean up.
         '''
+        status['last_updated'] = int(time.time())
+
         # Update the bundle's data with status (which is the new information).
         bundle = status['bundle']
 
@@ -241,14 +244,14 @@ class Worker(object):
         bundle_subclass = type(bundle)
         for spec in bundle_subclass.METADATA_SPECS:
             value = status.get(spec.key)
-            if value != None:
+            if value is not None:
                 metadata[spec.key] = value
 
         #print 'update_running_bundle', status
 
         # See if the bundle is completed.
         success = status.get('success')
-        if success != None:
+        if success is not None:
             # Re-install dependencies.
             # - For RunBundle, remove the dependencies.
             # - For MakeBundle, copy.  This way, we maintain the invariant that
@@ -290,10 +293,16 @@ class Worker(object):
             db_update['state'] = state
             print '-- END BUNDLE: %s [%s]' % (bundle, state)
             print ''
+
             self._update_events_log('finalize_bundle', bundle, (bundle.uuid, state, metadata))
+
+            # Update user statistics
+            self.model.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
+            self.model.update_user_disk_used(bundle.owner_id)
 
         # Update database!
         self.model.update_bundle(bundle, db_update)
+
 
     def update_created_bundles(self):
         '''
@@ -384,10 +393,11 @@ class Worker(object):
             bool_killed = self.check_killed_bundles()
             # Try to stage bundles
             self.update_created_bundles()
-            # Try to run bundles with Ready parents
+            # Try to run bundles with READY parents
             bool_run = self.update_staged_bundles()
             # Check to see if any bundles are done running
             bool_done = self.check_finished_bundles()
+            # TODO: mark QUEUED and RUNNING jobs as FAILED that we haven't heard back from a while
 
             # Sleep only if nothing happened.
             if not (bool_killed or bool_run or bool_done):

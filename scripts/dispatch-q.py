@@ -37,6 +37,7 @@ if mode == 'start':
     parser.add_argument('--username', type=str, help='user who is running this job')
     parser.add_argument('--request_time', type=float, help='request this much computation time (in seconds)')
     parser.add_argument('--request_memory', type=float, help='request this much memory (in bytes)')
+    parser.add_argument('--request_disk', type=float, help='request this much memory (in bytes)')
     parser.add_argument('--request_cpus', type=int, help='request this many CPUs')
     parser.add_argument('--request_gpus', type=int, help='request this many GPUs')
     parser.add_argument('--request_queue', help='submit job to this queue')
@@ -114,11 +115,11 @@ elif mode == 'info':
             info['exitreason'] = exitreason
 
         time = tokens[5]
-        if time:
+        if time and time != '-1':
             info['time'] = int(time)
 
         memory = tokens[6]
-        if memory:
+        if memory and memory != '-1':
             info['memory'] = int(memory) * 1024 * 1024  # Convert to bytes
 
         infos.append(info)

@@ -367,7 +367,10 @@ def interpret_genpath(bundle_info, genpath):
         metadata = bundle_info['metadata']
         for key, value in metadata.items():
             if key.startswith('request_') and value:
-                args.extend(['--' + key, formatting.quote(str(value))])
+                if isinstance(value, bool):
+                    args.append('--' + key)
+                else:
+                    args.extend(['--' + key, formatting.quote(str(value))])
         return ' '.join(args)
     elif genpath == 'summary':
         def friendly_render_dep(dep):
