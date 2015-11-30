@@ -221,25 +221,6 @@ def cat(path, out):
         file_util.copy(file_handle, out)
 
 
-def truncated_read_lines(file_handle, max_total_bytes):
-    """
-    Reads lines from the file up to the given total number of bytes.
-
-    :param file_handle: file object to read from
-    :param max_total_bytes: integer cap on the total number of bytes to read
-    :return: a generator of strings read from the file
-    """
-    last_pos = file_handle.tell()
-    for line in file_handle:
-        if file_handle.tell() > max_total_bytes:
-            file_handle.seek(last_pos)
-            yield file_handle.read(max_total_bytes - last_pos)
-            return
-        else:
-            last_pos = file_handle.tell()
-            yield line
-
-
 def read_lines(path, max_num_lines=None, max_total_bytes=None):
     """
     Return list of lines (up to num_lines).
@@ -252,16 +233,20 @@ def read_lines(path, max_num_lines=None, max_total_bytes=None):
     if not os.path.isfile(path):
         return None
 
+    lines = []
     with open(path, 'rb') as file_handle:
-        if max_total_bytes is None:
-            lines = (line for line in file_handle)
-        else:
-            lines = truncated_read_lines(file_handle, max_total_bytes)
-
-        if max_num_lines is None:
-            return list(lines)
-        else:
-            return list(itertools.islice(lines, max_num_lines))
+        num_bytes_read = 0
+        # While we haven't exceeded lines or bytes quota...
+        while (max_num_lines is None or num_bytes_read < max_total_bytes) and \
+              (max_total_bytes is None or len(lines) < max_num_lines):
+            # Read a line
+            line = file_handle.readline(max_total_bytes - num_bytes_read)
+            if not line:
+                break
+            # Update buffer and counts.
+            lines.append(line)
+            num_bytes_read += len(line)
+    return lines
 
 
 def base64_encode(path):

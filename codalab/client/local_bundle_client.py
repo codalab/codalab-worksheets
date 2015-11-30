@@ -474,7 +474,10 @@ class LocalBundleClient(BundleClient):
     # Maximum number of bytes to read per line requested
     MAX_BYTES_PER_LINE = 128
 
-    def head_target(self, target, max_num_lines, replace_non_unicode=False):
+    def head_target(self, target, max_num_lines, replace_non_unicode=False, base64_encode=True):
+        '''
+        Return base64 encoded version of the result.
+        '''
         max_total_bytes = None if max_num_lines is None else max_num_lines * self.MAX_BYTES_PER_LINE
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
@@ -485,7 +488,10 @@ class LocalBundleClient(BundleClient):
         if replace_non_unicode:
             lines = map(formatting.verbose_contents_str, lines)
 
-        return map(base64.b64encode, lines)
+        if base64_encode:
+            lines = map(base64.b64encode, lines)
+
+        return lines
 
     def open_target_handle(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
@@ -935,7 +941,9 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
-    DEFAULT_MAX_CONTENT_LINES = 10
+    # Default number of lines to pull for each display mode.
+    DEFAULT_CONTENTS_MAX_LINES = 10
+    DEFAULT_GRAPH_MAX_LINES = 100
 
     def resolve_interpreted_items(self, interpreted_items):
         """
@@ -945,11 +953,12 @@ class LocalBundleClient(BundleClient):
         The result can be serialized via JSON.
         """
         for item in interpreted_items:
+            mode = item['mode']
+            data = item['interpreted']
+            properties = item['properties']
+
             try:
-                mode = item['mode']
-                data = item['interpreted']
-                properties = item['properties']
-                # if's in order of most frequent
+                # Replace data with a resolved version.
                 if mode == 'markup':
                     # no need to do anything
                     pass
@@ -977,6 +986,23 @@ class LocalBundleClient(BundleClient):
                 elif mode == 'image':
                     path = self.get_target_path(data)
                     data = path_util.base64_encode(path)
+                elif mode == 'graph':
+                    # data = list of {'target': ...}
+                    # Add a 'points' field that contains the contents of the target.
+                    for info in data:
+                        target = info['target']
+                        path = self.get_target_path(target)
+                        contents = self.head_target(
+                            target,
+                            int(properties.get('maxlines', self.DEFAULT_GRAPH_MAX_LINES)),
+                            replace_non_unicode=True,
+                            base64_encode=False)
+                        if contents is not None:
+                            # Assume TSV file without header for now, just return each line as a row
+                            info['points'] = points = []
+                            for line in contents:
+                                row = line.split('\t')
+                                points.append(row)
                 elif mode == 'search':
                     data = worksheet_util.interpret_search(self, None, data)
                 elif mode == 'wsearch':
@@ -985,12 +1011,14 @@ class LocalBundleClient(BundleClient):
                     pass
                 else:
                     raise UsageError('Invalid display mode: %s' % mode)
+
             except UsageError as e:
                 data = [base64.b64encode("Error: %s" % e.message)]
             except StandardError as e:
                 import traceback
                 traceback.print_exc()
                 data = [base64.b64encode("Unexpected error interpreting item")]
+
             # Assign the interpreted from the processed data
             item['interpreted'] = data
 
