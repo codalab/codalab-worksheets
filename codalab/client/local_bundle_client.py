@@ -970,7 +970,7 @@ class LocalBundleClient(BundleClient):
                     data = (header, contents)
                 elif mode == 'contents':
                     try:
-                        max_lines = int(properties.get('maxlines', self.DEFAULT_MAX_CONTENT_LINES))
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
                     except ValueError:
                         raise UsageError("maxlines must be integer")
 
@@ -987,16 +987,17 @@ class LocalBundleClient(BundleClient):
                     path = self.get_target_path(data)
                     data = path_util.base64_encode(path)
                 elif mode == 'graph':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+
                     # data = list of {'target': ...}
                     # Add a 'points' field that contains the contents of the target.
                     for info in data:
                         target = info['target']
                         path = self.get_target_path(target)
-                        contents = self.head_target(
-                            target,
-                            int(properties.get('maxlines', self.DEFAULT_GRAPH_MAX_LINES)),
-                            replace_non_unicode=True,
-                            base64_encode=False)
+                        contents = self.head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
                         if contents is not None:
                             # Assume TSV file without header for now, just return each line as a row
                             info['points'] = points = []
@@ -1014,7 +1015,8 @@ class LocalBundleClient(BundleClient):
 
             except UsageError as e:
                 data = [base64.b64encode("Error: %s" % e.message)]
-            except StandardError as e:
+
+            except StandardError:
                 import traceback
                 traceback.print_exc()
                 data = [base64.b64encode("Unexpected error interpreting item")]

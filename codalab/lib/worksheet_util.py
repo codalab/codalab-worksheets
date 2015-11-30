@@ -802,71 +802,73 @@ def interpret_items(schemas, raw_items):
     # Go through all the raw items...
     last_was_empty_line = False
     for raw_index, item in enumerate(raw_items):
-        (bundle_info, subworksheet_info, value_obj, item_type) = item
-        new_last_was_empty_line = True
+        try:
+            (bundle_info, subworksheet_info, value_obj, item_type) = item
+            new_last_was_empty_line = True
 
-        is_bundle = (item_type == TYPE_BUNDLE)
-        is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
-        is_directive = (item_type == TYPE_DIRECTIVE)
-        if not is_bundle:
-            flush_bundles()
-        # Reset display to minimize long distance dependencies of directives
-        if not (is_bundle or is_search):
-            current_display = default_display
-        # Reset schema to minimize long distance dependencies of directives
-        if not is_directive:
-            current_schema = None
+            is_bundle = (item_type == TYPE_BUNDLE)
+            is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
+            is_directive = (item_type == TYPE_DIRECTIVE)
+            if not is_bundle:
+                flush_bundles()
+            # Reset display to minimize long distance dependencies of directives
+            if not (is_bundle or is_search):
+                current_display = default_display
+            # Reset schema to minimize long distance dependencies of directives
+            if not is_directive:
+                current_schema = None
 
-        if item_type == TYPE_BUNDLE:
-            raw_to_interpreted.append((len(interpreted_items), len(bundle_infos)))
-            bundle_infos.append((raw_index, bundle_info))
-        elif item_type == TYPE_WORKSHEET:
-            raw_to_interpreted.append((len(interpreted_items), 0))
-            interpreted_items.append({
-                'mode': TYPE_WORKSHEET,
-                'interpreted': subworksheet_info,
-                'properties': {},
-                'subworksheet_info': subworksheet_info,
-            })
-        elif item_type == TYPE_MARKUP:
-            new_last_was_empty_line = (value_obj == '')
-            if len(interpreted_items) > 0 and interpreted_items[-1]['mode'] == TYPE_MARKUP and \
-               not last_was_empty_line and not new_last_was_empty_line:
-                # Join with previous markup item
-                interpreted_items[-1]['interpreted'] += '\n' + value_obj
-            elif not new_last_was_empty_line:
+            if item_type == TYPE_BUNDLE:
+                raw_to_interpreted.append((len(interpreted_items), len(bundle_infos)))
+                bundle_infos.append((raw_index, bundle_info))
+            elif item_type == TYPE_WORKSHEET:
+                raw_to_interpreted.append((len(interpreted_items), 0))
                 interpreted_items.append({
-                    'mode': TYPE_MARKUP,
-                    'interpreted': value_obj,
+                    'mode': TYPE_WORKSHEET,
+                    'interpreted': subworksheet_info,
                     'properties': {},
+                    'subworksheet_info': subworksheet_info,
                 })
-            # Important: set raw_to_interpreted after so we can focus on current item.
-            if new_last_was_empty_line:
-                raw_to_interpreted.append(None)
-            else:
-                raw_to_interpreted.append((len(interpreted_items) - 1, 0))
-        elif item_type == TYPE_DIRECTIVE:
-            try:
+            elif item_type == TYPE_MARKUP:
+                new_last_was_empty_line = (value_obj == '')
+                if len(interpreted_items) > 0 and interpreted_items[-1]['mode'] == TYPE_MARKUP and \
+                   not last_was_empty_line and not new_last_was_empty_line:
+                    # Join with previous markup item
+                    interpreted_items[-1]['interpreted'] += '\n' + value_obj
+                elif not new_last_was_empty_line:
+                    interpreted_items.append({
+                        'mode': TYPE_MARKUP,
+                        'interpreted': value_obj,
+                        'properties': {},
+                    })
+                # Important: set raw_to_interpreted after so we can focus on current item.
+                if new_last_was_empty_line:
+                    raw_to_interpreted.append(None)
+                else:
+                    raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+            elif item_type == TYPE_DIRECTIVE:
                 command = get_command(value_obj)
                 if command == '%' or command == '' or command is None:
                     # Comment
                     pass
                 elif command == 'schema':
                     # Start defining new schema
+                    if len(value_obj) < 2:
+                        raise UsageError("`schema` missing name")
                     name = value_obj[1]
                     schemas[name] = current_schema = []
                 elif command == 'addschema':
                     # Add to schema
                     if current_schema is None:
-                        raise UsageError(
-                            "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
+                        raise UsageError("`addschema` must be preceded by `schema` directive")
+                    if len(value_obj) < 2:
+                        raise UsageError("`addschema` missing name")
                     name = value_obj[1]
                     current_schema += schemas[name]
                 elif command == 'add':
                     # Add to schema
                     if current_schema is None:
-                        raise UsageError(
-                            "%s called, but no current schema (must call 'schema <schema-name>' first)" % value_obj)
+                        raise UsageError("`add` must be preceded by `schema` directive")
                     schema_item = canonicalize_schema_item(value_obj[1:])
                     current_schema.append(schema_item)
                 elif command == 'display':
@@ -893,38 +895,44 @@ def interpret_items(schemas, raw_items):
                         'properties': {},
                     })
                 else:
-                    raise UsageError("unknown directive")
+                    raise UsageError("unknown directive `%s`" % command)
 
-            except UsageError as e:
-                current_schema = None
-                interpreted_items.append({
-                    'mode': TYPE_MARKUP,
-                    'interpreted': 'Line %d: Error while parsing directive **%% %s**: %s' % (raw_index, ' '.join(value_obj), e.message),
-                    'properties': {},
-                })
-
-            except StandardError:
-                current_schema = None
-                import traceback
-                traceback.print_exc()
-                interpreted_items.append({
-                    'mode': TYPE_MARKUP,
-                    'interpreted': 'Line %d: Unexpected error while parsing directive **%% %s**' % (raw_index, ' '.join(value_obj)),
-                    'properties': {},
-                })
-
-            finally:
                 # Only search/wsearch contribute an interpreted item
                 if command == 'search' or command == 'wsearch':
                     raw_to_interpreted.append((len(interpreted_items) - 1, 0))
                 else:
                     raw_to_interpreted.append(None)
+            else:
+                raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
-        else:
-            raise RuntimeError('Unknown worksheet item type: %s' % item_type)
-        last_was_empty_line = new_last_was_empty_line
+            # Flush bundles once more at the end
+            if raw_index == len(raw_items) - 1:
+                flush_bundles()
 
-    flush_bundles()
+        except UsageError as e:
+            current_schema = None
+            bundle_infos[:] = []
+            interpreted_items.append({
+                'mode': TYPE_MARKUP,
+                'interpreted': 'Error on line %d: %s' % (raw_index, e.message),
+                'properties': {},
+            })
+            raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+
+        except StandardError:
+            current_schema = None
+            bundle_infos[:] = []
+            import traceback
+            traceback.print_exc()
+            interpreted_items.append({
+                'mode': TYPE_MARKUP,
+                'interpreted': 'Unexpected error while parsing line %d' % raw_index,
+                'properties': {},
+            })
+            raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+
+        finally:
+            last_was_empty_line = new_last_was_empty_line
 
     # Package the result
     assert len(raw_to_interpreted) == len(raw_items)
@@ -940,7 +948,6 @@ def interpret_items(schemas, raw_items):
             if interpreted_index_str not in interpreted_to_raw:  # Bias towards the last item
                 interpreted_to_raw[interpreted_index_str] = raw_index
         next_interpreted_index = interpreted_index
-
 
     # Return the result
     result = {}
