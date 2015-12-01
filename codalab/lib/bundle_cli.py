@@ -29,29 +29,29 @@ import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
 from codalab.bundles import (
-  get_bundle_subclass,
-  UPLOADED_TYPES,
+    get_bundle_subclass,
+    UPLOADED_TYPES,
 )
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
 from codalab.common import (
-  precondition,
-  State,
-  PermissionError,
-  UsageError,
-  CODALAB_VERSION
+    precondition,
+    State,
+    PermissionError,
+    UsageError,
+    CODALAB_VERSION
 )
 from codalab.lib import (
-  metadata_util,
-  file_util,
-  path_util,
-  zip_util,
-  spec_util,
-  worksheet_util,
-  cli_util,
-  formatting,
-  ui_actions,
+    metadata_util,
+    file_util,
+    path_util,
+    zip_util,
+    spec_util,
+    worksheet_util,
+    cli_util,
+    formatting,
+    ui_actions,
 )
 from codalab.objects.permission import permission_str, group_permissions_str
 from codalab.objects.work_manager import Worker
@@ -61,20 +61,22 @@ from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.server.rpc_file_handle import RPCFileHandle
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
-  CodaLabCompleter,
-  WorksheetsCompleter,
-  BundlesCompleter,
-  AddressesCompleter,
-  GroupsCompleter,
-  UnionCompleter,
-  NullCompleter,
-  require_not_headless,
+    CodaLabCompleter,
+    WorksheetsCompleter,
+    BundlesCompleter,
+    AddressesCompleter,
+    GroupsCompleter,
+    UnionCompleter,
+    NullCompleter,
+    TargetsCompleter,
+    require_not_headless,
 )
 
 # Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
-TARGET_SPEC_FORMAT = '[<key>:](<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
+TARGET_SPEC_FORMAT = '(<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
+ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
 BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
 GLOBAL_BUNDLE_SPEC_FORMAT = '((<uuid>|<name>|^<index>)|(<alias>|<address>)::(<uuid>|<name>))'
 WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
@@ -748,7 +750,7 @@ class BundleCLI(object):
             'Most of the other arguments specify metadata fields.',
         ],
         arguments=(
-            Commands.Argument('path', help='Paths (or URLs) of the files/directories to upload.', nargs='*', completer=require_not_headless(FilesCompleter)),
+            Commands.Argument('path', help='Paths (or URLs) of the files/directories to upload.', nargs='*', completer=require_not_headless(FilesCompleter())),
             Commands.Argument('-c', '--contents', help='Specify the string contents of the bundle.'),
             Commands.Argument('-L', '--follow_symlinks', help='Always dereference (follow) symlinks.', action='store_true'),
             Commands.Argument('-x', '--exclude_patterns', help='Exclude these file patterns.', nargs='*'),
@@ -961,7 +963,7 @@ class BundleCLI(object):
             '  make <key>:<bundle> ... <key>:<bundle> : New bundle contains file/directories <key> ... <key>, whose contents are given.',
         ],
         arguments=(
-            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
+            Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
             Commands.Argument('-w', '--worksheet_spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ) + Commands.metadata_arguments([MakeBundle]) + EDIT_ARGUMENTS,
     )
@@ -984,8 +986,8 @@ class BundleCLI(object):
         'run',
         help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
-            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, nargs='*', completer=BundlesCompleter),
-            Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.'),
+            Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
+            Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet_spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
@@ -1387,7 +1389,10 @@ class BundleCLI(object):
 
     # Helper: shared between info and cat
     def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
+        from codalab.lib.print_util import pretty_print
+        pretty_print(target)
         info = client.get_target_info(target, 1)
+        pretty_print(info)
         info_type = info.get('type')
 
         if info_type is None:
