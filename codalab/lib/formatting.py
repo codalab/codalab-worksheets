@@ -14,10 +14,13 @@ def contents_str(input_string):
     """
     if input_string is None:
         return ''
+
     try:
-        return input_string.encode('utf-8')
+        input_string.decode('utf-8')
     except UnicodeDecodeError:
         return ''
+
+    return input_string
 
 
 def verbose_contents_str(input_string):

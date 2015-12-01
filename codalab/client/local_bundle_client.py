@@ -992,56 +992,69 @@ class LocalBundleClient(BundleClient):
             data = item['interpreted']
             properties = item['properties']
 
-            # Replace data with a resolved version.
+            try:
+                # Replace data with a resolved version.
+                if mode == 'markup':
+                    # no need to do anything
+                    pass
+                elif mode == 'record' or mode == 'table':
+                    # header_name_posts is a list of (name, post-processing) pairs.
+                    header, contents = data
+                    # Request information
+                    contents = worksheet_util.interpret_genpath_table_contents(self, contents)
+                    data = (header, contents)
+                elif mode == 'contents':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
 
-            if mode == 'markup':
-                # no need to do anything
-                pass
-            elif mode == 'record' or mode == 'table':
-                # header_name_posts is a list of (name, post-processing) pairs.
-                header, contents = data
-                # Request information
-                contents = worksheet_util.interpret_genpath_table_contents(self, contents)
-                data = (header, contents)
-            elif mode == 'contents':
-                info = self.get_target_info(data, 1)
-                if 'type' not in info:
-                    data = None
-                elif info['type'] == 'file':
-                    data = self.head_target(
-                        data,
-                        int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES)),
-                        replace_non_unicode=True)
-            elif mode == 'html':
-                data = self.head_target(data, None)
-            elif mode == 'image':
-                path = self.get_target_path(data)
-                data = path_util.base64_encode(path)
-            elif mode == 'graph':
-                # data = list of {'target': ...}
-                # Add a 'points' field that contains the contents of the target.
-                for info in data:
-                    target = info['target']
-                    path = self.get_target_path(target)
-                    contents = self.head_target(
-                        target,
-                        int(properties.get('maxlines', self.DEFAULT_GRAPH_MAX_LINES)),
-                        replace_non_unicode=True,
-                        base64_encode=False)
-                    if contents is not None:
-                        # Assume TSV file without header for now, just return each line as a row
-                        info['points'] = points = []
-                        for line in contents:
-                            row = line.split('\t')
-                            points.append(row)
-            elif mode == 'search':
-                data = worksheet_util.interpret_search(self, None, data)
-            elif mode == 'wsearch':
-                data = worksheet_util.interpret_wsearch(self, data)
-            elif mode == 'worksheet':
-                pass
-            else:
-                raise UsageError('Invalid display mode: %s' % mode)
+                    info = self.get_target_info(data, 1)
+                    if 'type' not in info:
+                        data = None
+                    elif info['type'] == 'file':
+                        data = self.head_target(data, max_lines, replace_non_unicode=True)
+                    elif info['type'] == 'directory':
+                        data = [base64.b64encode('<directory>')]
+                elif mode == 'html':
+                    data = self.head_target(data, None)
+                elif mode == 'image':
+                    path = self.get_target_path(data)
+                    data = path_util.base64_encode(path)
+                elif mode == 'graph':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+
+                    # data = list of {'target': ...}
+                    # Add a 'points' field that contains the contents of the target.
+                    for info in data:
+                        target = info['target']
+                        path = self.get_target_path(target)
+                        contents = self.head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
+                        if contents is not None:
+                            # Assume TSV file without header for now, just return each line as a row
+                            info['points'] = points = []
+                            for line in contents:
+                                row = line.split('\t')
+                                points.append(row)
+                elif mode == 'search':
+                    data = worksheet_util.interpret_search(self, None, data)
+                elif mode == 'wsearch':
+                    data = worksheet_util.interpret_wsearch(self, data)
+                elif mode == 'worksheet':
+                    pass
+                else:
+                    raise UsageError('Invalid display mode: %s' % mode)
+
+            except UsageError as e:
+                data = [base64.b64encode("Error: %s" % e.message)]
+
+            except StandardError:
+                import traceback
+                traceback.print_exc()
+                data = [base64.b64encode("Unexpected error interpreting item")]
 
             # Assign the interpreted from the processed data
             item['interpreted'] = data
