@@ -108,7 +108,7 @@ def parse_size(s):
         return n * 1024 * 1024
     if unit == 'g':
         return n * 1024 * 1024 * 1024
-    raise BaseException('Invalid size: %s, expected <number>[<k|m|g>]' % s)
+    raise ValueError('Invalid size: %s, expected <number>[<k|m|g>]' % s)
 
 
 def parse_duration(s):
@@ -129,7 +129,7 @@ def parse_duration(s):
         return n * 60 * 60 * 24
     if unit == 'y':
         return n * 60 * 60 * 24 * 365
-    raise BaseException('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
+    raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
 
 ############################################################
 

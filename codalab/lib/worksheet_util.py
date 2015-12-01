@@ -405,11 +405,11 @@ def interpret_genpath(bundle_info, genpath):
 
     # Bundle field?
     value = bundle_info.get(genpath)
-    if value != None: return value
+    if value is not None: return value
 
     # Metadata field?
     value = bundle_info.get('metadata', {}).get(genpath)
-    if value != None: return value
+    if value is not None: return value
 
     return None
 
@@ -608,39 +608,47 @@ def get_default_schemas():
     return schemas
 
 
-def interpret_items(schemas, items):
+def interpret_items(schemas, raw_items):
     """
     schemas: initial mapping from name to list of schema items (columns of a table)
-    items: list of worksheet items (triples) to interpret
-    Return {'items': items}, where items is a list of interpreted items.
-    Each item is one of the following:
-    - ('markup'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
-    - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
-      where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
-    - ('search', [keyword, ...])
+    raw_items: list of (raw) worksheet items (triples) to interpret
+    Return {'items': interpreted_items, ...}, where interpreted_items is a list of:
+    {
+        'mode': display mode ('markup' | 'contents' | 'image' | 'html', etc.)
+        'interpreted': one of
+            - rendered string
+            - target = (bundle_uuid, genpath)
+            - (header = (col1, ..., coln), rows = [{col1:value1, ..., coln:valuen}, ...]) [for tables]
+            - {keywords: [...]} for mode = 'search' or 'wsearch'
+        'properties': dict of properties (e.g., width, maxlines, etc.),
+        'bundle_info': bundle_info or list of bundle_infos,
+        'subworksheet_info': subworksheet,
+    }
+    In addition, return an alignment between the raw items and the interpreted items.
+    Each interpreted item has a focusIndex, and possibly consists of a list of
+    table rows (indexed by subFocusIndex).  Here is an example:
+      --- Raw ---                   --- Interpreted ---
+      rawIndex                                         (focusIndex, subFocusIndex)  
+      0        % display table
+      1        [bundle]             [table - row 0     (0, 0)
+      2        [bundle]                    - row 1]    (0, 1)
+      3        
+      4        hello                [markup            (1, 0)
+      5        world                       ]
+      6        [worksheet]          [worksheet]        (2, 0)
+      7
+    The mapping should be computed as follows:
+    - Some raw items contribute directly to a particular interpreted item.
+    - Others (blank lines, directives, schema definitions) don't.
+    - Those that don't should get mapped to the next interpreted item.
     """
-    result = {}
-
-    # Mapping from worksheet_info['raw'] index to |(focusIndex, subFocusIndex)| based on interpreted_items.
-    # Used to intelligently focus on the worksheet_item where the cursor was present when exiting the editor.
-    raw_interpreted_map = {}
-
-    # Reverse mapping from interpreted_items indexes to worksheet_info['raw'] indexes.
-    # Used to intelligently place the cursor at the focused worksheet item while entering the 'edit' mode.
-    interpreted_raw_map = {}
-
-    # A list to store |((focus_index, sub_focus_index), end_index)| which is used to populate raw_interpreted_map.
-    raw_interpreted_list = []
-    last_was_empty_line = False
-    start_index = 0
-    focus_index = 0
-    sub_focus_index = -1
+    raw_to_interpreted = []  # rawIndex => (focusIndex, subFocusIndex)
 
     # Set default schema
     current_schema = None
     default_display = ('table', 'default')
     current_display = default_display
-    new_items = []
+    interpreted_items = []
     bundle_infos = []
 
     def get_schema(args):  # args is a list of schema names
@@ -654,15 +662,30 @@ def interpret_items(schemas, items):
     def is_missing(info):
         return 'metadata' not in info
 
-    def flush_bundles(start_index, focus_index, sub_focus_index):
-        """
-        Having collected bundles in |bundle_infos|, flush them into |new_items|,
-        potentially as a single table depending on the mode.
+    def parse_properties(args):
+        properties = {}
+        for item in args:
+            if '=' not in item:
+                raise UsageError('Expected <key>=<value>, but got %s' % item)
+            key, value = item.split('=', 1)
+            properties[key] = value
+        return properties
 
-        Returns updated indeces as |(end_index, focus_index, sub_focus_index)| after adding items to |new_items|.
+    def genpath_to_target(bundle_info, genpath):
+        # bundle_info, '/stdout' => target = (uuid, 'stdout')
+        if not is_file_genpath(genpath):
+            raise UsageError('Not file genpath: %s' % genpath)
+        # strip off the leading / from genpath to create a subpath in the target.
+        return (bundle_info['uuid'], genpath[1:])
+
+    def flush_bundles():
+        """
+        Having collected bundles in |bundle_infos|, flush them into |interpreted_items|,
+        potentially as a single table depending on the mode.
         """
         if len(bundle_infos) == 0:
-            return (start_index, focus_index, -1)
+            return
+
         # Print out the curent bundles somehow
         mode = current_display[0]
         args = current_display[1:]
@@ -676,33 +699,25 @@ def interpret_items(schemas, items):
 
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
-                    update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
-                    (start_index, focus_index, sub_focus_index) = updated_indeces(item_index, focus_index)
+                    interpreted_items.append({
+                        'mode': TYPE_MARKUP,
+                        'interpreted': 'ERROR: cannot access bundle',
+                        'properties': {},
+                    })
                     continue
 
-                # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
+                # Parse arguments
                 if len(args) == 0:
                     raise_usage_error()
-                interpreted = interpret_genpath(bundle_info, args[0])
+                interpreted = genpath_to_target(bundle_info, args[0])
+                properties = parse_properties(args[1:])
 
-                # Properties - e.g., height, width, maxlines (optional)
-                if len(args) > 1:
-                    properties = dict(item.split('=') for item in args[1].split(','))
-
-                if isinstance(interpreted, tuple):  # Not rendered yet
-                    bundle_uuid, genpath = interpreted
-                    if not is_file_genpath(genpath):
-                        raise_usage_error()
-                    else:
-                        # interpreted is a target: strip off the leading /
-                        interpreted = (bundle_uuid, genpath[1:])
-                new_items.append({
+                interpreted_items.append({
                     'mode': mode,
                     'interpreted': interpreted,
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -717,14 +732,12 @@ def interpret_items(schemas, items):
                         'key': name + ':',
                         'value': apply_func(post, interpret_genpath(bundle_info, genpath))
                     })
-                new_items.append({
+                interpreted_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
-                (start_index, focus_index, sub_focus_index) = updated_indeces(item_index, focus_index)
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -740,8 +753,6 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    update_interpreted_raw_map(start_index, item_index, focus_index, len(rows) - 1)
-                    start_index += 1
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
                     # The front-end relies on the name metadata field existing
@@ -753,34 +764,46 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    update_interpreted_raw_map(start_index, item_index, focus_index, sub_focus_index)
                     processed_bundle_infos.append(processed_bundle_info)
-            new_items.append({
+            interpreted_items.append({
                 'mode': mode,
                 'interpreted': (header, rows),
                 'properties': properties,
                 'bundle_info': processed_bundle_infos
             })
+        elif mode == 'graph':
+            # display graph <genpath> <properties>
+            if len(args) == 0:
+                raise_usage_error()
+            # interpreted is list of {
+            #   'uuid': ...,
+            #   'display_name': ..., # What to show as the description of a bundle
+            #   'target': (bundle_uuid, subpath)
+            # }
+            properties = parse_properties(args[1:])
+            interpreted = [{
+                'uuid': bundle_info['uuid'],
+                'display_name': interpret_genpath(bundle_info, properties.get('display_name', 'name')),
+                'target': genpath_to_target(bundle_info, args[0])
+            } for item_index, bundle_info in bundle_infos]
+
+            interpreted_items.append({
+                'mode': mode,
+                'interpreted': interpreted,
+                'properties': properties,
+                'bundle_info': bundle_infos[0][1]  # Only show the first one for now
+                #'bundle_info': [copy.deepcopy(bundle_info) for item_index, bundle_info in bundle_infos]
+            })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
-        return (start_index, focus_index + 1, -1)
 
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
 
-    def update_interpreted_raw_map(start_index, end_index, focus_index, sub_focus_index=-1):
-        interpreted_raw_map[str(focus_index) + ',' + str(sub_focus_index)] = end_index
-        raw_interpreted_list.append(((focus_index, sub_focus_index), end_index))
-
-    def updated_indeces(end_index, focus_index):
-        return (
-            end_index + 1,
-            focus_index + 1,
-            -1
-        )
-
-    for i, item in enumerate(items):
+    # Go through all the raw items...
+    last_was_empty_line = False
+    for raw_index, item in enumerate(raw_items):
         (bundle_info, subworksheet_info, value_obj, item_type) = item
         new_last_was_empty_line = True
 
@@ -788,7 +811,7 @@ def interpret_items(schemas, items):
         is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
         is_directive = (item_type == TYPE_DIRECTIVE)
         if not is_bundle:
-            (start_index, focus_index, sub_focus_index) = flush_bundles(start_index, focus_index, sub_focus_index)
+            flush_bundles()
         # Reset display to minimize long distance dependencies of directives
         if not (is_bundle or is_search):
             current_display = default_display
@@ -797,32 +820,33 @@ def interpret_items(schemas, items):
             current_schema = None
 
         if item_type == TYPE_BUNDLE:
-            bundle_infos.append((i, bundle_info))
+            raw_to_interpreted.append((len(interpreted_items), len(bundle_infos)))
+            bundle_infos.append((raw_index, bundle_info))
         elif item_type == TYPE_WORKSHEET:
-            new_items.append({
+            raw_to_interpreted.append((len(interpreted_items), 0))
+            interpreted_items.append({
                 'mode': TYPE_WORKSHEET,
                 'interpreted': subworksheet_info,
                 'properties': {},
                 'subworksheet_info': subworksheet_info,
             })
-            update_interpreted_raw_map(start_index, i, focus_index)
-            (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
         elif item_type == TYPE_MARKUP:
             new_last_was_empty_line = (value_obj == '')
-            raw_interpreted_map[str(i)] = (focus_index, 0)
-            if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line and not new_last_was_empty_line:
-                # Combine all consecutive markup items
-                new_items[-1]['interpreted'] += '\n' + value_obj
-                update_interpreted_raw_map(start_index, i, focus_index-1)
-                start_index = i + 1
+            if len(interpreted_items) > 0 and interpreted_items[-1]['mode'] == TYPE_MARKUP and \
+               not last_was_empty_line and not new_last_was_empty_line:
+                # Join with previous markup item
+                interpreted_items[-1]['interpreted'] += '\n' + value_obj
             elif not new_last_was_empty_line:
-                new_items.append({
+                interpreted_items.append({
                     'mode': TYPE_MARKUP,
                     'interpreted': value_obj,
                     'properties': {},
                 })
-                update_interpreted_raw_map(start_index, i, focus_index)
-                (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
+            # Important: set raw_to_interpreted after so we can focus on current item.
+            if new_last_was_empty_line:
+                raw_to_interpreted.append(None)
+            else:
+                raw_to_interpreted.append((len(interpreted_items) - 1, 0))
         elif item_type == TYPE_DIRECTIVE:
             command = get_command(value_obj)
             if command == '%' or command == '' or command is None:
@@ -854,52 +878,61 @@ def interpret_items(schemas, items):
                 keywords = value_obj[1:]
                 mode = command
                 data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
-                new_items.append({
+                interpreted_items.append({
                     'mode': mode,
                     'interpreted': data,
                     'properties': {},
                 })
-                update_interpreted_raw_map(start_index, i, focus_index)
-                (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
             elif command == 'wsearch':
                 # Display worksheets based on query
                 keywords = value_obj[1:]
                 mode = command
                 data = {'keywords': keywords}
-                new_items.append({
+                interpreted_items.append({
                     'mode': mode,
                     'interpreted': data,
                     'properties': {},
                 })
-                update_interpreted_raw_map(start_index, i, focus_index)
-                (start_index, focus_index, sub_focus_index) = updated_indeces(i, focus_index)
             else:
                 # Error
-                new_items.append({
+                interpreted_items.append({
                     'mode': TYPE_MARKUP,
                     'interpreted': 'ERROR: unknown directive **%% %s**' % ' '.join(value_obj),
                     'properties': {},
                 })
+
+            # Only search/wsearch contribute an interpreted item
+            if command == 'search' or command == 'wsearch':
+                raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+            else:
+                raw_to_interpreted.append(None)
         else:
             raise RuntimeError('Unknown worksheet item type: %s' % item_type)
         last_was_empty_line = new_last_was_empty_line
 
-    (start_index, focus_index, sub_focus_index) = flush_bundles(start_index, focus_index, sub_focus_index)
-    result['items'] = new_items
+    flush_bundles()
 
-    def update_raw_interpreted_map(start_index, end_index, value):
-        for i in xrange(start_index, end_index+1):
-            raw_interpreted_map[str(i)] = value
+    # Package the result
+    assert len(raw_to_interpreted) == len(raw_items)
+    interpreted_to_raw = {}
+    next_interpreted_index = None
+    # Go in reverse order so we can assign raw items that map to None to the next interpreted item
+    for raw_index, interpreted_index in reversed(list(enumerate(raw_to_interpreted))):
+        if interpreted_index is None:  # e.g., blank line, directive
+            interpreted_index = next_interpreted_index
+            raw_to_interpreted[raw_index] = interpreted_index
+        else:
+            interpreted_index_str = str(interpreted_index[0]) + ',' + str(interpreted_index[1])
+            if interpreted_index_str not in interpreted_to_raw:  # Bias towards the last item
+                interpreted_to_raw[interpreted_index_str] = raw_index
+        next_interpreted_index = interpreted_index
 
 
-    last_value = 0
-    for v in raw_interpreted_list:
-        update_raw_interpreted_map(last_value, v[1], v[0])
-        last_value = v[1] + 1
-
-    result['raw_interpreted_map'] = raw_interpreted_map
-    result['interpreted_raw_map'] = interpreted_raw_map
-
+    # Return the result
+    result = {}
+    result['items'] = interpreted_items
+    result['raw_to_interpreted'] = raw_to_interpreted
+    result['interpreted_to_raw'] = interpreted_to_raw
     return result
 
 

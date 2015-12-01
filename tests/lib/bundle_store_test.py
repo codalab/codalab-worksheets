@@ -1,136 +1,93 @@
 import errno
 import mock
 import os
+import sys
 import unittest
 
 from codalab.lib.bundle_store import BundleStore
 
-
 class BundleStoreTest(unittest.TestCase):
-  unnormalized_test_root = 'random string that normalizes to test_root'
-  test_root = '/tmp/codalab_tests'
+    @mock.patch('codalab.lib.bundle_store.tempfile')
+    @mock.patch('codalab.lib.bundle_store.uuid')
+    @mock.patch('codalab.lib.bundle_store.path_util')
+    @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
+    def test_upload(self, mock_os, mock_path_util, mock_uuid, mock_tempfile):
+        '''
+        Tries to upload a bundle: should copy bundle into temp, hash and move
+        it in to the data directory.
+        '''
+        global_paths = set()  # Paths that exist on the mock file system
 
-  directories = [
-    os.path.join(test_root, BundleStore.DATA_SUBDIRECTORY),
-    os.path.join(test_root, BundleStore.TEMP_SUBDIRECTORY),
-  ]
-  mkdir_calls = [[(directory,), {}] for directory in directories]
+        ### BundleStore
 
-  def mock_normalize(self, path):
-    assert(path == BundleStoreTest.unnormalized_test_root)
-    return BundleStoreTest.test_root
+        class MockBundleStore(BundleStore):
+          def __init__(self, root):
+            self.root = root
+            self.data = os.path.join(root, BundleStore.DATA_SUBDIRECTORY)
+            self.temp = os.path.join(root, BundleStore.TEMP_SUBDIRECTORY)
 
-  @mock.patch('codalab.lib.bundle_store.os')
-  @mock.patch('codalab.lib.bundle_store.path_util')
-  def test_init(self, mock_path_util, mock_os):
-    '''
-    Check that __init__ calls normalize path and then creates the directories.
-    '''
-    mock_os.path.join = os.path.join
-    mock_path_util.normalize = self.mock_normalize
-    BundleStore(self.unnormalized_test_root, [])
-    self.assertEqual(mock_path_util.make_directory.call_args_list, self.mkdir_calls)
+        bundle_store = MockBundleStore('mock_root')
 
-  @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
-  @mock.patch('codalab.lib.bundle_store.uuid')
-  @mock.patch('codalab.lib.bundle_store.path_util')
-  def run_upload_trial(self, mock_path_util, mock_uuid,
-                       mock_os, new):
-    '''
-    Test that upload takes the following actions, in order:
-      - Copies the bundle into the temp directory
-      - Sets permissions for the bundle to 755
-      - Hashes the directory
-      - Moves the directory into data (if new) or deletes it (if old)
-    '''
-    check_isvalid_called = [False]
-    rename_called = [False]
+        ### os.path
 
-    mock_os.path = mock.Mock()
-    mock_os.path.join = os.path.join
-    mock_os.path.realpath = lambda x : x
+        mock_os.path = mock.Mock()
+        mock_os.path.join = os.path.join
+        mock_os.path.basename = os.path.basename
+        mock_os.path.realpath = lambda x : x
 
-    unnormalized_bundle_path = 'random thing that will normalize to bundle path'
-    bundle_path = 'bundle path'
-    test_root = 'test_root'
-    test_data = os.path.join(test_root, 'data')
-    test_temp = os.path.join(test_root, 'temp')
-    test_directory_hash = 'directory-hash'
-    final_path = os.path.join(test_data, '0x' + test_directory_hash)
+        def exists(path):
+            return path in global_paths
+        mock_os.path.exists = exists
 
-    def exists(path):
-      self.assertEqual(path, final_path)
-      return not new or rename_called[0]
-    mock_os.path.exists = exists
+        ### tempfile
 
-    def rename(source_path, dest_path):
-      self.assertEqual(source_path, temp_path)
-      self.assertEqual(dest_path, final_path)
-      rename_called[0] = True
-    mock_path_util.rename = rename
+        def mkdtemp(suffix):
+            path = os.path.join(bundle_store.temp, 'tmp12345' + suffix)
+            global_paths.add(path)
+            return path
+        mock_tempfile.mkdtemp = mkdtemp
 
-    def utime(path, ts):
-      self.assertEqual(path, final_path)
-      self.assertIsNone(ts)
-      if new:
-        raise OSError(errno.ENOENT, 'Path does not exist: ' + path)
-    mock_os.utime = utime
+        ### path_util
 
-    temp_dir = 'abloogywoogywu'
-    temp_path = os.path.join(test_temp, temp_dir)
-    mock_uuid.uuid4.return_value = type('MockUUID', (), {'hex': temp_dir})()
+        mock_path_util.normalize = lambda x : x
+        mock_path_util.recursive_ls = lambda x : []
+        mock_path_util.path_is_url = lambda x : False
 
-    test_dirs_and_files = 'my test dirs_and_files sentinel'
+        def copy(source_path, dest_path, follow_symlinks, exclude_patterns):
+            print 'copy', source_path, dest_path
+            self.assertIn(source_path, global_paths)
+            self.assertNotIn(dest_path, global_paths)
+            global_paths.add(dest_path)
+        mock_path_util.copy = copy
 
-    def normalize(path):
-      self.assertEqual(path, unnormalized_bundle_path)
-      return bundle_path
-    mock_path_util.normalize = normalize
+        def rename(source_path, dest_path):
+            print 'rename', source_path, dest_path
+            self.assertIn(source_path, global_paths)
+            self.assertNotIn(dest_path, global_paths)
+            global_paths.remove(source_path)
+            global_paths.add(dest_path)
+        mock_path_util.rename = rename
 
-    def check_isvalid(path, fn_name):
-      self.assertEqual(path, bundle_path)
-      check_isvalid_called[0] = True
-    mock_path_util.check_isvalid = check_isvalid
+        def remove(path):
+            print 'remove', path
+            self.assertIn(path, global_paths)
+            global_paths.remove(path)
+        mock_path_util.remove = remove
 
-    def recursive_ls(path):
-      self.assertEqual(path, temp_path)
-      return test_dirs_and_files
-    mock_path_util.recursive_ls = recursive_ls
-    
-    def set_permissions(path, permissions, dirs_and_files=None):
-      if dirs_and_files is not None:
-        self.assertEqual(dirs_and_files, test_dirs_and_files)
-      self.assertEqual(path, temp_path)
-      self.assertEqual(permissions, 0o755)
-    mock_path_util.set_permissions = set_permissions
+        def hash_directory(path, dirs_and_files=None):
+            self.assertIn(path, global_paths)
+            return '12345'
+        mock_path_util.hash_directory = hash_directory
 
-    def hash_directory(path, dirs_and_files=None):
-      if dirs_and_files is not None:
-        self.assertEqual(dirs_and_files, test_dirs_and_files)
-      self.assertTrue(path, temp_path)
-      return test_directory_hash
-    mock_path_util.hash_directory = hash_directory
+        ### Main: upload!
 
-    mock_path_util.path_is_url = lambda x : False
+        contents = 'contents'
+        final_path = 'mock_root/data/0x12345'
+        global_paths.add(contents)
 
-    class MockBundleStore(BundleStore):
-      def __init__(self, root):
-        self.root = root
-        self.data = os.path.join(root, 'data')
-        self.temp = os.path.join(root, 'temp') 
+        bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=False)
+        self.assertEquals(global_paths, set([contents, final_path]))
 
-    bundle_store = MockBundleStore(test_root)
-    self.assertFalse(check_isvalid_called[0])
-    bundle_store.upload(unnormalized_bundle_path, False, [])
-    self.assertTrue(check_isvalid_called[0])
-    if new:
-      self.assertTrue(rename_called[0])
-    else:
-      self.assertFalse(rename_called[0])
-      mock_path_util.remove.assert_called_with(temp_path)
-
-  def test_new_upload(self):
-    self.run_upload_trial(new=True)
-
-  def test_old_upload(self):
-    self.run_upload_trial(new=False)
+        bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=True)
+        self.assertNotIn(contents, global_paths)  # File is not there
+        self.assertEquals(global_paths, set([final_path]))

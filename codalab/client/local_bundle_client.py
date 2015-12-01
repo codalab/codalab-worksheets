@@ -27,6 +27,7 @@ from codalab.lib import (
     canonicalize,
     path_util,
     worksheet_util,
+    file_util,
     spec_util,
     formatting,
 )
@@ -151,7 +152,14 @@ class LocalBundleClient(BundleClient):
     # Helper
     def get_target_path(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        return canonicalize.get_target_path(self.bundle_store, self.model, target)
+        path = canonicalize.get_target_path(self.bundle_store, self.model, target)
+        if os.path.islink(path):
+            raise UsageError('Following symlink disallowed: %s/%s' % (target[0], target[1]))
+        if not os.path.exists(path):
+            # Too stringent, maybe hasn't been created yet.
+            #raise UsageError('Target does not exist: %s/%s' % (target[0], target[1]))
+            return None
+        return path
 
     # Helper
     def get_bundle_target(self, target):
@@ -201,22 +209,30 @@ class LocalBundleClient(BundleClient):
         return construct_args
 
     @authentication_required
-    def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
+    def upload_bundle_url(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
         """
-        Called when |path| is a url.
-        Only used to expose uploading URLs directly to the RemoteBundleClient.
+        Called when |sources| is a URL.  Only used to expose uploading URLs
+        directly to the RemoteBundleClient.
         """
-        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns, True)
+        return self.upload_bundle(sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet)
 
     @authentication_required
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns, add_to_worksheet):
+    def upload_bundle(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
+        """
+        |sources|, |follow_symlinks|, |exclude_patterns|, |git|, |unpack|, |remove_sources|: see BundleStore.upload()
+        |info|: information about the bundle.
+        |worksheet_uuid|: which worksheet to inherit permissions on
+        |add_to_worksheet|: whether to add to this worksheet or not.
+        Note: |sources| could be None (e.g., if we are copying a bundle where we've only kept the metadata).
+        """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
         self._check_quota(need_time=False, need_disk=True)
 
+        # Construct initial metadata
         bundle_type = info['bundle_type']
-        if 'uuid' in info:
+        if 'uuid' in info:  # Happens when we're copying bundles.
             existing = True
             construct_args = self.bundle_info_to_construct_args(info)
         else:
@@ -230,16 +246,21 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
-        # Upload the given path and record additional metadata from the upload.
-        if path:
-            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks,
-                                                                          exclude_patterns=exclude_patterns)
+        # Upload the source and record additional metadata from the upload.
+        if sources is not None:
+            (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=sources,
+                                                                          follow_symlinks=follow_symlinks,
+                                                                          exclude_patterns=exclude_patterns,
+                                                                          git=git,
+                                                                          unpack=unpack,
+                                                                          remove_sources=remove_sources)
             metadata.update(bundle_store_metadata)
-            if construct_args.get('data_hash', data_hash) != data_hash:
-                # TODO should raise an exception or warning?
-                print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' % \
-                                    (construct_args.get('data_hash'), data_hash)
-            construct_args['data_hash'] = data_hash
+        else:
+            data_hash = None
+        if construct_args.get('data_hash', data_hash) != data_hash:
+            print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' %\
+                                (construct_args.get('data_hash'), data_hash)
+        construct_args['data_hash'] = data_hash
 
         # Set the owner
         construct_args['owner_id'] = self._current_user_id()
@@ -473,17 +494,24 @@ class LocalBundleClient(BundleClient):
     def get_target_info(self, target, depth):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
+        if path is None:
+            return None
         return path_util.get_info(path, depth)
 
     def cat_target(self, target, out):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
+        if path is None:
+            return
         path_util.cat(path, out)
 
     # Maximum number of bytes to read per line requested
     MAX_BYTES_PER_LINE = 128
 
-    def head_target(self, target, max_num_lines, replace_non_unicode=False):
+    def head_target(self, target, max_num_lines, replace_non_unicode=False, base64_encode=True):
+        '''
+        Return base64 encoded version of the result.
+        '''
         max_total_bytes = None if max_num_lines is None else max_num_lines * self.MAX_BYTES_PER_LINE
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
@@ -494,7 +522,10 @@ class LocalBundleClient(BundleClient):
         if replace_non_unicode:
             lines = map(formatting.verbose_contents_str, lines)
 
-        return map(base64.b64encode, lines)
+        if base64_encode:
+            lines = map(base64.b64encode, lines)
+
+        return lines
 
     def open_target_handle(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
@@ -505,12 +536,13 @@ class LocalBundleClient(BundleClient):
     def close_target_handle(handle):
         handle.close()
 
-    def download_target(self, target, follow_symlinks):
+    def download_target(self, target, final_path):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         # Don't need to download anything because it's already local.
         # Note that we can't really enforce follow_symlinks, but this is okay,
         # because we will follow them when we copy it from the target path.
-        return (self.get_target_path(target), None)
+        source_path = self.get_target_path(target)
+        path_util.copy(source_path, final_path)
 
     @authentication_required
     def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow, dry_run):
@@ -944,7 +976,9 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
-    DEFAULT_MAX_CONTENT_LINES = 10
+    # Default number of lines to pull for each display mode.
+    DEFAULT_CONTENTS_MAX_LINES = 10
+    DEFAULT_GRAPH_MAX_LINES = 100
 
     def resolve_interpreted_items(self, interpreted_items):
         """
@@ -957,7 +991,9 @@ class LocalBundleClient(BundleClient):
             mode = item['mode']
             data = item['interpreted']
             properties = item['properties']
-            # if's in order of most frequent
+
+            # Replace data with a resolved version.
+
             if mode == 'markup':
                 # no need to do anything
                 pass
@@ -974,13 +1010,30 @@ class LocalBundleClient(BundleClient):
                 elif info['type'] == 'file':
                     data = self.head_target(
                         data,
-                        int(properties.get('maxlines', self.DEFAULT_MAX_CONTENT_LINES)),
+                        int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES)),
                         replace_non_unicode=True)
             elif mode == 'html':
                 data = self.head_target(data, None)
             elif mode == 'image':
                 path = self.get_target_path(data)
                 data = path_util.base64_encode(path)
+            elif mode == 'graph':
+                # data = list of {'target': ...}
+                # Add a 'points' field that contains the contents of the target.
+                for info in data:
+                    target = info['target']
+                    path = self.get_target_path(target)
+                    contents = self.head_target(
+                        target,
+                        int(properties.get('maxlines', self.DEFAULT_GRAPH_MAX_LINES)),
+                        replace_non_unicode=True,
+                        base64_encode=False)
+                    if contents is not None:
+                        # Assume TSV file without header for now, just return each line as a row
+                        info['points'] = points = []
+                        for line in contents:
+                            row = line.split('\t')
+                            points.append(row)
             elif mode == 'search':
                 data = worksheet_util.interpret_search(self, None, data)
             elif mode == 'wsearch':
@@ -989,6 +1042,7 @@ class LocalBundleClient(BundleClient):
                 pass
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
+
             # Assign the interpreted from the processed data
             item['interpreted'] = data
 
