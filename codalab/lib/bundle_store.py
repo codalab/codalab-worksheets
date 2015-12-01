@@ -11,7 +11,7 @@ import sys
 import uuid
 import tempfile
 
-from codalab.lib import path_util, file_util, print_util
+from codalab.lib import path_util, file_util, print_util, zip_util
 from codalab.common import UsageError
 
 class BundleStore(object):
@@ -25,13 +25,11 @@ class BundleStore(object):
     DATA_CLEANUP_TIME = 60
     TEMP_CLEANUP_TIME = 60*60
 
-    def __init__(self, codalab_home, direct_upload_paths):
+    def __init__(self, codalab_home):
         '''
         codalab_home: data/ is where all the bundles are actually stored, temp/ is temporary
-        direct_upload_paths: we can accept file://... uploads from these paths.
         '''
         self.codalab_home = path_util.normalize(codalab_home)
-        self.direct_upload_paths = direct_upload_paths
         self.data = os.path.join(self.codalab_home, self.DATA_SUBDIRECTORY)
         self.temp = os.path.join(self.codalab_home, self.TEMP_SUBDIRECTORY)
         self.make_directories()
@@ -73,50 +71,74 @@ class BundleStore(object):
         path_util.make_directory(self.get_temp_location(identifier));
 
 
-    def upload(self, path, follow_symlinks, exclude_patterns):
+    def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources):
         '''
-        Copy the contents of the directory at |path| into the data subdirectory,
-        in a subfolder named by a hash of the contents of the new data directory.
-        If |path| is in a temporary directory, then we just move it.
+        |sources|: specifies the locations of the contents to upload.  Each element is either a URL or a local path.
+        |follow_symlinks|: for local path(s), whether to follow (resolve) symlinks
+        |exclude_patterns|: for local path(s), don't upload these patterns (e.g., *.o)
+        |git|: for URL, whether |source| is a git repo to clone.
+        |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
+        |remove_sources|: remove |sources|.
+
+        If |sources| contains one source, then the bundle contents will be that source.
+        Otherwise, the bundle contents will be a directory with each of the sources.
+        Exceptions:
+        - If |git|, then each source is replaced with the result of running 'git clone |source|'
+        - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
+
+        Install the contents of the directory at |source| into
+        DATA_SUBDIRECTORY in a subdirectory named by a hash of the contents.
 
         Return a (data_hash, metadata) pair, where the metadata is a dict mapping
         keys to precomputed statistics about the new data directory.
         '''
-        # Create temporary directory as a staging area.
-        # If |path| is already temporary, then we use that directly
-        # (with the understanding that |path| will be moved)
-        if not isinstance(path, list) and os.path.realpath(path).startswith(os.path.realpath(self.temp)):
-            temp_path = path
-        else:
-            temp_path = os.path.join(self.temp, uuid.uuid4().hex)
+        to_delete = []
 
-        if not isinstance(path, list) and path_util.path_is_url(path):
-            # Have to be careful.  Want to make sure if we're fetching a URL
-            # that points to a file, we are allowing this.
-            if path.startswith('file://'):
-                path_suffix = path[7:]
-                if os.path.islink(path_suffix):
-                    raise UsageError('Not allowed to upload symlink %s' % path_suffix)
-                if not any(path_suffix.startswith(f) for f in self.direct_upload_paths):
-                    raise UsageError('Not allowed to upload %s (only %s allowed)' % (path_suffix, self.direct_upload_paths))
+        # Create temporary directory as a staging area and put everything there.
+        temp_path = tempfile.mkdtemp('-bundle_store_upload')
+        temp_subpaths = []
+        for source in sources:
+            # Where to save |source| to (might change this value if we unpack).
+            temp_subpath = os.path.join(temp_path, os.path.basename(source))
+            if remove_sources:
+                to_delete.append(source)
+            source_unpack = unpack and zip_util.path_is_archive(source)
 
-            # Download |path| if it is a URL.
-            print >>sys.stderr, 'BundleStore.upload: downloading %s to %s' % (path, temp_path)
-            file_util.download_url(path, temp_path, print_status=True)
-        elif path != temp_path:
-            # Copy |path| into the temp_path.
-            if isinstance(path, list):
-                absolute_path = [path_util.normalize(p) for p in path]
-                for p in absolute_path:
-                    path_util.check_isvalid(p, 'upload')
+            if path_util.path_is_url(source):
+                # Download the URL.
+                print_util.open_line('BundleStore.upload: downloading %s to %s' % (source, temp_path))
+                if git:
+                    file_util.git_clone(source, temp_subpath)
+                else:
+                    file_util.download_url(source, temp_subpath, print_status=True)
+                    if source_unpack:
+                        zip_util.unpack(temp_subpath, zip_util.strip_archive_ext(temp_subpath))
+                        path_util.remove(temp_subpath)
+                        temp_subpath = zip_util.strip_archive_ext(temp_subpath)
+                print_util.clear_line()
             else:
-                absolute_path = path_util.normalize(path)
-                path_util.check_isvalid(absolute_path, 'upload')
+                # Copy the local path.
+                source_path = path_util.normalize(source)
+                path_util.check_isvalid(source_path, 'upload')
 
-            # Recursively copy the directory into a new BundleStore temp directory.
-            print_util.open_line('BundleStore.upload: copying %s to %s' % (absolute_path, temp_path))
-            path_util.copy(absolute_path, temp_path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
-            print_util.clear_line()
+                # Recursively copy the directory into a new BundleStore temp directory.
+                print_util.open_line('BundleStore.upload: %s => %s' % (source_path, temp_subpath))
+                if source_unpack:
+                    zip_util.unpack(source_path, zip_util.strip_archive_ext(temp_subpath))
+                    temp_subpath = zip_util.strip_archive_ext(temp_subpath)
+                else:
+                    if remove_sources:
+                        path_util.rename(source_path, temp_subpath)
+                    else:
+                        path_util.copy(source_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
+                print_util.clear_line()
+
+            temp_subpaths.append(temp_subpath)
+
+        # If exactly one source, then upload that directly.
+        if len(temp_subpaths) == 1:
+            to_delete.append(temp_path)
+            temp_path = temp_subpaths[0]
 
         # Multiplex between uploading a directory and uploading a file here.
         # All other path_util calls will use these lists of directories and files.
@@ -134,22 +156,20 @@ class BundleStore(object):
         data_size = path_util.get_size(temp_path, dirs_and_files)
         print_util.clear_line()
         final_path = os.path.join(self.data, data_hash)
-        final_path_exists = False
-        try:
-            # If data_hash already exists, then we don't need to move it over.
-            os.utime(final_path, None)
-            final_path_exists = True
-        except OSError, e:
-            if e.errno == errno.ENOENT:
-                print >>sys.stderr, 'BundleStore.upload: moving %s to %s' % (temp_path, final_path)
-                path_util.rename(temp_path, final_path)
-            else:
-                raise
-        if final_path_exists:
+        if os.path.exists(final_path):
+            # Already exists, just delete it
             path_util.remove(temp_path)
+        else:
+            print >>sys.stderr, 'BundleStore.upload: moving %s to %s' % (temp_path, final_path)
+            path_util.rename(temp_path, final_path)
+
+        # Delete paths.
+        for path in to_delete:
+            if os.path.exists(path):
+                path_util.remove(path)
 
         # After this operation there should always be a directory at the final path.
-        assert(os.path.exists(final_path)), 'Uploaded to %s failed!' % (final_path,)
+        assert(os.path.lexists(final_path)), 'Uploaded to %s failed!' % (final_path,)
         return (data_hash, {'data_size': data_size})
 
     def cleanup(self, model, data_hash, except_bundle_uuids, dry_run):

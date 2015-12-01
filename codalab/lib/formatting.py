@@ -30,10 +30,13 @@ def verbose_contents_str(input_string):
     """
     if input_string is None:
         return '<none>'
+
     try:
-        return input_string.encode('utf-8')
+        input_string.decode('utf-8')
     except UnicodeDecodeError:
         return '<binary>'
+
+    return input_string
 
 
 def size_str(size):
@@ -44,7 +47,7 @@ def size_str(size):
     if size is None:
         return None
 
-    for unit in ('', 'K', 'M', 'G'):
+    for unit in ('', 'k', 'm', 'g'):
         if size < 100 and size != int(size):
             return '%.1f%s' % (size, unit)
         if size < 1024:
@@ -87,10 +90,16 @@ def duration_str(s):
     d -= y * 365
     return "%dy%dd" % (y, d)
 
+def ratio_str(to_str, a, b):
+    """
+    Example: to_str = duration_str, a = 60, b = 120 => "1m / 2m (50%)"
+    """
+    return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b)
+
 
 def parse_size(s):
     """
-    s: <number><k|m|g>
+    s: <number>[<k|m|g>]
     Returns the number of bytes.
     """
     if s[-1].isdigit():
@@ -102,14 +111,12 @@ def parse_size(s):
         return n * 1024 * 1024
     if unit == 'g':
         return n * 1024 * 1024 * 1024
-    # If error, ignore unit
-    print >>sys.stderr, 'Warning: invalid unit in ', s
-    raise n
+    raise ValueError('Invalid size: %s, expected <number>[<k|m|g>]' % s)
 
 
 def parse_duration(s):
     """
-    s: <number><s|m|h|d|y>
+    s: <number>[<s|m|h|d|y>]
     Returns the number of seconds
     """
     if s[-1].isdigit():
@@ -125,9 +132,7 @@ def parse_duration(s):
         return n * 60 * 60 * 24
     if unit == 'y':
         return n * 60 * 60 * 24 * 365
-    # If error, ignore unit
-    print >>sys.stderr, 'Warning: invalid unit in ', s
-    raise n
+    raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
 
 ############################################################
 

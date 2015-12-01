@@ -78,7 +78,6 @@ def parse_metadata_form(bundle_subclass, form_result):
             if remainder == '':
                 remainder = None
 
-            # TODO: handle multiple lines
             if metadata_key not in metadata_types:
                 raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
             metadata_type = metadata_types[metadata_key]

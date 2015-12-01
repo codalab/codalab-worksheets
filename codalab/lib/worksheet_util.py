@@ -367,8 +367,32 @@ def interpret_genpath(bundle_info, genpath):
         metadata = bundle_info['metadata']
         for key, value in metadata.items():
             if key.startswith('request_') and value:
-                args.extend(['--' + key, formatting.quote(str(value))])
+                if isinstance(value, bool):
+                    args.append('--' + key)
+                else:
+                    args.extend(['--' + key, formatting.quote(str(value))])
         return ' '.join(args)
+    elif genpath == 'summary':
+        def friendly_render_dep(dep):
+            key = dep['child_path'] or dep['parent_name']
+            value = key + '{' + (dep['parent_name'] + ':' if key != dep['parent_name'] else '') + \
+                dep['parent_uuid'][0:4] + '}'
+            return key, value
+        # Nice easy-to-ready description of how this bundle got created.
+        bundle_type = bundle_info.get('bundle_type')
+        if bundle_type in ('dataset', 'program'):
+            return '[uploaded]'
+        if bundle_type == 'make':
+            args = []
+            for dep in deps:
+                args.append(friendly_render_dep(dep)[1])
+            return '= ' + ' '.join(args)
+        elif bundle_type == 'run':
+            command = bundle_info['command']
+            for dep in deps:
+                key, value = friendly_render_dep(dep)
+                command = command.replace(key, value)
+            return '! ' + command
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:
             return ' '.join('%s(%s)' % (info['name'], info['uuid']) for info in bundle_info['host_worksheets'])
@@ -381,11 +405,11 @@ def interpret_genpath(bundle_info, genpath):
 
     # Bundle field?
     value = bundle_info.get(genpath)
-    if value != None: return value
+    if value is not None: return value
 
     # Metadata field?
     value = bundle_info.get('metadata', {}).get(genpath)
-    if value != None: return value
+    if value is not None: return value
 
     return None
 
@@ -549,70 +573,123 @@ def apply_func(func, arg):
 
 
 def get_default_schemas():
+    # Single fields
     uuid = ['uuid', 'uuid', '[0:8]']
-    created = ['created', 'created', 'date']
+    name = ['name']
+    summary = ['summary']
     data_size = ['data_size', 'data_size', 'size']
     time = ['time', 'time', 'duration']
-    description = ['description']
+    state = ['state']
+    description = ['desc.', 'description']
+    created = ['created', 'created', 'date']
+
     schemas = {}
 
-    schemas['default'] = canonicalize_schema_items(
-        [uuid, ['name'], description, ['bundle_type'], created, ['dependencies'], ['command'], data_size, ['state']])
+    # Schemas corresponding to one field
+    schemas['uuid'] = [uuid]
+    schemas['name'] = [name]
+    schemas['summary'] = [summary]
+    schemas['data_size'] = [data_size]
+    schemas['time'] = [time]
+    schemas['state'] = [state]
+    schemas['description'] = [description]
+    schemas['created'] = [created]
 
-    schemas['program'] = canonicalize_schema_items([uuid, ['name'], description, created, data_size])
-    schemas['dataset'] = canonicalize_schema_items([uuid, ['name'], description, created, data_size])
+    # Schemas involving multiple fields
+    schemas['default'] = [uuid, name, summary, state, description]
+    schemas['program'] = [uuid, name, data_size, description]
+    schemas['dataset'] = [uuid, name, data_size, description]
+    schemas['make'] = [uuid, name, summary, data_size, state, description]
+    schemas['run'] = [uuid, name, summary, data_size, time, state, description]
 
-    schemas['make'] = canonicalize_schema_items([uuid, ['name'], description, created, ['dependencies'], ['state']])
-    schemas['run'] = canonicalize_schema_items(
-        [uuid, ['name'], description, created, ['dependencies'], ['command'], ['state'], time])
+    for key in schemas:
+        schemas[key] = canonicalize_schema_items(schemas[key])
+
     return schemas
 
 
-def interpret_items(schemas, items):
+def interpret_items(schemas, raw_items):
     """
     schemas: initial mapping from name to list of schema items (columns of a table)
-    items: list of worksheet items (triples) to interpret
-    Return {'items': items}, where items is a list of interpreted items.
-    Each item is one of the following:
-    - ('markup'|'contents'|'image'|'html', rendered string | (bundle_uuid, genpath, properties))
-    - ('record'|'table', (col1, ..., coln), [{col1:value1, ... coln:value2}, ...]),
-      where value is either a rendered string or a (bundle_uuid, genpath, post) tuple
-    - ('search', [keyword, ...])
+    raw_items: list of (raw) worksheet items (triples) to interpret
+    Return {'items': interpreted_items, ...}, where interpreted_items is a list of:
+    {
+        'mode': display mode ('markup' | 'contents' | 'image' | 'html', etc.)
+        'interpreted': one of
+            - rendered string
+            - target = (bundle_uuid, genpath)
+            - (header = (col1, ..., coln), rows = [{col1:value1, ..., coln:valuen}, ...]) [for tables]
+            - {keywords: [...]} for mode = 'search' or 'wsearch'
+        'properties': dict of properties (e.g., width, maxlines, etc.),
+        'bundle_info': bundle_info or list of bundle_infos,
+        'subworksheet_info': subworksheet,
+    }
+    In addition, return an alignment between the raw items and the interpreted items.
+    Each interpreted item has a focusIndex, and possibly consists of a list of
+    table rows (indexed by subFocusIndex).  Here is an example:
+      --- Raw ---                   --- Interpreted ---
+      rawIndex                                         (focusIndex, subFocusIndex)  
+      0        % display table
+      1        [bundle]             [table - row 0     (0, 0)
+      2        [bundle]                    - row 1]    (0, 1)
+      3        
+      4        hello                [markup            (1, 0)
+      5        world                       ]
+      6        [worksheet]          [worksheet]        (2, 0)
+      7
+    The mapping should be computed as follows:
+    - Some raw items contribute directly to a particular interpreted item.
+    - Others (blank lines, directives, schema definitions) don't.
+    - Those that don't should get mapped to the next interpreted item.
     """
-    result = {}
-
-    # Mapping from worksheet_info['raw'] index to |(focusIndex, subFocusIndex)| based on interpreted_items.
-    # Used to intelligently focus on the worksheet_item where the cursor was present when exiting the editor.
-    raw_items_interpreted_items_map = {}
-
-    # Reverse mapping from interpreted_items indexes to worksheet_info['raw'] indexes.
-    # Used to intelligently place the cursor at the focused worksheet item while entering the 'edit' mode.
-    interpreted_items_raw_items_map = {}
+    raw_to_interpreted = []  # rawIndex => (focusIndex, subFocusIndex)
 
     # Set default schema
     current_schema = None
     default_display = ('table', 'default')
     current_display = default_display
-    new_items = []
+    interpreted_items = []
     bundle_infos = []
 
     def get_schema(args):  # args is a list of schema names
         args = args if len(args) > 0 else ['default']
         schema = []
         for arg in args:
-            schema += schemas[arg]
+            # If schema doesn't exist, then treat as item (e.g., uuid).
+            schema += schemas.get(arg, canonicalize_schema_items([arg.split(':', 2)]))
         return schema
 
     def is_missing(info):
         return 'metadata' not in info
 
+    def parse_properties(args):
+        properties = {}
+        for item in args:
+            if '=' not in item:
+                raise UsageError('Expected <key>=<value>, but got %s' % item)
+            key, value = item.split('=', 1)
+            properties[key] = value
+        return properties
+
+    def genpath_to_target(bundle_info, genpath):
+        # bundle_info, '/stdout' => target = (uuid, 'stdout')
+        if not is_file_genpath(genpath):
+            raise UsageError('Not file genpath: %s' % genpath)
+        # strip off the leading / from genpath to create a subpath in the target.
+        return (bundle_info['uuid'], genpath[1:])
+
     def flush_bundles():
         """
-        Having collected bundles in |bundle_infos|, flush them into |new_items|,
+        Having collected bundles in |bundle_infos|, flush them into |interpreted_items|,
         potentially as a single table depending on the mode.
         """
         if len(bundle_infos) == 0:
             return
+
+        def raise_genpath_usage_error():
+            raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join(
+                [mode] + args) + '\'')
+
         # Print out the curent bundles somehow
         mode = current_display[0]
         args = current_display[1:]
@@ -620,38 +697,28 @@ def interpret_items(schemas, items):
         if mode == 'hidden':
             pass
         elif mode == 'contents' or mode == 'image' or mode == 'html':
-            def raise_usage_error():
-                raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join(
-                    [mode] + args) + '\'')
 
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
-                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
+                    interpreted_items.append({
+                        'mode': TYPE_MARKUP,
+                        'interpreted': 'ERROR: cannot access bundle',
+                        'properties': {},
+                    })
                     continue
 
-                # Result: either a string (rendered) or (bundle_uuid, genpath, properties) triple
+                # Parse arguments
                 if len(args) == 0:
-                    raise_usage_error()
-                interpreted = interpret_genpath(bundle_info, args[0])
+                    raise_genpath_usage_error()
+                interpreted = genpath_to_target(bundle_info, args[0])
+                properties = parse_properties(args[1:])
 
-                # Properties - e.g., height, width, maxlines (optional)
-                if len(args) > 1:
-                    properties = dict(item.split('=') for item in args[1].split(','))
-
-                if isinstance(interpreted, tuple):  # Not rendered yet
-                    bundle_uuid, genpath = interpreted
-                    if not is_file_genpath(genpath):
-                        raise_usage_error()
-                    else:
-                        # interpreted is a target: strip off the leading /
-                        interpreted = (bundle_uuid, genpath[1:])
-                new_items.append({
+                interpreted_items.append({
                     'mode': mode,
                     'interpreted': interpreted,
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -666,13 +733,12 @@ def interpret_items(schemas, items):
                         'key': name + ':',
                         'value': apply_func(post, interpret_genpath(bundle_info, genpath))
                     })
-                new_items.append({
+                interpreted_items.append({
                     'mode': mode,
                     'interpreted': (header, rows),
                     'properties': properties,
                     'bundle_info': copy.deepcopy(bundle_info)
                 })
-                raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, 0)
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -688,7 +754,6 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
                     # The front-end relies on the name metadata field existing
@@ -700,13 +765,35 @@ def interpret_items(schemas, items):
                                     name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
                                     for (name, genpath, post) in schema
                                     })
-                    raw_items_interpreted_items_map[str(item_index)] = (len(new_items) - 1, len(rows) - 1)
                     processed_bundle_infos.append(processed_bundle_info)
-            new_items.append({
+            interpreted_items.append({
                 'mode': mode,
                 'interpreted': (header, rows),
                 'properties': properties,
                 'bundle_info': processed_bundle_infos
+            })
+        elif mode == 'graph':
+            # display graph <genpath> <properties>
+            if len(args) == 0:
+                raise_genpath_usage_error()
+            # interpreted is list of {
+            #   'uuid': ...,
+            #   'display_name': ..., # What to show as the description of a bundle
+            #   'target': (bundle_uuid, subpath)
+            # }
+            properties = parse_properties(args[1:])
+            interpreted = [{
+                'uuid': bundle_info['uuid'],
+                'display_name': interpret_genpath(bundle_info, properties.get('display_name', 'name')),
+                'target': genpath_to_target(bundle_info, args[0])
+            } for item_index, bundle_info in bundle_infos]
+
+            interpreted_items.append({
+                'mode': mode,
+                'interpreted': interpreted,
+                'properties': properties,
+                'bundle_info': bundle_infos[0][1]  # Only show the first one for now
+                #'bundle_info': [copy.deepcopy(bundle_info) for item_index, bundle_info in bundle_infos]
             })
         else:
             raise UsageError('Unknown display mode: %s' % mode)
@@ -715,48 +802,54 @@ def interpret_items(schemas, items):
     def get_command(value_obj):  # For directives only
         return value_obj[0] if len(value_obj) > 0 else None
 
+    # Go through all the raw items...
     last_was_empty_line = False
-    for i, item in enumerate(items):
-        (bundle_info, subworksheet_info, value_obj, item_type) = item
-        new_last_was_empty_line = True
+    for raw_index, item in enumerate(raw_items):
+        try:
+            (bundle_info, subworksheet_info, value_obj, item_type) = item
+            new_last_was_empty_line = True
 
-        is_bundle = (item_type == TYPE_BUNDLE)
-        is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
-        is_directive = (item_type == TYPE_DIRECTIVE)
-        if not is_bundle:
-            flush_bundles()
-        # Reset display to minimize long distance dependencies of directives
-        if not (is_bundle or is_search):
-            current_display = default_display
-        # Reset schema to minimize long distance dependencies of directives
-        if not is_directive:
-            current_schema = None
+            is_bundle = (item_type == TYPE_BUNDLE)
+            is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
+            is_directive = (item_type == TYPE_DIRECTIVE)
+            if not is_bundle:
+                flush_bundles()
+            # Reset display to minimize long distance dependencies of directives
+            if not (is_bundle or is_search):
+                current_display = default_display
+            # Reset schema to minimize long distance dependencies of directives
+            if not is_directive:
+                current_schema = None
 
-        if item_type == TYPE_BUNDLE:
-            bundle_infos.append((i, bundle_info))
-        elif item_type == TYPE_WORKSHEET:
-            new_items.append({
-                'mode': TYPE_WORKSHEET,
-                'interpreted': subworksheet_info,
-                'properties': {},
-                'subworksheet_info': subworksheet_info,
-            })
-            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
-        elif item_type == TYPE_MARKUP:
-            new_last_was_empty_line = (value_obj == '')
-            raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
-            if len(new_items) > 0 and new_items[-1]['mode'] == TYPE_MARKUP and not last_was_empty_line:
-                # Combine all consecutive markup items
-                new_items[-1]['interpreted'] += '\n' + value_obj
-            elif not new_last_was_empty_line:
-                new_items.append({
-                    'mode': TYPE_MARKUP,
-                    'interpreted': value_obj,
+            if item_type == TYPE_BUNDLE:
+                raw_to_interpreted.append((len(interpreted_items), len(bundle_infos)))
+                bundle_infos.append((raw_index, bundle_info))
+            elif item_type == TYPE_WORKSHEET:
+                raw_to_interpreted.append((len(interpreted_items), 0))
+                interpreted_items.append({
+                    'mode': TYPE_WORKSHEET,
+                    'interpreted': subworksheet_info,
                     'properties': {},
+                    'subworksheet_info': subworksheet_info,
                 })
-                raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
-        elif item_type == TYPE_DIRECTIVE:
-            try:
+            elif item_type == TYPE_MARKUP:
+                new_last_was_empty_line = (value_obj == '')
+                if len(interpreted_items) > 0 and interpreted_items[-1]['mode'] == TYPE_MARKUP and \
+                   not last_was_empty_line and not new_last_was_empty_line:
+                    # Join with previous markup item
+                    interpreted_items[-1]['interpreted'] += '\n' + value_obj
+                elif not new_last_was_empty_line:
+                    interpreted_items.append({
+                        'mode': TYPE_MARKUP,
+                        'interpreted': value_obj,
+                        'properties': {},
+                    })
+                # Important: set raw_to_interpreted after so we can focus on current item.
+                if new_last_was_empty_line:
+                    raw_to_interpreted.append(None)
+                else:
+                    raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+            elif item_type == TYPE_DIRECTIVE:
                 command = get_command(value_obj)
                 if command == '%' or command == '' or command is None:
                     # Comment
@@ -764,21 +857,21 @@ def interpret_items(schemas, items):
                 elif command == 'schema':
                     # Start defining new schema
                     if len(value_obj) < 2:
-                        raise UsageError("missing name")
+                        raise UsageError("`schema` missing name")
                     name = value_obj[1]
                     schemas[name] = current_schema = []
                 elif command == 'addschema':
                     # Add to schema
                     if current_schema is None:
-                        raise UsageError("must be preceded by **schema** directive")
+                        raise UsageError("`addschema` must be preceded by `schema` directive")
                     if len(value_obj) < 2:
-                        raise UsageError("missing name")
+                        raise UsageError("`addschema` missing name")
                     name = value_obj[1]
                     current_schema += schemas[name]
                 elif command == 'add':
                     # Add to schema
                     if current_schema is None:
-                        raise UsageError("must be preceded by **schema** directive")
+                        raise UsageError("`add` must be preceded by `schema` directive")
                     schema_item = canonicalize_schema_item(value_obj[1:])
                     current_schema.append(schema_item)
                 elif command == 'display':
@@ -789,7 +882,7 @@ def interpret_items(schemas, items):
                     keywords = value_obj[1:]
                     mode = command
                     data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
-                    new_items.append({
+                    interpreted_items.append({
                         'mode': mode,
                         'interpreted': data,
                         'properties': {},
@@ -799,46 +892,71 @@ def interpret_items(schemas, items):
                     keywords = value_obj[1:]
                     mode = command
                     data = {'keywords': keywords}
-                    new_items.append({
+                    interpreted_items.append({
                         'mode': mode,
                         'interpreted': data,
                         'properties': {},
                     })
                 else:
-                    raise UsageError("unknown directive")
+                    raise UsageError("unknown directive `%s`" % command)
 
-            except UsageError as e:
-                current_schema = None
-                new_items.append({
-                    'mode': TYPE_MARKUP,
-                    'interpreted': 'Line %d: Error while parsing directive **%% %s**: %s' % (i, ' '.join(value_obj), e.message),
-                    'properties': {},
-                })
+                # Only search/wsearch contribute an interpreted item
+                if command == 'search' or command == 'wsearch':
+                    raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+                else:
+                    raw_to_interpreted.append(None)
+            else:
+                raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
-            except StandardError:
-                current_schema = None
-                import traceback
-                traceback.print_exc()
-                new_items.append({
-                    'mode': TYPE_MARKUP,
-                    'interpreted': 'Line %d: Unexpected error while parsing directive **%% %s**' % (i, ' '.join(value_obj)),
-                    'properties': {},
-                })
+            # Flush bundles once more at the end
+            if raw_index == len(raw_items) - 1:
+                flush_bundles()
 
-            finally:
-                raw_items_interpreted_items_map[str(i)] = (len(new_items) - 1, 0)
+        except UsageError as e:
+            current_schema = None
+            bundle_infos[:] = []
+            interpreted_items.append({
+                'mode': TYPE_MARKUP,
+                'interpreted': 'Error on line %d: %s' % (raw_index, e.message),
+                'properties': {},
+            })
+            raw_to_interpreted.append((len(interpreted_items) - 1, 0))
 
+        except StandardError:
+            current_schema = None
+            bundle_infos[:] = []
+            import traceback
+            traceback.print_exc()
+            interpreted_items.append({
+                'mode': TYPE_MARKUP,
+                'interpreted': 'Unexpected error while parsing line %d' % raw_index,
+                'properties': {},
+            })
+            raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+
+        finally:
+            last_was_empty_line = new_last_was_empty_line
+
+    # Package the result
+    assert len(raw_to_interpreted) == len(raw_items)
+    interpreted_to_raw = {}
+    next_interpreted_index = None
+    # Go in reverse order so we can assign raw items that map to None to the next interpreted item
+    for raw_index, interpreted_index in reversed(list(enumerate(raw_to_interpreted))):
+        if interpreted_index is None:  # e.g., blank line, directive
+            interpreted_index = next_interpreted_index
+            raw_to_interpreted[raw_index] = interpreted_index
         else:
-            raise RuntimeError('Unknown worksheet item type: %s' % item_type)
-        last_was_empty_line = new_last_was_empty_line
+            interpreted_index_str = str(interpreted_index[0]) + ',' + str(interpreted_index[1])
+            if interpreted_index_str not in interpreted_to_raw:  # Bias towards the last item
+                interpreted_to_raw[interpreted_index_str] = raw_index
+        next_interpreted_index = interpreted_index
 
-    flush_bundles()
-    result['items'] = new_items
-    result['raw_items_interpreted_items_map'] = raw_items_interpreted_items_map
-    for k in sorted([int(k) for k in raw_items_interpreted_items_map.keys()]):
-        interpreted_items_raw_items_map[str(raw_items_interpreted_items_map[str(k)][0])] = int(k)
-    result['interpreted_items_raw_items_map'] = interpreted_items_raw_items_map
-
+    # Return the result
+    result = {}
+    result['items'] = interpreted_items
+    result['raw_to_interpreted'] = raw_to_interpreted
+    result['interpreted_to_raw'] = interpreted_to_raw
     return result
 
 

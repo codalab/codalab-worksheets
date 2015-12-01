@@ -30,13 +30,14 @@ class RunBundle(NamedBundle):
     # Note that these are strings, which need to be parsed
     # Request a machine with this much resources and don't let run exceed these resources
     METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (e.g., codalab/ubuntu:1.9) we wish to use.'))
-    METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g. 3, 3m, 3h, 3d) allowed for this run.'))
-    METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.'))
-    METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'Amount of disk space (e.g. 3, 3k, 3m, 3g, 3t) allowed for this run.'))
+    METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run.', formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size'))
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'Number of CPUs allowed for this run.'))
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'Number of GPUs allowed for this run.'))
     METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'Submit run to this job queue.'))
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important).'))
+    METADATA_SPECS.append(MetadataSpec('request_network', bool, 'Whether to allow network access.'))
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
 
@@ -46,6 +47,9 @@ class RunBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('disk_read', float, 'Number of bytes read.', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('disk_write', float, 'Number of bytes written.', generated=True, formatting='size'))
+
+    METADATA_SPECS.append(MetadataSpec('started', int, 'Time when this bundle started executing.', generated=True, formatting='date'))
+    METADATA_SPECS.append(MetadataSpec('last_updated', int, 'Time when information about this bundle was last updated.', generated=True, formatting='date'))
 
     # Information about running
     METADATA_SPECS.append(MetadataSpec('docker_image', basestring, 'Which docker image was used to run the process.', generated=True))
