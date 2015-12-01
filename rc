@@ -18,6 +18,7 @@ alias xcl='xargs cl'
 # If you are using zsh, you will also need to include the following in your .zshrc:
 #   autoload -U +X compinit && compinit
 #   autoload -U +X bashcompinit && bashcompinit
+# Certain arguments (those that contain colons) do not autocomplete correctly in zsh at the moment.
 if [[ -z "${BASH_SOURCE[0]}" ]]; then
     # Assume zsh
     codalabdir=$(dirname $0)

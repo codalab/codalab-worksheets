@@ -71,8 +71,7 @@ class WorksheetsCompleter(CodaLabCompleter):
         if spec_util.UUID_PREFIX_REGEX.match(worksheet_spec):
             return (format_string.format(w['uuid']) for w in worksheets if w['uuid'].startswith(worksheet_spec))
         else:
-            warn(list(str(format_string.format(w['name'])) for w in worksheets))
-            return (str(format_string.format(w['name'])) for w in worksheets)
+            return (format_string.format(w['name']) for w in worksheets)
 
 
 class BundlesCompleter(CodaLabCompleter):
