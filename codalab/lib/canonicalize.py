@@ -123,9 +123,6 @@ def get_target_path(bundle_store, model, target):
         bundle_root = bundle_store.get_location(bundle.data_hash)
     final_path = path_util.safe_join(bundle_root, path)
 
-    # Make sure that we're not following symlinks to some crazy place.
-    path_util.check_under_path(final_path, bundle_root)
-
     result = path_util.TargetPath(final_path, target)
     return result
 

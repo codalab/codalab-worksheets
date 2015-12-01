@@ -111,9 +111,9 @@ class RemoteBundleClient(BundleClient):
     )
     # Implemented by the BundleRPCServer.
     SERVER_COMMANDS = (
-      'upload_bundle_zip',
+      'finish_upload_bundle',
       'open_target',  # Limited access to files (read)
-      'open_target_zip',  # Limited access to files (read)
+      'open_target_archive',  # Limited access to files (read)
     )
     # Implemented by the FileServer (superclass of BundleRPCServer).
     FILE_COMMANDS = (
@@ -168,42 +168,51 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns, add_to_worksheet):
+    def upload_bundle(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
+        """
+        See local_bundle_client.py for documentation on the usage.
+        Strategy:
+        1) We copy the |sources| to a temporary directory on the server
+          (streaming either a tar or tar.gz depending on whether compression is
+          needed).
+        2) We politely ask the server to finish_upload_bundle (performs a
+          LocalBundleClient.upload_bundle from the temporary directory).
+        """
         # URLs can be directly passed to the local client.
-        if path and not isinstance(path, list) and path_util.path_is_url(path):
-            return self.upload_bundle_url(path, info, worksheet_uuid, follow_symlinks, exclude_patterns)
+        if all(path_util.path_is_url(source) for source in sources):
+            return self.upload_bundle_url(sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet)
 
-        # First, zip path up (temporary local zip file).
-        if path:
-            name = info['metadata']['name']
-            zip_path = zip_util.zip(path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns, file_name=name)
-            # Copy it up to the server (temporary remote zip file)
-            with open(zip_path, 'rb') as source:
-                remote_file_uuid = self.open_temp_file()
-                dest = RPCFileHandle(remote_file_uuid, self.proxy)
-                # FileServer does not expose an API for forcibly flushing writes, so
-                # we rely on closing the file to flush it.
-                file_util.copy(source, dest, autoflush=False, print_status='Uploading %s%s to %s' % (zip_path, ' ('+info['uuid']+')' if 'uuid' in info else '', self.address))
-                dest.close()
-        else:
-            remote_file_uuid = None
-            zip_path = None
+        # 1) Copy sources up to the server (temporary remote zip file)
+        remote_file_uuids = []
+        for source in sources:
+            remote_file_uuid = self.open_temp_file(zip_util.add_packed_suffix(os.path.basename(source)))
+            remote_file_uuids.append(remote_file_uuid)
+            dest_handle = RPCFileHandle(remote_file_uuid, self.proxy)
+            if zip_util.path_is_archive(source):
+                source_handle = open(source)
+            else:
+                source_handle = zip_util.open_packed_path(source, follow_symlinks, exclude_patterns)
+                unpack = True  # We packed it, so we have to unpack it
+            status = 'Uploading %s%s to %s' % (source, ' ('+info['uuid']+')' if 'uuid' in info else '', self.address)
+            # FileServer does not expose an API for forcibly flushing writes, so
+            # we rely on closing the file to flush it.
+            file_util.copy(source_handle, dest_handle, autoflush=False, print_status=status)
+            dest_handle.close()
 
-        # Finally, install the zip file (this will be in charge of deleting that zip file).
-        result = self.upload_bundle_zip(remote_file_uuid, info, worksheet_uuid, follow_symlinks, add_to_worksheet)
+        # 2) Install upload (this call will be in charge of deleting the temporary file).
+        result = self.finish_upload_bundle(remote_file_uuids, unpack, info, worksheet_uuid, add_to_worksheet)
 
-        if zip_path:
-            path_util.remove(zip_path)  # Remove local zip
         return result
 
     def open_target_handle(self, target):
         remote_file_uuid = self.open_target(target)
-        if remote_file_uuid:
+        if remote_file_uuid is not None:
             return RPCFileHandle(remote_file_uuid, self.proxy)
         return None
+
     def close_target_handle(self, handle):
         handle.close()
-        self.finalize_file(handle.file_uuid, False)
+        self.finalize_file(handle.file_uuid)
 
     def cat_target(self, target, out):
         source = self.open_target_handle(target)
@@ -211,44 +220,8 @@ class RemoteBundleClient(BundleClient):
         file_util.copy(source, out)
         self.close_target_handle(source)
 
-    def download_target(self, target, follow_symlinks, return_zip=False):
-        # Create remote zip file, download to local zip file
-        (fd, zip_path) = tempfile.mkstemp(dir=tempfile.gettempdir())
-        os.close(fd)
-        source_uuid, name = self.open_target_zip(target, follow_symlinks)
+    def download_target(self, target, final_path):
+        source_uuid = self.open_target_archive(target)
         source = RPCFileHandle(source_uuid, self.proxy)
-        with open(zip_path, 'wb') as dest:
-            with contextlib.closing(source):
-                file_util.copy(source, dest, autoflush=False, print_status='Downloading %s on %s to %s' % ('/'.join(target), self.address, zip_path))
-
-        self.finalize_file(source_uuid, True)  # Delete remote zip file
-        # Unpack the local zip file
-        container_path = tempfile.mkdtemp()
-        if return_zip:
-            return zip_path, container_path
-
-        result_path = zip_util.unzip(zip_path, container_path, name)
-        path_util.remove(zip_path)  # Delete local zip file
-
-        return (result_path, container_path)
-
-    def copy_bundle(self, source_bundle_uuid, info, dest_client, dest_worksheet_uuid, add_to_worksheet):
-        '''
-        A streamlined combination of download_target and upload_bundle.
-        Copy from self to dest_client.
-        '''
-        # Open source
-        source_file_uuid, name = self.open_target_zip((source_bundle_uuid, ''), False)
-        source = RPCFileHandle(source_file_uuid, self.proxy)
-        # Open target
-        dest_file_uuid = dest_client.open_temp_file()
-        dest = RPCFileHandle(dest_file_uuid, dest_client.proxy)
-
-        # Copy contents over
-        file_util.copy(source, dest, autoflush=False, print_status='Copying %s from %s to %s' % (source_bundle_uuid, self.address, dest_client.address))
-        dest.close()
-        # Finally, install the zip file (this will be in charge of deleting that zip file).
-        result = dest_client.upload_bundle_zip(dest_file_uuid, info, dest_worksheet_uuid, False, add_to_worksheet)
-
-        self.finalize_file(source_file_uuid, True)  # Delete remote zip file
-        return result
+        zip_util.unpack(source, final_path)
+        self.finalize_file(source_uuid)

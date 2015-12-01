@@ -204,7 +204,7 @@ class CodaLabManager(object):
         expected on SQLite, so it is recommended that you use MySQL if possible.
         """)
 
-        if prompt_bool("Would you like to use a MySQL database for your local bundle service?", default=True):
+        if prompt_bool("Would you like to use a MySQL database for your local bundle service?", default=using_local):
             config['server']['class'] = 'MySQLModel'
             config['server']['engine_url'] = "mysql://{username}:{password}@{host}/{database}".format(**{
                 'host': prompt_str("Host:"),
@@ -254,8 +254,7 @@ class CodaLabManager(object):
 
     @cached
     def bundle_store(self):
-        direct_upload_paths = self.config['server'].get('direct_upload_paths', [])
-        return BundleStore(self.codalab_home, direct_upload_paths)
+        return BundleStore(self.codalab_home)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)
@@ -274,17 +273,17 @@ class CodaLabManager(object):
             return session
 
         # Otherwise, go up process hierarchy to the *highest up shell* out of
-        # the consecutive shells.
-        #   cl bash bash screen bash gnome-terminal init
-        #            ^
-        #            | return this
+        # the consecutive shells.  Include Python so we can script from inside it.
+        #   cl bash python bash screen bash gnome-terminal init
+        #                  ^
+        #                  | return this
         # This way, it's easy to write scripts that have embedded 'cl' commands
         # which modify the current session.
         process = psutil.Process(os.getppid())
         session = 'top'
         max_depth = 10
         while process and max_depth:
-            if process.name() not in ('bash', 'csh', 'zsh'):
+            if process.name() not in ('sh', 'bash', 'csh', 'tcsh', 'zsh', 'python'):
                 break
             session = str(process.pid)
             process = process.parent()
