@@ -23,15 +23,13 @@ def short_uuid(full_uuid):
 
 def require_not_headless(completer):
     """
-    Given a completer, return a CodaLabCompleter that will only call the
+    Given a completer (that is not a CodaLabCompleter), return a CodaLabCompleter that will only call the
     given completer if the client is not headless.
     """
     class SafeCompleter(CodaLabCompleter):
         def __call__(self, *args, **kwargs):
             if self.cli.headless:
                 return ()
-            elif inspect.isclass(completer):
-                return completer()(*args, **kwargs)
             else:
                 return completer(*args, **kwargs)
 
@@ -160,7 +158,7 @@ class TargetsCompleter(CodaLabCompleter):
             # then suggest completions for subpath
             target = self.cli.parse_target(client, worksheet_uuid, bundle_spec)
             info = client.get_target_info(target, 0)
-            if info['type'] == 'directory':
+            if 'type' in info and info['type'] == 'directory':
                 base_path = client.get_target_path(target)
                 completions = FilesCompleter()(os.path.join(base_path, subpath))
                 return (suggestion_format.format(p[len(base_path) + 1:]) for p in completions)

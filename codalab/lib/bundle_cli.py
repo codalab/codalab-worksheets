@@ -750,7 +750,7 @@ class BundleCLI(object):
             'Most of the other arguments specify metadata fields.',
         ],
         arguments=(
-            Commands.Argument('path', help='Paths (or URLs) of the files/directories to upload.', nargs='*', completer=require_not_headless(FilesCompleter)),
+            Commands.Argument('path', help='Paths (or URLs) of the files/directories to upload.', nargs='*', completer=require_not_headless(FilesCompleter())),
             Commands.Argument('-c', '--contents', help='Specify the string contents of the bundle.'),
             Commands.Argument('-L', '--follow_symlinks', help='Always dereference (follow) symlinks.', action='store_true'),
             Commands.Argument('-x', '--exclude_patterns', help='Exclude these file patterns.', nargs='*'),
