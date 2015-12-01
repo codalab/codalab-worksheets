@@ -127,6 +127,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
 OTHER_COMMANDS = (
     'help',
     'status',
+    'uedit',
     'alias',
     'work-manager',
     'server',
@@ -376,11 +377,20 @@ class Commands(object):
 
                     kwargs = {
                         'dest': metadata_util.metadata_key_to_argument(spec.key),
-                        'metavar': spec.metavar,
-                        'nargs': '*' if issubclass(spec.type, list) else None,
                         'help': spec.description + help_suffix,
-                        'type': str if issubclass(spec.type, list) or issubclass(spec.type, basestring) else spec.type,
                     }
+                    if issubclass(spec.type, list):
+                        kwargs['type'] = str
+                        kwargs['nargs'] = '*'
+                        kwargs['metavar'] = spec.metavar
+                    elif issubclass(spec.type, basestring):
+                        kwargs['type'] = str
+                        kwargs['metavar'] = spec.metavar
+                    elif spec.type is bool:
+                        kwargs['action'] = 'store_true'
+                    else:
+                        kwargs['type'] = spec.type
+                        kwargs['metavar'] = spec.metavar
                     arguments.append(Commands.Argument(*args, **kwargs))
 
         return tuple(arguments)
@@ -663,18 +673,23 @@ class BundleCLI(object):
         help='Show current client status.'
     )
     def do_status_command(self, args):
-        self._fail_if_headless('status')
-        print >>self.stdout, "codalab_home: %s" % self.manager.codalab_home
-        print >>self.stdout, "session: %s" % self.manager.session_name()
-        address = self.manager.session()['address']
-        print >>self.stdout, "address: %s" % address
-        state = self.manager.state['auth'].get(address, {})
-        if 'username' in state:
-            print >>self.stdout, "username: %s" % state['username']
+        if not self.headless:
+            print >>self.stdout, "codalab_home: %s" % self.manager.codalab_home
+            print >>self.stdout, "session: %s" % self.manager.session_name()
+            address = self.manager.session()['address']
+            print >>self.stdout, "address: %s" % address
+            state = self.manager.state['auth'].get(address, {})
+            if 'username' in state:
+                print >>self.stdout, "username: %s" % state['username']
+
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
-        print >>self.stdout, "worksheet: %s" % self.simple_worksheet_str(worksheet_info)
+        print >>self.stdout, "current_worksheet: %s" % self.simple_worksheet_str(worksheet_info)
         print >>self.stdout, "user: %s" % self.simple_user_str(client.user_info(None))
+
+        user_info = client.get_user_info(None)
+        print >>self.stdout, "time: %s" % formatting.ratio_str(formatting.duration_str, user_info['time_used'], user_info['time_quota'])
+        print >>self.stdout, "disk: %s" % formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota'])
 
     @Commands.command(
         'logout',
@@ -2178,6 +2193,29 @@ class BundleCLI(object):
                     '%s(%s)' % (event.user_name, event.user_id),
                     event.command, event.args]
                 print >>self.stdout, '\t'.join(row)
+
+    @Commands.command(
+        'uedit',
+        help=[
+            'Edit user information.',
+        ],
+        arguments=(
+            Commands.Argument('-u', '--user_id', help='User to set quota for'),
+            Commands.Argument('-t', '--time_quota', help='Total amount of time allowed (e.g., 3, 3m, 3h, 3d)'),
+            Commands.Argument('-d', '--disk_quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'),
+        ),
+    )
+    def do_uedit_command(self, args):
+        """
+        Edit properties of users.
+        """
+        client = self.manager.current_client()
+        user_info = client.get_user_info(args.user_id)
+        if args.time_quota is not None:
+            user_info['time_quota'] = formatting.parse_duration(args.time_quota)
+        if args.disk_quota is not None:
+            user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
+        client.update_user_info(user_info)
 
     @Commands.command(
         'cleanup',

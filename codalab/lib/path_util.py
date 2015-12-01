@@ -224,7 +224,7 @@ def read_lines(path, max_num_lines=None, max_total_bytes=None):
     :param max_total_bytes: maximum total number of bytes to read from path
     :return: list of strings read from path
     """
-    if not os.path.isfile(path):
+    if path is None or not os.path.isfile(path):
         return None
 
     lines = []

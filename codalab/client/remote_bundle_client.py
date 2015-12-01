@@ -98,6 +98,8 @@ class RemoteBundleClient(BundleClient):
       'resolve_interpreted_items',
       # Commands related to authentication (in BundleClient).
       'login',
+      'get_user_info',
+      'update_user_info',
       # Commands related to groups and permissions.
       'list_groups',
       'new_group',

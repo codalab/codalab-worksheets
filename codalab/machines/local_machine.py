@@ -13,6 +13,7 @@ class LocalMachine(Machine):
     '''
     Run commands on the local machine.  This is for simple testing or personal
     use only, since there is no security.
+    Eventually, deprecate this.
     '''
     def __init__(self):
         self.bundle = None

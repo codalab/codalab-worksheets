@@ -228,6 +228,7 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
+        self._check_quota(need_time=False, need_disk=True)
 
         # Construct initial metadata
         bundle_type = info['bundle_type']
@@ -266,6 +267,9 @@ class LocalBundleClient(BundleClient):
         bundle = bundle_subclass.construct(**construct_args)
         self.model.save_bundle(bundle)
 
+        # Update user statistics
+        self.model.update_user_disk_used(bundle.owner_id)
+
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
 
@@ -284,6 +288,8 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
+        self._check_quota(need_time=True, need_disk=True)
+
         bundle_uuid = self._derive_bundle(bundle_type, targets, command, metadata, worksheet_uuid)
 
         # Add to worksheet
@@ -400,6 +406,9 @@ class LocalBundleClient(BundleClient):
             else:
                 # Actually delete the bundle
                 self.model.delete_bundles(relevant_uuids)
+
+            # Update user statistics
+            self.model.update_user_disk_used(self._current_user_id())
 
         # Delete the data_hash
         for data_hash in relevant_data_hashes:
@@ -1228,7 +1237,35 @@ class LocalBundleClient(BundleClient):
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
 
+    def get_user_info(self, user_id):
+        if user_id is None:
+            user_id = self._current_user_id()
+        return self.model.get_user_info(user_id)
+
+    def update_user_info(self, user_info):
+        user_id = self._current_user_id()
+        is_root = (user_id == self.model.root_user_id)
+        is_user = (user_id == user_info['user_id'])
+        if is_root:
+            # TODO: in the future, allow user to update, but only in limited ways
+            self.model.update_user_info(user_info)
+        else:
+            raise PermissionError('Only the root user has permissions to edit users.')
+
+
     @staticmethod
     def _check_worksheet_not_frozen(worksheet):
         if worksheet.frozen:
             raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
+
+
+    def _check_quota(self, need_time, need_disk):
+        user_info = self.get_user_info(None)
+        if need_time:
+            if user_info['time_used'] >= user_info['time_quota']:
+                raise UsageError('Out of time quota: %s' %
+                    formatting.ratio_str(formatting.duration_str, user_info['time_used'], user_info['time_quota']))
+        if need_disk:
+            if user_info['disk_used'] >= user_info['disk_quota']:
+                raise UsageError('Out of disk quota: %s' %
+                    formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota']))

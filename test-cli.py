@@ -76,8 +76,8 @@ def run_command(args, expected_exit_code=0):
 def get_info(uuid, key):
     return run_command([cl, 'info', '-f', key, uuid])
 
-def wait(uuid):
-    run_command([cl, 'wait', uuid])
+def wait(uuid, expected_exit_code=0):
+    run_command([cl, 'wait', uuid], expected_exit_code)
 
 def check_equals(true_value, pred_value):
     assert true_value == pred_value, "expected '%s', but got '%s'" % (true_value, pred_value)
@@ -621,6 +621,33 @@ def test(ctx):
     output = run_command([cl, 'info', '-f', 'uuid', buuids[0], bnames[0], bnames[0], buuids[0]])
     check_equals('\n'.join([buuids[0]] * 4), output)
 
+@TestModule.register('resources')
+def test(ctx):
+    '''Test whether resource constraints are respected'''
+    uuid = run_command([cl, 'upload', 'scripts/stress-test.py'])
+    def stress(use_time, request_time, use_memory, request_memory, use_disk, request_disk, expected_exit_code):
+        run_uuid = run_command([
+            cl, 'run', 'main.py:' + uuid, 'python main.py --time %s --memory %s --disk %s' % (use_time, use_memory, use_disk),
+            '--request_time', str(request_time),
+            '--request_memory', str(request_memory) + 'm',
+            '--request_disk', str(request_disk) + 'm',
+        ])
+        wait(run_uuid, expected_exit_code)
+        get_info(run_uuid, 'failure_message')
+
+    # Good
+    stress(use_time=1, request_time=10, use_memory=50, request_memory=100, use_disk=10, request_disk=100, expected_exit_code=0)
+    # Too much time
+    stress(use_time=10, request_time=1, use_memory=50, request_memory=100, use_disk=10, request_disk=100, expected_exit_code=1)
+    # Too much memory
+    stress(use_time=1, request_time=10, use_memory=1000, request_memory=100, use_disk=0, request_disk=10, expected_exit_code=1)
+    # Too much disk
+    stress(use_time=1, request_time=10, use_memory=50, request_memory=100, use_disk=200, request_disk=100, expected_exit_code=1)
+
+    # Test network access
+    wait(run_command([cl, 'run', 'wget google.com']), 1)
+    wait(run_command([cl, 'run', 'wget google.com', '--request_network']), 0)
+
 @TestModule.register('copy')
 def test(ctx):
     '''Test copying between instances.'''
@@ -671,7 +698,6 @@ def test(ctx):
     del os.environ['CODALAB_HOME']
     run_command([cl, 'work', remote_worksheet])
     shutil.rmtree(home)
-
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
