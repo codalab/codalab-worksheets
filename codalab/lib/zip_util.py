@@ -72,17 +72,21 @@ def unpack(source, dest_path):
     Note: |source| can be a file handle or a path.
     """
     # Unpack to a temporary location.
+    # TODO: guard against zip bombs.  Put a maximum limit and enforce it here.
+    # In the future, we probably don't want to be unpacking things all over the place.
     tmp_path = tempfile.mkdtemp('-zip_util.unpack')
     if isinstance(source, basestring):
         source_path = source
         if source_path.endswith('tar.gz') or source_path.endswith('tgz'):
-            subprocess.call(['tar', 'xfz', source_path, '-C', tmp_path])
+            exitcode = subprocess.call(['tar', 'xfz', source_path, '-C', tmp_path])
         elif source_path.endswith('tar.bz2'):
-            subprocess.call(['tar', 'xfj', source_path, '-C', tmp_path])
+            exitcode = subprocess.call(['tar', 'xfj', source_path, '-C', tmp_path])
         elif source_path.endswith('zip'):
-            subprocess.call(['unzip', '-q', source_path, '-d', tmp_path])
+            exitcode = subprocess.call(['unzip', '-q', source_path, '-d', tmp_path])
         else:
-            raise UsageError('Not an archive: ' % source_path)
+            raise UsageError('Not an archive: %s' % source_path)
+        if exitcode != 0:
+            raise UsageError('Error unpacking %s' % source_path)
     else:
         # File handle, stream the contents!
         source_handle = source

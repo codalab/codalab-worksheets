@@ -417,7 +417,7 @@ def test(ctx):
     run_command([cl, 'search', name, '--append'])
     # get info
     check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
-    check_equals('run "echo hello"', run_command([cl, 'info', '-f', 'args', uuid]))
+    check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
     check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
     # block
     uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
