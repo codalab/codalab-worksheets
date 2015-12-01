@@ -1,5 +1,7 @@
 """
 completers.py
+
+Classes and functions for CLI autocomplete functionality, built within the argcomplete framework.
 """
 import inspect
 import itertools
@@ -133,6 +135,10 @@ def UnionCompleter(*completers):
     return _UnionCompleter
 
 
+# TODO: argcomplete does not recognize that an argument following a target_spec might be another target_spec, or
+# TODO: even a command. The argcomplete code is a mess, so this may require some monkey patching/pull requests to
+# TODO: fix, or building our own argument parsing/completion framework (e.g. like aws-cli).
+# TODO: https://github.com/codalab/codalab-cli/issues/223
 class TargetsCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
         worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
