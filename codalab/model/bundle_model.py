@@ -58,7 +58,7 @@ from codalab.objects.permission import parse_permission
 
 import re, collections
 import datetime
-import time, json
+import time, json, sys
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -1459,9 +1459,10 @@ class BundleModel(object):
             for row in rows:
                 user_info = str_key_dict(row)
             if not user_info:
-                print 'Creating new entry for user ' + user_id
+                print >>sys.stderr, 'Creating new entry for user ' + user_id
                 user_info = {
                     'user_id': user_id,
+                    'user_name': '',  # TODO: Set this to something
                     'time_quota': DEFAULT_COMPUTE_QUOTA,
                     'time_used': 0,
                     'disk_quota': DEFAULT_DISK_QUOTA,

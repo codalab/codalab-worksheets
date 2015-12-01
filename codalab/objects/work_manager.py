@@ -269,9 +269,14 @@ class Worker(object):
                     bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=True)
 
                 # Note: uploading will move temp_dir to the bundle store.
-                data_hash, new_metadata = self.bundle_store.upload(temp_dir, follow_symlinks=False, exclude_patterns=[])
+                (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=[temp_dir],
+                                                                              follow_symlinks=False,
+                                                                              exclude_patterns=None,
+                                                                              git=False,
+                                                                              unpack=False,
+                                                                              remove_sources=True)
                 db_update['data_hash'] = data_hash
-                metadata.update(new_metadata)
+                metadata.update(bundle_store_metadata)
             except Exception as e:
                 print '=== INTERNAL ERROR: %s' % e
                 traceback.print_exc()
