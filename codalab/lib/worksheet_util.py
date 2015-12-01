@@ -683,7 +683,7 @@ def interpret_items(schemas, raw_items):
         if len(bundle_infos) == 0:
             return
 
-        def raise_usage_error():
+        def raise_genpath_usage_error():
             raise UsageError('Expected \'% display ' + mode + ' (genpath)\', but got \'% display ' + ' '.join(
                 [mode] + args) + '\'')
 
@@ -706,7 +706,7 @@ def interpret_items(schemas, raw_items):
 
                 # Parse arguments
                 if len(args) == 0:
-                    raise_usage_error()
+                    raise_genpath_usage_error()
                 interpreted = genpath_to_target(bundle_info, args[0])
                 properties = parse_properties(args[1:])
 
@@ -772,7 +772,7 @@ def interpret_items(schemas, raw_items):
         elif mode == 'graph':
             # display graph <genpath> <properties>
             if len(args) == 0:
-                raise_usage_error()
+                raise_genpath_usage_error()
             # interpreted is list of {
             #   'uuid': ...,
             #   'display_name': ..., # What to show as the description of a bundle
