@@ -2166,7 +2166,7 @@ class BundleCLI(object):
         help='Print the history of commands on this CodaLab instance (local only).',
         arguments=(
             Commands.Argument('-u', '--user', help='Filter by user id or username.'),
-            Commands.Argument('-c', '--command', help='Filter by command.'),
+            Commands.Argument('-c', '--command', dest='match_command', help='Filter by command.'),
             Commands.Argument('-a', '--args', help='Filter by arguments.'),
             Commands.Argument('--uuid', help='Filter by bundle or worksheet uuid.'),
             Commands.Argument('-o', '--offset', help='Offset in the result list.', type=int, default=0),
@@ -2183,7 +2183,7 @@ class BundleCLI(object):
 
         # Build query
         query_info = {
-            'user': args.user, 'command': args.command, 'args': args.args, 'uuid': args.uuid,
+            'user': args.user, 'command': args.match_command, 'args': args.args, 'uuid': args.uuid,
             'count': args.count, 'group_by': args.group_by
         }
         info = client.get_events_log_info(query_info, args.offset, args.limit)
