@@ -6,6 +6,7 @@ from codalab.lib import (
   canonicalize,
   path_util,
 )
+from codalab.lib.bundle_action import BundleAction
 
 from codalab.objects.machine import Machine
 
@@ -59,10 +60,13 @@ class LocalMachine(Machine):
             'job_handle': str(process.pid)
         }
 
-    def kill_bundle(self, bundle):
+    def send_bundle_action(self, bundle, action_string):
         if not self.bundle or self.bundle.uuid != bundle.uuid: return False
-        print >>sys.stderr, 'LocalMachine.kill_bundle %s' % (bundle.uuid)
-        self.process.kill()
+        print >>sys.stderr, 'LocalMachine.send_command(%s, %s)' % (bundle.uuid, action_string)
+        if action_string == BundleAction.KILL:
+            self.process.kill()
+        else:
+            print '=== Unhandled command: %s' % action_string
         return True
 
     def get_bundle_statuses(self):

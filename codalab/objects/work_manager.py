@@ -19,7 +19,6 @@ import os
 from codalab.common import (
   precondition,
   State,
-  Command,
   UsageError,
 )
 from codalab.lib import (
@@ -28,9 +27,8 @@ from codalab.lib import (
 )
 from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.make_bundle import MakeBundle
-from codalab.machines import (
-  remote_machine,
-)
+from codalab.lib.bundle_action import BundleAction
+from codalab.machines import remote_machine
 
 class Worker(object):
     def __init__(self, bundle_store, model, machine, auth_handler):
@@ -146,26 +144,26 @@ class Worker(object):
         except:
             return None
 
-    def check_killed_bundles(self):
+    def check_bundle_actions(self):
         '''
-        For bundles that need to be killed, tell the machine to kill it.
-        If unable to kill, still discard the action.
+        Process bundle actions (e.g., kill, writed).  Get the bundle actions
+        from the database and dispatch to the machine.
         '''
         bundle_actions = self.model.pop_bundle_actions()
         if self.verbose >= 2: print 'bundle_actions:', bundle_actions
         db_update = {}
         for x in bundle_actions:
-            # Process action
-            processed = False
-            if x.action == Command.KILL:
-                bundle = self._safe_get_bundle(x.bundle_uuid)
-                if not bundle:
-                    continue
-                if not self.machine.kill_bundle(bundle):
-                    print 'Killing %s failed' % x.bundle_uuid
-            else:
-                print 'Unknown action: %s' % x.action
+            # Get the bundle
+            bundle = self._safe_get_bundle(x.bundle_uuid)
+            if not bundle:  # Might have been deleted
+                continue
 
+            # Get the action and perform it
+            if not self.machine.send_bundle_action(bundle, x.action):
+                print 'ERROR: action %s failed' % x.action
+
+            # Append this action to the bundle to record that this action was
+            # performed.
             new_actions = getattr(bundle.metadata, 'actions', []) + [x.action]
             db_update = {'metadata': {'actions': new_actions}}
             self.model.update_bundle(bundle, db_update)
@@ -394,8 +392,8 @@ class Worker(object):
         self.pretty_print('Running worker loop (num_iterations = %s, sleep_time = %s)' % (num_iterations, sleep_time))
         iteration = 0
         while not num_iterations or iteration < num_iterations:
-            # Check to see if any bundles should be killed
-            bool_killed = self.check_killed_bundles()
+            # Check to see if we need to take any actions on bundles
+            bool_action = self.check_bundle_actions()
             # Try to stage bundles
             self.update_created_bundles()
             # Try to run bundles with READY parents
@@ -405,7 +403,7 @@ class Worker(object):
             # TODO: mark QUEUED and RUNNING jobs as FAILED that we haven't heard back from a while
 
             # Sleep only if nothing happened.
-            if not (bool_killed or bool_run or bool_done):
+            if not (bool_action or bool_run or bool_done):
                 time.sleep(sleep_time)
             else:
                 # Advance counter only if something interesting happened

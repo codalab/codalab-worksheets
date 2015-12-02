@@ -154,9 +154,12 @@ class RemoteMachine(Machine):
                 'echo "disk: $disk (max %s)"' % request_disk,
                 'if [ -n "$disk" ] && [ "$disk" -gt "%s" ]; then echo "[CodaLab] Disk limit exceeded: $disk > %s, terminating." >> %s/stderr; docker kill $(cat %s); break; fi' % \
                     (request_disk, request_disk, ptr_temp_dir, ptr_container_file),
-                # Respond to kill action
-                'if [ -e %s ] && [ "$(cat %s)" == "kill" ]; then echo "[CodaLab] Received kill command, terminating." >> %s/stderr; docker kill $(cat %s); break; fi' % \
-                    (ptr_action_file, ptr_action_file, ptr_temp_dir, ptr_container_file),
+                # Execute "kill"
+                'if [ -e %s ] && [ "$(cat %s)" == "kill" ]; then echo "[CodaLab] Received kill command, terminating." >> %s/stderr; docker kill $(cat %s); rm %s; break; fi' % \
+                    (ptr_action_file, ptr_action_file, ptr_temp_dir, ptr_container_file, ptr_action_file),
+                # Execute "write <subpath> <contents>"
+                'if [ -e %s ] && [ "$(cat %s | cut -f1 -d\\ )" == "write" ]; then echo Writing...; echo $(cat %s | cut -f3- -d\\ ) > %s/$(cat %s | cut -f2 -d\\ ); rm %s; fi' % \
+                    (ptr_action_file, ptr_action_file, ptr_action_file, ptr_temp_dir, ptr_action_file, ptr_action_file),
                 # Sleep
                 'sleep 1',
             ]
@@ -317,16 +320,18 @@ class RemoteMachine(Machine):
             traceback.print_exc()
             return []
 
-    def kill_bundle(self, bundle):
-        if self.verbose >= 1: print '=== kill_bundle(%s)' % (bundle.uuid)
+    def send_bundle_action(self, bundle, action_string):
+        """
+        Write a command out to the action file for |bundle|.
+        """
+        if self.verbose >= 1: print '=== send_bundle_action(%s, %s)' % (bundle.uuid, action_string)
         if not self._exists(bundle): return False
 
         try:
-            # If running docker, we kill by writing a file.
-            # This is a much more preferred way to kill a job.
+            # Write the kill action for the worker to pick up.
             action_file = bundle.metadata.temp_dir + '.action'
             with open(action_file, 'w') as f:
-                print >>f, 'kill'
+                print >>f, action_string
             return True
         except Exception, e:
             print '=== INTERNAL ERROR: %s' % e

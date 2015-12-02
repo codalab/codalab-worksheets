@@ -17,12 +17,12 @@ from codalab.bundles import (
 from codalab.common import (
   precondition,
   State,
-  Command,
   AuthorizationError,
   UsageError,
   PermissionError
 )
 from codalab.client.bundle_client import BundleClient
+from codalab.lib.bundle_action import BundleAction
 from codalab.lib import (
     canonicalize,
     path_util,
@@ -322,7 +322,17 @@ class LocalBundleClient(BundleClient):
         """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
-            self.model.add_bundle_action(bundle_uuid, Command.KILL)
+            self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
+
+    @authentication_required
+    def write_targets(self, targets, string):
+        """
+        Write targets by sending a command to all the given bundles in the targets.
+        """
+        bundle_uuids = [bundle_uuid for (bundle_uuid, subpath) in targets]
+        check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
+        for bundle_uuid, subpath in targets:
+            self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
 
     @authentication_required
     def chown_bundles(self, bundle_uuids, user_spec):

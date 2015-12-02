@@ -101,6 +101,7 @@ BUNDLE_COMMANDS = (
     'mimic',
     'macro',
     'kill',
+    'write',
 )
 
 WORKSHEET_COMMANDS = (
@@ -1389,11 +1390,8 @@ class BundleCLI(object):
 
     # Helper: shared between info and cat
     def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
-        from codalab.lib.print_util import pretty_print
-        pretty_print(target)
         info = client.get_target_info(target, 1)
-        pretty_print(info)
-        info_type = info.get('type')
+        info_type = info.get('type') if info is not None else None
 
         if info_type is None:
             if fail_if_not_exist:
@@ -1607,6 +1605,21 @@ class BundleCLI(object):
         for bundle_uuid in bundle_uuids:
             print >>self.stdout, bundle_uuid
         client.kill_bundles(bundle_uuids)
+
+    @Commands.command(
+        'write',
+        help='Instruct the appropriate worker to write a small file into the running bundle(s).',
+        arguments=(
+            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=BundlesCompleter),
+            Commands.Argument('string', help='Write this string to the target file.'),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ),
+    )
+    def do_write_command(self, args):
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        client.write_targets([target], args.string)
+        print >>self.stdout, target[0]
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!

@@ -76,6 +76,7 @@ class RemoteBundleClient(BundleClient):
       'update_bundle_metadata',
       'delete_bundles',
       'kill_bundles',
+      'write_targets',
       'chown_bundles',
       'get_bundle_uuids',
       'search_bundle_uuids',

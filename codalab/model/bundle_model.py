@@ -570,11 +570,7 @@ class BundleModel(object):
 
     def add_bundle_action(self, uuid, action):
         with self.engine.begin() as connection:
-            connection.execute(cl_bundle_action.insert().values({"bundle_uuid": uuid, "action": action}))
-
-    def add_bundle_actions(self, bundle_actions):
-        with self.engine.begin() as connection:
-            self.do_multirow_insert(connection, cl_bundle_action, bundle_actions)
+            connection.execute(cl_bundle_action.insert().values({'bundle_uuid': uuid, 'action': action}))
 
     def pop_bundle_actions(self):
         with self.engine.begin() as connection:

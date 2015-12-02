@@ -69,7 +69,7 @@ bundle_action = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-  Column('action', String(63), nullable=False),
+  Column('action', Text, nullable=False),
   sqlite_autoincrement=True,
 )
 

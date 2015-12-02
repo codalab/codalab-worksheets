@@ -65,13 +65,6 @@ class State(object):
     FINAL_STATES = {READY, FAILED}
 
 
-class Command(object):
-    """
-    An enumeration of commands the Client can send to a Worker
-    """
-    KILL = 'kill'
-
-
 def precondition(condition, message):
     if not condition:
         raise PreconditionViolation(message)
