@@ -261,9 +261,9 @@ def test(ctx):
     check_contains(['host_worksheets', 'contents'], run_command([cl, 'info', '--verbose', uuid]))
 
     # rm
-    run_command([cl, 'rm', '--dry_run', uuid])
+    run_command([cl, 'rm', '--dry-run', uuid])
     check_contains('0x', get_info(uuid, 'data_hash'))
-    run_command([cl, 'rm', '--data_only', uuid])
+    run_command([cl, 'rm', '--data-only', uuid])
     check_equals('None', get_info(uuid, 'data_hash'))
     run_command([cl, 'rm', uuid])
 
@@ -286,7 +286,7 @@ def test(ctx):
     run_command([cl, 'cat', uuid], 1)  # Should not resolve this - otherwise it's dangerous!
 
     # Upload symlink, follow link
-    uuid = run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow_symlinks'])
+    uuid = run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'])
     check_equals(test_path_contents('a-symlink.txt'), run_command([cl, 'cat', uuid]))
     run_command([cl, 'cat', uuid])  # Should have the full contents
 
@@ -295,7 +295,7 @@ def test(ctx):
     run_command([cl, 'cat', uuid], 1)
 
     # Upload directory with excluded files
-    uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude_patterns', 'f*'])
+    uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
     check_num_lines(2 + 1, run_command([cl, 'cat', uuid]))  # 2 lines header,oOnly one file left after excluding
 
 @TestModule.register('upload2')
@@ -628,9 +628,9 @@ def test(ctx):
     def stress(use_time, request_time, use_memory, request_memory, use_disk, request_disk, expected_exit_code):
         run_uuid = run_command([
             cl, 'run', 'main.py:' + uuid, 'python main.py --time %s --memory %s --disk %s' % (use_time, use_memory, use_disk),
-            '--request_time', str(request_time),
-            '--request_memory', str(request_memory) + 'm',
-            '--request_disk', str(request_disk) + 'm',
+            '--request-time', str(request_time),
+            '--request-memory', str(request_memory) + 'm',
+            '--request-disk', str(request_disk) + 'm',
         ])
         wait(run_uuid, expected_exit_code)
         get_info(run_uuid, 'failure_message')
@@ -646,7 +646,7 @@ def test(ctx):
 
     # Test network access
     wait(run_command([cl, 'run', 'wget google.com']), 1)
-    wait(run_command([cl, 'run', 'wget google.com', '--request_network']), 0)
+    wait(run_command([cl, 'run', 'wget google.com', '--request-network']), 0)
 
 @TestModule.register('copy')
 def test(ctx):
