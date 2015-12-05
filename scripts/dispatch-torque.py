@@ -3,6 +3,7 @@
 # Wrapper for the Torque Resource Manager (PBS).
 # http://docs.adaptivecomputing.com/torque/4-1-4/Content/topics/commands/qsub.htm
 # Each command outputs JSON.
+# This is adapted for the Stanford NLP cluster.
 
 import sys, os, json, re
 import subprocess
@@ -55,11 +56,16 @@ if mode == 'start':
     if args.request_memory != None:
         resource_args.extend(['-l', 'mem=%d' % int(args.request_memory)])
     if args.request_queue != None:
-        resource_args.extend(['-q', args.request_queue])
+        # Either host=<host-name> or <queue-name>
+        m = re.match('^host=(.+)$', args.request_queue)
+        if m:
+            resource_args.extend(['-l', 'host=' + m.group(1)])
+        else:
+            resource_args.extend(['-q', args.request_queue])
     if args.request_priority != None:
         resource_args.extend(['-p', args.request_priority])
 
-    stdout = get_output(ssh(['/usr/bin/env', 'qsub', '-o', '/dev/null', '-e', '/dev/null', '-q', 'nlp'] + resource_args + [args.script]))
+    stdout = get_output(ssh(['/usr/bin/env', 'qsub', '-o', '/dev/null', '-e', '/dev/null'] + resource_args + [args.script]))
     handle = stdout.strip()
     response = {'raw': stdout, 'handle': handle}
 elif mode == 'info':
