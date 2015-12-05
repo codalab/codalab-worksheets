@@ -42,6 +42,7 @@ from codalab.common import UsageError, PermissionError
 from codalab.objects.worksheet import Worksheet
 from codalab.server.auth import User
 from codalab.lib.bundle_store import BundleStore
+from codalab.lib import formatting
 
 def cached(fn):
     def inner(self):
@@ -305,6 +306,14 @@ class CodaLabManager(object):
             sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
         return sessions[name]
 
+
+    @cached
+    def default_user_info(self):
+        info = self.config['server']['default_user_info']
+        info['time_quota'] = formatting.parse_duration(info['time_quota'])
+        info['disk_quota'] = formatting.parse_size(info['disk_quota'])
+        return info
+
     @cached
     def model(self):
         '''
@@ -314,13 +323,13 @@ class CodaLabManager(object):
         model = None
         if model_class == 'MySQLModel':
             from codalab.model.mysql_model import MySQLModel
-            model = MySQLModel(engine_url=self.config['server']['engine_url'])
+            model = MySQLModel(engine_url=self.config['server']['engine_url'], default_user_info=self.default_user_info())
         elif model_class == 'SQLiteModel':
             from codalab.model.sqlite_model import SQLiteModel
             # Patch for backwards-compatibility until we have a cleaner abstraction around config
             # that can update configs to newer "versions"
             engine_url = self.config['server'].get('engine_url', "sqlite:///{}".format(os.path.join(self.codalab_home, 'bundle.db')))
-            model = SQLiteModel(engine_url=engine_url)
+            model = SQLiteModel(engine_url=engine_url, default_user_info=self.default_user_info())
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,))
         model.root_user_id = self.root_user_id()

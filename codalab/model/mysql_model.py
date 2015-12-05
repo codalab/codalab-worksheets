@@ -41,11 +41,11 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
             raise
 
 class MySQLModel(BundleModel):
-    def __init__(self, engine_url):
+    def __init__(self, engine_url, default_user_info):
         if not engine_url.startswith('mysql://'):
             raise UsageError('Engine URL should start with mysql://')
         engine = create_engine(engine_url, strategy='threadlocal', pool_size=20, max_overflow=100, pool_recycle=3600)
-        super(MySQLModel, self).__init__(engine)
+        super(MySQLModel, self).__init__(engine, default_user_info)
 
     def do_multirow_insert(self, connection, table, values):
         # MySQL allows for more efficient multi-row insertions.

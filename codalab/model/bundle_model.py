@@ -72,11 +72,12 @@ def str_key_dict(row):
     return dict((str(k), v) for k, v in row.items())
 
 class BundleModel(object):
-    def __init__(self, engine):
+    def __init__(self, engine, default_user_info):
         '''
         Initialize a BundleModel with the given SQLAlchemy engine.
         '''
         self.engine = engine
+        self.default_user_info = default_user_info
         self.public_group_uuid = ''
         self.create_tables()
 
@@ -1459,9 +1460,9 @@ class BundleModel(object):
                 user_info = {
                     'user_id': user_id,
                     'user_name': '',  # TODO: Set this to something
-                    'time_quota': DEFAULT_COMPUTE_QUOTA,
+                    'time_quota': self.default_user_info['time_quota'],
                     'time_used': 0,
-                    'disk_quota': DEFAULT_DISK_QUOTA,
+                    'disk_quota': self.default_user_info['disk_quota'],
                     'disk_used': self._get_disk_used(user_id),
                 }
                 connection.execute(cl_user.insert().values(user_info))
