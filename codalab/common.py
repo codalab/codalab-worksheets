@@ -5,6 +5,9 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - precondition, a utility method that check's a function's input preconditions.
 """
 
+# Increment this on the develop branch when develop is merged into master.
+# http://semver.org/
+CODALAB_VERSION = '0.1.0'
 
 class IntegrityError(ValueError):
     """
@@ -60,13 +63,6 @@ class State(object):
 
     OPTIONS = {CREATED, STAGED, RUNNING, READY, FAILED}
     FINAL_STATES = {READY, FAILED}
-
-
-class Command(object):
-    """
-    An enumeration of commands the Client can send to a Worker
-    """
-    KILL = 'kill'
 
 
 def precondition(condition, message):

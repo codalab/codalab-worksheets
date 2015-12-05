@@ -91,8 +91,14 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
 
     # Take the last bundle
     if reverse_index <= 0 or reverse_index > len(bundle_uuids):
-        raise UsageError('bundle spec %s doesn\'t match (want index %d out of %d bundles)' %
-                         (bundle_spec, reverse_index, len(bundle_uuids)))
+        if bundle_spec is None:
+            raise UsageError('%d bundles, index %d out of bounds' %
+                             (len(bundle_uuids), reverse_index))
+        elif len(bundle_uuids) == 0:
+            raise UsageError('bundle spec %s doesn\'t match any bundles' % bundle_spec)
+        else:
+            raise UsageError('bundle spec %s matches %d bundles, index %d out of bounds' %
+                             (bundle_spec, len(bundle_uuids), reverse_index))
 
     return bundle_uuids[reverse_index - 1]
 
@@ -116,9 +122,6 @@ def get_target_path(bundle_store, model, target):
     else:
         bundle_root = bundle_store.get_location(bundle.data_hash)
     final_path = path_util.safe_join(bundle_root, path)
-
-    # Make sure that we're not following symlinks to some crazy place.
-    path_util.check_under_path(final_path, bundle_root)
 
     result = path_util.TargetPath(final_path, target)
     return result

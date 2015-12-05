@@ -6,6 +6,7 @@ from codalab.lib import (
   canonicalize,
   path_util,
 )
+from codalab.lib.bundle_action import BundleAction
 
 from codalab.objects.machine import Machine
 
@@ -13,6 +14,7 @@ class LocalMachine(Machine):
     '''
     Run commands on the local machine.  This is for simple testing or personal
     use only, since there is no security.
+    Eventually, deprecate this.
     '''
     def __init__(self):
         self.bundle = None
@@ -58,10 +60,15 @@ class LocalMachine(Machine):
             'job_handle': str(process.pid)
         }
 
-    def kill_bundle(self, bundle):
-        if not self.bundle or self.bundle.uuid != bundle.uuid: return False
-        print >>sys.stderr, 'LocalMachine.kill_bundle %s' % (bundle.uuid)
-        self.process.kill()
+    def send_bundle_action(self, bundle, action_string):
+        if not self.bundle or self.bundle.uuid != bundle.uuid:
+            return False
+
+        print >>sys.stderr, 'LocalMachine.send_command(%s, %s)' % (bundle.uuid, action_string)
+        if action_string == BundleAction.KILL:
+            self.process.kill()
+        else:
+            print >>sys.stderr, '=== Unhandled command: %s' % action_string
         return True
 
     def get_bundle_statuses(self):
@@ -86,7 +93,7 @@ class LocalMachine(Machine):
                     path_util.remove(f)
             ok = True
         except Exception, e:
-            print '=== INTERNAL ERROR: %s' % e
+            print >>sys.stderr, '=== INTERNAL ERROR: %s' % e
             traceback.print_exc()
             ok = False
 

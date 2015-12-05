@@ -1,4 +1,4 @@
-'''
+"""
 zip_util provides helpers that:
   a) zip a directory on the local filesystem and return the zip file
   b) unzip a zip file and extract the zipped directory
@@ -7,83 +7,99 @@ The zip files here are not arbitrary: they contain one designated
 file/directory.  In other words, zip files represent unnamed file/directories.
 
 To zip/unzip, we use the standard temp files.
-'''
+"""
 import os
 import shutil
 import sys
+import subprocess
 import tempfile
-from zipfile import ZipFile
 
 from codalab.common import UsageError
-from codalab.lib import path_util, print_util
+from codalab.lib import path_util, print_util, file_util
 
-def zip(path, follow_symlinks, exclude_patterns, file_name):
-    '''
-    Take a path to a file or directory |path| and return the path to a zip archive
-    containing its contents.  |file_name| is what the zip archive contains.
-    '''
-    if isinstance(path, list):
-        for p in path:
-            absolute_path = path_util.normalize(p)
-            path_util.check_isvalid(absolute_path, 'zip_directory')
+# Files with these extensions are considered archive.
+ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip']
+
+# When deciding whether an archive contains a single file/directory, ignore
+# these contents.
+IGNORE_FILES = ['.DS_Store', '__MACOSX']
+
+def path_is_archive(path):
+    if isinstance(path, basestring):
+        for ext in ARCHIVE_EXTS:
+            if path.endswith(ext):
+                return True
+    return False
+
+
+def strip_archive_ext(path):
+    for ext in ARCHIVE_EXTS:
+        if path.endswith(ext):
+            return path[:-len(ext)]
+    raise UsageError('Not an archive: %s' % path)
+
+
+def add_packed_suffix(path):
+    """
+    Add the packed suffix for path if it's not an archive.
+    """
+    if path_is_archive(path):
+        return path
+    return path + '.tar.gz'
+
+
+def open_packed_path(source, follow_symlinks, exclude_patterns):
+    """
+    Return file handle corresponding to |source|, which is either
+    - an archive file: just stream it.
+    - else: turn it into an archive
+    """
+    if path_is_archive(source):
+        return open(source)
+    args = ['tar', 'cfz', '-', '-C', os.path.dirname(source) or '.', os.path.basename(source)]
+    if follow_symlinks:
+        args.append('-h')
+    if exclude_patterns is not None:
+        for pattern in exclude_patterns:
+            args.append('--exclude=' + pattern)
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    return proc.stdout
+
+
+def unpack(source, dest_path):
+    """
+    Unpack the archive |source_path| to |dest_path|.
+    Note: |source| can be a file handle or a path.
+    """
+    # Unpack to a temporary location.
+    # TODO: guard against zip bombs.  Put a maximum limit and enforce it here.
+    # In the future, we probably don't want to be unpacking things all over the place.
+    tmp_path = tempfile.mkdtemp('-zip_util.unpack')
+    if isinstance(source, basestring):
+        source_path = source
+        if source_path.endswith('tar.gz') or source_path.endswith('tgz'):
+            exitcode = subprocess.call(['tar', 'xfz', source_path, '-C', tmp_path])
+        elif source_path.endswith('tar.bz2'):
+            exitcode = subprocess.call(['tar', 'xfj', source_path, '-C', tmp_path])
+        elif source_path.endswith('zip'):
+            exitcode = subprocess.call(['unzip', '-q', source_path, '-d', tmp_path])
+        else:
+            raise UsageError('Not an archive: %s' % source_path)
+        if exitcode != 0:
+            raise UsageError('Error unpacking %s' % source_path)
     else:
-        absolute_path = path_util.normalize(path)
-        path_util.check_isvalid(absolute_path, 'zip_directory')
+        # File handle, stream the contents!
+        source_handle = source
+        proc = subprocess.Popen(['tar', 'xfz', '-', '-C', tmp_path], stdin=subprocess.PIPE)
+        file_util.copy(source_handle, proc.stdin, print_status='Downloading and unpacking to %s' % tmp_path)
+        proc.stdin.close()
+        proc.wait()
 
-    # Recursively copy the directory into a temp directory.
-    temp_path = tempfile.mkdtemp()
-    temp_subpath = os.path.join(temp_path, file_name)
-
-    print_util.open_line('Copying %s to %s' % (path, temp_subpath))
-    if isinstance(path, list):
-        os.mkdir(temp_subpath)
-        for p in path:
-            absolute_path = path_util.normalize(p)
-            path_util.copy(absolute_path, os.path.join(temp_subpath, os.path.basename(p)), follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
+    # Move files into the right place.
+    # If archive only contains one path, then use that.
+    files = [f for f in os.listdir(tmp_path) if f not in IGNORE_FILES]
+    if len(files) == 1:
+        path_util.rename(os.path.join(tmp_path, files[0]), dest_path)
+        path_util.remove(tmp_path)
     else:
-        absolute_path = path_util.normalize(path)
-        path_util.copy(absolute_path, temp_subpath, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
-    print_util.clear_line()
-
-    zip_path = temp_path + '.zip'
-    opts = '-qr'
-    if not follow_symlinks: opts += ' --symlinks'
-    print_util.open_line('Zipping to %s' % zip_path)
-    if os.system("cd %s && zip %s %s %s" % (temp_path, opts, zip_path, file_name)) != 0:
-        raise UsageError('zip failed')
-
-    path_util.remove(temp_path)
-    return zip_path
-
-
-def unzip(zip_path, temp_path, file_name):
-    '''
-    Take an absolute path to a zip file |zip_path| and return the path to a file or
-    directory called |file_name| in |temp_path| containing its unzipped
-    contents.
-    Assume the zip file contains one file/directory called |file_name|.
-    If |file_name| is not specified, then return the temp_path itself.
-    '''
-    path_util.check_isfile(zip_path, 'unzip_directory')
-    if file_name:
-        temp_subpath = os.path.join(temp_path, file_name)
-    else:
-        temp_subpath = temp_path
-
-    print_util.open_line('Unzipping %s to %s' % (zip_path, temp_subpath))
-    if os.system("cd %s && unzip -q %s" % (temp_path, zip_path)) != 0:
-        raise UsageError('unzip failed')
-    print_util.clear_line()
-    # Corner case: note that the temp_subpath might not 'exist' because it is a
-    # symlink (which is broken until it's put in the right place).
-    if not os.path.exists(temp_subpath) and not os.path.islink(temp_subpath):
-        raise UsageError('Zip file %s missing %s (%s doesn\'t exist)' % (zip_path, file_name, temp_subpath))
-
-    return temp_subpath
-
-def is_zip_file(path):
-    try:
-        ZipFile(path)
-        return True
-    except:
-        return False
+        path_util.rename(tmp_path, dest_path)

@@ -17,16 +17,17 @@ from codalab.bundles import (
 from codalab.common import (
   precondition,
   State,
-  Command,
   AuthorizationError,
   UsageError,
   PermissionError
 )
 from codalab.client.bundle_client import BundleClient
+from codalab.lib.bundle_action import BundleAction
 from codalab.lib import (
     canonicalize,
     path_util,
     worksheet_util,
+    file_util,
     spec_util,
     formatting,
 )
@@ -151,7 +152,14 @@ class LocalBundleClient(BundleClient):
     # Helper
     def get_target_path(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        return canonicalize.get_target_path(self.bundle_store, self.model, target)
+        path = canonicalize.get_target_path(self.bundle_store, self.model, target)
+        if os.path.islink(path):
+            raise UsageError('Following symlink disallowed: %s/%s' % (target[0], target[1]))
+        if not os.path.exists(path):
+            # Too stringent, maybe hasn't been created yet.
+            #raise UsageError('Target does not exist: %s/%s' % (target[0], target[1]))
+            return None
+        return path
 
     # Helper
     def get_bundle_target(self, target):
@@ -201,21 +209,30 @@ class LocalBundleClient(BundleClient):
         return construct_args
 
     @authentication_required
-    def upload_bundle_url(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns):
+    def upload_bundle_url(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
         """
-        Called when |path| is a url.
-        Only used to expose uploading URLs directly to the RemoteBundleClient.
+        Called when |sources| is a URL.  Only used to expose uploading URLs
+        directly to the RemoteBundleClient.
         """
-        return self.upload_bundle(path, info, worksheet_uuid, follow_symlinks, exclude_patterns, True)
+        return self.upload_bundle(sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet)
 
     @authentication_required
-    def upload_bundle(self, path, info, worksheet_uuid, follow_symlinks, exclude_patterns, add_to_worksheet):
+    def upload_bundle(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
+        """
+        |sources|, |follow_symlinks|, |exclude_patterns|, |git|, |unpack|, |remove_sources|: see BundleStore.upload()
+        |info|: information about the bundle.
+        |worksheet_uuid|: which worksheet to inherit permissions on
+        |add_to_worksheet|: whether to add to this worksheet or not.
+        Note: |sources| could be None (e.g., if we are copying a bundle where we've only kept the metadata).
+        """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
+        self._check_quota(need_time=False, need_disk=True)
 
+        # Construct initial metadata
         bundle_type = info['bundle_type']
-        if 'uuid' in info:
+        if 'uuid' in info:  # Happens when we're copying bundles.
             existing = True
             construct_args = self.bundle_info_to_construct_args(info)
         else:
@@ -229,21 +246,29 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
-        # Upload the given path and record additional metadata from the upload.
-        if path:
-            (data_hash, bundle_store_metadata) = self.bundle_store.upload(path, follow_symlinks=follow_symlinks,
-                                                                          exclude_patterns=exclude_patterns)
+        # Upload the source and record additional metadata from the upload.
+        if sources is not None:
+            (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=sources,
+                                                                          follow_symlinks=follow_symlinks,
+                                                                          exclude_patterns=exclude_patterns,
+                                                                          git=git,
+                                                                          unpack=unpack,
+                                                                          remove_sources=remove_sources)
             metadata.update(bundle_store_metadata)
-            if construct_args.get('data_hash', data_hash) != data_hash:
-                # TODO should raise an exception or warning?
-                print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' %\
-                                    (construct_args.get('data_hash'), data_hash)
-            construct_args['data_hash'] = data_hash
+        else:
+            data_hash = None
+        if construct_args.get('data_hash', data_hash) != data_hash:
+            print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' %\
+                                (construct_args.get('data_hash'), data_hash)
+        construct_args['data_hash'] = data_hash
 
         # Set the owner
         construct_args['owner_id'] = self._current_user_id()
         bundle = bundle_subclass.construct(**construct_args)
         self.model.save_bundle(bundle)
+
+        # Update user statistics
+        self.model.update_user_disk_used(bundle.owner_id)
 
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
@@ -263,6 +288,8 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
+        self._check_quota(need_time=True, need_disk=True)
+
         bundle_uuid = self._derive_bundle(bundle_type, targets, command, metadata, worksheet_uuid)
 
         # Add to worksheet
@@ -295,7 +322,19 @@ class LocalBundleClient(BundleClient):
         """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
-            self.model.add_bundle_action(bundle_uuid, Command.KILL)
+            self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
+
+    @authentication_required
+    def write_targets(self, targets, string):
+        """
+        Write targets by sending a command to all the given bundles in the targets.
+        """
+        bundle_uuids = [bundle_uuid for (bundle_uuid, subpath) in targets]
+        check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
+        for bundle_uuid, subpath in targets:
+            if not re.match('^\w+$', subpath):
+                raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
+            self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
 
     @authentication_required
     def chown_bundles(self, bundle_uuids, user_spec):
@@ -379,6 +418,9 @@ class LocalBundleClient(BundleClient):
             else:
                 # Actually delete the bundle
                 self.model.delete_bundles(relevant_uuids)
+
+            # Update user statistics
+            self.model.update_user_disk_used(self._current_user_id())
 
         # Delete the data_hash
         for data_hash in relevant_data_hashes:
@@ -464,17 +506,24 @@ class LocalBundleClient(BundleClient):
     def get_target_info(self, target, depth):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
+        if path is None:
+            return None
         return path_util.get_info(path, depth)
 
     def cat_target(self, target, out):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
+        if path is None:
+            return
         path_util.cat(path, out)
 
     # Maximum number of bytes to read per line requested
     MAX_BYTES_PER_LINE = 128
 
-    def head_target(self, target, max_num_lines):
+    def head_target(self, target, max_num_lines, replace_non_unicode=False, base64_encode=True):
+        '''
+        Return base64 encoded version of the result.
+        '''
         max_total_bytes = None if max_num_lines is None else max_num_lines * self.MAX_BYTES_PER_LINE
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         path = self.get_target_path(target)
@@ -482,7 +531,13 @@ class LocalBundleClient(BundleClient):
         if lines is None:
             return None
 
-        return map(base64.b64encode, lines)
+        if replace_non_unicode:
+            lines = map(formatting.verbose_contents_str, lines)
+
+        if base64_encode:
+            lines = map(base64.b64encode, lines)
+
+        return lines
 
     def open_target_handle(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
@@ -493,12 +548,13 @@ class LocalBundleClient(BundleClient):
     def close_target_handle(handle):
         handle.close()
 
-    def download_target(self, target, follow_symlinks):
+    def download_target(self, target, final_path):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
         # Don't need to download anything because it's already local.
         # Note that we can't really enforce follow_symlinks, but this is okay,
         # because we will follow them when we copy it from the target path.
-        return (self.get_target_path(target), None)
+        source_path = self.get_target_path(target)
+        path_util.copy(source_path, final_path)
 
     @authentication_required
     def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow, dry_run):
@@ -932,6 +988,10 @@ class LocalBundleClient(BundleClient):
             responses.append(value)
         return responses
 
+    # Default number of lines to pull for each display mode.
+    DEFAULT_CONTENTS_MAX_LINES = 10
+    DEFAULT_GRAPH_MAX_LINES = 100
+
     def resolve_interpreted_items(self, interpreted_items):
         """
         Called by the web interface.  Takes a list of interpreted worksheet
@@ -943,35 +1003,71 @@ class LocalBundleClient(BundleClient):
             mode = item['mode']
             data = item['interpreted']
             properties = item['properties']
-            # if's in order of most frequent
-            if mode == 'markup':
-                # no need to do anything
-                pass
-            elif mode == 'record' or mode == 'table':
-                # header_name_posts is a list of (name, post-processing) pairs.
-                header, contents = data
-                # Request information
-                contents = worksheet_util.interpret_genpath_table_contents(self, contents)
-                data = (header, contents)
-            elif mode == 'contents':
-                info = self.get_target_info(data, 1)
-                if 'type' not in info:
-                    data = None
-                elif info['type'] == 'file':
-                    data = self.head_target(data, int(properties.get('maxlines', 10)))
-            elif mode == 'html':
-                data = self.head_target(data, None)
-            elif mode == 'image':
-                path = self.get_target_path(data)
-                data = path_util.base64_encode(path)
-            elif mode == 'search':
-                data = worksheet_util.interpret_search(self, None, data)
-            elif mode == 'wsearch':
-                data = worksheet_util.interpret_wsearch(self, data)
-            elif mode == 'worksheet':
-                pass
-            else:
-                raise UsageError('Invalid display mode: %s' % mode)
+
+            try:
+                # Replace data with a resolved version.
+                if mode == 'markup':
+                    # no need to do anything
+                    pass
+                elif mode == 'record' or mode == 'table':
+                    # header_name_posts is a list of (name, post-processing) pairs.
+                    header, contents = data
+                    # Request information
+                    contents = worksheet_util.interpret_genpath_table_contents(self, contents)
+                    data = (header, contents)
+                elif mode == 'contents':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+
+                    info = self.get_target_info(data, 1)
+                    if 'type' not in info:
+                        data = None
+                    elif info['type'] == 'file':
+                        data = self.head_target(data, max_lines, replace_non_unicode=True)
+                    elif info['type'] == 'directory':
+                        data = [base64.b64encode('<directory>')]
+                elif mode == 'html':
+                    data = self.head_target(data, None)
+                elif mode == 'image':
+                    path = self.get_target_path(data)
+                    data = path_util.base64_encode(path)
+                elif mode == 'graph':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+
+                    # data = list of {'target': ...}
+                    # Add a 'points' field that contains the contents of the target.
+                    for info in data:
+                        target = info['target']
+                        path = self.get_target_path(target)
+                        contents = self.head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
+                        if contents is not None:
+                            # Assume TSV file without header for now, just return each line as a row
+                            info['points'] = points = []
+                            for line in contents:
+                                row = line.split('\t')
+                                points.append(row)
+                elif mode == 'search':
+                    data = worksheet_util.interpret_search(self, None, data)
+                elif mode == 'wsearch':
+                    data = worksheet_util.interpret_wsearch(self, data)
+                elif mode == 'worksheet':
+                    pass
+                else:
+                    raise UsageError('Invalid display mode: %s' % mode)
+
+            except UsageError as e:
+                data = [base64.b64encode("Error: %s" % e.message)]
+
+            except StandardError:
+                import traceback
+                traceback.print_exc()
+                data = [base64.b64encode("Unexpected error interpreting item")]
+
             # Assign the interpreted from the processed data
             item['interpreted'] = data
 
@@ -1166,7 +1262,35 @@ class LocalBundleClient(BundleClient):
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
 
+    def get_user_info(self, user_id):
+        if user_id is None:
+            user_id = self._current_user_id()
+        return self.model.get_user_info(user_id)
+
+    def update_user_info(self, user_info):
+        user_id = self._current_user_id()
+        is_root = (user_id == self.model.root_user_id)
+        is_user = (user_id == user_info['user_id'])
+        if is_root:
+            # TODO: in the future, allow user to update, but only in limited ways
+            self.model.update_user_info(user_info)
+        else:
+            raise PermissionError('Only the root user has permissions to edit users.')
+
+
     @staticmethod
     def _check_worksheet_not_frozen(worksheet):
         if worksheet.frozen:
             raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
+
+
+    def _check_quota(self, need_time, need_disk):
+        user_info = self.get_user_info(None)
+        if need_time:
+            if user_info['time_used'] >= user_info['time_quota']:
+                raise UsageError('Out of time quota: %s' %
+                    formatting.ratio_str(formatting.duration_str, user_info['time_used'], user_info['time_quota']))
+        if need_disk:
+            if user_info['disk_used'] >= user_info['disk_quota']:
+                raise UsageError('Out of disk quota: %s' %
+                    formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota']))

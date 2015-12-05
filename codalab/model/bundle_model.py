@@ -47,6 +47,7 @@ from codalab.model.tables import (
     worksheet_tag as cl_worksheet_tag,
     worksheet_item as cl_worksheet_item,
     event as cl_event,
+    user as cl_user,
     db_metadata,
 )
 from codalab.objects.worksheet import (
@@ -57,6 +58,7 @@ from codalab.objects.permission import parse_permission
 
 import re, collections
 import datetime
+import time, json, sys
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -568,11 +570,7 @@ class BundleModel(object):
 
     def add_bundle_action(self, uuid, action):
         with self.engine.begin() as connection:
-            connection.execute(cl_bundle_action.insert().values({"bundle_uuid": uuid, "action": action}))
-
-    def add_bundle_actions(self, bundle_actions):
-        with self.engine.begin() as connection:
-            self.do_multirow_insert(connection, cl_bundle_action, bundle_actions)
+            connection.execute(cl_bundle_action.insert().values({'bundle_uuid': uuid, 'action': action}))
 
     def pop_bundle_actions(self):
         with self.engine.begin() as connection:
@@ -1422,7 +1420,6 @@ class BundleModel(object):
             return None
 
         with self.engine.begin() as connection:
-            import time, json
             end_time = time.time()
             if start_time == None:
                 start_time = end_time
@@ -1440,3 +1437,56 @@ class BundleModel(object):
                 'uuid': uuid,
             }
             connection.execute(cl_event.insert().values(info))
+
+    ############################################################ 
+    # User functions
+    # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
+
+    def get_user_info(self, user_id):
+        '''
+        Return the user info corresponding to |user_id|.
+        If a user doesn't exist, create a new one and set sane defaults.
+        '''
+        DEFAULT_COMPUTE_QUOTA = 60 * 60 * 24 * 7      # 7 days
+        DEFAULT_DISK_QUOTA = 1024 * 1024 * 1024 * 10  # 10 GB
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([cl_user]).where(cl_user.c.user_id == user_id))
+            user_info = None
+            for row in rows:
+                user_info = str_key_dict(row)
+            if not user_info:
+                print >>sys.stderr, 'Creating new entry for user ' + user_id
+                user_info = {
+                    'user_id': user_id,
+                    'user_name': '',  # TODO: Set this to something
+                    'time_quota': DEFAULT_COMPUTE_QUOTA,
+                    'time_used': 0,
+                    'disk_quota': DEFAULT_DISK_QUOTA,
+                    'disk_used': self._get_disk_used(user_id),
+                }
+                connection.execute(cl_user.insert().values(user_info))
+        return user_info
+ 
+    def update_user_info(self, user_info):
+        '''
+        Update the given user's info with |user_info|.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(cl_user.update().where(cl_user.c.user_id == user_info['user_id']).values(user_info))
+
+    def increment_user_time_used(self, user_id, amount):
+        '''
+        User used some time.
+        '''
+        user_info = self.get_user_info(user_id)
+        user_info['time_used'] += amount
+        self.update_user_info(user_info)
+
+    def _get_disk_used(self, user_id):
+        return self.search_bundle_uuids(user_id, None, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
+        
+    def update_user_disk_used(self, user_id):
+        user_info = self.get_user_info(user_id)
+        # Compute from scratch for simplicity
+        user_info['disk_used'] = self._get_disk_used(user_id)
+        self.update_user_info(user_info)

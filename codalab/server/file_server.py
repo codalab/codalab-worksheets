@@ -23,7 +23,7 @@ import uuid
 import xmlrpclib
 
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.lib import path_util
+from codalab.lib import path_util, zip_util
 
 # Hack to allow 64-bit integers
 xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)
@@ -73,6 +73,7 @@ class FileServer(AsyncXMLRPCServer):
         # dictionary mapping temporary file's file uuids to their absolute paths.
         self.file_paths = {}
         self.file_handles = {}
+        self.delete_file_paths = {}
         self.temp = temp
         self.auth_handler = auth_handler
 
@@ -89,31 +90,43 @@ class FileServer(AsyncXMLRPCServer):
         for command in RemoteBundleClient.FILE_COMMANDS:
             self.register_function(wrap(command, getattr(self, command)), command)
 
-    def _open_file(self, path, mode):
-        '''
-        Open a file handle to the given path with the given mode and return a uuid identifying it.
-        Should not be used directly, as opening non-temp files for writing can cause race conditions.
-        '''
-        if os.path.exists(path):
-            file_uuid = uuid.uuid4().hex
-            self.file_paths[file_uuid] = path
-            self.file_handles[file_uuid] = open(path, mode)
-            return file_uuid
-        return None
-
     def open_file(self, path):
         '''
         Open a read-only file handle to the given path and return a uuid identifying it.
         '''
-        return self._open_file(path, 'rb')
+        if not os.path.exists(path) or os.path.islink(path):
+            # Note: don't follow symlinks!
+            return None
+        file_uuid = uuid.uuid4().hex
+        self.file_paths[file_uuid] = path
+        self.file_handles[file_uuid] = open(path, 'rb')
+        return file_uuid
 
-    def open_temp_file(self):
+    def open_packed_path(self, path):
         '''
-        Open a new temp file for write and return a file uuid identifying it.
+        Open a file handle corresponding to streaming the archived version of |path|.
         '''
-        (fd, path) = tempfile.mkstemp(dir=self.temp)
-        os.close(fd)
-        return self._open_file(path, 'wb')
+        if not os.path.exists(path) or os.path.islink(path):
+            # Note: don't follow symlinks!
+            return None
+        file_uuid = uuid.uuid4().hex
+        self.file_paths[file_uuid] = path
+        self.file_handles[file_uuid] = zip_util.open_packed_path(path, follow_symlinks=False, exclude_patterns=None)
+        return file_uuid
+
+    def open_temp_file(self, name):
+        '''
+        Open a new temp file with given |name| for writing and return a file
+        uuid identifying it.  Put the file in a temporary directory so the file
+        can have the desired name.
+        '''
+        base_path = tempfile.mkdtemp('-file_server_open_temp_file')
+        path = os.path.join(base_path, name)
+        file_uuid = uuid.uuid4().hex
+        self.file_paths[file_uuid] = path
+        self.file_handles[file_uuid] = open(path, 'wb')
+        self.delete_file_paths[file_uuid] = base_path
+        return file_uuid
 
     def read_file(self, file_uuid, num_bytes=None):
         '''
@@ -159,11 +172,12 @@ class FileServer(AsyncXMLRPCServer):
         file_handle = self.file_handles[file_uuid]
         file_handle.close()
 
-    def finalize_file(self, file_uuid, delete):
+    def finalize_file(self, file_uuid):
         '''
         Remove the record from the file server.
         '''
         path = self.file_paths.pop(file_uuid)
         file_handle = self.file_handles.pop(file_uuid, None)
-        if delete and path: path_util.remove(path)
-        #print "SHOULD BE SMALL:", self.file_paths, self.file_handles
+        path = self.delete_file_paths.pop(file_uuid, None)
+        if path:
+            path_util.remove(path)
