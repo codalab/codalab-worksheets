@@ -367,6 +367,7 @@ def interpret_genpath(bundle_info, genpath):
         metadata = bundle_info['metadata']
         for key, value in metadata.items():
             if key.startswith('request_') and value:
+                key = key.replace('_', '-')
                 if isinstance(value, bool):
                     args.append('--' + key)
                 else:

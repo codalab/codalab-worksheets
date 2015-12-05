@@ -42,9 +42,14 @@ class RemoteMachine(Machine):
         # Mandatory configuration
         self.dispatch_command = config['dispatch_command']
         self.default_docker_image = config['docker_image']
-        self.max_request_time = formatting.parse_duration(config['max_request_time'])
-        self.max_request_memory = formatting.parse_size(config['max_request_memory'])
-        self.max_request_disk = formatting.parse_size(config['max_request_disk'])
+        def parse(to_value, field):
+            return to_value(config[field]) if field in config else None
+        self.default_request_time = parse(formatting.parse_duration, 'default_request_time')
+        self.default_request_memory = parse(formatting.parse_size, 'default_request_memory')
+        self.default_request_disk = parse(formatting.parse_size, 'default_request_disk')
+        self.max_request_time = parse(formatting.parse_duration, 'max_request_time')
+        self.max_request_memory = parse(formatting.parse_size, 'max_request_memory')
+        self.max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
         self.default_request_cpus = config.get('request_cpus')
         self.default_request_gpus = config.get('request_gpus')
@@ -92,13 +97,23 @@ class RemoteMachine(Machine):
         # Set defaults for the dispatcher.
         docker_image = bundle.metadata.request_docker_image or self.default_docker_image
         # Parse |request_string| using |to_value|, but don't exceed |max_value|.
-        def parse_and_min(to_value, request_string, max_value):
-            if not request_string:
+        def parse_and_min(to_value, request_string, default_value, max_value):
+            # Use default if request value doesn't exist
+            if request_string:
+                request_value = to_value(request_string)
+            else:
+                request_value = default_value
+            if request_value and max_value:
+                return int(min(request_value, max_value))
+            elif request_value:
+                return int(request_value)
+            elif max_value:
                 return int(max_value)
-            return int(min(to_value(request_string), max_value))
-        request_time = parse_and_min(formatting.parse_duration, bundle.metadata.request_time, self.max_request_time)
-        request_memory = parse_and_min(formatting.parse_size, bundle.metadata.request_memory, self.max_request_memory)
-        request_disk = parse_and_min(formatting.parse_size, bundle.metadata.request_disk, self.max_request_disk)
+            else:
+                return None
+        request_time = parse_and_min(formatting.parse_duration, bundle.metadata.request_time, self.default_request_time, self.max_request_time)
+        request_memory = parse_and_min(formatting.parse_size, bundle.metadata.request_memory, self.default_request_memory, self.max_request_memory)
+        request_disk = parse_and_min(formatting.parse_size, bundle.metadata.request_disk, self.default_request_disk, self.max_request_disk)
 
         request_cpus = bundle.metadata.request_cpus or self.default_request_cpus
         request_gpus = bundle.metadata.request_gpus or self.default_request_gpus
@@ -216,6 +231,8 @@ class RemoteMachine(Machine):
             resource_args.extend(['--request-time', request_time])
         if request_memory:
             resource_args.extend(['--request-memory', request_memory])
+        if request_disk:
+            resource_args.extend(['--request-disk', request_disk])
         if request_cpus:
             resource_args.extend(['--request-cpus', request_cpus])
         if request_gpus:
@@ -242,9 +259,9 @@ class RemoteMachine(Machine):
             'temp_dir': temp_dir,
             'job_handle': result['handle'],
             'docker_image': docker_image,
-            'request_time': str(request_time),
-            'request_memory': str(request_memory),
-            'request_disk': str(request_disk),
+            'request_time': str(request_time) if request_time else None,
+            'request_memory': str(request_memory) if request_memory else None,
+            'request_disk': str(request_disk) if request_disk else None,
             'request_cpus': request_cpus,
             'request_gpus': request_gpus,
             'request_queue': request_queue,
