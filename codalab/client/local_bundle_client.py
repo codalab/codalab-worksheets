@@ -332,6 +332,8 @@ class LocalBundleClient(BundleClient):
         bundle_uuids = [bundle_uuid for (bundle_uuid, subpath) in targets]
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid, subpath in targets:
+            if not re.match('^\w+$', subpath):
+                raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
             self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
 
     @authentication_required

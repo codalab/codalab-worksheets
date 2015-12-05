@@ -12,6 +12,7 @@ from codalab.lib import (
   path_util,
   formatting,
 )
+from codalab.lib.bundle_action import BundleAction
 
 from codalab.objects.machine import Machine
 
@@ -137,6 +138,9 @@ class RemoteMachine(Machine):
                 # -f because target might be read-only
                 return 'if [ -e %s ] && [ -e %s ]; then cp -f %s %s; fi' % (arg, source, source, target)
 
+            def get_field(path, col):
+                return 'cat %s | cut -f%s -d\'%s\'' % (path, col, BundleAction.SEPARATOR)
+
             monitor_commands = [
                 # Report on status (memory, cpu, etc.)
                 'mkdir -p %s' % ptr_status_dir,
@@ -158,8 +162,10 @@ class RemoteMachine(Machine):
                 'if [ -e %s ] && [ "$(cat %s)" == "kill" ]; then echo "[CodaLab] Received kill command, terminating." >> %s/stderr; docker kill $(cat %s); rm %s; break; fi' % \
                     (ptr_action_file, ptr_action_file, ptr_temp_dir, ptr_container_file, ptr_action_file),
                 # Execute "write <subpath> <contents>"
-                'if [ -e %s ] && [ "$(cat %s | cut -f1 -d\\ )" == "write" ]; then echo Writing...; echo $(cat %s | cut -f3- -d\\ ) > %s/$(cat %s | cut -f2 -d\\ ); rm %s; fi' % \
-                    (ptr_action_file, ptr_action_file, ptr_action_file, ptr_temp_dir, ptr_action_file, ptr_action_file),
+                'if [ -e %s ] && [ "$(%s)" == "write" ]; then echo Writing...; %s > %s/$(%s); rm %s; fi' % \
+                    (ptr_action_file, get_field(ptr_action_file, 1),
+                    get_field(ptr_action_file, '3-'), ptr_temp_dir, get_field(ptr_action_file, 2),
+                    ptr_action_file),
                 # Sleep
                 'sleep 1',
             ]
@@ -207,17 +213,17 @@ class RemoteMachine(Machine):
         # Determine resources to request
         resource_args = []
         if request_time:
-            resource_args.extend(['--request_time', request_time])
+            resource_args.extend(['--request-time', request_time])
         if request_memory:
-            resource_args.extend(['--request_memory', request_memory])
+            resource_args.extend(['--request-memory', request_memory])
         if request_cpus:
-            resource_args.extend(['--request_cpus', request_cpus])
+            resource_args.extend(['--request-cpus', request_cpus])
         if request_gpus:
-            resource_args.extend(['--request_gpus', request_gpus])
+            resource_args.extend(['--request-gpus', request_gpus])
         if request_queue:
-            resource_args.extend(['--request_queue', request_queue])
+            resource_args.extend(['--request-queue', request_queue])
         if request_priority:
-            resource_args.extend(['--request_priority', request_priority])
+            resource_args.extend(['--request-priority', request_priority])
         if username:
             resource_args.extend(['--username', username])
 
@@ -323,24 +329,26 @@ class RemoteMachine(Machine):
     def send_bundle_action(self, bundle, action_string):
         """
         Write a command out to the action file for |bundle|.
+        Return whether the action was executed.
         """
-        if self.verbose >= 1: print '=== send_bundle_action(%s, %s)' % (bundle.uuid, action_string)
-        if not self._exists(bundle): return False
+        if self.verbose >= 1: print >>sys.stderr, '=== RemoteMachine.send_bundle_action(%s, %s)' % (bundle.uuid, action_string)
+        if not self._exists(bundle):
+            return False
 
         try:
             # Write the kill action for the worker to pick up.
             action_file = bundle.metadata.temp_dir + '.action'
             with open(action_file, 'w') as f:
                 print >>f, action_string
-            return True
         except Exception, e:
-            print '=== INTERNAL ERROR: %s' % e
+            print >>sys.stderr, '=== INTERNAL ERROR: %s' % e
             traceback.print_exc()
-            return False
+        return True
 
     def finalize_bundle(self, bundle):
-        if self.verbose >= 1: print '=== finalize_bundle(%s)' % bundle.uuid
-        if not self._exists(bundle): return True
+        if self.verbose >= 1: print >>sys.stderr, '=== RemoteMachine.finalize_bundle(%s)' % bundle.uuid
+        if not self._exists(bundle):
+            return
 
         try:
             args = self.dispatch_command.split() + ['cleanup', bundle.metadata.job_handle]
@@ -356,16 +364,12 @@ class RemoteMachine(Machine):
             for f in temp_files:
                 if os.path.exists(f):
                     path_util.remove(f)
-            ok = True
         except Exception, e:
-            print '=== INTERNAL ERROR: %s' % e
+            print >>sys.stderr, '=== INTERNAL ERROR: %s' % e
             traceback.print_exc()
-            ok = False
-
-        return ok
 
     def _exists(self, bundle):
         if not getattr(bundle.metadata, 'job_handle', None):
-            print 'remote_machine._exists: bundle %s does not have job handle' % bundle.uuid
+            if self.verbose >= 1: print >>sys.stderr, 'remote_machine._exists: bundle %s does not have job handle (yet)' % bundle.uuid
             return False
         return True

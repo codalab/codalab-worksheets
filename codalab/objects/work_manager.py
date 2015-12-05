@@ -146,28 +146,34 @@ class Worker(object):
 
     def check_bundle_actions(self):
         '''
-        Process bundle actions (e.g., kill, writed).  Get the bundle actions
+        Process bundle actions (e.g., kill, write).  Get the bundle actions
         from the database and dispatch to the machine.
+        Return if anything was done
         '''
         bundle_actions = self.model.pop_bundle_actions()
         if self.verbose >= 2: print 'bundle_actions:', bundle_actions
-        db_update = {}
+        did_something = False
         for x in bundle_actions:
             # Get the bundle
             bundle = self._safe_get_bundle(x.bundle_uuid)
             if not bundle:  # Might have been deleted
                 continue
+            if bundle.state in [State.READY, State.FAILED]:  # Already terminated
+                continue
 
-            # Get the action and perform it
-            if not self.machine.send_bundle_action(bundle, x.action):
-                print 'ERROR: action %s failed' % x.action
+            # Perform it the action
+            if self.machine.send_bundle_action(bundle, x.action):
+                # Append this action to the bundle to record that this action was
+                # performed.
+                new_actions = getattr(bundle.metadata, 'actions', []) + [x.action]
+                db_update = {'metadata': {'actions': new_actions}}
+                self.model.update_bundle(bundle, db_update)
+                did_something = True
+            else:
+                # Add the action back
+                self.model.add_bundle_action(bundle.uuid, x.action)
 
-            # Append this action to the bundle to record that this action was
-            # performed.
-            new_actions = getattr(bundle.metadata, 'actions', []) + [x.action]
-            db_update = {'metadata': {'actions': new_actions}}
-            self.model.update_bundle(bundle, db_update)
-        return len(bundle_actions) > 0
+        return did_something
 
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.

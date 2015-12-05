@@ -545,18 +545,20 @@ def test(ctx):
 @TestModule.register('kill')
 def test(ctx):
     uuid = run_command([cl, 'run', 'sleep 1000'])
-    time.sleep(2)  # Note: bundle actions might not get processed if no worker available, so wait
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
+    run_command([cl, 'wait', uuid], 1)
+    check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
     uuid = run_command([cl, 'run', 'sleep 5'])
-    time.sleep(2)  # Note: bundle actions might not get processed if no worker available, so wait
     target = uuid + '/message'
+    run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
+    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 @TestModule.register('mimic')
 def test(ctx):

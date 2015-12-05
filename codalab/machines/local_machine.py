@@ -61,12 +61,14 @@ class LocalMachine(Machine):
         }
 
     def send_bundle_action(self, bundle, action_string):
-        if not self.bundle or self.bundle.uuid != bundle.uuid: return False
+        if not self.bundle or self.bundle.uuid != bundle.uuid:
+            return False
+
         print >>sys.stderr, 'LocalMachine.send_command(%s, %s)' % (bundle.uuid, action_string)
         if action_string == BundleAction.KILL:
             self.process.kill()
         else:
-            print '=== Unhandled command: %s' % action_string
+            print >>sys.stderr, '=== Unhandled command: %s' % action_string
         return True
 
     def get_bundle_statuses(self):
@@ -91,7 +93,7 @@ class LocalMachine(Machine):
                     path_util.remove(f)
             ok = True
         except Exception, e:
-            print '=== INTERNAL ERROR: %s' % e
+            print >>sys.stderr, '=== INTERNAL ERROR: %s' % e
             traceback.print_exc()
             ok = False
 
