@@ -69,7 +69,7 @@ bundle_action = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-  Column('action', String(63), nullable=False),
+  Column('action', Text, nullable=False),
   sqlite_autoincrement=True,
 )
 
@@ -205,5 +205,26 @@ event = Table(
   Index('events_user_name_index', 'user_name'),
   Index('events_command_index', 'command'),
   Index('events_uuid_index', 'uuid'),
+  sqlite_autoincrement=True,
+)
+
+# Store information about users.
+user = Table(
+  'user',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+
+  # Basic information
+  Column('user_id', String(63), nullable=False),
+  Column('user_name', String(63), nullable=False),  # Mirrors the OAuth server (eventually move it here)
+
+  # Quotas
+  Column('time_quota', Float, nullable=False),  # Number of seconds allowed
+  Column('time_used', Float, nullable=False),  # Number of seconds already used
+  Column('disk_quota', Float, nullable=False),  # Number of bytes allowed
+  Column('disk_used', Float, nullable=False),  # Number of bytes already used
+
+  Index('user_user_id_index', 'user_id'),
+  Index('user_user_name_index', 'user_name'),
   sqlite_autoincrement=True,
 )

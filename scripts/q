@@ -1,6 +1,6 @@
 #!/usr/bin/ruby
 
-$version = 76
+$version = 77
 
 <<EOF
 A simple workqueue system for distributed jobs over many machines.
@@ -284,13 +284,13 @@ end
 
 class Format
   def self.space(mb) # In megabytes
-    return nil unless mb
+    return nil unless mb || mb == -1
     gb = (mb / 1024).to_i
     return "#{gb}g" if gb >= 10
     "#{mb}m"
   end
   def self.time(s) # In seconds
-    return nil unless s
+    return nil unless s || s == -1
     m = s / 60; s %= 60
     h = m / 60; m %= 60
     d = h / 24; h %= 24
@@ -302,7 +302,7 @@ class Format
     return "#{s}s"
   end
   def self.date(t)
-    return nil unless t
+    return nil unless t || t == -1
     Time.at(t).strftime('%m/%d %H:%M')
   end
   def self.timeSinceDate(t)
@@ -548,7 +548,7 @@ end
 class WorkerState
   attr_accessor :handle, :hostname, :version, :status
   attr_accessor :lifetime # Amount of time of idleness after which we kill a worker
-  attr_accessor :numCPUs, :cpuSpeed, :freeMem, :freeDisk, :procSummary, :currJobHandle
+  attr_accessor :numCPUs, :cpuSpeed, :maxTime, :freeMem, :freeDisk, :procSummary, :currJobHandle
   attr_accessor :lastPingDate, :lastJobDate, :pendingAction # Used by master
 
   def available?; @handle != nil end # Handle set when worker updates state
@@ -571,6 +571,7 @@ class WorkerState
     map['lifetime'] = @lifetime
     map['numCPUs'] = @numCPUs
     map['cpuSpeed'] = @cpuSpeed
+    map['maxTime'] = @maxTime
     map['freeMem'] = @freeMem
     map['freeDisk'] = @freeDisk
     map['procSummary'] = @procSummary
@@ -585,6 +586,7 @@ class WorkerState
     @lifetime      = map['lifetime'] || @lifetime
     @numCPUs       = map['numCPUs']  || @numCPUs
     @cpuSpeed      = map['cpuSpeed'] || @cpuSpeed
+    @maxTime       = map['maxTime'] || @maxTime
     @freeMem       = map['freeMem']  || @freeMem
     @freeDisk      = map['freeDisk'] || @freeDisk
     @procSummary   = map['procSummary'] || @procSummary
@@ -965,6 +967,7 @@ class Master
         #puts "CONSIDER #{job.status} #{worker.freeMem}"
         next unless job.status == 'ready'
         next unless job.spec.limitMem <= worker.freeMem # Memory requirements
+        next unless job.spec.limitTime <= worker.maxTime # Time limits
         next if job.spec.workerHandle && job.spec.workerHandle != workerHandle # Can only run it on this machine
         if bestJob == nil ||
            job.spec.priority < bestJob.spec.priority ||
@@ -1107,10 +1110,11 @@ end
 
 class Worker
   def initialize(args)
-    @handle, @sleepInterval, @basePath, = extractArgs(:args => args, :spec => [
-      ['handle', String],
-      ['sleepInterval', Fixnum, 5],
-      ['basePath', String, 'scratch'],
+    @handle, @sleepInterval, @maxTime, @basePath, = extractArgs(:args => args, :spec => [
+      ['handle', String, nil, false, 'Used to identifier this worker (defaults to something automatic)'],
+      ['sleepInterval', Fixnum, 5, false, 'Ping the master every this number of seconds'],
+      ['maxTime', Fixnum, 365 * 24 * 60 * 60, false, 'Maximum number of seconds that jobs are allowed to run'],
+      ['basePath', String, 'scratch', false, 'Where to run all the jobs'],
     nil])
 
     # Make sure we're not running another instance of this worker
@@ -1125,6 +1129,7 @@ class Worker
     @state.version = $version
     @state.status = 'idle'
     @state.handle = @handle ? @handle : newHandle($hostname.split(/\./)[0], 2)
+    @state.maxTime = @maxTime
     puts "===== worker v#{$version} #{@state.handle}, basePath = #{@basePath}"
     puts $restartCommand.join(' ')
     system('mkdir', '-p', @basePath)
@@ -1241,6 +1246,8 @@ class Worker
       state.userTime = readlinesEasy("/proc/#{@jobPid}/stat")[0] =~ /^(\d+) \([^\)]+\) (.*)$/ ? $2.split[11].to_i : -1
     end
     outPath = @basePath+@job.spec.outPath if @job.spec.outPath
+    # Note that a lot of the time, outPath is nil so we don't know where on the disk
+    # the job is writing.
     state.disk = `du -sm #{outPath}`.split[0].to_i if outPath && File.exists?(outPath)
     state.realTime = Time.now.to_i - state.startDate
     state.maxMem = [state.maxMem, state.mem].max
@@ -1668,11 +1675,11 @@ end
 $verbose, $pretend, mode, $masterHost, $masterPort, $masterTimeout, $hostname = extractArgs(:recognizeAllOpts => false, :args => ARGV, :spec => [
   ['verbose', Fixnum, 0],
   ['pretend', TrueClass],
-  ['mode', String, 'client'],
-  ['masterHost', String, 'localhost'],
-  ['masterPort', Fixnum, 7890],
-  ['masterTimeout', Fixnum, 3600 * 24],  # Seconds to wait for a response from the master
-  ['hostname', String, $hostname],
+  ['mode', String, 'client', false, 'Either master | worker | client'],
+  ['masterHost', String, 'localhost', false, 'Hostname of the master to connect to'],
+  ['masterPort', Fixnum, 7890, false, 'Which port the master is listening on'],
+  ['masterTimeout', Fixnum, 3600 * 24, false, 'Seconds to wait for a response from the master'],
+  ['hostname', String, $hostname, false, 'Set the hostname to something custom'],
 nil])
 
 case mode

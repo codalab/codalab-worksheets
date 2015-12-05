@@ -19,7 +19,6 @@ import os
 from codalab.common import (
   precondition,
   State,
-  Command,
   UsageError,
 )
 from codalab.lib import (
@@ -28,9 +27,8 @@ from codalab.lib import (
 )
 from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.make_bundle import MakeBundle
-from codalab.machines import (
-  remote_machine,
-)
+from codalab.lib.bundle_action import BundleAction
+from codalab.machines import remote_machine
 
 class Worker(object):
     def __init__(self, bundle_store, model, machine, auth_handler):
@@ -111,6 +109,7 @@ class Worker(object):
 
                     status = self.machine.start_bundle(bundle, self.bundle_store, self.get_parent_dict(bundle), username)
                     if status != None:
+                        status['started'] = int(time.time())
                         started = True
 
                 except Exception as e:
@@ -145,30 +144,36 @@ class Worker(object):
         except:
             return None
 
-    def check_killed_bundles(self):
+    def check_bundle_actions(self):
         '''
-        For bundles that need to be killed, tell the machine to kill it.
-        If unable to kill, still discard the action.
+        Process bundle actions (e.g., kill, write).  Get the bundle actions
+        from the database and dispatch to the machine.
+        Return if anything was done
         '''
         bundle_actions = self.model.pop_bundle_actions()
         if self.verbose >= 2: print 'bundle_actions:', bundle_actions
-        db_update = {}
+        did_something = False
         for x in bundle_actions:
-            # Process action
-            processed = False
-            if x.action == Command.KILL:
-                bundle = self._safe_get_bundle(x.bundle_uuid)
-                if not bundle:
-                    continue
-                if not self.machine.kill_bundle(bundle):
-                    print 'Killing %s failed' % x.bundle_uuid
-            else:
-                print 'Unknown action: %s' % x.action
+            # Get the bundle
+            bundle = self._safe_get_bundle(x.bundle_uuid)
+            if not bundle:  # Might have been deleted
+                continue
+            if bundle.state in [State.READY, State.FAILED]:  # Already terminated
+                continue
 
-            new_actions = getattr(bundle.metadata, 'actions', []) + [x.action]
-            db_update = {'metadata': {'actions': new_actions}}
-            self.model.update_bundle(bundle, db_update)
-        return len(bundle_actions) > 0
+            # Perform it the action
+            if self.machine.send_bundle_action(bundle, x.action):
+                # Append this action to the bundle to record that this action was
+                # performed.
+                new_actions = getattr(bundle.metadata, 'actions', []) + [x.action]
+                db_update = {'metadata': {'actions': new_actions}}
+                self.model.update_bundle(bundle, db_update)
+                did_something = True
+            else:
+                # Add the action back
+                self.model.add_bundle_action(bundle.uuid, x.action)
+
+        return did_something
 
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.
@@ -226,6 +231,8 @@ class Worker(object):
         Update the database with information about the bundle given by |status|.
         If the bundle is completed, then we need to install the bundle and clean up.
         '''
+        status['last_updated'] = int(time.time())
+
         # Update the bundle's data with status (which is the new information).
         bundle = status['bundle']
 
@@ -241,14 +248,14 @@ class Worker(object):
         bundle_subclass = type(bundle)
         for spec in bundle_subclass.METADATA_SPECS:
             value = status.get(spec.key)
-            if value != None:
+            if value is not None:
                 metadata[spec.key] = value
 
         #print 'update_running_bundle', status
 
         # See if the bundle is completed.
         success = status.get('success')
-        if success != None:
+        if success is not None:
             # Re-install dependencies.
             # - For RunBundle, remove the dependencies.
             # - For MakeBundle, copy.  This way, we maintain the invariant that
@@ -266,9 +273,14 @@ class Worker(object):
                     bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=True)
 
                 # Note: uploading will move temp_dir to the bundle store.
-                data_hash, new_metadata = self.bundle_store.upload(temp_dir, follow_symlinks=False, exclude_patterns=[])
+                (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=[temp_dir],
+                                                                              follow_symlinks=False,
+                                                                              exclude_patterns=None,
+                                                                              git=False,
+                                                                              unpack=False,
+                                                                              remove_sources=True)
                 db_update['data_hash'] = data_hash
-                metadata.update(new_metadata)
+                metadata.update(bundle_store_metadata)
             except Exception as e:
                 print '=== INTERNAL ERROR: %s' % e
                 traceback.print_exc()
@@ -290,10 +302,16 @@ class Worker(object):
             db_update['state'] = state
             print '-- END BUNDLE: %s [%s]' % (bundle, state)
             print ''
+
             self._update_events_log('finalize_bundle', bundle, (bundle.uuid, state, metadata))
+
+            # Update user statistics
+            self.model.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
+            self.model.update_user_disk_used(bundle.owner_id)
 
         # Update database!
         self.model.update_bundle(bundle, db_update)
+
 
     def update_created_bundles(self):
         '''
@@ -380,17 +398,18 @@ class Worker(object):
         self.pretty_print('Running worker loop (num_iterations = %s, sleep_time = %s)' % (num_iterations, sleep_time))
         iteration = 0
         while not num_iterations or iteration < num_iterations:
-            # Check to see if any bundles should be killed
-            bool_killed = self.check_killed_bundles()
+            # Check to see if we need to take any actions on bundles
+            bool_action = self.check_bundle_actions()
             # Try to stage bundles
             self.update_created_bundles()
-            # Try to run bundles with Ready parents
+            # Try to run bundles with READY parents
             bool_run = self.update_staged_bundles()
             # Check to see if any bundles are done running
             bool_done = self.check_finished_bundles()
+            # TODO: mark QUEUED and RUNNING jobs as FAILED that we haven't heard back from a while
 
             # Sleep only if nothing happened.
-            if not (bool_killed or bool_run or bool_done):
+            if not (bool_action or bool_run or bool_done):
                 time.sleep(sleep_time)
             else:
                 # Advance counter only if something interesting happened
