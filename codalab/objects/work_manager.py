@@ -213,7 +213,7 @@ class Worker(object):
         running_bundles = self.model.batch_get_bundles(state=State.RUNNING)
         for bundle in running_bundles:
             if bundle.uuid in status_bundle_uuids: continue  # Exists, skip
-            if Command.KILL not in getattr(bundle.metadata, 'actions', set()): continue  # Not killing
+            if BundleAction.KILL not in getattr(bundle.metadata, 'actions', set()): continue  # Not killing
             status = {'state': State.FAILED, 'bundle': bundle}
             print 'work_manager: %s (%s): killing zombie %s' % (bundle.uuid, bundle.state, status)
             self.update_running_bundle(status)
