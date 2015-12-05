@@ -421,8 +421,6 @@ def test(ctx):
     check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
     # block
     uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
-    # cleanup
-    run_command([cl, 'rm', uuid, uuid2])
 
 @TestModule.register('worksheet')
 def test(ctx):
@@ -454,8 +452,6 @@ def test(ctx):
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
-    # cleanup
-    run_command([cl, 'rm', uuid])
 
 @TestModule.register('worksheet_search')
 def test(ctx):
@@ -468,7 +464,6 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% search ' + uuid, '.'])
     run_command([cl, 'add', 'text', '% wsearch ' + wuuid, '.'])
     check_contains([uuid[0:8], wuuid[0:8]], run_command([cl, 'print']))
-    run_command([cl, 'rm', uuid])
 
 @TestModule.register('worksheet_tags')
 def test(ctx):
@@ -528,7 +523,6 @@ def test(ctx):
     check_contains('none', run_command([cl, 'perm', uuid, 'public', 'n']))
     check_contains('read', run_command([cl, 'perm', uuid, 'public', 'r']))
     check_contains('all', run_command([cl, 'perm', uuid, 'public', 'a']))
-    run_command([cl, 'rm', uuid])
 
 @TestModule.register('search')
 def test(ctx):
@@ -547,15 +541,24 @@ def test(ctx):
     size1 = float(run_command([cl, 'info', '-f', 'data_size', uuid1]))
     size2 = float(run_command([cl, 'info', '-f', 'data_size', uuid2]))
     check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
-    run_command([cl, 'rm', uuid1, uuid2])
 
 @TestModule.register('kill')
 def test(ctx):
     uuid = run_command([cl, 'run', 'sleep 1000'])
-    time.sleep(2)
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
-    run_command([cl, 'rm', uuid])
+    run_command([cl, 'wait', uuid], 1)
+    check_equals(str(['kill']), get_info(uuid, 'actions'))
+
+@TestModule.register('write')
+def test(ctx):
+    uuid = run_command([cl, 'run', 'sleep 5'])
+    target = uuid + '/message'
+    run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
+    check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
+    run_command([cl, 'wait', uuid])
+    check_equals('hello world', run_command([cl, 'cat', target]))
+    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 @TestModule.register('mimic')
 def test(ctx):
@@ -573,7 +576,6 @@ def test(ctx):
     check_equals(data_hash(uuid2), data_hash(uuid5))
     uuid6 = run_command([cl, 'macro', name, uuid3, '-n', 'new'])
     check_equals(data_hash(uuid2), data_hash(uuid6))
-    run_command([cl, 'rm', uuid1, uuid2, uuid3, uuid4, uuid5, uuid6])
 
 @TestModule.register('status')
 def test(ctx):
