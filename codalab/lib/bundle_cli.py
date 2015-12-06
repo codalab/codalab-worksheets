@@ -382,6 +382,8 @@ class Commands(object):
                         'dest': metadata_util.metadata_key_to_argument(spec.key),
                         'help': spec.description + help_suffix,
                     }
+                    if spec.choices is not None:
+                        kwargs['choices'] = spec.choices
                     if issubclass(spec.type, list):
                         kwargs['type'] = str
                         kwargs['nargs'] = '*'
