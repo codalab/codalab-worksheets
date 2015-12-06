@@ -47,7 +47,7 @@ def size_str(size):
     if size is None:
         return None
 
-    for unit in ('', 'k', 'm', 'g'):
+    for unit in ('', 'k', 'm', 'g', 't'):
         if size < 100 and size != int(size):
             return '%.1f%s' % (size, unit)
         if size < 1024:
@@ -99,7 +99,7 @@ def ratio_str(to_str, a, b):
 
 def parse_size(s):
     """
-    s: <number>[<k|m|g>]
+    s: <number>[<k|m|g|t>]
     Returns the number of bytes.
     """
     if s[-1].isdigit():
@@ -111,7 +111,9 @@ def parse_size(s):
         return n * 1024 * 1024
     if unit == 'g':
         return n * 1024 * 1024 * 1024
-    raise ValueError('Invalid size: %s, expected <number>[<k|m|g>]' % s)
+    if unit == 't':
+        return n * 1024 * 1024 * 1024 * 1024
+    raise ValueError('Invalid size: %s, expected <number>[<k|m|g|t>]' % s)
 
 
 def parse_duration(s):
