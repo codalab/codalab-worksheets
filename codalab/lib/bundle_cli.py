@@ -382,6 +382,8 @@ class Commands(object):
                         'dest': metadata_util.metadata_key_to_argument(spec.key),
                         'help': spec.description + help_suffix,
                     }
+                    if spec.completer is not None:
+                        kwargs['completer'] = spec.completer
                     if issubclass(spec.type, list):
                         kwargs['type'] = str
                         kwargs['nargs'] = '*'
