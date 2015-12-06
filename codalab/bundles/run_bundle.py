@@ -8,20 +8,15 @@ When the bundle is executed, it symlinks the program target in to ./program,
 symlinks the input target in to ./input, and then streams output to ./stdout
 and ./stderr. The ./output directory may also be used to store output files.
 '''
-import os
-import subprocess
-import re
-
 from codalab.bundles.named_bundle import NamedBundle
-from codalab.bundles.program_bundle import ProgramBundle
 from codalab.common import (
-  State,
-  UsageError,
+    State,
+    UsageError,
 )
 from codalab.lib import (
-  path_util,
-  spec_util,
+    spec_util,
 )
+from codalab.lib.completers import DockerImagesCompleter
 from codalab.objects.metadata_spec import MetadataSpec
 
 class RunBundle(NamedBundle):
@@ -29,7 +24,7 @@ class RunBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
     # Note that these are strings, which need to be parsed
     # Request a machine with this much resources and don't let run exceed these resources
-    METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (e.g., codalab/ubuntu:1.9) we wish to use.', choices=("codalab/ubuntu", "codalab/tensorflow-cuda7.0-352.39")))
+    METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (e.g., codalab/ubuntu:1.9) we wish to use.', completer=DockerImagesCompleter))
     METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run.', formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size'))
     METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size'))

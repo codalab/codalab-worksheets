@@ -170,3 +170,9 @@ class TargetsCompleter(CodaLabCompleter):
                 return (suggestion_format.format(p[len(base_path) + 1:]) for p in completions)
             else:
                 return ()
+
+
+class DockerImagesCompleter(CodaLabCompleter):
+    def __call__(self, prefix, action=None, parsed_args=None):
+        return ("codalab/ubuntu", "codalab/tensorflow-cuda7.0-352.39", "ipython/scipystack")
+

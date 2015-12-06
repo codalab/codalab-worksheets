@@ -27,7 +27,7 @@ class MetadataSpec(object):
         default=None,
         generated=False,
         formatting=None,
-        choices=None,
+        completer=None,
     ):
         self.key = key
         self.type = type
@@ -37,7 +37,7 @@ class MetadataSpec(object):
         self.default = default
         self.generated = generated
         self.formatting = formatting
-        self.choices = choices
+        self.completer = completer
 
     def get_constructor(self):
         # Convert from string to type
