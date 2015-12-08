@@ -16,7 +16,7 @@ class WorksheetUtilTest(unittest.TestCase):
     self.assertEqual(worksheet_util.apply_func('[1:2]', 'hello'), 'e')
     self.assertEqual(worksheet_util.apply_func('[:2]', 'hello'), 'he')
     self.assertEqual(worksheet_util.apply_func('[2:]', 'hello'), 'llo')
-    self.assertEqual(worksheet_util.apply_func('date', '1427467247'), '2015-03-27 07:40:47')
+    self.assertEqual(worksheet_util.apply_func('date', '1427467247')[:10], '2015-03-27')  # Don't test time because of time zones
     self.assertEqual(worksheet_util.apply_func('duration', '63'), '1m3s')
     self.assertEqual(worksheet_util.apply_func('size', '1024'), '1k')
     self.assertEqual(worksheet_util.apply_func('s/a/b', 'aa'), 'bb')
