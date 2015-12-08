@@ -174,5 +174,5 @@ class TargetsCompleter(CodaLabCompleter):
 
 class DockerImagesCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
-        return ("codalab/ubuntu", "codalab/tensorflow-cuda7.0-352.39", "ipython/scipystack")
+        return ('codalab/ubuntu:1.9', 'codalab/python:1.0', 'ipython/scipystack', 'codalab/tensorflow-cuda7.0-352.39')
 
