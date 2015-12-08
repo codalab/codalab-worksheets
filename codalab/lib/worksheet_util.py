@@ -581,7 +581,7 @@ def get_default_schemas():
     data_size = ['data_size', 'data_size', 'size']
     time = ['time', 'time', 'duration']
     state = ['state']
-    description = ['desc.', 'description']
+    description = ['description']
     created = ['created', 'created', 'date']
 
     schemas = {}
