@@ -189,6 +189,7 @@ def backup_db(db, user, password):
         print >>f, 'password="%s"' % password
     run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/%s-%s.mysqldump' % \
         (mysql_conf_path, db, args.backup_path, db, date)])
+    os.unlink(mysql_conf_path)
 
 # Begin monitoring loop
 run_command(['cl', 'work', 'local::'])
