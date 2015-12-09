@@ -939,6 +939,7 @@ def interpret_items(schemas, raw_items):
         finally:
             last_was_empty_line = new_last_was_empty_line
 
+    # TODO: fix inconsistencies resulting from UsageErrors thrown in flush_bundles()
     if len(raw_to_interpreted) != len(raw_items):
         print >>sys.stderr, "WARNING: Length of raw_to_interpreted does not match length of raw_items"
 
