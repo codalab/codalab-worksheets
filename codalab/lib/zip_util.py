@@ -56,12 +56,13 @@ def open_packed_path(source, follow_symlinks, exclude_patterns):
     """
     if path_is_archive(source):
         return open(source)
-    args = ['tar', 'cfz', '-', '-C', os.path.dirname(source) or '.', os.path.basename(source)]
+    args = ['tar', 'cfz', '-', '-C', os.path.dirname(source) or '.']
     if follow_symlinks:
         args.append('-h')
     if exclude_patterns is not None:
         for pattern in exclude_patterns:
             args.append('--exclude=' + pattern)
+    args.append(os.path.basename(source))
     proc = subprocess.Popen(args, stdout=subprocess.PIPE)
     return proc.stdout
 
