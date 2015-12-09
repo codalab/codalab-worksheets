@@ -923,7 +923,7 @@ class BundleCLI(object):
                 autoflush=False,
                 print_status='Copying %s from %s to %s' % (source_bundle_uuid, source_client.address, dest_client.address))
             dest.close()
-            
+
             # Set sources
             if isinstance(dest_client, LocalBundleClient):
                 sources = [dest_path]

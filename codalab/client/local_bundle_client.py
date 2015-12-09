@@ -342,11 +342,11 @@ class LocalBundleClient(BundleClient):
         Set the owner of the bundles to the user.
         """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
-        user_info = self.user_info(user_spec)
+        user_id = self._user_spec_to_id(user_spec)
         # Update bundles
         for bundle_uuid in bundle_uuids:
             bundle = self.model.get_bundle(bundle_uuid)
-            self.model.update_bundle(bundle, {'owner_id': user_info['id']})
+            self.model.update_bundle(bundle, {'owner_id': user_id})
 
     def open_target(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
@@ -766,7 +766,7 @@ class LocalBundleClient(BundleClient):
         # Ensure worksheet names are unique.  Note: for simplicity, we are
         # ensuring uniqueness across the system, even on worksheet names that
         # the user may not have access to.
-        
+
         # If trying to set the name to a home worksheet, then it better be
         # user's home worksheet.
         username = self._current_user_name()
@@ -948,7 +948,7 @@ class LocalBundleClient(BundleClient):
         metadata = {}
         for key, value in info.items():
             if key == 'owner_spec':
-                metadata['owner_id'] = self.user_info(value)['id']
+                metadata['owner_id'] = self._user_spec_to_id(value)
             elif key == 'name':
                 self.ensure_unused_worksheet_name(value)
                 metadata[key] = value
@@ -1127,6 +1127,16 @@ class LocalBundleClient(BundleClient):
         if user:
             return {'id': user.unique_id, 'name': user.name}
         raise UsageError('Invalid user specification: %s' % user_spec)
+
+    def _user_spec_to_id(self, user_spec):
+        """
+        Return the user ID corresponding to |user_spec|.
+        user_spec could be an ID (integer) or a user name (string).
+        """
+        if re.match('^\d+$', user_spec):  # User id specified directly
+            return user_spec
+        else:  # User name specified
+            return self.user_info(user_spec)['id']
 
     @authentication_required
     def group_info(self, group_spec):

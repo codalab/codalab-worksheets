@@ -1439,7 +1439,7 @@ class BundleModel(object):
             }
             connection.execute(cl_event.insert().values(info))
 
-    ############################################################ 
+    ############################################################
     # User functions
     # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
 
@@ -1467,7 +1467,7 @@ class BundleModel(object):
                 }
                 connection.execute(cl_user.insert().values(user_info))
         return user_info
- 
+
     def update_user_info(self, user_info):
         '''
         Update the given user's info with |user_info|.
@@ -1485,7 +1485,7 @@ class BundleModel(object):
 
     def _get_disk_used(self, user_id):
         return self.search_bundle_uuids(user_id, None, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
-        
+
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)
         # Compute from scratch for simplicity

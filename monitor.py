@@ -11,6 +11,7 @@ import re
 import time
 import socket
 import argparse
+import json
 
 # This script runs in a loop monitoring the health of the CodaLab instance.
 # Here are some of the things the script does:
@@ -25,35 +26,62 @@ import argparse
 
 # Parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--sender', help='email address to send to')
-parser.add_argument('--recipient', help='email address to send from')
-parser.add_argument('--data-path', help='where the CodaLab data is stored', default=os.getenv('HOME') + '/.codalab/data')
+parser.add_argument('--sender', help='email address to send from')
+parser.add_argument('--recipient', help='email address to send to')
+
+parser.add_argument('--codalab-home', help='where the CodaLab instance lives', default=os.path.join(os.getenv('HOME'), '.codalab'))
+parser.add_argument('--codalab-repo', help='where the CodaLab repo instance lives', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'codalab'))
+
+# Where to write out information
 parser.add_argument('--log-path', help='file to write the log', default='monitor.log')
 parser.add_argument('--backup-path', help='directory to backup database', default='backup')
-parser.add_argument('--mysql-conf-path', help='contains username/password for database', default='mysql.cnf')
+
 parser.add_argument('--ping-interval', help='ping the server every this many seconds', type=int, default=30)
 parser.add_argument('--run-interval', help='run a job every this many seconds', type=int, default=5*60)
 parser.add_argument('--email-interval', help='email a report every this many seconds', type=int, default=24*60*60)
-parser.add_argument('--website-db', help='website database')
-parser.add_argument('--bundles-db', help='bundles database')
 args = parser.parse_args()
 
-if not os.path.exists(args.mysql_conf_path):
-    print 'The mysql configuration file %s doesn\'t exist' % args.mysql_conf_path
-    print 'This file should contain:'
-    print '''
-[client]
-user="..."
-password="..."
-'''
-    sys.exit(1)
+hostname = socket.gethostname()
 
+# Get MySQL username and password for bundles
+config_path = os.path.join(args.codalab_home, 'config.json')
+config = json.loads(open(config_path).read())
+engine_url = config['server']['engine_url']
+m = re.match('mysql://(.+):(.+)@localhost:3306/(.+)', engine_url)
+if not m:
+    print 'Can\'t extract server.engine_url from %s' % config_path
+    sys.exit(1)
+bundles_db = m.group(3)
+bundles_user = m.group(1)
+bundles_password = m.group(2)
+print 'bundles DB: %s; user: %s' % (bundles_db, bundles_user)
+
+# Get MySQL username and password for website (HACK)
+config_path = os.path.join(args.codalab_repo, 'codalab', 'codalab', 'settings', 'local.py')
+in_section = False
+db_info = {}
+for line in open(config_path):
+    m = re.match("\s+'(.+)'\s*:\s*'(.*)',", line)
+    if not m: continue
+    key, value = m.group(1), m.group(2)
+    if key == 'ENGINE':
+        in_section = True
+    if not in_section:
+        continue
+    if key not in db_info:
+        db_info[key] = value
+website_db = db_info['NAME']
+website_user = db_info['USER']
+website_password = db_info['PASSWORD']
+print 'website DB: %s, user: %s' % (website_db, website_user)
+
+# Create backup directory
 if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
 
-hostname = socket.gethostname()
 if args.sender:
     password = getpass('Password for %s: ' % args.sender)
+
 report = []  # Build up the current report to send in an email
 
 # message is a list
@@ -106,7 +134,7 @@ def error_logs(error_type, s):
     if is_power_of_two(n):  # Send email only on powers of two to prevent sending too many emails
         send_email('%s [%d times]' % (error_type, n), s.split('\n'))
 
-durations = defaultdict(list)
+durations = defaultdict(list)  # Command => durations for that command
 def run_command(args, soft_time_limit=5, hard_time_limit=60):
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
@@ -152,30 +180,38 @@ def email_time():
     global timer
     return timer % args.email_interval == 0
 
+def backup_db(db, user, password):
+    date = get_date()
+    mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
+    with open(mysql_conf_path, 'w') as f:
+        print >>f, '[client]'
+        print >>f, 'user="%s"' % user
+        print >>f, 'password="%s"' % password
+    run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/%s-%s.mysqldump' % \
+        (mysql_conf_path, db, args.backup_path, db, date)])
+    os.unlink(mysql_conf_path)
+
 # Begin monitoring loop
-run_command(['cl', 'work', 'localhost::'])  # Access the server on home directory (need to first log in)
+run_command(['cl', 'work', 'local::'])
 while True:
     del report[:]
     if ping_time():
         log('=== BEGIN REPORT')
 
     try:
-        # Backup files
+        # Backup DB
         if email_time():
-            log('Backup files')
-            date = get_date()
-            if args.website_db:
-                run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/codalab_website-%s.mysqldump' % (args.mysql_conf_path, args.website_db, args.backup_path, date)])
-            if args.bundles_db:
-                run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/codalab_bundles-%s.mysqldump' % (args.mysql_conf_path, args.bundles_db, args.backup_path, date)])
-        
-        # Check remaining space
+            log('Backup DB')
+            backup_db(website_db, website_user, website_password)
+            backup_db(bundles_db, bundles_user, bundles_password)
+
+        # Check remaining disk space
         if ping_time():
-            result = int(run_command(['df', args.data_path]).split('\n')[1].split()[3])
+            result = int(run_command(['df', os.path.join(args.codalab_home, 'data')]).split('\n')[1].split()[3])
             if result < 500 * 1024:  # Less than 500 MB, start to worry
                 error_logs('low disk space', 'Only %s MB of disk space left!' % (result / 1024))
 
-        # Get statistics
+        # Get statistics on bundles
         if ping_time():
             # Simple things
             run_command(['cl', 'work'])
@@ -185,7 +221,7 @@ while True:
             run_command(['cl', 'search', 'size=.sum'], 20)
             run_command(['cl', 'search', 'size=.sort-', '.limit=5'], 20)
             run_command(['cl', 'search', '.last', '.limit=5'])
-        
+
         # Try to run a job
         if run_time():
             uuid = run_command(['cl', 'run', 'echo hello'])
@@ -193,10 +229,10 @@ while True:
             run_command(['cl', 'rm', uuid])
     except Exception, e:
         error_logs('exception', 'Exception: %s' % e)
-    
+
     if ping_time():
         log('=== END REPORT')
-    
+
     # Email the report
     if email_time():
         send_email('report', report)
