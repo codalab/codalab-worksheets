@@ -175,6 +175,26 @@ class Worker(object):
 
         return did_something
 
+    def check_timed_out_bundles(self, update_timeout=60*60*24):
+        '''
+        Filters the list of running bundles by their time, and marks those that
+        have not been updated in > update_timeout seconds as FAILED.
+        Default update_timeout: 1 day
+        '''
+        uuids = self.model.search_bundle_uuids(worksheet_uuid=None, user_id=self.model.root_user_id,
+                                               keywords=['state='+','.join([State.RUNNING, State.QUEUED])])
+        bundles = self.model.batch_get_bundles(uuid=uuids)
+        def _failed(bundle):
+            now = int(time.time())
+            since_last_update = now - bundle.metadata.last_updated
+            return since_last_update >= update_timeout
+        failed_bundles = filter(_failed, bundles)
+        for bundle in failed_bundles:
+            failure_msg = 'No response from worker in %s' % time.strftime('%H:%M:%S', time.gmtime(update_timeout))
+            metadata_update = {'failure_message': failure_msg}
+            update = {'state': State.FAILED, 'metadata': metadata_update}
+            self.model.update_bundle(bundle, update)
+
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.
     def check_finished_bundles(self):
@@ -406,10 +426,11 @@ class Worker(object):
             bool_run = self.update_staged_bundles()
             # Check to see if any bundles are done running
             bool_done = self.check_finished_bundles()
-            # TODO: mark QUEUED and RUNNING jobs as FAILED that we haven't heard back from a while
+            # Check to see if any bundles have timed out
+            bool_timed_out = self.check_timed_out_bundles()
 
             # Sleep only if nothing happened.
-            if not (bool_action or bool_run or bool_done):
+            if not (bool_action or bool_run or bool_done or bool_timed_out):
                 time.sleep(sleep_time)
             else:
                 # Advance counter only if something interesting happened
