@@ -3,6 +3,7 @@ completers.py
 
 Classes and functions for CLI autocomplete functionality, built within the argcomplete framework.
 """
+from .docker_util import Docker
 import inspect
 import itertools
 import os
@@ -182,8 +183,6 @@ class DockerImagesCompleter(CodaLabCompleter):
     Completes names of Docker images available local to the user of the cl script, which should search the
     """
     def __call__(self, prefix, action=None, parsed_args=None):
-        from subprocess import Popen, PIPE
-        docker = Popen(['/usr/bin/env', 'docker', 'search', prefix], stdout=PIPE, stderr=PIPE)
-        if docker.wait() != 0:
-            return NullCompleter()
-        return (self.IMAGE_TAG_REGEX.match(line).group('tag') for line in docker.stdout.readlines()[1:])
+        def handle_err(errcode, stderr):
+            warn("Error(%d): %s" % (errcode, stderr))
+        return Docker.search(prefix, handle_err)
