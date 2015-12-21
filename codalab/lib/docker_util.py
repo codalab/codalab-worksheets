@@ -23,13 +23,13 @@ class Docker(object):
     DOCKER_SEARCH_TAG_REGEX = re.compile(r'^(?P<tag>\S+)\s+')
 
     @classmethod
-    def search(cls, term, failure_cb=None):
+    def search(cls, keyword, failure_cb=None):
         """
-        Performs`docker search <term>`. Returns tuple of image tags matching the search term.
+        Performs `docker search <term>`. Returns tuple of image tags matching the search term.
         Also accepts an optional `failure_cb`, which is a function that is called with the return code of the
         process and the process' stderr.
         """
-        docker = Popen(['/usr/bin/env', 'docker', 'search', term], stdout=PIPE, stderr=PIPE)
+        docker = Popen(['/usr/bin/env', 'docker', 'search', keyword], stdout=PIPE, stderr=PIPE)
         if docker.wait() != 0 and failure_cb is not None:
             failure_cb(docker.returncode, docker.stderr.read())
         else:
