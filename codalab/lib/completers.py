@@ -185,5 +185,7 @@ class DockerImagesCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
         def handle_err(errcode, stderr):
             warn("Error(%d): %s" % (errcode, stderr))
-        return Docker.search(prefix.replace('/', ' '), handle_err)
+        first_slash = prefix.find('/')
+        trimmed_prefix = prefix[0:first_slash] if first_slash >= 0 else prefix
+        return Docker.search(trimmed_prefix, handle_err)
 
