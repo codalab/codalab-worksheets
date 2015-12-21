@@ -185,4 +185,5 @@ class DockerImagesCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
         def handle_err(errcode, stderr):
             warn("Error(%d): %s" % (errcode, stderr))
-        return Docker.search(prefix, handle_err)
+        return Docker.search(prefix.replace('/', ' '), handle_err)
+
