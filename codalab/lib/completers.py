@@ -173,6 +173,17 @@ class TargetsCompleter(CodaLabCompleter):
 
 
 class DockerImagesCompleter(CodaLabCompleter):
-    def __call__(self, prefix, action=None, parsed_args=None):
-        return ('codalab/ubuntu:1.9', 'codalab/python:1.0', 'ipython/scipystack', 'codalab/tensorflow-cuda7.0-352.39')
+    """
+    Matches the first column image tag output in 'docker search'
+    """
+    IMAGE_TAG_REGEX = re.compile(r'^(?P<tag>\S+)\s+')
 
+    """
+    Completes names of Docker images available local to the user of the cl script, which should search the
+    """
+    def __call__(self, prefix, action=None, parsed_args=None):
+        from subprocess import Popen, PIPE
+        docker = Popen(['/usr/bin/env', 'docker', 'search', prefix], stdout=PIPE, stderr=PIPE)
+        if docker.wait() != 0:
+            return NullCompleter()
+        return (self.IMAGE_TAG_REGEX.match(line).group('tag') for line in docker.stdout.readlines()[1:])
