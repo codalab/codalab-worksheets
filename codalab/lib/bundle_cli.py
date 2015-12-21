@@ -1133,7 +1133,7 @@ class BundleCLI(object):
         'search',
         aliases=('s',),
         help=[
-            'Search for bundles on a CodaLab instance.',
+            'Search for bundles on a CodaLab instance (returns 10 results by default).',
             '  search <keyword> ... <keyword> : Match name and description.',
             '  search name=<name>             : More targeted search of using metadata fields.',
             '  search size=.sort              : Sort by a particular field.',
