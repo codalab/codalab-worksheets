@@ -180,7 +180,7 @@ class DockerImagesCompleter(CodaLabCompleter):
     IMAGE_TAG_REGEX = re.compile(r'^(?P<tag>\S+)\s+')
 
     """
-    Completes names of Docker images available local to the user of the cl script, which should search the
+    Completes names of Docker images available on DockerHub.
     """
     def __call__(self, prefix, action=None, parsed_args=None):
         def handle_err(errcode, stderr):

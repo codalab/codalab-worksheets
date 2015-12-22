@@ -25,7 +25,7 @@ class Docker(object):
     @classmethod
     def search(cls, keyword, failure_cb=None):
         """
-        Performs `docker search <term>`. Returns tuple of image tags matching the search term.
+        Performs `docker search <keyword>`. Returns tuple of image tags matching the search keyword.
         Also accepts an optional `failure_cb`, which is a function that is called with the return code of the
         process and the process' stderr.
         """
