@@ -1,16 +1,9 @@
-alembic==0.8.2
-argh==0.26.1
-docker-py==1.6.0
-Mako==1.0.3
-MarkupSafe==0.23
-pathtools==0.1.2
-psutil==3.3.0
-python-editor==0.5
 PyYAML==3.11
-requests==2.9.0
-six==1.10.0
 SQLAlchemy==1.0.8
+alembic==0.8.2
+docker-py==1.6.0
+psutil==3.3.0
 watchdog==0.8.3
-websocket-client==0.34.0
-wheel==0.24.0
+# Use sckoo@stanford.edu's patched argcomplete, until pull request has been accepted
+# https://github.com/kislyuk/argcomplete/pull/118
 git+https://github.com/kashizui/argcomplete.git@allow-overridden-subparsersaction
