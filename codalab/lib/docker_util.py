@@ -10,19 +10,16 @@ from requests.exceptions import RequestException
 
 
 class Docker(object):
-    DOCKER_CLIENT = docker.Client(**kwargs_from_env(assert_hostname=False))
-
     """
     Wrapper class. Various class methods defined in here serve as wrappers for functionality that calls out to
     the `docker` binary installed on the host.
     """
 
     """
-    Compiled regular expression to parse the stdout of `docker search` calls.
-
-    This captures the beginning of the line up until the first whitespace character, i.e.
-    the first column of the output, corresponding to the image tag.
+    Docker REST client, makes calls out to docker-py, which in turn dispatches to Docker's Remote REST API.
+    assert_hostname is disabled to avoid SSL verification issues.
     """
+    DOCKER_CLIENT = docker.Client(**kwargs_from_env(assert_hostname=False))
 
     @classmethod
     def search(cls, keyword, failure_cb=None):
