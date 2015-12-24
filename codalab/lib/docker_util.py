@@ -1,7 +1,9 @@
 """
 docker_util.py
 
-Utility class wrapping the docker executable
+Utility class for performing Docker actions. Relies on docker-py for communicating
+with the Docker Remote API. Configuration of the client is done through the standard
+DOCKER_* environment variables DOCKER_HOST, DOCKER_CERT_PATH and DOCKER_TLS_VERIFY.
 """
 from argcomplete import warn
 import docker
