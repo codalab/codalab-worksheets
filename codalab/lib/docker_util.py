@@ -1,14 +1,11 @@
 """
 docker_util.py
 
-Utility class for performing Docker actions. Relies on docker-py for communicating
-with the Docker Remote API. Configuration of the client is done through the standard
-DOCKER_* environment variables DOCKER_HOST, DOCKER_CERT_PATH and DOCKER_TLS_VERIFY.
+Utility class wrapping the docker executable
 """
 from argcomplete import warn
-import docker
-from docker.utils import kwargs_from_env
-from requests.exceptions import RequestException
+import re
+from subprocess import Popen, PIPE
 
 
 class Docker(object):
@@ -18,20 +15,23 @@ class Docker(object):
     """
 
     """
-    Docker REST client, makes calls out to docker-py, which in turn dispatches to Docker's Remote REST API.
-    assert_hostname is disabled to avoid SSL verification issues.
+    Compiled regular expression to parse the stdout of `docker search` calls.
+
+    This captures the beginning of the line up until the first whitespace character, i.e.
+    the first column of the output, corresponding to the image tag.
     """
-    DOCKER_CLIENT = docker.Client(**kwargs_from_env(assert_hostname=False))
+    DOCKER_SEARCH_TAG_REGEX = re.compile(r'^(?P<tag>\S+)\s+')
 
     @classmethod
     def search(cls, keyword, failure_cb=None):
         """
         Performs `docker search <keyword>`. Returns tuple of image tags matching the search keyword.
-        Also accepts an optional `failure_cb`, which is a function that is called with the exception
-        that was thrown
+        Also accepts an optional `failure_cb`, which is a function that is called with the return code of the
+        process and the process' stderr.
         """
-        try:
-            return (image['name'] for image in cls.DOCKER_CLIENT.search(keyword))
-        except RequestException as e:
-            failure_cb(e)
+        docker = Popen(['/usr/bin/env', 'docker', 'search', keyword], stdout=PIPE, stderr=PIPE)
+        if docker.wait() != 0 and failure_cb is not None:
+            failure_cb(docker.returncode, docker.stderr.read())
+        else:
+            return (cls.DOCKER_SEARCH_TAG_REGEX.match(line).group('tag') for line in docker.stdout.readlines()[1:])
 
