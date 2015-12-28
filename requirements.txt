@@ -1,7 +1,6 @@
 PyYAML==3.11
 SQLAlchemy==1.0.8
 alembic==0.8.2
-docker-py==1.6.0
 psutil==3.3.0
 watchdog==0.8.3
 # Use sckoo@stanford.edu's patched argcomplete, until pull request has been accepted
