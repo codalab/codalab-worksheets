@@ -222,7 +222,7 @@ class CodaLabManager(object):
         # Rest of instructions
         print_block(r"""
         Please follow the instructions here to finish the setup (e.g., installing docker, OAuth):
-        https://github.com/codalab/codalab/wiki/Setup-Local-Worksheets
+        https://github.com/codalab/codalab-worksheets/wiki/Setup-Local-Worksheets
         """)
 
         if not dry_run:
