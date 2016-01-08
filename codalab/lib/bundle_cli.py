@@ -1759,7 +1759,7 @@ class BundleCLI(object):
         aliases=('we',),
         help=[
             'Edit the contents of a worksheet.',
-            'See https://github.com/codalab/codalab/wiki/User_Worksheet-Markdown for the markdown syntax.',
+            'See https://github.com/codalab/codalab-worksheets/wiki/User_Worksheet-Markdown for the markdown syntax.',
             '  wedit -n <name>          : Change the name of the worksheet.',
             '  wedit -T <tag> ... <tag> : Set the tags of the worksheet (e.g., paper).',
             '  wedit -o <username>      : Set the owner of the worksheet to <username>.',
