@@ -30,7 +30,6 @@ parser.add_argument('--sender', help='email address to send from')
 parser.add_argument('--recipient', help='email address to send to')
 
 parser.add_argument('--codalab-home', help='where the CodaLab instance lives', default=os.path.join(os.getenv('HOME'), '.codalab'))
-parser.add_argument('--codalab-repo', help='where the CodaLab repo instance lives', default=os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'codalab'))
 
 # Where to write out information
 parser.add_argument('--log-path', help='file to write the log', default='monitor.log')
@@ -56,20 +55,10 @@ bundles_user = m.group(1)
 bundles_password = m.group(2)
 print 'bundles DB: %s; user: %s' % (bundles_db, bundles_user)
 
-# Get MySQL username and password for website (HACK)
-config_path = os.path.join(args.codalab_repo, 'codalab', 'codalab', 'settings', 'local.py')
-in_section = False
-db_info = {}
-for line in open(config_path):
-    m = re.match("\s+'(.+)'\s*:\s*'(.*)',", line)
-    if not m: continue
-    key, value = m.group(1), m.group(2)
-    if key == 'ENGINE':
-        in_section = True
-    if not in_section:
-        continue
-    if key not in db_info:
-        db_info[key] = value
+# Get MySQL username and password for website (this should go away when we merge the DBs!)
+config_path = os.path.join(args.codalab_home, 'website-config.json')
+config = json.loads(open(config_path).read())
+db_info = config['database']
 website_db = db_info['NAME']
 website_user = db_info['USER']
 website_password = db_info['PASSWORD']
