@@ -2287,7 +2287,7 @@ class BundleCLI(object):
             raise UsageError('If you really want to delete EVERYTHING, use --commit')
         client = self.manager.current_client()
         print >>self.stdout, 'Deleting entire bundle store...'
-        client.bundle_store._reset()
+        client.bundle_store.reset()
         print >>self.stdout, 'Deleting entire database...'
         client.model._reset()
 

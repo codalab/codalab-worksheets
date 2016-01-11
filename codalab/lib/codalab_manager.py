@@ -39,9 +39,8 @@ from distutils.util import strtobool
 
 from codalab.client import is_local_address
 from codalab.common import UsageError, PermissionError
-from codalab.objects.worksheet import Worksheet
 from codalab.server.auth import User
-from codalab.lib.bundle_store import BundleStore
+from codalab.lib.bundle_store import SingleDiskBundleStore
 from codalab.lib import formatting
 
 def cached(fn):
@@ -252,12 +251,12 @@ class CodaLabManager(object):
         # Global setting!  Make temp directory the same as the bundle store
         # temporary directory.  The default /tmp generally doesn't have enough
         # space.
-        tempfile.tempdir = os.path.join(home, BundleStore.TEMP_SUBDIRECTORY)
+        tempfile.tempdir = os.path.join(home, SingleDiskBundleStore.TEMP_SUBDIRECTORY)
         return home
 
     @cached
     def bundle_store(self):
-        return BundleStore(self.codalab_home)
+        return SingleDiskBundleStore(self.codalab_home)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)
@@ -385,6 +384,7 @@ class CodaLabManager(object):
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
+        print "Client from address %s" % address
         if address in self.clients:
             return self.clients[address]
         # if local force mockauth or if local server use correct auth

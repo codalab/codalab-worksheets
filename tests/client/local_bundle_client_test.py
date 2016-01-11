@@ -7,7 +7,7 @@ import unittest
 from codalab.common import UsageError
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.lib import path_util, spec_util
-from codalab.lib.bundle_store import BundleStore
+from codalab.lib.bundle_store import SingleDiskBundleStore
 from codalab.model.sqlite_model import SQLiteModel
 from codalab.server.auth import MockAuthHandler, User
 
@@ -20,7 +20,7 @@ class GroupsAndPermsTest(unittest.TestCase):
     def setUpClass(cls):
         cls.test_root = path_util.normalize("~/.codalab_tests")
         path_util.make_directory(cls.test_root)
-        cls.bundle_store = BundleStore(cls.test_root)
+        cls.bundle_store = SingleDiskBundleStore(cls.test_root)
         cls.model = SQLiteModel("sqlite:///{}".format(os.path.join(cls.test_root, 'bundle.db')), {})
         cls.model.root_user_id = '0'
         users = [User('root', '0'), User('user1', '1'), User('user2', '2'), User('user4', '4')]

@@ -4,7 +4,7 @@ import os
 import sys
 import unittest
 
-from codalab.lib.bundle_store import BundleStore
+from codalab.lib.bundle_store import SingleDiskBundleStore
 
 class BundleStoreTest(unittest.TestCase):
     @mock.patch('codalab.lib.bundle_store.tempfile')
@@ -19,11 +19,11 @@ class BundleStoreTest(unittest.TestCase):
 
         ### BundleStore
 
-        class MockBundleStore(BundleStore):
+        class MockBundleStore(SingleDiskBundleStore):
           def __init__(self, root):
             self.root = root
-            self.data = os.path.join(root, BundleStore.DATA_SUBDIRECTORY)
-            self.temp = os.path.join(root, BundleStore.TEMP_SUBDIRECTORY)
+            self.data = os.path.join(root, SingleDiskBundleStore.DATA_SUBDIRECTORY)
+            self.temp = os.path.join(root, SingleDiskBundleStore.TEMP_SUBDIRECTORY)
 
         bundle_store = MockBundleStore('mock_root')
 
