@@ -2322,6 +2322,23 @@ class BundleCLI(object):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
+        # Add the disk, and then one-by-one check each bundle and see which belongs on which disk.
+
+    @Commands.command(
+            'rm-disk',
+            help='Remove a numbered disk, allocating all bundles across the remaining disks',
+            arguments=(
+                Commands.Argument('disknum',
+                                  help=' '.join(['The disk you want to remove.',
+                                                 'Find this by doing "ls $CODALAB_HOME/.codalab/mdata"'])),
+            ),
+    )
+    def do_rm_disk_command(self, args):
+        if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            sys.exit(1)
+        print "Deleting disk #%s" % args.disk
+        # See which bundles hash to this disk, and then see what's up with that.
 
     def _fail_if_headless(self, message):
         if self.headless:

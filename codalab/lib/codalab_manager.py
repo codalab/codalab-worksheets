@@ -264,7 +264,7 @@ class CodaLabManager(object):
         depends on what the user has configured, but if no bundle store is configured manually then it defaults to a
         SingleDiskBundleStore.
         """
-        store_type = self.config['bundle_store']
+        store_type = self.config.get('bundle_store', 'SingleDiskBundleStore')
         if store_type == MultiDiskBundleStore.__name__:
             return MultiDiskBundleStore(self.codalab_home)
         else:
