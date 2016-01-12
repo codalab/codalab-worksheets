@@ -426,3 +426,10 @@ def remove(path):
         os.remove(path)
     if os.path.exists(path):
         print 'Failed to remove %s' % path
+
+def soft_link(source, path):
+    """
+    Create a symbolic link to source at path. This is basically the same as doing "ln -s $source $path"
+    """
+    check_isvalid(source, 'soft_link')
+    os.symlink(source, path)
