@@ -40,7 +40,10 @@ from distutils.util import strtobool
 from codalab.client import is_local_address
 from codalab.common import UsageError, PermissionError
 from codalab.server.auth import User
-from codalab.lib.bundle_store import SingleDiskBundleStore
+from codalab.lib.bundle_store import (
+    MultiDiskBundleStore,
+    SingleDiskBundleStore,
+)
 from codalab.lib import formatting
 
 def cached(fn):
@@ -256,7 +259,16 @@ class CodaLabManager(object):
 
     @cached
     def bundle_store(self):
-        return SingleDiskBundleStore(self.codalab_home)
+        """
+        Returns the bundle store backing this CodaLab instance. The type of the store object
+        depends on what the user has configured, but if no bundle store is configured manually then it defaults to a
+        SingleDiskBundleStore.
+        """
+        store_type = self.config['bundle_store']
+        if store_type == MultiDiskBundleStore.__name__:
+            return MultiDiskBundleStore(self.codalab_home)
+        else:
+            return SingleDiskBundleStore(self.codalab_home)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)
