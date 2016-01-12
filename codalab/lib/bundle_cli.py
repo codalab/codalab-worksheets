@@ -71,6 +71,9 @@ from codalab.lib.completers import (
     TargetsCompleter,
     require_not_headless,
 )
+from codalab.lib.bundle_store import (
+    MultiDiskBundleStore
+)
 
 # Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
@@ -135,6 +138,7 @@ OTHER_COMMANDS = (
     'work-manager',
     'server',
     'logout',
+    'add-disk',
 )
 
 
@@ -2290,6 +2294,34 @@ class BundleCLI(object):
         client.bundle_store.reset()
         print >>self.stdout, 'Deleting entire database...'
         client.model._reset()
+
+    # Note: this is not actually handled in BundleCLI, but here just to show the help
+    @Commands.command(
+        'server',
+        help='Start an instance of the CodaLab bundle service.',
+    )
+    def do_server_command(self, args):
+        raise UsageError('Cannot execute CLI command: server')
+
+    @Commands.command(
+            'add-disk',
+            help='Add another disk for storage',
+            arguments=(
+                    Commands.Argument('target',
+                                      help=' '.join(['The target location you would like to use for storing bundles.',
+                                                     'This directory should be underneath a mountpoint for the disk',
+                                                     'you would like to use. You are responsible for configuring the',
+                                                     'mountpoint yourself.']),),
+            )
+    )
+    def do_add_disk_command(self, args):
+        """
+        Add the specified target location as a new disk available for use by the filesystem.
+        """
+        # This operation only allowed if we're using MultiDiskBundleStore
+        if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            sys.exit(1)
 
     def _fail_if_headless(self, message):
         if self.headless:
