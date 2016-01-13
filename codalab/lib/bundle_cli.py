@@ -139,6 +139,7 @@ OTHER_COMMANDS = (
     'server',
     'logout',
     'add-disk',
+    'rm-disk',
 )
 
 
@@ -2305,7 +2306,7 @@ class BundleCLI(object):
 
     @Commands.command(
             'add-disk',
-            help='Add another disk for storage',
+            help='Add another disk for storage (MultiDiskBundleStore only)',
             arguments=(
                     Commands.Argument('target',
                                       help=' '.join(['The target location you would like to use for storing bundles.',
@@ -2322,11 +2323,11 @@ class BundleCLI(object):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
-        # Add the disk, and then one-by-one check each bundle and see which belongs on which disk.
+        self.manager.bundle_store().add_disk(args.target)
 
     @Commands.command(
             'rm-disk',
-            help='Remove a numbered disk, allocating all bundles across the remaining disks',
+            help='Remove a disk by its number (MultiDiskBundleStore only)',
             arguments=(
                 Commands.Argument('disknum',
                                   help=' '.join(['The disk you want to remove.',
@@ -2337,8 +2338,7 @@ class BundleCLI(object):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
-        print "Deleting disk #%s" % args.disk
-        # See which bundles hash to this disk, and then see what's up with that.
+        self.manager.bundle_store().rm_disk(args.disknum)
 
     def _fail_if_headless(self, message):
         if self.headless:

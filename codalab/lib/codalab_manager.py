@@ -267,8 +267,11 @@ class CodaLabManager(object):
         store_type = self.config.get('bundle_store', 'SingleDiskBundleStore')
         if store_type == MultiDiskBundleStore.__name__:
             return MultiDiskBundleStore(self.codalab_home)
-        else:
+        elif store_type == SingleDiskBundleStore.__name__:
             return SingleDiskBundleStore(self.codalab_home)
+        else:
+            print >>sys.stderr, "Invalid bundle store type \"%s\"", store_type
+            sys.exit(1)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)
