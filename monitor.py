@@ -3,7 +3,7 @@
 import os, sys
 import datetime
 from collections import defaultdict
-from smtplib import SMTP_SSL, SMTP
+from smtplib import SMTP
 from email.mime.text import MIMEText
 from getpass import getpass
 import subprocess
