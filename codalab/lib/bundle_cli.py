@@ -2313,6 +2313,8 @@ class BundleCLI(object):
                                                      'This directory should be underneath a mountpoint for the disk',
                                                      'you would like to use. You are responsible for configuring the',
                                                      'mountpoint yourself.']),),
+                    Commands.Argument('name',
+                                      help='The name you\'d like to give this disk for CodaLab.',),
             )
     )
     def do_add_disk_command(self, args):
@@ -2323,7 +2325,7 @@ class BundleCLI(object):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
-        self.manager.bundle_store().add_disk(args.target)
+        self.manager.bundle_store().add_disk(args.target, args.name)
 
     @Commands.command(
             'rm-disk',
