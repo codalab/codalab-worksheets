@@ -61,13 +61,13 @@ def path_error(message, path):
     return UsageError(message + ': ' + path)
 
 @contextlib.contextmanager
-def mkdtemp(suffix=""):
+def mkdtemp(suffix="", dir=None):
     """
     Create a directory as a context manager. Python3.x supports this OOTB with
     tempfile.TemporaryFile, but it doesn't exist in Python 2.7 so this is a
     simple wrapper.
     """
-    directory = tempfile.mkdtemp(suffix, dir='/tmp')
+    directory = tempfile.mkdtemp(suffix, dir=dir)
     try:
         yield directory
     finally:
