@@ -1,6 +1,9 @@
 *.pyc
 *.swp
 
+# Eclipse files.
+.*project
+
 # Compiled source #
 ###################
 *.com
