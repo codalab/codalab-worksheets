@@ -1,0 +1,13 @@
+machine:
+  python:
+    version: 2.7.5
+
+dependencies:
+  override:
+      - ./setup.sh
+      - ./venv/bin/pip install --upgrade pip
+      - ./venv/bin/pip install -r requirements-tests.txt
+
+test:
+  override:
+      - ./venv/bin/nosetests
