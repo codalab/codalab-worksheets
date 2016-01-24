@@ -4,10 +4,13 @@ machine:
 
 dependencies:
   override:
-      - ./setup.sh
-      - ./venv/bin/pip install --upgrade pip
-      - ./venv/bin/pip install -r requirements-tests.txt
+    - ./setup.sh client
+    - ./venv/bin/pip install --upgrade pip
+    - ./venv/bin/pip install -r requirements-tests.txt
 
 test:
   override:
-      - ./venv/bin/nosetests
+    - (printf 'n\nn\n\n' | ./codalab/bin/cl) || true
+    - './codalab/bin/cl work-manager':
+        background: true
+    - ./scripts/ci-tests.sh

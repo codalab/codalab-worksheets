@@ -422,7 +422,7 @@ def test(ctx):
     check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
     check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
     # block
-    uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
+    check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
 
 @TestModule.register('worksheet')
 def test(ctx):
