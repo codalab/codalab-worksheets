@@ -3,6 +3,7 @@ completers.py
 
 Classes and functions for CLI autocomplete functionality, built within the argcomplete framework.
 """
+from .docker_util import Docker
 import inspect
 import itertools
 import os
@@ -173,6 +174,20 @@ class TargetsCompleter(CodaLabCompleter):
 
 
 class DockerImagesCompleter(CodaLabCompleter):
+    """
+    Matches the first column image tag output in 'docker search'
+    """
+    IMAGE_TAG_REGEX = re.compile(r'^(?P<tag>\S+)\s+')
+
+    """
+    Completes names of Docker images available on DockerHub.
+    """
     def __call__(self, prefix, action=None, parsed_args=None):
-        return ('codalab/ubuntu:1.9', 'codalab/python:1.0', 'ipython/scipystack', 'codalab/tensorflow-cuda7.0-352.39')
+        def handle_err(exc):
+            warn("Error: %s" % exc)
+        if prefix == "":
+            prefix = "codalab"
+        first_slash = prefix.find('/')
+        trimmed_prefix = prefix[0:first_slash] if first_slash >= 0 else prefix
+        return Docker.search(trimmed_prefix, handle_err)
 

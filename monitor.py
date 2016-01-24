@@ -3,7 +3,7 @@
 import os, sys
 import datetime
 from collections import defaultdict
-from smtplib import SMTP_SSL, SMTP
+from smtplib import SMTP
 from email.mime.text import MIMEText
 from getpass import getpass
 import subprocess
@@ -14,6 +14,7 @@ import argparse
 import json
 
 # This script runs in a loop monitoring the health of the CodaLab instance.
+# It reads config.json and website-config.json in your CodaLab Home (~/.codalab).
 # Here are some of the things the script does:
 # - Make sure we don't run out of disk space.
 # - Backup the database.
@@ -21,20 +22,16 @@ import json
 # - Email if anything goes wrong.
 # - Email a daily report.
 
-# Usage:
-#  ./monitor.py --sender <your email>
-
 # Parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--sender', help='email address to send from')
-parser.add_argument('--recipient', help='email address to send to')
-
-parser.add_argument('--codalab-home', help='where the CodaLab instance lives', default=os.path.join(os.getenv('HOME'), '.codalab'))
+parser.add_argument('--codalab-home', help='where the CodaLab instance lives',
+    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME'), '.codalab')))
 
 # Where to write out information
 parser.add_argument('--log-path', help='file to write the log', default='monitor.log')
 parser.add_argument('--backup-path', help='directory to backup database', default='backup')
 
+# How often to do things
 parser.add_argument('--ping-interval', help='ping the server every this many seconds', type=int, default=30)
 parser.add_argument('--run-interval', help='run a job every this many seconds', type=int, default=5*60)
 parser.add_argument('--email-interval', help='email a report every this many seconds', type=int, default=24*60*60)
@@ -64,32 +61,33 @@ website_user = db_info['USER']
 website_password = db_info['PASSWORD']
 print 'website DB: %s, user: %s' % (website_db, website_user)
 
+# Email
+recipient = config['django']['admin-email']
+sender_info = config['email']
+
 # Create backup directory
 if not os.path.exists(args.backup_path):
     os.mkdir(args.backup_path)
-
-if args.sender:
-    password = getpass('Password for %s: ' % args.sender)
 
 report = []  # Build up the current report to send in an email
 
 # message is a list
 def send_email(subject, message):
-    sender, recipient = args.sender, args.recipient
-    if not recipient:
-        recipient = sender
-    print 'send_email to %s; subject: %s; message contains %d lines' % (recipient, subject, len(message))
-    if not sender:
-        return
-    s = SMTP("smtp.gmail.com", 587)
+    sender_host = sender_info['host']
+    sender_user = sender_info['user']
+    sender_password = sender_info['password']
+    print 'send_email to %s from %s@%s; subject: %s; message contains %d lines' % \
+        (recipient, sender_user, sender_host, subject, len(message))
+    s = SMTP(sender_host, 587)
     s.ehlo()
     s.starttls()
     s.ehlo()
     msg = MIMEText('<pre style="font: monospace">' + '\n'.join(message) + '</pre>', 'html')
     msg['Subject'] = 'CodaLab on %s: %s' % (hostname, subject)
     msg['To'] = recipient
-    s.login(sender, password)
-    s.sendmail(sender, recipient, msg.as_string())
+    msg['From'] = 'noreply@codalab.org'
+    s.login(sender_user, sender_password)
+    s.sendmail(sender_user, recipient, msg.as_string())
     s.quit()
 
 def get_date():

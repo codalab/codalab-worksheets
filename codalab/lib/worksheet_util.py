@@ -29,6 +29,7 @@ See get_worksheet_lines for documentation on the specification of the directives
 import copy
 import os
 import re
+import sys
 import types
 import yaml
 import json
@@ -940,8 +941,11 @@ def interpret_items(schemas, raw_items):
         finally:
             last_was_empty_line = new_last_was_empty_line
 
+    # TODO: fix inconsistencies resulting from UsageErrors thrown in flush_bundles()
+    if len(raw_to_interpreted) != len(raw_items):
+        print >>sys.stderr, "WARNING: Length of raw_to_interpreted does not match length of raw_items"
+
     # Package the result
-    assert len(raw_to_interpreted) == len(raw_items)
     interpreted_to_raw = {}
     next_interpreted_index = None
     # Go in reverse order so we can assign raw items that map to None to the next interpreted item
