@@ -88,8 +88,10 @@ def get_worksheet_info_edit_command(raw_command_map):
     Input:
         raw_command: a map containing the info to edit, new_value and the action to perform
     """
-    if not raw_command_map.get('k') or not raw_command_map.get('v') or not raw_command_map.get(
-            'action') == 'worksheet-edit':
+    key = raw_command_map.get('k')
+    value = raw_command_map.get('v')
+    action = raw_command_map.get('action')
+    if key is None or not key or value is None or not action == 'worksheet-edit':
         return None
     return 'wedit -{k[0]} "{v}"'.format(**raw_command_map)
 
