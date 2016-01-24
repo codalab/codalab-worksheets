@@ -230,8 +230,10 @@ class TestModule(object):
         print '============= SUMMARY'
         if failed:
             print 'Tests failed: %s' % ', '.join(failed)
+            return False
         else:
             print 'All tests passed.'
+            return True
 
 ############################################################
 
@@ -472,10 +474,10 @@ def test(ctx):
     ctx.collect_worksheet(wuuid)
     # Add tags
     run_command([cl, 'wedit', wname, '--tags', 'foo', 'bar', 'baz'])
-    check_contains(['Tags: \\[\'foo\', \'bar\', \'baz\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(['Tags: \\[u\'foo\', u\'bar\', u\'baz\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
     # Modify tags
     run_command([cl, 'wedit', wname, '--tags', 'bar', 'foo'])
-    check_contains(['Tags: \\[\'bar\', \'foo\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(['Tags: \\[u\'bar\', u\'foo\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(['Tags: \\[\\]'], run_command([cl, 'ls', '-w', wuuid]))
@@ -548,7 +550,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str(['kill']), get_info(uuid, 'actions'))
+    check_equals(str([u'kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
@@ -708,4 +710,6 @@ if __name__ == '__main__':
         print 'Remember to run this both in local and remote modes.',
         print 'Modules: all ' + ' '.join(TestModule.modules.keys())
     else:
-        TestModule.run(sys.argv[1:])
+        success = TestModule.run(sys.argv[1:])
+        if not success:
+            sys.exit(1)
