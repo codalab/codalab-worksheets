@@ -32,6 +32,8 @@ from codalab.lib import (
     formatting,
 )
 from codalab.objects.worksheet import Worksheet
+from codalab.objects.chat_box_qa import ChatBoxQA
+
 from codalab.objects import permission
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -1304,3 +1306,9 @@ class LocalBundleClient(BundleClient):
             if user_info['disk_used'] >= user_info['disk_quota']:
                 raise UsageError('Out of disk quota: %s' %
                     formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota']))
+
+    def add_chat(self, request_string, worksheet_uuid, bundle_uuid):
+        self.model.update_events_log(self._current_user_id(), self._current_user_name(), request_string, (worksheet_uuid, bundle_uuid))
+        answer = ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid)
+        return answer
+        

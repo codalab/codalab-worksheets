@@ -111,6 +111,8 @@ class RemoteBundleClient(BundleClient):
       'rm_user',
       'set_bundles_perm',
       'set_worksheet_perm',
+      # Commands related to ChatBox.
+      'add_chat',
     )
     # Implemented by the BundleRPCServer.
     SERVER_COMMANDS = (
