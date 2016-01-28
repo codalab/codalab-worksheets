@@ -239,6 +239,7 @@ class Commands(object):
         """
         def register_command(function):
             cls.commands[name] = cls.Command(name, aliases, help, arguments, function)
+            return function
 
         return register_command
 
@@ -977,13 +978,21 @@ class BundleCLI(object):
         print >>self.stdout, client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
     def wait(self, client, args, uuid):
+        # Build new args for a hacky artificial call to the info command
+        info_args = argparse.Namespace()
+        info_args.worksheet_spec = args.worksheet_spec
+        info_args.verbose = args.verbose
+        info_args.bundle_spec = [uuid]
+        info_args.field = None
+        info_args.raw = False
+
         if args.wait:
-            state = self.follow_targets(client, uuid, [])
-            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+            self.follow_targets(client, uuid, [])
+            self.do_info_command(info_args)
         if args.tail:
-            state = self.follow_targets(client, uuid, ['stdout', 'stderr'])
+            self.follow_targets(client, uuid, ['stdout', 'stderr'])
             if args.verbose:
-                self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+                self.do_info_command(info_args)
 
     @Commands.command(
         'run',
