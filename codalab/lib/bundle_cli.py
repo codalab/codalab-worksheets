@@ -189,6 +189,7 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
         # Make the aliases work.
         for alias in aliases:
             self._name_parser_map[alias] = parser
+
         # Make the help text reflect them, first removing old help entry.
         if 'help' in kwargs:
             help = kwargs.pop('help')[0]
