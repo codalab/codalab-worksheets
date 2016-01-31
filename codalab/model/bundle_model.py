@@ -1467,7 +1467,7 @@ class BundleModel(object):
                 query = query.where(cl_chat.c.is_answered == is_answered)
             if limit != None:
                 query = query.limit(limit)
-            query = query.order_by(cl_chat.c.id.desc())
+            # query = query.order_by(cl_chat.c.id.desc())
             rows = connection.execute(query).fetchall()
             result = {}
             print 'ROW'
@@ -1486,6 +1486,7 @@ class BundleModel(object):
         if chat_id and answer:
             with self.engine.begin() as connection:
                 connection.execute(cl_chat.update().where(cl_chat.c.id == chat_id).values(is_answered=True))
+                connection.execute(cl_chat.update().where(cl_chat.c.id == chat_id).values(answer=answer))
             return self.get_chat_log_info({'is_answered': False})
 
 
