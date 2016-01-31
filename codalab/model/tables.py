@@ -228,3 +228,17 @@ user = Table(
   Index('user_user_name_index', 'user_name'),
   sqlite_autoincrement=True,
 )
+
+# Store information about users' questions or feedback.
+query = Table(
+  'query',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('time', DateTime, nullable=False),  # When did the user send this query?
+  Column('date', String(63), nullable=False),  # (e.g., 2015-09-11)
+  Column('user_id', String(63), nullable=True),  # Who did it?
+  Column('user_name', String(63), nullable=True),  # Who did it?
+  Column('query', String(63), nullable=False),  # Query that the user sends
+  Column('answered', Boolean), # Has this query been answered?
+  sqlite_autoincrement=True,
+)

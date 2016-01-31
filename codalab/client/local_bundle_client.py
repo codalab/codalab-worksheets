@@ -1308,7 +1308,22 @@ class LocalBundleClient(BundleClient):
                     formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota']))
 
     def add_chat(self, request_string, worksheet_uuid, bundle_uuid):
-        self.model.update_events_log(self._current_user_id(), self._current_user_name(), request_string, (worksheet_uuid, bundle_uuid))
-        answer = ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid)
-        return answer
+        self.model.add_chat_log_info(self._current_user_id(), self._current_user_name(), request_string)
+        # answer = ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid)
+        # return answer
+        # allQuestions = self.model.get_chat_log_info({'user_id': self._current_user_id()})
+        # print allQuestions
+        # return ('hello' ,'world')
+        return ('The system has received your message', 'no need to type any command')
+
+    def get_chat_log_info(self, query_info):
+        chats = self.model.get_chat_log_info(query_info)
+        # print 'local_bundle_client'
+        # print chats
+        return chats
+
+    def update_chat_log_info(self, query_info):
+        chats = self.model.update_chat_log_info(query_info)
+        return chats
+
         
