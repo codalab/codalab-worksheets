@@ -196,7 +196,9 @@ class RemoteMachine(Machine):
             # Attach all GPUs if any
             f.write('devices=$(/bin/ls /dev/nvidia* 2>/dev/null)\n')
             f.write('if [ -n "$devices" ]; then devices=$(for d in $devices; do echo --device $d:$d; done); fi\n')
-            resource_args += ' $devices'
+            f.write('libcuda=$(/sbin/ldconfig -p 2>/dev/null | grep "libcuda.so$" | grep "x86-64" | head -n 1 | cut -d " " -f 4)\n')
+            f.write('if [ -n "$libcuda" ]; then libcuda="-v $libcuda:/usr/lib/x86_64-linux-gnu/libcuda.so"; fi\n')
+            resource_args += ' $devices $libcuda'
 
             # Enable network?
             if not request_network:
