@@ -168,6 +168,8 @@ class CodaLabManager(object):
             'server': {
                 'host': 'localhost',
                 'port': 2800,
+                'rest_host': 'localhost',
+                'rest_port': 2900,
                 'auth': {
                     'class': 'MockAuthHandler'
                 },
