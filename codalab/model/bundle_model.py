@@ -48,7 +48,7 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
-    query as cl_query,
+    chat as cl_chat,
     db_metadata,
 )
 from codalab.objects.worksheet import (
@@ -1441,48 +1441,52 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
-    def add_chat_log_info(self, user_id, user_name, query):
+    def add_chat_log_info(self, user_id, user_name, chat):
         with self.engine.begin() as connection:
             info = {
                 'time': datetime.datetime.fromtimestamp(time.time()),
                 'date': datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d'),
                 'user_id': user_id,
                 'user_name': user_name,
-                'query': query,
-                'answered': False
+                'chat': chat,
+                'is_answered': False,
+                'answer': ''
             }
-            connection.execute(cl_query.insert().values(info))
+            connection.execute(cl_chat.insert().values(info))
 
     def get_chat_log_info(self, query_info):
         user_id = query_info.get('user_id')
-        answered = query_info.get('answered')
+        is_answered = query_info.get('is_answered')
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
-            query = select([cl_query.c.id, cl_query.c.user_name, cl_query.c.query, cl_query.c.date])
+            query = select([cl_chat.c.id, cl_chat.c.date, cl_chat.c.user_name, cl_chat.c.chat, cl_chat.c.is_answered, cl_chat.c.answer])
             if user_id != None:
-                query = query.where(cl_query.c.user_id == user_id)
-            if answered != None:
-                answered = False if answered == 'false' else True
-                query = query.where(cl_query.c.answered == answered)
+                query = query.where(cl_chat.c.user_id == user_id)
+            if is_answered != None:
+                # is_answered = False if is_answered == 'false' else True
+                query = query.where(cl_chat.c.is_answered == is_answered)
             if limit != None:
                 query = query.limit(limit)
-            query = query.order_by(cl_query.c.id.desc())
+            query = query.order_by(cl_chat.c.id.desc())
             rows = connection.execute(query).fetchall()
             result = {}
+            print 'ROW'
             for row in rows:
-                print row.id
+                print row.is_answered
                 if row.user_name in result:
-                    result[row.user_name].append({'query': row.query, 'date': row.date, 'question_id': row.id})
+                    result[row.user_name].append({'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer})
                 else:
-                    result[row.user_name] = [{'query': row.query, 'date': row.date, 'question_id': row.id}]
+                    result[row.user_name] = [{'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer}]
+            print result
             return result
-    def update_chat_log_info(self, query_info):
-        question_id = query_info.get('question_id')
-        answer = query_info.get('answer')
-        with self.engine.begin() as connection:
-            connection.execute(cl_query.update().where(cl_query.c.id == question_id).values(answered=True))
-        return self.get_chat_log_info({'answered': 'false'})
 
+    def update_chat_log_info(self, query_info):
+        chat_id = query_info.get('chat_id')
+        answer = query_info.get('answer')
+        if chat_id and answer:
+            with self.engine.begin() as connection:
+                connection.execute(cl_chat.update().where(cl_chat.c.id == chat_id).values(is_answered=True))
+            return self.get_chat_log_info({'is_answered': False})
 
 
     ############################################################
