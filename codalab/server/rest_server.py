@@ -11,6 +11,8 @@ REGISTER_ENDPOINT_FNS = [
 
 
 class LoggingPlugin(object):
+    """Logs successful requests to the events log."""
+
     api = 2
     
     def __init__(self, model):
@@ -44,6 +46,8 @@ class LoggingPlugin(object):
 
 
 class AuthenticationPlugin(object):
+    """Ensures that the user is authenticated."""
+
     api = 2
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
@@ -57,6 +61,8 @@ class AuthenticationPlugin(object):
 
 
 class CheckJsonPlugin(object):
+    """Checks that the input JSON data can be parsed."""
+
     api = 2
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
@@ -72,6 +78,8 @@ class CheckJsonPlugin(object):
 
 
 def run_rest_server(manager, debug, num_workers):
+    """Runs the REST server."""
+
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
 
