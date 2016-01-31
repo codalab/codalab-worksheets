@@ -1459,7 +1459,7 @@ class BundleModel(object):
         is_answered = query_info.get('is_answered')
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
-            query = select([cl_chat.c.id, cl_chat.c.date, cl_chat.c.user_name, cl_chat.c.chat, cl_chat.c.is_answered, cl_chat.c.answer])
+            query = select([cl_chat.c.id, cl_chat.c.date, cl_chat.c.user_id, cl_chat.c.chat, cl_chat.c.is_answered, cl_chat.c.answer])
             if user_id != None:
                 query = query.where(cl_chat.c.user_id == user_id)
             if is_answered != None:
@@ -1472,11 +1472,10 @@ class BundleModel(object):
             result = {}
             print 'ROW'
             for row in rows:
-                print row.is_answered
-                if row.user_name in result:
-                    result[row.user_name].append({'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer})
+                if row.user_id in result:
+                    result[row.user_id].append({'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer})
                 else:
-                    result[row.user_name] = [{'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer}]
+                    result[row.user_id] = [{'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer}]
             print result
             return result
 

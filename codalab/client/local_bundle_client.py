@@ -1307,6 +1307,8 @@ class LocalBundleClient(BundleClient):
                 raise UsageError('Out of disk quota: %s' %
                     formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota']))
 
+
+    # methods related to chat box and chat portal
     def add_chat_log_info(self, request_string, worksheet_uuid, bundle_uuid):
         self.model.add_chat_log_info(self._current_user_id(), self._current_user_name(), request_string)
         # answer = ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid)
