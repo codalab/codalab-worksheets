@@ -1,22 +1,29 @@
-from bottle import abort, install, request, run
-from codalab.rest.example import register_example_endpoints
+from bottle import abort, install, local, request, run
+import codalab.rest.example
 from httplib import BAD_REQUEST
 import time
 
 
-REGISTER_ENDPOINT_FNS = [
-    # TODO(klopyrev): Remove example once it is no longer needed.
-    register_example_endpoints
-]
+class SaveEnvironmentPlugin(object):
+    """Saves environment objects in the local request variable."""
+    api = 2
+    
+    def __init__(self, model, bundle_store):
+        self.model = model
+        self.bundle_store = bundle_store
+
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            local.model = self.model
+            local.bundle_store = self.bundle_store
+            return callback(*args, **kwargs)
+
+        return wrapper
 
 
 class LoggingPlugin(object):
     """Logs successful requests to the events log."""
-
     api = 2
-    
-    def __init__(self, model):
-        self.model = model
     
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
@@ -33,7 +40,7 @@ class LoggingPlugin(object):
                 args.append(request.json)
 
             # TODO(klopyrev): Log real user ID and name.
-            self.model.update_events_log(
+            local.model.update_events_log(
                 start_time=start_time,
                 user_id='',
                 user_name='',
@@ -45,24 +52,8 @@ class LoggingPlugin(object):
         return wrapper
 
 
-class AuthenticationPlugin(object):
-    """Ensures that the user is authenticated."""
-
-    api = 2
-    def apply(self, callback, route):
-        def wrapper(*args, **kwargs):
-            print('authentication')
-            # TODO(sckoo): Add authentication. The information about the user
-            # can be put in the "local" thread-local variable in bottle.
-            # TODO(sckoo): Update the logging plugin to log real user ID and
-            # and name.
-            return callback(*args, **kwargs)
-        return wrapper
-
-
 class CheckJsonPlugin(object):
     """Checks that the input JSON data can be parsed."""
-
     api = 2
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
@@ -79,17 +70,12 @@ class CheckJsonPlugin(object):
 
 def run_rest_server(manager, debug, num_workers):
     """Runs the REST server."""
-
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
 
+    install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store()))
     install(CheckJsonPlugin())
-    install(LoggingPlugin(manager.model()))
-    authentication_plugin = AuthenticationPlugin()
-    
-    for register_fn in REGISTER_ENDPOINT_FNS:
-        register_fn(manager.model(), manager.bundle_store(),
-                    authentication_plugin)
+    install(LoggingPlugin())
 
     if not debug:
         # We use gunicorn to create a server with multiple processes, since in

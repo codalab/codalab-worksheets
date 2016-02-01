@@ -253,3 +253,19 @@ class OAuthHandler(threading.local):
         Returns the current user as set by validate_token.
         '''
         return self._user
+
+
+class AuthenticationPlugin(object):
+    """Bottle plugin that ensures that the user is authenticated."""
+    api = 2
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            print('authentication')
+            # TODO(sckoo): Add authentication. The information about the user
+            # can be put in the "local" thread-local variable in bottle.
+            # TODO(sckoo): Update the logging plugin to log real user ID and
+            # and name.
+            return callback(*args, **kwargs)
+        return wrapper
+
+authentication_plugin = AuthenticationPlugin()
