@@ -1470,13 +1470,11 @@ class BundleModel(object):
             # query = query.order_by(cl_chat.c.id.desc())
             rows = connection.execute(query).fetchall()
             result = {}
-            print 'ROW'
             for row in rows:
                 if row.user_id in result:
                     result[row.user_id].append({'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer})
                 else:
                     result[row.user_id] = [{'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer}]
-            print result
             return result
 
     def update_chat_log_info(self, query_info):

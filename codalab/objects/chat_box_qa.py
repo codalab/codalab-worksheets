@@ -12,7 +12,6 @@ class ChatBoxQA(object):
 
 	@classmethod
 	def get_similarity(cls, query_question, model_question):
-		print model_question
 		exclude = set(string.punctuation)
 		query_tokens = set(''.join(ch for ch in query_question.lower() if ch not in exclude).split())
 		model_tokens = set(''.join(ch for ch in model_question.lower() if ch not in exclude).split())
@@ -22,23 +21,19 @@ class ChatBoxQA(object):
 				if query_token == model_token:
 						count += 1
  		union_cardinality = len(query_tokens.union(model_tokens))
- 		print count / float(union_cardinality)
  		return count / float(union_cardinality)
 
  	@classmethod
  	def get_custom_params(cls, question):
  		if 'this' in question:
  			if 'worksheet' in question:
- 				print 'worksheet'
  				return 'worksheet'
  			elif 'bundle' in question:
- 				print 'bundle'
  				return 'bundle'
  		return None
 
  	@classmethod
 	def get_most_similar_question_index(cls, question):
-		print question
 		highest_sim = float("-inf")
 		highest_idx = 0
 		for index in cls.qa_body:
