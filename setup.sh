@@ -4,6 +4,12 @@
 # Exit immediately if any command fails
 set -e
 
+if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] ); then
+  echo "Usage:"
+  echo "  $0 [client | server]"
+  exit 1
+fi
+
 echo "=== Checking for virtualenv..."
 if ! which virtualenv; then
   echo "Python virtualenv is not installed."
@@ -25,6 +31,9 @@ fi
 
 echo "=== Install Python packages into $env..."
 $env/bin/pip install -r $codalabdir/requirements.txt
+if [ "$1" == "server" ]; then
+  $env/bin/pip install -r $codalabdir/requirements-server.txt
+fi
 
 ( # try
     $env/bin/pip install psutil || exit 1
