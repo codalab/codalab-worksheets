@@ -43,21 +43,5 @@
   answer: 
     response: "You can use the terminal command: cl wrm. Run cl wrm -h for more usage info."
     command: cl wrm <worksheet_name> (--force)
-keywords:
-  how: 0.5
-  what: 0.5
-  a: 0.2
-  an: 0.2
-  the: 0.2
-  can: 0.2
-  worksheet: 2
-  bundle: 2
-  create: 1.5
-  add: 1.5
-  remove: 1.5
-  delete: 1.5
-  edit: 1.5
-  run: 1.5
-  combine: 1.5
 
 

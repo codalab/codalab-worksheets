@@ -1441,7 +1441,7 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
-    def add_chat_log_info(self, user_id, user_name, chat):
+    def add_chat_log_info(self, user_id, user_name, chat, is_answered, answer):
         with self.engine.begin() as connection:
             info = {
                 'time': datetime.datetime.fromtimestamp(time.time()),
@@ -1449,8 +1449,8 @@ class BundleModel(object):
                 'user_id': user_id,
                 'user_name': user_name,
                 'chat': chat,
-                'is_answered': False,
-                'answer': ''
+                'is_answered': is_answered,
+                'answer': answer
             }
             connection.execute(cl_chat.insert().values(info))
 

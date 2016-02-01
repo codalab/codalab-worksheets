@@ -1309,21 +1309,26 @@ class LocalBundleClient(BundleClient):
 
 
     # methods related to chat box and chat portal
+    def format_chat_response(self, params):
+        if params == None:
+            return ('Thank you for your question. Our staff will get back to you within 48 hours', False)
+        else:
+            question, response, command = params
+            result = 'This is the question we are trying to answer: ' + question + '\n'
+            result += response + '\n'
+            result += 'You can try to run the following command: \n'
+            result += command
+            return (result, True)
+
     def add_chat_log_info(self, request_string, worksheet_uuid, bundle_uuid):
-        self.model.add_chat_log_info(self._current_user_id(), self._current_user_name(), request_string)
-        # answer = ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid)
-        # return answer
-        # allQuestions = self.model.get_chat_log_info({'user_id': self._current_user_id()})
-        # print allQuestions
-        # return ('hello' ,'world')
-        return ('The system has received your message', 'no need to type any command')
+        answer, is_answered = self.format_chat_response(ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid))
+        self.model.add_chat_log_info(self._current_user_id(), self._current_user_name(), request_string, is_answered, answer)
+        return answer
 
     def get_chat_log_info(self, query_info):
-        chats = self.model.get_chat_log_info(query_info)
-        return chats
+        return self.model.get_chat_log_info(query_info)
 
     def update_chat_log_info(self, query_info):
-        chats = self.model.update_chat_log_info(query_info)
-        return chats
+        return self.model.update_chat_log_info(query_info)
 
         
