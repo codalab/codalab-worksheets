@@ -182,9 +182,14 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
 
         parser = super(AliasedSubParsersAction, self).add_parser(name, **kwargs)
 
+        # Do not add aliases to argparser when just autocompleting.
+        if '_ARGCOMPLETE' in os.environ:
+            return parser
+
         # Make the aliases work.
         for alias in aliases:
             self._name_parser_map[alias] = parser
+
         # Make the help text reflect them, first removing old help entry.
         if 'help' in kwargs:
             help = kwargs.pop('help')[0]
