@@ -379,7 +379,7 @@ def interpret_genpath(bundle_info, genpath):
     elif genpath == 'summary':
         def friendly_render_dep(dep):
             key = dep['child_path'] or dep['parent_name']
-            friendly_parent_name = dep['parent_name'] or '<unnamed>'
+            friendly_parent_name = formatting.verbose_contents_str(dep['parent_name'])
             value = key + '{' + (friendly_parent_name + ':' if key != dep['parent_name'] else '') + \
                 dep['parent_uuid'][0:4] + '}'
             return key, value
