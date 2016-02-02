@@ -114,7 +114,7 @@ class RemoteBundleClient(BundleClient):
       # Commands related to ChatBox.
       'add_chat_log_info',
       'get_chat_log_info',
-      'update_chat_log_info',
+      # 'update_chat_log_info',
     )
     # Implemented by the BundleRPCServer.
     SERVER_COMMANDS = (

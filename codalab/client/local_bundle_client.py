@@ -1311,24 +1311,35 @@ class LocalBundleClient(BundleClient):
     # methods related to chat box and chat portal
     def format_chat_response(self, params):
         if params == None:
-            return ('Thank you for your question. Our staff will get back to you as soon as we can.', False)
+            return 'Thank you for your question. Our staff will get back to you as soon as we can.'
         else:
             question, response, command = params
             result = 'This is the question we are trying to answer: ' + question + '\n'
             result += response + '\n'
             result += 'You can try to run the following command: \n'
             result += command
-            return (result, True)
+            return result
 
-    def add_chat_log_info(self, request_string, worksheet_uuid, bundle_uuid):
-        answer, is_answered = self.format_chat_response(ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid))
-        self.model.add_chat_log_info(self._current_user_id(), request_string, is_answered, answer)
-        return answer
+    def add_chat_log_info(self, query_info):
+        new_data = self.model.add_chat_log_info(query_info)
+        if int(query_info.get('recipient_user_id')) != -1 :
+            return new_data
+        else:
+            chat = query_info.get('chat')
+            worksheet_uuid = query_info.get('worksheet_uuid')
+            bundle_uuid = query_info.get('bundle_uuid')
+            bot_response = self.format_chat_response(ChatBoxQA.answer(chat, worksheet_uuid, bundle_uuid))
+            info = {
+                'sender_user_id': -1,
+                'recipient_user_id': self._current_user_id(),
+                'chat': bot_response,
+                'worksheet_uuid': worksheet_uuid,
+                'bundle_uuid': bundle_uuid,
+            }
+            self.model.add_chat_log_info(info)
+            return bot_response
 
     def get_chat_log_info(self, query_info):
         return self.model.get_chat_log_info(query_info)
-
-    def update_chat_log_info(self, query_info):
-        return self.model.update_chat_log_info(query_info)
 
         

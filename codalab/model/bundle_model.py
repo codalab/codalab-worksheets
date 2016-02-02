@@ -48,7 +48,7 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
-    chat as cl_chat,
+    user_chats as cl_chat,
     db_metadata,
 )
 from codalab.objects.worksheet import (
@@ -1441,50 +1441,57 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
-    def add_chat_log_info(self, user_id, chat, is_answered, answer):
+    def add_chat_log_info(self, query_info):
+        sender_user_id = query_info.get('sender_user_id')
+        recipient_user_id = query_info.get('recipient_user_id')
+        chat = query_info.get('chat')
+        worksheet_uuid = query_info.get('worksheet_uuid')
+        bundle_uuid = query_info.get('bundle_uuid')
         with self.engine.begin() as connection:
             info = {
                 'time': datetime.datetime.fromtimestamp(time.time()),
                 'date': datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d'),
-                'user_id': user_id,
+                'sender_user_id': sender_user_id,
+                'recipient_user_id': recipient_user_id,
                 'chat': chat,
-                'is_answered': is_answered,
-                'answer': answer
+                'worksheet_uuid': worksheet_uuid,
+                'bundle_uuid': bundle_uuid,
             }
             connection.execute(cl_chat.insert().values(info))
+        result = self.get_chat_log_info({'user_id': sender_user_id})
+        return result
 
     def get_chat_log_info(self, query_info):
-        user_id = query_info.get('user_id')
-        is_answered = query_info.get('is_answered')
+        user_id1 = query_info.get('user_id')
+        if user_id1 == None:
+            return
+        user_id1 = int(user_id1)
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
-            query = select([cl_chat.c.id, cl_chat.c.date, cl_chat.c.user_id, cl_chat.c.chat, cl_chat.c.is_answered, cl_chat.c.answer])
-            if user_id != None:
-                query = query.where(cl_chat.c.user_id == user_id)
-            if is_answered != None:
-                # is_answered = False if is_answered == 'false' else True
-                query = query.where(cl_chat.c.is_answered == is_answered)
+            query = select([cl_chat.c.date, cl_chat.c.sender_user_id, cl_chat.c.recipient_user_id, cl_chat.c.chat])
+            if int(user_id1) == 0:
+                query = query.where(or_(cl_chat.c.sender_user_id == user_id1, cl_chat.c.recipient_user_id == user_id1, cl_chat.c.sender_user_id == -1, cl_chat.c.recipient_user_id == -1))
+            else:
+                query = query.where(or_(cl_chat.c.sender_user_id == user_id1, cl_chat.c.recipient_user_id == user_id1))
             if limit != None:
                 query = query.limit(limit)
             # query = query.order_by(cl_chat.c.id.desc())
             rows = connection.execute(query).fetchall()
+
             result = {}
             for row in rows:
-                if row.user_id in result:
-                    result[row.user_id].append({'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer})
+                if user_id1 == 0:
+                    user_id2 = row.sender_user_id if int(row.sender_user_id) != user_id1 and int(row.sender_user_id) != -1 else row.recipient_user_id
                 else:
-                    result[row.user_id] = [{'chat': row.chat, 'date': row.date, 'chat_id': row.id, 'answer': row.answer}]
+                    user_id2 = row.sender_user_id if int(row.sender_user_id) != user_id1 else row.recipient_user_id
+                    # if user is Admin, group it with System so that the user see System and Admin in the same window
+                    if user_id2 == '0':
+                        user_id2 = '-1'
+                if user_id2 in result:
+                    result[user_id2].append({'chat': row.chat, 'date': row.date, 'sender_user_id': row.sender_user_id, 'recipient_user_id': row.recipient_user_id})
+                else:
+                    result[user_id2] = [{'chat': row.chat, 'date': row.date, 'sender_user_id': row.sender_user_id, 'recipient_user_id': row.recipient_user_id}]
             return result
-
-    def update_chat_log_info(self, query_info):
-        chat_id = query_info.get('chat_id')
-        answer = query_info.get('answer')
-        if chat_id and answer:
-            with self.engine.begin() as connection:
-                connection.execute(cl_chat.update().where(cl_chat.c.id == chat_id).values(is_answered=True))
-                connection.execute(cl_chat.update().where(cl_chat.c.id == chat_id).values(answer=answer))
-            return self.get_chat_log_info({'is_answered': False})
-
 
     ############################################################
     # User functions
