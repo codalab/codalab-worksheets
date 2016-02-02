@@ -1,3 +1,9 @@
+'''
+ChatBoxQA is a class that automatically answers users' questions or comments they put in the chat box.
+It returns the question it is trying to answer, its answer and the recommended command to run in the terminal
+if it is confident about what the user is asking, otherwise returns None
+'''
+
 import yaml
 import re
 import string

@@ -1441,13 +1441,12 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
-    def add_chat_log_info(self, user_id, user_name, chat, is_answered, answer):
+    def add_chat_log_info(self, user_id, chat, is_answered, answer):
         with self.engine.begin() as connection:
             info = {
                 'time': datetime.datetime.fromtimestamp(time.time()),
                 'date': datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d'),
                 'user_id': user_id,
-                'user_name': user_name,
                 'chat': chat,
                 'is_answered': is_answered,
                 'answer': answer

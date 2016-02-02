@@ -1311,7 +1311,7 @@ class LocalBundleClient(BundleClient):
     # methods related to chat box and chat portal
     def format_chat_response(self, params):
         if params == None:
-            return ('Thank you for your question. Our staff will get back to you within 48 hours', False)
+            return ('Thank you for your question. Our staff will get back to you as soon as we can.', False)
         else:
             question, response, command = params
             result = 'This is the question we are trying to answer: ' + question + '\n'
@@ -1322,7 +1322,7 @@ class LocalBundleClient(BundleClient):
 
     def add_chat_log_info(self, request_string, worksheet_uuid, bundle_uuid):
         answer, is_answered = self.format_chat_response(ChatBoxQA.answer(request_string, worksheet_uuid, bundle_uuid))
-        self.model.add_chat_log_info(self._current_user_id(), self._current_user_name(), request_string, is_answered, answer)
+        self.model.add_chat_log_info(self._current_user_id(), request_string, is_answered, answer)
         return answer
 
     def get_chat_log_info(self, query_info):
