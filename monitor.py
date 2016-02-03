@@ -118,8 +118,8 @@ def error_logs(error_type, s):
     logs(s)
     num_errors[error_type] += 1
     n = num_errors[error_type]
-    if is_power_of_two(n):  # Send email only on powers of two to prevent sending too many emails
-        send_email('%s [%d times]' % (error_type, n), s.split('\n'))
+    # if is_power_of_two(n):  # Send email only on powers of two to prevent sending too many emails
+    #     send_email('%s [%d times]' % (error_type, n), s.split('\n'))
 
 durations = defaultdict(list)  # Command => durations for that command
 def run_command(args, soft_time_limit=5, hard_time_limit=60):
