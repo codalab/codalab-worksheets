@@ -140,6 +140,7 @@ OTHER_COMMANDS = (
     'logout',
     'add-disk',
     'rm-disk',
+    'ls-disk',
 )
 
 
@@ -2341,6 +2342,14 @@ class BundleCLI(object):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
         self.manager.bundle_store().rm_disk(args.disknum)
+
+    @Commands.command(
+            'ls-disk',
+            help='List available disks (MultiDiskBundleStore only)',
+            arguments=(),
+    )
+    def do_ls_disk_command(self, _):
+        self.manager.bundle_store().ls_disk()
 
     def _fail_if_headless(self, message):
         if self.headless:
