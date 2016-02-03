@@ -274,7 +274,7 @@ class CodaLabManager(object):
             return session
 
         # Otherwise, go up process hierarchy to the *highest up shell* out of
-        # the consecutive shells.  Include Python so we can script from inside it.
+        # the consecutive shells.  Include Python and Ruby so we can script from inside them.
         #   cl bash python bash screen bash gnome-terminal init
         #                  ^
         #                  | return this
@@ -284,7 +284,8 @@ class CodaLabManager(object):
         session = 'top'
         max_depth = 10
         while process and max_depth:
-            if process.name() not in ('sh', 'bash', 'csh', 'tcsh', 'zsh', 'python'):
+            name = os.path.basename(process.cmdline()[0])
+            if name not in ('sh', 'bash', 'csh', 'tcsh', 'zsh', 'python', 'ruby'):
                 break
             session = str(process.pid)
             process = process.parent()
