@@ -285,7 +285,7 @@ class CodaLabManager(object):
         max_depth = 10
         while process and max_depth:
             name = os.path.basename(process.cmdline()[0])
-            if process.name() not in ('sh', 'bash', 'csh', 'tcsh', 'zsh', 'python', 'ruby'):
+            if name not in ('sh', 'bash', 'csh', 'tcsh', 'zsh', 'python', 'ruby'):
                 break
             session = str(process.pid)
             process = process.parent()
