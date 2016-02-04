@@ -210,7 +210,6 @@ event = Table(
 )
 
 # Store information about users.
-# TODO: add foreign keys to user_group?
 user = Table(
   'user',
   db_metadata,
@@ -225,7 +224,8 @@ user = Table(
   Column('first_name', String(30)),
   Column('last_name', String(30)),
   Column('date_joined', DateTime, nullable=False),
-  Column('is_verified', Boolean, nullable=False, default=True),
+  Column('is_verified', Boolean, nullable=False, default=False),
+  Column('is_superuser', Boolean, nullable=False, default=False),
   Column('password', String(128), nullable=False),
 
   # Quotas
@@ -236,6 +236,7 @@ user = Table(
 
   Index('user_user_id_index', 'user_id'),
   Index('user_user_name_index', 'user_name'),
+  UniqueConstraint('user_id', name='uix_1'),
   sqlite_autoincrement=True,
 )
 
@@ -244,7 +245,7 @@ user_verification = Table(
   'user_verification',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('date_created', DateTime, nullable=False),
   Column('date_sent', DateTime, nullable=True),
   Column('key', String(64), nullable=False),
@@ -258,7 +259,7 @@ oauth2_client = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('secret', String(255), nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('grant_type', Enum("authcode", "implicit", "password"), nullable=False),
   Column('response_type', Enum("code", "token"), nullable=False),
   Column('scopes', Text, nullable=False),  # comma-separated list of allowed scopes
@@ -271,7 +272,7 @@ oauth2_access_token = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('token', String(100), nullable=False),
   Column('expires_at', DateTime, nullable=False),
@@ -283,7 +284,7 @@ oauth2_refresh_token = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('token', String(100), nullable=False),
   Column('expires_at', DateTime, nullable=False),
@@ -295,7 +296,7 @@ oauth2_auth_code = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('code', String(100), nullable=False),
   Column('expires_at', DateTime, nullable=False),
