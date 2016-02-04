@@ -27,8 +27,50 @@ def upgrade():
     op.create_unique_constraint('uix_1', 'user', ['user_id'])
     op.create_foreign_key('fk__user_group__user', 'user_group', 'user', ['user_id'], ['user_id'])
 
-    # create oauth2_access_token, oauth2_auth_code, oauth2_refresh_token, oauth2_client
-    pass
+    op.create_table(
+        'oauth2_client',
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('secret', sa.String(255), nullable=False),
+        sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
+        sa.Column('grant_type', sa.Enum("authcode", "implicit", "password"), nullable=False),
+        sa.Column('response_type', sa.Enum("code", "token"), nullable=False),
+        sa.Column('scopes', sa.Text, nullable=False),  # comma-separated list of allowed scopes
+        sa.Column('redirect_uris', sa.Text, nullable=False),  # comma-separated list of allowed redirect URIs
+        sqlite_autoincrement=True,
+    )
+
+    op.create_table(
+        'oauth2_access_token',
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
+        sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
+        sa.Column('scopes', sa.Text, nullable=False),
+        sa.Column('token', sa.String(100), nullable=False),
+        sa.Column('expires_at', sa.DateTime, nullable=False),
+        sqlite_autoincrement=True,
+    )
+
+    op.create_table(
+        'oauth2_refresh_token',
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
+        sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
+        sa.Column('scopes', sa.Text, nullable=False),
+        sa.Column('token', sa.String(100), nullable=False),
+        sa.Column('expires_at', sa.DateTime, nullable=False),
+        sqlite_autoincrement=True,
+    )
+
+    op.create_table(
+        'oauth2_auth_code',
+        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
+        sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
+        sa.Column('scopes', sa.Text, nullable=False),
+        sa.Column('code', sa.String(100), nullable=False),
+        sa.Column('expires_at', sa.DateTime, nullable=False),
+        sqlite_autoincrement=True,
+    )
 
 
 def downgrade():
