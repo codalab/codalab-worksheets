@@ -2291,14 +2291,6 @@ class BundleCLI(object):
         print >>self.stdout, 'Deleting entire database...'
         client.model._reset()
 
-    # Note: this is not actually handled in BundleCLI, but here just to show the help
-    @Commands.command(
-        'server',
-        help='Start an instance of the CodaLab bundle service.',
-    )
-    def do_server_command(self, args):
-        raise UsageError('Cannot execute CLI command: server')
-
     def _fail_if_headless(self, message):
         if self.headless:
             raise UsageError('Cannot execute CLI command: %s' % message)
