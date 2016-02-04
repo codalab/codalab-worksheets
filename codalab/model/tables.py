@@ -147,7 +147,7 @@ user_group = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
-  Column('user_id', String(63), nullable=False),
+  Column('user_id', String(63), ForeignKey("user.user_id"), nullable=False),
   # Whether a user is able to modify this group.
   Column('is_admin', Boolean),
   Index('group_uuid_index', 'group_uuid'),
@@ -217,18 +217,15 @@ user = Table(
   Column('id', Integer, primary_key=True, nullable=False),
 
   # Basic information
-  Column('user_id', String(63), nullable=False),  # TODO: how to merge this with the 'id' column?
-  Column('user_name', String(63), nullable=False),  # Mirrors the OAuth server (eventually move it here)
+  Column('user_id', String(63), nullable=False),
+  Column('user_name', String(63), nullable=False),
   Column('email', String(254), nullable=False),  # Length of 254 to be compliant with RFC3696/5321
   Column('last_login', DateTime),  # Null if user has never logged in
   Column('is_active', Boolean, nullable=False, default=True),  # Set to False instead of deleting users to maintain foreign key integrity
   Column('first_name', String(30)),
   Column('last_name', String(30)),
   Column('date_joined', DateTime, nullable=False),
-
-  # TODO: Create a password hashing wrapper type
-  # http://sqlalchemy-utils.readthedocs.org/en/latest/_modules/sqlalchemy_utils/types/password.html#PasswordType
-  # http://variable-scope.com/posts/storing-and-verifying-passwords-with-sqlalchemy
+  Column('is_verified', Boolean, nullable=False, default=True),
   Column('password', String(128), nullable=False),
 
   # Quotas
@@ -251,6 +248,7 @@ user_verification = Table(
   Column('date_created', DateTime, nullable=False),
   Column('date_sent', DateTime, nullable=True),
   Column('key', String(64), nullable=False),
+  sqlite_autoincrement=True,
 )
 
 ## OAUTH2 TABLES ##
@@ -265,6 +263,7 @@ oauth2_client = Table(
   Column('response_type', Enum("code", "token"), nullable=False),
   Column('scopes', Text, nullable=False),  # comma-separated list of allowed scopes
   Column('redirect_uris', Text, nullable=False),  # comma-separated list of allowed redirect URIs
+  sqlite_autoincrement=True,
 )
 
 oauth2_access_token = Table(
@@ -272,10 +271,11 @@ oauth2_access_token = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.id), nullable=False),
+  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('token', String(100), nullable=False),
   Column('expires_at', DateTime, nullable=False),
+  sqlite_autoincrement=True,
 )
 
 oauth2_refresh_token = Table(
@@ -283,10 +283,11 @@ oauth2_refresh_token = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.id), nullable=False),
+  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('token', String(100), nullable=False),
   Column('expires_at', DateTime, nullable=False),
+  sqlite_autoincrement=True,
 )
 
 oauth2_auth_code = Table(
@@ -294,8 +295,9 @@ oauth2_auth_code = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
-  Column('user_id', Integer, ForeignKey(user.c.id), nullable=False),
+  Column('user_id', Integer, ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('code', String(100), nullable=False),
   Column('expires_at', DateTime, nullable=False),
+  sqlite_autoincrement=True,
 )
