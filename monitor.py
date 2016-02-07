@@ -113,6 +113,9 @@ def is_power_of_two(n):
         n /= 2
     return n == 1
 
+def is_uuid(s):
+    return s.startswith('0x')
+
 num_errors = defaultdict(int)
 def error_logs(error_type, s):
     logs(s)
@@ -149,9 +152,13 @@ def run_command(args, soft_time_limit=5, hard_time_limit=60):
     if exitcode == 0:
         logs(message)
     else:
+        if is_uuid(args[-1]):
+            args = args[:-1]
         error_logs('command failed: ' + ' '.join(args), message)
 
     if duration > soft_time_limit:
+        if is_uuid(args[-1]):
+            args = args[:-1]
         error_logs('command too slow: ' + ' '.join(args), message)
 
     return output.rstrip()
