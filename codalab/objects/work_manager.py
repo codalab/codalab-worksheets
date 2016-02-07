@@ -298,7 +298,8 @@ class Worker(object):
                                                                               exclude_patterns=None,
                                                                               git=False,
                                                                               unpack=False,
-                                                                              remove_sources=True)
+                                                                              remove_sources=True,
+                                                                              uuid=bundle.uuid)
                 db_update['data_hash'] = data_hash
                 metadata.update(bundle_store_metadata)
             except Exception as e:

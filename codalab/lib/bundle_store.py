@@ -50,13 +50,13 @@ class BundleStore(object):
         for path in (self.data, self.temp):
             path_util.make_directory(path)
 
-    def get_location(self, data_hash, relative=False):
+    def get_location(self, uuid, relative=False):
         '''
         Returns the on-disk location of the bundle with the given data hash.
         '''
         if relative:
-            return data_hash
-        return os.path.join(self.data, data_hash)
+            return uuid
+        return os.path.join(self.data, uuid)
 
     def get_temp_location(self, identifier):
         '''
@@ -71,7 +71,7 @@ class BundleStore(object):
         path_util.make_directory(self.get_temp_location(identifier));
 
 
-    def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources):
+    def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, uuid):
         '''
         |sources|: specifies the locations of the contents to upload.  Each element is either a URL or a local path.
         |follow_symlinks|: for local path(s), whether to follow (resolve) symlinks
@@ -155,7 +155,7 @@ class BundleStore(object):
         print_util.open_line('BundleStore.upload: computing size of %s' % temp_path)
         data_size = path_util.get_size(temp_path, dirs_and_files)
         print_util.clear_line()
-        final_path = os.path.join(self.data, data_hash)
+        final_path = os.path.join(self.data, uuid)
         if os.path.exists(final_path):
             # Already exists, just delete it
             path_util.remove(temp_path)
