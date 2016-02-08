@@ -90,9 +90,9 @@ def client_is_explicit(spec):
     return '::' in spec
 
 
-def home_worksheet(username):
-    return 'home-' + username
+def dashboard():
+    return 'dashboard'
 
 
-def is_home_worksheet(name):
-    return name.startswith('home-')
+def is_dashboard(name):
+    return name == 'dashboard'
