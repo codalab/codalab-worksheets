@@ -795,6 +795,7 @@ class LocalBundleClient(BundleClient):
                 pass
 
         self.ensure_unused_worksheet_name(name)
+        
         # Don't need any permissions to do this.
         worksheet = Worksheet({
             'name': name,
@@ -1014,7 +1015,7 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def delete_worksheet(self, uuid, force):
         worksheet = self.model.get_worksheet(uuid, fetch_items=True)
-        # check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         if not force:
             if worksheet.frozen:
                 raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %
