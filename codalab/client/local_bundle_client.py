@@ -795,7 +795,7 @@ class LocalBundleClient(BundleClient):
                 pass
 
         self.ensure_unused_worksheet_name(name)
-        
+
         # Don't need any permissions to do this.
         worksheet = Worksheet({
             'name': name,
