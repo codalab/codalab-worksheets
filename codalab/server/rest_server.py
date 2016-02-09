@@ -3,7 +3,7 @@ from bottle import (
     install,
     local,
     request,
-    run
+    run,
 )
 from httplib import BAD_REQUEST
 from oauthlib.oauth2 import LegacyApplicationServer

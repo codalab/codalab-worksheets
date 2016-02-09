@@ -3,13 +3,26 @@
 # for dispensing Bearer Tokens.
 
 from oauthlib.oauth2 import RequestValidator
+from sqlalchemy import (
+    and_,
+    or_,
+    not_,
+    select,
+    union,
+    desc,
+    func,
+)
+from sqlalchemy.sql.expression import (
+    literal,
+    true,
+)
 
 from codalab.model.tables import (
     user as cl_user,
     oauth2_client,
     oauth2_access_token,
     oauth2_refresh_token,
-    oauth2_auth_code
+    oauth2_auth_code,
 )
 
 
@@ -51,12 +64,22 @@ class OAuthDelegate(RequestValidator):
     def get_default_scopes(self, client_id, request, *args, **kwargs):
         # Scopes a client will authorize for if none are supplied in the
         # authorization request.
-        pass
+        return []
 
     def validate_response_type(self, client_id, response_type, client, request, *args, **kwargs):
         # Clients should only be allowed to use one type of response type, the
         # one associated with their one allowed grant type.
-        pass
+        with self.engine.begin() as connection:
+            client = connection.execute(select([
+                oauth2_client.c.response_type
+            ]).where(
+                oauth2_client.c.id == client_id
+            ).limit(1)).fetchone()
+
+        if client is None:
+            raise Exception("Client %s doesn't exist" % client_id)
+
+        return client[oauth2_client.c.response_type] == response_type
 
     def validate_user(self, username, password, client, request, *args, **kwargs):
         """
