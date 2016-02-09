@@ -167,10 +167,10 @@ class LocalBundleClient(BundleClient):
         return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-            # Default worksheet name: take the username.
-            worksheet_spec = spec_util.home_worksheet(self._current_user_name())
-            return self.new_worksheet(worksheet_spec, True)
+        if worksheet_spec == '' or worksheet_spec == worksheet_util.DASHBOARD:         
+            # create the home page for the current user before returning the dashboard
+            self.new_worksheet(spec_util.home_worksheet(self._current_user_name()), True)
+            return self.new_worksheet(spec_util.dashboard(), True)
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
@@ -772,7 +772,6 @@ class LocalBundleClient(BundleClient):
         username = self._current_user_name()
         if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(username) != name:
             raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
-
         try:
             self.get_worksheet_uuid(None, name)
             exists = True
@@ -804,14 +803,22 @@ class LocalBundleClient(BundleClient):
             'title': None,
             'frozen': None,
             'items': [],
-            'owner_id': self._current_user_id()
+            'owner_id': '0' if spec_util.is_dashboard(name) else self._current_user_id()
         })
         self.model.new_worksheet(worksheet)
 
         # Make worksheet publicly readable by default
         self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
-
+        if spec_util.is_dashboard(name):
+            self.populate_dashboard(worksheet)
         return worksheet.uuid
+
+    def populate_dashboard(self, worksheet):
+        lines = [line.rstrip() for line in open('../objects/dashboard.ws').readlines()]
+        items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)
+        info = self.get_worksheet_info(worksheet.uuid, True)
+        self.update_worksheet_items(info, items)
+        self.update_worksheet_metadata(worksheet.uuid, {'title': 'Codalab Dashboard'})
 
     def list_worksheets(self):
         return self.search_worksheets([])
@@ -928,7 +935,8 @@ class LocalBundleClient(BundleClient):
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        if not spec_util.is_dashboard(worksheet_info['name']):
+            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
         try:
             new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
@@ -944,7 +952,8 @@ class LocalBundleClient(BundleClient):
         where |info| specifies name, title, owner, etc.
         """
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        if not spec_util.is_dashboard(worksheet.name):
+            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         metadata = {}
         for key, value in info.items():
             if key == 'owner_spec':
@@ -965,7 +974,7 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def delete_worksheet(self, uuid, force):
         worksheet = self.model.get_worksheet(uuid, fetch_items=True)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        # check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         if not force:
             if worksheet.frozen:
                 raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %
@@ -1230,7 +1239,8 @@ class LocalBundleClient(BundleClient):
         Give the given |group_spec| the desired |permission_spec| on |worksheet_uuid|.
         """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        if not spec_util.is_dashboard(worksheet.name):
+            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         group_info = self._get_group_info(group_spec, need_admin=False)
         old_permission = self.model.get_group_worksheet_permission(group_info['uuid'], worksheet.uuid)
         new_permission = parse_permission(permission_spec)

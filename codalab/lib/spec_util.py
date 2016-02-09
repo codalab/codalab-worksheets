@@ -89,10 +89,14 @@ def create_default_name(bundle_type, raw_material):
 def client_is_explicit(spec):
     return '::' in spec
 
-
 def home_worksheet(username):
     return 'home-' + username
 
-
 def is_home_worksheet(name):
     return name.startswith('home-')
+
+def dashboard():
+    return 'dashboard'
+
+def is_dashboard(name):
+    return name == 'dashboard'
