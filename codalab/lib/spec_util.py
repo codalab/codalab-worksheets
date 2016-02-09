@@ -9,6 +9,7 @@ from codalab.common import (
   UsageError,
 )
 
+DASHBOARD = 'dashboard'
 UUID_REGEX = re.compile('^0x[0-9a-f]{32}$')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
 
@@ -95,8 +96,5 @@ def home_worksheet(username):
 def is_home_worksheet(name):
     return name.startswith('home-')
 
-def dashboard():
-    return 'dashboard'
-
 def is_dashboard(name):
-    return name == 'dashboard'
+    return name == DASHBOARD

@@ -167,10 +167,16 @@ class LocalBundleClient(BundleClient):
         return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        if worksheet_spec == '' or worksheet_spec == worksheet_util.DASHBOARD:         
-            # create the home page for the current user before returning the dashboard
-            self.new_worksheet(spec_util.home_worksheet(self._current_user_name()), True)
-            return self.new_worksheet(spec_util.dashboard(), True)
+        if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
+            worksheet_spec = spec_util.home_worksheet(self._current_user_name())
+            return self.new_worksheet(worksheet_spec, True)
+        elif spec_util.is_dashboard(worksheet_spec):
+            home_worksheet_spec = spec_util.home_worksheet(self._current_user_name())
+            self.new_worksheet(home_worksheet_spec, True)
+            try:
+                return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+            except UsageError:
+                return self.new_worksheet(worksheet_spec, False)
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
@@ -795,7 +801,8 @@ class LocalBundleClient(BundleClient):
             except UsageError:
                 pass
 
-        self.ensure_unused_worksheet_name(name)
+        if not spec_util.is_dashboard(name):
+            self.ensure_unused_worksheet_name(name)
 
         # Don't need any permissions to do this.
         worksheet = Worksheet({
@@ -974,7 +981,7 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def delete_worksheet(self, uuid, force):
         worksheet = self.model.get_worksheet(uuid, fetch_items=True)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        # check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         if not force:
             if worksheet.frozen:
                 raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %
