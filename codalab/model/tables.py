@@ -230,15 +230,14 @@ user = Table(
 )
 
 # Store information about users' questions or feedback.
-user_chats = Table(
-  'user_chats',
+chat = Table(
+  'chat',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False), #  Primary key
   Column('time', DateTime, nullable=False),  # When did the user send this query?
-  Column('date', String(63), nullable=False),  # (e.g., 2015-09-11)
   Column('sender_user_id', String(63), nullable=True),  # Who sent it?
   Column('recipient_user_id', String(63), nullable=True),  # Who received it?
-  Column('chat', String(63), nullable=False),  # What's the content of the chat?
+  Column('message', String, nullable=False),  # What's the content of the chat?
   Column('worksheet_uuid', String(63), nullable=True), # What is the id of the worksheet that the sender is on? 
   Column('bundle_uuid', String(63), nullable=True), # What is the id of the bundle that the sender is on? 
   sqlite_autoincrement=True,

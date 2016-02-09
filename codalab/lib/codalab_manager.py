@@ -333,6 +333,7 @@ class CodaLabManager(object):
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,))
         model.root_user_id = self.root_user_id()
+        model.system_user_id = self.system_user_id()
         return model
 
     def auth_handler(self, mock=False):
@@ -368,6 +369,9 @@ class CodaLabManager(object):
 
     def root_user_id(self):
         return self.config['server'].get('root_user_id', '0')
+
+    def system_user_id(self):
+        return self.config['server'].get('system_user_id', '-1')
 
     def local_client(self):
         return self.client('local')

@@ -48,7 +48,7 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
-    user_chats as cl_chat,
+    chat as cl_chat,
     db_metadata,
 )
 from codalab.objects.worksheet import (
@@ -1441,19 +1441,28 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
+    def date_handler(self, obj): 
+        '''
+        Helper function to serialize DataTime
+        '''
+        return obj.isoformat() if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date) else None
+
     def add_chat_log_info(self, query_info):
+        '''
+        Add the given chat into the database
+        Return a list of chats that the sender have had
+        '''
         sender_user_id = query_info.get('sender_user_id')
         recipient_user_id = query_info.get('recipient_user_id')
-        chat = query_info.get('chat')
+        message = query_info.get('message')
         worksheet_uuid = query_info.get('worksheet_uuid')
         bundle_uuid = query_info.get('bundle_uuid')
         with self.engine.begin() as connection:
             info = {
                 'time': datetime.datetime.fromtimestamp(time.time()),
-                'date': datetime.datetime.fromtimestamp(time.time()).strftime('%Y-%m-%d'),
                 'sender_user_id': sender_user_id,
                 'recipient_user_id': recipient_user_id,
-                'chat': chat,
+                'message': message,
                 'worksheet_uuid': worksheet_uuid,
                 'bundle_uuid': bundle_uuid,
             }
@@ -1462,17 +1471,23 @@ class BundleModel(object):
         return result
 
     def get_chat_log_info(self, query_info):
+        '''
+        Return a list of chats that the user have had given the user_id
+        '''
         user_id1 = query_info.get('user_id')
         if user_id1 == None:
             return
-        user_id1 = int(user_id1)
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
-            query = select([cl_chat.c.date, cl_chat.c.sender_user_id, cl_chat.c.recipient_user_id, cl_chat.c.chat])
-            if int(user_id1) == 0:
-                query = query.where(or_(cl_chat.c.sender_user_id == user_id1, cl_chat.c.recipient_user_id == user_id1, cl_chat.c.sender_user_id == -1, cl_chat.c.recipient_user_id == -1))
-            else:
-                query = query.where(or_(cl_chat.c.sender_user_id == user_id1, cl_chat.c.recipient_user_id == user_id1))
+            query = select([cl_chat.c.time, cl_chat.c.sender_user_id, cl_chat.c.recipient_user_id, cl_chat.c.message])
+            clause = []
+            clause.append(cl_chat.c.sender_user_id == user_id1)
+            clause.append(cl_chat.c.recipient_user_id == user_id1)
+            if user_id1 == self.root_user_id:
+                clause.append(cl_chat.c.sender_user_id == self.system_user_id)
+                clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
+            clause = or_(*clause)
+            query = query.where(clause)
             if limit != None:
                 query = query.limit(limit)
             # query = query.order_by(cl_chat.c.id.desc())
@@ -1480,17 +1495,16 @@ class BundleModel(object):
 
             result = {}
             for row in rows:
-                if user_id1 == 0:
-                    user_id2 = row.sender_user_id if int(row.sender_user_id) != user_id1 and int(row.sender_user_id) != -1 else row.recipient_user_id
+                if user_id1 == self.root_user_id:
+                    user_id2 = row.sender_user_id if row.sender_user_id != user_id1 and row.sender_user_id != self.system_user_id else row.recipient_user_id
                 else:
-                    user_id2 = row.sender_user_id if int(row.sender_user_id) != user_id1 else row.recipient_user_id
-                    # if user is Admin, group it with System so that the user see System and Admin in the same window
-                    if user_id2 == '0':
-                        user_id2 = '-1'
-                if user_id2 in result:
-                    result[user_id2].append({'chat': row.chat, 'date': row.date, 'sender_user_id': row.sender_user_id, 'recipient_user_id': row.recipient_user_id})
-                else:
-                    result[user_id2] = [{'chat': row.chat, 'date': row.date, 'sender_user_id': row.sender_user_id, 'recipient_user_id': row.recipient_user_id}]
+                    user_id2 = row.sender_user_id if row.sender_user_id != user_id1 else row.recipient_user_id
+                    # if the other user is System, group it with Admin so that the user see System and Admin in the same chat window
+                    if user_id2 == self.system_user_id:
+                        user_id2 = self.root_user_id
+                if user_id2 not in result:
+                    result[user_id2] = []
+                result[user_id2].append({'message': row.message, 'time': json.dumps(row.time, default=self.date_handler), 'sender_user_id': row.sender_user_id, 'recipient_user_id': row.recipient_user_id})
             return result
 
     ############################################################

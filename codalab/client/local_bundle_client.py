@@ -1309,7 +1309,10 @@ class LocalBundleClient(BundleClient):
 
 
     # methods related to chat box and chat portal
-    def format_chat_response(self, params):
+    def format_message_response(self, params):
+        """
+        Format automatical response
+        """
         if params == None:
             return 'Thank you for your question. Our staff will get back to you as soon as we can.'
         else:
@@ -1321,18 +1324,21 @@ class LocalBundleClient(BundleClient):
             return result
 
     def add_chat_log_info(self, query_info):
-        new_data = self.model.add_chat_log_info(query_info)
-        if int(query_info.get('recipient_user_id')) != -1 :
-            return new_data
+        """
+        Add the given chat into the database. If the chat is directed to the system, return an auto response. Otherwise, return an updated chat list of the sender
+        """
+        updated_data = self.model.add_chat_log_info(query_info)
+        if query_info.get('recipient_user_id') != self.model.system_user_id:
+            return updated_data
         else:
-            chat = query_info.get('chat')
+            message = query_info.get('message')
             worksheet_uuid = query_info.get('worksheet_uuid')
             bundle_uuid = query_info.get('bundle_uuid')
-            bot_response = self.format_chat_response(ChatBoxQA.answer(chat, worksheet_uuid, bundle_uuid))
+            bot_response = self.format_message_response(ChatBoxQA.answer(message, worksheet_uuid, bundle_uuid))
             info = {
-                'sender_user_id': -1,
+                'sender_user_id': self.model.system_user_id,
                 'recipient_user_id': self._current_user_id(),
-                'chat': bot_response,
+                'message': bot_response,
                 'worksheet_uuid': worksheet_uuid,
                 'bundle_uuid': bundle_uuid,
             }
@@ -1340,6 +1346,9 @@ class LocalBundleClient(BundleClient):
             return bot_response
 
     def get_chat_log_info(self, query_info):
+        '''
+        Return a list of chats that the user have had given the user_id
+        '''
         return self.model.get_chat_log_info(query_info)
 
         
