@@ -2,16 +2,24 @@
 # provider configured for Authorization Code, Refresh Token grants and
 # for dispensing Bearer Tokens.
 
-# This example is meant to act as a supplement to the documentation,
-# see http://oauthlib.readthedocs.org/en/latest/.
+from oauthlib.oauth2 import RequestValidator
 
-from oauthlib.oauth2 import RequestValidator, LegacyApplicationServer
+from codalab.model.tables import (
+    user as cl_user,
+    oauth2_client,
+    oauth2_access_token,
+    oauth2_refresh_token,
+    oauth2_auth_code
+)
 
 
 class OAuthDelegate(RequestValidator):
     """
     Maps various OAuth 2.0 validation and persistence methods to our SQL backing store.
     """
+
+    def __init__(self, engine):
+        self.engine = engine
 
     def validate_client_id(self, client_id, request, *args, **kwargs):
         # TODO
@@ -48,7 +56,6 @@ class OAuthDelegate(RequestValidator):
     def validate_response_type(self, client_id, response_type, client, request, *args, **kwargs):
         # Clients should only be allowed to use one type of response type, the
         # one associated with their one allowed grant type.
-        # In this case it must be "code".
         pass
 
     def validate_user(self, username, password, client, request, *args, **kwargs):
@@ -140,7 +147,5 @@ class OAuthDelegate(RequestValidator):
         raise NotImplementedError
 
 
-validator = OAuthDelegate()
 
-# Use "server" pre-configured for only Resource Owner Password Credentials Grant for prototype
-server = LegacyApplicationServer(validator)
+
