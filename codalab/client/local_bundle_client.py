@@ -167,18 +167,16 @@ class LocalBundleClient(BundleClient):
         return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-            worksheet_spec = spec_util.home_worksheet(self._current_user_name())
-            return self.new_worksheet(worksheet_spec, True)
-        elif spec_util.is_dashboard(worksheet_spec):
-            home_worksheet_spec = spec_util.home_worksheet(self._current_user_name())
-            self.new_worksheet(home_worksheet_spec, True)
-            try:
-                return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
-            except UsageError:
-                return self.new_worksheet(worksheet_spec, False)
-        else:
+        try:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+        except UsageError as e:
+            if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
+                worksheet_spec = spec_util.home_worksheet(self._current_user_name())
+                return self.new_worksheet(worksheet_spec, False)
+            elif spec_util.is_dashboard(worksheet_spec):
+                return self.new_worksheet(worksheet_spec, False)
+            else:
+                raise e
 
     @staticmethod
     def validate_user_metadata(bundle_subclass, metadata):
@@ -779,7 +777,7 @@ class LocalBundleClient(BundleClient):
         if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(username) != name:
             raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
         try:
-            self.get_worksheet_uuid(None, name)
+            self.ensure_worksheet_exist(None, name)
             exists = True
         except UsageError, e:
             # Note: this exception could be thrown also when there's multiple
@@ -789,6 +787,10 @@ class LocalBundleClient(BundleClient):
         if exists:
             raise UsageError('Worksheet with name %s already exists' % name)
 
+    def ensure_worksheet_exist(self, base_worksheet_uuid, worksheet_spec):
+        # Ensure worksheet exists. Raise UsageError if the given worksheet does not exist
+        canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+
     @authentication_required
     def new_worksheet(self, name, ensure_exists):
         """
@@ -797,12 +799,11 @@ class LocalBundleClient(BundleClient):
         # If |ensure_exists| = True, then quit if worksheet already exists.
         if ensure_exists:
             try:
-                return self.get_worksheet_uuid(None, name)
+                return self.ensure_worksheet_exist(None, name)
             except UsageError:
                 pass
 
-        if not spec_util.is_dashboard(name):
-            self.ensure_unused_worksheet_name(name)
+        self.ensure_unused_worksheet_name(name)
 
         # Don't need any permissions to do this.
         worksheet = Worksheet({
@@ -810,7 +811,7 @@ class LocalBundleClient(BundleClient):
             'title': None,
             'frozen': None,
             'items': [],
-            'owner_id': '0' if spec_util.is_dashboard(name) else self._current_user_id()
+            'owner_id': self._current_user_id()
         })
         self.model.new_worksheet(worksheet)
 
@@ -943,8 +944,7 @@ class LocalBundleClient(BundleClient):
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        if not spec_util.is_dashboard(worksheet_info['name']):
-            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
         try:
             new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
@@ -960,8 +960,7 @@ class LocalBundleClient(BundleClient):
         where |info| specifies name, title, owner, etc.
         """
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
-        if not spec_util.is_dashboard(worksheet.name):
-            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         metadata = {}
         for key, value in info.items():
             if key == 'owner_spec':
@@ -1247,8 +1246,7 @@ class LocalBundleClient(BundleClient):
         Give the given |group_spec| the desired |permission_spec| on |worksheet_uuid|.
         """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        if not spec_util.is_dashboard(worksheet.name):
-            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         group_info = self._get_group_info(group_spec, need_admin=False)
         old_permission = self.model.get_group_worksheet_permission(group_info['uuid'], worksheet.uuid)
         new_permission = parse_permission(permission_spec)
