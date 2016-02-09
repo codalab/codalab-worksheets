@@ -168,8 +168,9 @@ class LocalBundleClient(BundleClient):
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
         if worksheet_spec == '' or worksheet_spec == worksheet_util.DASHBOARD:         
-            worksheet_spec = spec_util.dashboard()
-            return self.new_worksheet(worksheet_spec, True)
+            # create the home page for the current user before returning the dashboard
+            self.new_worksheet(spec_util.home_worksheet(self._current_user_name()), True)
+            return self.new_worksheet(spec_util.dashboard(), True)
         else:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
@@ -769,8 +770,8 @@ class LocalBundleClient(BundleClient):
         # If trying to set the name to a home worksheet, then it better be
         # user's home worksheet.
         username = self._current_user_name()
-        if spec_util.is_dashboard(name) and spec_util.dashboard() != name:
-            raise UsageError('Cannot create %s because this is the Codalab Dashboard' % name)
+        if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(username) != name:
+            raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
         try:
             self.get_worksheet_uuid(None, name)
             exists = True
@@ -813,55 +814,11 @@ class LocalBundleClient(BundleClient):
         return worksheet.uuid
 
     def populate_dashboard(self, worksheet):
-        items = [(None, None, u'Welcome to your **CodaLab Dashboard**, which shows worksheets and bundles (programs and datasets) owned by you.  Read the [tutorial](https://github.com/codalab/codalab-worksheets/wiki/User_CodaLab-Worksheets-Tutorial) to learn more.', u'markup'),
-        (None, None, u'', u'markup'),
-        (None, None, u'## **My worksheets**', u'markup'),
-        (None, None, u'wsearch .mine', u'directive'),
-        (None, None, u'', u'markup'),
-        (None, None, u'To create a new worksheet, click the web terminal above and type:', u'markup'),
-        (None, None, u'', u'markup'),
-        (None, None, u'    cl new <worksheet-name>', u'markup'),
-        (None, None, u'', u'markup'),
-        (None, None, u"and then click 'Edit Source' to edit the markdown (see [syntax](https://github.com/codalab/codalab-worksheets/wiki/User_Worksheet-Markdown)).", u'markup'),
-        (None, None, u'', u'markup'),
-        (None, None, u'## **My recent bundles**', u'markup'),
-        (None, None, u'search created=.sort- .limit=5 .mine', u'directive'),
-        (None, None, u'', u'markup'),
-        (None, None, u"To upload a program or dataset, click 'Upload bundle' on the right.", u'markup'),
-        (None, None, u'To run a command, click the web terminal above and type (for example):', u'markup'),
-        (None, None, u'    ', u'markup'),
-        (None, None, u"    cl run 'echo hello'", u'markup'),
-        (None, None, u'', u'markup'),
-        (None, None, u'To see a more complex example with dependencies, check out the [tutorial](https://github.com/codalab/codalab-worksheets/wiki/User_CodaLab-Worksheets-Tutorial).', u'markup'),
-        (None, None, u'', u'markup'),
-        (None, None, u'## **My running bundles**', u'markup'),
-        (None, None, u'These are bundles that are currently running or queued to be run.', u'markup'),
-        (None, None, u'schema r', u'directive'),
-        (None, None, u'add uuid uuid [0:8]', u'directive'),
-        (None, None, u'add name', u'directive'),
-        (None, None, u'add owner owner_name', u'directive'),
-        (None, None, u'add created created date', u'directive'),
-        (None, None, u'add time time duration', u'directive'),
-        (None, None, u'add state', u'directive'),
-        (None, None, u'display table r', u'directive'),
-        (None, None, u'search state=running created=.sort- .limit=10000 .mine', u'directive'),
-        (None, None, u'search state=queued created=.sort- .limit=10000 .mine', u'directive'),
-        (None, None, u'', u'markup'),
-        (None, None, u'## **My floating bundles**', u'markup'),
-        (None, None, u'These are bundles that are not on any worksheet (you might have lost track of these).', u'markup'),
-        (None, None, u'search .mine .floating', u'directive'),
-        (None, None, u'', u'markup'),
-        (None, None, u'## **Basic statistics**', u'markup'),
-        (None, None, u'Number of bundles owned by me:', u'markup'),
-        (None, None, u'search .mine .count', u'directive'),
-        (None, None, u'My disk usage:', u'markup'),
-        (None, None, u'search .mine size=.sum .format=size', u'directive'),
-        (None, None, u'', u'markup'),
-        (None, None, u"This dashboard itself is a worksheet.  You can click 'Edit Source' and copy the markdown to your own worksheet to customize it!", u'markup')]
-        for item in items:
-            self.add_worksheet_item(worksheet.uuid, item)
+        lines = [line.rstrip() for line in open('../objects/dashboard.ws').readlines()]
+        items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)
+        info = self.get_worksheet_info(worksheet.uuid, True)
+        self.update_worksheet_items(info, items)
         self.update_worksheet_metadata(worksheet.uuid, {'title': 'Codalab Dashboard'})
-
 
     def list_worksheets(self):
         return self.search_worksheets([])
@@ -978,7 +935,8 @@ class LocalBundleClient(BundleClient):
         last_item_id = worksheet_info['last_item_id']
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        if not spec_util.is_dashboard(worksheet_info['name']):
+            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         self._check_worksheet_not_frozen(worksheet)
         try:
             new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
@@ -994,7 +952,8 @@ class LocalBundleClient(BundleClient):
         where |info| specifies name, title, owner, etc.
         """
         worksheet = self.model.get_worksheet(uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        if not spec_util.is_dashboard(worksheet.name):
+            check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         metadata = {}
         for key, value in info.items():
             if key == 'owner_spec':
@@ -1015,7 +974,7 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def delete_worksheet(self, uuid, force):
         worksheet = self.model.get_worksheet(uuid, fetch_items=True)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
+        # check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         if not force:
             if worksheet.frozen:
                 raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %

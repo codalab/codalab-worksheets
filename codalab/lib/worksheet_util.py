@@ -39,7 +39,8 @@ from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_u
 from codalab.objects.permission import permission_str, group_permissions_str
 
 # Special characters to point to worksheets
-DASHBOARD = '/'
+HOME_WORKSHEET = '/'
+DASHBOARD = 'Dashboard'
 CURRENT_WORKSHEET = '.'  # Note: this is part of the client's session, not server side.
 
 # Types of worksheet items
