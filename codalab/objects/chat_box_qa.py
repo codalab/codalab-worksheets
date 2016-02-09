@@ -13,7 +13,8 @@ class ChatBoxQA(object):
 	qa_body = {}
 	@classmethod
 	def prepare(cls):
-		with open("../objects/chat_box_qa.yaml", 'r') as stream:
+		file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'chat_box_qa.yaml')
+		with open(file_path, 'r') as stream:
 			cls.qa_body = yaml.load(stream)
 
 	@classmethod
