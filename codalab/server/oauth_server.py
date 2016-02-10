@@ -69,15 +69,9 @@ class OAuthDelegate(RequestValidator):
     def validate_response_type(self, client_id, response_type, client, request, *args, **kwargs):
         # Clients should only be allowed to use one type of response type, the
         # one associated with their one allowed grant type.
-        with self.engine.begin() as connection:
-            client = connection.execute(select([
-                oauth2_client.c.response_type
-            ]).where(
-                oauth2_client.c.id == client_id
-            ).limit(1)).fetchone()
+        if response_type not in ('code', 'token'):
+            return False
 
-        if client is None:
-            raise Exception("Client %s doesn't exist" % client_id)
 
         return client[oauth2_client.c.response_type] == response_type
 
@@ -111,7 +105,31 @@ class OAuthDelegate(RequestValidator):
 
     def authenticate_client(self, request, *args, **kwargs):
         # Whichever authentication method suits you, HTTP Basic might work
-        pass
+        # Assume for now that client is always valid, since only implementing the
+        # Resource Owner Credential Grant flow -- what's important is the
+        # resource owner's credentials
+
+        client_id = request.client_id
+        client_secret = request.client_secret
+
+        with self.engine.begin() as connection:
+            client = connection.execute(select([
+                oauth2_client
+            ]).where(
+                oauth2_client.c.id == client_id
+            ).limit(1)).fetchone()
+
+        if client is None:
+            print "Client %s doesn't exist" % client_id
+            return False
+
+        request.client = client
+
+        if client.secret != client_secret:
+            print "Client authentication for %s failed, secret doesn't match" % client_id
+            return False
+
+        return True
 
     def authenticate_client_id(self, client_id, request, *args, **kwargs):
         # TODO
@@ -134,8 +152,17 @@ class OAuthDelegate(RequestValidator):
 
     def validate_grant_type(self, client_id, grant_type, client, request, *args, **kwargs):
         # Clients should only be allowed to use one type of grant.
-        # In this case, it must be "authorization_code" or "refresh_token"
-        pass
+        with self.engine.begin() as connection:
+            client = connection.execute(select([
+                oauth2_client.c.grant_type
+            ]).where(
+                oauth2_client.c.id == client_id
+            ).limit(1)).fetchone()
+
+        if client is None:
+            raise Exception("Client %s doesn't exist" % client_id)
+
+        return client[oauth2_client.c.grant_type] == grant_type
 
     def save_bearer_token(self, token, request, *args, **kwargs):
         # Remember to associate it with request.scopes, request.user and

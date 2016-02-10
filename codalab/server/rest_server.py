@@ -4,13 +4,14 @@ from bottle import (
     local,
     request,
     run,
+    mount,
 )
 from httplib import BAD_REQUEST
 from oauthlib.oauth2 import LegacyApplicationServer
 import time
 
 import codalab.rest.example
-from codalab.server.oauth_server import OAuthDelegate
+from codalab.server.oauth2_app import OAuth2App
 
 
 class SaveEnvironmentPlugin(object):
@@ -89,8 +90,9 @@ def run_rest_server(manager, debug, num_workers):
     # Use the "server" pre-configured for only Resource Owner Password Credentials Grant for prototype.
     # This does not create a web server, but rather an abstract service we can query to generate
     # and validate tokens.
-    validator = OAuthDelegate(manager.model().engine)
-    oauth_server = LegacyApplicationServer(validator)
+    # validator = OAuthDelegate(manager.model().engine)
+    # oauth_server = LegacyApplicationServer(validator)
+    mount('/oauth2/', OAuth2App())
 
     if not debug:
         # We use gunicorn to create a server with multiple processes, since in

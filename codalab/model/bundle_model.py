@@ -1491,3 +1491,20 @@ class BundleModel(object):
         # Compute from scratch for simplicity
         user_info['disk_used'] = self._get_disk_used(user_id)
         self.update_user_info(user_info)
+
+    def get_oauth2_client(self, client_id):
+        raise NotImplementedError
+
+    def get_oauth2_token(self, client_id):
+        raise NotImplementedError
+
+    def update_oauth2_token(self, client_id):
+        raise NotImplementedError
+
+    def get_oauth2_grant(self, client_id):
+        raise NotImplementedError
+
+    def update_oauth2_grant(self, client_id):
+        raise NotImplementedError
+
+
