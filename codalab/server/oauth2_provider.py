@@ -29,34 +29,34 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 """
 
-import os
-import logging
 import datetime
 from functools import wraps
-from flask import request, url_for
-from flask import redirect, abort
-from werkzeug import cached_property
-from werkzeug.utils import import_string
-from oauthlib import oauth2
-from oauthlib.oauth2 import RequestValidator, Server
-from oauthlib.common import to_unicode
-from ..utils import extract_params, decode_base64, create_response
+import logging
+import os
 
-log = logging.getLogger('codalab')
+from bottle import request, abort, redirect
+from oauthlib import oauth2
+from oauthlib.common import to_unicode
+from oauthlib.oauth2 import RequestValidator, Server
+
+from codalab.lib.server_util import cached_property, import_string, extract_params, decode_base64, create_response
+
+
+log = logging.getLogger('codalab.server.oauth2_provider')
+
 
 class OAuth2Provider(object):
     """Provide secure services using OAuth2.
-    The server should provide an authorize handler and a token hander,
+    The server should provide an authorize handler and a token handler,
     But before the handlers are implemented, the server should provide
     some getters for the validation.
-    Like many other Flask extensions, there are two usage modes. One is
-    binding the Flask app instance::
-        app = Flask(__name__)
+    There are two usage modes. One is binding the Bottle app instance:
+        app = Bottle()
         oauth = OAuth2Provider(app)
-    The second possibility is to bind the Flask app later::
+    The second possibility is to bind the Bottle app later:
         oauth = OAuth2Provider()
         def create_app():
-            app = Flask(__name__)
+            app = Bottle()
             oauth.init_app(app)
             return app
     Configure :meth:`tokengetter` and :meth:`tokensetter` to get and
@@ -88,30 +88,30 @@ class OAuth2Provider(object):
         oauth provider instance.
         """
         self.app = app
-        app.extensions = getattr(app, 'extensions', {})
-        app.extensions['oauthlib.provider.oauth2'] = self
+        # app.extensions = getattr(app, 'extensions', {})
+        # app.extensions['oauthlib.provider.oauth2'] = self
 
     @cached_property
     def error_uri(self):
         """The error page URI.
         When something turns error, it will redirect to this error page.
-        You can configure the error page URI with Flask config::
-            OAUTH2_PROVIDER_ERROR_URI = '/error'
-        You can also define the error page by a named endpoint::
-            OAUTH2_PROVIDER_ERROR_ENDPOINT = 'oauth.error'
+        You can configure the error page URI with Bottle config:
+            app.config['OAUTH2_PROVIDER_ERROR_URI'] = '/error'
+        (REMOVED) You can also define the error page by a named endpoint:
+            app.config['OAUTH2_PROVIDER_ERROR_ENDPOINT'] = 'oauth.error'
         """
         error_uri = self.app.config.get('OAUTH2_PROVIDER_ERROR_URI')
         if error_uri:
             return error_uri
-        error_endpoint = self.app.config.get('OAUTH2_PROVIDER_ERROR_ENDPOINT')
-        if error_endpoint:
-            return url_for(error_endpoint)
-        return '/oauth/errors'
+        # error_endpoint = self.app.config.get('OAUTH2_PROVIDER_ERROR_ENDPOINT')
+        # if error_endpoint:
+        #     return url_for(error_endpoint)
+        return '/oauth2/errors'
 
     @cached_property
     def server(self):
         """
-        All in one endpoints. This property is created automaticly
+        All in one endpoints. This property is created automatically
         if you have implemented all the getters and setters.
         However, if you are not satisfied with the getter and setter,
         you can create a validator with :class:`OAuth2RequestValidator`::
@@ -343,7 +343,7 @@ class OAuth2Provider(object):
             uri, http_method, body, headers = extract_params()
 
             if request.method in ('GET', 'HEAD'):
-                redirect_uri = request.args.get('redirect_uri', self.error_uri)
+                redirect_uri = request.query.get('redirect_uri', self.error_uri)
                 log.debug('Found redirect_uri %s.', redirect_uri)
                 try:
                     ret = server.validate_authorization_request(
@@ -360,7 +360,7 @@ class OAuth2Provider(object):
                     return redirect(e.in_uri(redirect_uri))
 
             else:
-                redirect_uri = request.values.get(
+                redirect_uri = request.params.get(
                     'redirect_uri', self.error_uri
                 )
 
@@ -387,13 +387,13 @@ class OAuth2Provider(object):
     def confirm_authorization_request(self):
         """When consumer confirm the authorization."""
         server = self.server
-        scope = request.values.get('scope') or ''
+        scope = request.params.get('scope') or ''
         scopes = scope.split()
         credentials = dict(
-            client_id=request.values.get('client_id'),
-            redirect_uri=request.values.get('redirect_uri', None),
-            response_type=request.values.get('response_type', None),
-            state=request.values.get('state', None)
+            client_id=request.params.get('client_id'),
+            redirect_uri=request.params.get('redirect_uri', None),
+            response_type=request.params.get('response_type', None),
+            state=request.params.get('state', None)
         )
         log.debug('Fetched credentials from request %r.', credentials)
         redirect_uri = credentials.get('redirect_uri')
@@ -467,8 +467,8 @@ class OAuth2Provider(object):
         def decorated(*args, **kwargs):
             server = self.server
 
-            token = request.values.get('token')
-            request.token_type_hint = request.values.get('token_type_hint')
+            token = request.params.get('token')
+            request.token_type_hint = request.params.get('token_type_hint')
             if token:
                 request.token = token
 

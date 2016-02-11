@@ -20,8 +20,7 @@ from sqlalchemy.sql.expression import (
 from codalab.model.tables import (
     user as cl_user,
     oauth2_client,
-    oauth2_access_token,
-    oauth2_refresh_token,
+    oauth2_token,
     oauth2_auth_code,
 )
 

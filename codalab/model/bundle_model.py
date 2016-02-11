@@ -48,6 +48,9 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
+    oauth2_client,
+    oauth2_token,
+    oauth2_auth_code,
     db_metadata,
 )
 from codalab.objects.worksheet import (
@@ -1492,19 +1495,34 @@ class BundleModel(object):
         user_info['disk_used'] = self._get_disk_used(user_id)
         self.update_user_info(user_info)
 
+    # TODO: create "ORM" objects
+
     def get_oauth2_client(self, client_id):
+        with self.engine.begin() as connection:
+            return connection.execute(select([
+                oauth2_client
+            ]).where(
+                oauth2_client.c.id == client_id
+            ).limit(1)).fetchone()
+
+    def get_oauth2_access_token(self, client_id):
         raise NotImplementedError
 
-    def get_oauth2_token(self, client_id):
+    def get_oauth2_access_token(self, client_id):
         raise NotImplementedError
 
-    def update_oauth2_token(self, client_id):
+    def save_oauth2_token(self, token):
         raise NotImplementedError
 
-    def get_oauth2_grant(self, client_id):
-        raise NotImplementedError
+    def get_oauth2_grant(self, client_id, code):
+        with self.engine.begin() as connection:
+            return connection.execute(select([
+                oauth2_auth_code
+            ]).where(
+                and_(oauth2_auth_code.c.client_id == client_id, oauth2_auth_code.c.code == code)
+            ).limit(1)).fetchone()
 
-    def update_oauth2_grant(self, client_id):
+    def save_oauth2_grant(self, grant):
         raise NotImplementedError
 
 

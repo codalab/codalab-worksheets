@@ -28,9 +28,8 @@ def upgrade():
     op.create_foreign_key('fk__user_group__user', 'user_group', 'user', ['user_id'], ['user_id'])
 
     # Necessary since we normally call "dbmetadata.create_all()" first
-    op.execute("DROP TABLE IF EXISTS oauth2_access_token")
+    op.execute("DROP TABLE IF EXISTS oauth2_token")
     op.execute("DROP TABLE IF EXISTS oauth2_auth_code")
-    op.execute("DROP TABLE IF EXISTS oauth2_refresh_token")
     op.execute("DROP TABLE IF EXISTS oauth2_client")
 
     op.create_table(
@@ -46,23 +45,13 @@ def upgrade():
     )
 
     op.create_table(
-        'oauth2_access_token',
+        'oauth2_token',
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
         sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
         sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
         sa.Column('scopes', sa.Text, nullable=False),
-        sa.Column('token', sa.String(100), nullable=False),
-        sa.Column('expires_at', sa.DateTime, nullable=False),
-        sqlite_autoincrement=True,
-    )
-
-    op.create_table(
-        'oauth2_refresh_token',
-        sa.Column('id', sa.Integer, primary_key=True, nullable=False),
-        sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
-        sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
-        sa.Column('scopes', sa.Text, nullable=False),
-        sa.Column('token', sa.String(100), nullable=False),
+        sa.Column('access_token', sa.String(255), nullable=False),
+        sa.Column('refresh_token', sa.String(255), nullable=False),
         sa.Column('expires_at', sa.DateTime, nullable=False),
         sqlite_autoincrement=True,
     )
@@ -91,7 +80,6 @@ def downgrade():
     op.drop_column('user', 'first_name')
     op.drop_column('user', 'email')
     op.drop_column('user', 'date_joined')
-    op.drop_table('oauth2_access_token')
+    op.drop_table('oauth2_token')
     op.drop_table('oauth2_auth_code')
-    op.drop_table('oauth2_refresh_token')
     op.drop_table('oauth2_client')

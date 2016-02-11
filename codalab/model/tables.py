@@ -267,26 +267,15 @@ oauth2_client = Table(
   sqlite_autoincrement=True,
 )
 
-oauth2_access_token = Table(
-  'oauth2_access_token',
+oauth2_token = Table(
+  'oauth2_token',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
-  Column('token', String(100), nullable=False),
-  Column('expires_at', DateTime, nullable=False),
-  sqlite_autoincrement=True,
-)
-
-oauth2_refresh_token = Table(
-  'oauth2_refresh_token',
-  db_metadata,
-  Column('id', Integer, primary_key=True, nullable=False),
-  Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
-  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
-  Column('scopes', Text, nullable=False),
-  Column('token', String(100), nullable=False),
+  Column('access_token', String(255), nullable=False),
+  Column('refresh_token', String(255), nullable=False),
   Column('expires_at', DateTime, nullable=False),
   sqlite_autoincrement=True,
 )
