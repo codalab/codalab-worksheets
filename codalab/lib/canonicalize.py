@@ -107,7 +107,7 @@ def get_current_location(bundle_store, uuid):
     """
     Return the on-disk location of currently running target.
     """
-    return bundle_store.get_temp_location(uuid)
+    return bundle_store.get_location(uuid)
 
 
 def get_target_path(bundle_store, model, target):

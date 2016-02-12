@@ -99,9 +99,7 @@ class BundleStore(object):
 
         final_path = os.path.join(self.data, uuid)
         if os.path.exists(final_path):
-            # Already exists, just delete it
-            print >> sys.stderr, 'Error, path %s already present in bundle store' % final_path
-            return (None, None)
+            raise UsageError('Error, path %s already present in bundle store' % final_path)
         # Only make if not there
         elif not single_file:
             path_util.make_directory(final_path)

@@ -292,16 +292,8 @@ class Worker(object):
                     print >>sys.stderr, 'Worker.finalize_bundle: installing (copying) dependencies to %s (MakeBundle)' % temp_dir
                     bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=True)
 
-                # Note: uploading will move temp_dir to the bundle store.
-                (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=[temp_dir],
-                                                                              follow_symlinks=False,
-                                                                              exclude_patterns=None,
-                                                                              git=False,
-                                                                              unpack=False,
-                                                                              remove_sources=True,
-                                                                              uuid=bundle.uuid)
-                db_update['data_hash'] = data_hash
-                metadata.update(bundle_store_metadata)
+                db_update['data_hash'] = path_util.hash_directory(temp_dir)
+                metadata.update(data_size=path_util.get_size(temp_dir))
             except Exception as e:
                 print '=== INTERNAL ERROR: %s' % e
                 traceback.print_exc()
