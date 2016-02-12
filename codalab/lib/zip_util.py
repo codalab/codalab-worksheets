@@ -42,6 +42,13 @@ def path_is_archive(path):
                 return True
     return False
 
+def get_archive_ext(fname):
+    """Returns the extension for fname if it's an archive, empty string otherwise."""
+    for ext in ARCHIVE_EXTS:
+        if fname.endswith(ext):
+            return ext
+    return ''
+
 
 def strip_archive_ext(path):
     for ext in ARCHIVE_EXTS:
