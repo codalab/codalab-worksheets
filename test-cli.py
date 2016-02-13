@@ -31,6 +31,11 @@ base_path = os.path.dirname(os.path.abspath(__file__))  # Directory where this s
 
 crazy_name = 'crazy ("ain\'t it?")'
 
+DOCKER_MODULES = [
+        'write',
+        'resources'
+        ]
+
 def test_path(name):
     """
     Return the path to the test file |name|.
@@ -202,11 +207,14 @@ class TestModule(object):
         for name in query:
             if name == 'all':
                 modules_to_run.extend(cls.modules.values())
+            elif name == 'no-docker':
+                no_docker_modules = [cls.modules[mod] for mod in cls.modules.keys() if mod not in DOCKER_MODULES]
+                modules_to_run.extend(no_docker_modules)
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
                 print 'Could not find module %s' % name
-                print 'Modules: all ' + ' '.join(cls.modules.keys())
+                print 'Modules: all no-docker ' + ' '.join(cls.modules.keys())
                 sys.exit(1)
 
         print 'Running modules ' + ' '.join([m.name for m in modules_to_run])
@@ -708,7 +716,7 @@ if __name__ == '__main__':
         print 'Usage: python %s <module> ... <module>' % sys.argv[0]
         print 'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
         print 'Remember to run this both in local and remote modes.',
-        print 'Modules: all ' + ' '.join(TestModule.modules.keys())
+        print 'Modules: all no-docker ' + ' '.join(TestModule.modules.keys())
     else:
         success = TestModule.run(sys.argv[1:])
         if not success:
