@@ -481,14 +481,16 @@ def test(ctx):
     wuuid = run_command([cl, 'new', wname])
     ctx.collect_worksheet(wuuid)
     # Add tags
-    run_command([cl, 'wedit', wname, '--tags', 'foo', 'bar', 'baz'])
-    check_contains(['Tags: \\[u\'foo\', u\'bar\', u\'baz\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    tags = ['foo', 'bar', 'baz']
+    fewer_tags = ['bar', 'foo']
+    run_command([cl, 'wedit', wname, '--tags'] + tags)
+    check_contains(['Tags: %s' % ' '.join(tags)], run_command([cl, 'ls', '-w', wuuid]))
     # Modify tags
-    run_command([cl, 'wedit', wname, '--tags', 'bar', 'foo'])
-    check_contains(['Tags: \\[u\'bar\', u\'foo\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    run_command([cl, 'wedit', wname, '--tags'] + fewer_tags)
+    check_contains(['Tags: %s' % fewer_tags], run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
-    check_contains(['Tags: \\[\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
 
 @TestModule.register('freeze')
 def test(ctx):
