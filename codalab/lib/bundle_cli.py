@@ -1237,7 +1237,7 @@ class BundleCLI(object):
         fields = [
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
-            ('Tags', worksheet_info['tags']),
+            ('Tags', ' '.join(worksheet_info['tags'])),
             ('Owner', '%s(%s)' % (worksheet_info['owner_name'], worksheet_info['owner_id'])),
             ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions']),
                                       ' [frozen]' if worksheet_info['frozen'] else ''))
