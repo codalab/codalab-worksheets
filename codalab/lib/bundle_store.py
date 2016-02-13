@@ -82,13 +82,13 @@ class BundleStore(object):
         to_delete = []
 
         # If just a single file, set the final path to be equal to that file
-        single_file = len(sources) == 1
+        single_path = len(sources) == 1
 
         final_path = os.path.join(self.data, uuid)
         if os.path.exists(final_path):
-            raise UsageError('Error, path %s already present in bundle store' % final_path)
+            raise UsageError('Path %s already present in bundle store' % final_path)
         # Only make if not there
-        elif not single_file:
+        elif not single_path:
             path_util.make_directory(final_path)
 
         # Paths to resources
@@ -96,7 +96,7 @@ class BundleStore(object):
 
         for source in sources:
             # Where to save |source| to (might change this value if we unpack).
-            if not single_file:
+            if not single_path:
                 subpath = os.path.join(final_path, os.path.basename(source))
             else:
                 subpath = final_path
