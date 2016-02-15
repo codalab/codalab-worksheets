@@ -15,7 +15,7 @@ from codalab.lib import path_util, file_util, print_util, zip_util
 from codalab.common import UsageError
 
 class BundleStore(object):
-    DATA_SUBDIRECTORY = 'data'
+    DATA_SUBDIRECTORY = 'bundles'
     TEMP_SUBDIRECTORY = 'temp'
 
     # The amount of time a folder can live in the data and temp

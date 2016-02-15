@@ -83,8 +83,8 @@ class BundleStoreTest(unittest.TestCase):
         contents = 'contents'
         test_uuid1 = '0xdeadbeef'
         test_uuid2 = '0xaaaaaaaa'
-        final_path1 = 'mock_root/data/%s' % test_uuid1
-        final_path2 = 'mock_root/data/%s' % test_uuid2
+        final_path1 = 'mock_root/bundles/%s' % test_uuid1
+        final_path2 = 'mock_root/bundles/%s' % test_uuid2
         global_paths.add(contents)
 
         bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=False, uuid=test_uuid1)
