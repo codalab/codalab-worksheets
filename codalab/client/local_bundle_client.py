@@ -8,6 +8,7 @@ import datetime
 import os
 import re
 import sys
+import yaml
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -1372,4 +1373,10 @@ class LocalBundleClient(BundleClient):
         '''
         return self.model.get_chat_log_info(query_info)
 
+    def get_faq(self):
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
+        with open(file_path, 'r') as stream:
+            content = yaml.load(stream)
+            print content
+            return content
         
