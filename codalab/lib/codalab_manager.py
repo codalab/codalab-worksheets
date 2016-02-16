@@ -132,6 +132,8 @@ class CodaLabManager(object):
             return x
         self.config = replace(self.config)
 
+        # Initialize logging
+        self.init_logger()
 
         # Read state file, creating if it doesn't exist.
         if not os.path.exists(self.state_path):
@@ -142,8 +144,6 @@ class CodaLabManager(object):
         self.state = read_json_or_die(self.state_path)
 
         self.clients = {}  # map from address => client
-
-        self.init_logger()
 
     def init_config(self, dry_run=False):
         '''
@@ -253,13 +253,13 @@ class CodaLabManager(object):
         logger.setLevel(logging.DEBUG)
 
         # create file handler which logs even debug messages
-        log_file = self.config['logging'].get('file_path', os.path.join(self.codalab_home, 'codalab.log'))
+        log_file = self.config.get('logging', {}).get('file_path', os.path.join(self.codalab_home, 'codalab.log'))
         fh = logging.FileHandler(log_file, 'a')
-        fh.setLevel(self.config['logging'].get('file_level', 'DEBUG').upper())
+        fh.setLevel(self.config.get('logging', {}).get('file_level', 'DEBUG').upper())
 
         # create console handler with a potentially different log level
         ch = logging.StreamHandler(sys.stdout)
-        ch.setLevel(self.config['logging'].get('console_level', 'INFO').upper())
+        ch.setLevel(self.config.get('logging', {}).get('console_level', 'INFO').upper())
 
         # create formatter and add it to the handlers
         formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
