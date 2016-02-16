@@ -167,16 +167,30 @@ class LocalBundleClient(BundleClient):
         return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Return the uuid of the specified worksheet if it exists.
+        If not, create a new worksheet if the specified worksheet is home_worksheet or dashboard. Otherwise, throw an error.
+        """
+        if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
+                worksheet_spec = spec_util.home_worksheet(self._current_user_name())
+        worksheet_uuid = self.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec)
+        if worksheet_uuid != None:
+            return worksheet_uuid
+        else:
+            if spec_util.is_home_worksheet(worksheet_spec) or spec_util.is_dashboard(worksheet_spec):
+                return self.new_worksheet(worksheet_spec)
+            else:
+                # let it throw the correct error message
+                return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+
+    def get_worksheet_uuid_or_none(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
+        """
         try:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
-        except UsageError as e:
-            if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-                worksheet_spec = spec_util.home_worksheet(self._current_user_name())
-                return self.new_worksheet(worksheet_spec, False)
-            elif spec_util.is_dashboard(worksheet_spec):
-                return self.new_worksheet(worksheet_spec, False)
-            else:
-                raise e
+        except UsageError:
+            return None
 
     @staticmethod
     def validate_user_metadata(bundle_subclass, metadata):
@@ -776,35 +790,16 @@ class LocalBundleClient(BundleClient):
         username = self._current_user_name()
         if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(username) != name:
             raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
-        try:
-            self.ensure_worksheet_exist(None, name)
-            exists = True
-        except UsageError, e:
-            # Note: this exception could be thrown also when there's multiple
-            # worksheets with the same name.  In the future, we want to rule
-            # that out.
-            exists = False
-        if exists:
+        if self.get_worksheet_uuid_or_none(None, name) != None:
             raise UsageError('Worksheet with name %s already exists' % name)
-
-    def get_worksheet_uuid_or_none(self, base_worksheet_uuid, worksheet_spec):
-        """
-        Return the specified worksheet uuid if it exists. 
-        Return None if it doesn't exist
-        """
-        try:
-            return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
-        except UsageError:
-            return None    
 
     @authentication_required
     def new_worksheet(self, name):
         """
         Create a new worksheet with the given |name|.
         """
-        uuid = self.get_worksheet_uuid_or_none(None, name)
-        if uuid != None:
-            return uuid
+
+        self.ensure_unused_worksheet_name(name)
 
         # Don't need any permissions to do this.
         worksheet = Worksheet({

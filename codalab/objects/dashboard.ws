@@ -7,7 +7,7 @@ To create a new worksheet, click the web terminal above and type:
 
     cl new <worksheet-name>
 
-and then click 'Edit Source' to edit the markdown (see [syntax](https://github.com/codalab/codalab-worksheets/wiki/User_Worksheet-Markdown)). We have already created your home worksheet for you (see above).
+and then click 'Edit Source' to edit the markdown (see [syntax](https://github.com/codalab/codalab-worksheets/wiki/User_Worksheet-Markdown)).
 
 ## **My recent bundles**
 % search created=.sort- .limit=5 .mine
