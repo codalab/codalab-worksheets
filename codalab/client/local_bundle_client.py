@@ -1311,7 +1311,13 @@ class LocalBundleClient(BundleClient):
     # methods related to chat box and chat portal
     def format_message_response(self, params):
         """
-        Format automatical response
+        Format automatic response
+        |params| is None if the system can't process the user's message
+        or is not confident enough to give a response.
+        Otherwise, |params| is a triple that consists of
+        the question that the system is trying to answer,
+        the response it has for that question, and the recommended command to run.
+        Return the automatic response that will be sent back to the user's chat box.
         """
         if params == None:
             return 'Thank you for your question. Our staff will get back to you as soon as we can.'
@@ -1325,7 +1331,17 @@ class LocalBundleClient(BundleClient):
 
     def add_chat_log_info(self, query_info):
         """
-        Add the given chat into the database. If the chat is directed to the system, return an auto response. Otherwise, return an updated chat list of the sender
+        Add the given chat into the database.
+        |query_info| encapsulates all the information of one chat
+        Example: query_info = {
+            'sender_user_id': 1,
+            'recipient_user_id': 2,
+            'message': 'Hello this is my message',
+            'worksheet_uuid': 0x508cf51e546742beba97ed9a69329838,   // the worksheet the user is browsing when he/she sends this message
+            'bundle_uuid': 0x8e66b11ecbda42e2a1f544627acf1418,   // the bundle the user is browsing when he/she sends this message
+        }
+        Return an auto response, if the chat is directed to the system.
+        Otherwise, return an updated chat list of the sender.
         """
         updated_data = self.model.add_chat_log_info(query_info)
         if query_info.get('recipient_user_id') != self.model.system_user_id:
@@ -1347,6 +1363,11 @@ class LocalBundleClient(BundleClient):
 
     def get_chat_log_info(self, query_info):
         '''
+        |query_info| specifies the user_id of the user that you are querying about.
+        Example: query_info = {
+            user_id: 2,   // get the chats sent by and received by the user with user_id 2
+            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
+        }
         Return a list of chats that the user have had given the user_id
         '''
         return self.model.get_chat_log_info(query_info)
