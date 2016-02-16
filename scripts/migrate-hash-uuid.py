@@ -36,12 +36,23 @@ for data_hash in data_hashes:
     orig_location = os.path.join(DATA_DIR, data_hash)
 
     bundles_with_hash = model.batch_get_bundles(data_hash=data_hash)
+    # We'd prefer renaming bundles to making copies, but because we are converting from deduplicated storage
+    # we need to make sure that we only perform renames if we map 1:1 UUID->Hash.
+    rename_allowed = len(bundles_with_hash) <= 1
     for bundle in bundles_with_hash:
         uuid = bundle.uuid
         copy_location = os.path.join(FINAL_LOCATION, uuid)
-        print >> sys.stderr, 'Moving Bundle 0x%s with data_hash 0x%s to %s' % (uuid, data_hash, copy_location)
+
+        if rename_allowed:
+            print >> sys.stderr, 'Moving Bundle 0x%s with data_hash 0x%s to %s' % (uuid, data_hash, copy_location)
+        else:
+            print >> sys.stderr, 'Copying Bundle 0x%s with data_hash 0x%s to %s' % (uuid, data_hash, copy_location)
+
         if not dry_run:
-            path_util.copy(orig_location, copy_location)
+            if rename_allowed:
+                path_util.rename(orig_location, copy_location)
+            else:
+                path_util.copy(orig_location, copy_location)
 
 
 dry_run_str = """
