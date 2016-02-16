@@ -4,7 +4,7 @@ Utility functions used by the server applications.
 import sys
 import base64
 from oauthlib.common import to_unicode, bytes_type
-from bottle import request, Response
+from bottle import request, HTTPResponse
 
 """
 The following functions are adapted from flask_oauthlib.utils and are
@@ -43,15 +43,12 @@ def extract_params():
     """Extract request params."""
     uri = request.url
     http_method = request.method
+    body = dict(request.forms)
     headers = dict(request.headers)
     if 'wsgi.input' in headers:
         del headers['wsgi.input']
     if 'wsgi.errors' in headers:
         del headers['wsgi.errors']
-
-    forms = request.forms
-    body = {key: forms[key] for key in forms}
-    body = dict(forms)
 
     return uri, http_method, body, headers
 
@@ -73,7 +70,7 @@ def decode_base64(text, encoding='utf-8'):
 
 def create_response(headers, body, status):
     """Create response class for Bottle."""
-    return Response(body or '', status=status, headers=headers)
+    return HTTPResponse(body or '', status=status, headers=headers)
 
 # END ADAPTED FROM flask_oauthlib.utils #
 

@@ -88,7 +88,9 @@ def run_rest_server(manager, debug, num_workers):
     install(LoggingPlugin())
 
     # Mount OAuth2 endpoints
-    mount('/oauth2/', create_oauth2_app(manager.model()))
+    oauth2_app = create_oauth2_app()
+    oauth2_app.install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store()))
+    mount('/oauth2/', oauth2_app)
 
     if not debug:
         # We use gunicorn to create a server with multiple processes, since in

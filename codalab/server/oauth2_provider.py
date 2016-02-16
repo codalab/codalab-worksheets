@@ -77,17 +77,7 @@ class OAuth2Provider(object):
         self._before_request_funcs = []
         self._after_request_funcs = []
         self._invalid_response = None
-        if app:
-            self.init_app(app)
-
-    def init_app(self, app):
-        """
-        This callback can be used to initialize an application for the
-        oauth provider instance.
-        """
         self.app = app
-        # app.extensions = getattr(app, 'extensions', {})
-        # app.extensions['oauthlib.provider.oauth2'] = self
 
     @cached_property
     def error_uri(self):
@@ -95,15 +85,10 @@ class OAuth2Provider(object):
         When something turns error, it will redirect to this error page.
         You can configure the error page URI with Bottle config:
             app.config['OAUTH2_PROVIDER_ERROR_URI'] = '/error'
-        (REMOVED) You can also define the error page by a named endpoint:
-            app.config['OAUTH2_PROVIDER_ERROR_ENDPOINT'] = 'oauth.error'
         """
         error_uri = self.app.config.get('OAUTH2_PROVIDER_ERROR_URI')
         if error_uri:
             return error_uri
-        # error_endpoint = self.app.config.get('OAUTH2_PROVIDER_ERROR_ENDPOINT')
-        # if error_endpoint:
-        #     return url_for(error_endpoint)
         return '/oauth2/errors'
 
     @cached_property
@@ -379,6 +364,7 @@ class OAuth2Provider(object):
                 # denied by user
                 e = oauth2.AccessDeniedError()
                 return redirect(e.in_uri(redirect_uri))
+
             return self.confirm_authorization_request()
         return decorated
 
@@ -442,8 +428,6 @@ class OAuth2Provider(object):
             uri, http_method, body, headers = extract_params()
             credentials = f(*args, **kwargs) or {}
             log.debug('Fetched extra credentials, %r.', credentials)
-            print server
-            print server.create_token_response
             ret = server.create_token_response(
                 uri, http_method, body, headers, credentials
             )
