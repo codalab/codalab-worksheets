@@ -164,17 +164,15 @@ class BundleStore(object):
         assert(os.path.lexists(final_path)), 'Uploaded to %s failed!' % (final_path,)
         return (data_hash, {'data_size': data_size})
 
-    def cleanup(self, model, data_hash, except_bundle_uuids, dry_run):
+    def cleanup(self, model, uuid, except_bundle_uuids, dry_run):
         '''
         If the given data hash is not needed by any bundle (not in
         except_bundle_uuids), delete the data.
         '''
-        bundles = model.batch_get_bundles(data_hash=data_hash)
-        if all(bundle.uuid in except_bundle_uuids for bundle in bundles):
-            absolute_path = self.get_location(data_hash)
-            print >>sys.stderr, "cleanup: data %s" % absolute_path
-            if not dry_run:
-                path_util.remove(absolute_path)
+        absolute_path = self.get_location(uuid)
+        print >>sys.stderr, "cleanup: data %s" % absolute_path
+        if not dry_run:
+            path_util.remove(absolute_path)
 
     def full_cleanup(self, model, dry_run):
         '''

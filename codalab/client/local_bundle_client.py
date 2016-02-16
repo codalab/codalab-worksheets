@@ -429,7 +429,10 @@ class LocalBundleClient(BundleClient):
 
         # Delete the data_hash
         for uuid in relevant_uuids_set:
-            self.bundle_store.cleanup(self.model, uuid, relevant_uuids, dry_run)
+            # check first is needs to be deleted
+            bundle_location = self.bundle_store.get_location(uuid)
+            if os.path.lexists(bundle_location):
+                self.bundle_store.cleanup(self.model, uuid, relevant_uuids, dry_run)
 
         return relevant_uuids
 
