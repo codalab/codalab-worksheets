@@ -1501,7 +1501,13 @@ class BundleModel(object):
                     'disk_quota': self.default_user_info['disk_quota'],
                     'disk_used': self._get_disk_used(user_id),
                 }
-                connection.execute(cl_user.insert().values(user_info))
+
+                # FIXME remove when user data migration is complete
+                # Temporarily suppress the "doesn't have default value" warnings until user data migration is complete
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    connection.execute(cl_user.insert().values(user_info))
         return user_info
 
     def update_user_info(self, user_info):
