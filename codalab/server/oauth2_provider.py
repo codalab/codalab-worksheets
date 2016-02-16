@@ -442,6 +442,8 @@ class OAuth2Provider(object):
             uri, http_method, body, headers = extract_params()
             credentials = f(*args, **kwargs) or {}
             log.debug('Fetched extra credentials, %r.', credentials)
+            print server
+            print server.create_token_response
             ret = server.create_token_response(
                 uri, http_method, body, headers, credentials
             )

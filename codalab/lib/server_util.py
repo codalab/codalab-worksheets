@@ -50,7 +50,8 @@ def extract_params():
         del headers['wsgi.errors']
 
     forms = request.forms
-    body = {key: forms.getall(key) for key in forms}
+    body = {key: forms[key] for key in forms}
+    body = dict(forms)
 
     return uri, http_method, body, headers
 

@@ -13,6 +13,12 @@ def create_oauth2_app(model):
     app = Bottle()
     oauth = OAuth2Provider(app)
 
+    import logging
+    import sys
+    log = logging.getLogger('oauthlib')
+    log.addHandler(logging.StreamHandler(sys.stdout))
+    log.setLevel(logging.DEBUG)
+
     @oauth.clientgetter
     def get_client(client_id):
         return model.get_oauth2_client(client_id)
@@ -72,7 +78,7 @@ def create_oauth2_app(model):
     # def authorize():
     #     return 'Hello World'
 
-    @app.route('/token', methods=['POST'])
+    @app.route('/token', ['POST'])
     @oauth.token_handler
     def handle_token():
         return None
