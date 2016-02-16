@@ -29,6 +29,7 @@ include any server configuration.
 '''
 import getpass
 import json
+import logging
 import os
 import sys
 import time
@@ -131,6 +132,7 @@ class CodaLabManager(object):
             return x
         self.config = replace(self.config)
 
+
         # Read state file, creating if it doesn't exist.
         if not os.path.exists(self.state_path):
             write_pretty_json({
@@ -140,6 +142,8 @@ class CodaLabManager(object):
         self.state = read_json_or_die(self.state_path)
 
         self.clients = {}  # map from address => client
+
+        self.init_logger()
 
     def init_config(self, dry_run=False):
         '''
@@ -184,6 +188,10 @@ class CodaLabManager(object):
                     'verbose': 1,
                     'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
                 }
+            },
+            'logging': {
+                'console_level': "INFO",
+                'file_level': "DEBUG",
             }
         }
 
@@ -231,6 +239,36 @@ class CodaLabManager(object):
             write_pretty_json(config, self.config_path)
 
         return config
+
+    def init_logger(self):
+        """
+        Initialize and configure the root logger.
+        Every module should get its own logger instance:
+            import logging
+            log = logging.getLogger(__name__)
+        Since every CodaLab module is part of the 'codalab' package, this root logger
+        will be the root of all such logger instances.
+        """
+        logger = logging.getLogger('codalab')
+        logger.setLevel(logging.DEBUG)
+
+        # create file handler which logs even debug messages
+        log_file = self.config['logging'].get('file_path', os.path.join(self.codalab_home, 'codalab.log'))
+        fh = logging.FileHandler(log_file, 'a')
+        fh.setLevel(self.config['logging'].get('file_level', 'DEBUG').upper())
+
+        # create console handler with a potentially different log level
+        ch = logging.StreamHandler(sys.stdout)
+        ch.setLevel(self.config['logging'].get('console_level', 'INFO').upper())
+
+        # create formatter and add it to the handlers
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        ch.setFormatter(formatter)
+
+        # add the handlers to the logger
+        logger.addHandler(fh)
+        logger.addHandler(ch)
 
     @property
     @cached

@@ -41,9 +41,7 @@ from oauthlib.oauth2 import RequestValidator, Server
 
 from codalab.lib.server_util import cached_property, import_string, extract_params, decode_base64, create_response
 
-
-log = logging.getLogger('codalab.server.oauth2_provider')
-
+log = logging.getLogger(__name__)
 
 class OAuth2Provider(object):
     """Provide secure services using OAuth2.
@@ -532,11 +530,9 @@ class OAuth2RequestValidator(RequestValidator):
         .. _`Section 4.1.3`: http://tools.ietf.org/html/rfc6749#section-4.1.3
         .. _`Section 6`: http://tools.ietf.org/html/rfc6749#section-6
         """
-
         if request.grant_type == 'password':
             client = self._clientgetter(request.client_id)
-            return (not client) or client.client_type == 'confidential' \
-                    or client.client_secret
+            return (not client) or client.client_type == 'confidential' or client.client_secret
         elif request.grant_type == 'authorization_code':
             client = self._clientgetter(request.client_id)
             return (not client) or client.client_type == 'confidential'
