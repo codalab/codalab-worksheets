@@ -190,6 +190,7 @@ class CodaLabManager(object):
                 }
             },
             'logging': {
+                'file_path': "{0.codalab_home}/codalab.log",
                 'console_level': "INFO",
                 'file_level': "DEBUG",
             }

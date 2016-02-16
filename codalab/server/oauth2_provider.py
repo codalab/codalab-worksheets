@@ -812,7 +812,7 @@ class OAuth2RequestValidator(RequestValidator):
         issuing refresh tokens, resource owner password credentials grant
         (also indirectly) and the refresh token grant.
         """
-
+        log.debug("Validating refresh token")
         token = self._tokengetter(refresh_token=refresh_token)
 
         if token and token.client_id == client.client_id:
@@ -854,6 +854,7 @@ class OAuth2RequestValidator(RequestValidator):
                 username, password, client, request, *args, **kwargs
             )
             if user:
+                log.debug('Successfully validated username %r', username)
                 request.user = user
                 return True
             return False

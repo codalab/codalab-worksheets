@@ -51,7 +51,7 @@ def create_oauth2_app(model):
         token = OAuth2Token(
             model,
             access_token=token['access_token'],
-            refresh_token=token['refresh_token'],
+            refresh_token=token.get('refresh_token', None),
             scopes=token['scope'],
             expires=expires,
             client_id=request.client.client_id,
@@ -62,7 +62,7 @@ def create_oauth2_app(model):
 
     @oauth.usergetter
     def get_user(username, password, *args, **kwargs):
-        user = model.get_user(username)
+        user = model.get_user(username=username)
         if user.check_password(password):
             return user
         return None

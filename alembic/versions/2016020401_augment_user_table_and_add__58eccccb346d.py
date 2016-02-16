@@ -50,8 +50,8 @@ def upgrade():
         sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
         sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
         sa.Column('scopes', sa.Text, nullable=False),
-        sa.Column('access_token', sa.String(255), nullable=False),
-        sa.Column('refresh_token', sa.String(255), nullable=False),
+        sa.Column('access_token', sa.String(255), unique=True),
+        sa.Column('refresh_token', sa.String(255), unique=True),
         sa.Column('expires', sa.DateTime, nullable=False),
         sqlite_autoincrement=True,
     )

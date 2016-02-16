@@ -1456,19 +1456,23 @@ class BundleModel(object):
     ############################################################
     # User methods
 
-    def get_user(self, username):
+    def get_user(self, user_id=None, username=None):
         """
         Get user.
 
         :param username: username id of user to fetch
         :return: User object, or None if no matching user.
         """
+        clauses = []
+        if user_id is not None:
+            clauses.append(cl_user.c.user_id == user_id)
+        if username is not None:
+            clauses.append(cl_user.c.user_name == username)
+
         with self.engine.begin() as connection:
             row = connection.execute(select([
                 cl_user
-            ]).where(
-                cl_user.c.user_name == username
-            ).limit(1)).fetchone()
+            ]).where(and_(*clauses)).limit(1)).fetchone()
 
         if row is None:
             return None
@@ -1544,7 +1548,7 @@ class BundleModel(object):
         if access_token is not None:
             clause = (oauth2_token.c.access_token == access_token)
         elif refresh_token is not None:
-            clause = (oauth2_token.c.refresh_token == access_token)
+            clause = (oauth2_token.c.refresh_token == refresh_token)
         else:
             return None
 

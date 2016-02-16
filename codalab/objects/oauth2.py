@@ -21,7 +21,7 @@ class OAuth2Client(object):
             self.client_id = kwargs['id']
             self.client_secret = kwargs['secret']
             self.user_id = kwargs['user_id']
-            self.allowed_grant_types = [kwargs['grant_type']]
+            self.allowed_grant_types = [kwargs['grant_type'], "refresh_token"]
             self.allowed_response_types = [kwargs['response_type']]
             self.redirect_uris = kwargs['redirect_uris'].split(',') if kwargs['redirect_uris'] else []
             self.default_scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
@@ -32,7 +32,7 @@ class OAuth2Client(object):
 
     @property
     def user(self):
-        return self.model.get_user(self.user_id)
+        return self.model.get_user(user_id=self.user_id)
 
 
 class OAuth2AuthCode(object):
@@ -88,7 +88,7 @@ class OAuth2Token(object):
 
     @property
     def user(self):
-        return self.model.get_user(self.user_id)
+        return self.model.get_user(user_id=self.user_id)
 
     def delete(self):
         self.model.delete_oauth2_token(self.id)

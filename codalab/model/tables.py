@@ -274,8 +274,8 @@ oauth2_token = Table(
   Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
-  Column('access_token', String(255), nullable=False),
-  Column('refresh_token', String(255), nullable=False),
+  Column('access_token', String(255), unique=True),
+  Column('refresh_token', String(255), unique=True),
   Column('expires', DateTime, nullable=False),
   sqlite_autoincrement=True,
 )
