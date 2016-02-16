@@ -23,6 +23,7 @@ from codalab.common import (
 )
 from codalab.lib import (
   canonicalize,
+  formatting,
   path_util,
 )
 from codalab.bundles.run_bundle import RunBundle
@@ -190,10 +191,9 @@ class Worker(object):
             return since_last_update >= update_timeout
         failed_bundles = filter(_failed, bundles)
         for bundle in failed_bundles:
-            failure_msg = 'No response from worker in %s' % time.strftime('%H:%M:%S', time.gmtime(update_timeout))
-            metadata_update = {'failure_message': failure_msg}
-            update = {'state': State.FAILED, 'metadata': metadata_update}
-            self.model.update_bundle(bundle, update)
+            failure_msg = 'No response from worker in %s' % formatting.duration_str(update_timeout)
+            status = {'state': State.FAILED, 'success': False, 'bundle': bundle, 'failure_message': failure_msg}
+            self.update_running_bundle(status)
 
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.
