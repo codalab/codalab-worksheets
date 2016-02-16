@@ -1,6 +1,13 @@
-'''
+"""
 BundleModel is a wrapper around database calls to save and load bundle metadata.
-'''
+"""
+import re
+import collections
+import datetime
+import time
+import json
+import sys
+
 from sqlalchemy import (
     and_,
     or_,
@@ -57,11 +64,15 @@ from codalab.objects.worksheet import (
     item_sort_key,
     Worksheet,
 )
+from codalab.objects.oauth2 import (
+    OAuth2AuthCode,
+    OAuth2Client,
+    OAuth2Token,
+)
+from codalab.objects.user import (
+    User,
+)
 from codalab.objects.permission import parse_permission
-
-import re, collections
-import datetime
-import time, json, sys
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -1443,8 +1454,26 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     ############################################################
-    # User functions
-    # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
+    # User methods
+
+    def get_user(self, username):
+        """
+        Get user.
+
+        :param username: username id of user to fetch
+        :return: User object, or None if no matching user.
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                cl_user
+            ]).where(
+                cl_user.c.user_name == username
+            ).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return User(row)
 
     def get_user_info(self, user_id):
         '''
@@ -1495,34 +1524,77 @@ class BundleModel(object):
         user_info['disk_used'] = self._get_disk_used(user_id)
         self.update_user_info(user_info)
 
-    # TODO: create "ORM" objects
+    ############################################################
+    # OAuth methods
 
     def get_oauth2_client(self, client_id):
         with self.engine.begin() as connection:
-            return connection.execute(select([
+            row = connection.execute(select([
                 oauth2_client
             ]).where(
                 oauth2_client.c.id == client_id
             ).limit(1)).fetchone()
 
-    def get_oauth2_access_token(self, client_id):
-        raise NotImplementedError
+        if row is None:
+            return None
 
-    def get_oauth2_access_token(self, client_id):
-        raise NotImplementedError
+        return OAuth2Client(self, **row)
+
+    def get_oauth2_token(self, access_token=None, refresh_token=None):
+        if access_token is not None:
+            clause = (oauth2_token.c.access_token == access_token)
+        elif refresh_token is not None:
+            clause = (oauth2_token.c.refresh_token == access_token)
+        else:
+            return None
+
+        with self.engine.begin() as connection:
+            row = connection.execute(select([oauth2_token]).where(clause).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Token(self, **row)
 
     def save_oauth2_token(self, token):
-        raise NotImplementedError
-
-    def get_oauth2_grant(self, client_id, code):
         with self.engine.begin() as connection:
-            return connection.execute(select([
+            result = connection.execute(oauth2_token.insert().values(token.columns))
+            token.id = result.lastrowid
+        return token
+
+    def clear_oauth2_tokens(self, client_id, user_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_token.delete().where(
+                and_(oauth2_token.c.client_id == client_id, oauth2_token.c.user_id == user_id)
+            ))
+
+    def delete_oauth2_token(self, token_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_auth_code.delete().where(
+                oauth2_token.c.id == token_id
+            ))
+
+    def get_oauth2_auth_code(self, client_id, code):
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
                 oauth2_auth_code
             ]).where(
                 and_(oauth2_auth_code.c.client_id == client_id, oauth2_auth_code.c.code == code)
             ).limit(1)).fetchone()
 
-    def save_oauth2_grant(self, grant):
-        raise NotImplementedError
+        if row is None:
+            return None
 
+        return OAuth2AuthCode(self, **row)
 
+    def save_oauth2_auth_code(self, grant):
+        with self.engine.begin() as connection:
+            result = connection.execute(oauth2_auth_code.insert().values(grant.columns))
+            grant.id = result.lastrowid
+        return grant
+
+    def delete_oauth2_auth_code(self, auth_code_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_auth_code.delete().where(
+                oauth2_auth_code.c.id == auth_code_id
+            ))

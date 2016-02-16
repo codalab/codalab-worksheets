@@ -252,7 +252,7 @@ user_verification = Table(
   sqlite_autoincrement=True,
 )
 
-## OAUTH2 TABLES ##
+# OAuth2 Tables
 
 oauth2_client = Table(
   'oauth2_client',
@@ -276,7 +276,7 @@ oauth2_token = Table(
   Column('scopes', Text, nullable=False),
   Column('access_token', String(255), nullable=False),
   Column('refresh_token', String(255), nullable=False),
-  Column('expires_at', DateTime, nullable=False),
+  Column('expires', DateTime, nullable=False),
   sqlite_autoincrement=True,
 )
 
@@ -288,6 +288,7 @@ oauth2_auth_code = Table(
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('code', String(100), nullable=False),
-  Column('expires_at', DateTime, nullable=False),
+  Column('expires', DateTime, nullable=False),
+  Column('redirect_uri', String(255), nullable=False),
   sqlite_autoincrement=True,
 )

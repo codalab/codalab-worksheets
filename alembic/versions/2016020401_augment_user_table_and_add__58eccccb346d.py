@@ -52,7 +52,7 @@ def upgrade():
         sa.Column('scopes', sa.Text, nullable=False),
         sa.Column('access_token', sa.String(255), nullable=False),
         sa.Column('refresh_token', sa.String(255), nullable=False),
-        sa.Column('expires_at', sa.DateTime, nullable=False),
+        sa.Column('expires', sa.DateTime, nullable=False),
         sqlite_autoincrement=True,
     )
 
@@ -63,7 +63,8 @@ def upgrade():
         sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
         sa.Column('scopes', sa.Text, nullable=False),
         sa.Column('code', sa.String(100), nullable=False),
-        sa.Column('expires_at', sa.DateTime, nullable=False),
+        sa.Column('expires', sa.DateTime, nullable=False),
+        sa.Column('redirect_uri', sa.String(255), nullable=False),
         sqlite_autoincrement=True,
     )
 
