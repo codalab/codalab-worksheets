@@ -82,6 +82,7 @@ class LocalOAuthHandler(threading.local):
     The bundle service should transition to using this when users and OAuth are completely
     migrated to the bundle service.
     """
+    pass
 
 
 class OAuthHandler(threading.local):
