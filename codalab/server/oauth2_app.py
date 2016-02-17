@@ -104,7 +104,7 @@ def create_oauth2_app():
     @oauth.token_handler
     def handle_token(): pass
 
-    @app.route('/token', ['POST'])
+    @app.route('/revoke', ['POST'])
     @oauth.revoke_handler
     def revoke_token(): pass
 
