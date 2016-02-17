@@ -156,7 +156,7 @@ class OAuth2Provider(object):
     def before_request(self, f):
         """Register functions to be invoked before accessing the resource.
         The function accepts nothing as parameters, but you can get
-        information from `Flask.request` object. It is usually useful
+        information from `Bottle.request` object. It is usually useful
         for setting limitation on the client request::
             @oauth.before_request
             def limit_client_request():

@@ -75,9 +75,18 @@ class MockAuthHandler(object):
         return self._user
 
 
+class LocalOAuthHandler(threading.local):
+    """
+    Authenticates the user against the local OAuth records.
+
+    The bundle service should transition to using this when users and OAuth are completely
+    migrated to the bundle service.
+    """
+
+
 class OAuthHandler(threading.local):
     '''
-    Handles user authentication with an OAuth authorization server.
+    Handles user authentication with a remote OAuth authorization server.
 
     Inherits from threading.local, which makes all instance attributes thread-local.
     When an OAuthHandler instance is used from a new thread, __init__ will be called

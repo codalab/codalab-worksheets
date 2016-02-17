@@ -247,10 +247,8 @@ class CodaLabManager(object):
         Every module should get its own logger instance:
             import logging
             log = logging.getLogger(__name__)
-        Since every CodaLab module is part of the 'codalab' package, this root logger
-        will be the root of all such logger instances.
         """
-        logger = logging.getLogger('codalab')
+        logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
 
         # create file handler which logs even debug messages

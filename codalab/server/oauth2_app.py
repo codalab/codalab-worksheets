@@ -13,12 +13,6 @@ def create_oauth2_app():
     app = Bottle()
     oauth = OAuth2Provider(app)
 
-    import logging
-    import sys
-    log = logging.getLogger('oauthlib')
-    log.addHandler(logging.StreamHandler(sys.stdout))
-    log.setLevel(logging.DEBUG)
-
     @oauth.clientgetter
     def get_client(client_id):
         return local.model.get_oauth2_client(client_id)
@@ -73,6 +67,27 @@ def create_oauth2_app():
             return user
         return None
 
+    @app.route('/login', ['GET', 'POST'])
+    def do_login():
+        pass
+        # username = request.forms.get('username')
+        # password = request.forms.get('password')
+        # if check_login(username, password):
+        #     response.set_cookie("account", username, secret='some-secret-key')
+        #     return template("<p>Welcome {{name}}! You are now logged in.</p>", name=username)
+        # else:
+        #     return "<p>Login failed.</p>"
+
+    def require_login(callback):
+        def wrapper(*args, **kwargs):
+            # check that username is still defined on cookie
+            # and check that cookie has not expired
+            return callback(*args, **kwargs)
+
+        return wrapper
+
+    # The other route is to write a Plugin and add it to the "apply" param to the authorize view function
+
     # @require_login
     @app.route('/authorize', ['GET', 'POST'])
     @oauth.authorize_handler
@@ -80,7 +95,6 @@ def create_oauth2_app():
         if request.method == 'GET':
             client_id = kwargs.get('client_id')
             client = local.model.get_oauth2_client(client_id)
-            kwargs['client'] = client
             return "<h1>authorizing for %s</h1>" % client_id
         elif request.method == 'POST':
             confirm = request.forms.get('confirm', 'no')
@@ -88,7 +102,10 @@ def create_oauth2_app():
 
     @app.route('/token', ['POST'])
     @oauth.token_handler
-    def handle_token():
-        return None
+    def handle_token(): pass
+
+    @app.route('/token', ['POST'])
+    @oauth.revoke_handler
+    def revoke_token(): pass
 
     return app
