@@ -96,10 +96,10 @@ class Bundle(ORMObject):
         def process_dep(dep):
             parent = parent_dict[dep.parent_uuid]
             # Compute an absolute target and check that the dependency exists.
-            if not parent.data_hash:
-                raise UsageError('Parent %s does not have data hash' % parent)
+            if not parent.uuid:
+                raise UsageError('Parent %s does not have uuid' % parent)
             target = path_util.safe_join(
-              bundle_store.get_location(parent.data_hash),
+              bundle_store.get_location(parent.uuid),
               dep.parent_path,
             )
             if not os.path.exists(target):
@@ -110,7 +110,7 @@ class Bundle(ORMObject):
                 # Create a symlink that points to the dependency's relative target.
                 target = path_util.safe_join(
                   (os.pardir if dep.child_path else ''),
-                  bundle_store.get_location(parent.data_hash, relative=True),
+                  bundle_store.get_location(parent.uuid, relative=True),
                   dep.parent_path,
                 )
             link_path = path_util.safe_join(dest_path, dep.child_path)
