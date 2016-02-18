@@ -10,6 +10,8 @@ the file system. When you're ready to perform the migration, run with the '-f' f
 
 import os
 import sys
+import shlex
+from subprocess import Popen
 sys.path.append('.')
 
 from codalab.lib.codalab_manager import CodaLabManager
@@ -40,32 +42,26 @@ for data_hash in data_hashes:
     # we need to make sure that we only perform renames if we map 1:1 UUID->Hash.
     rename_allowed = len(bundles_with_hash) <= 1
     for bundle in bundles_with_hash:
+        # Build the command to be executed in a subshell
         uuid = bundle.uuid
         copy_location = os.path.join(FINAL_LOCATION, uuid)
-
-        if rename_allowed:
-            print >> sys.stderr, 'Moving Bundle 0x%s with data_hash 0x%s to %s' % (uuid, data_hash, copy_location)
-        else:
-            print >> sys.stderr, 'Copying Bundle 0x%s with data_hash 0x%s to %s' % (uuid, data_hash, copy_location)
-
+        command = '%s %s %s' % ('mv' if rename_allowed else 'cp -a', orig_location, copy_location)
+        print command
         if not dry_run:
-            if rename_allowed:
-                path_util.rename(orig_location, copy_location)
-            else:
-                path_util.copy(orig_location, copy_location)
+            exec_str = shlex.split(command)
+            cmd = Popen(exec_str)
+            exit_code = cmd.wait()
+            if exit_code != 0:
+                print >> sys.stderr, 'command \'%s\' failed(status=%d), aborting...'
+                break
 
 
 dry_run_str = """
 This was a dry run, no migration occurred. To perform full migration, run again with `-f':
 
     %s -f
-""" % sys.argv[0]
+""".rstrip() % sys.argv[0]
 
-explain_str = """
-Migration complete! The directory %s has been left with your old data.
+explain_str = "Migration complete!"
 
-To delete the old data off of disk:
-
-    rm -rf %s
-%s""".lstrip() % (DATA_DIR, DATA_DIR, dry_run_str if dry_run else '')
-print >> sys.stderr, explain_str
+print >> sys.stderr, dry_run_str if dry_run else explain_str
