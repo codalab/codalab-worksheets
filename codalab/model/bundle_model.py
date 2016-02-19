@@ -1542,7 +1542,7 @@ class BundleModel(object):
             row = connection.execute(select([
                 oauth2_client
             ]).where(
-                oauth2_client.c.id == client_id
+                oauth2_client.c.client_id == client_id
             ).limit(1)).fetchone()
 
         if row is None:

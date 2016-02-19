@@ -14,11 +14,11 @@ from codalab.model.orm_object import ORMObject
 class OAuth2Client(object):
     def __init__(self, model, **kwargs):
         self.model = model
-
+        self.id = kwargs['id'] if 'id' in kwargs else None
         # Assume all clients are public for now
         self.client_type = 'public'
         try:
-            self.client_id = kwargs['id']
+            self.client_id = kwargs['client_id']
             self.client_secret = kwargs['secret']
             self.user_id = kwargs['user_id']
             self.allowed_grant_types = [kwargs['grant_type'], "refresh_token"]

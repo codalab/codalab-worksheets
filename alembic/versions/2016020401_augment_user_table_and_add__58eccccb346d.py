@@ -35,6 +35,7 @@ def upgrade():
     op.create_table(
         'oauth2_client',
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
+        sa.Column('client_id', sa.String(63), nullable=False),
         sa.Column('secret', sa.String(255), nullable=False),
         sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
         sa.Column('grant_type', sa.Enum("authorization_code", "password", "client_credentials", "refresh_token"), nullable=False),
@@ -43,11 +44,12 @@ def upgrade():
         sa.Column('redirect_uris', sa.Text, nullable=False),  # comma-separated list of allowed redirect URIs
         sqlite_autoincrement=True,
     )
+    op.create_unique_constraint('uix_1', 'oauth2_client', ['client_id'])
 
     op.create_table(
         'oauth2_token',
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
-        sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
+        sa.Column('client_id', sa.String(63), sa.ForeignKey("oauth2_client.client_id"), nullable=False),
         sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
         sa.Column('scopes', sa.Text, nullable=False),
         sa.Column('access_token', sa.String(255), unique=True),
@@ -59,7 +61,7 @@ def upgrade():
     op.create_table(
         'oauth2_auth_code',
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
-        sa.Column('client_id', sa.Integer, sa.ForeignKey("oauth2_client.id"), nullable=False),
+        sa.Column('client_id', sa.String(63), sa.ForeignKey("oauth2_client.client_id"), nullable=False),
         sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
         sa.Column('scopes', sa.Text, nullable=False),
         sa.Column('code', sa.String(100), nullable=False),
@@ -83,4 +85,5 @@ def downgrade():
     op.drop_column('user', 'date_joined')
     op.drop_table('oauth2_token')
     op.drop_table('oauth2_auth_code')
+    op.drop_constraint('uix_1', 'oauth2_client', type_='unique')
     op.drop_table('oauth2_client')

@@ -258,12 +258,14 @@ oauth2_client = Table(
   'oauth2_client',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
+  Column('client_id', String(63), nullable=False),
   Column('secret', String(255), nullable=False),
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('grant_type', Enum("authorization_code", "password", "client_credentials", "refresh_token"), nullable=False),
   Column('response_type', Enum("code", "token"), nullable=False),
   Column('scopes', Text, nullable=False),  # comma-separated list of allowed scopes
   Column('redirect_uris', Text, nullable=False),  # comma-separated list of allowed redirect URIs
+  UniqueConstraint('client_id', name='uix_1'),
   sqlite_autoincrement=True,
 )
 
@@ -271,7 +273,7 @@ oauth2_token = Table(
   'oauth2_token',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
-  Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
+  Column('client_id', String(63), ForeignKey(oauth2_client.c.client_id), nullable=False),
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('access_token', String(255), unique=True),
@@ -284,7 +286,7 @@ oauth2_auth_code = Table(
   'oauth2_auth_code',
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
-  Column('client_id', Integer, ForeignKey(oauth2_client.c.id), nullable=False),
+  Column('client_id', String(63), ForeignKey(oauth2_client.c.client_id), nullable=False),
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('scopes', Text, nullable=False),
   Column('code', String(100), nullable=False),
