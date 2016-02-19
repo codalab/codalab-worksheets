@@ -92,12 +92,12 @@ def authorize(*args, **kwargs):
         return confirm == 'yes'
 
 
-@oauth2_app.route('/token', ['POST'])
+@oauth2_app.post('/token')
 @oauth2_provider.token_handler
 def handle_token(): pass
 
 
-@oauth2_app.route('/revoke', ['POST'])
+@oauth2_app.post('/revoke')
 @oauth2_provider.revoke_handler
 def revoke_token(): pass
 

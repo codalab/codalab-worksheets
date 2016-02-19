@@ -3,10 +3,10 @@ Login views.
 """
 from urllib import urlencode
 
-from bottle import request, response, template, local, redirect, route, default_app
+from bottle import request, response, template, local, redirect, route, default_app, get, post
 
 
-@route('/logout', 'GET', name='logout')
+@get('/logout', name='logout')
 def do_logout():
     response.delete_cookie("user_id")
     redirect_uri = request.query.get('redirect_uri')
@@ -17,25 +17,27 @@ def do_logout():
         return "<p>Successfully signed out from CodaLab.</p>"
 
 
-@route('/login', ['GET', 'POST'], name='login')
-def do_login():
-    if request.method == 'GET':
-        return template("login", error=None)
-    elif request.method == 'POST':
-        redirect_uri = request.query.get('redirect_uri')
-        username = request.forms.get('username')
-        password = request.forms.get('password')
+@get('/login', name='login')
+def show_login():
+    return template("login", error=None)
 
-        user = local.model.get_user(username=username)
-        if user.check_password(password):
-            response.set_cookie("user_id", user.user_id, secret='some-secret-key', max_age=3600)  # FIXME generate and store in config, and set expiry date
-            if redirect_uri:
-                # FIXME Does this need to be safer?
-                return redirect(redirect_uri)
-            else:
-                return "<p>Successfully signed into CodaLab.</p>"
+
+@post('/login')
+def do_login():
+    redirect_uri = request.query.get('redirect_uri')
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+
+    user = local.model.get_user(username=username)
+    if user.check_password(password):
+        response.set_cookie("user_id", user.user_id, secret='some-secret-key', max_age=3600)  # FIXME generate and store in config, and set expiry date
+        if redirect_uri:
+            # FIXME Does this need to be safer?
+            return redirect(redirect_uri)
         else:
-            return template("login", redirect_uri=redirect_uri, error="Login/password did not match.")
+            return "<p>Successfully signed into CodaLab.</p>"
+    else:
+        return template("login", redirect_uri=redirect_uri, error="Login/password did not match.")
 
 
 # The other way to do this is to write a Plugin and add it to the "apply" param to the authorize view function
