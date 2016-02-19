@@ -1,5 +1,5 @@
 """
-Dependency is the ORMObject wrapper around rows of the dependency table.
+User objects representing rows from the user table
 """
 import base64
 import hashlib
