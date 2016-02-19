@@ -10,7 +10,7 @@ from codalab.lib import (
   canonicalize,
   spec_util,
 )
- 
+
 
 class CanonicalizeTest(unittest.TestCase):
   def test_get_bundle_uuid(self):
@@ -74,10 +74,8 @@ class CanonicalizeTest(unittest.TestCase):
     test_model = MockBundleModel()
 
     class MockBundleStore(object):
-      def get_temp_location(self, identifier):
-        return os.path.join('temp', identifier)
-      def get_location(self, data_hash):
-        tester.assertEqual(data_hash, test_data_hash)
+      def get_location(self, uuid):
+        tester.assertEqual(uuid, test_uuid)
         return test_location
     bundle_store = MockBundleStore()
 
