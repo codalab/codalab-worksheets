@@ -194,6 +194,7 @@ class Worker(object):
             failure_msg = 'No response from worker in %s' % formatting.duration_str(update_timeout)
             status = {'state': State.FAILED, 'success': False, 'bundle': bundle, 'failure_message': failure_msg}
             self.update_running_bundle(status)
+        return len(failed_bundles) > 0
 
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.
