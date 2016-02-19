@@ -36,6 +36,7 @@ def upgrade():
         'oauth2_client',
         sa.Column('id', sa.Integer, primary_key=True, nullable=False),
         sa.Column('client_id', sa.String(63), nullable=False),
+        sa.Column('name', sa.String(63), nullable=True),
         sa.Column('secret', sa.String(255), nullable=False),
         sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
         sa.Column('grant_type', sa.Enum("authorization_code", "password", "client_credentials", "refresh_token"), nullable=False),

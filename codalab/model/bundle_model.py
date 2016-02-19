@@ -1460,14 +1460,16 @@ class BundleModel(object):
         """
         Get user.
 
-        :param username: username id of user to fetch
+        :param user_id: user id of user to fetch
+        :param username: username or email of user to fetch
         :return: User object, or None if no matching user.
         """
         clauses = []
         if user_id is not None:
             clauses.append(cl_user.c.user_id == user_id)
         if username is not None:
-            clauses.append(cl_user.c.user_name == username)
+            # TODO(sckoo): Should we add an index on the email column?
+            clauses.append(or_(cl_user.c.user_name == username, cl_user.c.email == username))
 
         with self.engine.begin() as connection:
             row = connection.execute(select([

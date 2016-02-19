@@ -2,8 +2,9 @@
 Bottle app for the OAuth2 authorization and token endpoints.
 """
 from datetime import datetime, timedelta
+from urllib import urlencode
 
-from bottle import Bottle, request, template, local
+from bottle import Bottle, request, response, template, local, redirect
 
 from codalab.server.oauth2_provider import OAuth2Provider
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Token
@@ -67,35 +68,53 @@ def create_oauth2_app():
             return user
         return None
 
-    @app.route('/login', ['GET', 'POST'])
+    @app.route('/login', ['GET', 'POST'], name='login')
     def do_login():
-        pass
-        # username = request.forms.get('username')
-        # password = request.forms.get('password')
-        # if check_login(username, password):
-        #     response.set_cookie("account", username, secret='some-secret-key')
-        #     return template("<p>Welcome {{name}}! You are now logged in.</p>", name=username)
-        # else:
-        #     return "<p>Login failed.</p>"
+        if request.method == 'GET':
+            return template("login", error=None)
+        elif request.method == 'POST':
+            redirect_uri = request.query.get('redirect_uri')
+            username = request.forms.get('username')
+            password = request.forms.get('password')
+
+            user = local.model.get_user(username=username)
+            if user.check_password(password):
+                response.set_cookie("user_id", user.user_id, secret='some-secret-key', max_age=3600)  # FIXME generate and store in config, and set expiry date
+                if redirect_uri:
+                    # FIXME Does this need to be safer?
+                    return redirect(redirect_uri)
+                else:
+                    return "<p>Successfully signed into CodaLab.</p>"
+            else:
+                return template("login", redirect_uri=redirect_uri, error="Login/password did not match.")
 
     def require_login(callback):
         def wrapper(*args, **kwargs):
             # check that username is still defined on cookie
             # and check that cookie has not expired
+            user_id = request.get_cookie("user_id", secret='some-secret-key')
+            if user_id:
+                local.user = local.model.get_user(user_id=user_id)
+            else:
+                # TODO pass all params?
+                # Make sure X-Forwarded-Host is set properly if behind reverse-proxy to use request.url
+                redirect("%s?%s" % (app.get_url('login'), urlencode({"redirect_uri": request.url})))
+
             return callback(*args, **kwargs)
 
         return wrapper
 
     # The other route is to write a Plugin and add it to the "apply" param to the authorize view function
 
-    # @require_login
     @app.route('/authorize', ['GET', 'POST'])
+    @require_login
     @oauth.authorize_handler
     def authorize(*args, **kwargs):
         if request.method == 'GET':
             client_id = kwargs.get('client_id')
+            redirect_uri = kwargs.get('redirect_uri')
             client = local.model.get_oauth2_client(client_id)
-            return "<h1>authorizing for %s</h1>" % client_id
+            return template("oauth2_authorize", client=client, redirect_uri=redirect_uri)
         elif request.method == 'POST':
             confirm = request.forms.get('confirm', 'no')
             return confirm == 'yes'

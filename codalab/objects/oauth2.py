@@ -8,7 +8,6 @@ They must implement the interfaces defined here:
 https://flask-oauthlib.readthedocs.org/en/latest/oauth2.html
 """
 from codalab.common import UsageError
-from codalab.model.orm_object import ORMObject
 
 
 class OAuth2Client(object):
@@ -20,6 +19,7 @@ class OAuth2Client(object):
         try:
             self.client_id = kwargs['client_id']
             self.client_secret = kwargs['secret']
+            self.name = kwargs['name']
             self.user_id = kwargs['user_id']
             self.allowed_grant_types = [kwargs['grant_type'], "refresh_token"]
             self.allowed_response_types = [kwargs['response_type']]
