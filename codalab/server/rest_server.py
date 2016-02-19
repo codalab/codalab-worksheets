@@ -1,3 +1,6 @@
+import time
+from httplib import BAD_REQUEST
+
 from bottle import (
     abort,
     install,
@@ -6,12 +9,6 @@ from bottle import (
     run,
     mount,
 )
-from httplib import BAD_REQUEST
-from oauthlib.oauth2 import LegacyApplicationServer
-import time
-
-import codalab.rest.example
-from codalab.server.oauth2_app import create_oauth2_app
 
 
 class SaveEnvironmentPlugin(object):
@@ -87,8 +84,12 @@ def run_rest_server(manager, debug, num_workers):
     install(CheckJsonPlugin())
     install(LoggingPlugin())
 
+    # Import views
+    import codalab.rest.login
+    import codalab.rest.users
+    from codalab.rest.oauth2 import oauth2_app
+
     # Mount OAuth2 endpoints
-    oauth2_app = create_oauth2_app()
     oauth2_app.install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store()))
     mount('/oauth2/', oauth2_app)
 

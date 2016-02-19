@@ -265,8 +265,8 @@ class OAuthHandler(threading.local):
         return self._user
 
 
-class AuthenticationPlugin(object):
-    """Bottle plugin that ensures that the user is authenticated."""
+class AuthorizationPlugin(object):
+    """Bottle plugin that ensures that the client is authorized."""
     api = 2
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
@@ -278,4 +278,6 @@ class AuthenticationPlugin(object):
             return callback(*args, **kwargs)
         return wrapper
 
-authentication_plugin = AuthenticationPlugin()
+
+
+authorization_plugin = AuthorizationPlugin()

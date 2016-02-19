@@ -43,6 +43,7 @@ from codalab.lib.server_util import cached_property, import_string, extract_para
 
 log = logging.getLogger(__name__)
 
+
 class OAuth2Provider(object):
     """Provide secure services using OAuth2.
     The server should provide an authorize handler and a token handler,
@@ -55,7 +56,7 @@ class OAuth2Provider(object):
         oauth = OAuth2Provider()
         def create_app():
             app = Bottle()
-            oauth.init_app(app)
+            oauth.app = app
             return app
     Configure :meth:`tokengetter` and :meth:`tokensetter` to get and
     set tokens. Configure :meth:`grantgetter` and :meth:`grantsetter`

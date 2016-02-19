@@ -1,9 +1,9 @@
 from bottle import get, post, request
 from codalab.lib import spec_util
-from codalab.server.auth import authentication_plugin
+from codalab.server.auth import authorization_plugin
 
 
-@get('/example/stream_file', apply=[authentication_plugin])
+@get('/example/stream_file', apply=[authorization_plugin])
 def stream_file():
     # Stream a file back.
     return open(__file__, 'rb')
