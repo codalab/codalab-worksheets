@@ -8,10 +8,9 @@ from codalab.lib.bundle_store import BundleStore
 
 class BundleStoreTest(unittest.TestCase):
     @mock.patch('codalab.lib.bundle_store.tempfile')
-    @mock.patch('codalab.lib.bundle_store.uuid')
     @mock.patch('codalab.lib.bundle_store.path_util')
     @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
-    def test_upload(self, mock_os, mock_path_util, mock_uuid, mock_tempfile):
+    def test_upload(self, mock_os, mock_path_util, mock_tempfile):
         '''
         Tries to upload a bundle: should copy bundle into temp, hash and move
         it in to the data directory.
@@ -82,12 +81,15 @@ class BundleStoreTest(unittest.TestCase):
         ### Main: upload!
 
         contents = 'contents'
-        final_path = 'mock_root/data/0x12345'
+        test_uuid1 = '0xdeadbeef'
+        test_uuid2 = '0xaaaaaaaa'
+        final_path1 = 'mock_root/bundles/%s' % test_uuid1
+        final_path2 = 'mock_root/bundles/%s' % test_uuid2
         global_paths.add(contents)
 
-        bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=False)
-        self.assertEquals(global_paths, set([contents, final_path]))
+        bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=False, uuid=test_uuid1)
+        self.assertEquals(global_paths, set([contents, final_path1]))
 
-        bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=True)
+        bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=True, uuid=test_uuid2)
         self.assertNotIn(contents, global_paths)  # File is not there
-        self.assertEquals(global_paths, set([final_path]))
+        self.assertEquals(global_paths, set([final_path1, final_path2]))
