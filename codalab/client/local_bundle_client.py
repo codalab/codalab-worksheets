@@ -1374,9 +1374,18 @@ class LocalBundleClient(BundleClient):
         return self.model.get_chat_log_info(query_info)
 
     def get_faq(self):
+        '''
+        Return a list of FAQ item, each of the following format:
+        '0': {
+            'question': 'how can I upload / add a bundle?'
+            'answer': {
+                'response': 'You can do cl upload or click Update Bundle.',
+                'command': 'cl upload <file_path>'
+            }
+        }
+        '''
         file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
         with open(file_path, 'r') as stream:
             content = yaml.load(stream)
-            print content
             return content
         
