@@ -1649,13 +1649,12 @@ class BundleCLI(object):
         help='Create a new worksheet.',
         arguments=(
             Commands.Argument('name', help='Name of worksheet (%s).' % spec_util.NAME_REGEX.pattern),
-            Commands.Argument('-p', '--ensure-exists', help='Do not throw an error if the worksheet already exists.', action='store_true'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_new_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name, args.ensure_exists)
+        uuid = client.new_worksheet(args.name)
         print >>self.stdout, uuid
         if self.headless:
             return ui_actions.serialize([
