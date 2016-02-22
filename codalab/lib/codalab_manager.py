@@ -400,7 +400,6 @@ class CodaLabManager(object):
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
-        print "Client from address %s" % address
         if address in self.clients:
             return self.clients[address]
         # if local force mockauth or if local server use correct auth

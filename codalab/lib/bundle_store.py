@@ -74,19 +74,6 @@ class BaseBundleStore(object):
         """
         pass
 
-    @require_disks
-    def get_bundle_temp_location(self, identifer):
-        """
-        Returns the temp location for the bundle with the given identifier.
-        """
-        pass
-
-    def make_temp_bundle_location(self, identifer):
-        """
-        Make temporary location for bundle with the given identifier.
-        """
-        pass
-
     def reset(self):
         """
         Clears the bundle store, resetting it to an empty state.
@@ -146,66 +133,6 @@ class SingleDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         """
         return os.path.join(self.data, data_hash)
 
-    def cleanup(self, model, data_hash, except_bundle_uuids, dry_run):
-        """
-        If the given data hash is not needed by any bundle (not in
-        except_bundle_uuids), delete the data.
-        """
-        bundles = model.batch_get_bundles(data_hash=data_hash)
-        if all(bundle.uuid in except_bundle_uuids for bundle in bundles):
-            absolute_path = self.get_bundle_location(data_hash)
-            print >> sys.stderr, "cleanup: data %s" % absolute_path
-            if not dry_run:
-                path_util.remove(absolute_path)
-
-    def full_cleanup(self, model, dry_run):
-        """
-        For each data hash in the store, check if it should be garbage collected and
-        delete its data if so. In addition, delete any old temporary files.
-        """
-        disks, _ = path_util.ls(self.mdisk)
-        old_data_files = reduce(lambda x,y: x+y, \
-                [self.list_old_files(os.path.join(self.mdisk, d, MultiDiskBundleStore.DATA_SUBDIRECTORY),
-                                     self.DATA_CLEANUP_TIME) \
-                                             for d in disks
-                ])
-        for data_hash in old_data_files:
-            self.cleanup(model, data_hash, [], dry_run)
-        old_temp_files = reduce(lambda x,y: x+y, \
-                [self.list_old_files(os.path.join(self.mdisk, d, MultiDiskBundleStore.TEMP_SUBDIRECTORY), self.TEMP_CLEANUP_TIME) \
-                for d in disks])
-        for temp_file in old_temp_files:
-            temp_path = os.path.join(self.temp, temp_file)
-            print >> sys.stderr, "cleanup: temp %s" % temp_path
-            if not dry_run:
-                path_util.remove(temp_path)
-
-    def list_old_files(self, path, cleanup_time):
-        """
-        Returns a list of old files that have not been modified since `cleanup_time` seconds ago.
-        """
-        cleanup_cutoff = time.time() - cleanup_time
-        result = []
-        for entry in os.listdir(path):
-            absolute_path = os.path.join(path, entry)
-            if path_util.getmtime(absolute_path) < cleanup_cutoff:
-                result.append(entry)
-        return result
-
-    @require_disks
-    def get_bundle_location(self, data_hash):
-        """
-        get_bundle_location: Perform a lookup in the hash ring to determine which disk the lookup is performed on.
-        """
-        disk = self.ring.get_node(data_hash)
-        return os.path.join(self.mdisk, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, data_hash)
-
-    def get_bundle_temp_location(self, identifier):
-        """
-        Returns the on-disk location of the temporary bundle directory.
-        """
-        return os.path.join(self.temp, identifier)
-
     def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, uuid):
         """
         |sources|: specifies the locations of the contents to upload.  Each element is either a URL or a local path.
@@ -227,186 +154,12 @@ class SingleDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         Return a (data_hash, metadata) pair, where the metadata is a dict mapping
         keys to precomputed statistics about the new data directory.
         """
-        to_delete = []
-
-        # Create temporary directory as a staging area and put everything there.
-        with path_util.mkdtemp('-bundle_store_upload', dir=self.temp) as temp_path:
-            temp_subpaths = []
-            for source in sources:
-                # Where to save |source| to (might change this value if we unpack).
-                temp_subpath = os.path.join(temp_path, os.path.basename(source))
-                if remove_sources:
-                    to_delete.append(source)
-                source_unpack = unpack and zip_util.path_is_archive(source)
-
-                if path_util.path_is_url(source):
-                    # Download the URL.
-                    print_util.open_line('SingleDiskBundleStore.upload: downloading %s to %s' % (source, temp_path))
-                    if git:
-                        file_util.git_clone(source, temp_subpath)
-                    else:
-                        file_util.download_url(source, temp_subpath, print_status=True)
-                        if source_unpack:
-                            zip_util.unpack(temp_subpath, zip_util.strip_archive_ext(temp_subpath))
-                            path_util.remove(temp_subpath)
-                            temp_subpath = zip_util.strip_archive_ext(temp_subpath)
-                    print_util.clear_line()
-                else:
-                    # Copy the local path.
-                    source_path = path_util.normalize(source)
-                    path_util.check_isvalid(source_path, 'upload')
-
-                    # Recursively copy the directory into a new BundleStore temp directory.
-                    print_util.open_line('SingleDiskBundleStore.upload: %s => %s' % (source_path, temp_subpath))
-                    if source_unpack:
-                        zip_util.unpack(source_path, zip_util.strip_archive_ext(temp_subpath))
-                        temp_subpath = zip_util.strip_archive_ext(temp_subpath)
-                    else:
-                        if remove_sources:
-                            path_util.rename(source_path, temp_subpath)
-                        else:
-                            path_util.copy(source_path, temp_subpath, follow_symlinks=follow_symlinks,
-                                           exclude_patterns=exclude_patterns)
-                    print_util.clear_line()
-
-                temp_subpaths.append(temp_subpath)
-
-            # If exactly one source, then upload that directly.
-            if len(temp_subpaths) == 1:
-                temp_path = temp_subpaths[0]
-
-            # Multiplex between uploading a directory and uploading a file here.
-            # All other path_util calls will use these lists of directories and files.
-            if os.path.isdir(temp_path):
-                dirs_and_files = path_util.recursive_ls(temp_path)
-            else:
-                dirs_and_files = ([], [temp_path])
-
-            # Hash the contents of the temporary directory, and then if there is no
-            # data with this hash value, move this directory into the data directory.
-            print_util.open_line('SingleDiskBundleStore.upload: hashing %s' % temp_path)
-            data_hash = '0x%s' % (path_util.hash_directory(temp_path, dirs_and_files),)
-            print_util.clear_line()
-            print_util.open_line('SingleDiskBundleStore.upload: computing size of %s' % temp_path)
-            data_size = path_util.get_size(temp_path, dirs_and_files)
-            print_util.clear_line()
-            final_path = os.path.join(self.data, data_hash)
-            if not os.path.exists(final_path):
-                print >> sys.stderr, 'SingleDiskBundleStore.upload: moving %s to %s' % (temp_path, final_path)
-                path_util.rename(temp_path, final_path)
-
-        # Delete paths.
-        for path in to_delete:
-            if os.path.exists(path):
-                path_util.remove(path)
-
-        # After this operation there should always be a directory at the final path.
-        assert (os.path.lexists(final_path)), 'Uploaded to %s failed!' % (final_path,)
-        return (data_hash, {'data_size': data_size})
-
-    def cleanup(self, model, data_hash, except_bundle_uuids, dry_run):
-        """
-        If the given data hash is not needed by any bundle (not in
-        except_bundle_uuids), delete the data.
-        """
-        bundles = model.batch_get_bundles(data_hash=data_hash)
-        if all(bundle.uuid in except_bundle_uuids for bundle in bundles):
-            absolute_path = self.get_bundle_location(data_hash)
-            print >> sys.stderr, "cleanup: data %s" % absolute_path
-            if not dry_run:
-                path_util.remove(absolute_path)
-
-    def full_cleanup(self, model, dry_run):
-        """
-        For each data hash in the store, check if it should be garbage collected and
-        delete its data if so. In addition, delete any old temporary files.
-        """
-        old_data_files = self.list_old_files(self.data, self.DATA_CLEANUP_TIME)
-        for data_hash in old_data_files:
-            self.cleanup(model, data_hash, [], dry_run)
-        old_temp_files = self.list_old_files(self.temp, self.TEMP_CLEANUP_TIME)
-        for temp_file in old_temp_files:
-            temp_path = os.path.join(self.temp, temp_file)
-            print >> sys.stderr, "cleanup: temp %s" % temp_path
-            if not dry_run:
-                path_util.remove(temp_path)
-
-    def list_old_files(self, path, cleanup_time):
-        """
-        Returns a list of old files that have not been modified since `cleanup_time` seconds ago.
-        """
-        cleanup_cutoff = time.time() - cleanup_time
-        result = []
-        for entry in os.listdir(path):
-            absolute_path = os.path.join(path, entry)
-            if path_util.getmtime(absolute_path) < cleanup_cutoff:
-                result.append(entry)
-        return result
-
-class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
-    """
-    A MultiDiskBundleStore is responsible for taking a set of locations and load-balancing the placement of
-    bundle data between the locations. It accomplishes this goal using a consistent hash ring, a technique
-    discovered by Karger et al. in 1997.
-    """
-
-    # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
-    DATA_SUBDIRECTORY = 'mbundles'
-    TEMP_SUBDIRECTORY = 'mtemp'
-    MISC_TEMP_SUBDIRECTORY = 'mtemp'
-
-    def __init__(self, codalab_home):
-        self.codalab_home = path_util.normalize(codalab_home)
-
-        self.mdisk = os.path.join(self.codalab_home, 'mdisk')
-        self.mtemp = os.path.join(self.codalab_home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
-
-        # Perform initialization first to ensure that directories will be populated
-        super(MultiDiskBundleStore, self).__init__()
-        nodes, _ = path_util.ls(self.mdisk)
-
-        self.ring = HashRing(nodes)
-        super(MultiDiskBundleStore, self).__init__()
-
-    def get_bundle_location(self, uuid):
-        """
-        get_location: Perform a lookup in the hash ring to determine which disk the bundle is stored on.
-        """
-        disk = self.ring.get_node(uuid)
-        return os.path.join(disk, uuid)
-
-    @require_disks
-    def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, uuid):
-        """
-        |sources|: specifies the locations of the contents to upload.  Each element is either a URL or a local path.
-        |follow_symlinks|: for local path(s), whether to follow (resolve) symlinks
-        |exclude_patterns|: for local path(s), don't upload these patterns (e.g., *.o)
-        |git|: for URL, whether |source| is a git repo to clone.
-        |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
-        |remove_sources|: remove |sources|.
-
-        If |sources| contains one source, then the bundle contents will be that source.
-        Otherwise, the bundle contents will be a directory with each of the sources.
-        Exceptions:
-        - If |git|, then each source is replaced with the result of running 'git clone |source|'
-        - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
-
-        Install the contents of the directory at |source| into
-        DATA_SUBDIRECTORY in a subdirectory named by a hash of the contents.
-
-        Return a (data_hash, metadata) pair, where the metadata is a dict mapping
-        keys to precomputed statistics about the new data directory.
-        """
-        print "Doing an upload! %s" % sources
         to_delete = []
 
         # If just a single file, set the final path to be equal to that file
         single_path = len(sources) == 1
 
-        # Determine which disk this will go on
-        disk_choice = self.ring.get_node(uuid)
-
-        final_path = os.path.join(disk_choice, self.DATA_SUBDIRECTORY, uuid)
+        final_path = os.path.join(self.data, uuid)
         if os.path.exists(final_path):
             raise UsageError('Path %s already present in bundle store' % final_path)
         # Only make if not there
@@ -476,13 +229,188 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         print_util.open_line('BundleStore.upload: computing size of %s' % final_path)
         data_size = path_util.get_size(final_path, dirs_and_files)
         print_util.clear_line()
-        final_path = os.path.join(self.data, data_hash)
+
+        # Delete paths.
+        for path in to_delete:
+            if os.path.exists(path):
+                path_util.remove(path)
+
+        # After this operation there should always be a directory at the final path.
+        assert (os.path.lexists(final_path)), 'Uploaded to %s failed!' % (final_path,)
+        return (data_hash, {'data_size': data_size})
+
+
+    def cleanup(self, model, data_hash, except_bundle_uuids, dry_run):
+        """
+        If the given data hash is not needed by any bundle (not in
+        except_bundle_uuids), delete the data.
+        """
+        bundles = model.batch_get_bundles(data_hash=data_hash)
+        if all(bundle.uuid in except_bundle_uuids for bundle in bundles):
+            absolute_path = self.get_bundle_location(data_hash)
+            print >> sys.stderr, "cleanup: data %s" % absolute_path
+            if not dry_run:
+                path_util.remove(absolute_path)
+
+    def full_cleanup(self, model, dry_run):
+        """
+        For each data hash in the store, check if it should be garbage collected and
+        delete its data if so. In addition, delete any old temporary files.
+        """
+        old_data_files = self.list_old_files(self.data, self.DATA_CLEANUP_TIME)
+        for data_hash in old_data_files:
+            self.cleanup(model, data_hash, [], dry_run)
+        old_temp_files = self.list_old_files(self.temp, self.TEMP_CLEANUP_TIME)
+        for temp_file in old_temp_files:
+            temp_path = os.path.join(self.temp, temp_file)
+            print >> sys.stderr, "cleanup: temp %s" % temp_path
+            if not dry_run:
+                path_util.remove(temp_path)
+
+    def list_old_files(self, path, cleanup_time):
+        """
+        Returns a list of old files that have not been modified since `cleanup_time` seconds ago.
+        """
+        cleanup_cutoff = time.time() - cleanup_time
+        result = []
+        for entry in os.listdir(path):
+            absolute_path = os.path.join(path, entry)
+            if path_util.getmtime(absolute_path) < cleanup_cutoff:
+                result.append(entry)
+        return result
+
+class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
+    """
+    A MultiDiskBundleStore is responsible for taking a set of locations and load-balancing the placement of
+    bundle data between the locations. It accomplishes this goal using a consistent hash ring, a technique
+    discovered by Karger et al. in 1997.
+    """
+
+    # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
+    DATA_SUBDIRECTORY = 'mbundles'
+    TEMP_SUBDIRECTORY = 'mtemp'
+    MISC_TEMP_SUBDIRECTORY = 'mtemp'
+
+    def __init__(self, codalab_home):
+        self.codalab_home = path_util.normalize(codalab_home)
+
+        self.mdisk = os.path.join(self.codalab_home, 'mdisk')
+        self.mtemp = os.path.join(self.codalab_home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
+
+        # Perform initialization first to ensure that directories will be populated
+        super(MultiDiskBundleStore, self).__init__()
+        nodes, _ = path_util.ls(self.mdisk)
+
+        self.ring = HashRing(nodes)
+        super(MultiDiskBundleStore, self).__init__()
+
+    def get_bundle_location(self, uuid):
+        """
+        get_bundle_location: Perform a lookup in the hash ring to determine which disk the bundle is stored on.
+        """
+        disk = self.ring.get_node(uuid)
+        return os.path.join(self.mdisk, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
+
+    @require_disks
+    def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, uuid):
+        """
+        |sources|: specifies the locations of the contents to upload.  Each element is either a URL or a local path.
+        |follow_symlinks|: for local path(s), whether to follow (resolve) symlinks
+        |exclude_patterns|: for local path(s), don't upload these patterns (e.g., *.o)
+        |git|: for URL, whether |source| is a git repo to clone.
+        |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
+        |remove_sources|: remove |sources|.
+
+        If |sources| contains one source, then the bundle contents will be that source.
+        Otherwise, the bundle contents will be a directory with each of the sources.
+        Exceptions:
+        - If |git|, then each source is replaced with the result of running 'git clone |source|'
+        - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
+
+        Install the contents of the directory at |source| into
+        DATA_SUBDIRECTORY in a subdirectory named by a hash of the contents.
+
+        Return a (data_hash, metadata) pair, where the metadata is a dict mapping
+        keys to precomputed statistics about the new data directory.
+        """
+        to_delete = []
+
+        # If just a single file, set the final path to be equal to that file
+        single_path = len(sources) == 1
+
+        # Determine which disk this will go on
+        disk_choice = self.ring.get_node(uuid)
+
+        final_path = os.path.join(self.mdisk, disk_choice, self.DATA_SUBDIRECTORY, uuid)
         if os.path.exists(final_path):
-            # Already exists, just delete it
-            path_util.remove(temp_path)
+            raise UsageError('Path %s already present in bundle store' % final_path)
+        # Only make if not there
+        elif not single_path:
+            path_util.make_directory(final_path)
+
+        # Paths to resources
+        subpaths = []
+
+        for source in sources:
+            # Where to save |source| to (might change this value if we unpack).
+            if not single_path:
+                subpath = os.path.join(final_path, os.path.basename(source))
+            else:
+                subpath = final_path
+
+            if remove_sources:
+                to_delete.append(source)
+            source_unpack = unpack and zip_util.path_is_archive(source)
+
+            if source_unpack:
+                # Load the file into the bundle store under the given path
+                subpath += zip_util.get_archive_ext(source)
+
+            if path_util.path_is_url(source):
+                # Download the URL.
+                print_util.open_line('BundleStore.upload: downloading %s to %s' % (source, subpath))
+                if git:
+                    file_util.git_clone(source, subpath)
+                else:
+                    file_util.download_url(source, subpath, print_status=True)
+                    if source_unpack:
+                        zip_util.unpack(subpath, zip_util.strip_archive_ext(subpath))
+                        path_util.remove(subpath)
+                        subpath = zip_util.strip_archive_ext(subpath)
+                print_util.clear_line()
+            else:
+                # Copy the local path.
+                source_path = path_util.normalize(source)
+                path_util.check_isvalid(source_path, 'upload')
+
+                # Recursively copy the directory into the BundleStore
+                print_util.open_line('BundleStore.upload: %s => %s' % (source_path, subpath))
+                if source_unpack:
+                    zip_util.unpack(source_path, zip_util.strip_archive_ext(subpath))
+                    subpath = zip_util.strip_archive_ext(subpath)
+                else:
+                    if remove_sources:
+                        path_util.rename(source_path, subpath)
+                    else:
+                        path_util.copy(source_path, subpath, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
+                print_util.clear_line()
+
+            subpaths.append(subpath)
+
+        dirs_and_files = None
+        if os.path.isdir(final_path):
+            dirs_and_files = path_util.recursive_ls(final_path)
         else:
-            print >> sys.stderr, 'BundleStore.upload: moving %s to %s' % (temp_path, final_path)
-            path_util.rename(temp_path, final_path)
+            dirs_and_files = [], [final_path]
+
+        # Hash the contents of the bundle directory. Update the data_hash attribute
+        # for the bundle
+        print_util.open_line('BundleStore.upload: hashing %s' % final_path)
+        data_hash = '0x%s' % (path_util.hash_directory(final_path, dirs_and_files))
+        print_util.clear_line()
+        print_util.open_line('BundleStore.upload: computing size of %s' % final_path)
+        data_size = path_util.get_size(final_path, dirs_and_files)
+        print_util.clear_line()
 
         # Delete paths.
         for path in to_delete:
@@ -499,14 +427,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         """
         path_util.make_directory(self.mdisk)
         path_util.make_directory(self.mtemp)
-
-    def get_bundle_temp_location(self, identifer):
-        disk = self.ring.get_node(identifer)
-        return os.path.join(disk, identifer)
-
-    def make_temp_bundle_location(self, identifier):
-        path_util.make_directory(self.get_bundle_temp_location(identifier))
-
 
     def add_disk(self, target, new_disk_name):
         """

@@ -7,10 +7,9 @@ import unittest
 from codalab.lib.bundle_store import SingleDiskBundleStore
 
 class BundleStoreTest(unittest.TestCase):
-    @mock.patch('codalab.lib.bundle_store.tempfile')
     @mock.patch('codalab.lib.bundle_store.path_util')
     @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
-    def test_upload(self, mock_os, mock_path_util, mock_tempfile):
+    def test_upload(self, mock_os, mock_path_util):
         '''
         Tries to upload a bundle: should copy bundle into temp, hash and move
         it in to the data directory.
@@ -37,14 +36,6 @@ class BundleStoreTest(unittest.TestCase):
         def exists(path):
             return path in global_paths
         mock_os.path.exists = exists
-
-        ### tempfile
-
-        def mkdtemp(suffix):
-            path = os.path.join(bundle_store.temp, 'tmp12345' + suffix)
-            global_paths.add(path)
-            return path
-        mock_tempfile.mkdtemp = mkdtemp
 
         ### path_util
 

@@ -74,7 +74,7 @@ class CanonicalizeTest(unittest.TestCase):
     test_model = MockBundleModel()
 
     class MockBundleStore(object):
-      def get_location(self, uuid):
+      def get_bundle_location(self, uuid):
         tester.assertEqual(uuid, test_uuid)
         return test_location
     bundle_store = MockBundleStore()
