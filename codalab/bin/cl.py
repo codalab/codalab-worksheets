@@ -71,7 +71,7 @@ def do_server_command(bundle_cli, args):
 
 
 @Commands.command(
-    'rest_server',
+    'rest-server',
     help='Start an instance of a CodaLab bundle service with a REST API.',
     arguments=(
         Commands.Argument(
