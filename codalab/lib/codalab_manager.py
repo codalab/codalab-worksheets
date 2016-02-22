@@ -255,7 +255,7 @@ class CodaLabManager(object):
         # temporary directory.  The default /tmp generally doesn't have enough
         # space.
         # TODO: Fix this, this is bad
-        # tempfile.tempdir = os.path.join(home, SingleDiskBundleStore.TEMP_SUBDIRECTORY)
+        tempfile.tempdir = os.path.join(home, SingleDiskBundleStore.TEMP_SUBDIRECTORY)
         return home
 
     @cached
@@ -400,6 +400,7 @@ class CodaLabManager(object):
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
+        print "Client from address %s" % address
         if address in self.clients:
             return self.clients[address]
         # if local force mockauth or if local server use correct auth
