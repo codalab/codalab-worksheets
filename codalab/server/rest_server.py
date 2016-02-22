@@ -90,6 +90,7 @@ def run_rest_server(manager, debug, num_workers):
     import codalab.rest.login
     import codalab.rest.users
     from codalab.rest.oauth2 import oauth2_app
+    import codalab.rest.example
 
     # Mount OAuth2 endpoints
     oauth2_app.install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store(), manager.config))
