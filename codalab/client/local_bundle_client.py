@@ -1290,6 +1290,8 @@ class LocalBundleClient(BundleClient):
         else:
             raise PermissionError('Only the root user has permissions to edit users.')
 
+    def is_root_user(self, user_id):
+        return user_id == self.model.root_user_id
 
     @staticmethod
     def _check_worksheet_not_frozen(worksheet):
@@ -1373,6 +1375,7 @@ class LocalBundleClient(BundleClient):
         '''
         return self.model.get_chat_log_info(query_info)
 
+    # methods related to faq
     def get_faq(self):
         '''
         Return a list of FAQ item, each of the following format:
