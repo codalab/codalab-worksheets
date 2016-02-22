@@ -172,7 +172,7 @@ class LocalBundleClient(BundleClient):
         If not, create a new worksheet if the specified worksheet is home_worksheet or dashboard. Otherwise, throw an error.
         """
         if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-                worksheet_spec = spec_util.home_worksheet(self._current_user_name())
+            worksheet_spec = spec_util.home_worksheet(self._current_user_name())
         worksheet_uuid = self.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec)
         if worksheet_uuid != None:
             return worksheet_uuid
