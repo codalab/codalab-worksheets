@@ -33,7 +33,7 @@ def set_grant(client_id, code, _request, *args, **kwargs):
         code=code['code'],
         redirect_uri=_request.redirect_uri,
         scopes=','.join(_request.scopes),
-        user_id=1337,  # FIXME: get current authenticated user
+        user_id=local.user.user_id,
         expires=expires
     )
     return local.model.save_oauth2_auth_code(grant)

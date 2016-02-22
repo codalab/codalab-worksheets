@@ -38,7 +38,7 @@ def upgrade():
         sa.Column('client_id', sa.String(63), nullable=False),
         sa.Column('name', sa.String(63), nullable=True),
         sa.Column('secret', sa.String(255), nullable=False),
-        sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=False),
+        sa.Column('user_id', sa.String(63), sa.ForeignKey("user.user_id"), nullable=True),
         sa.Column('grant_type', sa.Enum("authorization_code", "password", "client_credentials", "refresh_token"), nullable=False),
         sa.Column('response_type', sa.Enum("code", "token"), nullable=False),
         sa.Column('scopes', sa.Text, nullable=False),  # comma-separated list of allowed scopes

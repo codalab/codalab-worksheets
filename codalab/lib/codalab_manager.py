@@ -146,10 +146,10 @@ class CodaLabManager(object):
         self.clients = {}  # map from address => client
 
     def init_config(self, dry_run=False):
-        '''
+        """
         Initialize configurations.
         TODO: create nice separate abstraction for building/modifying config
-        '''
+        """
         print_block(r"""
            ____          _       _            _
          / ____|___   __| | __ _| |     T T  | |__

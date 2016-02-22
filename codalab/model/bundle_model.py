@@ -72,7 +72,6 @@ from codalab.objects.oauth2 import (
 from codalab.objects.user import (
     User,
 )
-from codalab.objects.permission import parse_permission
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -1610,3 +1609,15 @@ class BundleModel(object):
             connection.execute(oauth2_auth_code.delete().where(
                 oauth2_auth_code.c.id == auth_code_id
             ))
+
+    def create_resource_owner_password_credentials_client(self, user_id):
+        """Create an OAuth client for the given user to use the Resource Owner
+        Password Credentials Grant."""
+        # TODO(skoo)
+        # client_name = spec_util.create_cli_client_name()
+        #
+        # with self.engine.begin() as connection:
+        #     result = connection.execute(oauth2_auth_code.insert().values({
+        #         "client_id":
+        #     }))
+

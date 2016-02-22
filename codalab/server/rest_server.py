@@ -15,14 +15,16 @@ class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
     api = 2
     
-    def __init__(self, model, bundle_store):
+    def __init__(self, model, bundle_store, config):
         self.model = model
         self.bundle_store = bundle_store
+        self.config = config
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             local.model = self.model
             local.bundle_store = self.bundle_store
+            local.config = self.config
             return callback(*args, **kwargs)
 
         return wrapper
@@ -80,7 +82,7 @@ def run_rest_server(manager, debug, num_workers):
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
 
-    install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store()))
+    install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store(), manager.config))
     install(CheckJsonPlugin())
     install(LoggingPlugin())
 
@@ -90,7 +92,7 @@ def run_rest_server(manager, debug, num_workers):
     from codalab.rest.oauth2 import oauth2_app
 
     # Mount OAuth2 endpoints
-    oauth2_app.install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store()))
+    oauth2_app.install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store(), manager.config))
     mount('/oauth2/', oauth2_app)
 
     if not debug:
