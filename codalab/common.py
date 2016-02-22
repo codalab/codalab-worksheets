@@ -7,7 +7,7 @@ This module exports some simple names used throughout the CodaLab bundle system:
 
 # Increment this on the develop branch when develop is merged into master.
 # http://semver.org/
-CODALAB_VERSION = '0.1.1'
+CODALAB_VERSION = '0.1.3'
 
 class IntegrityError(ValueError):
     """

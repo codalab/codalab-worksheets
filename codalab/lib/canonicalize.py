@@ -107,7 +107,7 @@ def get_current_location(bundle_store, uuid):
     """
     Return the on-disk location of currently running target.
     """
-    return bundle_store.get_temp_location(uuid)
+    return bundle_store.get_location(uuid)
 
 
 def get_target_path(bundle_store, model, target):
@@ -115,12 +115,7 @@ def get_target_path(bundle_store, model, target):
     Return the on-disk location of the target (bundle_uuid, subpath) pair.
     """
     (uuid, path) = target
-    bundle = model.get_bundle(uuid)
-    if not bundle.data_hash:
-        # Note that the bundle might not be ready, but return the location anyway to the temporary directory.
-        bundle_root = get_current_location(bundle_store, uuid)
-    else:
-        bundle_root = bundle_store.get_location(bundle.data_hash)
+    bundle_root = bundle_store.get_location(uuid)
     final_path = path_util.safe_join(bundle_root, path)
 
     result = path_util.TargetPath(final_path, target)

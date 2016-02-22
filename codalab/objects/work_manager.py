@@ -23,6 +23,7 @@ from codalab.common import (
 )
 from codalab.lib import (
   canonicalize,
+  formatting,
   path_util,
 )
 from codalab.bundles.run_bundle import RunBundle
@@ -115,9 +116,9 @@ class Worker(object):
                 except Exception as e:
                     # If there's an exception, we just make the bundle fail
                     # (even if it's not the bundle's fault).
-                    temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
-                    path_util.make_directory(temp_dir)
-                    status = {'bundle': bundle, 'success': False, 'failure_message': 'Internal error: ' + str(e), 'temp_dir': temp_dir}
+                    real_path = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
+                    path_util.make_directory(real_path)
+                    status = {'bundle': bundle, 'success': False, 'failure_message': 'Internal error: ' + str(e), 'temp_dir': real_path}
                     print '=== INTERNAL ERROR: %s' % e
                     started = True  # Force failing
                     traceback.print_exc()
@@ -129,9 +130,9 @@ class Worker(object):
 
             # If we have a MakeBundle, then just process it immediately.
             if isinstance(bundle, MakeBundle):
-                temp_dir = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
-                path_util.make_directory(temp_dir)
-                status = {'bundle': bundle, 'success': True, 'temp_dir': temp_dir}
+                real_path = canonicalize.get_current_location(self.bundle_store, bundle.uuid)
+                path_util.make_directory(real_path)
+                status = {'bundle': bundle, 'success': True, 'temp_dir': real_path}
 
             # Update database
             if started:
@@ -190,10 +191,10 @@ class Worker(object):
             return since_last_update >= update_timeout
         failed_bundles = filter(_failed, bundles)
         for bundle in failed_bundles:
-            failure_msg = 'No response from worker in %s' % time.strftime('%H:%M:%S', time.gmtime(update_timeout))
-            metadata_update = {'failure_message': failure_msg}
-            update = {'state': State.FAILED, 'metadata': metadata_update}
-            self.model.update_bundle(bundle, update)
+            failure_msg = 'No response from worker in %s' % formatting.duration_str(update_timeout)
+            status = {'state': State.FAILED, 'success': False, 'bundle': bundle, 'failure_message': failure_msg}
+            self.update_running_bundle(status)
+        return len(failed_bundles) > 0
 
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.
@@ -292,15 +293,8 @@ class Worker(object):
                     print >>sys.stderr, 'Worker.finalize_bundle: installing (copying) dependencies to %s (MakeBundle)' % temp_dir
                     bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=True)
 
-                # Note: uploading will move temp_dir to the bundle store.
-                (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=[temp_dir],
-                                                                              follow_symlinks=False,
-                                                                              exclude_patterns=None,
-                                                                              git=False,
-                                                                              unpack=False,
-                                                                              remove_sources=True)
-                db_update['data_hash'] = data_hash
-                metadata.update(bundle_store_metadata)
+                db_update['data_hash'] = path_util.hash_path(temp_dir)
+                metadata.update(data_size=path_util.get_size(temp_dir))
             except Exception as e:
                 print '=== INTERNAL ERROR: %s' % e
                 traceback.print_exc()

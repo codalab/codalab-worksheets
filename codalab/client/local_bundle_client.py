@@ -249,6 +249,10 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
+        """Generate a UUID so that BundleStore knows where to store the bundle on disk"""
+        uuid = spec_util.generate_uuid()
+        construct_args['uuid'] = uuid
+
         # Upload the source and record additional metadata from the upload.
         if sources is not None:
             (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=sources,
@@ -256,7 +260,8 @@ class LocalBundleClient(BundleClient):
                                                                           exclude_patterns=exclude_patterns,
                                                                           git=git,
                                                                           unpack=unpack,
-                                                                          remove_sources=remove_sources)
+                                                                          remove_sources=remove_sources,
+                                                                          uuid=uuid)
             metadata.update(bundle_store_metadata)
         else:
             data_hash = None
@@ -426,8 +431,11 @@ class LocalBundleClient(BundleClient):
             self.model.update_user_disk_used(self._current_user_id())
 
         # Delete the data_hash
-        for data_hash in relevant_data_hashes:
-            self.bundle_store.cleanup(self.model, data_hash, relevant_uuids, dry_run)
+        for uuid in relevant_uuids_set:
+            # check first is needs to be deleted
+            bundle_location = self.bundle_store.get_location(uuid)
+            if os.path.lexists(bundle_location):
+                self.bundle_store.cleanup(self.model, uuid, relevant_uuids, dry_run)
 
         return relevant_uuids
 
