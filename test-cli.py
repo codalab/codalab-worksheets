@@ -31,6 +31,11 @@ base_path = os.path.dirname(os.path.abspath(__file__))  # Directory where this s
 
 crazy_name = 'crazy ("ain\'t it?")'
 
+DOCKER_MODULES = [
+        'write',
+        'resources'
+        ]
+
 def test_path(name):
     """
     Return the path to the test file |name|.
@@ -202,11 +207,14 @@ class TestModule(object):
         for name in query:
             if name == 'all':
                 modules_to_run.extend(cls.modules.values())
+            elif name == 'no-docker':
+                no_docker_modules = [cls.modules[mod] for mod in cls.modules.keys() if mod not in DOCKER_MODULES]
+                modules_to_run.extend(no_docker_modules)
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
                 print 'Could not find module %s' % name
-                print 'Modules: all ' + ' '.join(cls.modules.keys())
+                print 'Modules: all no-docker ' + ' '.join(cls.modules.keys())
                 sys.exit(1)
 
         print 'Running modules ' + ' '.join([m.name for m in modules_to_run])
@@ -230,8 +238,10 @@ class TestModule(object):
         print '============= SUMMARY'
         if failed:
             print 'Tests failed: %s' % ', '.join(failed)
+            return False
         else:
             print 'All tests passed.'
+            return True
 
 ############################################################
 
@@ -420,7 +430,7 @@ def test(ctx):
     check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
     check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
     # block
-    uuid2 = check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail'])).split('\n')[0]
+    check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
 
 @TestModule.register('worksheet')
 def test(ctx):
@@ -471,14 +481,16 @@ def test(ctx):
     wuuid = run_command([cl, 'new', wname])
     ctx.collect_worksheet(wuuid)
     # Add tags
-    run_command([cl, 'wedit', wname, '--tags', 'foo', 'bar', 'baz'])
-    check_contains(['Tags: \\[\'foo\', \'bar\', \'baz\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    tags = ['foo', 'bar', 'baz']
+    fewer_tags = ['bar', 'foo']
+    run_command([cl, 'wedit', wname, '--tags'] + tags)
+    check_contains(['Tags: %s' % ' '.join(tags)], run_command([cl, 'ls', '-w', wuuid]))
     # Modify tags
-    run_command([cl, 'wedit', wname, '--tags', 'bar', 'foo'])
-    check_contains(['Tags: \\[\'bar\', \'foo\'\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    run_command([cl, 'wedit', wname, '--tags'] + fewer_tags)
+    check_contains(['Tags: %s' % fewer_tags], run_command([cl, 'ls', '-w', wuuid]))
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
-    check_contains(['Tags: \\[\\]'], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
 
 @TestModule.register('freeze')
 def test(ctx):
@@ -548,7 +560,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str(['kill']), get_info(uuid, 'actions'))
+    check_equals(str([u'kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
@@ -706,6 +718,8 @@ if __name__ == '__main__':
         print 'Usage: python %s <module> ... <module>' % sys.argv[0]
         print 'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
         print 'Remember to run this both in local and remote modes.',
-        print 'Modules: all ' + ' '.join(TestModule.modules.keys())
+        print 'Modules: all no-docker ' + ' '.join(TestModule.modules.keys())
     else:
-        TestModule.run(sys.argv[1:])
+        success = TestModule.run(sys.argv[1:])
+        if not success:
+            sys.exit(1)

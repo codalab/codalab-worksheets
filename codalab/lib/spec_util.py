@@ -10,7 +10,8 @@ from codalab.common import (
 )
 
 DASHBOARD_WORKSHEET = 'dashboard'
-UUID_REGEX = re.compile('^0x[0-9a-f]{32}$')
+UUID_STR = '0x[0-9a-f]{32}'
+UUID_REGEX = re.compile('^' + UUID_STR + '$')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
 
 BEGIN_NAME_STR = '[a-zA-Z_]'

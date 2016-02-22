@@ -3,6 +3,5 @@ SQLAlchemy==1.0.8
 alembic==0.8.2
 psutil==3.3.0
 watchdog==0.8.3
-# Use sckoo@stanford.edu's patched argcomplete, until pull request has been accepted
-# https://github.com/kislyuk/argcomplete/pull/118
-git+https://github.com/kashizui/argcomplete.git@allow-overridden-subparsersaction
+# Use latest master branch, until next release includes PR#118
+git+https://github.com/kislyuk/argcomplete.git

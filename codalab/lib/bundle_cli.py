@@ -156,12 +156,12 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
         self._print_message(self.format_help(), out_file)
 
     def error(self, message):
+        # Adapted from original:
+        # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
+        self.print_usage(self.cli.stderr)
         if self.cli.headless:
             raise ArgumentError(message)
         else:
-            # Adapted from original:
-            # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
-            self.print_usage(self.cli.stderr)
             self.exit(2, '%s: error: %s\n' % (self.prog, message))
 
 
@@ -182,9 +182,14 @@ class AliasedSubParsersAction(argparse._SubParsersAction):
 
         parser = super(AliasedSubParsersAction, self).add_parser(name, **kwargs)
 
+        # Do not add aliases to argparser when just autocompleting.
+        if '_ARGCOMPLETE' in os.environ:
+            return parser
+
         # Make the aliases work.
         for alias in aliases:
             self._name_parser_map[alias] = parser
+
         # Make the help text reflect them, first removing old help entry.
         if 'help' in kwargs:
             help = kwargs.pop('help')[0]
@@ -239,6 +244,7 @@ class Commands(object):
         """
         def register_command(function):
             cls.commands[name] = cls.Command(name, aliases, help, arguments, function)
+            return function
 
         return register_command
 
@@ -977,13 +983,21 @@ class BundleCLI(object):
         print >>self.stdout, client.derive_bundle('make', targets, None, metadata, worksheet_uuid)
 
     def wait(self, client, args, uuid):
+        # Build new args for a hacky artificial call to the info command
+        info_args = argparse.Namespace()
+        info_args.worksheet_spec = args.worksheet_spec
+        info_args.verbose = args.verbose
+        info_args.bundle_spec = [uuid]
+        info_args.field = None
+        info_args.raw = False
+
         if args.wait:
-            state = self.follow_targets(client, uuid, [])
-            self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+            self.follow_targets(client, uuid, [])
+            self.do_info_command(info_args)
         if args.tail:
-            state = self.follow_targets(client, uuid, ['stdout', 'stderr'])
+            self.follow_targets(client, uuid, ['stdout', 'stderr'])
             if args.verbose:
-                self.do_info_command([uuid, '--verbose'], self.create_parser('info'))
+                self.do_info_command(info_args)
 
     @Commands.command(
         'run',
@@ -1223,7 +1237,7 @@ class BundleCLI(object):
         fields = [
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
-            ('Tags', worksheet_info['tags']),
+            ('Tags', ' '.join(worksheet_info['tags'])),
             ('Owner', '%s(%s)' % (worksheet_info['owner_name'], worksheet_info['owner_id'])),
             ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions']),
                                       ' [frozen]' if worksheet_info['frozen'] else ''))
@@ -2275,14 +2289,6 @@ class BundleCLI(object):
         client.bundle_store._reset()
         print >>self.stdout, 'Deleting entire database...'
         client.model._reset()
-
-    # Note: this is not actually handled in BundleCLI, but here just to show the help
-    @Commands.command(
-        'server',
-        help='Start an instance of the CodaLab bundle service.',
-    )
-    def do_server_command(self, args):
-        raise UsageError('Cannot execute CLI command: server')
 
     def _fail_if_headless(self, message):
         if self.headless:

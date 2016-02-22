@@ -295,6 +295,13 @@ def get_info(path, depth):
         result['perm'] = os.stat(path).st_mode & 0777
     return result
 
+def hash_path(path, dirs_and_files=None):
+    if os.path.isfile(path):
+        return hash_file_contents(path)
+    elif os.path.isdir(path):
+        return hash_directory(path, dirs_and_files)
+    else:
+        print >> sys.stderr, 'Path %s not valid' % path
 
 def hash_directory(path, dirs_and_files=None):
     """
