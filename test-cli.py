@@ -355,8 +355,13 @@ def test(ctx):
     for (archive, content) in zip(archive_exts, contents_paths):
         run_command(['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)])
     uuid = run_command([cl, 'upload'] + archive_exts)
-    # Make sure the names do not include the trailing things
+
+    # Make sure the names do not end with '.tar.gz' after being unpacked.
     check_contains([os.path.basename(archive_paths[0]) + r'\s', os.path.basename(archive_paths[1]) + r'\s'], run_command([cl, 'cat', uuid]))
+
+    # Cleanup
+    for archive in archive_exts:
+        os.unlink(archive)
 
 @TestModule.register('download')
 def test(ctx):
