@@ -167,12 +167,30 @@ class LocalBundleClient(BundleClient):
         return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Return the uuid of the specified worksheet if it exists.
+        If not, create a new worksheet if the specified worksheet is home_worksheet or dashboard. Otherwise, throw an error.
+        """
         if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-            # Default worksheet name: take the username.
             worksheet_spec = spec_util.home_worksheet(self._current_user_name())
-            return self.new_worksheet(worksheet_spec, True)
+        worksheet_uuid = self.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec)
+        if worksheet_uuid != None:
+            return worksheet_uuid
         else:
+            if spec_util.is_home_worksheet(worksheet_spec) or spec_util.is_dashboard(worksheet_spec):
+                return self.new_worksheet(worksheet_spec)
+            else:
+                # let it throw the correct error message
+                return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+
+    def get_worksheet_uuid_or_none(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
+        """
+        try:
             return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+        except UsageError:
+            return None
 
     @staticmethod
     def validate_user_metadata(bundle_subclass, metadata):
@@ -780,29 +798,14 @@ class LocalBundleClient(BundleClient):
         username = self._current_user_name()
         if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(username) != name:
             raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
-
-        try:
-            self.get_worksheet_uuid(None, name)
-            exists = True
-        except UsageError, e:
-            # Note: this exception could be thrown also when there's multiple
-            # worksheets with the same name.  In the future, we want to rule
-            # that out.
-            exists = False
-        if exists:
+        if self.get_worksheet_uuid_or_none(None, name) != None:
             raise UsageError('Worksheet with name %s already exists' % name)
 
     @authentication_required
-    def new_worksheet(self, name, ensure_exists):
+    def new_worksheet(self, name):
         """
         Create a new worksheet with the given |name|.
         """
-        # If |ensure_exists| = True, then quit if worksheet already exists.
-        if ensure_exists:
-            try:
-                return self.get_worksheet_uuid(None, name)
-            except UsageError:
-                pass
 
         self.ensure_unused_worksheet_name(name)
 
@@ -818,8 +821,17 @@ class LocalBundleClient(BundleClient):
 
         # Make worksheet publicly readable by default
         self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
-
+        if spec_util.is_dashboard(name):
+            self.populate_dashboard(worksheet)
         return worksheet.uuid
+
+    def populate_dashboard(self, worksheet):
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/dashboard.ws')
+        lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
+        items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)
+        info = self.get_worksheet_info(worksheet.uuid, True)
+        self.update_worksheet_items(info, items)
+        self.update_worksheet_metadata(worksheet.uuid, {'title': 'Codalab Dashboard'})
 
     def list_worksheets(self):
         return self.search_worksheets([])
