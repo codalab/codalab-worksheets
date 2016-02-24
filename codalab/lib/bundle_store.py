@@ -105,7 +105,7 @@ class BundleStore(object):
                 to_delete.append(source)
             source_unpack = unpack and zip_util.path_is_archive(source)
 
-            if source_unpack:
+            if source_unpack and single_path:
                 # Load the file into the bundle store under the given path
                 subpath += zip_util.get_archive_ext(source)
 
