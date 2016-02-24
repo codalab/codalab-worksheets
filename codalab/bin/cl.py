@@ -78,10 +78,10 @@ def do_server_command(bundle_cli, args):
             '--watch', help='Restart the server on code changes.',
             action='store_true'),
         Commands.Argument(
-            '-w', '--workers',
-            help='Number of worker processes to use. A production deployment '
-                 'should use more than 1 process to make the best use of '
-                 'multiple CPUs.',
+            '-p', '--processes',
+            help='Number of processes to use. A production deployment should '
+                 'use more than 1 process to make the best use of multiple '
+                 'CPUs.',
             type=int, default=1),
         Commands.Argument(
             '-d', '--debug', help='Run the development server for debugging.',
@@ -93,7 +93,7 @@ def do_rest_server_command(bundle_cli, args):
         run_server_with_watch()
     else:
         from codalab.server.rest_server import run_rest_server
-        run_rest_server(bundle_cli.manager, args.debug, args.workers)
+        run_rest_server(bundle_cli.manager, args.debug, args.processes)
 
 
 if __name__ == '__main__':
