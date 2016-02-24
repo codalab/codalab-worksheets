@@ -346,6 +346,17 @@ def test(ctx):
     uuid = run_command([cl, 'upload', 'https://github.com/codalab/codalab-cli', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], run_command([cl, 'cat', uuid]))
 
+@TestModule.register('upload4')
+def test(ctx):
+    # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
+    archive_paths = [temp_path(''), temp_path('')]
+    archive_exts = map(lambda p: p + '.tar.gz', archive_paths)
+    contents_paths = [test_path('dir1'), test_path('a.txt')]
+    for (archive, content) in zip(archive_exts, contents_paths):
+        run_command(['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)])
+    uuid = run_command([cl, 'upload'] + archive_exts)
+    # Make sure the names do not include the trailing things
+    check_contains([os.path.basename(archive_paths[0]) + r'\s', os.path.basename(archive_paths[1]) + r'\s'], run_command([cl, 'cat', uuid]))
 
 @TestModule.register('download')
 def test(ctx):
