@@ -245,7 +245,7 @@ class SingleDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         '''
         try:
             absolute_path = self.get_location(uuid)
-        except (UsageError, IntegrityError): 
+        except:
             print >>sys.stderr, "cleanup: data %s" % absolute_path
             if not dry_run:
                 path_util.remove(absolute_path)
@@ -577,7 +577,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         '''
         try:
             model.get_bundle(uuid)
-        except (UsageError, IntegrityError):
+        except:
             absolute_path = self.get_bundle_location(uuid)
             print >>sys.stderr, "cleanup: data %s" % absolute_path
             if not dry_run:
