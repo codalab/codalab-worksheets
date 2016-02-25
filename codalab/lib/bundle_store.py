@@ -244,7 +244,9 @@ class SingleDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         Remove the bundle with given UUID from on-disk storage.
         '''
         try:
-            model.get_bundle(uuid)
+            bundle = model.get_bundle(uuid)
+            if bundle.data_hash == None:
+                raise
         except:
             absolute_path = self.get_bundle_location(uuid)
             print >>sys.stderr, "cleanup: data %s" % absolute_path
@@ -575,7 +577,9 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         Remove the bundle with given UUID from on-disk storage.
         '''
         try:
-            model.get_bundle(uuid)
+            bundle = model.get_bundle(uuid)
+            if bundle.data_hash == None:
+                raise
         except:
             absolute_path = self.get_bundle_location(uuid)
             print >>sys.stderr, "cleanup: data %s" % absolute_path
