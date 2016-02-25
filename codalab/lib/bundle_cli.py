@@ -2338,7 +2338,7 @@ class BundleCLI(object):
                 Commands.Argument('partition', help='The partition you want to remove.'),
             )
     )
-    def do_rm_partitions_command(self, args):
+    def do_rm_partition_command(self, args):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
@@ -2350,6 +2350,9 @@ class BundleCLI(object):
             arguments=(),
     )
     def do_ls_partitions_command(self, _):
+        if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            sys.exit(1)
         self.manager.bundle_store().ls_partitions()
 
     def _fail_if_headless(self, message):
