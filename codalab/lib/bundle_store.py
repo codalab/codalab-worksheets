@@ -6,7 +6,7 @@ from hash_ring import HashRing
 
 from codalab.lib import path_util, file_util, print_util, zip_util
 
-def require_disks(f):
+def require_partitions(f):
     """Decorator added to MulitDiskBundleStore methods that require a disk to
     be added to the deployment for tasks to succeed. Prints a helpful error
     message prompting the user to add a new disk.
@@ -15,10 +15,10 @@ def require_disks(f):
         self = args[0]
         if self.ring.get_node("DOESN'T MATTER") is None:
             print >> sys.stderr,"""
-Error: No disks available.
-To use MultiDiskBundleStore, you must add at least one disk. Try the following:
+Error: No partitions available.
+To use MultiDiskBundleStore, you must add at least one partition. Try the following:
 
-    $ cl help add-disk
+    $ cl help add-partition
 """
             sys.exit(1)
         else:
@@ -37,7 +37,7 @@ class BundleStoreCleanupMixin(object):
 
     def full_cleanup(self, model, dry_run):
         """
-        For each data hash in the store, check if it should be garbage collected and
+        For each uuid in the store, check if it should be garbage collected and
         delete its data if so. In addition, delete any old temporary files.
         """
         pass
@@ -244,8 +244,9 @@ class SingleDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         Remove the bundle with given UUID from on-disk storage.
         '''
         try:
-            absolute_path = self.get_location(uuid)
+            model.get_bundle(uuid)
         except:
+            absolute_path = self.get_bundle_location(uuid)
             print >>sys.stderr, "cleanup: data %s" % absolute_path
             if not dry_run:
                 path_util.remove(absolute_path)
@@ -275,8 +276,6 @@ class SingleDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         return result
 
 
-
-
 class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
     """
     A MultiDiskBundleStore is responsible for taking a set of locations and load-balancing the placement of
@@ -285,9 +284,9 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
     """
 
     # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
-    DATA_SUBDIRECTORY = 'mbundles'
-    TEMP_SUBDIRECTORY = 'mtemp'
-    MISC_TEMP_SUBDIRECTORY = 'mtemp'
+    DATA_SUBDIRECTORY = 'bundles'
+    TEMP_SUBDIRECTORY = 'temp'
+    MISC_TEMP_SUBDIRECTORY = 'temp'
 
     # Cleanup timeouts
     DATA_CLEANUP_TIME = 60
@@ -296,25 +295,25 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
     def __init__(self, codalab_home):
         self.codalab_home = path_util.normalize(codalab_home)
 
-        self.mdisk = os.path.join(self.codalab_home, 'mdisk')
+        self.partitions = os.path.join(self.codalab_home, 'partitions')
         self.mtemp = os.path.join(self.codalab_home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
 
         # Perform initialization first to ensure that directories will be populated
         super(MultiDiskBundleStore, self).__init__()
-        nodes, _ = path_util.ls(self.mdisk)
+        nodes, _ = path_util.ls(self.partitions)
 
         self.ring = HashRing(nodes)
         super(MultiDiskBundleStore, self).__init__()
 
-    @require_disks
+    @require_partitions
     def get_bundle_location(self, uuid):
         """
         get_bundle_location: Perform a lookup in the hash ring to determine which disk the bundle is stored on.
         """
         disk = self.ring.get_node(uuid)
-        return os.path.join(self.mdisk, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
+        return os.path.join(self.partitions, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
 
-    @require_disks
+    @require_partitions
     def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, uuid):
         """
         |sources|: specifies the locations of the contents to upload.  Each element is either a URL or a local path.
@@ -344,7 +343,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         # Determine which disk this will go on
         disk_choice = self.ring.get_node(uuid)
 
-        final_path = os.path.join(self.mdisk, disk_choice, self.DATA_SUBDIRECTORY, uuid)
+        final_path = os.path.join(self.partitions, disk_choice, self.DATA_SUBDIRECTORY, uuid)
         if os.path.exists(final_path):
             raise UsageError('Path %s already present in bundle store' % final_path)
         # Only make if not there
@@ -365,7 +364,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
                 to_delete.append(source)
             source_unpack = unpack and zip_util.path_is_archive(source)
 
-            if source_unpack:
+            if source_unpack and single_path:
                 # Load the file into the bundle store under the given path
                 subpath += zip_util.get_archive_ext(source)
 
@@ -428,53 +427,53 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         """
         Initializes the multi-disk bundle store.
         """
-        path_util.make_directory(self.mdisk)
+        path_util.make_directory(self.partitions)
         path_util.make_directory(self.mtemp)
 
-    def add_disk(self, target, new_disk_name):
+    def add_partition(self, target, new_partition_name):
         """
-        MultiDiskBundleStore specific method. Add a new disk to the bundle store. The "target" is actually a symlink to
-        the target directory, which the user has configured as the mountpoint for some desired disk.
+        MultiDiskBundleStore specific method. Add a new partition to the bundle store. The "target" is actually a symlink to
+        the target directory, which the user has configured as the mountpoint for some desired partition.
 
-        First, all bundles that are to be relocated onto the new disk are copied to a temp location to be resilient
-        against failures. After the copy is performed, the bundles are subsequently moved to the new disk, and finally
+        First, all bundles that are to be relocated onto the new partition are copied to a temp location to be resilient
+        against failures. After the copy is performed, the bundles are subsequently moved to the new partition, and finally
         the original copy of the bundles are deleted from their old locations
         """
-        new_disk_location = os.path.join(self.mdisk, new_disk_name)
+        new_partition_location = os.path.join(self.partitions, new_partition_name)
 
         mtemp = os.path.join(target, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
 
         try:
             path_util.make_directory(mtemp)
         except:
-            print >> sys.stderr, "Could not make directory %s on disk %s, aborting" % (MultiDiskBundleStore.TEMP_SUBDIRECTORY, target)
+            print >> sys.stderr, "Could not make directory %s on partition %s, aborting" % (mtemp, target)
             sys.exit(1)
 
-        self.ring.add_node(new_disk_name)  # Add the node to the disk locations
+        self.ring.add_node(new_partition_name)  # Add the node to the partition locations
         delete_on_success = []  # Paths to bundles that will be deleted after the copy finishes successfully
 
-        print >> sys.stderr, "Marking bundles for placement on new disk %s (might take a while)" % new_disk_name
-        # For each bundle in the bundle store, check to see if any hash to the new disk. If so move them over
-        disks, _ = path_util.ls(self.mdisk)
-        for disk in disks:
-            disk_abs_path = os.path.join(self.mdisk, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY)
-            bundles = reduce(lambda dirs, files: dirs + files, path_util.ls(disk_abs_path))
+        print >> sys.stderr, "Marking bundles for placement on new partition %s (might take a while)" % new_partition_name
+        # For each bundle in the bundle store, check to see if any hash to the new partition. If so move them over
+        partitions, _ = path_util.ls(self.partitions)
+        for partition in partitions:
+            partition_abs_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY)
+            bundles = reduce(lambda dirs, files: dirs + files, path_util.ls(partition_abs_path))
             for bundle in bundles:
-                correct_disk = self.ring.get_node(bundle)
-                if correct_disk != disk:
-                    # Reposition the node to the correct disk
+                correct_partition = self.ring.get_node(bundle)
+                if correct_partition != partition:
+                    # Reposition the node to the correct partition
                     print >> sys.stderr, "Marking %s for relocation" % bundle
-                    from_path = os.path.join(self.mdisk, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, bundle)
+                    from_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY, bundle)
                     to_path = os.path.join(mtemp, bundle)
                     path_util.copy(from_path, to_path)
                     delete_on_success += [from_path]
 
-        print >> sys.stderr, "Adding new disk as %s..." % new_disk_location
-        path_util.soft_link(target, new_disk_location)
+        print >> sys.stderr, "Adding new partition as %s..." % new_partition_location
+        path_util.soft_link(target, new_partition_location)
 
-        # Atomically move the temp location to the new disk's mdata
-        new_mdata = os.path.join(new_disk_location, MultiDiskBundleStore.DATA_SUBDIRECTORY)
-        new_mtemp = os.path.join(new_disk_location, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
+        # Atomically move the temp location to the new partition's mdata
+        new_mdata = os.path.join(new_partition_location, MultiDiskBundleStore.DATA_SUBDIRECTORY)
+        new_mtemp = os.path.join(new_partition_location, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
         path_util.rename(new_mtemp, new_mdata)
         path_util.make_directory(new_mtemp)
 
@@ -483,92 +482,92 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         for to_delete in delete_on_success:
             path_util.remove(to_delete)
 
-        print >> sys.stderr, "Successfully added disk '%s' to the pool." % new_disk_name
+        print >> sys.stderr, "Successfully added partition '%s' to the pool." % new_partition_name
 
     def reset(self):
         """
         Delete all stored bundles and then recreate the root directories.
         """
         # Do not run this function in production!
-        path_util.remove(self.mdisk)
+        path_util.remove(self.partitions)
         self.initialize_store()
 
-    def __get_num_disks(self):
+    def __get_num_partitions(self):
         """
         Returns the current number of disks being used by this MultiDiskBundleStore.
-        This is calculated as the number of directories in self.mdisk
+        This is calculated as the number of directories in self.partitions
         """
-        return reduce(lambda dirs, _: len(dirs), path_util.ls(self.mdisk))
+        return reduce(lambda dirs, _: len(dirs), path_util.ls(self.partitions))
 
 
-    @require_disks
-    def rm_disk(self, disk):
+    @require_partitions
+    def rm_partition(self, partition):
         """
-        Deletes the given disk from the bundle store, and if it is not the last disk, it redistributes the bundles
-        from that disk across the remaining disks.
+        Deletes the given disk from the bundle store, and if it is not the last partition, it redistributes the bundles
+        from that partition across the remaining partitions.
         """
         # Transfer all of the files to their correct locations.
 
-        if self.__get_num_disks() == 1:
+        if self.__get_num_partitions() == 1:
             """
             Prevent foot-shooting
             """
-            print >> sys.stderr, "Error, cannot remove last disk. If you really wish to delete CodaLab, please run the following command:"
+            print >> sys.stderr, "Error, cannot remove last partition. If you really wish to delete CodaLab, please run the following command:"
             print >> sys.stderr, "      rm -rf %s" % self.codalab_home
             return
 
         relocations = dict()
-        disk_abs_path = os.path.join(self.mdisk, disk)
-        old_mdata = os.path.join(disk_abs_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)
-        old_mtemp = os.path.join(disk_abs_path, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
+        partition_abs_path = os.path.join(self.partitions, partition)
+        old_mdata = os.path.join(partition_abs_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)
+        old_mtemp = os.path.join(partition_abs_path, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
 
         try:
-            print disk_abs_path
-            path_util.check_isvalid(disk_abs_path, 'rm-disk')
+            print partition_abs_path
+            path_util.check_isvalid(partition_abs_path, 'rm-partition')
         except:
-            print >> sys.stderr, "Disk with name '%s' does not exist. Run `cl ls-disk` to see a list of mounted disks." % disk
+            print >> sys.stderr, "Partition with name '%s' does not exist. Run `cl ls-partitions` to see a list of mounted partitions." % partition
             sys.exit(1)
 
-        # Reset the ring to distribute across remaining disks
-        self.ring.remove_node(disk)
+        # Reset the ring to distribute across remaining partitions
+        self.ring.remove_node(partition)
         bundles_to_move = reduce(lambda dirs, files: dirs + files, path_util.ls(old_mdata))
 
         for bundle in bundles_to_move:
-            new_disk = self.ring.get_node(bundle)
-            relocations[bundle] = os.path.join(self.mdisk, new_disk)
+            new_partition = self.ring.get_node(bundle)
+            relocations[bundle] = os.path.join(self.partitions, new_partition)
 
-        # Copy all bundles off of the old disk to temp directories on the new disks
-        for bundle, disk in relocations.iteritems():
-            # temporary directory on the disk
-            temp_dir = os.path.join(disk, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
+        # Copy all bundles off of the old partition to temp directories on the new partition 
+        for bundle, partition in relocations.iteritems():
+            # temporary directory on the partition
+            temp_dir = os.path.join(partition, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
             from_path = os.path.join(old_mdata, bundle)
             to_path = os.path.join(temp_dir, 'stage-%s' % bundle)
             path_util.copy(from_path, to_path)
 
-        # Now that each bundle is on the proper disk, move each from the staging area to the
-        # production mdata/ subdirectory on its disk.
-        for bundle, disk in relocations.iteritems():
-            temp_dir = os.path.join(disk, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
+        # Now that each bundle is on the proper partition, move each from the staging area to the
+        # production mdata/ subdirectory on its partition.
+        for bundle, partition in relocations.iteritems():
+            temp_dir = os.path.join(partition, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
             from_path = os.path.join(temp_dir, 'stage-%s' % bundle)
-            to_path = os.path.join(disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, bundle)
+            to_path = os.path.join(partition, MultiDiskBundleStore.DATA_SUBDIRECTORY, bundle)
             path_util.rename(from_path, to_path)
 
-        # Remove data from disk and unlink from CodaLab
-        print >> sys.stderr, "Cleaning bundles off of disk..."
+        # Remove data from partition and unlink from CodaLab
+        print >> sys.stderr, "Cleaning bundles off of partition..."
         path_util.remove(old_mdata)
         path_util.remove(old_mtemp)
-        print >> sys.stderr, "Unlinking disk %s from CodaLab deployment..." % disk
-        path_util.remove(disk_abs_path)
-        print >> sys.stderr, "Disk removed successfully from bundle store pool"
+        print >> sys.stderr, "Unlinking partition %s from CodaLab deployment..." % partition
+        path_util.remove(partition_abs_path)
+        print >> sys.stderr, "Partition removed successfully from bundle store pool"
 
-    def ls_disk(self):
-        """List all disks available for storing bundles and how many bundles are currently stored."""
-        disks, _ = path_util.ls(self.mdisk)
-        print '%d %s' % (len(disks), 'disk' if len(disks) == 1 else 'disks')
-        for d in disks:
-            disk_path = os.path.join(self.mdisk, d)
-            real_path = os.readlink(disk_path)
-            bundles = reduce(lambda x,y: x+y, path_util.ls(os.path.join(disk_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)))
+    def ls_partitions(self):
+        """List all partitions available for storing bundles and how many bundles are currently stored."""
+        partitions, _ = path_util.ls(self.partitions)
+        print '%d %s' % (len(partitions), 'partition' if len(partitions) == 1 else 'partitions')
+        for d in partitions:
+            partition_path = os.path.join(self.partitions, d)
+            real_path = os.readlink(partition_path)
+            bundles = reduce(lambda x,y: x+y, path_util.ls(os.path.join(partition_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)))
             print '- %-016s\n\tmountpoint: %s\n\t%d %s' % (d, real_path, len(bundles), 'bundle' if len(bundles) == 1 else 'bundles')
 
     def cleanup(self, model, uuid, except_bundle_uuids, dry_run):
@@ -587,8 +586,8 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         """
         Checks each partition of the BundleStore to see if it should be removed.
         """
-        disks, _ = path_util.ls(self.mdisk)
-        old_data_files = reduce(lambda x,y: x+y, [self.list_old_files(os.path.join(self.mdisk,dir, MultiDiskBundleStore.DATA_SUBDIRECTORY), self.DATA_CLEANUP_TIME) for dir in disks])
+        disks, _ = path_util.ls(self.partitions)
+        old_data_files = reduce(lambda x,y: x+y, [self.list_old_files(os.path.join(self.partitions, dir, MultiDiskBundleStore.DATA_SUBDIRECTORY), self.DATA_CLEANUP_TIME) for dir in disks])
         for uuid in old_data_files:
             self.cleanup(model, uuid, [], dry_run)
         old_temp_files = self.list_old_files(self.mtemp, self.TEMP_CLEANUP_TIME)

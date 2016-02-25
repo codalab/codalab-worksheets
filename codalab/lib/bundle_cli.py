@@ -139,9 +139,9 @@ OTHER_COMMANDS = (
     'server',
     'rest-server',
     'logout',
-    'add-disk',
-    'rm-disk',
-    'ls-disk',
+    'bs-add-partition',
+    'bs-rm-partition',
+    'bs-ls-partitions',
 )
 
 
@@ -2309,50 +2309,48 @@ class BundleCLI(object):
         raise UsageError('Cannot execute CLI command: server')
 
     @Commands.command(
-            'add-disk',
-            help='Add another disk for storage (MultiDiskBundleStore only)',
+            'bs-add-partition',
+            help='Add another partition for storage (MultiDiskBundleStore only)',
             arguments=(
                     Commands.Argument('target',
                                       help=' '.join(['The target location you would like to use for storing bundles.',
-                                                     'This directory should be underneath a mountpoint for the disk',
+                                                     'This directory should be underneath a mountpoint for the partition',
                                                      'you would like to use. You are responsible for configuring the',
                                                      'mountpoint yourself.']),),
                     Commands.Argument('name',
-                                      help='The name you\'d like to give this disk for CodaLab.',),
+                                      help='The name you\'d like to give this partition for CodaLab.',),
             )
     )
-    def do_add_disk_command(self, args):
+    def do_add_partition_command(self, args):
         """
-        Add the specified target location as a new disk available for use by the filesystem.
+        Add the specified target location as a new partition available for use by the filesystem.
         """
         # This operation only allowed if we're using MultiDiskBundleStore
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
-        self.manager.bundle_store().add_disk(args.target, args.name)
+        self.manager.bundle_store().add_partition(args.target, args.name)
 
     @Commands.command(
-            'rm-disk',
-            help='Remove a disk by its number (MultiDiskBundleStore only)',
+            'bs-rm-partition',
+            help='Remove a partition by its number (MultiDiskBundleStore only)',
             arguments=(
-                Commands.Argument('disknum',
-                                  help=' '.join(['The disk you want to remove.',
-                                                 'Find this by doing "ls $CODALAB_HOME/.codalab/mdata"'])),
-            ),
+                Commands.Argument('partition', help='The partition you want to remove.'),
+            )
     )
-    def do_rm_disk_command(self, args):
+    def do_rm_partitions_command(self, args):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
-        self.manager.bundle_store().rm_disk(args.disknum)
+        self.manager.bundle_store().rm_partition(args.partition)
 
     @Commands.command(
-            'ls-disk',
-            help='List available disks (MultiDiskBundleStore only)',
+            'bs-ls-partitions',
+            help='List available partitions (MultiDiskBundleStore only)',
             arguments=(),
     )
-    def do_ls_disk_command(self, _):
-        self.manager.bundle_store().ls_disk()
+    def do_ls_partitions_command(self, _):
+        self.manager.bundle_store().ls_partitions()
 
     def _fail_if_headless(self, message):
         if self.headless:
