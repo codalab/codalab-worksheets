@@ -2,7 +2,7 @@ import os
 import time
 import sys
 
-from hash_ring import HashRing
+from .hash_ring import HashRing
 
 from codalab.lib import path_util, file_util, print_util, zip_util
 
