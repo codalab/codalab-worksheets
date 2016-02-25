@@ -18,7 +18,7 @@ def require_partitions(f):
 Error: No partitions available.
 To use MultiDiskBundleStore, you must add at least one partition. Try the following:
 
-    $ cl help add-partition
+    $ cl help bs-add-partition
 """
             sys.exit(1)
         else:
