@@ -8,20 +8,19 @@ When the bundle is executed, it symlinks the program target in to ./program,
 symlinks the input target in to ./input, and then streams output to ./stdout
 and ./stderr. The ./output directory may also be used to store output files.
 '''
-from codalab.bundles.named_bundle import NamedBundle
+from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.common import (
     State,
     UsageError,
 )
-from codalab.lib import (
-    spec_util,
-)
+
 from codalab.lib.completers import DockerImagesCompleter
 from codalab.objects.metadata_spec import MetadataSpec
 
-class RunBundle(NamedBundle):
+
+class RunBundle(DerivedBundle):
     BUNDLE_TYPE = 'run'
-    METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)
     # Note that these are strings, which need to be parsed
     # Request a machine with this much resources and don't let run exceed these resources
     METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (e.g., codalab/ubuntu:1.9) we wish to use.', completer=DockerImagesCompleter))
@@ -55,29 +54,6 @@ class RunBundle(NamedBundle):
 
     @classmethod
     def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):
-        if not uuid: uuid = spec_util.generate_uuid()
-        # Check that targets does not include both keyed and anonymous targets.
-        if len(targets) > 1 and any(key == '' for key, value in targets):
-            raise UsageError('Must specify keys when packaging multiple targets!')
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
-
-        # List the dependencies of this bundle on its targets.
-        dependencies = []
-        for (child_path, (parent_uuid, parent_path)) in targets:
-            dependencies.append({
-              'child_uuid': uuid,
-              'child_path': child_path,
-              'parent_uuid': parent_uuid,
-              'parent_path': parent_path,
-            })
-        return super(RunBundle, cls).construct({
-          'uuid': uuid,
-          'bundle_type': cls.BUNDLE_TYPE,
-          'command': command,
-          'data_hash': data_hash,
-          'state': state,
-          'metadata': metadata,
-          'dependencies': dependencies,
-          'owner_id': owner_id,
-        })
+        return super(RunBundle, cls).construct(targets, command, metadata, owner_id, uuid, data_hash, state)

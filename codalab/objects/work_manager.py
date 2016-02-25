@@ -355,14 +355,21 @@ class Worker(object):
             # If uuid doesn't exist, then don't process this bundle yet (the dependency might show up later)
             if missing_uuids: continue
             parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
-            failed_uuids = [
-              uuid for (uuid, state) in parent_states.iteritems()
-              if state == State.FAILED
-            ]
-            if failed_uuids:
-                bundles_to_fail.append(
-                  (bundle, 'Parent bundles failed: %s' % (', '.join(failed_uuids),)))
-            elif all(state == State.READY for state in parent_states.itervalues()):
+
+            acceptable_states = [State.READY]
+            if bundle.metadata.allow_failed_dependencies:
+                acceptable_states.append(State.FAILED)
+            else:
+                failed_uuids = [
+                  uuid for (uuid, state) in parent_states.iteritems()
+                  if state == State.FAILED
+                ]
+                if failed_uuids:
+                    bundles_to_fail.append(
+                      (bundle, 'Parent bundles failed: %s' % (', '.join(failed_uuids),)))
+                    continue
+
+            if all(state in acceptable_states for state in parent_states.itervalues()):
                 bundles_to_stage.append(bundle)
 
         with self.profile('Failing %s bundles...' % (len(bundles_to_fail),)):
