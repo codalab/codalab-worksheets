@@ -441,6 +441,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         against failures. After the copy is performed, the bundles are subsequently moved to the new partition, and finally
         the original copy of the bundles are deleted from their old locations
         """
+        target = os.path.abspath(target)
         new_partition_location = os.path.join(self.partitions, new_partition_name)
 
         mtemp = os.path.join(target, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
