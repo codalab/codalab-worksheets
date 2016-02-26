@@ -126,7 +126,9 @@ class CodaLabManager(object):
         codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         def replace(x):
             if isinstance(x, basestring):
-                return x.replace('$CODALAB_CLI', codalab_cli)
+                x = x.replace('$CODALAB_CLI', codalab_cli)
+                x = x.replace('$CODALAB_HOME', self.codalab_home)
+                return x
             if isinstance(x, dict):
                 return dict((k, replace(v)) for k, v in x.items())
             return x
@@ -190,7 +192,7 @@ class CodaLabManager(object):
                 }
             },
             'logging': {
-                'file_path': "{0.codalab_home}/codalab.log",
+                'file_path': "$CODALAB_HOME/codalab.log",
                 'console_level': "INFO",
                 'file_level': "DEBUG",
             }
