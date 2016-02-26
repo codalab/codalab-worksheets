@@ -228,6 +228,10 @@ user = Table(
   Column('is_superuser', Boolean, nullable=False, default=False),
   Column('password', String(128), nullable=False),
 
+  # Additional information
+  Column('affiliation', String(255), nullable=True),
+  Column('url', String(255), nullable=True),
+
   # Quotas
   Column('time_quota', Float, nullable=False),  # Number of seconds allowed
   Column('time_used', Float, nullable=False),  # Number of seconds already used
