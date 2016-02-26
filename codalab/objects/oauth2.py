@@ -14,15 +14,13 @@ class OAuth2Client(object):
     def __init__(self, model, **kwargs):
         self.model = model
         self.id = kwargs['id'] if 'id' in kwargs else None
-        # Assume all clients are public for now
-        self.client_type = 'public'
         try:
             self.client_id = kwargs['client_id']
             self.client_secret = kwargs['secret']
             self.name = kwargs['name']
             self.user_id = kwargs['user_id']
-            self.allowed_grant_types = [kwargs['grant_type'], "refresh_token"]
-            self.allowed_response_types = [kwargs['response_type']]
+            self.grant_type = kwargs['grant_type']
+            self.response_type = kwargs['response_type']
             self.redirect_uris = kwargs['redirect_uris'].split(',') if kwargs['redirect_uris'] else []
             self.default_scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
         except KeyError as e:
@@ -31,8 +29,34 @@ class OAuth2Client(object):
         self.default_redirect_uri = self.redirect_uris[0] if len(self.redirect_uris) > 0 else None
 
     @property
+    def allowed_grant_types(self):
+        return [self.grant_type, "refresh_token"]
+
+    @property
+    def allowed_response_types(self):
+        return [self.response_type]
+
+    @property
+    def client_type(self):
+        # Assume all clients are public for now
+        return 'public'
+
+    @property
     def user(self):
         return self.model.get_user(user_id=self.user_id)
+
+    @property
+    def columns(self):
+        return {
+            'client_id': self.client_id,
+            'secret': self.client_secret,
+            'name': self.name,
+            'user_id': self.user_id,
+            'grant_type': self.grant_type,
+            'response_type': self.response_type,
+            'redirect_uris': ','.join(self.redirect_uris),
+            'scopes': ','.join(self.default_scopes),
+        }
 
 
 class OAuth2AuthCode(object):

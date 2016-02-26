@@ -264,7 +264,7 @@ oauth2_client = Table(
   Column('id', Integer, primary_key=True, nullable=False),
   Column('client_id', String(63), nullable=False),
   Column('name', String(63), nullable=True),
-  Column('secret', String(255), nullable=False),
+  Column('secret', String(255), nullable=True),
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=True),
   Column('grant_type', Enum("authorization_code", "password", "client_credentials", "refresh_token"), nullable=False),
   Column('response_type', Enum("code", "token"), nullable=False),
