@@ -1,10 +1,11 @@
 from bottle import get, post, request
 
 from codalab.lib import spec_util
-from codalab.server.auth import authorization_plugin
+from codalab.rest.login import AuthenticationPlugin
 from codalab.rest.oauth2 import oauth2_provider
 
-@get('/example/stream_file', apply=[authorization_plugin])
+
+@get('/example/stream_file', apply=AuthenticationPlugin())
 def stream_file():
     # Stream a file back.
     return open(__file__, 'rb')
@@ -24,7 +25,6 @@ def post_file():
     return ''
 
 
-@get('/example/oauth_protected')
-@oauth2_provider.require_oauth('default')
+@get('/example/oauth_protected', apply=oauth2_provider.require_oauth('default'))
 def oauth_protected():
     return "You have access!"

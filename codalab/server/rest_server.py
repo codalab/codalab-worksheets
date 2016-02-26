@@ -60,11 +60,10 @@ class LoggingPlugin(object):
                 and request.content_type == 'application/json'):
                 args.append(request.json)
 
-            # TODO(klopyrev): Log real user ID and name.
             local.model.update_events_log(
                 start_time=start_time,
-                user_id='',
-                user_name='',
+                user_id=getattr(getattr(local, 'user', None), 'user_id', ''),
+                user_name=getattr(getattr(local, 'user', None), 'user_name', ''),
                 command=command,
                 args=args)
 

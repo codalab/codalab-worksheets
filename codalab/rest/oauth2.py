@@ -6,10 +6,11 @@ from datetime import datetime, timedelta
 from bottle import request, template, local, route, post, default_app
 
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Token
-from codalab.rest.login import require_login
+from codalab.rest.login import AuthenticationPlugin
 from codalab.server.oauth2_provider import OAuth2Provider
 
 oauth2_provider = OAuth2Provider(default_app())
+
 
 @oauth2_provider.clientgetter
 def get_client(client_id):
@@ -76,8 +77,7 @@ def get_user(username, password, *args, **kwargs):
     return None
 
 
-@route('/oauth2/authorize', ['GET', 'POST'])
-@require_login
+@route('/oauth2/authorize', ['GET', 'POST'], apply=AuthenticationPlugin())
 @oauth2_provider.authorize_handler
 def authorize(*args, **kwargs):
     if request.method == 'GET':
