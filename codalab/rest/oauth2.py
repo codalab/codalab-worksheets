@@ -3,7 +3,7 @@ Bottle app for the OAuth2 authorization and token endpoints.
 """
 from datetime import datetime, timedelta
 
-from bottle import request, template, local, route, post, default_app
+from bottle import request, template, local, route, post, get, default_app
 
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Token
 from codalab.rest.login import AuthenticationPlugin
@@ -99,3 +99,7 @@ def handle_token(): pass
 @oauth2_provider.revoke_handler
 def revoke_token(): pass
 
+
+@get('/oauth2/errors', name='oauth2_errors')
+def show_errors():
+    return template('oauth2_errors', **request.query)

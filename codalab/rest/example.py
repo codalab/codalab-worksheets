@@ -25,6 +25,6 @@ def post_file():
     return ''
 
 
-@get('/example/oauth_protected', apply=oauth2_provider.require_oauth('default'))
+@get('/example/oauth_protected', apply=oauth2_provider.require_oauth())
 def oauth_protected():
     return "You have access!"

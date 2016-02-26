@@ -12,7 +12,8 @@ from codalab.lib.server_util import force_bytes, get_random_string
 
 class User(ORMObject):
     COLUMNS = ('user_id', 'user_name', 'email', 'last_login', 'is_active', 'first_name', 'last_name', 'date_joined',
-               'is_verified', 'is_superuser', 'password', 'time_quota', 'time_used', 'disk_quota', 'disk_used')
+               'is_verified', 'is_superuser', 'password', 'time_quota', 'time_used', 'disk_quota', 'disk_used',
+               'affiliation', 'url')
 
     def validate(self):
         pass
@@ -48,6 +49,9 @@ class User(ORMObject):
         :param password: string of password to check
         :return: boolean
         """
+        if not self.password:
+            return False
+
         algorithm, iterations, salt, _ = self.password.split('$', 3)
         assert algorithm == 'pbkdf2_sha256'
         encoded = self.encode_password(password, salt, int(iterations))

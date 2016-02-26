@@ -101,7 +101,7 @@ def do_logout():
 
 @get('/login', name='login')
 def show_login():
-    return template("login", error=None)
+    return template("login")
 
 
 @post('/login')
@@ -119,4 +119,4 @@ def do_login():
         else:
             return "<p>Successfully signed into CodaLab.</p>"
     else:
-        return template("login", redirect_uri=redirect_uri, error="Login/password did not match.")
+        return template("login", error="Login/password did not match.")
