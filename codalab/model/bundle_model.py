@@ -1,6 +1,13 @@
-'''
+"""
 BundleModel is a wrapper around database calls to save and load bundle metadata.
-'''
+"""
+import re
+import collections
+import datetime
+import time
+import json
+import sys
+
 from sqlalchemy import (
     and_,
     or_,
@@ -48,17 +55,23 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
+    oauth2_client,
+    oauth2_token,
+    oauth2_auth_code,
     db_metadata,
 )
 from codalab.objects.worksheet import (
     item_sort_key,
     Worksheet,
 )
-from codalab.objects.permission import parse_permission
-
-import re, collections
-import datetime
-import time, json, sys
+from codalab.objects.oauth2 import (
+    OAuth2AuthCode,
+    OAuth2Client,
+    OAuth2Token,
+)
+from codalab.objects.user import (
+    User,
+)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -1440,8 +1453,32 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     ############################################################
-    # User functions
-    # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
+    # User methods
+
+    def get_user(self, user_id=None, username=None):
+        """
+        Get user.
+
+        :param user_id: user id of user to fetch
+        :param username: username or email of user to fetch
+        :return: User object, or None if no matching user.
+        """
+        clauses = []
+        if user_id is not None:
+            clauses.append(cl_user.c.user_id == user_id)
+        if username is not None:
+            # TODO(sckoo): Should we add an index on the email column?
+            clauses.append(or_(cl_user.c.user_name == username, cl_user.c.email == username))
+
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                cl_user
+            ]).where(and_(*clauses)).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return User(row)
 
     def get_user_info(self, user_id):
         '''
@@ -1465,7 +1502,13 @@ class BundleModel(object):
                     'disk_quota': self.default_user_info['disk_quota'],
                     'disk_used': self._get_disk_used(user_id),
                 }
-                connection.execute(cl_user.insert().values(user_info))
+
+                # FIXME remove when user data migration is complete
+                # Temporarily suppress the "doesn't have default value" warnings until user data migration is complete
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    connection.execute(cl_user.insert().values(user_info))
         return user_info
 
     def update_user_info(self, user_info):
@@ -1491,3 +1534,102 @@ class BundleModel(object):
         # Compute from scratch for simplicity
         user_info['disk_used'] = self._get_disk_used(user_id)
         self.update_user_info(user_info)
+
+    ############################################################
+    # OAuth methods
+
+    def get_oauth2_client(self, client_id):
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                oauth2_client
+            ]).where(
+                oauth2_client.c.client_id == client_id
+            ).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Client(self, **row)
+
+    def save_oauth2_client(self, client):
+        with self.engine.begin() as connection:
+            result = connection.execute(oauth2_client.insert().values(client.columns))
+            client.id = result.lastrowid
+        return client
+
+    def delete_oauth2_client(self, client_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_client.delete().where(
+                oauth2_client.c.client_id == client_id
+            ))
+
+    def get_oauth2_token(self, access_token=None, refresh_token=None):
+        if access_token is not None:
+            clause = (oauth2_token.c.access_token == access_token)
+        elif refresh_token is not None:
+            clause = (oauth2_token.c.refresh_token == refresh_token)
+        else:
+            return None
+
+        with self.engine.begin() as connection:
+            row = connection.execute(select([oauth2_token]).where(clause).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Token(self, **row)
+
+    def save_oauth2_token(self, token):
+        with self.engine.begin() as connection:
+            result = connection.execute(oauth2_token.insert().values(token.columns))
+            token.id = result.lastrowid
+        return token
+
+    def clear_oauth2_tokens(self, client_id, user_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_token.delete().where(
+                and_(oauth2_token.c.client_id == client_id, oauth2_token.c.user_id == user_id)
+            ))
+
+    def delete_oauth2_token(self, token_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_auth_code.delete().where(
+                oauth2_token.c.id == token_id
+            ))
+
+    def get_oauth2_auth_code(self, client_id, code):
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                oauth2_auth_code
+            ]).where(
+                and_(oauth2_auth_code.c.client_id == client_id, oauth2_auth_code.c.code == code)
+            ).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2AuthCode(self, **row)
+
+    def save_oauth2_auth_code(self, grant):
+        with self.engine.begin() as connection:
+            result = connection.execute(oauth2_auth_code.insert().values(grant.columns))
+            grant.id = result.lastrowid
+        return grant
+
+    def delete_oauth2_auth_code(self, auth_code_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_auth_code.delete().where(
+                oauth2_auth_code.c.id == auth_code_id
+            ))
+
+    def create_resource_owner_password_credentials_client(self, user_id):
+        """Create an OAuth client for the given user to use the Resource Owner
+        Password Credentials Grant."""
+        # TODO(skoo)
+        # client_name = spec_util.create_cli_client_name()
+        #
+        # with self.engine.begin() as connection:
+        #     result = connection.execute(oauth2_auth_code.insert().values({
+        #         "client_id":
+        #     }))
+

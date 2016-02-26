@@ -1,6 +1,10 @@
 # gevent.monkey.patch_all() needs to be called before importing bottle.
 import gevent.monkey; gevent.monkey.patch_all()
 
+from httplib import BAD_REQUEST
+import sys
+import time
+
 from bottle import (
     abort,
     get,
@@ -11,11 +15,11 @@ from bottle import (
     request,
     run,
 )
-from httplib import BAD_REQUEST
-import sys
-import time
 
 import codalab.rest.example
+import codalab.rest.login
+import codalab.rest.oauth2
+import codalab.rest.users
 
 
 class SaveEnvironmentPlugin(object):
@@ -56,11 +60,10 @@ class LoggingPlugin(object):
                 and request.content_type == 'application/json'):
                 args.append(request.json)
 
-            # TODO(klopyrev): Log real user ID and name.
             local.model.update_events_log(
                 start_time=start_time,
-                user_id='',
-                user_name='',
+                user_id=getattr(getattr(local, 'user', None), 'user_id', ''),
+                user_name=getattr(getattr(local, 'user', None), 'user_name', ''),
                 command=command,
                 args=args)
 
