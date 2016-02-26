@@ -5,6 +5,8 @@ Script that creates the default CodaLab OAuth2 clients.
  - codalab_cli_client for the Bundle CLI clients authenticating through the Password Grant
  - codalab_worker_client for workers authenticating through the Password Grant
 
+Also creates a dummy user for testing.
+
 TODO(skoo): Create row for the web client given a redirect url.
 """
 import sys
@@ -31,7 +33,7 @@ model.save_oauth2_client(OAuth2Client(
     redirect_uris='',
 ))
 
-if not model.get_oauth2_client('codalab_worker_client'):
+if model.get_oauth2_client('codalab_worker_client'):
     model.delete_oauth2_client('codalab_worker_client')
 
 model.save_oauth2_client(OAuth2Client(
