@@ -3,15 +3,13 @@ Bottle app for the OAuth2 authorization and token endpoints.
 """
 from datetime import datetime, timedelta
 
-from bottle import Bottle, request, template, local
+from bottle import request, template, local, route, post, default_app
 
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Token
 from codalab.rest.login import require_login
 from codalab.server.oauth2_provider import OAuth2Provider
 
-oauth2_app = Bottle()
-oauth2_provider = OAuth2Provider(oauth2_app)
-
+oauth2_provider = OAuth2Provider(default_app())
 
 @oauth2_provider.clientgetter
 def get_client(client_id):
@@ -78,7 +76,7 @@ def get_user(username, password, *args, **kwargs):
     return None
 
 
-@oauth2_app.route('/authorize', ['GET', 'POST'])
+@route('/oauth2/authorize', ['GET', 'POST'])
 @require_login
 @oauth2_provider.authorize_handler
 def authorize(*args, **kwargs):
@@ -92,12 +90,12 @@ def authorize(*args, **kwargs):
         return confirm == 'yes'
 
 
-@oauth2_app.post('/token')
+@post('/oauth2/token')
 @oauth2_provider.token_handler
 def handle_token(): pass
 
 
-@oauth2_app.post('/revoke')
+@post('/oauth2/revoke')
 @oauth2_provider.revoke_handler
 def revoke_token(): pass
 

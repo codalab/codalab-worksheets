@@ -1,30 +1,42 @@
-import time
+# gevent.monkey.patch_all() needs to be called before importing bottle.
+import gevent.monkey; gevent.monkey.patch_all()
+
 from httplib import BAD_REQUEST
+import sys
+import time
 
 from bottle import (
     abort,
+    get,
+    HTTPError,
+    HTTPResponse,
     install,
     local,
     request,
     run,
-    mount,
 )
+
+import codalab.rest.example
+import codalab.rest.login
+import codalab.rest.oauth2
+import codalab.rest.users
 
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
     api = 2
     
-    def __init__(self, model, bundle_store, config):
-        self.model = model
-        self.bundle_store = bundle_store
-        self.config = config
+    def __init__(self, manager):
+        self.manager = manager
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            local.model = self.model
-            local.bundle_store = self.bundle_store
-            local.config = self.config
+            # Note that the model is created here during the first request to
+            # the server. This is intentional to ensure that any MySQL engine
+            # objects are created after forking.
+            local.model = self.manager.model()
+            local.bundle_store = self.manager.bundle_store()
+            local.config = self.manager.config
             return callback(*args, **kwargs)
 
         return wrapper
@@ -77,32 +89,40 @@ class CheckJsonPlugin(object):
         return wrapper
 
 
-def run_rest_server(manager, debug, num_workers):
+class ErrorHandlerPlugin(object):
+    """Simple error handler that doesn't use the Bottle error template."""
+    api = 2
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            response = callback(*args, **kwargs)
+            if isinstance(response, HTTPError):
+                return HTTPResponse(body=response.body, status=response.status)
+            return response
+        return wrapper
+
+
+@get('/status')
+def status():
+    return 'OK'
+
+
+def run_rest_server(manager, debug, num_processes):
     """Runs the REST server."""
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
 
-    install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store(), manager.config))
+    install(SaveEnvironmentPlugin(manager))
     install(CheckJsonPlugin())
     install(LoggingPlugin())
+    install(ErrorHandlerPlugin())
 
-    # Import views
-    import codalab.rest.login
-    import codalab.rest.users
-    from codalab.rest.oauth2 import oauth2_app
-    import codalab.rest.example
-
-    # Mount OAuth2 endpoints
-    oauth2_app.install(SaveEnvironmentPlugin(manager.model(), manager.bundle_store(), manager.config))
-    mount('/oauth2/', oauth2_app)
-
-    if not debug:
-        # We use gunicorn to create a server with multiple processes, since in
-        # Python a single process uses at most 1 CPU due to the Global
-        # Interpreter Lock.
-        # We use gevent so that each of the processes handles each request in a
-        # greenlet (a sort of a lightweight thread).
-        run(host=host, port=port, debug=False, server='gunicorn',
-            workers=num_workers, worker_class='gevent')
-    else:
-        run(host=host, port=port, debug=True)
+    # We use gunicorn to create a server with multiple processes, since in
+    # Python a single process uses at most 1 CPU due to the Global Interpreter
+    # Lock.
+    # We use gevent so that each of the processes handles each request in a
+    # greenlet (a sort of a lightweight thread).
+    sys.argv = sys.argv[:1] # Small hack to work around a Gunicorn arg parsing
+                            # bug. None of the arguments to cl should go to
+                            # Gunicorn.
+    run(host=host, port=port, debug=debug, server='gunicorn',
+        workers=num_processes, worker_class='gevent' if not debug else 'sync')

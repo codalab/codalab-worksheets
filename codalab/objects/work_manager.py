@@ -23,6 +23,7 @@ from codalab.common import (
 )
 from codalab.lib import (
   canonicalize,
+  formatting,
   path_util,
 )
 from codalab.bundles.run_bundle import RunBundle
@@ -190,10 +191,10 @@ class Worker(object):
             return since_last_update >= update_timeout
         failed_bundles = filter(_failed, bundles)
         for bundle in failed_bundles:
-            failure_msg = 'No response from worker in %s' % time.strftime('%H:%M:%S', time.gmtime(update_timeout))
-            metadata_update = {'failure_message': failure_msg}
-            update = {'state': State.FAILED, 'metadata': metadata_update}
-            self.model.update_bundle(bundle, update)
+            failure_msg = 'No response from worker in %s' % formatting.duration_str(update_timeout)
+            status = {'state': State.FAILED, 'success': False, 'bundle': bundle, 'failure_message': failure_msg}
+            self.update_running_bundle(status)
+        return len(failed_bundles) > 0
 
     # Poll processes to see if bundles have finished running
     # Either way, update the bundle metadata.
@@ -354,14 +355,21 @@ class Worker(object):
             # If uuid doesn't exist, then don't process this bundle yet (the dependency might show up later)
             if missing_uuids: continue
             parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
-            failed_uuids = [
-              uuid for (uuid, state) in parent_states.iteritems()
-              if state == State.FAILED
-            ]
-            if failed_uuids:
-                bundles_to_fail.append(
-                  (bundle, 'Parent bundles failed: %s' % (', '.join(failed_uuids),)))
-            elif all(state == State.READY for state in parent_states.itervalues()):
+
+            acceptable_states = [State.READY]
+            if bundle.metadata.allow_failed_dependencies:
+                acceptable_states.append(State.FAILED)
+            else:
+                failed_uuids = [
+                  uuid for (uuid, state) in parent_states.iteritems()
+                  if state == State.FAILED
+                ]
+                if failed_uuids:
+                    bundles_to_fail.append(
+                      (bundle, 'Parent bundles failed: %s' % (', '.join(failed_uuids),)))
+                    continue
+
+            if all(state in acceptable_states for state in parent_states.itervalues()):
                 bundles_to_stage.append(bundle)
 
         with self.profile('Failing %s bundles...' % (len(bundles_to_fail),)):

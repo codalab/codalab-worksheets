@@ -134,6 +134,7 @@ OTHER_COMMANDS = (
     'alias',
     'work-manager',
     'server',
+    'rest-server',
     'logout',
 )
 
@@ -257,13 +258,16 @@ class Commands(object):
                 name += ' (%s)' % ', '.join(list(aliases))
             return name
 
+        available_other_commands = filter(
+            lambda command: command in cls.commands, OTHER_COMMANDS)
+
         indent = 2
         max_length = max(
           len(command_name(command)) for command in itertools.chain(
               BUNDLE_COMMANDS,
               WORKSHEET_COMMANDS,
               GROUP_AND_PERMISSION_COMMANDS,
-              OTHER_COMMANDS)
+              available_other_commands)
         )
 
         def command_help_text(command):
@@ -319,7 +323,7 @@ class Commands(object):
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
-            other_commands=command_group_help_text(OTHER_COMMANDS),
+            other_commands=command_group_help_text(available_other_commands),
         ).strip()
 
     @classmethod
@@ -1649,13 +1653,12 @@ class BundleCLI(object):
         help='Create a new worksheet.',
         arguments=(
             Commands.Argument('name', help='Name of worksheet (%s).' % spec_util.NAME_REGEX.pattern),
-            Commands.Argument('-p', '--ensure-exists', help='Do not throw an error if the worksheet already exists.', action='store_true'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_new_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name, args.ensure_exists)
+        uuid = client.new_worksheet(args.name)
         print >>self.stdout, uuid
         if self.headless:
             return ui_actions.serialize([
