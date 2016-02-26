@@ -2312,13 +2312,13 @@ class BundleCLI(object):
             'bs-add-partition',
             help='Add another partition for storage (MultiDiskBundleStore only)',
             arguments=(
-                    Commands.Argument('target',
+                    Commands.Argument('name',
+                                      help='The name you\'d like to give this partition for CodaLab.',),
+                    Commands.Argument('path',
                                       help=' '.join(['The target location you would like to use for storing bundles.',
                                                      'This directory should be underneath a mountpoint for the partition',
                                                      'you would like to use. You are responsible for configuring the',
                                                      'mountpoint yourself.']),),
-                    Commands.Argument('name',
-                                      help='The name you\'d like to give this partition for CodaLab.',),
             )
     )
     def do_add_partition_command(self, args):
@@ -2329,7 +2329,7 @@ class BundleCLI(object):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
-        self.manager.bundle_store().add_partition(args.target, args.name)
+        self.manager.bundle_store().add_partition(args.path, args.name)
 
     @Commands.command(
             'bs-rm-partition',

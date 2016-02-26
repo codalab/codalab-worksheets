@@ -36,7 +36,7 @@ CONFIG="
 "
 echo $CONFIG > $HOME/.codalab/config.json
 # Add two disks
-mkdir -p /tmp/A /tmp/B
-./codalab/bin/cl bs-add-partition /tmp/A A
-./codalab/bin/cl bs-add-partition /tmp/B B
+mkdir -p .tmp/A .tmp/B
+./codalab/bin/cl bs-add-partition A .tmp/A
+./codalab/bin/cl bs-add-partition B .tmp/B
 
