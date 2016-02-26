@@ -1,5 +1,26 @@
 """
 Bottle app for the OAuth2 authorization and token endpoints.
+
+This is where all of the pieces of the OAuth provider puzzle get put together.
+We instantiate an OAuth2Provider, which is a generalized class that handles all
+the OAuth 2.0 authorization flows, encapsulating them in a few simple function
+decorators.
+
+The xxx[getter|setter] decorators register callbacks which the OAuth2Provider
+uses to get and set the necessary objects from our model.
+
+The xxx_handler decorators wrap Bottle view functions to process the standard
+OAuth 2.0 requests to our endpoints. In some cases, such as the 'token' endpoint,
+the decorator handles all of the logic completely. In the case of the 'authorize'
+endpoint, we have to implement some additional logic to generate our personalized
+view and process our own form fields.
+
+Note that the 'authorize' endpoint also uses our AuthenticationPlugin, which
+ensures that the user is signed in before allowing them to authorize a request.
+
+The 'errors' endpoint is simply the default redirect destination when the
+OAuth2Provider encounters an error during authorization, and it displays the
+contents of the default query parameters 'error' and 'error_description'.
 """
 from datetime import datetime, timedelta
 
@@ -86,6 +107,7 @@ def authorize(*args, **kwargs):
         client = local.model.get_oauth2_client(client_id)
         return template("oauth2_authorize", client=client, redirect_uri=redirect_uri)
     elif request.method == 'POST':
+        # Return True back to the authorize_handler wrapper iff confirmed.
         confirm = request.forms.get('confirm', 'no')
         return confirm == 'yes'
 
