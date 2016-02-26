@@ -14,6 +14,7 @@ from bottle import (
     local,
     request,
     run,
+    static_file,
 )
 
 import codalab.rest.example
@@ -103,6 +104,11 @@ class ErrorHandlerPlugin(object):
 @get('/status')
 def status():
     return 'OK'
+
+
+@get('/static/<filename:path>')
+def send_static(filename):
+    return static_file(filename, root='static/')
 
 
 def run_rest_server(manager, debug, num_processes):
