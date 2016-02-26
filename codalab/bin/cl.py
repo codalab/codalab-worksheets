@@ -27,7 +27,7 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
         self.SERVER_PROCESS = subprocess.Popen(self.argv)
 
     def on_any_event(self, event):
-        extensions_to_watch = ('.js', '.py', '.html', '.css')
+        extensions_to_watch = ('.js', '.py', '.html', '.css', '.tpl')
         file_extension = os.path.splitext(event.src_path)[1]
 
         if file_extension in extensions_to_watch:

@@ -25,22 +25,10 @@
 
 <div class="container">
 
-    <form class="form-signup" method="post">
-        <h2>Join CodaLab today.</h2>
-        % if defined('errors'):
-            % for error in errors:
-            <div class="alert alert-danger" role="alert">{{error}}</div>
-            % end
-        % end
-        <label for="inputEmail" class="sr-only">Email</label>
-        <input type="email" id="inputEmail" name="email" class="form-control" placeholder="Email address" required autofocus />
-        <label for="inputUsername" class="sr-only">Username</label>
-        <input type="text" id="inputUsername" name="username" class="form-control" placeholder="Username" required />
-        <label for="inputPassword" class="sr-only">Password</label>
-        <input type="password" id="inputPassword" name="password" class="form-control" placeholder="Password" required />
-        <input type="password" name="confirm_password" class="form-control" placeholder="Confirm Password" required />
-        <button class="btn btn-lg btn-primary btn-block" type="submit">Sign up</button>
-    </form>
+    <div class="success-box">
+        <h2>Success!</h2>
+        <p>{{message}}</p>
+    </div>
 
 </div> <!-- /container -->
 

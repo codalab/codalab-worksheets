@@ -96,7 +96,7 @@ def do_logout():
     if redirect_uri:
         return redirect(redirect_uri)
     else:
-        return "<p>Successfully signed out from CodaLab.</p>"
+        return redirect(default_app().get_url('success', message="Successfully signed out from CodaLab."))
 
 
 @get('/login', name='login')
@@ -117,6 +117,40 @@ def do_login():
         if redirect_uri:
             return redirect(redirect_uri)
         else:
-            return "<p>Successfully signed into CodaLab.</p>"
+            return redirect(default_app().get_url('success', message="Successfully signed into CodaLab."))
     else:
         return template("login", error="Login/password did not match.")
+
+
+@get('/success', name='success')
+def show_success():
+    message = request.query.get('message', '') or request.params.get('message', '')
+    return template('success', message=message)
+
+
+@get('/signup', name='signup')
+def show_signup():
+    return template('signup')
+
+
+@post('/signup')
+def do_signup():
+    username = request.forms.get('username')
+    password = request.forms.get('password')
+
+    errors = []
+    if request.forms.get('confirm_password') != password:
+        errors.append("Passwords do not match.")
+
+    # Validate all fields (username, email, password)
+
+    # Check if username or email exists
+
+    # Create user and save to database
+    # Is there a way to use the ORM partially? ugh
+
+    if errors:
+        return template('signup', errors=errors)
+
+    return redirect(default_app().get_url('success', message="Successfully signed into CodaLab."))
+
