@@ -432,6 +432,13 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         path_util.make_directory(self.partitions)
         path_util.make_directory(self.mtemp)
 
+        # Create the default partition, if there are no partitions currently
+        if self.__get_num_partitions() == 0:
+            # Create a default partition that links to the codalab_home
+            path_util.make_directory(os.path.join(self.codalab_home, MultiDiskBundleStore.DATA_SUBDIRECTORY))
+            default_partition = os.path.join(self.partitions, 'default')
+            path_util.soft_link(self.codalab_home, default_partition)
+
     def add_partition(self, target, new_partition_name):
         """
         MultiDiskBundleStore specific method. Add a new partition to the bundle store. The "target" is actually a symlink to
