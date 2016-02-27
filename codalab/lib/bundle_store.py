@@ -92,7 +92,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
     # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
     DATA_SUBDIRECTORY = 'bundles'
     TEMP_SUBDIRECTORY = 'temp'
-    MISC_TEMP_SUBDIRECTORY = 'temp'
+    MISC_TEMP_SUBDIRECTORY = 'misc_temp' # BundleServer writes out to here, so should have a different name
 
     # Cleanup timeouts
     DATA_CLEANUP_TIME = 60
@@ -240,6 +240,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         if self.__get_num_partitions() == 0:
             # Create a default partition that links to the codalab_home
             path_util.make_directory(os.path.join(self.codalab_home, MultiDiskBundleStore.DATA_SUBDIRECTORY))
+            path_util.make_directory(os.path.join(self.codalab_home, MultiDiskBundleStore.TEMP_SUBDIRECTORY))
             default_partition = os.path.join(self.partitions, 'default')
             path_util.soft_link(self.codalab_home, default_partition)
 
@@ -406,7 +407,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         old_data_files = reduce(lambda x,y: x+y, [self.list_old_files(os.path.join(self.partitions, dir, MultiDiskBundleStore.DATA_SUBDIRECTORY), self.DATA_CLEANUP_TIME) for dir in disks])
         for uuid in old_data_files:
             self.cleanup(model, uuid, [], dry_run)
-        old_temp_files = self.list_old_files(self.mtemp, self.TEMP_CLEANUP_TIME)
+        old_temp_files = reduce(lambda x,y: x+y, [self.list_old_files(os.path.join(self.partitions, dir, MultiDiskBundleStore.TEMP_SUBDIRECTORY), self.TEMP_CLEANUP_TIME) for dir in disks])
         for temp_file in old_temp_files:
             temp_path = os.path.join(self.temp, temp_file)
             print >>sys.stderr, "cleanup: temp %s" % temp_path
