@@ -4,18 +4,12 @@ body {
     background-color: #eee;
 }
 
-.form-signup, .success-box {
-    max-width: 400px;
-    padding: 15px;
-    margin: 0 auto;
-}
-
 .form-signup input {
     margin-top: 10px;
     margin-bottom: 10px;
 }
 
-.form-signin {
+.form-signin, .form-signup, .success-box {
     max-width: 330px;
     padding: 15px;
     margin: 0 auto;

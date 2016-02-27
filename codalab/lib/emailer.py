@@ -1,8 +1,12 @@
 """ Emailer """
 
 from email.mime.text import MIMEText
+import logging
 import smtplib
 import sys
+
+
+log = logging.getLogger(__name__)
 
 
 class Emailer(object):
@@ -59,6 +63,9 @@ class SMTPEmailer(Emailer):
 
         mail_server.sendmail(self.server_email, recipient, message.as_string())
         mail_server.close()
+
+        log.info("Email sent to %s." % recipient)
+        log.debug(message.as_string())
 
 
 class ConsoleEmailer(Emailer):

@@ -1467,6 +1467,7 @@ class BundleModel(object):
         :return: User object, or None if no matching user.
         """
         clauses = []
+        clauses.append(cl_user.c.is_active == True)
         if user_id is not None:
             clauses.append(cl_user.c.user_id == user_id)
         if username is not None:
@@ -1478,7 +1479,7 @@ class BundleModel(object):
                 cl_user
             ]).where(and_(*clauses)).limit(1)).fetchone()
 
-        if row is None:
+        if row is None or not row.is_active:
             return None
 
         return User(row)
@@ -1498,7 +1499,7 @@ class BundleModel(object):
                 cl_user.c.email == email,
             )).limit(1)).fetchone()
 
-        return row is not None
+        return row is not None and row.is_active
 
     def add_user(self, username, email, password):
         """
@@ -1602,6 +1603,8 @@ class BundleModel(object):
         """
         Return the user info corresponding to |user_id|.
         If a user doesn't exist, create a new one and set sane defaults.
+
+        TODO(skoo): merge with get_user when wiring new user system together?
         """
         with self.engine.begin() as connection:
             rows = connection.execute(select([cl_user]).where(cl_user.c.user_id == user_id))
