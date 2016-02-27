@@ -10,8 +10,9 @@ import struct
 import sys
 import time
 
-from oauthlib.common import to_unicode, bytes_type
 from bottle import request, HTTPResponse
+from oauthlib.common import to_unicode, bytes_type
+import six
 
 
 """
