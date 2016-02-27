@@ -28,21 +28,14 @@ To use MultiDiskBundleStore, you must add at least one partition. Try the follow
 
 
 class BundleStoreCleanupMixin(object):
-    """A mixin for BundleStores that wish to support a cleanup and full cleanup operation.
+    """A mixin for BundleStores that wish to support a cleanup operation
     """
-    def cleanup(self, model, uuid, except_bundle_uuids, dry_run):
+    def cleanup(self, uuid, dry_run):
         """
-        Cleanup a given model
-        """
-        pass
-
-    def full_cleanup(self, model, dry_run):
-        """
-        For each uuid in the store, check if it should be garbage collected and
-        delete its data if so. In addition, delete any old temporary files.
+        Cleanup a given bundle. If dry_run is True, do not actually
+        delete the bundle from storage.
         """
         pass
-
 
 class BaseBundleStore(object):
     """
@@ -93,10 +86,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
     DATA_SUBDIRECTORY = 'bundles'
     TEMP_SUBDIRECTORY = 'temp'
     MISC_TEMP_SUBDIRECTORY = 'misc_temp' # BundleServer writes out to here, so should have a different name
-
-    # Cleanup timeouts
-    DATA_CLEANUP_TIME = 60
-    TEMP_CLEANUP_TIME = 60 * 60
 
     def __init__(self, codalab_home):
         self.codalab_home = path_util.normalize(codalab_home)
@@ -385,41 +374,12 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
             bundles = reduce(lambda x,y: x+y, path_util.ls(os.path.join(partition_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)))
             print '- %-016s\n\tmountpoint: %s\n\t%d %s' % (d, real_path, len(bundles), 'bundle' if len(bundles) == 1 else 'bundles')
 
-    def cleanup(self, model, uuid, except_bundle_uuids, dry_run):
+    def cleanup(self, uuid, dry_run):
         '''
         Remove the bundle with given UUID from on-disk storage.
         '''
-        try:
-            bundle = model.get_bundle(uuid)
-            if bundle.data_hash == None:
-                raise
-        except:
-            absolute_path = self.get_bundle_location(uuid)
-            print >>sys.stderr, "cleanup: data %s" % absolute_path
-            if not dry_run:
-                path_util.remove(absolute_path)
-
-    def full_cleanup(self, model, dry_run):
-        """
-        Checks each partition of the BundleStore to see if it should be removed.
-        """
-        disks, _ = path_util.ls(self.partitions)
-        old_data_files = reduce(lambda x,y: x+y, [self.list_old_files(os.path.join(self.partitions, dir, MultiDiskBundleStore.DATA_SUBDIRECTORY), self.DATA_CLEANUP_TIME) for dir in disks])
-        for uuid in old_data_files:
-            self.cleanup(model, uuid, [], dry_run)
-        old_temp_files = reduce(lambda x,y: x+y, [self.list_old_files(os.path.join(self.partitions, dir, MultiDiskBundleStore.TEMP_SUBDIRECTORY), self.TEMP_CLEANUP_TIME) for dir in disks])
-        for temp_file in old_temp_files:
-            temp_path = os.path.join(self.temp, temp_file)
-            print >>sys.stderr, "cleanup: temp %s" % temp_path
-            if not dry_run:
-                path_util.remove(temp_path)
-
-    def list_old_files(self, path, cleanup_time):
-        cleanup_cutoff = time.time() - cleanup_time
-        result = []
-        for file in os.listdir(path):
-            absolute_path = os.path.join(path, file)
-            if path_util.getmtime(absolute_path) < cleanup_cutoff:
-                result.append(file)
-        return result
+        absolute_path = self.get_bundle_location(uuid)
+        print >>sys.stderr, "cleanup: data %s" % absolute_path
+        if not dry_run:
+            path_util.remove(absolute_path)
 

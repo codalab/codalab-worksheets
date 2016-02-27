@@ -450,7 +450,7 @@ class LocalBundleClient(BundleClient):
             # check first is needs to be deleted
             bundle_location = self.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
-                self.bundle_store.cleanup(self.model, uuid, relevant_uuids, dry_run)
+                self.bundle_store.cleanup(uuid, dry_run)
 
         return relevant_uuids
 

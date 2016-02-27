@@ -2261,25 +2261,6 @@ class BundleCLI(object):
         client.update_user_info(user_info)
 
     @Commands.command(
-        'cleanup',
-        help=[
-            'Delete unused files in the CodaLab bundle store and temp directories (local only).',
-            'Note: do not do this operation when you have running bundles.',
-        ],
-        arguments=(
-            Commands.Argument('-i', '--dry-run', action='store_true', help='Perform dry run (don\'t actually do it, but see what the command would do).'),
-        ),
-    )
-    def do_cleanup_command(self, args):
-        """
-        Delete unused data and temp files (be careful!).
-        """
-        self._fail_if_headless('cleanup')
-        self._fail_if_not_local('cleanup')
-        client = self.manager.current_client()
-        client.bundle_store.full_cleanup(client.model, args.dry_run)
-
-    @Commands.command(
         'reset',
         help='Delete the CodaLab bundle store and reset the database (local only).',
         arguments=(
