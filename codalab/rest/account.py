@@ -1,11 +1,10 @@
 """
-Login views.
+Login and signup views.
+Handles create new user accounts and authenticating users.
 """
 from datetime import datetime, timedelta
-from urllib import urlencode
-from urlparse import urlparse
 
-from bottle import request, response, template, local, redirect, route, default_app, get, post
+from bottle import request, response, template, local, redirect, default_app, get, post
 
 from codalab.lib import spec_util
 from codalab.lib.server_util import get_random_string

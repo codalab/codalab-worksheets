@@ -18,7 +18,7 @@ from bottle import (
 )
 
 import codalab.rest.example
-import codalab.rest.login
+import codalab.rest.account
 import codalab.rest.oauth2
 import codalab.rest.users
 
