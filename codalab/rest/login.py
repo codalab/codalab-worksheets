@@ -16,7 +16,7 @@ class LoginSession(object):
     Represents the user's session after logging in, usually stored as a cookie.
     """
     KEY = "codalab_session"
-    _SECRET = None
+    _SECRET = "testing" # FIXME should be None
 
     def __init__(self, user_id, max_age):
         self.user_id = user_id
@@ -44,6 +44,7 @@ class LoginSession(object):
         :param response: Optional. A specific Bottle response object to save cookie on.
         :return: None
         """
+        self.clear(response)
         response.set_cookie(self.KEY, self, secret=self.get_secret(), max_age=self.max_age)
 
     @classmethod
@@ -78,19 +79,32 @@ class AuthenticationPlugin(object):
     otherwise the client is redirected to the sign-in page.
     """
     api = 2
+
+    def __init__(self, require_login=True, require_verify=True):
+        self.require_login = require_login
+        self.require_verify = require_verify
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
+            # Redirect unauthenticated users to login page
             session = LoginSession.get()
+            if self.require_login and not session:
+                # Make sure X-Forwarded-Host is set properly if behind reverse-proxy to use request.url
+                return redirect(default_app().get_url('login', redirect_uri=request.url))
+
+            # Set thread-local user object
             if session:
                 local.user = local.model.get_user(user_id=session.user_id)
-            else:
-                # Make sure X-Forwarded-Host is set properly if behind reverse-proxy to use request.url
-                redirect(default_app().get_url('login', redirect_uri=request.url))
+
+            # Redirect unverified users to resend verification page
+            if self.require_verify and hasattr(local, 'user') and not local.user.is_verified:
+                return redirect(default_app().get_url('resend_key'))
+
             return callback(*args, **kwargs)
         return wrapper
 
 
-@get('/logout', name='logout')
+@get('/account/logout', name='logout')
 def do_logout():
     LoginSession.clear()
     redirect_uri = request.query.get('redirect_uri')
@@ -100,12 +114,14 @@ def do_logout():
         return redirect(default_app().get_url('success', message="Successfully signed out from CodaLab."))
 
 
-@get('/login', name='login')
+@get('/account/login', name='login', apply=AuthenticationPlugin(require_login=False))
 def show_login():
+    if hasattr(local, 'user'):
+        return redirect(default_app().get_url('success', message="You are already signed into CodaLab."))
     return template("login")
 
 
-@post('/login')
+@post('/account/login')
 def do_login():
     redirect_uri = request.query.get('redirect_uri')
     username = request.forms.get('username')
@@ -123,18 +139,35 @@ def do_login():
         return template("login", errors=["Login/password did not match."])
 
 
-@get('/success', name='success')
+@get('/account/success', name='success')
 def show_success():
     message = request.query.get('message', '') or request.params.get('message', '')
     return template('success', message=message)
 
 
-@get('/signup', name='signup')
+@get('/account/signup', name='signup')
 def show_signup():
     return template('signup')
 
 
-@post('/signup')
+def send_verification_key(username, email, key):
+    # Send verification key to given email address
+    hostname = request.get_header('Host')
+    local.emailer.send_email(
+        subject="Verify your new CodaLab account",
+        body=template('email_verification_body', user=username, current_site=hostname, key=key),
+        recipient=email,
+    )
+
+    # Redirect to success page
+    return redirect(default_app().get_url(
+        'success',
+        message="Thank you for signing up for a CodaLab account! "
+                "A link to verify your account has been sent to %s." % email)
+    )
+
+
+@post('/account/signup')
 def do_signup():
     username = request.forms.get('username')
     password = request.forms.get('password')
@@ -159,33 +192,30 @@ def do_signup():
         return template('signup', errors=errors)
 
     # Create unverified user
-    user_id, verification_key = local.model.add_user(username, email, password)
+    _, verification_key = local.model.add_user(username, email, password)
 
-    # Send verification key to given email address
-    hostname = request.get_header('Host')
-    local.emailer.send_email(
-        subject="Verify your new CodaLab account",
-        body=template('email_verification_body', user=username, current_site=hostname, key=verification_key),
-        recipient=email,
-    )
-
-    # Redirect to success page
-    return redirect(default_app().get_url(
-        'success',
-        message="Thank you for signing up for a CodaLab account! "
-                "A link to verify your account has been sent to %s." % email)
-    )
+    return send_verification_key(username, email, verification_key)
 
 
-@get('/verify')
-def do_verify():
-    if local.model.verify_user(request.query['key']):
-        return redirect(default_app().get_url('login', message="Account verified! Please login."))
+@get('/account/verify/<key>')
+def do_verify(key):
+    if local.model.verify_user(key):
+        return redirect(default_app().get_url('success', message="Account verified!"))
     else:
         return "Invalid verification key. Please try copying the link directly from your email."
 
 
+@get('/account/resend', name='resend_key', apply=AuthenticationPlugin(require_verify=False))
+def resend_key():
+    if local.user.is_verified:
+        return redirect(default_app().get_url('success', message="Your account has already been verified."))
+    key = local.model.get_verification_key(local.user.user_id)
+    return send_verification_key(local.user.user_name, local.user.email, key)
 
 
-
+@get('/account/whoami', apply=AuthenticationPlugin(require_verify=False))
+def whoami():
+    info = local.user.to_dict()
+    del info['password']
+    return info
 

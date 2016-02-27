@@ -27,7 +27,7 @@
 
     <form class="form-signup" method="post">
         <h2>Join CodaLab today.</h2>
-        % include('messages', messages=get('messages', None), errors=get('errors', None)
+        % include('messages', errors=get('errors', []))
         <label for="inputEmail" class="sr-only">Email</label>
         <input type="email" id="inputEmail" name="email" class="form-control" placeholder="Email address" required autofocus />
         <label for="inputUsername" class="sr-only">Username</label>
