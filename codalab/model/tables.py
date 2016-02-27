@@ -244,7 +244,7 @@ user = Table(
   sqlite_autoincrement=True,
 )
 
-# Stores verification keys
+# Stores (email) verification keys
 user_verification = Table(
   'user_verification',
   db_metadata,

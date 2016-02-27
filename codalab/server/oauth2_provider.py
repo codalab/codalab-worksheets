@@ -639,7 +639,7 @@ class OAuth2RequestValidator(RequestValidator):
 
         request.client = client
 
-        if client.client_secret != client_secret:
+        if client.client_secret and client.client_secret != client_secret:
             log.debug('Authenticate client failed, secret not match.')
             return False
 
