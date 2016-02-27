@@ -7,7 +7,7 @@ import hmac
 
 from codalab.common import UsageError
 from codalab.model.orm_object import ORMObject
-from codalab.lib.server_util import force_bytes, get_random_string
+from codalab.lib.server_util import force_bytes, get_random_string, pbkdf2
 
 
 class User(ORMObject):
@@ -30,7 +30,7 @@ class User(ORMObject):
         """
         assert password is not None
         assert salt and '$' not in salt
-        hash = hashlib.pbkdf2_hmac(hashlib.sha256().name, force_bytes(password), force_bytes(salt), iterations)
+        hash = pbkdf2(password, salt, iterations)
         hash = base64.b64encode(hash).decode('ascii').strip()
         return "%s$%d$%s$%s" % ('pbkdf2_sha256', iterations, salt, hash)
 
