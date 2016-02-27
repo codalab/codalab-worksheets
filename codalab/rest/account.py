@@ -16,7 +16,7 @@ class LoginSession(object):
     """
     KEY = "codalab_session"
     PATH = "/"
-    _SECRET = "testing" # FIXME should be None
+    _SECRET = None
 
     def __init__(self, user_id, max_age):
         self.user_id = user_id
