@@ -7,7 +7,7 @@ import hmac
 
 from codalab.common import UsageError
 from codalab.model.orm_object import ORMObject
-from codalab.lib.server_util import force_bytes, get_random_string, pbkdf2
+from codalab.lib.server_util import force_bytes, get_random_string, pbkdf2, constant_time_compare
 
 
 class User(ORMObject):
@@ -55,5 +55,5 @@ class User(ORMObject):
         algorithm, iterations, salt, _ = self.password.split('$', 3)
         assert algorithm == 'pbkdf2_sha256'
         encoded = self.encode_password(password, salt, int(iterations))
-        return hmac.compare_digest(force_bytes(self.password), force_bytes(encoded))
+        return constant_time_compare(force_bytes(self.password), force_bytes(encoded))
 
