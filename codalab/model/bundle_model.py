@@ -1615,14 +1615,20 @@ class BundleModel(object):
                 print >>sys.stderr, 'Creating new entry for user ' + user_id
                 user_info = {
                     'user_id': user_id,
-                    'user_name': '',  # TODO: Set this to something
                     'time_quota': self.default_user_info['time_quota'],
                     'time_used': 0,
                     'disk_quota': self.default_user_info['disk_quota'],
                     'disk_used': self._get_disk_used(user_id),
+                    'user_name': '',  # TODO(skoo): replace these values in future migration
+                    'email': '',
+                    'date_joined': datetime.datetime.utcnow(),
+                    'is_active': True,
+                    'is_verified': True,
+                    'is_superuser': str(user_id) == 0,
+                    'password': '',
                 }
 
-                # FIXME remove when user data migration is complete
+                # TODO(skoo): remove when user data migration is complete
                 # Temporarily suppress the "doesn't have default value" warnings until user data migration is complete
                 import warnings
                 with warnings.catch_warnings():
