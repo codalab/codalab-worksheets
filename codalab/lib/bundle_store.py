@@ -277,9 +277,9 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
                 correct_partition = self.ring.get_node(bundle)
                 if correct_partition != partition:
                     # Reposition the node to the correct partition
-                    print >> sys.stderr, "Marking %s for relocation" % bundle
                     from_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY, bundle)
                     to_path = os.path.join(mtemp, bundle)
+                    print >> sys.stderr, "copying %s to %s" % (from_path, to_path)
                     path_util.copy(from_path, to_path)
                     delete_on_success += [from_path]
 

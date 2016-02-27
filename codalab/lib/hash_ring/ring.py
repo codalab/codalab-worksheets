@@ -32,6 +32,7 @@ from ._compat import bytes
     :copyright: 2008 by Amir Salihefendic.
     :license: BSD
     Modifications by Andrew Duffy <root@aduffy.org>
+    February 2016: Added support for dynamically adding/removing new nodes to the ring
 """
 
 import math
