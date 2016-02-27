@@ -18,7 +18,9 @@ user = User({
     "time_quota": 0,
     "time_used": 0,
     "disk_quota": 0,
-    "disk_used": 0
+    "disk_used": 0,
+    "affiliation": None,
+    "url": None,
 })
 
 
