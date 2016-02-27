@@ -140,6 +140,8 @@ class ModuleContext(object):
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
                 print 'ERROR: %s' % exc_value.message
+            elif exc_type is KeyboardInterrupt:
+                print 'Caught interrupt! Quitting after cleanup...'
             else:
                 print 'ERROR: Test raised an exception!'
                 traceback.print_exception(exc_type, exc_value, tb)
@@ -159,8 +161,11 @@ class ModuleContext(object):
         if len(self.bundles) > 0:
             run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
 
-        # Do not reraise exception
-        return True
+        # Reraise only KeyboardInterrupt
+        if exc_type is KeyboardInterrupt:
+            return False
+        else:
+            return True
 
     def collect_worksheet(self, uuid):
         '''Mark a worksheet for cleanup on exit.'''
