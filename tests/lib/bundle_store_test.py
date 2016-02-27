@@ -4,12 +4,13 @@ import os
 import sys
 import unittest
 
-from codalab.lib.bundle_store import SingleDiskBundleStore
+from codalab.lib.bundle_store import MultiDiskBundleStore
 
 class BundleStoreTest(unittest.TestCase):
+    @mock.patch('codalab.lib.bundle_store.HashRing')
     @mock.patch('codalab.lib.bundle_store.path_util')
     @mock.patch('codalab.lib.bundle_store.os', new_callable=mock.Mock)
-    def test_upload(self, mock_os, mock_path_util):
+    def test_upload(self, mock_os, mock_path_util, mock_HashRing):
         '''
         Tries to upload a bundle: should copy bundle into temp, hash and move
         it in to the data directory.
@@ -18,13 +19,20 @@ class BundleStoreTest(unittest.TestCase):
 
         ### BundleStore
 
-        class MockBundleStore(SingleDiskBundleStore):
+        # HashRing
+        def get_node(x):
+            return 'default'
+        mock_HashRing.get_node = get_node
+
+        class MockBundleStore(MultiDiskBundleStore):
           def __init__(self, root):
             self.root = root
-            self.data = os.path.join(root, SingleDiskBundleStore.DATA_SUBDIRECTORY)
-            self.temp = os.path.join(root, SingleDiskBundleStore.TEMP_SUBDIRECTORY)
+            self.partitions = os.path.join(root, 'partitions')
+            self.mtemp = os.path.join(root, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
+            self.ring = mock_HashRing
 
         bundle_store = MockBundleStore('mock_root')
+
 
         ### os.path
 
@@ -74,8 +82,8 @@ class BundleStoreTest(unittest.TestCase):
         contents = 'contents'
         test_uuid1 = '0xdeadbeef'
         test_uuid2 = '0xaaaaaaaa'
-        final_path1 = 'mock_root/bundles/%s' % test_uuid1
-        final_path2 = 'mock_root/bundles/%s' % test_uuid2
+        final_path1 = 'mock_root/partitions/default/bundles/%s' % test_uuid1
+        final_path2 = 'mock_root/partitions/default/bundles/%s' % test_uuid2
         global_paths.add(contents)
 
         bundle_store.upload(sources=[contents], follow_symlinks=False, exclude_patterns=None, git=False, unpack=False, remove_sources=False, uuid=test_uuid1)
