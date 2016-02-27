@@ -27,9 +27,8 @@
 
     <form class="form-signin" method="post">
         <h2 class="form-signin-heading">CodaLab</h2>
-        % if defined('error'):
-        <div class="alert alert-danger" role="alert">{{error}}</div>
-        % end
+        % from bottle import request
+        % include('messages', message=request.query.get('message', []), errors=get('errors', []))
         <label for="inputUsername" class="sr-only">Username</label>
         <input type="text" id="inputUsername" name="username" class="form-control" placeholder="Username or email" required autofocus>
         <label for="inputPassword" class="sr-only">Password</label>

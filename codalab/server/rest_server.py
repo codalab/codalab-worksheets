@@ -38,6 +38,7 @@ class SaveEnvironmentPlugin(object):
             local.model = self.manager.model()
             local.bundle_store = self.manager.bundle_store()
             local.config = self.manager.config
+            local.emailer = self.manager.emailer()
             return callback(*args, **kwargs)
 
         return wrapper

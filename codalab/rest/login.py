@@ -7,6 +7,7 @@ from urlparse import urlparse
 
 from bottle import request, response, template, local, redirect, route, default_app, get, post
 
+from codalab.lib import spec_util
 from codalab.lib.server_util import get_random_string
 
 
@@ -84,7 +85,7 @@ class AuthenticationPlugin(object):
                 local.user = local.model.get_user(user_id=session.user_id)
             else:
                 # Make sure X-Forwarded-Host is set properly if behind reverse-proxy to use request.url
-                redirect("%s?%s" % ('/login', urlencode({"redirect_uri": request.url})))
+                redirect(default_app().get_url('login', redirect_uri=request.url))
             return callback(*args, **kwargs)
         return wrapper
 
@@ -119,7 +120,7 @@ def do_login():
         else:
             return redirect(default_app().get_url('success', message="Successfully signed into CodaLab."))
     else:
-        return template("login", error="Login/password did not match.")
+        return template("login", errors=["Login/password did not match."])
 
 
 @get('/success', name='success')
@@ -137,20 +138,54 @@ def show_signup():
 def do_signup():
     username = request.forms.get('username')
     password = request.forms.get('password')
+    email = request.forms.get('email')
 
     errors = []
     if request.forms.get('confirm_password') != password:
         errors.append("Passwords do not match.")
 
-    # Validate all fields (username, email, password)
+    if not spec_util.NAME_REGEX.match(username):
+        errors.append("Username must only contain letter, digits, hyphens, underscores, and periods.")
 
-    # Check if username or email exists
+    # Only do a basic validation of email -- the only guaranteed way to check
+    # whether an email address is valid is by sending an actual email.
+    if not spec_util.BASIC_EMAIL_REGEX.match(email):
+        errors.append("Email address is invalid.")
 
-    # Create user and save to database
-    # Is there a way to use the ORM partially? ugh
+    if local.model.user_exists(username, email):
+        errors.append("User with this username or email already exists.")
 
     if errors:
         return template('signup', errors=errors)
 
-    return redirect(default_app().get_url('success', message="Successfully signed into CodaLab."))
+    # Create unverified user
+    user_id, verification_key = local.model.add_user(username, email, password)
+
+    # Send verification key to given email address
+    hostname = request.get_header('Host')
+    local.emailer.send_email(
+        subject="Verify your new CodaLab account",
+        body=template('email_verification_body', user=username, current_site=hostname, key=verification_key),
+        recipient=email,
+    )
+
+    # Redirect to success page
+    return redirect(default_app().get_url(
+        'success',
+        message="Thank you for signing up for a CodaLab account! "
+                "A link to verify your account has been sent to %s." % email)
+    )
+
+
+@get('/verify')
+def do_verify():
+    if local.model.verify_user(request.query['key']):
+        return redirect(default_app().get_url('login', message="Account verified! Please login."))
+    else:
+        return "Invalid verification key. Please try copying the link directly from your email."
+
+
+
+
+
 

@@ -27,11 +27,7 @@
 
     <form class="form-signup" method="post">
         <h2>Join CodaLab today.</h2>
-        % if defined('errors'):
-            % for error in errors:
-            <div class="alert alert-danger" role="alert">{{error}}</div>
-            % end
-        % end
+        % include('messages', messages=get('messages', None), errors=get('errors', None)
         <label for="inputEmail" class="sr-only">Email</label>
         <input type="email" id="inputEmail" name="email" class="form-control" placeholder="Email address" required autofocus />
         <label for="inputUsername" class="sr-only">Username</label>
