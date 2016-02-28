@@ -2290,17 +2290,17 @@ class BundleCLI(object):
         raise UsageError('Cannot execute CLI command: server')
 
     @Commands.command(
-            'bs-add-partition',
-            help='Add another partition for storage (MultiDiskBundleStore only)',
-            arguments=(
-                    Commands.Argument('name',
-                                      help='The name you\'d like to give this partition for CodaLab.',),
-                    Commands.Argument('path',
-                                      help=' '.join(['The target location you would like to use for storing bundles.',
-                                                     'This directory should be underneath a mountpoint for the partition',
-                                                     'you would like to use. You are responsible for configuring the',
-                                                     'mountpoint yourself.']),),
-            )
+        'bs-add-partition',
+        help='Add another partition for storage (MultiDiskBundleStore only)',
+        arguments=(
+            Commands.Argument('name',
+                              help='The name you\'d like to give this partition for CodaLab.',),
+            Commands.Argument('path',
+                              help=' '.join(['The target location you would like to use for storing bundles.',
+                                             'This directory should be underneath a mountpoint for the partition',
+                                             'you would like to use. You are responsible for configuring the',
+                                             'mountpoint yourself.']),),
+        ),
     )
     def do_add_partition_command(self, args):
         """
@@ -2313,11 +2313,11 @@ class BundleCLI(object):
         self.manager.bundle_store().add_partition(args.path, args.name)
 
     @Commands.command(
-            'bs-rm-partition',
-            help='Remove a partition by its number (MultiDiskBundleStore only)',
-            arguments=(
-                Commands.Argument('partition', help='The partition you want to remove.'),
-            )
+        'bs-rm-partition',
+        help='Remove a partition by its number (MultiDiskBundleStore only)',
+        arguments=(
+            Commands.Argument('partition', help='The partition you want to remove.'),
+        ),
     )
     def do_rm_partition_command(self, args):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
@@ -2326,9 +2326,9 @@ class BundleCLI(object):
         self.manager.bundle_store().rm_partition(args.partition)
 
     @Commands.command(
-            'bs-ls-partitions',
-            help='List available partitions (MultiDiskBundleStore only)',
-            arguments=(),
+        'bs-ls-partitions',
+        help='List available partitions (MultiDiskBundleStore only)',
+        arguments=(),
     )
     def do_ls_partitions_command(self, _):
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
