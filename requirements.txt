@@ -5,3 +5,5 @@ psutil==3.3.0
 watchdog==0.8.3
 # Use latest master branch, until next release includes PR#118
 git+https://github.com/kislyuk/argcomplete.git
+# Use agd@stanford.edu's fork of hash_ring with extra features
+git+https://github.com/andreweduffy/hash_ring.git@master
