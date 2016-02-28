@@ -39,9 +39,10 @@ from distutils.util import strtobool
 
 from codalab.client import is_local_address
 from codalab.common import UsageError, PermissionError
-from codalab.objects.worksheet import Worksheet
 from codalab.server.auth import User
-from codalab.lib.bundle_store import BundleStore
+from codalab.lib.bundle_store import (
+    MultiDiskBundleStore,
+)
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
 from codalab.lib import formatting
 
@@ -253,12 +254,23 @@ class CodaLabManager(object):
         # Global setting!  Make temp directory the same as the bundle store
         # temporary directory.  The default /tmp generally doesn't have enough
         # space.
-        tempfile.tempdir = os.path.join(home, BundleStore.TEMP_SUBDIRECTORY)
+        # TODO: Fix this, this is bad
+        tempfile.tempdir = os.path.join(home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
         return home
 
     @cached
     def bundle_store(self):
-        return BundleStore(self.codalab_home)
+        """
+        Returns the bundle store backing this CodaLab instance. The type of the store object
+        depends on what the user has configured, but if no bundle store is configured manually then it defaults to a
+        MultiDiskBundleStore.
+        """
+        store_type = self.config.get('bundle_store', 'MultiDiskBundleStore')
+        if store_type == MultiDiskBundleStore.__name__:
+            return MultiDiskBundleStore(self.codalab_home)
+        else:
+            print >>sys.stderr, "Invalid bundle store type \"%s\"", store_type
+            sys.exit(1)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)
