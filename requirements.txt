@@ -1,4 +1,4 @@
-argcomplete=1.1.0
+argcomplete==1.1.0
 PyYAML==3.11
 SQLAlchemy==1.0.8
 alembic==0.8.2
