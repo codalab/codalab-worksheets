@@ -101,7 +101,6 @@ class RemoteBundleClient(BundleClient):
       'login',
       'get_user_info',
       'update_user_info',
-      'is_root_user',
       # Commands related to groups and permissions.
       'list_groups',
       'new_group',

@@ -1481,9 +1481,11 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             query = select([cl_chat.c.time, cl_chat.c.sender_user_id, cl_chat.c.recipient_user_id, cl_chat.c.message])
             clause = []
+            # query all chats that this user sends or receives
             clause.append(cl_chat.c.sender_user_id == user_id1)
             clause.append(cl_chat.c.recipient_user_id == user_id1)
             if user_id1 == self.root_user_id:
+                # if this user is root user, also query all chats that system user sends or receives
                 clause.append(cl_chat.c.sender_user_id == self.system_user_id)
                 clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
             clause = or_(*clause)
@@ -1492,19 +1494,12 @@ class BundleModel(object):
                 query = query.limit(limit)
             # query = query.order_by(cl_chat.c.id.desc())
             rows = connection.execute(query).fetchall()
-
-            result = {}
-            for row in rows:
-                if user_id1 == self.root_user_id:
-                    user_id2 = row.sender_user_id if row.sender_user_id != user_id1 and row.sender_user_id != self.system_user_id else row.recipient_user_id
-                else:
-                    user_id2 = row.sender_user_id if row.sender_user_id != user_id1 else row.recipient_user_id
-                    # if the other user is System, group it with Admin so that the user see System and Admin in the same chat window
-                    if user_id2 == self.system_user_id:
-                        user_id2 = self.root_user_id
-                if user_id2 not in result:
-                    result[user_id2] = []
-                result[user_id2].append({'message': row.message, 'time': json.dumps(row.time, default=self.date_handler), 'sender_user_id': row.sender_user_id, 'recipient_user_id': row.recipient_user_id})
+            result = [{
+                'message': row.message,
+                'time': str(row.time),
+                'sender_user_id': row.sender_user_id,
+                'recipient_user_id': row.recipient_user_id
+                } for row in rows]
             return result
 
     ############################################################
@@ -1534,6 +1529,9 @@ class BundleModel(object):
                     'disk_used': self._get_disk_used(user_id),
                 }
                 connection.execute(cl_user.insert().values(user_info))
+            user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
+            user_info['root_user_id'] = self.root_user_id
+            user_info['system_user_id'] = self.system_user_id
         return user_info
 
     def update_user_info(self, user_info):
