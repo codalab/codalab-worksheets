@@ -14,10 +14,11 @@ from bottle import (
     local,
     request,
     run,
+    static_file,
 )
 
 import codalab.rest.example
-import codalab.rest.login
+import codalab.rest.account
 import codalab.rest.oauth2
 import codalab.rest.users
 
@@ -37,6 +38,7 @@ class SaveEnvironmentPlugin(object):
             local.model = self.manager.model()
             local.bundle_store = self.manager.bundle_store()
             local.config = self.manager.config
+            local.emailer = self.manager.emailer()
             return callback(*args, **kwargs)
 
         return wrapper
@@ -103,6 +105,11 @@ class ErrorHandlerPlugin(object):
 @get('/status')
 def status():
     return 'OK'
+
+
+@get('/static/<filename:path>')
+def send_static(filename):
+    return static_file(filename, root='static/')
 
 
 def run_rest_server(manager, debug, num_processes):

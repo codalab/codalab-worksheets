@@ -15,6 +15,8 @@ class User(ORMObject):
                'is_verified', 'is_superuser', 'password', 'time_quota', 'time_used', 'disk_quota', 'disk_used',
                'affiliation', 'url')
 
+    PASSWORD_MIN_LENGTH = 8
+
     def validate(self):
         pass
 
@@ -33,6 +35,23 @@ class User(ORMObject):
         hash = pbkdf2(password, salt, iterations)
         hash = base64.b64encode(hash).decode('ascii').strip()
         return "%s$%d$%s$%s" % ('pbkdf2_sha256', iterations, salt, hash)
+
+    @staticmethod
+    def validate_password(password):
+        """
+        Check if password meets our requirements, raising UsageError if not.
+        Requirements:
+         - minimum length of 8 characters
+
+        :param password: string password to validate
+        :return: None
+        """
+
+        if not all(33 <= ord(c) <= 126 for c in password):
+            raise UsageError("Password must consist of only printable, non-whitespace ASCII characters.")
+
+        if len(password) < User.PASSWORD_MIN_LENGTH:
+            raise UsageError("Password must contain at least %d characters." % User.PASSWORD_MIN_LENGTH)
 
     def set_password(self, password):
         """

@@ -27,6 +27,8 @@ NOT_NAME_CHAR_REGEX = re.compile('[^a-zA-Z0-9_\.\-]')
 
 HISTORY_RANGE_REGEX = re.compile('(.*\^)([0-9]+)-([0-9]+)')  # Allow ranges foo^1-3 => foo^1 foo^2 foo^3
 
+BASIC_EMAIL_REGEX = re.compile(r'^[^@]+@[^@]+\.[^@]+$')
+
 
 def expand_specs(specs):
     """

@@ -5,6 +5,7 @@ import re
 import collections
 import datetime
 import time
+import uuid
 import json
 import sys
 
@@ -36,6 +37,7 @@ from codalab.common import (
 from codalab.lib import (
     spec_util,
     worksheet_util,
+    server_util,
 )
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
@@ -55,6 +57,7 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
+    user_verification as cl_user_verification,
     oauth2_client,
     oauth2_token,
     oauth2_auth_code,
@@ -1464,6 +1467,7 @@ class BundleModel(object):
         :return: User object, or None if no matching user.
         """
         clauses = []
+        clauses.append(cl_user.c.is_active == True)
         if user_id is not None:
             clauses.append(cl_user.c.user_id == user_id)
         if username is not None:
@@ -1475,18 +1479,133 @@ class BundleModel(object):
                 cl_user
             ]).where(and_(*clauses)).limit(1)).fetchone()
 
-        if row is None:
+        if row is None or not row.is_active:
             return None
 
         return User(row)
 
+    def user_exists(self, username, email):
+        """
+        Check whether user with given username or email exists.
+        :param username: username
+        :param email: email
+        :return: True iff user with EITHER matching username or email exists.
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                cl_user
+            ]).where(or_(
+                cl_user.c.user_name == username,
+                cl_user.c.email == email,
+            )).limit(1)).fetchone()
+
+        return row is not None and row.is_active
+
+    def add_user(self, username, email, password):
+        """
+        Create a brand new unverified user.
+        :param username:
+        :param email:
+        :param password:
+        :return: (new integer user ID, verification key to send)
+        """
+        with self.engine.begin() as connection:
+            now = datetime.datetime.utcnow()
+            user_id = uuid.uuid4().hex
+            verification_key = uuid.uuid4().hex
+
+            connection.execute(cl_user.insert().values({
+                "user_id": user_id,
+                "user_name": username,
+                "email": email,
+                "last_login": None,
+                "is_active": True,
+                "first_name": None,
+                "last_name": None,
+                "date_joined": now,
+                "is_verified": False,
+                "is_superuser": False,
+                "password": User.encode_password(password, server_util.get_random_string()),
+                "time_quota": self.default_user_info['time_quota'],
+                "time_used": 0,
+                "disk_quota": self.default_user_info['disk_quota'],
+                "disk_used": 0,
+                "affiliation": None,
+                "url": None,
+            }))
+
+            connection.execute(cl_user_verification.insert().values({
+                "user_id": user_id,
+                "date_created": now,
+                "date_sent": now,
+                "key": verification_key,
+            }))
+
+        return user_id, verification_key
+
+    def get_verification_key(self, user_id):
+        """
+        Get verification key again for given user.
+        Updates the "date_sent" field of the verification key to the current date.
+        Note: we can also choose to refresh the verification key itself too in the future
+        if that is more secure.
+
+        :param user_id: id of user to get verification key for
+        :return: verification key, or None if none found for user
+        """
+        with self.engine.begin() as connection:
+            verify_row = connection.execute(cl_user_verification.select().where(
+                cl_user_verification.c.user_id == user_id
+            ).limit(1)).fetchone()
+
+            if verify_row is None:
+                return None
+
+            # Update date sent
+            connection.execute(cl_user_verification.update().where(
+                cl_user_verification.c.user_id == user_id
+            ).values({
+                "date_sent": datetime.datetime.utcnow(),
+            }))
+
+        return verify_row.key
+
+    def verify_user(self, key):
+        """
+        Verify user with given verification key.
+        :param key: verification key
+        :return: True iff succeeded
+        """
+        with self.engine.begin() as connection:
+            verify_row = connection.execute(cl_user_verification.select().where(
+                cl_user_verification.c.key == key
+            ).limit(1)).fetchone()
+
+            # No matching key found
+            if verify_row is None:
+                return False
+
+            # Delete matching verification key
+            connection.execute(cl_user_verification.delete().where(
+                cl_user_verification.c.key == key
+            ))
+
+            # Update user to be verified
+            connection.execute(cl_user.update().where(
+                cl_user.c.user_id == verify_row.user_id,
+            ).values({
+                "is_verified": True,
+            }))
+
+        return True
+
     def get_user_info(self, user_id):
-        '''
+        """
         Return the user info corresponding to |user_id|.
         If a user doesn't exist, create a new one and set sane defaults.
-        '''
-        DEFAULT_COMPUTE_QUOTA = 60 * 60 * 24 * 7      # 7 days
-        DEFAULT_DISK_QUOTA = 1024 * 1024 * 1024 * 10  # 10 GB
+
+        TODO(skoo): merge with get_user when wiring new user system together?
+        """
         with self.engine.begin() as connection:
             rows = connection.execute(select([cl_user]).where(cl_user.c.user_id == user_id))
             user_info = None
@@ -1627,15 +1746,3 @@ class BundleModel(object):
             connection.execute(oauth2_auth_code.delete().where(
                 oauth2_auth_code.c.id == auth_code_id
             ))
-
-    def create_resource_owner_password_credentials_client(self, user_id):
-        """Create an OAuth client for the given user to use the Resource Owner
-        Password Credentials Grant."""
-        # TODO(skoo)
-        # client_name = spec_util.create_cli_client_name()
-        #
-        # with self.engine.begin() as connection:
-        #     result = connection.execute(oauth2_auth_code.insert().values({
-        #         "client_id":
-        #     }))
-

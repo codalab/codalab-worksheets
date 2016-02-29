@@ -1,7 +1,7 @@
 from bottle import get, post, request
 
 from codalab.lib import spec_util
-from codalab.rest.login import AuthenticationPlugin
+from codalab.rest.account import AuthenticationPlugin
 from codalab.rest.oauth2 import oauth2_provider
 
 

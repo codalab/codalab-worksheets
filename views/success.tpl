@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
 
-    <title>OAuth 2.0 Error</title>
+    <title>{{title}}</title>
 
     <!-- Bootstrap core CSS -->
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous">
@@ -24,14 +24,12 @@
 <body>
 
 <div class="container">
-    <div class="panel panel-default">
-        <div class="panel-heading">
-            <h3 class="panel-title">OAuth Error: <samp>{{error}}</samp></h3>
-        </div>
-        <div class="panel-body">
-            <p>{{error_description}}</p>
-        </div>
+
+    <div class="success-box">
+        <h2>{{title}}</h2>
+        <p>{{message}}</p>
     </div>
+
 </div> <!-- /container -->
 
 </body>

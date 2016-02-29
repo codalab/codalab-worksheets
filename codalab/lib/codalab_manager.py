@@ -43,6 +43,7 @@ from codalab.server.auth import User
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
 )
+from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
 from codalab.lib import formatting
 
 def cached(fn):
@@ -377,6 +378,20 @@ class CodaLabManager(object):
         kwargs = {arg: auth_config[arg] for arg in arguments}
         from codalab.server.auth import OAuthHandler
         return OAuthHandler(**kwargs)
+
+    @cached
+    def emailer(self):
+        if 'email' in self.config:
+            return SMTPEmailer(
+                host=self.config['email']['host'],
+                user=self.config['email']['user'],
+                password=self.config['email']['password'],
+                use_tls=True,
+                default_sender='CodaLab <noreply@codalab.org>',
+                server_email='noreply@codalab.org',
+            )
+        else:
+            return ConsoleEmailer()
 
     def root_user_name(self):
         return self.config['server'].get('root_user_name', 'codalab')

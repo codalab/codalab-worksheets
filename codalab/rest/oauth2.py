@@ -27,7 +27,7 @@ from datetime import datetime, timedelta
 from bottle import request, template, local, route, post, get, default_app
 
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Token
-from codalab.rest.login import AuthenticationPlugin
+from codalab.rest.account import AuthenticationPlugin
 from codalab.server.oauth2_provider import OAuth2Provider
 
 oauth2_provider = OAuth2Provider(default_app())
