@@ -32,3 +32,5 @@ class UserTest(unittest.TestCase):
         password = "vErY_s3cur3_pa$$word"
         user.set_password(password)
         self.assertTrue(user.check_password(password))
+        self.assertFalse(user.check_password(password + 'a'))
+        self.assertFalse(user.check_password(''))

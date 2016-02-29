@@ -8,6 +8,8 @@ from bottle import request, response, template, local, redirect, default_app, ge
 
 from codalab.lib import spec_util
 from codalab.lib.server_util import get_random_string
+from codalab.objects.user import User
+from codalab.common import UsageError
 
 
 class LoginSession(object):
@@ -189,6 +191,11 @@ def do_signup():
 
     if not spec_util.NAME_REGEX.match(username):
         errors.append("Username must only contain letter, digits, hyphens, underscores, and periods.")
+
+    try:
+        User.validate_password(password)
+    except UsageError as e:
+        errors.append(e.message)
 
     # Only do a basic validation of email -- the only guaranteed way to check
     # whether an email address is valid is by sending an actual email.
