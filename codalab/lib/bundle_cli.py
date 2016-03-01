@@ -2339,12 +2339,14 @@ class BundleCLI(object):
 
     @Commands.command(
         'bs-health-check',
-        help='Perform a health check on the bundle store, garbage collecting bad files in the store',
-        arguments=(),
+        help='Perform a health check on the bundle store, garbage collecting bad files in the store. Performs a dry run by default, use -f to force removal.',
+        arguments=(
+            Commands.Argument('-f', '--force', help='Force removal of junk', action='store_true'),
+        ),
     )
     def do_bs_health_check(self, args):
         print >> sys.stderr, 'Performing Health Check...'
-        self.manager.bundle_store().health_check(self.manager.current_client().model)
+        self.manager.bundle_store().health_check(self.manager.current_client().model, args.force)
 
     def _fail_if_headless(self, message):
         if self.headless:

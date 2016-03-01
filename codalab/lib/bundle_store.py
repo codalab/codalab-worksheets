@@ -46,7 +46,7 @@ class BundleStoreHealthCheckMixin(object):
     BundleStore. Note that this method IS allowed to perform operations destructive to objects stored in the bundle
     store, i.e. this is not an idempotent operation, and calling this method should be done with care.
     """
-    def health_check(self):
+    def health_check(self, model, force):
         pass
 
 class BaseBundleStore(object):
@@ -396,27 +396,27 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             path_util.remove(absolute_path)
 
 
-    def health_check(self, model):
+    def health_check(self, model, force=True):
         """
         MultiDiskBundleStore.health_check(): In the MultiDiskBundleStore, bundle contents are stored on disk, and
         occasionally the disk gets out of sync with the database, in which case we make repairs in the following ways:
 
-            1. Creates a trash directory
-            2. Moves the contents of bundles with corresponding UUID not in the database to trash
-            3. Any files that don't begin with a UUID string should be moved to trash
+            1. Deletes bundles with corresponding UUID not in the database.
+            3. Deletes any files not beginning with UUID string.
             4. For each bundle marked READY or FAILED, ensure that its dependencies are not located in the bundle
-               directory.
-            5. Bundles that are stored in <UUID>.cid or <UUID>.status/ should be marked as READY or FAILED
-            6. <UUID>.sh and <UUID>-internal.sh should be gone for bundles marked READY or FAILED
+               directory. If they are then delete the dependencies.
+            5. For bundle <UUID> marked READY or FAILED, <UUID>.cid or <UUID>.status, or the <UUID>(-internal).sh files
+               should not exist.
         """
         # Create a trash directory
         trash_dir = os.path.join(self.codalab_home, 'trash')
         path_util.make_directory(trash_dir)
 
-        def _trash_bundle(bundle_loc, trash_loc):
-            print >> sys.stderr, 'Moving %s to trash...' % bundle_loc
-            trash_path = os.path.join(trash_loc, os.path.basename(bundle_loc))
-            path_util.rename(bundle_loc, trash_path)
+        def _delete_path(loc):
+            cmd = 'rm -r %s' % loc
+            print cmd
+            if force:
+                path_util.remove(loc)
 
         # Scan files in the data directory for every partition, moving bundles that are marked as garbage to the trash
         partitions, _ = path_util.ls(self.partitions)
@@ -424,20 +424,20 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         for partition in partitions:
             partition_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY)
             for entry in reduce(lambda d,f: d + f, path_util.ls(partition_path)):
-                bundle = os.path.join(partition_path, entry)
-                if self.__check_should_trash(bundle, model):
-                    _trash_bundle(bundle, trash_dir)
-                    trash_count += 0
+                store_entry = os.path.join(partition_path, entry)
+                if self.__check_should_trash(store_entry, model):
+                    _delete_path(store_entry)
+                    trash_count += 1
 
-        print >> sys.stderr, 'Moved %d objects to the trash at %s' % (trash_count, trash_dir)
+        print >> sys.stderr, 'Deleted %d objects from the bundle store' % trash_count
 
 
-    def __check_should_trash(self, bundle_path, model):
-        """Checks a path to a bundle to see if it needs to be trashed.
+    def __check_should_trash(self, path, model):
+        """Checks a path inside of the bundle store to see if it needs to be trashed.
         """
 
         UUID_REGEX = re.compile(r'^(0x[0-9a-z]{32})')
-        file_name = os.path.basename(bundle_path)
+        file_name = os.path.basename(path)
         uuid_match = UUID_REGEX.match(file_name)
         if not uuid_match:
             return True
@@ -451,19 +451,23 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             return True
 
         if bundle_db.state in [State.READY, State.FAILED]:
-            # This is the set of paths that should be gone if the bundle is either READY or FAILED
-            # If these paths are still around then something has gone wrong and we should move the bundle to the trash.
-            dep_paths = [
-                    os.path.join(bundle_path, dep.child_path)
-                    for dep in bundle_db.dependencies
-                  ]
-            for path in dep_paths:
-                if os.path.exists(path):
-                    return True
+            # Ensure that the directory of a bundle does not include its dependencies.
+            if file_name == uuid:
+                dep_paths = [
+                        os.path.join(path, dep.child_path)
+                        for dep in bundle_db.dependencies
+                      ]
+                for path in dep_paths:
+                    if os.path.exists(path):
+                        return True
 
-            # Bundles marked as READY or FAILED should not end with .cid, .status or .sh
-            if bundle_path.endswith('.cid') or bundle_path.endswith('.status') or bundle_path.endswith('.sh'):
+            # Bundles marked as READY or FAILED should no longer store .cid, .status, .sh or -internal.sh
+            if path.endswith('.cid') or path.endswith('.status') or path.endswith('.sh'):
                 return True
+
+            # Warn about any other paths with extensions
+            elif '.' in path:
+                print >> sys.stderr, 'WARNING: File %s is likely junk.' % path
 
         return False
 
