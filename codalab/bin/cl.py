@@ -89,6 +89,8 @@ def do_server_command(bundle_cli, args):
     ),
 )
 def do_rest_server_command(bundle_cli, args):
+    # Force initialization of the bundle store, so that the misc_temp directory is created
+    bundle_cli.manager.bundle_store()
     if args.watch:
         run_server_with_watch()
     else:
