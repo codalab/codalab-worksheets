@@ -142,6 +142,7 @@ OTHER_COMMANDS = (
     'bs-add-partition',
     'bs-rm-partition',
     'bs-ls-partitions',
+    'bs-health-check',
 )
 
 
@@ -2335,6 +2336,15 @@ class BundleCLI(object):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
         self.manager.bundle_store().ls_partitions()
+
+    @Commands.command(
+        'bs-health-check',
+        help='Perform a health check on the bundle store, garbage collecting bad files in the store',
+        arguments=(),
+    )
+    def do_bs_health_check(self, args):
+        print >> sys.stderr, 'Performing Health Check...'
+        self.manager.bundle_store().health_check(self.manager.current_client().model)
 
     def _fail_if_headless(self, message):
         if self.headless:
