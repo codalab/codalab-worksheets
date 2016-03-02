@@ -98,6 +98,18 @@ def get_user(username, password, *args, **kwargs):
     return None
 
 
+@oauth2_provider.after_request
+def set_request_user(valid, oauth_request):
+    """
+    Called after an oauth-protected request is validated.
+    If the request is valid, sets local.user to the User that owns the access token.
+    """
+    if valid:
+        local.user = oauth_request.user
+
+    return valid, oauth_request
+
+
 @route('/oauth2/authorize', ['GET', 'POST'], apply=AuthenticationPlugin())
 @oauth2_provider.authorize_handler
 def authorize(*args, **kwargs):

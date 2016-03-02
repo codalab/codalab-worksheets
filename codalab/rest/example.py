@@ -1,4 +1,4 @@
-from bottle import get, post, request
+from bottle import get, post, request, local
 
 from codalab.lib import spec_util
 from codalab.rest.account import AuthenticationPlugin
@@ -27,4 +27,4 @@ def post_file():
 
 @get('/example/oauth_protected', apply=oauth2_provider.require_oauth())
 def oauth_protected():
-    return "You have access!"
+    return "Hi %s." % local.user.user_name
