@@ -432,7 +432,8 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
 
         def _check_bundle_paths(bundle_paths, db_bundle_by_uuid):
             """
-            Takes in a list of bundle paths, and returns a list of paths and subpaths that need to be removed.
+            Takes in a list of bundle paths and a mapping of UUID to BundleModels, and returns a list of paths and
+            subpaths that need to be removed.
             """
             to_delete = []
             # Batch get information for all bundles stored on-disk
