@@ -282,6 +282,11 @@ def test(ctx):
     check_equals('None', get_info(uuid, 'data_hash'))
     run_command([cl, 'rm', uuid])
 
+    # run and check the data_hash
+    uuid = run_command([cl, 'run', 'echo hello'])
+    run_command([cl, 'wait', uuid])
+    check_contains('0x', get_info(uuid, 'data_hash'))
+
 @TestModule.register('upload1')
 def test(ctx):
     # Upload contents
