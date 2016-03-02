@@ -352,7 +352,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             new_partition = self.ring.get_node(bundle)
             relocations[bundle] = os.path.join(self.partitions, new_partition)
 
-        # Copy all bundles off of the old partition to temp directories on the new partition 
+        # Copy all bundles off of the old partition to temp directories on the new partition
         for bundle, partition in relocations.iteritems():
             # temporary directory on the partition
             temp_dir = os.path.join(partition, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
@@ -408,9 +408,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             5. For bundle <UUID> marked READY or FAILED, <UUID>.cid or <UUID>.status, or the <UUID>(-internal).sh files
                should not exist.
         """
-        # Create a trash directory
-        trash_dir = os.path.join(self.codalab_home, 'trash')
-        path_util.make_directory(trash_dir)
+        UUID_REGEX = re.compile(r'^(0x[0-9a-z]{32})')
 
         def _delete_path(loc):
             cmd = 'rm -r %s' % loc
@@ -418,57 +416,86 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             if force:
                 path_util.remove(loc)
 
-        # Scan files in the data directory for every partition, moving bundles that are marked as garbage to the trash
+        def _get_uuid(path):
+            fname = os.path.basename(path)
+            try:
+                return UUID_REGEX.match(fname).groups()[0]
+            except:
+                return None
+
+        def _is_bundle(path):
+            """Returns whether the given path is a bundle directory/file"""
+            return _get_uuid(path) == os.path.basename(path)
+
+        def _check_bundle_paths(bundle_paths, db_bundle_by_uuid):
+            """
+            Takes in a list of bundle paths, and returns a list of paths and subpaths that need to be removed.
+            """
+            to_delete = []
+            # Batch get information for all bundles stored on-disk
+
+            for bundle_path in bundle_paths:
+                uuid = _get_uuid(bundle_path)
+                # Screen for bundles stored on disk that are no longer in the database
+                bundle_model = db_bundle_by_uuid.get(uuid, None)
+                if bundle_model == None:
+                    to_delete += [bundle_path]
+                    continue
+                # Delete dependencies stored inside of READY or FAILED bundles
+                if bundle_model.state in [State.READY, State.FAILED]:
+                    dep_paths = [
+                            os.path.join(bundle_path, dep.child_path)
+                            for dep in bundle_model.dependencies
+                          ]
+                    to_delete += filter(os.path.exists, dep_paths)
+            return to_delete
+
+        def _check_other_paths(other_paths, db_bundle_by_uuid):
+            """
+            Given a list of non-bundle paths, returns a list of paths to delete.
+            """
+            to_delete = []
+            for path in other_paths:
+                uuid = _get_uuid(path)
+                bundle_model = db_bundle_by_uuid.get(uuid, None)
+                if bundle_model == None:
+                    to_delete += [path]
+                    continue
+                ends_with_ext = path.endswith('.cid') or path.endswith('.status') or path.endswith('.sh')
+                if bundle_model.state in [State.READY, State.FAILED] and ends_with_ext:
+                    to_delete += [path]
+                    continue
+                elif '.' in path:
+                    print >> sys.stderr, 'WARNING: File %s is likely junk.' % path
+            return to_delete
+
+
         partitions, _ = path_util.ls(self.partitions)
         trash_count = 0
+
         for partition in partitions:
             partition_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY)
-            for entry in reduce(lambda d,f: d + f, path_util.ls(partition_path)):
-                store_entry = os.path.join(partition_path, entry)
-                if self.__check_should_trash(store_entry, model):
-                    _delete_path(store_entry)
-                    trash_count += 1
+            entries = map(lambda f: os.path.join(partition_path, f),
+                          reduce(lambda d,f: d + f, path_util.ls(partition_path)))
+            bundle_paths = filter(_is_bundle, entries)
+            other_paths = set(entries) - set(bundle_paths)
+
+            uuids = map(_get_uuid, bundle_paths)
+            db_bundles = model.batch_get_bundles(uuid=uuids)
+            db_bundle_by_uuid = dict()
+            for bundle in db_bundles:
+                db_bundle_by_uuid[bundle.uuid] = bundle
+
+            # Check both bundles and non-bundles and remove each
+            for to_delete in _check_bundle_paths(bundle_paths, db_bundle_by_uuid):
+                trash_count += 1
+                _delete_path(to_delete)
+            for to_delete in _check_other_paths(other_paths, db_bundle_by_uuid):
+                trash_count += 1
+                _delete_path(to_delete)
+
 
         print >> sys.stderr, 'Deleted %d objects from the bundle store' % trash_count
 
-
-    def __check_should_trash(self, path, model):
-        """Checks a path inside of the bundle store to see if it needs to be trashed.
-        """
-
-        UUID_REGEX = re.compile(r'^(0x[0-9a-z]{32})')
-        file_name = os.path.basename(path)
-        uuid_match = UUID_REGEX.match(file_name)
-        if not uuid_match:
-            return True
-
-        uuid = uuid_match.groups()[0]
-
-        # Check if bundle is in the database.
-        try:
-            bundle_db = model.get_bundle(uuid)
-        except:
-            return True
-
-        if bundle_db.state in [State.READY, State.FAILED]:
-            # Ensure that the directory of a bundle does not include its dependencies.
-            if file_name == uuid:
-                dep_paths = [
-                        os.path.join(path, dep.child_path)
-                        for dep in bundle_db.dependencies
-                      ]
-                for path in dep_paths:
-                    if os.path.exists(path):
-                        return True
-
-            # Bundles marked as READY or FAILED should no longer store .cid, .status, .sh or -internal.sh
-            if path.endswith('.cid') or path.endswith('.status') or path.endswith('.sh'):
-                return True
-
-            # Warn about any other paths with extensions
-            elif '.' in path:
-                print >> sys.stderr, 'WARNING: File %s is likely junk.' % path
-
-        return False
 
 
