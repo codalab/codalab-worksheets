@@ -293,7 +293,7 @@ class Worker(object):
                     print >>sys.stderr, 'Worker.finalize_bundle: installing (copying) dependencies to %s (MakeBundle)' % temp_dir
                     bundle.install_dependencies(self.bundle_store, self.get_parent_dict(bundle), temp_dir, copy=True)
 
-                db_update['data_hash'] = path_util.hash_path(temp_dir)
+                db_update['data_hash'] = '0x%s' % path_util.hash_path(temp_dir)
                 metadata.update(data_size=path_util.get_size(temp_dir))
             except Exception as e:
                 print '=== INTERNAL ERROR: %s' % e
