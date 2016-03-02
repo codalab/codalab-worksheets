@@ -528,8 +528,13 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
 
 
         if force:
-            print >> sys.stderr, 'Deleted %d objects from the bundle store' % trash_count
-            print >> sys.stderr, 'Recomputed data_hash for %d bundles' % data_hash_recomputed
+            print >> sys.stderr, '\tDeleted %d objects from the bundle store' % trash_count
+            print >> sys.stderr, '\tRecomputed data_hash for %d bundles' % data_hash_recomputed
+        else:
+            print >> sys.stderr, 'Dry-Run Statistics, re-run with --force to perform updates:'
+            print >> sys.stderr, '\tObjects marked for deletion: %d' % trash_count
+            print >> sys.stderr, '\tBundles that need data_hash recompute: %d' % data_hash_recomputed
+
 
 
 
