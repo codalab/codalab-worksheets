@@ -396,7 +396,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             path_util.remove(absolute_path)
 
 
-    def health_check(self, model, force=True):
+    def health_check(self, model, force=False, compute_data_hash=False, repair_hashes=False):
         """
         MultiDiskBundleStore.health_check(): In the MultiDiskBundleStore, bundle contents are stored on disk, and
         occasionally the disk gets out of sync with the database, in which case we make repairs in the following ways:
@@ -407,6 +407,9 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                directory. If they are then delete the dependencies.
             5. For bundle <UUID> marked READY or FAILED, <UUID>.cid or <UUID>.status, or the <UUID>(-internal).sh files
                should not exist.
+        |force|: Perform any destructive operations on the bundle store the health check determines are necessary. False by default
+        |compute_data_hash|: If True, compute the data_hash for every single bundle ourselves and see if it's consistent with what's in
+                             the database. False by default.
         """
         UUID_REGEX = re.compile(r'^(0x[0-9a-z]{32})')
 
@@ -462,11 +465,12 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                     to_delete += [path]
                     continue
                 ends_with_ext = path.endswith('.cid') or path.endswith('.status') or path.endswith('.sh')
-                if bundle_model.state in [State.READY, State.FAILED] and ends_with_ext:
-                    to_delete += [path]
-                    continue
-                elif '.' in path:
-                    print >> sys.stderr, 'WARNING: File %s is likely junk.' % path
+                if bundle_model.state in [State.READY, State.FAILED]:
+                    if ends_with_ext:
+                        to_delete += [path]
+                        continue
+                    elif '.' in path:
+                        print >> sys.stderr, 'WARNING: File %s is likely junk.' % path
             return to_delete
 
 
@@ -495,7 +499,33 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                 _delete_path(to_delete)
 
 
+            # Check for each bundle if we need to compute its data_hash
+            data_hash_recomputed = 0
+
+            for bundle in bundle_paths:
+                uuid = _get_uuid(bundle)
+                bundle_model = db_bundle_by_uuid.get(uuid, None)
+                if bundle_model == None:
+                    continue
+                if compute_data_hash or bundle_model.data_hash == None:
+                    dirs_and_files = path_util.recursive_ls(bundle) if os.path.isdir(bundle) else ([], [bundle])
+                    data_hash = '0x%s' % path_util.hash_directory(bundle, dirs_and_files)
+                    if bundle_model.data_hash == None:
+                        data_hash_recomputed += 1
+                        print >> sys.stderr, 'Giving bundle %s data_hash %s' % (bundle, data_hash)
+                        if force:
+                            db_update = dict(data_hash=data_hash)
+                            model.update_bundle(bundle_model, db_update)
+                    elif compute_data_hash and data_hash != bundle_model.data_hash:
+                        data_hash_recomputed += 1
+                        print >> sys.stderr, 'Bundle %s should have data_hash %s, actual digest is %s' % (bundle, bundle_model.data_hash, data_hash)
+                        if repair_hashes and force:
+                            db_update = dict(data_hash=data_hash)
+                            model.update_bundle(bundle_model, db_update)
+
+
         print >> sys.stderr, 'Deleted %d objects from the bundle store' % trash_count
+        print >> sys.stderr, 'Recomputed data_hash for %d bundles' % data_hash_recomputed
 
 
 
