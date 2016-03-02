@@ -432,7 +432,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
 
         def _check_bundle_paths(bundle_paths, db_bundle_by_uuid):
             """
-            Takes in a list of bundle paths and a mapping of UUID to BundleModels, and returns a list of paths and
+            Takes in a list of bundle paths and a mapping of UUID to BundleModel, and returns a list of paths and
             subpaths that need to be removed.
             """
             to_delete = []
@@ -441,32 +441,32 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             for bundle_path in bundle_paths:
                 uuid = _get_uuid(bundle_path)
                 # Screen for bundles stored on disk that are no longer in the database
-                bundle_model = db_bundle_by_uuid.get(uuid, None)
-                if bundle_model == None:
+                bundle = db_bundle_by_uuid.get(uuid, None)
+                if bundle == None:
                     to_delete += [bundle_path]
                     continue
                 # Delete dependencies stored inside of READY or FAILED bundles
-                if bundle_model.state in [State.READY, State.FAILED]:
+                if bundle.state in [State.READY, State.FAILED]:
                     dep_paths = [
                             os.path.join(bundle_path, dep.child_path)
-                            for dep in bundle_model.dependencies
+                            for dep in bundle.dependencies
                           ]
                     to_delete += filter(os.path.exists, dep_paths)
             return to_delete
 
         def _check_other_paths(other_paths, db_bundle_by_uuid):
             """
-            Given a list of non-bundle paths, returns a list of paths to delete.
+            Given a list of non-bundle paths, and a mapping of UUID to BundleModel, returns a list of paths to delete.
             """
             to_delete = []
             for path in other_paths:
                 uuid = _get_uuid(path)
-                bundle_model = db_bundle_by_uuid.get(uuid, None)
-                if bundle_model == None:
+                bundle = db_bundle_by_uuid.get(uuid, None)
+                if bundle == None:
                     to_delete += [path]
                     continue
                 ends_with_ext = path.endswith('.cid') or path.endswith('.status') or path.endswith('.sh')
-                if bundle_model.state in [State.READY, State.FAILED]:
+                if bundle.state in [State.READY, State.FAILED]:
                     if ends_with_ext:
                         to_delete += [path]
                         continue
@@ -503,26 +503,26 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             # Check for each bundle if we need to compute its data_hash
             data_hash_recomputed = 0
 
-            for bundle in bundle_paths:
-                uuid = _get_uuid(bundle)
-                bundle_model = db_bundle_by_uuid.get(uuid, None)
-                if bundle_model == None:
+            for bundle_path in bundle_paths:
+                uuid = _get_uuid(bundle_path)
+                bundle = db_bundle_by_uuid.get(uuid, None)
+                if bundle == None:
                     continue
-                if compute_data_hash or bundle_model.data_hash == None:
-                    dirs_and_files = path_util.recursive_ls(bundle) if os.path.isdir(bundle) else ([], [bundle])
-                    data_hash = '0x%s' % path_util.hash_directory(bundle, dirs_and_files)
-                    if bundle_model.data_hash == None:
+                if compute_data_hash or bundle.data_hash == None:
+                    dirs_and_files = path_util.recursive_ls(bundle_path) if os.path.isdir(bundle_path) else ([], [bundle_path])
+                    data_hash = '0x%s' % path_util.hash_directory(bundle_path, dirs_and_files)
+                    if bundle.data_hash == None:
                         data_hash_recomputed += 1
-                        print >> sys.stderr, 'Giving bundle %s data_hash %s' % (bundle, data_hash)
+                        print >> sys.stderr, 'Giving bundle %s data_hash %s' % (bundle_path, data_hash)
                         if force:
                             db_update = dict(data_hash=data_hash)
-                            model.update_bundle(bundle_model, db_update)
-                    elif compute_data_hash and data_hash != bundle_model.data_hash:
+                            model.update_bundle(bundle, db_update)
+                    elif compute_data_hash and data_hash != bundle.data_hash:
                         data_hash_recomputed += 1
-                        print >> sys.stderr, 'Bundle %s should have data_hash %s, actual digest is %s' % (bundle, bundle_model.data_hash, data_hash)
+                        print >> sys.stderr, 'Bundle %s should have data_hash %s, actual digest is %s' % (bundle_path, bundle.data_hash, data_hash)
                         if repair_hashes and force:
                             db_update = dict(data_hash=data_hash)
-                            model.update_bundle(bundle_model, db_update)
+                            model.update_bundle(bundle, db_update)
 
 
         print >> sys.stderr, 'Deleted %d objects from the bundle store' % trash_count
