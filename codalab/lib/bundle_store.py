@@ -5,7 +5,7 @@ import time
 
 from .hash_ring import HashRing
 
-from codalab.lib import path_util, file_util, print_util, zip_util
+from codalab.lib import file_util, path_util, print_util, spec_util, zip_util
 from codalab.common import UsageError, State
 
 def require_partitions(f):
@@ -411,10 +411,10 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         |compute_data_hash|: If True, compute the data_hash for every single bundle ourselves and see if it's consistent with what's in
                              the database. False by default.
         """
-        UUID_REGEX = re.compile(r'^(0x[0-9a-z]{32})')
+        UUID_REGEX = re.compile(r'^(%s)' % spec_util.UUID_STR)
 
         def _delete_path(loc):
-            cmd = 'rm -r %s' % loc
+            cmd = 'rm -r \'%s\'' % loc
             print cmd
             if force:
                 path_util.remove(loc)
@@ -479,6 +479,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         trash_count = 0
 
         for partition in partitions:
+            print >> sys.stderr, 'Looking for trash in partition %s...' % partition
             partition_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY)
             entries = map(lambda f: os.path.join(partition_path, f),
                           reduce(lambda d,f: d + f, path_util.ls(partition_path)))
@@ -503,6 +504,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             # Check for each bundle if we need to compute its data_hash
             data_hash_recomputed = 0
 
+            print >> sys.stderr, 'Checking data_hash of bundles in partition %s...' % partition
             for bundle_path in bundle_paths:
                 uuid = _get_uuid(bundle_path)
                 bundle = db_bundle_by_uuid.get(uuid, None)
@@ -525,8 +527,9 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                             model.update_bundle(bundle, db_update)
 
 
-        print >> sys.stderr, 'Deleted %d objects from the bundle store' % trash_count
-        print >> sys.stderr, 'Recomputed data_hash for %d bundles' % data_hash_recomputed
+        if force:
+            print >> sys.stderr, 'Deleted %d objects from the bundle store' % trash_count
+            print >> sys.stderr, 'Recomputed data_hash for %d bundles' % data_hash_recomputed
 
 
 
