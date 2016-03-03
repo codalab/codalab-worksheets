@@ -44,6 +44,7 @@ from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
 )
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
+from codalab.lib.server_util import get_random_string
 from codalab.lib import formatting
 
 def cached(fn):
@@ -196,7 +197,6 @@ class CodaLabManager(object):
             You may still optionally configure a local bundle service (available as 'local').
             """)
             using_local = False
-
         else:
             config['cli']['default_address'] = 'local'
             print "Using local bundle service as default."
@@ -222,6 +222,11 @@ class CodaLabManager(object):
             sqlite_db_path = os.path.join(self.codalab_home, 'bundle.db')
             config['server']['engine_url'] = "sqlite:///{}".format(sqlite_db_path)
             print "Using SQLite database at: {}".format(sqlite_db_path)
+
+        # Generate secret key
+        config['server']['secret_key'] = get_random_string(
+            48, "=+/abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
         # Rest of instructions
         print_block(r"""
@@ -332,9 +337,9 @@ class CodaLabManager(object):
 
     @cached
     def model(self):
-        '''
+        """
         Return a model.  Called by the server.
-        '''
+        """
         model_class = self.config['server']['class']
         model = None
         if model_class == 'MySQLModel':

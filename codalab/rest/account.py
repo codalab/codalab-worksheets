@@ -7,7 +7,6 @@ from datetime import datetime, timedelta
 from bottle import request, response, template, local, redirect, default_app, get, post
 
 from codalab.lib import spec_util
-from codalab.lib.server_util import get_random_string
 from codalab.objects.user import User
 from codalab.common import UsageError
 
@@ -18,27 +17,11 @@ class LoginSession(object):
     """
     KEY = "codalab_session"
     PATH = "/"
-    _SECRET = None
 
     def __init__(self, user_id, max_age):
         self.user_id = user_id
         self.max_age = max_age
         self.expires = datetime.utcnow() + timedelta(seconds=max_age)
-
-    @classmethod
-    def get_secret(cls):
-        """
-        Return the current (lazily-generated) secret for signing cookies.
-        This secret only lasts as long as the REST server process is running.
-        If the server is restarted, the old cookies will be lost and users will
-        have to log in again, but this is not a big deal since the session cookies
-        are meant to be relatively short-lived anyway.
-        :return:
-        """
-        if cls._SECRET is None:
-            cls._SECRET = get_random_string(30, '+/abcdefghijklmnopqrstuvwxyz'
-                                                'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789')
-        return cls._SECRET
 
     def save(self, response=response):
         """
@@ -47,7 +30,9 @@ class LoginSession(object):
         :return: None
         """
         self.clear(response)
-        response.set_cookie(self.KEY, self, secret=self.get_secret(), max_age=self.max_age, path=self.PATH)
+        response.set_cookie(
+            self.KEY, self, secret=local.config['server']['secret_key'],
+            max_age=self.max_age, path=self.PATH)
 
     @classmethod
     def get(cls, request=request):
@@ -58,7 +43,8 @@ class LoginSession(object):
         :param request: Optional. A specific Bottle request object to get cookie from.
         :return: LoginSession or None
         """
-        session = request.get_cookie(cls.KEY, secret=cls.get_secret(), default=None)
+        session = request.get_cookie(
+            cls.KEY, secret=local.config['server']['secret_key'], default=None)
         if session and session.expires > datetime.utcnow():
             return session
         else:
@@ -97,9 +83,12 @@ class AuthenticationPlugin(object):
             # Set thread-local user object
             if session:
                 local.user = local.model.get_user(user_id=session.user_id)
+            else:
+                local.user = None
 
             # Redirect unverified users to resend verification page
-            if self.require_verify and hasattr(local, 'user') and not local.user.is_verified:
+            if (self.require_verify and local.user and
+                    not local.user.is_verified):
                 return redirect(default_app().get_url('resend_key'))
 
             return callback(*args, **kwargs)
@@ -135,7 +124,7 @@ def do_logout():
 
 @get('/account/login', name='login', apply=AuthenticationPlugin(require_login=False))
 def show_login():
-    if hasattr(local, 'user'):
+    if local.user:
         return redirect(default_app().get_url('success', message="You are already signed into CodaLab."))
     return template("login")
 
@@ -170,7 +159,7 @@ def show_success():
 
 @get('/account/signup', name='signup', apply=AuthenticationPlugin(require_login=False, require_verify=False))
 def show_signup():
-    if hasattr(local, 'user'):
+    if local.user:
         return redirect(default_app().get_url('success', message="You are already logged into your account."))
 
     return template('signup')
@@ -178,7 +167,7 @@ def show_signup():
 
 @post('/account/signup', apply=AuthenticationPlugin(require_login=False, require_verify=False))
 def do_signup():
-    if hasattr(local, 'user'):
+    if local.user:
         return redirect(default_app().get_url('success', message="You are already logged into your account."))
 
     username = request.forms.get('username')
