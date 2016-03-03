@@ -21,6 +21,9 @@ import codalab.rest.account
 import codalab.rest.example
 import codalab.rest.oauth2
 import codalab.rest.users
+from codalab.server.authenticated_plugin import UserVerifiedPlugin
+from codalab.server.cookie import CookieAuthenticationPlugin
+from codalab.server.oauth2_provider import oauth2_provider
 
 
 class SaveEnvironmentPlugin(object):
@@ -111,6 +114,9 @@ def run_rest_server(manager, debug, num_processes):
     install(SaveEnvironmentPlugin(manager))
     install(CheckJsonPlugin())
     install(LoggingPlugin())
+    install(oauth2_provider.check_oauth())
+    install(CookieAuthenticationPlugin())
+    install(UserVerifiedPlugin())
 
     root_app = Bottle()
     root_app.mount('/rest', default_app())
