@@ -43,8 +43,8 @@ from codalab.server.auth import User
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
 )
+from codalab.lib.crypt_util import get_random_string
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
-from codalab.lib.server_util import get_random_string
 from codalab.lib import formatting
 
 def cached(fn):

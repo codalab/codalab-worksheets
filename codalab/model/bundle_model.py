@@ -35,9 +35,9 @@ from codalab.common import (
     State,
 )
 from codalab.lib import (
+    crypt_util,
     spec_util,
     worksheet_util,
-    server_util,
 )
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
@@ -1525,7 +1525,7 @@ class BundleModel(object):
                 "date_joined": now,
                 "is_verified": False,
                 "is_superuser": False,
-                "password": User.encode_password(password, server_util.get_random_string()),
+                "password": User.encode_password(password, crypt_util.get_random_string()),
                 "time_quota": self.default_user_info['time_quota'],
                 "time_used": 0,
                 "disk_quota": self.default_user_info['disk_quota'],
