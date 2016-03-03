@@ -541,8 +541,15 @@ class OAuth2Provider(object):
             return create_response(*ret)
         return decorated
 
-    def require_oauth(self, *scopes):
-        """Protect resource with specified scopes."""
+    def use_oauth(self, *scopes, **options):
+        """Protect resource with specified scopes.
+
+        options:
+            'strict': True iff should respond with 401 Unauthorized when there
+                      is no valid bearer token in the request.
+        """
+        options.setdefault('strict', False)
+
         def wrapper(f):
             @wraps(f)
             def decorated(*args, **kwargs):
@@ -557,7 +564,7 @@ class OAuth2Provider(object):
                 for func in self._after_request_funcs:
                     valid, req = func(valid, req)
 
-                if not valid:
+                if options['strict'] and not valid:
                     if self._invalid_response:
                         return self._invalid_response(req)
                     return abort(401)
@@ -565,6 +572,12 @@ class OAuth2Provider(object):
                 return f(*args, **kwargs)
             return decorated
         return wrapper
+
+    def require_oauth(self, *scopes):
+        """Convenience decorator to protect a resource by requiring a valid
+        OAuth 2.0 bearer token with the request.
+        """
+        return self.use_oauth(*scopes, strict=True)
 
 
 class OAuth2RequestValidator(RequestValidator):

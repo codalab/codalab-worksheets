@@ -97,9 +97,12 @@ class AuthenticationPlugin(object):
             # Set thread-local user object
             if session:
                 local.user = local.model.get_user(user_id=session.user_id)
+            else:
+                local.user = None
 
             # Redirect unverified users to resend verification page
-            if self.require_verify and hasattr(local, 'user') and not local.user.is_verified:
+            if (self.require_verify and local.user and
+                    not local.user.is_verified):
                 return redirect(default_app().get_url('resend_key'))
 
             return callback(*args, **kwargs)
@@ -135,7 +138,7 @@ def do_logout():
 
 @get('/account/login', name='login', apply=AuthenticationPlugin(require_login=False))
 def show_login():
-    if hasattr(local, 'user'):
+    if local.user:
         return redirect(default_app().get_url('success', message="You are already signed into CodaLab."))
     return template("login")
 
@@ -170,7 +173,7 @@ def show_success():
 
 @get('/account/signup', name='signup', apply=AuthenticationPlugin(require_login=False, require_verify=False))
 def show_signup():
-    if hasattr(local, 'user'):
+    if local.user:
         return redirect(default_app().get_url('success', message="You are already logged into your account."))
 
     return template('signup')
@@ -178,7 +181,7 @@ def show_signup():
 
 @post('/account/signup', apply=AuthenticationPlugin(require_login=False, require_verify=False))
 def do_signup():
-    if hasattr(local, 'user'):
+    if local.user:
         return redirect(default_app().get_url('success', message="You are already logged into your account."))
 
     username = request.forms.get('username')

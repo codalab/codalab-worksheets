@@ -104,9 +104,7 @@ def set_request_user(valid, oauth_request):
     Called after an oauth-protected request is validated.
     If the request is valid, sets local.user to the User that owns the access token.
     """
-    if valid:
-        local.user = oauth_request.user
-
+    local.user = oauth_request.user if valid else None
     return valid, oauth_request
 
 
