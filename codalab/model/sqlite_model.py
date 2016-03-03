@@ -1,10 +1,10 @@
-'''
+"""
 SQLiteModel is a subclass of BundleModel that stores metadata in a sqlite3
 database in a local file in the CodaLab home directory.
-'''
-import os
+"""
 from sqlalchemy import create_engine
 
+from codalab.common import UsageError
 from codalab.model.bundle_model import BundleModel
 
 
