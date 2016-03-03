@@ -5,5 +5,3 @@ alembic==0.8.2
 psutil==3.3.0
 six==1.10.0
 watchdog==0.8.3
-# Use agd@stanford.edu's fork of hash_ring with extra features
-git+https://github.com/andreweduffy/hash_ring.git@master
