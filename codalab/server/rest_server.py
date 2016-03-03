@@ -1,12 +1,12 @@
-# gevent.monkey.patch_all() needs to be called before importing bottle.
-import gevent.monkey; gevent.monkey.patch_all()
-
 from httplib import BAD_REQUEST
 import sys
 import time
 
 from bottle import (
     abort,
+    Bottle,
+    default_app,
+    error,
     get,
     HTTPError,
     HTTPResponse,
@@ -17,8 +17,8 @@ from bottle import (
     static_file,
 )
 
-import codalab.rest.example
 import codalab.rest.account
+import codalab.rest.example
 import codalab.rest.oauth2
 import codalab.rest.users
 
@@ -41,6 +41,22 @@ class SaveEnvironmentPlugin(object):
             local.emailer = self.manager.emailer()
             return callback(*args, **kwargs)
 
+        return wrapper
+
+
+class CheckJsonPlugin(object):
+    """Checks that the input JSON data can be parsed."""
+    api = 2
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            try:
+                # TODO(klopyrev): Version 0.13 of bottle incorporates this
+                # check. We can get rid of this plugin once that version is
+                # released and we upgrade.
+                request.json
+            except ValueError:
+                abort(BAD_REQUEST, 'Invalid JSON')
+            return callback(*args, **kwargs)
         return wrapper
 
 
@@ -74,37 +90,12 @@ class LoggingPlugin(object):
         return wrapper
 
 
-class CheckJsonPlugin(object):
-    """Checks that the input JSON data can be parsed."""
-    api = 2
-    def apply(self, callback, route):
-        def wrapper(*args, **kwargs):
-            try:
-                # TODO(klopyrev): Version 0.13 of bottle incorporates this
-                # check. We can get rid of this plugin once that version is
-                # released and we upgrade.
-                request.json
-            except ValueError:
-                abort(BAD_REQUEST, 'Invalid JSON')
-            return callback(*args, **kwargs)
-        return wrapper
-
-
-class ErrorHandlerPlugin(object):
+def error_handler(response):
     """Simple error handler that doesn't use the Bottle error template."""
-    api = 2
-    def apply(self, callback, route):
-        def wrapper(*args, **kwargs):
-            response = callback(*args, **kwargs)
-            if isinstance(response, HTTPError):
-                return HTTPResponse(body=response.body, status=response.status)
-            return response
-        return wrapper
-
-
-@get('/status')
-def status():
-    return 'OK'
+    if request.is_ajax:
+        return HTTPResponse(body=response.body, status=response.status)
+    else:
+        return request.app.default_error_handler(response)
 
 
 @get('/static/<filename:path>')
@@ -120,7 +111,12 @@ def run_rest_server(manager, debug, num_processes):
     install(SaveEnvironmentPlugin(manager))
     install(CheckJsonPlugin())
     install(LoggingPlugin())
-    install(ErrorHandlerPlugin())
+
+    root_app = Bottle()
+    root_app.mount('/rest', default_app())
+    
+    for code in xrange(100, 600):
+        root_app.error(code)(error_handler)
 
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter
@@ -130,5 +126,6 @@ def run_rest_server(manager, debug, num_processes):
     sys.argv = sys.argv[:1] # Small hack to work around a Gunicorn arg parsing
                             # bug. None of the arguments to cl should go to
                             # Gunicorn.
-    run(host=host, port=port, debug=debug, server='gunicorn',
-        workers=num_processes, worker_class='gevent' if not debug else 'sync')
+    run(app=root_app, host=host, port=port, debug=debug, server='gunicorn',
+        workers=num_processes, worker_class='gevent' if not debug else 'sync',
+        timeout=5 * 60)
