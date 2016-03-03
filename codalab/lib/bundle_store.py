@@ -1,11 +1,12 @@
 import os
-import time
+import re
 import sys
+import time
 
 from .hash_ring import HashRing
 
-from codalab.lib import path_util, file_util, print_util, zip_util
-from codalab.common import UsageError
+from codalab.lib import file_util, path_util, print_util, spec_util, zip_util
+from codalab.common import UsageError, State
 
 def require_partitions(f):
     """Decorator added to MulitDiskBundleStore methods that require a disk to
@@ -35,6 +36,17 @@ class BundleStoreCleanupMixin(object):
         Cleanup a given bundle. If dry_run is True, do not actually
         delete the bundle from storage.
         """
+        pass
+
+class BundleStoreHealthCheckMixin(object):
+    """
+    This mixin defines functionality on a BundleStore that supports some sort of health-check mechanism.
+
+    Health check is an intentionally broad term that leaves its definition up to the interpretation of each
+    BundleStore. Note that this method IS allowed to perform operations destructive to objects stored in the bundle
+    store, i.e. this is not an idempotent operation, and calling this method should be done with care.
+    """
+    def health_check(self, model, force):
         pass
 
 class BaseBundleStore(object):
@@ -75,7 +87,7 @@ class BaseBundleStore(object):
         pass
 
 
-class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
+class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStoreHealthCheckMixin):
     """
     A MultiDiskBundleStore is responsible for taking a set of locations and load-balancing the placement of
     bundle data between the locations. It accomplishes this goal using a consistent hash ring, a technique
@@ -340,7 +352,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
             new_partition = self.ring.get_node(bundle)
             relocations[bundle] = os.path.join(self.partitions, new_partition)
 
-        # Copy all bundles off of the old partition to temp directories on the new partition 
+        # Copy all bundles off of the old partition to temp directories on the new partition
         for bundle, partition in relocations.iteritems():
             # temporary directory on the partition
             temp_dir = os.path.join(partition, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
@@ -382,4 +394,147 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin):
         print >>sys.stderr, "cleanup: data %s" % absolute_path
         if not dry_run:
             path_util.remove(absolute_path)
+
+
+    def health_check(self, model, force=False, compute_data_hash=False, repair_hashes=False):
+        """
+        MultiDiskBundleStore.health_check(): In the MultiDiskBundleStore, bundle contents are stored on disk, and
+        occasionally the disk gets out of sync with the database, in which case we make repairs in the following ways:
+
+            1. Deletes bundles with corresponding UUID not in the database.
+            3. Deletes any files not beginning with UUID string.
+            4. For each bundle marked READY or FAILED, ensure that its dependencies are not located in the bundle
+               directory. If they are then delete the dependencies.
+            5. For bundle <UUID> marked READY or FAILED, <UUID>.cid or <UUID>.status, or the <UUID>(-internal).sh files
+               should not exist.
+        |force|: Perform any destructive operations on the bundle store the health check determines are necessary. False by default
+        |compute_data_hash|: If True, compute the data_hash for every single bundle ourselves and see if it's consistent with what's in
+                             the database. False by default.
+        """
+        UUID_REGEX = re.compile(r'^(%s)' % spec_util.UUID_STR)
+
+        def _delete_path(loc):
+            cmd = 'rm -r \'%s\'' % loc
+            print cmd
+            if force:
+                path_util.remove(loc)
+
+        def _get_uuid(path):
+            fname = os.path.basename(path)
+            try:
+                return UUID_REGEX.match(fname).groups()[0]
+            except:
+                return None
+
+        def _is_bundle(path):
+            """Returns whether the given path is a bundle directory/file"""
+            return _get_uuid(path) == os.path.basename(path)
+
+        def _check_bundle_paths(bundle_paths, db_bundle_by_uuid):
+            """
+            Takes in a list of bundle paths and a mapping of UUID to BundleModel, and returns a list of paths and
+            subpaths that need to be removed.
+            """
+            to_delete = []
+            # Batch get information for all bundles stored on-disk
+
+            for bundle_path in bundle_paths:
+                uuid = _get_uuid(bundle_path)
+                # Screen for bundles stored on disk that are no longer in the database
+                bundle = db_bundle_by_uuid.get(uuid, None)
+                if bundle == None:
+                    to_delete += [bundle_path]
+                    continue
+                # Delete dependencies stored inside of READY or FAILED bundles
+                if bundle.state in [State.READY, State.FAILED]:
+                    dep_paths = [
+                            os.path.join(bundle_path, dep.child_path)
+                            for dep in bundle.dependencies
+                          ]
+                    to_delete += filter(os.path.exists, dep_paths)
+            return to_delete
+
+        def _check_other_paths(other_paths, db_bundle_by_uuid):
+            """
+            Given a list of non-bundle paths, and a mapping of UUID to BundleModel, returns a list of paths to delete.
+            """
+            to_delete = []
+            for path in other_paths:
+                uuid = _get_uuid(path)
+                bundle = db_bundle_by_uuid.get(uuid, None)
+                if bundle == None:
+                    to_delete += [path]
+                    continue
+                ends_with_ext = path.endswith('.cid') or path.endswith('.status') or path.endswith('.sh')
+                if bundle.state in [State.READY, State.FAILED]:
+                    if ends_with_ext:
+                        to_delete += [path]
+                        continue
+                    elif '.' in path:
+                        print >> sys.stderr, 'WARNING: File %s is likely junk.' % path
+            return to_delete
+
+
+        partitions, _ = path_util.ls(self.partitions)
+        trash_count = 0
+
+        for partition in partitions:
+            print >> sys.stderr, 'Looking for trash in partition %s...' % partition
+            partition_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY)
+            entries = map(lambda f: os.path.join(partition_path, f),
+                          reduce(lambda d,f: d + f, path_util.ls(partition_path)))
+            bundle_paths = filter(_is_bundle, entries)
+            other_paths = set(entries) - set(bundle_paths)
+
+            uuids = map(_get_uuid, bundle_paths)
+            db_bundles = model.batch_get_bundles(uuid=uuids)
+            db_bundle_by_uuid = dict()
+            for bundle in db_bundles:
+                db_bundle_by_uuid[bundle.uuid] = bundle
+
+            # Check both bundles and non-bundles and remove each
+            for to_delete in _check_bundle_paths(bundle_paths, db_bundle_by_uuid):
+                trash_count += 1
+                _delete_path(to_delete)
+            for to_delete in _check_other_paths(other_paths, db_bundle_by_uuid):
+                trash_count += 1
+                _delete_path(to_delete)
+
+
+            # Check for each bundle if we need to compute its data_hash
+            data_hash_recomputed = 0
+
+            print >> sys.stderr, 'Checking data_hash of bundles in partition %s...' % partition
+            for bundle_path in bundle_paths:
+                uuid = _get_uuid(bundle_path)
+                bundle = db_bundle_by_uuid.get(uuid, None)
+                if bundle == None:
+                    continue
+                if compute_data_hash or bundle.data_hash == None:
+                    dirs_and_files = path_util.recursive_ls(bundle_path) if os.path.isdir(bundle_path) else ([], [bundle_path])
+                    data_hash = '0x%s' % path_util.hash_directory(bundle_path, dirs_and_files)
+                    if bundle.data_hash == None:
+                        data_hash_recomputed += 1
+                        print >> sys.stderr, 'Giving bundle %s data_hash %s' % (bundle_path, data_hash)
+                        if force:
+                            db_update = dict(data_hash=data_hash)
+                            model.update_bundle(bundle, db_update)
+                    elif compute_data_hash and data_hash != bundle.data_hash:
+                        data_hash_recomputed += 1
+                        print >> sys.stderr, 'Bundle %s should have data_hash %s, actual digest is %s' % (bundle_path, bundle.data_hash, data_hash)
+                        if repair_hashes and force:
+                            db_update = dict(data_hash=data_hash)
+                            model.update_bundle(bundle, db_update)
+
+
+        if force:
+            print >> sys.stderr, '\tDeleted %d objects from the bundle store' % trash_count
+            print >> sys.stderr, '\tRecomputed data_hash for %d bundles' % data_hash_recomputed
+        else:
+            print >> sys.stderr, 'Dry-Run Statistics, re-run with --force to perform updates:'
+            print >> sys.stderr, '\tObjects marked for deletion: %d' % trash_count
+            print >> sys.stderr, '\tBundles that need data_hash recompute: %d' % data_hash_recomputed
+
+
+
 
