@@ -71,6 +71,9 @@ from codalab.lib.completers import (
     TargetsCompleter,
     require_not_headless,
 )
+from codalab.lib.bundle_store import (
+    MultiDiskBundleStore
+)
 
 # Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
@@ -134,7 +137,12 @@ OTHER_COMMANDS = (
     'alias',
     'work-manager',
     'server',
+    'rest-server',
     'logout',
+    'bs-add-partition',
+    'bs-rm-partition',
+    'bs-ls-partitions',
+    'bs-health-check',
 )
 
 
@@ -257,13 +265,16 @@ class Commands(object):
                 name += ' (%s)' % ', '.join(list(aliases))
             return name
 
+        available_other_commands = filter(
+            lambda command: command in cls.commands, OTHER_COMMANDS)
+
         indent = 2
         max_length = max(
           len(command_name(command)) for command in itertools.chain(
               BUNDLE_COMMANDS,
               WORKSHEET_COMMANDS,
               GROUP_AND_PERMISSION_COMMANDS,
-              OTHER_COMMANDS)
+              available_other_commands)
         )
 
         def command_help_text(command):
@@ -319,7 +330,7 @@ class Commands(object):
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
-            other_commands=command_group_help_text(OTHER_COMMANDS),
+            other_commands=command_group_help_text(available_other_commands),
         ).strip()
 
     @classmethod
@@ -1649,13 +1660,12 @@ class BundleCLI(object):
         help='Create a new worksheet.',
         arguments=(
             Commands.Argument('name', help='Name of worksheet (%s).' % spec_util.NAME_REGEX.pattern),
-            Commands.Argument('-p', '--ensure-exists', help='Do not throw an error if the worksheet already exists.', action='store_true'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_new_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name, args.ensure_exists)
+        uuid = client.new_worksheet(args.name)
         print >>self.stdout, uuid
         if self.headless:
             return ui_actions.serialize([
@@ -2252,25 +2262,6 @@ class BundleCLI(object):
         client.update_user_info(user_info)
 
     @Commands.command(
-        'cleanup',
-        help=[
-            'Delete unused files in the CodaLab bundle store and temp directories (local only).',
-            'Note: do not do this operation when you have running bundles.',
-        ],
-        arguments=(
-            Commands.Argument('-i', '--dry-run', action='store_true', help='Perform dry run (don\'t actually do it, but see what the command would do).'),
-        ),
-    )
-    def do_cleanup_command(self, args):
-        """
-        Delete unused data and temp files (be careful!).
-        """
-        self._fail_if_headless('cleanup')
-        self._fail_if_not_local('cleanup')
-        client = self.manager.current_client()
-        client.bundle_store.full_cleanup(client.model, args.dry_run)
-
-    @Commands.command(
         'reset',
         help='Delete the CodaLab bundle store and reset the database (local only).',
         arguments=(
@@ -2287,9 +2278,77 @@ class BundleCLI(object):
             raise UsageError('If you really want to delete EVERYTHING, use --commit')
         client = self.manager.current_client()
         print >>self.stdout, 'Deleting entire bundle store...'
-        client.bundle_store._reset()
+        client.bundle_store.reset()
         print >>self.stdout, 'Deleting entire database...'
         client.model._reset()
+
+    # Note: this is not actually handled in BundleCLI, but here just to show the help
+    @Commands.command(
+        'server',
+        help='Start an instance of the CodaLab bundle service.',
+    )
+    def do_server_command(self, args):
+        raise UsageError('Cannot execute CLI command: server')
+
+    @Commands.command(
+        'bs-add-partition',
+        help='Add another partition for storage (MultiDiskBundleStore only)',
+        arguments=(
+            Commands.Argument('name',
+                              help='The name you\'d like to give this partition for CodaLab.',),
+            Commands.Argument('path',
+                              help=' '.join(['The target location you would like to use for storing bundles.',
+                                             'This directory should be underneath a mountpoint for the partition',
+                                             'you would like to use. You are responsible for configuring the',
+                                             'mountpoint yourself.']),),
+        ),
+    )
+    def do_add_partition_command(self, args):
+        """
+        Add the specified target location as a new partition available for use by the filesystem.
+        """
+        # This operation only allowed if we're using MultiDiskBundleStore
+        if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            sys.exit(1)
+        self.manager.bundle_store().add_partition(args.path, args.name)
+
+    @Commands.command(
+        'bs-rm-partition',
+        help='Remove a partition by its number (MultiDiskBundleStore only)',
+        arguments=(
+            Commands.Argument('partition', help='The partition you want to remove.'),
+        ),
+    )
+    def do_rm_partition_command(self, args):
+        if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            sys.exit(1)
+        self.manager.bundle_store().rm_partition(args.partition)
+
+    @Commands.command(
+        'bs-ls-partitions',
+        help='List available partitions (MultiDiskBundleStore only)',
+        arguments=(),
+    )
+    def do_ls_partitions_command(self, _):
+        if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
+            sys.exit(1)
+        self.manager.bundle_store().ls_partitions()
+
+    @Commands.command(
+        'bs-health-check',
+        help='Perform a health check on the bundle store, garbage collecting bad files in the store. Performs a dry run by default, use -f to force removal.',
+        arguments=(
+            Commands.Argument('-f', '--force', help='Perform all garbage collection and database updates instead of just printing what would happen', action='store_true'),
+            Commands.Argument('-d', '--data-hash', help='Compute the digest for every bundle and compare against data_hash for consistency', action='store_true'),
+            Commands.Argument('-r', '--repair', help='When used with --force and --data-hash, repairs incorrect data_hash in existing bundles', action='store_true'),
+        ),
+    )
+    def do_bs_health_check(self, args):
+        print >> sys.stderr, 'Performing Health Check...'
+        self.manager.bundle_store().health_check(self.manager.current_client().model, args.force, args.data_hash, args.repair)
 
     def _fail_if_headless(self, message):
         if self.headless:

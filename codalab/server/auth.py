@@ -75,9 +75,19 @@ class MockAuthHandler(object):
         return self._user
 
 
+class LocalOAuthHandler(threading.local):
+    """
+    Authenticates the user against the local OAuth records.
+
+    The bundle service should transition to using this when users and OAuth are completely
+    migrated to the bundle service.
+    """
+    pass
+
+
 class OAuthHandler(threading.local):
     '''
-    Handles user authentication with an OAuth authorization server.
+    Handles user authentication with a remote OAuth authorization server.
 
     Inherits from threading.local, which makes all instance attributes thread-local.
     When an OAuthHandler instance is used from a new thread, __init__ will be called
@@ -253,19 +263,3 @@ class OAuthHandler(threading.local):
         Returns the current user as set by validate_token.
         '''
         return self._user
-
-
-class AuthenticationPlugin(object):
-    """Bottle plugin that ensures that the user is authenticated."""
-    api = 2
-    def apply(self, callback, route):
-        def wrapper(*args, **kwargs):
-            print('authentication')
-            # TODO(sckoo): Add authentication. The information about the user
-            # can be put in the "local" thread-local variable in bottle.
-            # TODO(sckoo): Update the logging plugin to log real user ID and
-            # and name.
-            return callback(*args, **kwargs)
-        return wrapper
-
-authentication_plugin = AuthenticationPlugin()

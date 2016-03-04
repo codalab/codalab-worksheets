@@ -22,6 +22,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 
 from codalab.common import (
   precondition,
@@ -59,6 +60,18 @@ def path_error(message, path):
 
     return UsageError(message + ': ' + path)
 
+@contextlib.contextmanager
+def mkdtemp(suffix="", dir=None):
+    """
+    Create a directory as a context manager. Python3.x supports this OOTB with
+    tempfile.TemporaryFile, but it doesn't exist in Python 2.7 so this is a
+    simple wrapper.
+    """
+    directory = tempfile.mkdtemp(suffix, dir=dir)
+    try:
+        yield directory
+    finally:
+        remove(directory)
 
 @contextlib.contextmanager
 def chdir(new_dir):
@@ -426,3 +439,10 @@ def remove(path):
         os.remove(path)
     if os.path.exists(path):
         print 'Failed to remove %s' % path
+
+def soft_link(source, path):
+    """
+    Create a symbolic link to source at path. This is basically the same as doing "ln -s $source $path"
+    """
+    check_isvalid(source, 'soft_link')
+    os.symlink(source, path)
