@@ -1,13 +1,14 @@
 """
 BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
-import re
+
 import collections
 import datetime
+import json
+import re
+import sys
 import time
 import uuid
-import json
-import sys
 
 from sqlalchemy import (
     and_,
@@ -1044,7 +1045,7 @@ class BundleModel(object):
             ))
 
     #############################################################################
-    # Commands related to groups and permissions follow!
+    # Group and permission -related methods follow!
     #############################################################################
 
     def _create_default_groups(self):
@@ -1455,8 +1456,9 @@ class BundleModel(object):
             }
             connection.execute(cl_event.insert().values(info))
 
-    ############################################################
-    # User methods
+    #############################################################################
+    # User-related methods follow!
+    #############################################################################
 
     def get_user(self, user_id=None, username=None):
         """
@@ -1501,7 +1503,7 @@ class BundleModel(object):
 
         return row is not None and row.is_active
 
-    def add_user(self, username, email, password):
+    def add_user(self, username, email, password, user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
         :param username:
@@ -1511,8 +1513,7 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
-            user_id = uuid.uuid4().hex
-            verification_key = uuid.uuid4().hex
+            user_id = user_id or uuid.uuid4().hex
 
             connection.execute(cl_user.insert().values({
                 "user_id": user_id,
@@ -1523,7 +1524,7 @@ class BundleModel(object):
                 "first_name": None,
                 "last_name": None,
                 "date_joined": now,
-                "is_verified": False,
+                "is_verified": is_verified,
                 "is_superuser": False,
                 "password": User.encode_password(password, server_util.get_random_string()),
                 "time_quota": self.default_user_info['time_quota'],
@@ -1534,12 +1535,16 @@ class BundleModel(object):
                 "url": None,
             }))
 
-            connection.execute(cl_user_verification.insert().values({
-                "user_id": user_id,
-                "date_created": now,
-                "date_sent": now,
-                "key": verification_key,
-            }))
+            if is_verified:
+                verification_key = None
+            else:
+                verification_key = uuid.uuid4().hex
+                connection.execute(cl_user_verification.insert().values({
+                    "user_id": user_id,
+                    "date_created": now,
+                    "date_sent": now,
+                    "key": verification_key,
+                }))
 
         return user_id, verification_key
 
@@ -1660,8 +1665,9 @@ class BundleModel(object):
         user_info['disk_used'] = self._get_disk_used(user_id)
         self.update_user_info(user_info)
 
-    ############################################################
-    # OAuth methods
+    #############################################################################
+    # OAuth-related methods follow!
+    #############################################################################
 
     def get_oauth2_client(self, client_id):
         with self.engine.begin() as connection:
