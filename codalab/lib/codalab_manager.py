@@ -39,9 +39,12 @@ from distutils.util import strtobool
 
 from codalab.client import is_local_address
 from codalab.common import UsageError, PermissionError
-from codalab.objects.worksheet import Worksheet
 from codalab.server.auth import User
-from codalab.lib.bundle_store import BundleStore
+from codalab.lib.bundle_store import (
+    MultiDiskBundleStore,
+)
+from codalab.lib.crypt_util import get_random_string
+from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
 from codalab.lib import formatting
 
 def cached(fn):
@@ -194,7 +197,6 @@ class CodaLabManager(object):
             You may still optionally configure a local bundle service (available as 'local').
             """)
             using_local = False
-
         else:
             config['cli']['default_address'] = 'local'
             print "Using local bundle service as default."
@@ -220,6 +222,11 @@ class CodaLabManager(object):
             sqlite_db_path = os.path.join(self.codalab_home, 'bundle.db')
             config['server']['engine_url'] = "sqlite:///{}".format(sqlite_db_path)
             print "Using SQLite database at: {}".format(sqlite_db_path)
+
+        # Generate secret key
+        config['server']['secret_key'] = get_random_string(
+            48, "=+/abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
         # Rest of instructions
         print_block(r"""
@@ -252,12 +259,23 @@ class CodaLabManager(object):
         # Global setting!  Make temp directory the same as the bundle store
         # temporary directory.  The default /tmp generally doesn't have enough
         # space.
-        tempfile.tempdir = os.path.join(home, BundleStore.TEMP_SUBDIRECTORY)
+        # TODO: Fix this, this is bad
+        tempfile.tempdir = os.path.join(home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
         return home
 
     @cached
     def bundle_store(self):
-        return BundleStore(self.codalab_home)
+        """
+        Returns the bundle store backing this CodaLab instance. The type of the store object
+        depends on what the user has configured, but if no bundle store is configured manually then it defaults to a
+        MultiDiskBundleStore.
+        """
+        store_type = self.config.get('bundle_store', 'MultiDiskBundleStore')
+        if store_type == MultiDiskBundleStore.__name__:
+            return MultiDiskBundleStore(self.codalab_home)
+        else:
+            print >>sys.stderr, "Invalid bundle store type \"%s\"", store_type
+            sys.exit(1)
 
     def apply_alias(self, key):
         return self.config['aliases'].get(key, key)
@@ -319,9 +337,9 @@ class CodaLabManager(object):
 
     @cached
     def model(self):
-        '''
+        """
         Return a model.  Called by the server.
-        '''
+        """
         model_class = self.config['server']['class']
         model = None
         if model_class == 'MySQLModel':
@@ -365,6 +383,20 @@ class CodaLabManager(object):
         kwargs = {arg: auth_config[arg] for arg in arguments}
         from codalab.server.auth import OAuthHandler
         return OAuthHandler(**kwargs)
+
+    @cached
+    def emailer(self):
+        if 'email' in self.config:
+            return SMTPEmailer(
+                host=self.config['email']['host'],
+                user=self.config['email']['user'],
+                password=self.config['email']['password'],
+                use_tls=True,
+                default_sender='CodaLab <noreply@codalab.org>',
+                server_email='noreply@codalab.org',
+            )
+        else:
+            return ConsoleEmailer()
 
     def root_user_name(self):
         return self.config['server'].get('root_user_name', 'codalab')

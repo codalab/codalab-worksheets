@@ -4,7 +4,7 @@ machine:
 
 dependencies:
   override:
-    - ./setup.sh client
+    - ./setup.sh server
     - ./venv/bin/pip install --upgrade pip
     - ./venv/bin/pip install -r requirements-tests.txt
 

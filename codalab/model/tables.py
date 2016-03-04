@@ -1,6 +1,6 @@
-'''
+"""
 The SQLAlchemy table objects for the CodaLab bundle system tables.
-'''
+"""
 from sqlalchemy import (
   Column,
   ForeignKey,
@@ -16,6 +16,7 @@ from sqlalchemy.types import (
   Boolean,
   DateTime,
   Float,
+  Enum,
 )
 
 db_metadata = MetaData()
@@ -82,8 +83,8 @@ worksheet = Table(
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
   Column('owner_id', String(255), nullable=True),
-  Column('title', String(255), nullable=True), # Short human-readable description of the worksheet
-  Column('frozen', DateTime, nullable=True), # When the worksheet was frozen (forever immutable) if it is.
+  Column('title', String(255), nullable=True),  # Short human-readable description of the worksheet
+  Column('frozen', DateTime, nullable=True),  # When the worksheet was frozen (forever immutable) if it is.
   UniqueConstraint('uuid', name='uix_1'),
   Index('worksheet_name_index', 'name'),
   Index('worksheet_owner_index', 'owner_id'),
@@ -146,7 +147,7 @@ user_group = Table(
   db_metadata,
   Column('id', Integer, primary_key=True, nullable=False),
   Column('group_uuid', String(63), ForeignKey(group.c.uuid), nullable=False),
-  Column('user_id', String(63), nullable=False),
+  Column('user_id', String(63), ForeignKey("user.user_id"), nullable=False),
   # Whether a user is able to modify this group.
   Column('is_admin', Boolean),
   Index('group_uuid_index', 'group_uuid'),
@@ -216,7 +217,20 @@ user = Table(
 
   # Basic information
   Column('user_id', String(63), nullable=False),
-  Column('user_name', String(63), nullable=False),  # Mirrors the OAuth server (eventually move it here)
+  Column('user_name', String(63), nullable=False),
+  Column('email', String(254), nullable=False),  # Length of 254 to be compliant with RFC3696/5321
+  Column('last_login', DateTime),  # Null if user has never logged in
+  Column('is_active', Boolean, nullable=False, default=True),  # Set to False instead of deleting users to maintain foreign key integrity
+  Column('first_name', String(30)),
+  Column('last_name', String(30)),
+  Column('date_joined', DateTime, nullable=False),
+  Column('is_verified', Boolean, nullable=False, default=False),
+  Column('is_superuser', Boolean, nullable=False, default=False),
+  Column('password', String(128), nullable=False),
+
+  # Additional information
+  Column('affiliation', String(255), nullable=True),
+  Column('url', String(255), nullable=True),
 
   # Quotas
   Column('time_quota', Float, nullable=False),  # Number of seconds allowed
@@ -226,5 +240,62 @@ user = Table(
 
   Index('user_user_id_index', 'user_id'),
   Index('user_user_name_index', 'user_name'),
+  UniqueConstraint('user_id', name='uix_1'),
+  sqlite_autoincrement=True,
+)
+
+# Stores (email) verification keys
+user_verification = Table(
+  'user_verification',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('date_created', DateTime, nullable=False),
+  Column('date_sent', DateTime, nullable=True),
+  Column('key', String(64), nullable=False),
+  sqlite_autoincrement=True,
+)
+
+# OAuth2 Tables
+
+oauth2_client = Table(
+  'oauth2_client',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('client_id', String(63), nullable=False),
+  Column('name', String(63), nullable=True),
+  Column('secret', String(255), nullable=True),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=True),
+  Column('grant_type', Enum("authorization_code", "password", "client_credentials", "refresh_token"), nullable=False),
+  Column('response_type', Enum("code", "token"), nullable=False),
+  Column('scopes', Text, nullable=False),  # comma-separated list of allowed scopes
+  Column('redirect_uris', Text, nullable=False),  # comma-separated list of allowed redirect URIs
+  UniqueConstraint('client_id', name='uix_1'),
+  sqlite_autoincrement=True,
+)
+
+oauth2_token = Table(
+  'oauth2_token',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('client_id', String(63), ForeignKey(oauth2_client.c.client_id), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('scopes', Text, nullable=False),
+  Column('access_token', String(255), unique=True),
+  Column('refresh_token', String(255), unique=True),
+  Column('expires', DateTime, nullable=False),
+  sqlite_autoincrement=True,
+)
+
+oauth2_auth_code = Table(
+  'oauth2_auth_code',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('client_id', String(63), ForeignKey(oauth2_client.c.client_id), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('scopes', Text, nullable=False),
+  Column('code', String(100), nullable=False),
+  Column('expires', DateTime, nullable=False),
+  Column('redirect_uri', String(255), nullable=False),
   sqlite_autoincrement=True,
 )

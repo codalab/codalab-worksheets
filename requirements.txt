@@ -1,7 +1,7 @@
+argcomplete==1.1.0
 PyYAML==3.11
 SQLAlchemy==1.0.8
 alembic==0.8.2
 psutil==3.3.0
+six==1.10.0
 watchdog==0.8.3
-# Use latest master branch, until next release includes PR#118
-git+https://github.com/kislyuk/argcomplete.git

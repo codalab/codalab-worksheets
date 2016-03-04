@@ -140,6 +140,8 @@ class ModuleContext(object):
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
                 print 'ERROR: %s' % exc_value.message
+            elif exc_type is KeyboardInterrupt:
+                print 'Caught interrupt! Quitting after cleanup...'
             else:
                 print 'ERROR: Test raised an exception!'
                 traceback.print_exception(exc_type, exc_value, tb)
@@ -159,8 +161,11 @@ class ModuleContext(object):
         if len(self.bundles) > 0:
             run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
 
-        # Do not reraise exception
-        return True
+        # Reraise only KeyboardInterrupt
+        if exc_type is KeyboardInterrupt:
+            return False
+        else:
+            return True
 
     def collect_worksheet(self, uuid):
         '''Mark a worksheet for cleanup on exit.'''
@@ -277,6 +282,11 @@ def test(ctx):
     check_equals('None', get_info(uuid, 'data_hash'))
     run_command([cl, 'rm', uuid])
 
+    # run and check the data_hash
+    uuid = run_command([cl, 'run', 'echo hello'])
+    run_command([cl, 'wait', uuid])
+    check_contains('0x', get_info(uuid, 'data_hash'))
+
 @TestModule.register('upload1')
 def test(ctx):
     # Upload contents
@@ -346,6 +356,22 @@ def test(ctx):
     uuid = run_command([cl, 'upload', 'https://github.com/codalab/codalab-cli', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], run_command([cl, 'cat', uuid]))
 
+@TestModule.register('upload4')
+def test(ctx):
+    # Uploads a pair of archives at the same time. Makes sure they're named correctly when unpacked.
+    archive_paths = [temp_path(''), temp_path('')]
+    archive_exts = map(lambda p: p + '.tar.gz', archive_paths)
+    contents_paths = [test_path('dir1'), test_path('a.txt')]
+    for (archive, content) in zip(archive_exts, contents_paths):
+        run_command(['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)])
+    uuid = run_command([cl, 'upload'] + archive_exts)
+
+    # Make sure the names do not end with '.tar.gz' after being unpacked.
+    check_contains([os.path.basename(archive_paths[0]) + r'\s', os.path.basename(archive_paths[1]) + r'\s'], run_command([cl, 'cat', uuid]))
+
+    # Cleanup
+    for archive in archive_exts:
+        os.unlink(archive)
 
 @TestModule.register('download')
 def test(ctx):
