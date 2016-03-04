@@ -94,6 +94,10 @@ def do_rest_server_command(bundle_cli, args):
     if args.watch:
         run_server_with_watch()
     else:
+        if not args.debug:
+            # gevent.monkey.patch_all() needs to be called before importing
+            # bottle.
+            import gevent.monkey; gevent.monkey.patch_all()
         from codalab.server.rest_server import run_rest_server
         run_rest_server(bundle_cli.manager, args.debug, args.processes)
 
