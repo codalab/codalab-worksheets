@@ -1,14 +1,14 @@
 from httplib import BAD_REQUEST
+import os
 import sys
 import time
 
+import bottle
 from bottle import (
     abort,
     Bottle,
     default_app,
-    error,
     get,
-    HTTPError,
     HTTPResponse,
     install,
     local,
@@ -18,7 +18,9 @@ from bottle import (
 )
 
 import codalab.rest.account
+import codalab.rest.bundle
 import codalab.rest.example
+import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.users
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
@@ -123,6 +125,8 @@ def run_rest_server(manager, debug, num_processes):
     
     for code in xrange(100, 600):
         root_app.error(code)(error_handler)
+
+    bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
 
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter

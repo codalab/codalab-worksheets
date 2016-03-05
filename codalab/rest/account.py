@@ -58,7 +58,7 @@ def do_login():
         return template("login", errors=["Login/password did not match."])
 
     # Save cookie in client
-    cookie = LoginCookie(user.user_id, max_age=3600)
+    cookie = LoginCookie(user.user_id, max_age=30 * 24 * 60 * 60)
     cookie.save()
 
     # Redirect client to next page
@@ -144,3 +144,11 @@ def whoami():
     del info['password']
     return info
 
+
+@get('/account/css')
+def css():
+    response.content_type = 'text/css'
+    if request.user is None:
+        return template('user_not_authenticated_css')
+    else:
+        return template('user_authenticated_css', username=request.user.user_name)

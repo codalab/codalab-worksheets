@@ -1727,6 +1727,20 @@ class BundleModel(object):
 
         return OAuth2Token(self, **row)
 
+    def find_oauth2_token(self, client_id, user_id, expires_after):
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select([oauth2_token])
+                    .where(and_(oauth2_token.c.client_id == client_id,
+                                oauth2_token.c.user_id == user_id,
+                                oauth2_token.c.expires > expires_after))
+                    .limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Token(self, **row)
+
     def save_oauth2_token(self, token):
         with self.engine.begin() as connection:
             result = connection.execute(oauth2_token.insert().values(token.columns))
