@@ -1468,23 +1468,40 @@ class BundleModel(object):
         :param username: username or email of user to fetch
         :return: User object, or None if no matching user.
         """
+        user_ids = None
+        usernames = None
+        if user_id is not None:
+            user_ids = [user_id]
+        if username is not None:
+            usernames = [username]
+        result = self.get_users(user_ids, usernames)
+        if result:
+            return result[0]
+        return None
+
+    def get_users(self, user_ids=None, usernames=None):
+        """
+        Get users.
+
+        :param user_ids: user ids of users to fetch
+        :param usernames: usernames or emails of users to fetch
+        :return: list of matching User objects
+        """
         clauses = []
         clauses.append(cl_user.c.is_active == True)
-        if user_id is not None:
-            clauses.append(cl_user.c.user_id == user_id)
-        if username is not None:
+        if user_ids is not None:
+            clauses.append(cl_user.c.user_id.in_(user_ids))
+        if usernames is not None:
             # TODO(sckoo): Should we add an index on the email column?
-            clauses.append(or_(cl_user.c.user_name == username, cl_user.c.email == username))
+            clauses.append(or_(cl_user.c.user_name.in_(usernames),
+                               cl_user.c.email.in_(usernames)))
 
         with self.engine.begin() as connection:
-            row = connection.execute(select([
+            rows = connection.execute(select([
                 cl_user
-            ]).where(and_(*clauses)).limit(1)).fetchone()
+            ]).where(and_(*clauses))).fetchall()
 
-        if row is None or not row.is_active:
-            return None
-
-        return User(row)
+        return [User(row) for row in rows]
 
     def user_exists(self, username, email):
         """

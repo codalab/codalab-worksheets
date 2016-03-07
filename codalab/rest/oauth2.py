@@ -120,6 +120,12 @@ def handle_token(): pass
 def revoke_token(): pass
 
 
+@get('/oauth2/validate', apply=AuthenticatedPlugin())
+def validate():
+    return {'user_name': request.user.user_name,
+            'user_id': request.user.user_id}
+
+
 @get('/oauth2/errors', name='oauth2_errors')
 def show_errors():
     return template('oauth2_errors', **request.query)
