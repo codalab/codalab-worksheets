@@ -30,6 +30,7 @@ from sqlalchemy import (
     bindparam,
 )
 
+from codalab.common import UsageError
 from codalab.lib.codalab_manager import CodaLabManager, read_json_or_die
 from codalab.model.tables import user as cl_user
 
@@ -73,8 +74,8 @@ if django_config['database']['ENGINE'] == 'django.db.backends.mysql':
         db_params['host'] = django_config['database']['HOST']
     if django_config['database'].get('PORT', None):
         db_params['port'] = django_config['database']['PORT']
-    db = MySQLdb.connect(**db_params)
-    c = db.cursor()
+    django_db = MySQLdb.connect(**db_params)
+    django_cursor = django_db.cursor()
 elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
     import sqlite3
 
@@ -90,12 +91,15 @@ elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
                                'codalab-worksheets',
                                'codalab',
                                django_config['database']['NAME'])
-    db = sqlite3.connect(sqlite_path)
-    db.row_factory = dict_factory
-    c = db.cursor()
+    django_db = sqlite3.connect(sqlite_path)
+    django_db.row_factory = dict_factory
+    django_cursor = django_db.cursor()
+else:
+    raise UsageError("Invalid database engine %r" %
+                     django_config['database']['ENGINE'])
 
 # General SQL query should work on both MySQL and sqlite3
-c.execute("""
+django_cursor.execute("""
     SELECT
     cluser.id,
     cluser.password,
@@ -112,7 +116,7 @@ c.execute("""
     LEFT OUTER JOIN account_emailaddress AS email
     ON cluser.id = email.user_id
     WHERE cluser.id != -1 AND cluser.is_active = 1""")
-django_users = list(c.fetchall())
+django_users = list(django_cursor.fetchall())
 
 ###############################################################
 # Preprocess user data
@@ -204,7 +208,8 @@ if to_insert or to_update:
 
     print deactivate_query
     if not dry_run:
-        c.execute(deactivate_query)
+        django_cursor.execute(deactivate_query)
+        django_db.commit()
 
 ###############################################################
 # Last words
