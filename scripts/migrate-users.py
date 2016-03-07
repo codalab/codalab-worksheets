@@ -31,8 +31,12 @@ from sqlalchemy import (
 )
 
 from codalab.common import UsageError
-from codalab.lib.codalab_manager import CodaLabManager, read_json_or_die
 from codalab.model.tables import user as cl_user
+from codalab.lib.codalab_manager import (
+    CodaLabManager,
+    read_json_or_die,
+    print_block
+)
 
 
 class DryRunAbort(Exception):
@@ -157,6 +161,8 @@ to_insert = [user for user in django_users
 model.engine.echo = True
 
 if to_update:
+    print "Updating existing users in bundle service database..."
+
     try:
         with model.engine.begin() as connection:
             update_query = cl_user.update().\
@@ -174,6 +180,8 @@ if to_update:
 ###############################################################
 
 if to_insert:
+    print "Inserting new users into bundle service database..."
+
     default_user_info = manager.default_user_info()
 
     # Throw away old user ids
@@ -201,12 +209,14 @@ if to_insert:
 ###############################################################
 
 if to_insert or to_update:
+    print "Deactivating users in Django database..."
+
     deactivate_query = """
         UPDATE authenz_cluser
         SET is_active=0
         WHERE id IN (%s)""" % (', '.join(django_user_ids))
+    print_block(deactivate_query)
 
-    print deactivate_query
     if not dry_run:
         django_cursor.execute(deactivate_query)
         django_db.commit()
