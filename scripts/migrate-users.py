@@ -13,9 +13,9 @@ database.
 5. Mark all users in the Django database as inactive, which means that they
    will not be picked up in future runs of the migration script.
 
-By default, this script runs in dry-run mode, i.e. it prints verbose output but
-does not make changes to the databases. When you're ready to perform the
-migration, run with the '-f' flag.
+By default, this script runs in dry-run mode, i.e. it prints verbose output
+such as the generate SQL queries but does not make changes to the databases.
+When you're ready to perform the migration, run with the '-f' flag.
 
 This scripts assumes that you are running it from the codalab-cli directory.
 """
