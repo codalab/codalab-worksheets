@@ -21,6 +21,10 @@ class User(ORMObject):
     def unique_id(self):
         return self.user_id
 
+    @property
+    def name(self):
+        return self.user_name
+
     def validate(self):
         pass
 

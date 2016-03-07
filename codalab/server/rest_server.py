@@ -1,5 +1,6 @@
 from httplib import BAD_REQUEST
 import os
+import re
 import sys
 import time
 
@@ -26,6 +27,12 @@ import codalab.rest.users
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.oauth2_provider import oauth2_provider
+
+
+# Don't log requests to routes matching these regexes.
+ROUTES_NOT_LOGGED_REGEXES = [
+    re.compile(r'/oauth2/.*'),
+]
 
 
 class SaveEnvironmentPlugin(object):
@@ -71,6 +78,9 @@ class LoggingPlugin(object):
     
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
+            if not self._should_log(route.rule):
+                return callback(*args, **kwargs)
+
             start_time = time.time()
 
             res = callback(*args, **kwargs)
@@ -94,6 +104,11 @@ class LoggingPlugin(object):
 
         return wrapper
 
+    def _should_log(self, rule):
+        for regex in ROUTES_NOT_LOGGED_REGEXES:
+            if regex.match(rule):
+                return False
+        return True
 
 def error_handler(response):
     """Simple error handler that doesn't use the Bottle error template."""
@@ -108,7 +123,7 @@ def send_static(filename):
     return static_file(filename, root='static/')
 
 
-def run_rest_server(manager, debug, num_processes):
+def run_rest_server(manager, debug, num_processes, num_threads):
     """Runs the REST server."""
     host = manager.config['server']['rest_host']
     port = manager.config['server']['rest_port']
@@ -120,22 +135,20 @@ def run_rest_server(manager, debug, num_processes):
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
 
+    for code in xrange(100, 600):
+        default_app().error(code)(error_handler)
+
     root_app = Bottle()
     root_app.mount('/rest', default_app())
-    
-    for code in xrange(100, 600):
-        root_app.error(code)(error_handler)
 
     bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
 
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter
     # Lock.
-    # We use gevent so that each of the processes handles each request in a
-    # greenlet (a sort of a lightweight thread).
     sys.argv = sys.argv[:1] # Small hack to work around a Gunicorn arg parsing
                             # bug. None of the arguments to cl should go to
                             # Gunicorn.
     run(app=root_app, host=host, port=port, debug=debug, server='gunicorn',
-        workers=num_processes, worker_class='gevent' if not debug else 'sync',
+        workers=num_processes, worker_class='gthread', threads=num_threads,
         timeout=5 * 60)
