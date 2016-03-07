@@ -13,9 +13,11 @@ class AuthenticatedPlugin(object):
     been set).
 
     This method redirects the user to login unless the request is an AJAX request
-    (i.e. has X-Requested-With header set to XMLHttpRequest). The worker system
-    sets this header as well and so should any other code that doesn't want
-    redirection to happen.
+    (i.e. has X-Requested-With header set to XMLHttpRequest). This header should
+    be set by:
+      - AJAX requests in the Javascript app.
+      - Requests from the workers.
+      - Requests from the CLI.
     """
     api = 2
 
