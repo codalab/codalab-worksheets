@@ -194,7 +194,7 @@ while True:
 
         # Check remaining disk space
         if ping_time():
-            result = int(run_command(['df', os.path.join(args.codalab_home, 'data')]).split('\n')[1].split()[3])
+            result = int(run_command(['df', os.path.join(args.codalab_home, 'bundles')]).split('\n')[1].split()[3])
             if result < 500 * 1024:  # Less than 500 MB, start to worry
                 error_logs('low disk space', 'Only %s MB of disk space left!' % (result / 1024))
 
