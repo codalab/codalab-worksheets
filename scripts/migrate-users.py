@@ -1,16 +1,23 @@
 #!./venv/bin/python
 """
-FIXME
-Script that goes through and reindexes all bundles on disk to be located by their UUID instead of by their data_hash.
+This script migrates users from the Django user models to the bundle service
+database.
 
-For every bundle, finds its associated data_hash, and copies the data underneath data_hash/
+1. Load user data from the Django database
+2. Generate a new id for each user using the uuid scheme
+3. Update existing rows in the bundle service users table, using the Django
+   user models as a source of truth, leaving only the disk/time quota and usage
+   columns intact.
+4. Insert remaining users into the bundle service users table, filling in the
+   configured default quota information.
+5. Mark all users in the Django database as inactive, which means that they
+   will not be picked up in future runs of the migration script.
 
-By default, this script runs in dry-run mode, i.e. it prints verbose output but does not make changes to
-the file system. When you're ready to perform the migration, run with the '-f' flag.
+By default, this script runs in dry-run mode, i.e. it prints verbose output but
+does not make changes to the databases. When you're ready to perform the
+migration, run with the '-f' flag.
 
 This scripts assumes that you are running it from the codalab-cli directory.
-
-THIS SCRIPT IS NOT IDEMPOTENT. Do not run more than once.
 """
 
 import os
@@ -19,13 +26,7 @@ import sys
 sys.path.append('.')
 
 from sqlalchemy import (
-    and_,
-    or_,
-    not_,
     select,
-    union,
-    desc,
-    func,
     bindparam,
 )
 
@@ -210,7 +211,8 @@ if to_insert or to_update:
 ###############################################################
 
 dry_run_str = """
-This was a dry run, no migration occurred. To perform full migration, run again with `-f':
+This was a dry run, no migration occurred. To perform full migration,
+run again with `-f':
 
     %s -f
 """.rstrip() % sys.argv[0]
