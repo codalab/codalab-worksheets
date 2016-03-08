@@ -1,6 +1,15 @@
-'''
+"""
 BundleModel is a wrapper around database calls to save and load bundle metadata.
-'''
+"""
+
+import collections
+import datetime
+import json
+import re
+import sys
+import time
+import uuid
+
 from sqlalchemy import (
     and_,
     or_,
@@ -27,6 +36,7 @@ from codalab.common import (
     State,
 )
 from codalab.lib import (
+    crypt_util,
     spec_util,
     worksheet_util,
 )
@@ -49,17 +59,24 @@ from codalab.model.tables import (
     event as cl_event,
     user as cl_user,
     chat as cl_chat,
+    user_verification as cl_user_verification,
+    oauth2_client,
+    oauth2_token,
+    oauth2_auth_code,
     db_metadata,
 )
 from codalab.objects.worksheet import (
     item_sort_key,
     Worksheet,
 )
-from codalab.objects.permission import parse_permission
-
-import re, collections
-import datetime
-import time, json, sys
+from codalab.objects.oauth2 import (
+    OAuth2AuthCode,
+    OAuth2Client,
+    OAuth2Token,
+)
+from codalab.objects.user import (
+    User,
+)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -1029,7 +1046,7 @@ class BundleModel(object):
             ))
 
     #############################################################################
-    # Commands related to groups and permissions follow!
+    # Group and permission -related methods follow!
     #############################################################################
 
     def _create_default_groups(self):
@@ -1440,6 +1457,7 @@ class BundleModel(object):
             }
             connection.execute(cl_event.insert().values(info))
 
+<<<<<<< HEAD
     # Operations on the query log
     def date_handler(self, obj): 
         '''
@@ -1505,14 +1523,179 @@ class BundleModel(object):
     ############################################################
     # User functions
     # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
+=======
+    #############################################################################
+    # User-related methods follow!
+    #############################################################################
+
+    def get_user(self, user_id=None, username=None):
+        """
+        Get user.
+
+        :param user_id: user id of user to fetch
+        :param username: username or email of user to fetch
+        :return: User object, or None if no matching user.
+        """
+        user_ids = None
+        usernames = None
+        if user_id is not None:
+            user_ids = [user_id]
+        if username is not None:
+            usernames = [username]
+        result = self.get_users(user_ids, usernames)
+        if result:
+            return result[0]
+        return None
+
+    def get_users(self, user_ids=None, usernames=None):
+        """
+        Get users.
+
+        :param user_ids: user ids of users to fetch
+        :param usernames: usernames or emails of users to fetch
+        :return: list of matching User objects
+        """
+        clauses = []
+        clauses.append(cl_user.c.is_active == True)
+        if user_ids is not None:
+            clauses.append(cl_user.c.user_id.in_(user_ids))
+        if usernames is not None:
+            # TODO(sckoo): Should we add an index on the email column?
+            clauses.append(or_(cl_user.c.user_name.in_(usernames),
+                               cl_user.c.email.in_(usernames)))
+
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([
+                cl_user
+            ]).where(and_(*clauses))).fetchall()
+
+        return [User(row) for row in rows]
+
+    def user_exists(self, username, email):
+        """
+        Check whether user with given username or email exists.
+        :param username: username
+        :param email: email
+        :return: True iff user with EITHER matching username or email exists.
+        """
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                cl_user
+            ]).where(or_(
+                cl_user.c.user_name == username,
+                cl_user.c.email == email,
+            )).limit(1)).fetchone()
+
+        return row is not None and row.is_active
+
+    def add_user(self, username, email, password, user_id=None, is_verified=False):
+        """
+        Create a brand new unverified user.
+        :param username:
+        :param email:
+        :param password:
+        :return: (new integer user ID, verification key to send)
+        """
+        with self.engine.begin() as connection:
+            now = datetime.datetime.utcnow()
+            user_id = user_id or uuid.uuid4().hex
+
+            connection.execute(cl_user.insert().values({
+                "user_id": user_id,
+                "user_name": username,
+                "email": email,
+                "last_login": None,
+                "is_active": True,
+                "first_name": None,
+                "last_name": None,
+                "date_joined": now,
+                "is_verified": is_verified,
+                "is_superuser": False,
+                "password": User.encode_password(password, crypt_util.get_random_string()),
+                "time_quota": self.default_user_info['time_quota'],
+                "time_used": 0,
+                "disk_quota": self.default_user_info['disk_quota'],
+                "disk_used": 0,
+                "affiliation": None,
+                "url": None,
+            }))
+
+            if is_verified:
+                verification_key = None
+            else:
+                verification_key = uuid.uuid4().hex
+                connection.execute(cl_user_verification.insert().values({
+                    "user_id": user_id,
+                    "date_created": now,
+                    "date_sent": now,
+                    "key": verification_key,
+                }))
+
+        return user_id, verification_key
+
+    def get_verification_key(self, user_id):
+        """
+        Get verification key again for given user.
+        Updates the "date_sent" field of the verification key to the current date.
+        Note: we can also choose to refresh the verification key itself too in the future
+        if that is more secure.
+
+        :param user_id: id of user to get verification key for
+        :return: verification key, or None if none found for user
+        """
+        with self.engine.begin() as connection:
+            verify_row = connection.execute(cl_user_verification.select().where(
+                cl_user_verification.c.user_id == user_id
+            ).limit(1)).fetchone()
+
+            if verify_row is None:
+                return None
+
+            # Update date sent
+            connection.execute(cl_user_verification.update().where(
+                cl_user_verification.c.user_id == user_id
+            ).values({
+                "date_sent": datetime.datetime.utcnow(),
+            }))
+
+        return verify_row.key
+
+    def verify_user(self, key):
+        """
+        Verify user with given verification key.
+        :param key: verification key
+        :return: True iff succeeded
+        """
+        with self.engine.begin() as connection:
+            verify_row = connection.execute(cl_user_verification.select().where(
+                cl_user_verification.c.key == key
+            ).limit(1)).fetchone()
+
+            # No matching key found
+            if verify_row is None:
+                return False
+
+            # Delete matching verification key
+            connection.execute(cl_user_verification.delete().where(
+                cl_user_verification.c.key == key
+            ))
+
+            # Update user to be verified
+            connection.execute(cl_user.update().where(
+                cl_user.c.user_id == verify_row.user_id,
+            ).values({
+                "is_verified": True,
+            }))
+
+        return True
 
     def get_user_info(self, user_id):
-        '''
+        """
         Return the user info corresponding to |user_id|.
         If a user doesn't exist, create a new one and set sane defaults.
-        '''
-        DEFAULT_COMPUTE_QUOTA = 60 * 60 * 24 * 7      # 7 days
-        DEFAULT_DISK_QUOTA = 1024 * 1024 * 1024 * 10  # 10 GB
+
+        TODO(skoo): merge with get_user when wiring new user system together?
+        """
         with self.engine.begin() as connection:
             rows = connection.execute(select([cl_user]).where(cl_user.c.user_id == user_id))
             user_info = None
@@ -1522,13 +1705,25 @@ class BundleModel(object):
                 print >>sys.stderr, 'Creating new entry for user ' + user_id
                 user_info = {
                     'user_id': user_id,
-                    'user_name': '',  # TODO: Set this to something
                     'time_quota': self.default_user_info['time_quota'],
                     'time_used': 0,
                     'disk_quota': self.default_user_info['disk_quota'],
                     'disk_used': self._get_disk_used(user_id),
+                    'user_name': '',  # TODO(skoo): replace these values in future migration
+                    'email': '',
+                    'date_joined': datetime.datetime.utcnow(),
+                    'is_active': True,
+                    'is_verified': True,
+                    'is_superuser': str(user_id) == 0,
+                    'password': '',
                 }
                 connection.execute(cl_user.insert().values(user_info))
+                # TODO(skoo): remove when user data migration is complete
+                # Temporarily suppress the "doesn't have default value" warnings until user data migration is complete
+                import warnings
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    connection.execute(cl_user.insert().values(user_info))
             user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
             user_info['root_user_id'] = self.root_user_id
             user_info['system_user_id'] = self.system_user_id
@@ -1557,3 +1752,105 @@ class BundleModel(object):
         # Compute from scratch for simplicity
         user_info['disk_used'] = self._get_disk_used(user_id)
         self.update_user_info(user_info)
+
+    #############################################################################
+    # OAuth-related methods follow!
+    #############################################################################
+
+    def get_oauth2_client(self, client_id):
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                oauth2_client
+            ]).where(
+                oauth2_client.c.client_id == client_id
+            ).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Client(self, **row)
+
+    def save_oauth2_client(self, client):
+        with self.engine.begin() as connection:
+            result = connection.execute(oauth2_client.insert().values(client.columns))
+            client.id = result.lastrowid
+        return client
+
+    def delete_oauth2_client(self, client_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_client.delete().where(
+                oauth2_client.c.client_id == client_id
+            ))
+
+    def get_oauth2_token(self, access_token=None, refresh_token=None):
+        if access_token is not None:
+            clause = (oauth2_token.c.access_token == access_token)
+        elif refresh_token is not None:
+            clause = (oauth2_token.c.refresh_token == refresh_token)
+        else:
+            return None
+
+        with self.engine.begin() as connection:
+            row = connection.execute(select([oauth2_token]).where(clause).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Token(self, **row)
+
+    def find_oauth2_token(self, client_id, user_id, expires_after):
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select([oauth2_token])
+                    .where(and_(oauth2_token.c.client_id == client_id,
+                                oauth2_token.c.user_id == user_id,
+                                oauth2_token.c.expires > expires_after))
+                    .limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Token(self, **row)
+
+    def save_oauth2_token(self, token):
+        with self.engine.begin() as connection:
+            result = connection.execute(oauth2_token.insert().values(token.columns))
+            token.id = result.lastrowid
+        return token
+
+    def clear_oauth2_tokens(self, client_id, user_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_token.delete().where(
+                and_(oauth2_token.c.client_id == client_id, oauth2_token.c.user_id == user_id)
+            ))
+
+    def delete_oauth2_token(self, token_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_auth_code.delete().where(
+                oauth2_token.c.id == token_id
+            ))
+
+    def get_oauth2_auth_code(self, client_id, code):
+        with self.engine.begin() as connection:
+            row = connection.execute(select([
+                oauth2_auth_code
+            ]).where(
+                and_(oauth2_auth_code.c.client_id == client_id, oauth2_auth_code.c.code == code)
+            ).limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2AuthCode(self, **row)
+
+    def save_oauth2_auth_code(self, grant):
+        with self.engine.begin() as connection:
+            result = connection.execute(oauth2_auth_code.insert().values(grant.columns))
+            grant.id = result.lastrowid
+        return grant
+
+    def delete_oauth2_auth_code(self, auth_code_id):
+        with self.engine.begin() as connection:
+            connection.execute(oauth2_auth_code.delete().where(
+                oauth2_auth_code.c.id == auth_code_id
+            ))

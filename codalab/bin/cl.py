@@ -27,7 +27,7 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
         self.SERVER_PROCESS = subprocess.Popen(self.argv)
 
     def on_any_event(self, event):
-        extensions_to_watch = ('.js', '.py', '.html', '.css')
+        extensions_to_watch = ('.js', '.py', '.html', '.css', '.tpl')
         file_extension = os.path.splitext(event.src_path)[1]
 
         if file_extension in extensions_to_watch:
@@ -71,17 +71,17 @@ def do_server_command(bundle_cli, args):
 
 
 @Commands.command(
-    'rest_server',
+    'rest-server',
     help='Start an instance of a CodaLab bundle service with a REST API.',
     arguments=(
         Commands.Argument(
             '--watch', help='Restart the server on code changes.',
             action='store_true'),
         Commands.Argument(
-            '-w', '--workers',
-            help='Number of worker processes to use. A production deployment '
-                 'should use more than 1 process to make the best use of '
-                 'multiple CPUs.',
+            '-p', '--processes',
+            help='Number of processes to use. A production deployment should '
+                 'use more than 1 process to make the best use of multiple '
+                 'CPUs.',
             type=int, default=1),
         Commands.Argument(
             '-d', '--debug', help='Run the development server for debugging.',
@@ -89,11 +89,17 @@ def do_server_command(bundle_cli, args):
     ),
 )
 def do_rest_server_command(bundle_cli, args):
+    # Force initialization of the bundle store, so that the misc_temp directory is created
+    bundle_cli.manager.bundle_store()
     if args.watch:
         run_server_with_watch()
     else:
+        if not args.debug:
+            # gevent.monkey.patch_all() needs to be called before importing
+            # bottle.
+            import gevent.monkey; gevent.monkey.patch_all()
         from codalab.server.rest_server import run_rest_server
-        run_rest_server(bundle_cli.manager, args.debug, args.workers)
+        run_rest_server(bundle_cli.manager, args.debug, args.processes)
 
 
 if __name__ == '__main__':

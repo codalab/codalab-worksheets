@@ -3,6 +3,7 @@
 
 # Eclipse files.
 .*project
+.settings
 
 # Compiled source #
 ###################
