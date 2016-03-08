@@ -120,7 +120,7 @@ with model.engine.begin() as bundle_db, django_db as django_cursor:
     # General SQL query should work on both MySQL and sqlite3
     django_cursor.execute("""
         SELECT
-        cluser.id as b_user_id,
+        cluser.id as b_user_id,  -- prevent clash with user_id column on update
         cluser.password,
         cluser.last_login,
         cluser.username AS user_name,
