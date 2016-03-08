@@ -1457,7 +1457,6 @@ class BundleModel(object):
             }
             connection.execute(cl_event.insert().values(info))
 
-<<<<<<< HEAD
     # Operations on the query log
     def date_handler(self, obj): 
         '''
@@ -1523,7 +1522,6 @@ class BundleModel(object):
     ############################################################
     # User functions
     # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
-=======
     #############################################################################
     # User-related methods follow!
     #############################################################################
@@ -1717,7 +1715,7 @@ class BundleModel(object):
                     'is_superuser': str(user_id) == 0,
                     'password': '',
                 }
-                
+
                 # TODO(skoo): remove when user data migration is complete
                 # Temporarily suppress the "doesn't have default value" warnings until user data migration is complete
                 import warnings
