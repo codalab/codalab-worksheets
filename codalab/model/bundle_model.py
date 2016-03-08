@@ -1717,7 +1717,7 @@ class BundleModel(object):
                     'is_superuser': str(user_id) == 0,
                     'password': '',
                 }
-                connection.execute(cl_user.insert().values(user_info))
+                
                 # TODO(skoo): remove when user data migration is complete
                 # Temporarily suppress the "doesn't have default value" warnings until user data migration is complete
                 import warnings
