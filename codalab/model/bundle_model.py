@@ -1513,7 +1513,7 @@ class BundleModel(object):
             rows = connection.execute(query).fetchall()
             result = [{
                 'message': row.message,
-                'time': str(row.time),
+                'time': row.time.strftime("%Y-%m-%d %H:%M:%S"),
                 'sender_user_id': row.sender_user_id,
                 'recipient_user_id': row.recipient_user_id
                 } for row in rows]
@@ -1687,7 +1687,7 @@ class BundleModel(object):
 
         return True
 
-    def get_user_info(self, user_id):
+    def get_user_info(self, user_id, fetch_extra=False):
         """
         Return the user info corresponding to |user_id|.
         If a user doesn't exist, create a new one and set sane defaults.
@@ -1712,7 +1712,7 @@ class BundleModel(object):
                     'date_joined': datetime.datetime.utcnow(),
                     'is_active': True,
                     'is_verified': True,
-                    'is_superuser': str(user_id) == 0,
+                    'is_superuser': user_id == '0',
                     'password': '',
                 }
 
@@ -1722,10 +1722,11 @@ class BundleModel(object):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     connection.execute(cl_user.insert().values(user_info))
-            user_info['date_joined'] = str(user_info['date_joined'])
-            user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
-            user_info['root_user_id'] = self.root_user_id
-            user_info['system_user_id'] = self.system_user_id
+            if fetch_extra:
+                user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
+                user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
+                user_info['root_user_id'] = self.root_user_id
+                user_info['system_user_id'] = self.system_user_id
         return user_info
 
     def update_user_info(self, user_info):

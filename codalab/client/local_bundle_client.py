@@ -1295,10 +1295,10 @@ class LocalBundleClient(BundleClient):
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
 
-    def get_user_info(self, user_id):
+    def get_user_info(self, user_id, fetch_extra=False):
         if user_id is None:
             user_id = self._current_user_id()
-        return self.model.get_user_info(user_id)
+        return self.model.get_user_info(user_id, fetch_extra)
 
     def update_user_info(self, user_info):
         user_id = self._current_user_id()
