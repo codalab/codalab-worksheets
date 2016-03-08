@@ -14,14 +14,13 @@ database.
    will not be picked up in future runs of the migration script.
 
 By default, this script runs in dry-run mode, i.e. it prints verbose output
-such as the generate SQL queries but does not make changes to the databases.
+such as the generated SQL queries but does not make changes to the databases.
 When you're ready to perform the migration, run with the '-f' flag.
 
 This scripts assumes that you are running it from the codalab-cli directory.
 """
 
 import os
-import uuid
 import sys
 sys.path.append('.')
 
@@ -41,18 +40,27 @@ from codalab.lib.codalab_manager import (
 
 class DryRunAbort(Exception):
     """Raised at end of transaction of dry run."""
-    pass
+    def __str__(self):
+        return """
+        This was a dry run, no migration occurred. To perform full migration,
+        run again with `-f':
+
+            %s -f
+        """.rstrip() % sys.argv[0]
 
 
 dry_run = False if len(sys.argv) > 1 and sys.argv[1] == '-f' else True
 
 manager = CodaLabManager()
 model = manager.model()
-
 CODALAB_HOME = manager.codalab_home
 
+# Turn on query logging
+model.engine.echo = True
+
+
 ###############################################################
-# Load user data from Django table
+# Configure connection to Django database
 ###############################################################
 django_config = read_json_or_die(os.path.join(CODALAB_HOME,
                                               'website-config.json'))
@@ -79,7 +87,6 @@ if django_config['database']['ENGINE'] == 'django.db.backends.mysql':
     if django_config['database'].get('PORT', None):
         db_params['port'] = django_config['database']['PORT']
     django_db = MySQLdb.connect(**db_params)
-    django_cursor = django_db.cursor()
 elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
     import sqlite3
 
@@ -97,141 +104,106 @@ elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
                                django_config['database']['NAME'])
     django_db = sqlite3.connect(sqlite_path)
     django_db.row_factory = dict_factory
-    django_cursor = django_db.cursor()
 else:
     raise UsageError("Invalid database engine %r" %
                      django_config['database']['ENGINE'])
 
-# General SQL query should work on both MySQL and sqlite3
-django_cursor.execute("""
-    SELECT
-    cluser.id,
-    cluser.password,
-    cluser.last_login,
-    cluser.username AS user_name,
-    cluser.first_name,
-    cluser.last_name,
-    cluser.email,
-    cluser.date_joined,
-    cluser.organization_or_affiliation AS affiliation,
-    cluser.is_superuser,
-    email.verified AS is_verified
-    FROM authenz_cluser AS cluser
-    LEFT OUTER JOIN account_emailaddress AS email
-    ON cluser.id = email.user_id
-    WHERE cluser.id != -1 AND cluser.is_active = 1""")
-django_users = list(django_cursor.fetchall())
 
 ###############################################################
-# Preprocess user data
+# Begin Transaction
 ###############################################################
 
-# Generate new user ids using uuid
-for user in django_users:
-    user['old_user_id'] = str(user.pop('id'))
-    user['new_user_id'] = uuid.uuid4().hex
+with model.engine.begin() as bundle_db, django_db as django_cursor:
+    ###############################################################
+    # Get existing users from both databases
+    ###############################################################
+    # General SQL query should work on both MySQL and sqlite3
+    django_cursor.execute("""
+        SELECT
+        cluser.id as b_user_id,
+        cluser.password,
+        cluser.last_login,
+        cluser.username AS user_name,
+        cluser.first_name,
+        cluser.last_name,
+        cluser.email,
+        cluser.date_joined,
+        cluser.organization_or_affiliation AS affiliation,
+        cluser.is_superuser,
+        cluser.is_active,
+        email.verified AS is_verified
+        FROM authenz_cluser AS cluser
+        LEFT OUTER JOIN account_emailaddress AS email
+        ON cluser.id = email.user_id
+        WHERE cluser.id != -1 AND cluser.is_active = 1""")
+    django_users = list(django_cursor.fetchall())
 
-###############################################################
-# Get existing users in bundles db
-###############################################################
+    # Get set of user ids in bundles db
+    bundle_users = bundle_db.execute(select([cl_user.c.user_id])).fetchall()
 
-# Get set of user ids in bundles db
-with model.engine.begin() as connection:
-    bundle_users = connection.execute(select([cl_user.c.user_id])).fetchall()
+    # Find intersection of user ids
+    django_user_ids = set(str(user['b_user_id']) for user in django_users)
+    bundle_user_ids = set(user['user_id'] for user in bundle_users)
+    to_update = django_user_ids & bundle_user_ids
+    to_insert = django_user_ids - bundle_user_ids
 
-# Find intersection of user ids
-django_user_ids = set(user['old_user_id'] for user in django_users)
-bundle_user_ids = set(user['user_id'] for user in bundle_users)
-to_update = django_user_ids & bundle_user_ids
-to_insert = django_user_ids - bundle_user_ids
+    print "Users to update:", ', '.join(list(to_update))
+    print "Users to insert:", ', '.join(list(to_insert))
 
-print "Users to update:", ', '.join(list(to_update))
-print "Users to insert:", ', '.join(list(to_insert))
+    to_update = [user for user in django_users
+                 if (str(user['b_user_id']) in to_update)]
+    to_insert = [user for user in django_users
+                 if (str(user['b_user_id']) in to_insert)]
 
-to_update = [user for user in django_users
-             if (user['old_user_id'] in to_update)]
-to_insert = [user for user in django_users
-             if (user['old_user_id'] in to_insert)]
+    ###############################################################
+    # Update existing users in bundles db
+    ###############################################################
 
-###############################################################
-# Update existing users in bundles db
-###############################################################
+    if to_update:
+        print "Updating existing users in bundle service database..."
 
-# Turn on query logging
-model.engine.echo = True
+        update_query = cl_user.update().\
+            where(cl_user.c.user_id == bindparam('b_user_id'))
+        bundle_db.execute(update_query, to_update)
 
-if to_update:
-    print "Updating existing users in bundle service database..."
+    ###############################################################
+    # Insert remaining users into bundles db
+    ###############################################################
 
-    try:
-        with model.engine.begin() as connection:
-            update_query = cl_user.update().\
-                where(cl_user.c.user_id == bindparam('old_user_id')).\
-                values(is_active=1, user_id=bindparam('new_user_id'))
-            connection.execute(update_query, to_update)
+    if to_insert:
+        print "Inserting new users into bundle service database..."
 
-            if dry_run:
-                raise DryRunAbort
-    except DryRunAbort:
-        pass
+        default_user_info = manager.default_user_info()
 
-###############################################################
-# Insert remaining users into bundles db
-###############################################################
+        insert_query = cl_user.insert().\
+            values(time_quota=default_user_info['time_quota'],
+                   disk_quota=default_user_info['disk_quota'],
+                   time_used=0,
+                   disk_used=0,
+                   user_id=bindparam('b_user_id'))
 
-if to_insert:
-    print "Inserting new users into bundle service database..."
+        bundle_db.execute(insert_query, to_insert)
 
-    default_user_info = manager.default_user_info()
+    ###############################################################
+    # Deactivate users in django db
+    ###############################################################
 
-    # Throw away old user ids
-    for user in to_insert:
-        del user['old_user_id']
+    if to_insert or to_update:
+        print "Deactivating users in Django database..."
 
-    try:
-        with model.engine.begin() as connection:
-            insert_query = cl_user.insert().\
-                values(user_id=bindparam('new_user_id'),
-                       time_quota=default_user_info['time_quota'],
-                       disk_quota=default_user_info['disk_quota'],
-                       time_used=0,
-                       disk_used=0)
+        deactivate_query = """
+            UPDATE authenz_cluser
+            SET is_active=0
+            WHERE id IN (%s)""" % (', '.join(django_user_ids))
+        print_block(deactivate_query)
 
-            connection.execute(insert_query, to_insert)
-
-            if dry_run:
-                raise DryRunAbort
-    except DryRunAbort:
-        pass
-
-###############################################################
-# Deactivate users in django db
-###############################################################
-
-if to_insert or to_update:
-    print "Deactivating users in Django database..."
-
-    deactivate_query = """
-        UPDATE authenz_cluser
-        SET is_active=0
-        WHERE id IN (%s)""" % (', '.join(django_user_ids))
-    print_block(deactivate_query)
-
-    if not dry_run:
         django_cursor.execute(deactivate_query)
-        django_db.commit()
+
+    if dry_run:
+        raise DryRunAbort
 
 ###############################################################
 # Last words
 ###############################################################
 
-dry_run_str = """
-This was a dry run, no migration occurred. To perform full migration,
-run again with `-f':
-
-    %s -f
-""".rstrip() % sys.argv[0]
-
-explain_str = "Migration complete!"
-
-print >> sys.stderr, dry_run_str if dry_run else explain_str
+print "Migration complete!"
