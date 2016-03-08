@@ -1722,6 +1722,7 @@ class BundleModel(object):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     connection.execute(cl_user.insert().values(user_info))
+            user_info['date_joined'] = str(user_info['date_joined'])
             user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
             user_info['root_user_id'] = self.root_user_id
             user_info['system_user_id'] = self.system_user_id
