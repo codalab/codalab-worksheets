@@ -58,6 +58,7 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
+    chat as cl_chat,
     user_verification as cl_user_verification,
     oauth2_client,
     oauth2_token,
@@ -1456,6 +1457,71 @@ class BundleModel(object):
             }
             connection.execute(cl_event.insert().values(info))
 
+    # Operations on the query log
+    def date_handler(self, obj): 
+        '''
+        Helper function to serialize DataTime
+        '''
+        return obj.isoformat() if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date) else None
+
+    def add_chat_log_info(self, query_info):
+        '''
+        Add the given chat into the database
+        Return a list of chats that the sender have had
+        '''
+        sender_user_id = query_info.get('sender_user_id')
+        recipient_user_id = query_info.get('recipient_user_id')
+        message = query_info.get('message')
+        worksheet_uuid = query_info.get('worksheet_uuid')
+        bundle_uuid = query_info.get('bundle_uuid')
+        with self.engine.begin() as connection:
+            info = {
+                'time': datetime.datetime.fromtimestamp(time.time()),
+                'sender_user_id': sender_user_id,
+                'recipient_user_id': recipient_user_id,
+                'message': message,
+                'worksheet_uuid': worksheet_uuid,
+                'bundle_uuid': bundle_uuid,
+            }
+            connection.execute(cl_chat.insert().values(info))
+        result = self.get_chat_log_info({'user_id': sender_user_id})
+        return result
+
+    def get_chat_log_info(self, query_info):
+        '''
+        Return a list of chats that the user have had given the user_id
+        '''
+        user_id1 = query_info.get('user_id')
+        if user_id1 == None:
+            return
+        limit = query_info.get('limit')
+        with self.engine.begin() as connection:
+            query = select([cl_chat.c.time, cl_chat.c.sender_user_id, cl_chat.c.recipient_user_id, cl_chat.c.message])
+            clause = []
+            # query all chats that this user sends or receives
+            clause.append(cl_chat.c.sender_user_id == user_id1)
+            clause.append(cl_chat.c.recipient_user_id == user_id1)
+            if user_id1 == self.root_user_id:
+                # if this user is root user, also query all chats that system user sends or receives
+                clause.append(cl_chat.c.sender_user_id == self.system_user_id)
+                clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
+            clause = or_(*clause)
+            query = query.where(clause)
+            if limit != None:
+                query = query.limit(limit)
+            # query = query.order_by(cl_chat.c.id.desc())
+            rows = connection.execute(query).fetchall()
+            result = [{
+                'message': row.message,
+                'time': str(row.time),
+                'sender_user_id': row.sender_user_id,
+                'recipient_user_id': row.recipient_user_id
+                } for row in rows]
+            return result
+
+    ############################################################
+    # User functions
+    # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
     #############################################################################
     # User-related methods follow!
     #############################################################################
@@ -1656,6 +1722,10 @@ class BundleModel(object):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     connection.execute(cl_user.insert().values(user_info))
+            user_info['date_joined'] = str(user_info['date_joined'])
+            user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
+            user_info['root_user_id'] = self.root_user_id
+            user_info['system_user_id'] = self.system_user_id
         return user_info
 
     def update_user_info(self, user_info):

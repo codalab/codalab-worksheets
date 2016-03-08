@@ -299,3 +299,17 @@ oauth2_auth_code = Table(
   Column('redirect_uri', String(255), nullable=False),
   sqlite_autoincrement=True,
 )
+
+# Store information about users' questions or feedback.
+chat = Table(
+  'chat',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False), #  Primary key
+  Column('time', DateTime, nullable=False),  # When did the user send this query?
+  Column('sender_user_id', String(63), nullable=True),  # Who sent it?
+  Column('recipient_user_id', String(63), nullable=True),  # Who received it?
+  Column('message', Text, nullable=False),  # What's the content of the chat?
+  Column('worksheet_uuid', String(63), nullable=True), # What is the id of the worksheet that the sender is on? 
+  Column('bundle_uuid', String(63), nullable=True), # What is the id of the bundle that the sender is on? 
+  sqlite_autoincrement=True,
+)

@@ -1,0 +1,47 @@
+'0':
+  question: how can I upload / add a bundle?
+  answer:  
+    response: "You can either use the web interface and click 'Upload Bundle' or use the terminal command: cl upload. Run cl upload -h for more usage info."
+    command: cl upload <file_path>
+'1':
+  question: how can I combine parts of existing bundles?
+  answer:  
+    response: "You can use the terminal command: cl make. Run cl make -h for more usage info."
+    command: cl make <bundle>/<subpath>
+'2':
+  question: how can I create a run bundle?
+  answer: 
+    response: "You can create a run bundle by running a program bundle on an input bundle. Run 'cl run -h' for more usage info."
+    command: cl run <program_bundle_alias>:<program_bundle_name> <input_bundle_alias>:<input_bundle_name> '<run program bundle here with input bundle>' -n <run_bundle_name>
+'3':
+  question: how can I edit an existing bundle?
+  answer: 
+    response: "Once a bundle is created its content can't be changed. You can change its metadata use the terminal command: cl edit. Run cl edit -h for more usage info."
+    command: cl edit <bundle uuid/name/index> 
+'4':
+  question: how can I remove / delete a bundle?
+  answer: 
+    response: "You can use the terminal command: cl rm. Run cl rm -h for more usage info. Be careful because the removal is permanent."
+    command: cl rm <bundle uuid/name/index> 
+'5':
+  question: how can I create a new worksheet?
+  answer: 
+    response: "You can use the terminal command: cl new. Run cl new -h for more usage info."
+    command: cl new <worksheet_name>
+'6':
+  question: how can I add stuffs to a worksheet? 
+  answer: 
+    response: "You can add text items / bundles / subworksheets to an existing worksheet. You can use the terminal command: cl add. Item type can be text / bundle / worksheet. Run cl add -h for more usage info." 
+    command: cl add <item_type> <item_spec> <dest_worksheet> 
+'7':
+  question: how can I switch to / work on a worksheet?
+  answer: 
+    response: "You can use the terminal command: cl work. Run cl work -h for more usage info."
+    command: cl work <worksheet_name>
+'8':
+  question: how can I remove / delete a worksheet?
+  answer: 
+    response: "You can use the terminal command: cl wrm. Run cl wrm -h for more usage info."
+    command: cl wrm <worksheet_name> (--force)
+
+
