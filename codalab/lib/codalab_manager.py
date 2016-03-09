@@ -486,17 +486,17 @@ class CodaLabManager(object):
         if 'token_info' in auth:
             token_info = auth['token_info']
             expires_at = token_info.get('expires_at', 0.0)
-            if expires_at > time.time():
-                # Token is usable but check if it's nearing expiration (10 minutes)
-                # If not nearing, then just return it.
-                if expires_at >= (time.time() + 10 * 60):
-                    return token_info['access_token']
-                # Otherwise, let's refresh the token.
-                token_info = client.login('refresh_token',
-                                          auth['username'],
-                                          token_info['refresh_token'])
-                if token_info is not None:
-                    return _cache_token(token_info)
+
+            # If token is not nearing expiration, just return it.
+            if expires_at >= (time.time() + 10 * 60):
+                return token_info['access_token']
+
+            # Otherwise, let's refresh the token.
+            token_info = client.login('refresh_token',
+                                      auth['username'],
+                                      token_info['refresh_token'])
+            if token_info is not None:
+                return _cache_token(token_info)
 
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}
