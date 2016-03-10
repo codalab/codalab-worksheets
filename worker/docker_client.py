@@ -69,7 +69,7 @@ to run the worker from the Docker shell.
         # semi-standard directory. It works for the Tensorflow Docker image.
         self._libcuda_files = []
         try:
-            for lib in subprocess.check_output(['ldconfig', '-p']).split('\n'):
+            for lib in subprocess.check_output(['/sbin/ldconfig', '-p']).split('\n'):
                 if 'libcuda.' not in lib or 'x86-64' not in lib:
                     continue
                 self._libcuda_files.append(lib.split(' => ')[-1])
@@ -149,7 +149,6 @@ No ldconfig found. Not loading libcuda libraries.
         docker_bundle_path = '/' + uuid
         docker_commands = [
             'BASHRC=$(pwd)/.bashrc',
-            'cd %s' % docker_bundle_path,
             # Run as the user that owns the bundle directory. That way
             # any new files are created as that user and not root.
             'U_ID=$(stat -c %%u %s)' % docker_bundle_path,
@@ -163,6 +162,7 @@ No ldconfig found. Not loading libcuda libraries.
             # any, should happen when bash executes it. Note, since the user's
             # command can have single quotes we need to escape them.
             '"[ -e $BASHRC ] && . $BASHRC; "' +
+            '"cd %s; "' % docker_bundle_path +
             '"export HOME=%s; "' % docker_bundle_path +
             '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
         ]
