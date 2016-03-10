@@ -58,7 +58,7 @@ class DockerClient(object):
         except DockerException:
             print >> sys.stderr, """
 On Linux, a valid Docker installation should create a Unix socket at
-//var/run/docker.sock.
+/var/run/docker.sock.
 
 On Mac, DOCKER_HOST and optionally DOCKER_CERT_PATH should be defined. You need
 to run the worker from the Docker shell.
@@ -94,12 +94,19 @@ No ldconfig found. Not loading libcuda libraries.
             return httplib.HTTPConnection(self._docker_host)
         return DockerUnixConnection()
 
-    @wrap_exception('Unable to connect to Docker')
+    @wrap_exception('Unable to use Docker')
     def test(self):
         with closing(self._create_connection()) as conn:
-            conn.request('GET', '/containers/json')
-            if conn.getresponse().status != 200:
-                raise DockerException(self._conn.getresponse().read())
+            conn.request('GET', '/version')
+            version_response = conn.getresponse()
+            if version_response.status != 200:
+                raise DockerException(version_response.read())
+            try:
+                version_info = json.loads(version_response.read())
+            except:
+                raise DockerException('Invalid version information')
+            if version_info['ApiVersion'] < '1.17':
+                raise DockerException('Please upgrade your version of Docker')
 
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
@@ -111,7 +118,10 @@ No ldconfig found. Not loading libcuda libraries.
             if create_image_response.status != 200:
                 raise DockerException(create_image_response.read())
 
-            # Wait for the download to finish.
+            # Wait for the download to finish. Docker sends a stream of JSON
+            # objects. Since we don't know how long each one is we read a
+            # character at a time until what we have so far parses as a valid
+            # JSON object.
             while True:
                 loop_callback()
                 response = None
@@ -137,7 +147,7 @@ No ldconfig found. Not loading libcuda libraries.
                         request_network, dependencies):
         # Set up the command.
         docker_bundle_path = '/' + uuid
-        docker_command = [
+        docker_commands = [
             'BASHRC=$(pwd)/.bashrc',
             'cd %s' % docker_bundle_path,
             # Run as the user that owns the bundle directory. That way
@@ -145,6 +155,13 @@ No ldconfig found. Not loading libcuda libraries.
             'U_ID=$(stat -c %%u %s)' % docker_bundle_path,
             'G_ID=$(stat -c %%g %s)' % docker_bundle_path,
             'sudo -u \\#$U_ID -g \\#$G_ID -n bash -c ' +
+            # We pass several commands for bash to execute as the user as a
+            # single argument (i.e. all commands appear in quotes with no spaces
+            # outside the quotes). The first commands appear in double quotes
+            # since we want environment variables to be expanded. The last
+            # appears in single quotes since we do not. The expansion there, if
+            # any, should happen when bash executes it. Note, since the user's
+            # command can have single quotes we need to escape them.
             '"[ -e $BASHRC ] && . $BASHRC; "' +
             '"export HOME=%s; "' % docker_bundle_path +
             '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
@@ -172,7 +189,7 @@ No ldconfig found. Not loading libcuda libraries.
         # Create the container.
         logger.debug('Creating Docker container with command %s', command)
         create_request = {
-            'Cmd': ['bash', '-c', '; '.join(docker_command)],
+            'Cmd': ['bash', '-c', '; '.join(docker_commands)],
             'Image': docker_image,
             'NetworkDisabled': not request_network,
             'HostConfig': {
