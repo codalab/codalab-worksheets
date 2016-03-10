@@ -5,9 +5,10 @@ import re
 import shutil
 import subprocess
 import tarfile
+import traceback
 import zlib
 
-from bottle import abort, get, local, put, request, response
+from bottle import abort, get, HTTPError, local, put, request, response
 
 from codalab.common import PermissionError, UsageError
 from codalab.lib import path_util, spec_util
@@ -91,6 +92,16 @@ def get_blob(uuid, path=''):
 @put('/bundle/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
      apply=AuthenticatedPlugin())
 def put_blob(uuid):
+    """
+    API to upload the contents of a bundle. This endpoint replaces the current
+    contents with those uploaded.
+
+    If the Content-Disposition header contains the filename and the filename
+    ends with .tar.gz the bundle will be a directory with the extracted
+    contents. If the filename ends with just .gz the bundle will be a file with
+    the contents. When the upload happens from the browser, the filename should
+    be set to the filename on the user's computer.
+    """
     try:
         check_bundles_have_all_permission(local.model, request.user, [uuid])
     except PermissionError as e:
@@ -104,8 +115,12 @@ def put_blob(uuid):
         local.bundle_store.cleanup(uuid, dry_run=False)
         bundle_update = {
             'data_hash': None,
+            'metadata': {
+                'data_size': 0,             
+            },
         }
         local.model.update_bundle(bundle, bundle_update)
+        local.model.update_user_disk_used(bundle.owner_id)
 
     # Figure out what kind of upload it is.
     tar_archive = False
@@ -125,36 +140,43 @@ def put_blob(uuid):
         abort(code, message)
 
     # Store the data.
-    input_stream = request['wsgi.input']
-    if tar_archive:
-        os.mkdir(bundle_path)
-        try:
-            with tarfile.open(fileobj=input_stream, mode='r|gz') as tar:
-                for member in tar:
-                    # Make sure that there is no trickery going on (see note in
-                    # TarFile.extractall() documentation.
-                    member_path = os.path.realpath(os.path.join(bundle_path, member.name))
-                    if not member_path.startswith(bundle_path):
-                        do_abort(httplib.BAD_REQUEST, 'Invalid archive')
-
-                    tar.extract(member, bundle_path)
-        except tarfile.TarError as e:
-            do_abort(httplib.BAD_REQUEST, 'Invalid archive')
-    elif single_file_archive:
-        try:
-            d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+    try:
+        input_stream = request['wsgi.input']
+        if tar_archive:
+            os.mkdir(bundle_path)
+            try:
+                with tarfile.open(fileobj=input_stream, mode='r|gz') as tar:
+                    for member in tar:
+                        # Make sure that there is no trickery going on (see note in
+                        # TarFile.extractall() documentation.
+                        member_path = os.path.realpath(os.path.join(bundle_path, member.name))
+                        if not member_path.startswith(bundle_path):
+                            do_abort(httplib.BAD_REQUEST, 'Invalid archive')
+        
+                        tar.extract(member, bundle_path)
+            except tarfile.TarError as e:
+                do_abort(httplib.BAD_REQUEST, 'Invalid archive')
+        elif single_file_archive:
+            try:
+                d = zlib.decompressobj(16 + zlib.MAX_WBITS)
+                with open(bundle_path, 'wb') as f:
+                    while True:
+                        chunk = input_stream.read(16 * 1024)
+                        if not chunk:
+                            break
+                        f.write(d.decompress(chunk))
+                    f.write(d.flush())
+            except zlib.error as e:
+                do_abort(httplib.BAD_REQUEST, 'Invalid archive')
+        else:
             with open(bundle_path, 'wb') as f:
-                while True:
-                    chunk = input_stream.read(16 * 1024)
-                    if not chunk:
-                        break
-                    f.write(d.decompress(chunk))
-                f.write(d.flush())
-        except zlib.error as e:
-            do_abort(httplib.BAD_REQUEST, 'Invalid archive')
-    else:
-        with open(bundle_path, 'wb') as f:
-            shutil.copyfileobj(input_stream, f)
+                shutil.copyfileobj(input_stream, f)
+    except Exception as e:
+        if isinstance(e, HTTPError):
+            # From the abort call. We already cleaned up.
+            raise
+        traceback.print_exc()
+        do_abort(httplib.INTERNAL_SERVER_ERROR, 'Internal error')
 
     bundle_update = {
        'data_hash': '0x%s' % path_util.hash_path(bundle_path),
