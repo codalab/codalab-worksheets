@@ -7,7 +7,9 @@ sys.path.append('.')
 
 import getpass
 
+from codalab.lib import crypt_util
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.objects.user import User
 
 manager = CodaLabManager()
 model = manager.model()
@@ -26,4 +28,14 @@ else:
         print 'Passwords don\'t match. Try again.'
         print
 
-model.add_user(username, '', password, user_id, is_verified=True)
+try:
+    model.add_user(username, '', password, user_id, is_verified=True)
+except Exception as e:
+    update = {
+        "user_id": user_id,
+        "user_name": username,
+        "password": User.encode_password(password, crypt_util.get_random_string()),\
+        "is_active": True,
+        "is_verified": True,
+    }
+    model.update_user_info(update)
