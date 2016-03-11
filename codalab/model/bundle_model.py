@@ -1776,12 +1776,6 @@ class BundleModel(object):
             client.id = result.lastrowid
         return client
 
-    def delete_oauth2_client(self, client_id):
-        with self.engine.begin() as connection:
-            connection.execute(oauth2_client.delete().where(
-                oauth2_client.c.client_id == client_id
-            ))
-
     def get_oauth2_token(self, access_token=None, refresh_token=None):
         if access_token is not None:
             clause = (oauth2_token.c.access_token == access_token)
