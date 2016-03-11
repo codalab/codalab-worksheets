@@ -1526,7 +1526,7 @@ class BundleModel(object):
     # User-related methods follow!
     #############################################################################
 
-    def get_user(self, user_id=None, username=None):
+    def get_user(self, user_id=None, username=None, check_active=True):
         """
         Get user.
 
@@ -1540,12 +1540,12 @@ class BundleModel(object):
             user_ids = [user_id]
         if username is not None:
             usernames = [username]
-        result = self.get_users(user_ids, usernames)
+        result = self.get_users(user_ids, usernames, check_active)
         if result:
             return result[0]
         return None
 
-    def get_users(self, user_ids=None, usernames=None):
+    def get_users(self, user_ids=None, usernames=None, check_active=True):
         """
         Get users.
 
@@ -1554,7 +1554,8 @@ class BundleModel(object):
         :return: list of matching User objects
         """
         clauses = []
-        clauses.append(cl_user.c.is_active == True)
+        if check_active:
+            clauses.append(cl_user.c.is_active == True)
         if user_ids is not None:
             clauses.append(cl_user.c.user_id.in_(user_ids))
         if usernames is not None:

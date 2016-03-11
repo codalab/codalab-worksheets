@@ -28,9 +28,7 @@ else:
         print 'Passwords don\'t match. Try again.'
         print
 
-try:
-    model.add_user(username, '', password, user_id, is_verified=True)
-except Exception as e:
+if model.get_user(user_id=user_id, check_active=False):
     update = {
         "user_id": user_id,
         "user_name": username,
@@ -39,3 +37,5 @@ except Exception as e:
         "is_verified": True,
     }
     model.update_user_info(update)
+else:
+    model.add_user(username, '', password, user_id, is_verified=True)
