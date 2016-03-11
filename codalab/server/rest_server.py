@@ -23,6 +23,7 @@ import codalab.rest.bundle
 import codalab.rest.example
 import codalab.rest.legacy
 import codalab.rest.oauth2
+import codalab.rest.titlejs
 import codalab.rest.users
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
