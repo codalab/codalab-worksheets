@@ -4,14 +4,11 @@ This script migrates users from the Django user models to the bundle service
 database.
 
 1. Load user data from the Django database
-2. Generate a new id for each user using the uuid scheme
-3. Update existing rows in the bundle service users table, using the Django
+2. Update existing rows in the bundle service users table, using the Django
    user models as a source of truth, leaving only the disk/time quota and usage
    columns intact.
-4. Insert remaining users into the bundle service users table, filling in the
+3. Insert remaining users into the bundle service users table, filling in the
    configured default quota information.
-5. Mark all users in the Django database as inactive, which means that they
-   will not be picked up in future runs of the migration script.
 
 By default, this script runs in dry-run mode, i.e. it prints verbose output
 such as the generated SQL queries but does not make changes to the databases.
@@ -34,7 +31,6 @@ from codalab.model.tables import user as cl_user
 from codalab.lib.codalab_manager import (
     CodaLabManager,
     read_json_or_die,
-    print_block
 )
 
 
@@ -85,7 +81,7 @@ if django_config['database']['ENGINE'] == 'django.db.backends.mysql':
     if django_config['database'].get('HOST', None):
         db_params['host'] = django_config['database']['HOST']
     if django_config['database'].get('PORT', None):
-        db_params['port'] = django_config['database']['PORT']
+        db_params['port'] = int(django_config['database']['PORT'])
     django_db = MySQLdb.connect(**db_params)
 elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
     import sqlite3
@@ -131,7 +127,7 @@ with model.engine.begin() as bundle_db, django_db as django_cursor:
         cluser.organization_or_affiliation AS affiliation,
         cluser.is_superuser,
         cluser.is_active,
-        email.verified AS is_verified
+        IF(NOT ISNULL(email.verified), email.verified, 0) AS is_verified
         FROM authenz_cluser AS cluser
         LEFT OUTER JOIN account_emailaddress AS email
         ON cluser.id = email.user_id
@@ -183,21 +179,6 @@ with model.engine.begin() as bundle_db, django_db as django_cursor:
                    user_id=bindparam('b_user_id'))
 
         bundle_db.execute(insert_query, to_insert)
-
-    ###############################################################
-    # Deactivate users in django db
-    ###############################################################
-
-    if to_insert or to_update:
-        print "Deactivating users in Django database..."
-
-        deactivate_query = """
-            UPDATE authenz_cluser
-            SET is_active=0
-            WHERE id IN (%s)""" % (', '.join(django_user_ids))
-        print_block(deactivate_query)
-
-        django_cursor.execute(deactivate_query)
 
     if dry_run:
         raise DryRunAbort
