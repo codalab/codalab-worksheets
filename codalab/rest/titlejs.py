@@ -1,3 +1,11 @@
+"""
+These APIs are used to fill in the title for the worksheet and bundle detail
+pages, since the Django app doesn't have access to that information when
+rendering the templates. We want to have the title filled in as quickly as
+possibly to maximize it being correct in a search engine crawl. Thus, we do it
+in Javascript that is loaded in the <head> section.
+"""
+
 from bottle import get, template
 
 from codalab.lib import spec_util
