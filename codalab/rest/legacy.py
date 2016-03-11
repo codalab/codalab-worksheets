@@ -108,6 +108,8 @@ class BundleService(object):
 
         # Set permissions
         worksheet_info['edit_permission'] = (worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
+        # Check enable chat box
+        worksheet_info['enable_chat'] = local.config.get('enable_chat', False)
         # Format permissions into strings
         worksheet_info['permission_str'] = permission_str(worksheet_info['permission'])
         for group_permission in worksheet_info['group_permissions']:
@@ -274,6 +276,17 @@ class BundleService(object):
         self.client.update_bundle_metadata(uuid, new_metadata)
         return
 
+    def add_chat_log_info(self, query_info):
+        return self.client.add_chat_log_info(query_info)    
+
+    def get_chat_log_info(self, query_info):
+        return self.client.get_chat_log_info(query_info)
+
+    def get_user_info(self, user_id):
+        return self.client.get_user_info(user_id, True)
+
+    def get_faq(self):
+        return self.client.get_faq()
 
 class RemoteBundleService(object):
     '''
@@ -539,3 +552,73 @@ def post_bundle_info(uuid):
         # TODO(klopyrev): Not sure why this API doesn't return the status code
         # 500 as do the others.
         return {"error": str(e)}
+
+
+@get('/api/chatbox/')
+def get_chat_box():
+    """
+    Return a list of chats that the current user has had
+    """
+    service = BundleService()
+    try:
+        info = {
+            'user_id': request.user.user_id if request.user is not None else None
+        }
+        return {'chats': service.get_chat_log_info(info)}
+    except Exception as e:
+        log_exception(e, traceback.format_exc())
+        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+
+
+@post('/api/chatbox',
+      apply=AuthenticatedPlugin())
+def post_chat_box():
+    """
+    Add the chat to the log.
+    Return an auto response, if the chat is directed to the system.
+    Otherwise, return an updated chat list of the sender.
+    """
+    service = BundleService()
+    try:
+        recipient_user_id = request.POST.get('recipientUserId', None)
+        message = request.POST.get('message', None)
+        worksheet_uuid = request.POST.get('worksheetId', -1)
+        bundle_uuid = request.POST.get('bundleId', -1)
+        info = {
+            'sender_user_id': request.user.user_id,
+            'recipient_user_id': recipient_user_id,
+            'message': message,
+            'worksheet_uuid': worksheet_uuid,
+            'bundle_uuid': bundle_uuid,
+        }
+        chats = service.add_chat_log_info(info)
+        return {'chats': chats}
+    except Exception as e:
+        log_exception(e, traceback.format_exc())
+        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+
+
+@get('/api/users/')
+def get_users():
+    service = BundleService()
+    try:
+        return {
+            'user_info': service.get_user_info(None) if request.user is not None else None,
+        }
+    except Exception as e:
+        log_exception(e, traceback.format_exc())
+        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+
+
+@get('/api/faq/')
+def get_faq():
+    """
+    Return a list of Frequently Asked Questions.
+    Currently disabled. Needs further work.
+    """
+    service = BundleService()
+    try:
+        return {'faq': service.get_faq()}
+    except Exception as e:
+        log_exception(e, traceback.format_exc())
+        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
