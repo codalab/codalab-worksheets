@@ -179,7 +179,7 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
         # Remove temporary file
         if file_uuids is not None:
             for file_uuid in file_uuids:
-                self.finalize_file(file_uuid)
+                self.file_server.finalize_file(file_uuid)
         return result
 
     def open_target(self, target):
