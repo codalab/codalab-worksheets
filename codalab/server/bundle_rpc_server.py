@@ -1,9 +1,10 @@
 '''
-BundleRPCServer is a FileServer that opens a BundleClient and then exposes that
-client's API methods as RPC methods for a RemoteBundleClient.
+BundleRPCServer is an XML RPC server with RPC methods supporting a
+RemoteBundleClient.
 
 Methods that take JSON-able input and return JSON-able output (that is, methods
-in RemoteBundleClient.CLIENT_COMMANDS) are simply passed to the internal client.
+in RemoteBundleClient.CLIENT_COMMANDS) are simply passed to the internal
+LocalBundleClient client.
 
 Other methods, like upload_bundle and cat_target, are more complicated because
 they perform filesystem operations. BundleRPCServer supports variants of these
@@ -12,13 +13,16 @@ methods:
   finish_upload_bundle: used to implement RemoteBundleClient.upload_bundle
   open_target: used to implement RemoteBundleClient.cat_target
 
+These methods are supported by the FileServer.
+
 Important: each call to open_temp_file, open_target, open_target_archive should
 have a matching call to finalize_file.
 '''
-import tempfile
-import traceback
-import os
+from SimpleXMLRPCServer import  SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
+import SocketServer
 import time
+import traceback
+import xmlrpclib
 
 from codalab.common import (
     precondition,
@@ -26,17 +30,57 @@ from codalab.common import (
     PermissionError,
 )
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.lib import zip_util, path_util
 from codalab.server.file_server import FileServer
 
 
-class BundleRPCServer(FileServer):
+# Hack to allow 64-bit integers
+xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)
+
+
+class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
+    """
+    Simple XML-RPC request handler class which also reads authentication
+    information included in HTTP headers.
+    """
+
+    def decode_request_content(self, data):
+        '''
+        Overrides in order to capture Authorization header.
+        '''
+        token = None
+        if 'Authorization' in self.headers:
+            value = self.headers.get("Authorization", "")
+            token = value[8:] if value.startswith("Bearer: ") else ""
+
+        if self.server.auth_handler.validate_token(token):
+            return SimpleXMLRPCRequestHandler.decode_request_content(self, data)
+        else:
+            self.send_response(401, "Could not authenticate with OAuth")
+            self.send_header("WWW-Authenticate", "realm=\"https://www.codalab.org\"")
+            self.send_header("Content-length", "0")
+            self.end_headers()
+
+    def send_response(self, code, message=None):
+        '''
+        Overrides to capture end of request.
+        '''
+        # Clear current user
+        self.server.auth_handler.validate_token(None)
+        SimpleXMLRPCRequestHandler.send_response(self, code, message)
+
+
+class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
     def __init__(self, manager):
         self.host = manager.config['server']['host']
         self.port = manager.config['server']['port']
         self.verbose = manager.config['server']['verbose']
+        self.auth_handler = manager.auth_handler()
+
         # This server is backed by a LocalBundleClient that processes client commands
         self.client = manager.client('local', is_cli=False)
+
+        # This server is backed by a file server that processes file commands.
+        self.file_server = FileServer()
 
         # args might be a large object; summarize it (e.g., take prefixes of lists)
         def compress_args(args):
@@ -54,8 +98,9 @@ class BundleRPCServer(FileServer):
                 return dict((compress_args(k), compress_args(v)) for k, v in args.items())
             return args
 
-        tempdir = tempfile.gettempdir()  # Consider using CodaLab's temp directory
-        FileServer.__init__(self, (self.host, self.port), tempdir, manager.auth_handler())
+        SimpleXMLRPCServer.__init__(self, (self.host, self.port), allow_none=True,
+                                    requestHandler=AuthenticatedXMLRPCRequestHandler,
+                                    logRequests=(self.verbose >= 1))
 
         def wrap(target, command):
             def function_to_register(*args, **kwargs):
@@ -75,12 +120,13 @@ class BundleRPCServer(FileServer):
                     result = getattr(target, command)(*args, **kwargs)
 
                     # Log this activity.
-                    self.client.model.update_events_log(
-                        start_time=start_time,
-                        user_id=self.client._current_user_id(),
-                        user_name=self.client._current_user_name(),
-                        command=command,
-                        args=log_args)
+                    if not isinstance(target, FileServer):
+                        self.client.model.update_events_log(
+                            start_time=start_time,
+                            user_id=self.client._current_user_id(),
+                            user_name=self.client._current_user_name(),
+                            command=command,
+                            args=log_args)
 
                     return result
                 except Exception, e:
@@ -98,6 +144,10 @@ class BundleRPCServer(FileServer):
 
         for command in RemoteBundleClient.SERVER_COMMANDS:
             self.register_function(wrap(self, command), command)
+
+        for command in RemoteBundleClient.FILE_COMMANDS:
+            print(command)
+            self.register_function(wrap(self.file_server, command), command)
 
     def finish_upload_bundle(self, file_uuids, unpack, info, worksheet_uuid, add_to_worksheet):
         '''
@@ -140,7 +190,7 @@ class BundleRPCServer(FileServer):
         path = self.client.get_target_path(target)
         if path is None:
             return None
-        return self.open_file(path)
+        return self.file_server.open_file(path)
 
     def open_target_archive(self, target):
         '''
@@ -149,8 +199,8 @@ class BundleRPCServer(FileServer):
         path = self.client.get_target_path(target)
         if path is None:
             return None
-        return self.open_packed_path(path)
+        return self.file_server.open_packed_path(path)
 
     def serve_forever(self):
         print 'BundleRPCServer serving to %s at port %s...' % ('ALL hosts' if self.host == '' else 'host ' + self.host, self.port)
-        FileServer.serve_forever(self)
+        SimpleXMLRPCServer.serve_forever(self)
