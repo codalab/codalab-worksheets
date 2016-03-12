@@ -159,8 +159,8 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
             paths = []
             for file_uuid in file_uuids:
                 # Note: cheat and look at file_server's data to get paths
-                precondition(file_uuid in self.file_paths, 'Invalid file_uuid: %s' % file_uuid)
-                paths.append(self.file_paths[file_uuid])
+                precondition(file_uuid in self.file_server.file_paths, 'Invalid file_uuid: %s' % file_uuid)
+                paths.append(self.file_server.file_paths[file_uuid])
         else:
             paths = None
 
