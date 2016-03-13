@@ -74,6 +74,7 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
         self.host = manager.config['server']['host']
         self.port = manager.config['server']['port']
         self.verbose = manager.config['server']['verbose']
+        self.download_manager = manager.download_manager()
         self.auth_handler = manager.auth_handler()
 
         # This server is backed by a LocalBundleClient that processes client commands
@@ -146,7 +147,6 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
             self.register_function(wrap(self, command), command)
 
         for command in RemoteBundleClient.FILE_COMMANDS:
-            print(command)
             self.register_function(wrap(self.file_server, command), command)
 
     def finish_upload_bundle(self, file_uuids, unpack, info, worksheet_uuid, add_to_worksheet):
@@ -182,25 +182,55 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
                 self.file_server.finalize_file(file_uuid)
         return result
 
-    def open_target(self, target):
-        '''
-        Open a read-only file handle to the given bundle target and return a file
-        uuid identifying it.
-        '''
-        path = self.client.get_target_path(target)
-        if path is None:
-            return None
-        return self.file_server.open_file(path)
+    def open_tarred_gzipped_directory(self, target):
+        """
+        Opens a tarred and gzipped archive of the target directory for
+        streaming, returning a file UUID that can be read from using the
+        FileServer. The caller should ensure that the target is a directory.
+        """
+        self.client.check_download_permission(target)
+        handle = self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])
+        return self.file_server.manage_handle(handle)
 
-    def open_target_archive(self, target):
-        '''
-        Return file uuid for the archive file.
-        '''
-        path = self.client.get_target_path(target)
-        if path is None:
-            return None
-        return self.file_server.open_packed_path(path)
+    def open_gzipped_file(self, target):
+        """
+        Opens a gzipped archive of the target file, returning a file UUID that
+        can be read from using the FileServer. The caller should ensure that the
+        target is a file.
+        """
+        self.client.check_download_permission(target)
+        handle = self.download_manager.stream_file(target[0], target[1], gzipped=True)
+        return self.file_server.manage_handle(handle)
+
+    def read_gzipped_file_section(self, target, offset, length):
+        """
+        Returns the string representing the section of the given target file
+        starting at offset and of the given length. This string is gzipped to
+        save bandwidth when transferring over the network. The caller should
+        ensure that the target is a file.
+        """
+        return xmlrpclib.Binary(
+            self.client.read_file_section(target, offset, length, gzipped=True))
 
     def serve_forever(self):
         print 'BundleRPCServer serving to %s at port %s...' % ('ALL hosts' if self.host == '' else 'host ' + self.host, self.port)
         SimpleXMLRPCServer.serve_forever(self)
+
+
+    def get_deprecated_error(self):
+        return UsageError('Please download latest version of the CLI (e.g. git pull origin master).')
+
+    def open_target(self, target):
+        raise self.get_deprecated_error()
+
+    def open_target_archive(self, target):
+        raise self.get_deprecated_error()
+    
+    def readline_file(self, file_uuid):
+        raise self.get_deprecated_error()
+
+    def seek_file(self, file_uuid, offset, whence):
+        raise self.get_deprecated_error()
+
+    def tell_file(self, file_uuid):
+        raise self.get_deprecated_error()

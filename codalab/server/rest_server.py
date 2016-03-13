@@ -52,6 +52,7 @@ class SaveEnvironmentPlugin(object):
             # the server. This is intentional to ensure that any MySQL engine
             # objects are created after forking.
             local.model = self.manager.model()
+            local.download_manager = self.manager.download_manager()
             local.bundle_store = self.manager.bundle_store()
             local.config = self.manager.config
             local.emailer = self.manager.emailer()

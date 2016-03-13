@@ -1,25 +1,20 @@
 """
-zip_util provides helpers that:
-  a) zip a directory on the local filesystem and return the zip file
-  b) unzip a zip file and extract the zipped directory
+zip_util provides helpers for unzipping a few standard archive types when
+the user uploads an archive of a known type. Note that when any archives with
+just a single file are uploaded, the result is a file, not a directory.
 
-The zip files here are not arbitrary: they contain one designated
-file/directory.  In other words, zip files represent unnamed file/directories.
-
-To zip/unzip, we use the standard temp files.
+To unzip, we use the standard temp files.
 """
 import os
 import re
-import shutil
-import sys
 import subprocess
 import tempfile
 
 from codalab.common import UsageError
-from codalab.lib import path_util, print_util, file_util
+from codalab.lib import path_util, file_util
 
 # Files with these extensions are considered archive.
-ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip']
+ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz']
 
 # When deciding whether an archive contains a single file/directory...
 
@@ -49,40 +44,11 @@ def get_archive_ext(fname):
             return ext
     return ''
 
-
 def strip_archive_ext(path):
     for ext in ARCHIVE_EXTS:
         if path.endswith(ext):
             return path[:-len(ext)]
     raise UsageError('Not an archive: %s' % path)
-
-
-def add_packed_suffix(path):
-    """
-    Add the packed suffix for path if it's not an archive.
-    """
-    if path_is_archive(path):
-        return path
-    return path + '.tar.gz'
-
-
-def open_packed_path(source, follow_symlinks, exclude_patterns):
-    """
-    Return file handle corresponding to |source|, which is either
-    - an archive file: just stream it.
-    - else: turn it into an archive
-    """
-    if path_is_archive(source):
-        return open(source)
-    args = ['tar', 'cfz', '-', '-C', os.path.dirname(source) or '.']
-    if follow_symlinks:
-        args.append('-h')
-    if exclude_patterns is not None:
-        for pattern in exclude_patterns:
-            args.append('--exclude=' + pattern)
-    args.append(os.path.basename(source))
-    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-    return proc.stdout
 
 
 def unpack(source, dest_path):
@@ -102,6 +68,9 @@ def unpack(source, dest_path):
             exitcode = subprocess.call(['tar', 'xfj', source_path, '-C', tmp_path])
         elif source_path.endswith('zip'):
             exitcode = subprocess.call(['unzip', '-q', source_path, '-d', tmp_path])
+        elif source_path.endswith('.gz'):
+            with open(os.path.join(tmp_path, os.path.basename(strip_archive_ext(source_path))), 'wb') as f:
+                exitcode = subprocess.call(['gunzip', '-q', '-c', source_path], stdout=f)
         else:
             raise UsageError('Not an archive: %s' % source_path)
         if exitcode != 0:

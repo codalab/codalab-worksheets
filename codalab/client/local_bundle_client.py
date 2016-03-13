@@ -3,10 +3,13 @@ LocalBundleClient is BundleClient implementation that interacts directly with a
 BundleStore and a BundleModel. All filesystem operations are handled locally.
 """
 import base64
+from contextlib import closing
+from cStringIO import StringIO
 import copy
 import datetime
 import os
 import re
+import shutil
 import sys
 import yaml
 
@@ -29,7 +32,6 @@ from codalab.lib import (
     canonicalize,
     path_util,
     worksheet_util,
-    file_util,
     spec_util,
     formatting,
 )
@@ -50,6 +52,7 @@ from codalab.objects.permission import (
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_READ,
 )
+from worker.file_util import un_tar_gzip_directory
 
 
 def authentication_required(func):
@@ -66,10 +69,11 @@ def authentication_required(func):
 
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, auth_handler, verbose):
+    def __init__(self, address, bundle_store, model, download_manager, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
+        self.download_manager = download_manager
         self.auth_handler = auth_handler
         self.verbose = verbose
 
@@ -152,23 +156,6 @@ class LocalBundleClient(BundleClient):
     def search_bundle_uuids(self, worksheet_uuid, keywords):
         keywords = self.resolve_owner_in_keywords(keywords)
         return self.model.search_bundle_uuids(self._current_user_id(), worksheet_uuid, keywords)
-
-    # Helper
-    def get_target_path(self, target):
-        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        path = canonicalize.get_target_path(self.bundle_store, self.model, target)
-        if os.path.islink(path):
-            raise UsageError('Following symlink disallowed: %s/%s' % (target[0], target[1]))
-        if not os.path.exists(path):
-            # Too stringent, maybe hasn't been created yet.
-            #raise UsageError('Target does not exist: %s/%s' % (target[0], target[1]))
-            return None
-        return path
-
-    # Helper
-    def get_bundle_target(self, target):
-        (bundle_uuid, subpath) = target
-        return (self.model.get_bundle(bundle_uuid), subpath)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
         """
@@ -375,12 +362,6 @@ class LocalBundleClient(BundleClient):
             bundle = self.model.get_bundle(bundle_uuid)
             self.model.update_bundle(bundle, {'owner_id': user_id})
 
-    def open_target(self, target):
-        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        path = self.get_target_path(target)
-        path_util.check_isfile(path, 'open_target')
-        return open(path)
-
     @authentication_required
     def update_bundle_metadata(self, uuid, metadata):
         check_bundles_have_all_permission(self.model, self._current_user(), [uuid])
@@ -531,21 +512,75 @@ class LocalBundleClient(BundleClient):
 
         return bundle_dict
 
-    # Return information about an individual target inside the bundle.
+    def check_download_permission(self, target):
+        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
 
     def get_target_info(self, target, depth):
-        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        path = self.get_target_path(target)
-        if path is None:
-            return None
-        return path_util.get_info(path, depth)
+        """
+        Returns information about an individual target inside the bundle, or
+        None if the target doesn't exist.
+        """
+        self.check_download_permission(target)
+        return self.download_manager.get_target_info(target[0], target[1], depth)
+
+    def open_tarred_gzipped_directory(self, target):
+        """
+        Opens a tarred and gzipped archive of the target directory for
+        streaming. The caller should ensure that the target is a directory.
+        """
+        self.check_download_permission(target)
+        return self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])
+
+    def open_gzipped_file(self, target):
+        """
+        Opens a gzipped archive of the target file. The caller should ensure
+        that the target is a file.
+        """
+        self.check_download_permission(target)
+        return self.download_manager.stream_file(target[0], target[1], gzipped=True)
+
+    def download_directory(self, target, download_path):
+        """
+        Downloads the target directory to the given path. The caller should
+        ensure that the target is a directory.
+        """
+        self.check_download_permission(target)
+        with closing(self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])) as fileobj:
+            os.mkdir(download_path)
+            un_tar_gzip_directory(fileobj, download_path)
+
+    def download_file(self, target, download_path):
+        """
+        Downloads the target file to the given path. The caller should
+        ensure that the target is a file.
+        """
+        self._do_download_file(target, out_path=download_path)
 
     def cat_target(self, target, out):
-        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        path = self.get_target_path(target)
-        if path is None:
-            return
-        path_util.cat(path, out)
+        """
+        Prints the contents of the target file into the file-like object out.
+        The caller should ensure that the target is a file.
+        """
+        self._do_download_file(target, out_fileobj=out)
+
+    def _do_download_file(self, target, out_path=None, out_fileobj=None):
+        self.check_download_permission(target)
+        with closing(self.download_manager.stream_file(target[0], target[1], gzipped=False)) as fileobj:
+            if out_path is not None:
+                with open(out_path, 'wb') as out:
+                    shutil.copyfileobj(fileobj, out)
+            else:
+                shutil.copyfileobj(fileobj, out_fileobj)
+
+    def read_file_section(self, target, offset, length, gzipped=False):
+        """
+        Returns the string representing the section of the given target file
+        starting at offset and of the given length. The caller should ensure
+        that the target is a file.
+        """
+        self.check_download_permission(target)
+        return self.download_manager.read_file_section(
+            target[0], target[1], offset, length, gzipped)
 
     # Maximum number of bytes to read per line requested
     MAX_BYTES_PER_LINE = 128
@@ -553,13 +588,14 @@ class LocalBundleClient(BundleClient):
     def head_target(self, target, max_num_lines, replace_non_unicode=False, base64_encode=True):
         '''
         Return base64 encoded version of the result.
+
+        The caller should ensure that the target is a file.
         '''
-        max_total_bytes = None if max_num_lines is None else max_num_lines * self.MAX_BYTES_PER_LINE
-        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        path = self.get_target_path(target)
-        lines = path_util.read_lines(path, max_num_lines, max_total_bytes)
-        if lines is None:
-            return None
+        self.check_download_permission(target)
+        lines = self.download_manager.summarize_file(
+            target[0], target[1],
+            max_num_lines, 0, self.MAX_BYTES_PER_LINE, None,
+            gzipped=False).splitlines(True)
 
         if replace_non_unicode:
             lines = map(formatting.verbose_contents_str, lines)
@@ -568,23 +604,6 @@ class LocalBundleClient(BundleClient):
             lines = map(base64.b64encode, lines)
 
         return lines
-
-    def open_target_handle(self, target):
-        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        path = self.get_target_path(target)
-        return open(path) if path and os.path.exists(path) else None
-
-    @staticmethod
-    def close_target_handle(handle):
-        handle.close()
-
-    def download_target(self, target, final_path):
-        check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
-        # Don't need to download anything because it's already local.
-        # Note that we can't really enforce follow_symlinks, but this is okay,
-        # because we will follow them when we copy it from the target path.
-        source_path = self.get_target_path(target)
-        path_util.copy(source_path, final_path)
 
     @authentication_required
     def mimic(self, old_inputs, old_output, new_inputs, new_output_name, worksheet_uuid, depth, shadow, dry_run):
@@ -1045,18 +1064,27 @@ class LocalBundleClient(BundleClient):
                     except ValueError:
                         raise UsageError("maxlines must be integer")
 
-                    info = self.get_target_info(data, 1)
-                    if 'type' not in info:
-                        data = None
-                    elif info['type'] == 'file':
-                        data = self.head_target(data, max_lines, replace_non_unicode=True)
-                    elif info['type'] == 'directory':
+                    target_info = self.get_target_info(data, 0)
+                    if target_info is not None and target_info['type'] == 'directory':
                         data = [base64.b64encode('<directory>')]
+                    elif target_info is not None and target_info['type'] == 'file':
+                        data = self.head_target(data, max_lines, replace_non_unicode=True)
+                    else:
+                        data = None
                 elif mode == 'html':
-                    data = self.head_target(data, None)
+                    target_info = self.get_target_info(data, 0)
+                    if target_info is not None and target_info['type'] == 'file':
+                        data = self.head_target(data, None)
+                    else:
+                        data = None
                 elif mode == 'image':
-                    path = self.get_target_path(data)
-                    data = path_util.base64_encode(path)
+                    target_info = self.get_target_info(data, 0)
+                    if target_info is not None and target_info['type'] == 'file':
+                        result = StringIO()
+                        self.cat_target(data, result)
+                        data = base64.b64encode(result.getvalue())
+                    else:
+                        data = None
                 elif mode == 'graph':
                     try:
                         max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
@@ -1067,9 +1095,9 @@ class LocalBundleClient(BundleClient):
                     # Add a 'points' field that contains the contents of the target.
                     for info in data:
                         target = info['target']
-                        path = self.get_target_path(target)
-                        contents = self.head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
-                        if contents is not None:
+                        target_info = self.get_target_info(target, 0)
+                        if target_info is not None and target_info['type'] == 'file':
+                            contents = self.head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
                             # Assume TSV file without header for now, just return each line as a row
                             info['points'] = points = []
                             for line in contents:
