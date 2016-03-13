@@ -7,6 +7,79 @@ import tarfile
 import zlib
 
 
+def index_contents(path, depth=1000000):
+    """
+    Generates an index of the contents of the given path. The index contains
+    the fields:
+        name: Name of the entry.
+        type: Type of the entry, one of 'file', 'directory' or 'link'.
+        size: Size of the entry.
+        perm: Permissions of the entry.
+        link: If type is 'link', where the symbolic link points to.
+        contents: If type is 'directory', a list of entries for the contents.
+    """
+    stat = os.lstat(path)
+
+    result = {}
+    result['name'] = os.path.basename(path)
+    result['size'] = stat.st_size
+    result['perm'] = stat.st_mode & 0777
+    if os.path.islink(path):
+        result['type'] = 'link'
+        result['link'] = os.readlink(path)
+    elif os.path.isfile(path):
+        result['type'] = 'file'
+    elif os.path.isdir(path):
+        result['type'] = 'directory'
+        if depth > 0:
+            result['contents'] = [
+                index_contents(os.path.join(path, file_name), depth - 1)
+                for file_name in os.listdir(path)]
+    return result
+
+
+def restrict_contents_index(index, path, depth=None):
+    """
+    Given an index generates a restricted version.
+    
+    First, it finds the entry for the given path. If no entry is found, None is
+    returned.
+
+    Then, if depth is not None, it filters out any entries more than depth levels
+    deep. Depth 0, for example, means only the top-level entry is included, and
+    no contents. Depth 1 means the contents of the top-level are included, but
+    nothing deeper.
+    """
+    if index is None:
+        return None
+
+    if path:
+        names = path.split(os.path.sep)
+        for name in names:
+            if index['type'] != 'directory':
+                return None
+            found = False
+            for sub_index in index['contents']:
+                if sub_index['name'] == name:
+                    found = True
+                    index = sub_index
+                    break
+            if not found:
+                return None
+
+    if depth is not None:
+        def restrict_to_depth(index, depth):
+            if index['type'] == 'directory':
+                if depth > 0:
+                    for sub_index in index['contents']:
+                        restrict_to_depth(sub_index, depth - 1)
+                else:
+                    del index['contents']
+        restrict_to_depth(index, depth)
+
+    return index
+
+
 def tar_gzip_directory(directory_path, follow_symlinks=False,
                        exclude_patterns=[], exclude_names=[]):
     """

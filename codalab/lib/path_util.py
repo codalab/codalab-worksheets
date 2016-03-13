@@ -182,31 +182,6 @@ def get_size(path, dirs_and_files=None):
     dirs_and_files = dirs_and_files or recursive_ls(path)
     return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
 
-def get_info(path, depth):
-    """
-    Return a hash containing properties of the path:
-        type: one of {'file', 'directory'}
-        size: size of all files
-        contents: list of files
-    """
-    stat = os.lstat(path)
-
-    result = {}
-    result['name'] = os.path.basename(path)
-    result['size'] = stat.st_size
-    result['perm'] = stat.st_mode & 0777
-    if os.path.islink(path):
-        result['type'] = 'link'
-        result['link'] = os.readlink(path)
-    elif os.path.isfile(path):
-        result['type'] = 'file'
-    elif os.path.isdir(path):
-        result['type'] = 'directory'
-        if depth > 0:
-            result['contents'] = [
-                get_info(os.path.join(path, file_name), depth - 1)
-                for file_name in os.listdir(path)]
-    return result
 
 def hash_path(path, dirs_and_files=None):
     if os.path.isfile(path):

@@ -3,8 +3,10 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
 
 import collections
+import copy
 import datetime
 import json
+import os.path
 import re
 import sys
 import time
@@ -44,6 +46,7 @@ from codalab.lib import (
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
+    bundle_contents_index as cl_bundle_contents_index,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
     bundle_action as cl_bundle_action,
@@ -680,6 +683,9 @@ class BundleModel(object):
             connection.execute(cl_bundle_dependency.delete().where(
                 cl_bundle_dependency.c.child_uuid.in_(uuids)
             ))
+            connection.execute(cl_bundle_contents_index.delete().where(
+                cl_bundle_contents_index.c.bundle_uuid.in_(uuids)
+            ))
             connection.execute(cl_bundle.delete().where(
                 cl_bundle.c.uuid.in_(uuids)
             ))
@@ -687,6 +693,64 @@ class BundleModel(object):
     def remove_data_hash_references(self, uuids):
         with self.engine.begin() as connection:
             connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
+
+    def update_bundle_contents_index(self, uuid, index):
+        rows = []
+        def recurse(entry, parent_path):
+            entry['bundle_uuid'] = uuid
+            entry['path'] = os.path.join(parent_path, entry['name'])
+            del entry['name']
+            if 'contents' in entry:
+                for child_entry in entry['contents']:
+                    recurse(child_entry, entry['path'])
+                del entry['contents']
+            if 'link' not in entry:
+                entry['link'] = None
+            rows.append(entry)
+        index_copy = copy.deepcopy(index)
+        if index_copy['name'] != uuid:
+            raise UsageError(
+                'Valid indices have the directory with the name as the UUID '
+                'being the top-level directory.')
+        # Clear the top-level name to save space in the database.
+        index_copy['name'] = ''
+        recurse(index_copy, '/')
+        with self.engine.begin() as connection:
+            connection.execute(cl_bundle_contents_index.delete().where(
+                cl_bundle_contents_index.c.bundle_uuid == uuid
+            ))
+            self.do_multirow_insert(connection, cl_bundle_contents_index, rows)
+
+    def get_bundle_contents_index(self, uuid):
+        with self.engine.begin() as connection:
+            # Sort so that all directories appear before the files inside them.
+            rows = connection.execute(
+                cl_bundle_contents_index.select()
+                    .where(cl_bundle_contents_index.c.bundle_uuid == uuid)
+                    .order_by(cl_bundle_contents_index.c.path)
+            ).fetchall()
+
+        if not rows:
+            return None
+
+        directories = {}
+        for row in rows:
+            result = str_key_dict(row)
+            del result['bundle_uuid']
+            del result['path']
+            if result['link'] is None:
+                del result['link']
+            if row.path == '/':
+                result['name'] = uuid
+                if row.type != 'directory':
+                    return result
+            else:
+                result['name'] = os.path.basename(row.path)
+                directories[os.path.dirname(row.path)]['contents'].append(result)
+            if row.type == 'directory':
+                result['contents'] = []
+                directories[row.path] = result
+        return directories['/']
 
     #############################################################################
     # Worksheet-related model methods follow!
