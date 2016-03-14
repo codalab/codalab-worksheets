@@ -56,14 +56,10 @@ def un_tar_gzip_directory(fileobj, directory_path):
             tar.extract(member, directory_path)
 
 
-def gzip_file(file_path, follow_symlinks=False):
+def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    if follow_symlinks:
-        file_path = os.path.realpath(file_path)
-    elif os.path.islink(file_path):
-        raise IOError('Not following symbolic links.')
     args = ['gzip', '-c', '-n', file_path]
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
@@ -151,20 +147,32 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     """
     assert(num_head_lines > 0 or num_tail_lines > 0)
 
-    def ensure_ends_with_newline(lines):
+    def ensure_ends_with_newline(lines, remove_line_without_newline=False):
         if lines and not lines[-1].endswith('\n'):
-            lines[-1] += '\n'
+            if remove_line_without_newline:
+                lines.pop()
+            else:
+                lines[-1] += '\n'
     
     file_size = os.stat(file_path).st_size
     with open(file_path) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
             if num_head_lines > 0:
+                # To ensure that the last line is a whole line, we remove the
+                # last line if it doesn't have a newline character.
                 head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(True)[:num_head_lines]
-                ensure_ends_with_newline(head_lines)
+                ensure_ends_with_newline(head_lines, remove_line_without_newline=True)
 
             if num_tail_lines > 0:
-                fileobj.seek(file_size - num_tail_lines * max_line_length, os.SEEK_SET)
-                tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[-num_tail_lines:]
+                # To ensure that the first line is a whole line, we read an
+                # extra character and always remove the first line. If the first
+                # character is a newline, then the first line will just be
+                # empty and the second line is a whole line. If the first
+                # character is not a new line, then the first line, had we not
+                # read the extra character, would not be a whole line. Thus, it
+                # should also be dropped.
+                fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
+                tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[1:][-num_tail_lines:]
                 ensure_ends_with_newline(tail_lines)
             
             if num_head_lines > 0 and num_tail_lines > 0:

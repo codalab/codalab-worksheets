@@ -300,23 +300,25 @@ def test(ctx):
     # Upload file with crazy name
     uuid = run_command([cl, 'upload', test_path(crazy_name)])
     check_equals(test_path_contents(crazy_name), run_command([cl, 'cat', uuid]))
-
-    # Upload symlink
-    uuid = run_command([cl, 'upload', test_path('passwd')])
-    run_command([cl, 'cat', uuid], 1)  # Should not resolve this - otherwise it's dangerous!
-
+ 
+    # Upload directory with a symlink
+    uuid = run_command([cl, 'upload', test_path('')])
+    check_equals(' -> /etc/passwd', run_command([cl, 'cat', uuid + '/passwd']))
+    
+    # Upload symlink without following it.
+    uuid = run_command([cl, 'upload', test_path('a-symlink.txt')], 1)
+ 
     # Upload symlink, follow link
     uuid = run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'])
     check_equals(test_path_contents('a-symlink.txt'), run_command([cl, 'cat', uuid]))
     run_command([cl, 'cat', uuid])  # Should have the full contents
-
-    # Upload broken symlink (should be possible)
-    uuid = run_command([cl, 'upload', test_path('broken-symlink')])
-    run_command([cl, 'cat', uuid], 1)
-
+ 
+    # Upload broken symlink (should not be possible)
+    uuid = run_command([cl, 'upload', test_path('broken-symlink'), '--follow-symlinks'], 1)
+ 
     # Upload directory with excluded files
     uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
-    check_num_lines(2 + 1, run_command([cl, 'cat', uuid]))  # 2 lines header,oOnly one file left after excluding
+    check_num_lines(2 + 2, run_command([cl, 'cat', uuid]))  # 2 header lines, Only two files left after excluding and extracting.
 
 @TestModule.register('upload2')
 def test(ctx):

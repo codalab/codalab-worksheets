@@ -872,13 +872,14 @@ class BundleCLI(object):
 
         # Do the download.
         target_info = client.get_target_info(target, 0)
-        if target_info is not None and target_info['type'] == 'directory':
+        if target_info is None:
+            raise UsageError('Target doesn\'t exist.')
+        if target_info['type'] == 'directory':
             client.download_directory(target, final_path)
-        elif target_info is not None and target_info['type'] == 'file':
+        elif target_info['type'] == 'file':
             client.download_file(target, final_path)
-        else:
-            print >>self.stdout, 'Invalid download target.'
-            return
+        elif target_info['type'] == 'link':
+            raise UsageError('Downloading symlinks is not allowed.')
 
         print >>self.stdout, 'Downloaded %s/%s => %s' % (self.simple_bundle_str(info), subpath, final_path)
 
@@ -1479,6 +1480,10 @@ class BundleCLI(object):
             contents = sorted(contents, key=lambda r: r['name'])
             self.print_table(('name', 'perm', 'size'), contents, justify={'size': 1}, indent='')
 
+        if info_type == 'link':
+            print >>self.stdout, ' -> ' + info['link']
+            
+
         return info
 
     @Commands.command(
@@ -1517,20 +1522,15 @@ class BundleCLI(object):
         """
         subpath_is_file = [None] * len(subpaths)
         subpath_offset = [None] * len(subpaths)
-    
 
-        # Constants for a simple exponential backoff routine that will decrease the
-        # frequency at which we check this bundle's state from 1s to 1m.
-        period = 1.0
-        backoff = 1.1
-        max_period = 60.0
+        SLEEP_PERIOD = 1.0
 
         # Wait for the run to start.
         while True:
             info = client.get_bundle_info(bundle_uuid)
             if info['state'] in (State.RUNNING, State.READY, State.FAILED):
                 break
-            time.sleep(period)
+            time.sleep(SLEEP_PERIOD)
 
         info = None
         run_finished = False
@@ -1540,7 +1540,6 @@ class BundleCLI(object):
                 run_finished = info['state'] in (State.READY, State.FAILED)
 
             # Read data.
-            change = False
             for i in xrange(0, len(subpaths)):
                 # If the subpath we're interested in appears, check if it's a
                 # file and if so, initialize the offset.
@@ -1563,7 +1562,6 @@ class BundleCLI(object):
                     result = client.read_file_section((bundle_uuid, subpaths[i]), subpath_offset[i], READ_LENGTH)
                     if not result:
                         break
-                    change = True
                     subpath_offset[i] += len(result)
                     self.stdout.write(result)
                     if len(result) < READ_LENGTH:
@@ -1576,12 +1574,8 @@ class BundleCLI(object):
             if run_finished:
                 break
 
-            # If we got no data this time around, check less often.
-            if not change:
-                period = min(backoff*period, max_period)
-
             # Sleep, since we've finished reading all the data available.
-            time.sleep(period)
+            time.sleep(SLEEP_PERIOD)
 
         return info['state']
 

@@ -284,6 +284,10 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
         with open(dest_path, 'wb') as dest:
             file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
+        if not follow_symlinks and os.path.islink(source_path):
+            raise path_error('not following symlinks', source_path)
+        if not os.path.exists(source_path):
+            raise path_error('does not exist', source_path)
         command = [
             'rsync',
             '-pr%s' % ('L' if follow_symlinks else 'l'),

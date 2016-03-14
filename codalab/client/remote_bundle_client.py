@@ -15,6 +15,7 @@ import socket
 from codalab.client import get_address_host
 from codalab.client.bundle_client import BundleClient
 from codalab.common import (
+    NotFoundError,
     PermissionError,
     UsageError,
     AuthorizationError,
@@ -165,6 +166,9 @@ class RemoteBundleClient(BundleClient):
                         if 'codalab.common.UsageError' in e.faultString:
                             index = e.faultString.find(':')
                             raise UsageError(e.faultString[index + 1:])
+                        if 'codalab.common.NotFoundError' in e.faultString:
+                            index = e.faultString.find(':')
+                            raise NotFoundError(e.faultString[index + 1:])
                         elif 'codalab.common.PermissionError' in e.faultString:
                             index = e.faultString.find(':')
                             raise PermissionError(e.faultString[index + 1:])
@@ -209,7 +213,14 @@ class RemoteBundleClient(BundleClient):
                     temp_file_name = os.path.basename(source) + '.tar.gz'
                     unpack = True  # We packed it, so we have to unpack it
                 else:
-                    source_handle = gzip_file(source, follow_symlinks)
+                    resolved_source = source
+                    if follow_symlinks:
+                        resolved_source = os.path.realpath(source)
+                        if not os.path.exists(resolved_source):
+                            raise UsageError('Broken symlink')
+                    elif os.path.islink(source):
+                        raise UsageError('Not following symlinks.')
+                    source_handle = gzip_file(resolved_source)
                     temp_file_name = os.path.basename(source) + '.gz'
                     unpack = True  # We packed it, so we have to unpack it
 
@@ -256,7 +267,7 @@ class RemoteBundleClient(BundleClient):
             if out_path is not None:
                 with open(out_path, 'wb') as out:
                     shutil.copyfileobj(fileobj, out)
-            else:
+            elif out_fileobj is not None:
                 shutil.copyfileobj(fileobj, out_fileobj)
 
     def read_file_section(self, target, offset, length):

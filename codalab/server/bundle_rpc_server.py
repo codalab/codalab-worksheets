@@ -188,7 +188,7 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
         streaming, returning a file UUID that can be read from using the
         FileServer. The caller should ensure that the target is a directory.
         """
-        self.client.check_download_permission(target)
+        self.client.check_target_has_read_permission(target)
         handle = self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])
         return self.file_server.manage_handle(handle)
 
@@ -198,7 +198,7 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
         can be read from using the FileServer. The caller should ensure that the
         target is a file.
         """
-        self.client.check_download_permission(target)
+        self.client.check_target_has_read_permission(target)
         handle = self.download_manager.stream_file(target[0], target[1], gzipped=True)
         return self.file_server.manage_handle(handle)
 

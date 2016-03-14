@@ -1,8 +1,8 @@
 import os
 
-from codalab.common import PermissionError
+from codalab.common import UsageError
 from codalab.lib import path_util
-from worker.download_util import get_invalid_bundle_path_error_string, get_target_path, is_valid_bundle_path
+from worker.download_util import get_and_check_target_path, get_target_path
 from worker import file_util
 
 
@@ -28,7 +28,9 @@ class DownloadManager(object):
         """
         bundle_path = self._bundle_store.get_bundle_location(uuid)
         final_path = get_target_path(bundle_path, path)
-        if not os.path.exists(final_path):
+        # TODO: This doesn't really check for .., but this code will be
+        # deprecated in favor of a version that uses the contents index soon.
+        if not os.path.islink(final_path) and not os.path.exists(final_path):
             return None
         return path_util.get_info(final_path, depth)
 
@@ -78,6 +80,7 @@ class DownloadManager(object):
 
     def _get_and_check_target_path(self, uuid, path):
         bundle_path = self._bundle_store.get_bundle_location(uuid)
-        if not is_valid_bundle_path(bundle_path, path):
-            raise PermissionError(get_invalid_bundle_path_error_string(path))
-        return get_target_path(bundle_path, path)
+        target_path, error_message = get_and_check_target_path(bundle_path, uuid, path)
+        if error_message is not None:
+            raise UsageError(error_message)
+        return target_path
