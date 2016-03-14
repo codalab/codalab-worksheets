@@ -1067,19 +1067,19 @@ class LocalBundleClient(BundleClient):
                     target_info = self.get_target_info(data, 0)
                     if target_info is not None and target_info['type'] == 'directory':
                         data = [base64.b64encode('<directory>')]
-                    elif target_info is not None and target_info['type'] == 'file':
+                    elif target_info is not None and target_info['type'] in ['file', 'link']:
                         data = self.head_target(data, max_lines, replace_non_unicode=True)
                     else:
                         data = None
                 elif mode == 'html':
                     target_info = self.get_target_info(data, 0)
-                    if target_info is not None and target_info['type'] == 'file':
+                    if target_info is not None and target_info['type'] in ['file', 'link']:
                         data = self.head_target(data, None)
                     else:
                         data = None
                 elif mode == 'image':
                     target_info = self.get_target_info(data, 0)
-                    if target_info is not None and target_info['type'] == 'file':
+                    if target_info is not None and target_info['type'] in ['file', 'link']:
                         result = StringIO()
                         self.cat_target(data, result)
                         data = base64.b64encode(result.getvalue())
@@ -1096,7 +1096,7 @@ class LocalBundleClient(BundleClient):
                     for info in data:
                         target = info['target']
                         target_info = self.get_target_info(target, 0)
-                        if target_info is not None and target_info['type'] == 'file':
+                        if target_info is not None and target_info['type'] in ['file', 'link']:
                             contents = self.head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
                             # Assume TSV file without header for now, just return each line as a row
                             info['points'] = points = []

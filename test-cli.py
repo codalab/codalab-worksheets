@@ -36,11 +36,17 @@ DOCKER_MODULES = [
         'resources'
         ]
 
+def test_dir():
+    """
+    Return the path to the entire test directory.
+    """
+    return os.path.join(base_path, 'tests', 'files')
+
 def test_path(name):
     """
     Return the path to the test file |name|.
     """
-    return os.path.join(base_path, 'tests', 'files', name)
+    return os.path.join(test_dir(), name)
 
 # Note: when we talk about contents, we always apply rstrip() even if it's a
 # binary file.  This is fine as long as we're consistent about doing rstrip()
@@ -302,21 +308,18 @@ def test(ctx):
     check_equals(test_path_contents(crazy_name), run_command([cl, 'cat', uuid]))
 
     # Upload symlink
-    uuid = run_command([cl, 'upload', test_path('passwd')])
-    run_command([cl, 'cat', uuid], 1)  # Should not resolve this - otherwise it's dangerous!
+    uuid = run_command([cl, 'upload', test_dir()])
+    run_command([cl, 'cat', os.path.join(uuid, 'passwd')], 1)  # Should not resolve this - otherwise it's dangerous!
+    run_command([cl, 'cat', os.path.join(uuid, 'a-symlink.txt')], 0)  # Symlink points inside the bundle. Resolves fine.
 
     # Upload symlink, follow link
     uuid = run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'])
     check_equals(test_path_contents('a-symlink.txt'), run_command([cl, 'cat', uuid]))
     run_command([cl, 'cat', uuid])  # Should have the full contents
 
-    # Upload broken symlink (should be possible)
-    uuid = run_command([cl, 'upload', test_path('broken-symlink')])
-    run_command([cl, 'cat', uuid], 1)
-
     # Upload directory with excluded files
     uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
-    check_num_lines(2 + 1, run_command([cl, 'cat', uuid]))  # 2 lines header,oOnly one file left after excluding
+    check_num_lines(2 + 2, run_command([cl, 'cat', uuid]))  # 2 lines header,oOnly two files left after excluding
 
 @TestModule.register('upload2')
 def test(ctx):

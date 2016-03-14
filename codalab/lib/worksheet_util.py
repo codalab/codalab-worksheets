@@ -445,7 +445,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
     if target not in target_cache:
         target_info = client.get_target_info(target, 0)
         # Try to interpret the structure of the file by looking inside it.
-        if target_info is not None and target_info['type'] == 'file':
+        if target_info is not None and target_info['type'] in ['file', 'link']:
             contents = client.head_target(target, MAX_LINES)
             import base64
             contents = map(base64.b64decode, contents)

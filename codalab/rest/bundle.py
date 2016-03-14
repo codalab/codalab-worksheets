@@ -35,7 +35,7 @@ def get_blob(uuid, path=''):
         # Always tar and gzip directories.
         filename = filename + '.tar.gz'
         fileobj = local.download_manager.stream_tarred_gzipped_directory(uuid, path)
-    elif target_info['type'] == 'file':
+    elif target_info['type'] in ['file', 'link']:
         if not zip_util.path_is_archive(filename) and request_accepts_gzip_encoding():
             # Let's gzip to save bandwidth. The browser will transparently decode
             # the file.
@@ -43,9 +43,6 @@ def get_blob(uuid, path=''):
             fileobj = local.download_manager.stream_file(uuid, path, gzipped=True)
         else:
             fileobj = local.download_manager.stream_file(uuid, path, gzipped=False)
-    else:
-        # Symlinks.
-        abort(httplib.FORBIDDEN, 'Cannot download files of this type.')
     
     # Set headers.
     mimetype, _ = mimetypes.guess_type(filename, strict=False)

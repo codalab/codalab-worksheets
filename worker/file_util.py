@@ -56,14 +56,10 @@ def un_tar_gzip_directory(fileobj, directory_path):
             tar.extract(member, directory_path)
 
 
-def gzip_file(file_path, follow_symlinks=False):
+def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    if follow_symlinks:
-        file_path = os.path.realpath(file_path)
-    elif os.path.islink(file_path):
-        raise IOError('Not following symbolic links.')
     args = ['gzip', '-c', '-n', file_path]
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)

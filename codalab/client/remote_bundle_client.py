@@ -209,7 +209,13 @@ class RemoteBundleClient(BundleClient):
                     temp_file_name = os.path.basename(source) + '.tar.gz'
                     unpack = True  # We packed it, so we have to unpack it
                 else:
-                    source_handle = gzip_file(source, follow_symlinks)
+                    resolved_source = source
+                    if os.path.islink(source):
+                        if follow_symlinks:
+                            resolved_source = os.path.realpath(source)
+                        else:
+                            raise UsageError('Can\'t upload a single symbolic link')
+                    source_handle = gzip_file(resolved_source)
                     temp_file_name = os.path.basename(source) + '.gz'
                     unpack = True  # We packed it, so we have to unpack it
 

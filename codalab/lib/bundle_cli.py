@@ -867,18 +867,16 @@ class BundleCLI(object):
             local_path = info['metadata'].get('name', 'untitled') if subpath == '' else os.path.basename(subpath)
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
-            print >>self.stdout, 'Local file/directory \'%s\' already exists.' % local_path
-            return
+            raise UsageError('Local file/directory \'%s\' already exists.' % local_path)
 
         # Do the download.
         target_info = client.get_target_info(target, 0)
-        if target_info is not None and target_info['type'] == 'directory':
+        if target_info is None:
+            raise UsageError('Target does not exist.')
+        if target_info['type'] == 'directory':
             client.download_directory(target, final_path)
-        elif target_info is not None and target_info['type'] == 'file':
+        elif target_info['type'] in ['file', 'link']:
             client.download_file(target, final_path)
-        else:
-            print >>self.stdout, 'Invalid download target.'
-            return
 
         print >>self.stdout, 'Downloaded %s/%s => %s' % (self.simple_bundle_str(info), subpath, final_path)
 
@@ -1450,7 +1448,7 @@ class BundleCLI(object):
             else:
                 print >>self.stdout, formatting.verbose_contents_str(None)
 
-        if info_type == 'file':
+        if info_type in ['file', 'link']:
             if decorate:
                 import base64
                 for line in client.head_target(target, maxlines):
@@ -1541,7 +1539,7 @@ class BundleCLI(object):
                 if subpath_is_file[i] is None:
                     target_info = client.get_target_info((bundle_uuid, subpaths[i]), 0)
                     if target_info is not None:
-                        if target_info['type'] == 'file':
+                        if target_info['type'] in ['file', 'link']:
                             subpath_is_file[i] = True
                             # Go to near the end of the file (TODO: make this match up with lines)
                             subpath_offset[i] = max(target_info['size'] - 64, 0)

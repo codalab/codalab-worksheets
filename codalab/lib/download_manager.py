@@ -1,8 +1,8 @@
 import os
 
-from codalab.common import PermissionError
+from codalab.common import http_error_to_exception
 from codalab.lib import path_util
-from worker.download_util import get_invalid_bundle_path_error_string, get_target_path, is_valid_bundle_path
+from worker.download_util import get_and_check_real_target_path, get_target_path
 from worker import file_util
 
 
@@ -28,7 +28,7 @@ class DownloadManager(object):
         """
         bundle_path = self._bundle_store.get_bundle_location(uuid)
         final_path = get_target_path(bundle_path, path)
-        if not os.path.exists(final_path):
+        if not os.path.islink(final_path) and not os.path.exists(final_path):
             return None
         return path_util.get_info(final_path, depth)
 
@@ -37,7 +37,7 @@ class DownloadManager(object):
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
         """
-        directory_path = self._get_and_check_target_path(uuid, path)
+        directory_path = self._get_and_check_real_target_path(uuid, path)
         return file_util.tar_gzip_directory(directory_path)
 
     def stream_file(self, uuid, path, gzipped):
@@ -45,7 +45,7 @@ class DownloadManager(object):
         Returns a file-like object reading the given file. This file is gzipped
         if gzipped is True.
         """
-        file_path = self._get_and_check_target_path(uuid, path)
+        file_path = self._get_and_check_real_target_path(uuid, path)
         if gzipped:
             return file_util.gzip_file(file_path)
         else:
@@ -56,7 +56,7 @@ class DownloadManager(object):
         Reads length bytes of the file at the given path in the bundle.
         The result is gzipped if gzipped is True.
         """
-        file_path = self._get_and_check_target_path(uuid, path)
+        file_path = self._get_and_check_real_target_path(uuid, path)
         string = file_util.read_file_section(file_path, offset, length)
         if gzipped:
             string = file_util.gzip_string(string)
@@ -70,14 +70,16 @@ class DownloadManager(object):
         truncation point.
         This string is gzipped if gzipped is True.
         """
-        file_path = self._get_and_check_target_path(uuid, path)
+        file_path = self._get_and_check_real_target_path(uuid, path)
         string = file_util.summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text)
         if gzipped:
             string = file_util.gzip_string(string)
         return string
 
-    def _get_and_check_target_path(self, uuid, path):
+    def _get_and_check_real_target_path(self, uuid, path):
         bundle_path = self._bundle_store.get_bundle_location(uuid)
-        if not is_valid_bundle_path(bundle_path, path):
-            raise PermissionError(get_invalid_bundle_path_error_string(path))
-        return get_target_path(bundle_path, path)
+        target_path, error_code, error_message = get_and_check_real_target_path(
+            bundle_path, uuid, path)
+        if error_code is not None:
+            raise http_error_to_exception(error_code, error_message)
+        return target_path
