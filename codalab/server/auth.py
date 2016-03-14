@@ -9,8 +9,7 @@ import urllib
 import urllib2
 from base64 import encodestring
 
-from codalab.common import UsageError, PermissionError
-from codalab import model
+from codalab.common import PermissionError
 
 class User(object):
     '''

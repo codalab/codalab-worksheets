@@ -19,6 +19,7 @@ from codalab.common import (
   precondition,
   State,
   AuthorizationError,
+  NotFoundError,
   UsageError,
   PermissionError
 )
@@ -885,7 +886,7 @@ class LocalBundleClient(BundleClient):
     def _user_name_to_id(self, user_name):
         results = self.auth_handler.get_users('names', [user_name])
         if not results[user_name]:
-            raise UsageError('Unknown user: %s' % user_name)
+            raise NotFoundError('Unknown user: %s' % user_name)
         return results[user_name].unique_id
 
     def _user_id_to_names(self, user_ids):

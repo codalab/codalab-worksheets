@@ -31,6 +31,7 @@ from sqlalchemy.sql.expression import (
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
     IntegrityError,
+    NotFoundError,
     precondition,
     UsageError,
     State,
@@ -156,7 +157,7 @@ class BundleModel(object):
         '''
         bundles = self.batch_get_bundles(uuid=uuid)
         if not bundles:
-            raise UsageError('Could not find bundle with uuid %s' % (uuid,))
+            raise NotFoundError('Could not find bundle with uuid %s' % (uuid,))
         elif len(bundles) > 1:
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
@@ -697,7 +698,7 @@ class BundleModel(object):
         '''
         worksheets = self.batch_get_worksheets(fetch_items=fetch_items, uuid=uuid)
         if not worksheets:
-            raise UsageError('Could not find worksheet with uuid %s' % (uuid,))
+            raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
         elif len(worksheets) > 1:
             raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
         return worksheets[0]
