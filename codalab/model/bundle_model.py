@@ -31,6 +31,7 @@ from sqlalchemy.sql.expression import (
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
     IntegrityError,
+    NotFoundError,
     precondition,
     UsageError,
     State,
@@ -156,7 +157,7 @@ class BundleModel(object):
         '''
         bundles = self.batch_get_bundles(uuid=uuid)
         if not bundles:
-            raise UsageError('Could not find bundle with uuid %s' % (uuid,))
+            raise NotFoundError('Could not find bundle with uuid %s' % (uuid,))
         elif len(bundles) > 1:
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
@@ -697,7 +698,7 @@ class BundleModel(object):
         '''
         worksheets = self.batch_get_worksheets(fetch_items=fetch_items, uuid=uuid)
         if not worksheets:
-            raise UsageError('Could not find worksheet with uuid %s' % (uuid,))
+            raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
         elif len(worksheets) > 1:
             raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
         return worksheets[0]
@@ -1725,6 +1726,8 @@ class BundleModel(object):
                     connection.execute(cl_user.insert().values(user_info))
             if fetch_extra:
                 user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
+                if 'last_login' in user_info and user_info['last_login'] is not None:
+                    user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
                 user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
                 user_info['root_user_id'] = self.root_user_id
                 user_info['system_user_id'] = self.system_user_id

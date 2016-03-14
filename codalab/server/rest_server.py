@@ -1,8 +1,9 @@
-from httplib import BAD_REQUEST
+from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST
 import os
 import re
 import sys
 import time
+import traceback
 
 import bottle
 from bottle import (
@@ -10,6 +11,7 @@ from bottle import (
     Bottle,
     default_app,
     get,
+    HTTPError,
     HTTPResponse,
     install,
     local,
@@ -18,6 +20,7 @@ from bottle import (
     static_file,
 )
 
+from codalab.common import exception_to_http_error
 import codalab.rest.account
 import codalab.rest.bundle
 import codalab.rest.example
@@ -111,6 +114,26 @@ class LoggingPlugin(object):
                 return False
         return True
 
+
+class ErrorAdapter(object):
+    """Converts known exceptions to HTTP errors."""
+    api = 2
+
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            try:
+                return callback(*args, **kwargs)
+            except Exception as e:
+                if isinstance(e, HTTPResponse):
+                    raise
+                code, message = exception_to_http_error(e)
+                if code == INTERNAL_SERVER_ERROR:
+                    traceback.print_exc()
+                raise HTTPError(code, message)
+
+        return wrapper
+
+
 def error_handler(response):
     """Simple error handler that doesn't use the Bottle error template."""
     if request.is_ajax:
@@ -135,6 +158,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(oauth2_provider.check_oauth())
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
+    install(ErrorAdapter())
 
     for code in xrange(100, 600):
         default_app().error(code)(error_handler)

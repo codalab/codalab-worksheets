@@ -6,11 +6,10 @@ possibly to maximize it being correct in a search engine crawl. Thus, we do it
 in Javascript that is loaded in the <head> section.
 """
 
-from bottle import get, template
+from bottle import get, local, request, template
 
 from codalab.lib import spec_util
-from codalab.rest.bundle import safe_get_bundle
-from codalab.rest.worksheet import safe_get_worksheet
+from codalab.objects.permission import check_bundles_have_read_permission, check_worksheet_has_read_permission
 
 
 @get('/titlejs/worksheet/<uuid:re:%s>/' % spec_util.UUID_STR)
@@ -18,7 +17,8 @@ def get_worksheet_title_js(uuid):
     """
     Returns Javascript code that updates the worksheet title.
     """
-    worksheet = safe_get_worksheet(uuid, need_read=True)
+    worksheet = local.model.get_worksheet(uuid, fetch_items=False)
+    check_worksheet_has_read_permission(local.model, request.user, worksheet)
     if worksheet.title:
         title = worksheet.title
     else:
@@ -31,5 +31,6 @@ def get_bundle_title_js(uuid):
     """
     Returns Javascript code that updates the bundle title.
     """
-    bundle = safe_get_bundle(uuid, need_read=True)
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
+    bundle = local.model.get_bundle(uuid)
     return template('title_setter_js', title=bundle.metadata.name)

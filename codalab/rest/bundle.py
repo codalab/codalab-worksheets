@@ -5,31 +5,8 @@ import subprocess
 
 from bottle import abort, get, local, request, response
 
-from codalab.common import PermissionError, UsageError
 from codalab.lib import path_util, spec_util
-from codalab.objects.permission import check_bundles_have_all_permission, check_bundles_have_read_permission
-
-
-def safe_get_bundle(uuid, need_read=False, need_all=False):
-    """
-    Reads the bundle from the database, checking for any required permissions.
-    Adapts any errors to HTTP errors.
-    """
-    if need_read:
-        try:
-            check_bundles_have_read_permission(local.model, request.user, [uuid])
-        except PermissionError as e:
-            abort(httplib.FORBIDDEN, e.message)
-    if need_all:
-        try:
-            check_bundles_have_all_permission(local.model, request.user, [uuid])
-        except PermissionError as e:
-            abort(httplib.FORBIDDEN, e.message)
-    try:
-        return local.model.get_bundle(uuid)
-    except UsageError as e:
-        abort(httplib.NOT_FOUND, e.message)
-
+from codalab.objects.permission import check_bundles_have_read_permission
 
 @get('/bundle/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
 @get('/bundle/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
@@ -42,7 +19,8 @@ def get_blob(uuid, path=''):
     """
     archive = 'archive' in request.query and request.query['archive'] == '1'
 
-    bundle = safe_get_bundle(uuid, need_read=True)
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
+    bundle = local.model.get_bundle(uuid)
 
     # Find the data.
     bundle_root = os.path.realpath(local.bundle_store.get_bundle_location(uuid))

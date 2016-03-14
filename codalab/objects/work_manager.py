@@ -19,7 +19,6 @@ import os
 from codalab.common import (
   precondition,
   State,
-  UsageError,
 )
 from codalab.lib import (
   canonicalize,

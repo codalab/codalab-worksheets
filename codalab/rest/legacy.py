@@ -5,15 +5,13 @@ import base64
 from cStringIO import StringIO
 from datetime import datetime, timedelta
 import json
-import logging
 from oauthlib.common import generate_token
 import random
 import shlex
-import traceback
 
 from bottle import (
+  abort,
   get,
-  HTTPError,
   httplib,
   HTTPResponse,
   local,
@@ -108,6 +106,8 @@ class BundleService(object):
 
         # Set permissions
         worksheet_info['edit_permission'] = (worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
+        # Check enable chat box
+        worksheet_info['enable_chat'] = local.config.get('enable_chat', False)
         # Format permissions into strings
         worksheet_info['permission_str'] = permission_str(worksheet_info['permission'])
         for group_permission in worksheet_info['group_permissions']:
@@ -274,6 +274,17 @@ class BundleService(object):
         self.client.update_bundle_metadata(uuid, new_metadata)
         return
 
+    def add_chat_log_info(self, query_info):
+        return self.client.add_chat_log_info(query_info)    
+
+    def get_chat_log_info(self, query_info):
+        return self.client.get_chat_log_info(query_info)
+
+    def get_user_info(self, user_id):
+        return self.client.get_user_info(user_id, True)
+
+    def get_faq(self):
+        return self.client.get_faq()
 
 class RemoteBundleService(object):
     '''
@@ -350,18 +361,6 @@ class RemoteBundleService(object):
         return new_bundle_uuid
 
 
-logger = logging.getLogger(__name__)
-
-
-def log_exception(exception, traceback):
-    logging.error(request.route.method + ' ' + request.route.rule)
-    logging.error(str(exception))
-    logging.error('')
-    logging.error('-------------------------')
-    logging.error(traceback)
-    logging.error('-------------------------')
-
-
 @get('/worksheets/sample/')
 def get_sample_worksheets():
     '''
@@ -390,10 +389,7 @@ def get_sample_worksheets():
 def get_worksheets_landing():
     requested_ws = request.query.get('uuid', request.query.get('name', 'home'))
     service = BundleService()
-    try:
-        uuid = service.get_worksheet_uuid(requested_ws)
-    except Exception as e:  # UsageError
-        return HTTPError(status=httplib.NOT_FOUND, body=e.message)
+    uuid = service.get_worksheet_uuid(requested_ws)
     redirect('/worksheets/%s/' % uuid)
 
 
@@ -426,11 +422,7 @@ def post_worksheets_command():
 @get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_worksheet_content(uuid):
     service = BundleService()
-    try:
-        return service.full_worksheet(uuid)
-    except Exception as e:
-        log_exception(e, traceback.format_exc())
-        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+    return service.full_worksheet(uuid)
 
 
 @post('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR,
@@ -438,31 +430,19 @@ def get_worksheet_content(uuid):
 def post_worksheet_content(uuid):
     data = request.json
 
-    worksheet_uuid = data['uuid']
     lines = data['lines']
 
-    if worksheet_uuid != uuid:
-        return HTTPResponse(None, status=httplib.FORBIDDEN)
-
     service = BundleService()
-    try:
-        service.parse_and_update_worksheet(worksheet_uuid, lines)
-        return {}
-    except Exception as e:
-        log_exception(e, traceback.format_exc())
-        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+    service.parse_and_update_worksheet(uuid, lines)
+    return {}
 
 
 @get('/api/bundles/content/<uuid:re:%s>/' % spec_util.UUID_STR)
 @get('/api/bundles/content/<uuid:re:%s>/<path:path>/' % spec_util.UUID_STR)
 def get_bundle_content(uuid, path=''):
     service = BundleService()
-    try:
-        target = (uuid, path)
-        return service.get_target_info(target)
-    except Exception as e:
-        log_exception(e, traceback.format_exc())
-        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+    target = (uuid, path)
+    return service.get_target_info(target)
 
 
 @post('/api/bundles/upload/')
@@ -473,29 +453,21 @@ def post_bundle_upload():
     # the upload to the bundle store directly. A bunch of logic needs to be
     # cleaned up in order for that to happen.
     service = RemoteBundleService()
-    try:
-        source_file = request.files['file']
-        bundle_type = request.POST['bundle_type']
-        worksheet_uuid = request.POST['worksheet_uuid']
-        new_bundle_uuid =  service.upload_bundle(source_file, bundle_type, worksheet_uuid)
-        return {'uuid': new_bundle_uuid}
-    except Exception as e:
-        log_exception(e, traceback.format_exc())
-        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+    source_file = request.files['file']
+    bundle_type = request.POST['bundle_type']
+    worksheet_uuid = request.POST['worksheet_uuid']
+    new_bundle_uuid =  service.upload_bundle(source_file, bundle_type, worksheet_uuid)
+    return {'uuid': new_bundle_uuid}
 
 
 @get('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_bundle_info(uuid):
     service = BundleService()
-    try:
-        bundle_info = service.get_bundle_info(uuid)
-        if bundle_info is None:
-            return HTTPResponse({'error': 'The bundle is not available'})
-        bundle_info.update(service.get_bundle_contents(uuid))
-        return bundle_info
-    except Exception as e:
-        log_exception(e, traceback.format_exc())
-        return HTTPResponse({"error": str(e)}, status=httplib.INTERNAL_SERVER_ERROR)
+    bundle_info = service.get_bundle_info(uuid)
+    if bundle_info is None:
+        abort(httplib.NOT_FOUND, 'The bundle is not available')
+    bundle_info.update(service.get_bundle_contents(uuid))
+    return bundle_info
 
 
 @post('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
@@ -504,38 +476,86 @@ def post_bundle_info(uuid):
     Save metadata information for a bundle.
     '''
     service = BundleService()
-    try:
+    bundle_info = service.get_bundle_info(uuid)
+    # Save only if we're the owner.
+    if bundle_info['edit_permission']:
+        # TODO(klopyrev): The Content-Type header is not set correctly in
+        # editable_field.jsx, so we can't use request.json.
+        data = json.loads(request.body.read())
+        new_metadata = data['metadata']
+
+        # TODO: do this generally based on the CLI specs.
+        # Remove generated fields.
+        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated']:
+            if key in new_metadata:
+                del new_metadata[key]
+
+        # Convert to arrays
+        for key in ['tags', 'language', 'architectures']:
+            if key in new_metadata and isinstance(new_metadata[key], basestring):
+                new_metadata[key] = new_metadata[key].split(',')
+
+        # Convert to ints
+        for key in ['request_cpus', 'request_gpus', 'request_priority']:
+            if key in new_metadata:
+                new_metadata[key] = int(new_metadata[key])
+
+        service.update_bundle_metadata(uuid, new_metadata)
         bundle_info = service.get_bundle_info(uuid)
-        # Save only if we're the owner.
-        if bundle_info['edit_permission']:
-            # TODO(klopyrev): The Content-Type header is not set correctly in
-            # editable_field.jsx, so we can't use request.json.
-            data = json.loads(request.body.read())
-            new_metadata = data['metadata']
+        return bundle_info
+    else:
+        abort(httplib.FORBIDDEN, 'Can\'t save unless you\'re the owner')
 
-            # TODO: do this generally based on the CLI specs.
-            # Remove generated fields.
-            for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated']:
-                if key in new_metadata:
-                    del new_metadata[key]
 
-            # Convert to arrays
-            for key in ['tags', 'language', 'architectures']:
-                if key in new_metadata and isinstance(new_metadata[key], basestring):
-                    new_metadata[key] = new_metadata[key].split(',')
+@get('/api/chatbox/')
+def get_chat_box():
+    """
+    Return a list of chats that the current user has had
+    """
+    service = BundleService()
+    info = {
+        'user_id': request.user.user_id if request.user is not None else None
+    }
+    return {'chats': service.get_chat_log_info(info)}
 
-            # Convert to ints
-            for key in ['request_cpus', 'request_gpus', 'request_priority']:
-                if key in new_metadata:
-                    new_metadata[key] = int(new_metadata[key])
 
-            service.update_bundle_metadata(uuid, new_metadata)
-            bundle_info = service.get_bundle_info(uuid)
-            return bundle_info
-        else:
-            return {'error': 'Can\'t save unless you\'re the owner'}
-    except Exception as e:
-        log_exception(e, traceback.format_exc())
-        # TODO(klopyrev): Not sure why this API doesn't return the status code
-        # 500 as do the others.
-        return {"error": str(e)}
+@post('/api/chatbox',
+      apply=AuthenticatedPlugin())
+def post_chat_box():
+    """
+    Add the chat to the log.
+    Return an auto response, if the chat is directed to the system.
+    Otherwise, return an updated chat list of the sender.
+    """
+    service = BundleService()
+    recipient_user_id = request.POST.get('recipientUserId', None)
+    message = request.POST.get('message', None)
+    worksheet_uuid = request.POST.get('worksheetId', -1)
+    bundle_uuid = request.POST.get('bundleId', -1)
+    info = {
+        'sender_user_id': request.user.user_id,
+        'recipient_user_id': recipient_user_id,
+        'message': message,
+        'worksheet_uuid': worksheet_uuid,
+        'bundle_uuid': bundle_uuid,
+    }
+    chats = service.add_chat_log_info(info)
+    return {'chats': chats}
+
+
+@get('/api/users/')
+def get_users():
+    service = BundleService()
+    return {
+        'user_info': service.get_user_info(None) if request.user is not None else None,
+    }
+
+
+@get('/api/faq/')
+def get_faq():
+    """
+    Return a list of Frequently Asked Questions.
+    Currently disabled. Needs further work.
+    """
+    service = BundleService()
+    return {'faq': service.get_faq()}

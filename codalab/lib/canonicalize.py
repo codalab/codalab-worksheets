@@ -10,6 +10,7 @@ while getting the on-disk location of a target requires access to both the
 database and the bundle store.
 """
 from codalab.common import (
+  NotFoundError,
   UsageError,
 )
 from codalab.lib import (
@@ -65,7 +66,7 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
         bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%'), 'user_id': user_id}, max_results=2)
         if len(bundle_uuids) == 0:
-            raise UsageError('uuid prefix %s doesn\'t match any bundles' % bundle_spec)
+            raise NotFoundError('uuid prefix %s doesn\'t match any bundles' % bundle_spec)
         elif len(bundle_uuids) == 1:
             return bundle_uuids[0]
         else:
@@ -95,7 +96,7 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
             raise UsageError('%d bundles, index %d out of bounds' %
                              (len(bundle_uuids), reverse_index))
         elif len(bundle_uuids) == 0:
-            raise UsageError('bundle spec %s doesn\'t match any bundles' % bundle_spec)
+            raise NotFoundError('bundle spec %s doesn\'t match any bundles' % bundle_spec)
         else:
             raise UsageError('bundle spec %s matches %d bundles, index %d out of bounds' %
                              (bundle_spec, len(bundle_uuids), reverse_index))
@@ -144,7 +145,7 @@ def get_worksheet_uuid(model, base_worksheet_uuid, worksheet_spec):
         message = "name '%s'" % (worksheet_spec,)
 
     if not worksheets:
-        raise UsageError('No worksheet found with %s' % (message,))
+        raise NotFoundError('No worksheet found with %s' % (message,))
     if len(worksheets) > 1:
         raise UsageError(
           'Found multiple worksheets with %s:%s' %
