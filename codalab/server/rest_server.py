@@ -20,7 +20,7 @@ from bottle import (
     static_file,
 )
 
-from codalab.common import ExceptionToHttpError
+from codalab.common import exception_to_http_error
 import codalab.rest.account
 import codalab.rest.bundle
 import codalab.rest.example
@@ -126,7 +126,7 @@ class ErrorAdapter(object):
             except Exception as e:
                 if isinstance(e, HTTPResponse):
                     raise
-                code, message = ExceptionToHttpError(e)
+                code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
                     traceback.print_exc()
                 raise HTTPError(code, message)

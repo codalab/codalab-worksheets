@@ -3,6 +3,7 @@ Defines ORM classes for groups and permissions.
 '''
 from codalab.model.orm_object import ORMObject
 from codalab.common import (
+    NotFoundError,
     precondition,
     UsageError,
     PermissionError,

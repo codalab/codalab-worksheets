@@ -66,7 +66,7 @@ http_codes_and_exceptions = [
 ]
 
 
-def ExceptionToHttpError(e):
+def exception_to_http_error(e):
     """
     Returns the appropriate HTTP error code and message for the given exception.
     """
@@ -76,7 +76,7 @@ def ExceptionToHttpError(e):
     return httplib.INTERNAL_SERVER_ERROR, e.message
 
 
-def HttpErrorToException(code, message):
+def http_error_to_exception(code, message):
     """
     Returns the appropriate exception for the given HTTP error code and message.
     """
