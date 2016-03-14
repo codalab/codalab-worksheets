@@ -1819,7 +1819,9 @@ class BundleModel(object):
     def clear_oauth2_tokens(self, client_id, user_id):
         with self.engine.begin() as connection:
             connection.execute(oauth2_token.delete().where(
-                and_(oauth2_token.c.client_id == client_id, oauth2_token.c.user_id == user_id)
+                and_(oauth2_token.c.client_id == client_id,
+                     oauth2_token.c.user_id == user_id,
+                     oauth2_token.c.expires <= datetime.datetime.utcnow())
             ))
 
     def delete_oauth2_token(self, token_id):
