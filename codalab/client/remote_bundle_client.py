@@ -256,7 +256,7 @@ class RemoteBundleClient(BundleClient):
             if out_path is not None:
                 with open(out_path, 'wb') as out:
                     shutil.copyfileobj(fileobj, out)
-            else:
+            elif out_fileobj is not None:
                 shutil.copyfileobj(fileobj, out_fileobj)
 
     def read_file_section(self, target, offset, length):

@@ -1517,20 +1517,15 @@ class BundleCLI(object):
         """
         subpath_is_file = [None] * len(subpaths)
         subpath_offset = [None] * len(subpaths)
-    
 
-        # Constants for a simple exponential backoff routine that will decrease the
-        # frequency at which we check this bundle's state from 1s to 1m.
-        period = 1.0
-        backoff = 1.1
-        max_period = 60.0
+        SLEEP_PERIOD = 1.0
 
         # Wait for the run to start.
         while True:
             info = client.get_bundle_info(bundle_uuid)
             if info['state'] in (State.RUNNING, State.READY, State.FAILED):
                 break
-            time.sleep(period)
+            time.sleep(SLEEP_PERIOD)
 
         info = None
         run_finished = False
@@ -1540,7 +1535,6 @@ class BundleCLI(object):
                 run_finished = info['state'] in (State.READY, State.FAILED)
 
             # Read data.
-            change = False
             for i in xrange(0, len(subpaths)):
                 # If the subpath we're interested in appears, check if it's a
                 # file and if so, initialize the offset.
@@ -1563,7 +1557,6 @@ class BundleCLI(object):
                     result = client.read_file_section((bundle_uuid, subpaths[i]), subpath_offset[i], READ_LENGTH)
                     if not result:
                         break
-                    change = True
                     subpath_offset[i] += len(result)
                     self.stdout.write(result)
                     if len(result) < READ_LENGTH:
@@ -1576,12 +1569,8 @@ class BundleCLI(object):
             if run_finished:
                 break
 
-            # If we got no data this time around, check less often.
-            if not change:
-                period = min(backoff*period, max_period)
-
             # Sleep, since we've finished reading all the data available.
-            time.sleep(period)
+            time.sleep(SLEEP_PERIOD)
 
         return info['state']
 

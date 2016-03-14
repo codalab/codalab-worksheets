@@ -512,7 +512,7 @@ class LocalBundleClient(BundleClient):
 
         return bundle_dict
 
-    def check_download_permission(self, target):
+    def check_target_has_read_permission(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
 
     def get_target_info(self, target, depth):
@@ -520,7 +520,7 @@ class LocalBundleClient(BundleClient):
         Returns information about an individual target inside the bundle, or
         None if the target doesn't exist.
         """
-        self.check_download_permission(target)
+        self.check_target_has_read_permission(target)
         return self.download_manager.get_target_info(target[0], target[1], depth)
 
     def open_tarred_gzipped_directory(self, target):
@@ -528,7 +528,7 @@ class LocalBundleClient(BundleClient):
         Opens a tarred and gzipped archive of the target directory for
         streaming. The caller should ensure that the target is a directory.
         """
-        self.check_download_permission(target)
+        self.check_target_has_read_permission(target)
         return self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])
 
     def open_gzipped_file(self, target):
@@ -536,7 +536,7 @@ class LocalBundleClient(BundleClient):
         Opens a gzipped archive of the target file. The caller should ensure
         that the target is a file.
         """
-        self.check_download_permission(target)
+        self.check_target_has_read_permission(target)
         return self.download_manager.stream_file(target[0], target[1], gzipped=True)
 
     def download_directory(self, target, download_path):
@@ -544,7 +544,7 @@ class LocalBundleClient(BundleClient):
         Downloads the target directory to the given path. The caller should
         ensure that the target is a directory.
         """
-        self.check_download_permission(target)
+        self.check_target_has_read_permission(target)
         with closing(self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])) as fileobj:
             os.mkdir(download_path)
             un_tar_gzip_directory(fileobj, download_path)
@@ -564,12 +564,12 @@ class LocalBundleClient(BundleClient):
         self._do_download_file(target, out_fileobj=out)
 
     def _do_download_file(self, target, out_path=None, out_fileobj=None):
-        self.check_download_permission(target)
+        self.check_target_has_read_permission(target)
         with closing(self.download_manager.stream_file(target[0], target[1], gzipped=False)) as fileobj:
             if out_path is not None:
                 with open(out_path, 'wb') as out:
                     shutil.copyfileobj(fileobj, out)
-            else:
+            elif out_fileobj is not None:
                 shutil.copyfileobj(fileobj, out_fileobj)
 
     def read_file_section(self, target, offset, length, gzipped=False):
@@ -578,7 +578,7 @@ class LocalBundleClient(BundleClient):
         starting at offset and of the given length. The caller should ensure
         that the target is a file.
         """
-        self.check_download_permission(target)
+        self.check_target_has_read_permission(target)
         return self.download_manager.read_file_section(
             target[0], target[1], offset, length, gzipped)
 
@@ -591,7 +591,7 @@ class LocalBundleClient(BundleClient):
 
         The caller should ensure that the target is a file.
         '''
-        self.check_download_permission(target)
+        self.check_target_has_read_permission(target)
         lines = self.download_manager.summarize_file(
             target[0], target[1],
             max_num_lines, 0, self.MAX_BYTES_PER_LINE, None,

@@ -151,16 +151,19 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     """
     assert(num_head_lines > 0 or num_tail_lines > 0)
 
-    def ensure_ends_with_newline(lines):
+    def ensure_ends_with_newline(lines, remove_line_without_newline=False):
         if lines and not lines[-1].endswith('\n'):
-            lines[-1] += '\n'
+            if remove_line_without_newline:
+                lines.pop()
+            else:
+                lines[-1] += '\n'
     
     file_size = os.stat(file_path).st_size
     with open(file_path) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
             if num_head_lines > 0:
                 head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(True)[:num_head_lines]
-                ensure_ends_with_newline(head_lines)
+                ensure_ends_with_newline(head_lines, remove_line_without_newline=True)
 
             if num_tail_lines > 0:
                 fileobj.seek(file_size - num_tail_lines * max_line_length, os.SEEK_SET)
