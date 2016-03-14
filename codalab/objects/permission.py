@@ -86,7 +86,7 @@ def get_single_group(model, group_spec, search_fn):
         groups = search_fn(model, name=group_spec)
         message = "name '%s'" % (group_spec,)
     if not groups:
-        raise UsageError('Found no group with %s' % (message,))
+        raise NotFoundError('Found no group with %s' % (message,))
     elif len(groups) > 1:
         raise UsageError(
           'Found multiple groups with %s:%s' %

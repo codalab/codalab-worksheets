@@ -7,7 +7,6 @@ BUFFER_SIZE = 2 * 1024 * 1024
 import sys
 import formatting
 import urllib2
-from codalab.common import UsageError
 import subprocess
 
 def copy(source, dest, autoflush=True, print_status=None):
