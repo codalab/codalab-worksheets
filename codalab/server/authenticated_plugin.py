@@ -6,6 +6,8 @@ from bottle import (
   url,
 )
 
+from codalab.lib.server_util import redirect_with_query
+
 
 class AuthenticatedPlugin(object):
     """
@@ -27,7 +29,7 @@ class AuthenticatedPlugin(object):
                 if request.is_ajax:
                     abort(httplib.UNAUTHORIZED, 'Not authorized')
                 else:
-                    redirect(url('login', redirect_uri=request.url))
+                    redirect_with_query('/account/login', {'next': request.url})
 
             return callback(*args, **kwargs)
 

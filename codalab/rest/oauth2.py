@@ -24,7 +24,7 @@ contents of the default query parameters 'error' and 'error_description'.
 """
 from datetime import datetime, timedelta
 
-from bottle import request, template, local, route, post, get
+from bottle import request, template, local, route, post, get, default_app
 
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Token
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
@@ -129,3 +129,5 @@ def validate():
 @get('/oauth2/errors', name='oauth2_errors')
 def show_errors():
     return template('oauth2_errors', **request.query)
+
+default_app().config['OAUTH2_PROVIDER_ERROR_ENDPOINT'] = 'oauth2_errors'
