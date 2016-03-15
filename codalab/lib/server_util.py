@@ -42,11 +42,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # BEGIN ADAPTED FROM flask_oauthlib.utils #
 
 
-def extract_params():
+def extract_params(extract_body):
     """Extract request params."""
     uri = request.url
     http_method = request.method
-    body = dict(request.forms)
+    if extract_body:
+        body = dict(request.forms)
+    else:
+        body = None
     headers = dict(request.headers)
     if 'wsgi.input' in headers:
         del headers['wsgi.input']

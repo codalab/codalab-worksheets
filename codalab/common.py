@@ -4,6 +4,7 @@ This module exports some simple names used throughout the CodaLab bundle system:
   - The State class, an enumeration of all legal bundle states.
   - precondition, a utility method that check's a function's input preconditions.
 """
+import httplib
 
 # Increment this on the develop branch when develop is merged into master.
 # http://semver.org/
@@ -36,6 +37,13 @@ class UsageError(ValueError):
     """
 
 
+class NotFoundError(UsageError):
+    """
+    Raised when a requested resource has not been found. Similar to HTTP status
+    404.
+    """
+
+
 class AuthorizationError(UsageError):
     """
     Raised when access to a resource is refused because authentication is required
@@ -48,6 +56,36 @@ class PermissionError(UsageError):
     Raised when access to a resource is refused because the user does not have
     necessary permissions. Similar to HTTP status 403.
     """
+
+# Listed in order of most specific to least specific.
+http_codes_and_exceptions = [
+    (httplib.FORBIDDEN, PermissionError),
+    (httplib.UNAUTHORIZED, AuthorizationError),
+    (httplib.NOT_FOUND, NotFoundError),
+    (httplib.BAD_REQUEST, UsageError),
+]
+
+
+def exception_to_http_error(e):
+    """
+    Returns the appropriate HTTP error code and message for the given exception.
+    """
+    for known_code, exception_type in http_codes_and_exceptions:
+        if isinstance(e, exception_type):
+            return known_code, e.message
+    return httplib.INTERNAL_SERVER_ERROR, e.message
+
+
+def http_error_to_exception(code, message):
+    """
+    Returns the appropriate exception for the given HTTP error code and message.
+    """
+    for known_code, exception_type in http_codes_and_exceptions:
+        if code == known_code:
+            return exception_type(message)
+    if code >= 400 and code < 500:
+        return UsageError(message)
+    return Exception(message)
 
 
 class State(object):

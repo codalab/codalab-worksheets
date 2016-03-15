@@ -18,6 +18,7 @@ import os
 
 from codalab.common import (
   precondition,
+  NotFoundError,
   UsageError,
 )
 from codalab.lib import (
@@ -105,7 +106,7 @@ class Bundle(ORMObject):
             if not os.path.exists(target):
                 parent_spec = getattr(parent.metadata, 'name', parent.uuid)
                 target_text = path_util.safe_join(parent_spec, dep.parent_path)
-                raise UsageError('Target not found: %s' % (target_text,))
+                raise NotFoundError('Target not found: %s' % (target_text,))
             if relative_symlinks:
                 # Create a symlink that points to the dependency's relative target.
                 target = path_util.safe_join(

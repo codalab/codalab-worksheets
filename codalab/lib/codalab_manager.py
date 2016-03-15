@@ -354,6 +354,7 @@ class CodaLabManager(object):
         else:
             raise UsageError('Unexpected model class: %s, expected MySQLModel or SQLiteModel' % (model_class,))
         model.root_user_id = self.root_user_id()
+        model.system_user_id = self.system_user_id()
         return model
 
     def auth_handler(self, mock=False):
@@ -367,6 +368,8 @@ class CodaLabManager(object):
             return self.mock_auth_handler()
         if handler_class == 'OAuthHandler':
             return self.oauth_handler()
+        if handler_class == 'RestOAuthHandler':
+            return self.rest_oauth_handler()
         raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
 
     @cached
@@ -383,6 +386,13 @@ class CodaLabManager(object):
         kwargs = {arg: auth_config[arg] for arg in arguments}
         from codalab.server.auth import OAuthHandler
         return OAuthHandler(**kwargs)
+
+    @cached
+    def rest_oauth_handler(self):
+        from codalab.server.auth import RestOAuthHandler
+        address = 'http://%s:%d' % (self.config['server']['rest_host'],
+                                    self.config['server']['rest_port'])
+        return RestOAuthHandler(address, self.model())
 
     @cached
     def emailer(self):
@@ -403,6 +413,9 @@ class CodaLabManager(object):
 
     def root_user_id(self):
         return self.config['server'].get('root_user_id', '0')
+
+    def system_user_id(self):
+        return self.config['server'].get('system_user_id', '-1')
 
     def local_client(self):
         return self.client('local')
@@ -473,17 +486,17 @@ class CodaLabManager(object):
         if 'token_info' in auth:
             token_info = auth['token_info']
             expires_at = token_info.get('expires_at', 0.0)
-            if expires_at > time.time():
-                # Token is usable but check if it's nearing expiration (10 minutes)
-                # If not nearing, then just return it.
-                if expires_at >= (time.time() + 10 * 60):
-                    return token_info['access_token']
-                # Otherwise, let's refresh the token.
-                token_info = client.login('refresh_token',
-                                          auth['username'],
-                                          token_info['refresh_token'])
-                if token_info is not None:
-                    return _cache_token(token_info)
+
+            # If token is not nearing expiration, just return it.
+            if expires_at >= (time.time() + 10 * 60):
+                return token_info['access_token']
+
+            # Otherwise, let's refresh the token.
+            token_info = client.login('refresh_token',
+                                      auth['username'],
+                                      token_info['refresh_token'])
+            if token_info is not None:
+                return _cache_token(token_info)
 
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}

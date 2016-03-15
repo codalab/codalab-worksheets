@@ -8,6 +8,7 @@ import datetime
 import os
 import re
 import sys
+import yaml
 
 from codalab.bundles import (
     get_bundle_subclass,
@@ -18,6 +19,7 @@ from codalab.common import (
   precondition,
   State,
   AuthorizationError,
+  NotFoundError,
   UsageError,
   PermissionError
 )
@@ -32,6 +34,8 @@ from codalab.lib import (
     formatting,
 )
 from codalab.objects.worksheet import Worksheet
+from codalab.objects.chat_box_qa import ChatBoxQA
+
 from codalab.objects import permission
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
@@ -882,7 +886,7 @@ class LocalBundleClient(BundleClient):
     def _user_name_to_id(self, user_name):
         results = self.auth_handler.get_users('names', [user_name])
         if not results[user_name]:
-            raise UsageError('Unknown user: %s' % user_name)
+            raise NotFoundError('Unknown user: %s' % user_name)
         return results[user_name].unique_id
 
     def _user_id_to_names(self, user_ids):
@@ -1292,10 +1296,10 @@ class LocalBundleClient(BundleClient):
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
 
-    def get_user_info(self, user_id):
+    def get_user_info(self, user_id, fetch_extra=False):
         if user_id is None:
             user_id = self._current_user_id()
-        return self.model.get_user_info(user_id)
+        return self.model.get_user_info(user_id, fetch_extra)
 
     def update_user_info(self, user_info):
         user_id = self._current_user_id()
@@ -1306,7 +1310,6 @@ class LocalBundleClient(BundleClient):
             self.model.update_user_info(user_info)
         else:
             raise PermissionError('Only the root user has permissions to edit users.')
-
 
     @staticmethod
     def _check_worksheet_not_frozen(worksheet):
@@ -1324,3 +1327,86 @@ class LocalBundleClient(BundleClient):
             if user_info['disk_used'] >= user_info['disk_quota']:
                 raise UsageError('Out of disk quota: %s' %
                     formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota']))
+
+
+    # methods related to chat box and chat portal
+    def format_message_response(self, params):
+        """
+        Format automatic response
+        |params| is None if the system can't process the user's message
+        or is not confident enough to give a response.
+        Otherwise, |params| is a triple that consists of
+        the question that the system is trying to answer,
+        the response it has for that question, and the recommended command to run.
+        Return the automatic response that will be sent back to the user's chat box.
+        """
+        if params == None:
+            return 'Thank you for your question. Our staff will get back to you as soon as we can.'
+        else:
+            question, response, command = params
+            result = 'This is the question we are trying to answer: ' + question + '\n'
+            result += response + '\n'
+            result += 'You can try to run the following command: \n'
+            result += command
+            return result
+
+    def add_chat_log_info(self, query_info):
+        """
+        Add the given chat into the database.
+        |query_info| encapsulates all the information of one chat
+        Example: query_info = {
+            'sender_user_id': 1,
+            'recipient_user_id': 2,
+            'message': 'Hello this is my message',
+            'worksheet_uuid': 0x508cf51e546742beba97ed9a69329838,   // the worksheet the user is browsing when he/she sends this message
+            'bundle_uuid': 0x8e66b11ecbda42e2a1f544627acf1418,   // the bundle the user is browsing when he/she sends this message
+        }
+        Return an auto response, if the chat is directed to the system.
+        Otherwise, return an updated chat list of the sender.
+        """
+        updated_data = self.model.add_chat_log_info(query_info)
+        if query_info.get('recipient_user_id') != self.model.system_user_id:
+            return updated_data
+        else:
+            message = query_info.get('message')
+            worksheet_uuid = query_info.get('worksheet_uuid')
+            bundle_uuid = query_info.get('bundle_uuid')
+            bot_response = self.format_message_response(ChatBoxQA.answer(message, worksheet_uuid, bundle_uuid))
+            info = {
+                'sender_user_id': self.model.system_user_id,
+                'recipient_user_id': self._current_user_id(),
+                'message': bot_response,
+                'worksheet_uuid': worksheet_uuid,
+                'bundle_uuid': bundle_uuid,
+            }
+            self.model.add_chat_log_info(info)
+            return bot_response
+
+    def get_chat_log_info(self, query_info):
+        '''
+        |query_info| specifies the user_id of the user that you are querying about.
+        Example: query_info = {
+            user_id: 2,   // get the chats sent by and received by the user with user_id 2
+            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
+        }
+        Return a list of chats that the user have had given the user_id
+        '''
+        return self.model.get_chat_log_info(query_info)
+
+    # methods related to faq
+    def get_faq(self):
+        '''
+        Return a list of FAQ item, each of the following format:
+        '0': {
+            'question': 'how can I upload / add a bundle?'
+            'answer': {
+                'response': 'You can do cl upload or click Update Bundle.',
+                'command': 'cl upload <file_path>'
+            }
+        }
+        '''
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
+        with open(file_path, 'r') as stream:
+            content = yaml.load(stream)
+            return content
+        

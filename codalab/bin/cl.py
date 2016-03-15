@@ -84,6 +84,11 @@ def do_server_command(bundle_cli, args):
                  'CPUs.',
             type=int, default=1),
         Commands.Argument(
+            '-t', '--threads',
+            help='Number of threads to use. The server will be able to handle '
+                 '(--processes) x (--threads) requests at the same time.',
+            type=int, default=50),
+        Commands.Argument(
             '-d', '--debug', help='Run the development server for debugging.',
             action='store_true')
     ),
@@ -94,12 +99,8 @@ def do_rest_server_command(bundle_cli, args):
     if args.watch:
         run_server_with_watch()
     else:
-        if not args.debug:
-            # gevent.monkey.patch_all() needs to be called before importing
-            # bottle.
-            import gevent.monkey; gevent.monkey.patch_all()
         from codalab.server.rest_server import run_rest_server
-        run_rest_server(bundle_cli.manager, args.debug, args.processes)
+        run_rest_server(bundle_cli.manager, args.debug, args.processes, args.threads)
 
 
 if __name__ == '__main__':
