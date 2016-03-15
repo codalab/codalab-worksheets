@@ -341,6 +341,11 @@ class CodaLabManager(object):
         info['disk_quota'] = formatting.parse_size(info['disk_quota'])
         return info
 
+    def launch_new_worker_system(self):
+        # TODO: This flag and all code in the False code path of this flag will
+        # get deleted once the new worker system is launched.
+        return self.config['workers'].get('launch_new_worker_system', False)
+
     @cached
     def model(self):
         """
@@ -365,7 +370,7 @@ class CodaLabManager(object):
 
     @cached
     def download_manager(self):
-        return DownloadManager(self.bundle_store())
+        return DownloadManager(self.launch_new_worker_system(), self.model(), self.bundle_store())
 
     def auth_handler(self, mock=False):
         '''

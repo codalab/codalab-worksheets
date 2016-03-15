@@ -1,7 +1,6 @@
 import os
 
 from codalab.common import UsageError
-from codalab.lib import path_util
 from worker.download_util import get_and_check_target_path, get_target_path
 from worker import file_util
 
@@ -18,7 +17,9 @@ class DownloadManager(object):
     TODO(klopyrev): Worker code in a future pull request.
     """
 
-    def __init__(self, bundle_store):
+    def __init__(self, launch_new_worker_system, bundle_model, bundle_store):
+        self._launch_new_worker_system = launch_new_worker_system
+        self._bundle_model = bundle_model
         self._bundle_store = bundle_store
 
     def get_target_info(self, uuid, path, depth):
@@ -26,13 +27,21 @@ class DownloadManager(object):
         Returns information about an individual target inside the bundle, or
         None if the target doesn't exist.
         """
-        bundle_path = self._bundle_store.get_bundle_location(uuid)
-        final_path = get_target_path(bundle_path, path)
-        # TODO: This doesn't really check for .., but this code will be
-        # deprecated in favor of a version that uses the contents index soon.
-        if not os.path.islink(final_path) and not os.path.exists(final_path):
-            return None
-        return path_util.get_info(final_path, depth)
+        if not self._launch_new_worker_system:
+            bundle_path = self._bundle_store.get_bundle_location(uuid)
+            final_path = get_target_path(bundle_path, path)
+            # TODO: This doesn't really check for .., but this code will be
+            # deprecated in favor of a version that uses the contents index soon.
+            if not os.path.islink(final_path) and not os.path.exists(final_path):
+                return None
+            # TODO: Remove the depth parameter from index_contents once the
+            # worker system launches, since it's not used.
+            return file_util.index_contents(final_path, depth)
+        else:
+            index = self._bundle_model.get_bundle_contents_index(uuid)
+            if index is None:
+                return None
+            return file_util.restrict_contents_index(index, path, depth)
 
     def stream_tarred_gzipped_directory(self, uuid, path):
         """
