@@ -47,6 +47,8 @@ from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
 from codalab.lib import formatting
+from codalab.model.worker_model import WorkerModel
+
 
 
 def cached(fn):
@@ -269,6 +271,14 @@ class CodaLabManager(object):
         tempfile.tempdir = os.path.join(home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
         return home
 
+    @property
+    @cached
+    def worker_socket_dir(self):
+        from codalab.lib import path_util
+        directory = os.path.join(self.codalab_home, 'worker_sockets')
+        path_util.make_directory(directory)
+        return directory
+
     @cached
     def bundle_store(self):
         """
@@ -367,6 +377,10 @@ class CodaLabManager(object):
         model.root_user_id = self.root_user_id()
         model.system_user_id = self.system_user_id()
         return model
+
+    @cached
+    def worker_model(self):
+        return WorkerModel(self.model().engine, self.worker_socket_dir)
 
     @cached
     def download_manager(self):

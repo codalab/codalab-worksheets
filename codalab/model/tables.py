@@ -18,6 +18,7 @@ from sqlalchemy.types import (
   Float,
   Enum,
 )
+from sqlalchemy.sql.schema import ForeignKeyConstraint
 
 db_metadata = MetaData()
 
@@ -326,4 +327,57 @@ chat = Table(
   Column('worksheet_uuid', String(63), nullable=True), # What is the id of the worksheet that the sender is on? 
   Column('bundle_uuid', String(63), nullable=True), # What is the id of the bundle that the sender is on? 
   sqlite_autoincrement=True,
+)
+
+# Store information about workers.
+worker = Table(
+  'worker',
+  db_metadata,
+
+  Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
+  Column('worker_id', String(127), primary_key=True, nullable=False),
+
+  Column('slots', Integer, nullable=False),  # Number of additional bundles the worker can run.
+  Column('checkin_time', DateTime, nullable=False),  # When the worker last checked in with the bundle service.
+  Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.
+)
+
+# Store information about all sockets currently allocated to each worker.
+worker_socket = Table(
+  'worker_socket',
+  db_metadata,
+
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('worker_id', String(127), nullable=False),
+  # No foreign key constraint on the worker table so that we can create a socket
+  # for the worker before adding the worker to the worker table.
+
+  Column('socket_id', Integer, primary_key=True, nullable=False),
+)
+
+# Store information about the bundles currently running on each worker.
+worker_run = Table(
+  'worker_run',
+  db_metadata,
+
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('worker_id', String(127), nullable=False),
+  ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
+
+  Column('run_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
+  Index('uuid_index', 'run_uuid'),
+)
+
+# Store information about the dependencies available on each worker.
+worker_dependency = Table(
+  'worker_dependency',
+  db_metadata,
+
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('worker_id', String(127), nullable=False),
+  ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
+
+  # No foreign key here, since we don't have any logic to clean-up bundles that
+  # are deleted.
+  Column('dependency_uuid', String(63), nullable=False),
 )
