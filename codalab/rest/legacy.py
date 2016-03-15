@@ -151,7 +151,7 @@ class BundleService(object):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
                     target_info = self.get_target_info((bundle_info['uuid'], ''))
-                    bundle_info['info'] = target_info
+                    bundle_info['target_info'] = target_info
                     try:
                         if isinstance(bundle_info, dict):
                             worksheet_util.format_metadata(bundle_info.get('metadata'))
