@@ -184,10 +184,11 @@ class BundleService(object):
             return formatting.verbose_contents_str(lines)
 
         info = self.get_target_info((uuid, ''), 2)  # List files
-        type = info.get('type')
-        if type == 'file':
+        if info is None:
+            return info
+        if info['type'] == 'file':
             info['file_contents'] = get_lines('')
-        elif type == 'directory':
+        else:
             # Read contents of stdout and stderr.
             info['stdout'] = None
             info['stderr'] = None
