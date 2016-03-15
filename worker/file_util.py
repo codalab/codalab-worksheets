@@ -1,4 +1,5 @@
 from contextlib import closing
+import copy
 from cStringIO import StringIO
 import gzip
 import os
@@ -42,16 +43,15 @@ def restrict_contents_index(index, path, depth=None):
     """
     Given an index generates a restricted version.
     
-    First, it finds the entry for the given path. If no entry is found, None is
-    returned.
+    First, it finds the entry in the index for the given path. If no entry is
+    found, None is returned.
 
     Then, if depth is not None, it filters out any entries more than depth levels
     deep. Depth 0, for example, means only the top-level entry is included, and
     no contents. Depth 1 means the contents of the top-level are included, but
     nothing deeper.
     """
-    if index is None:
-        return None
+    index = copy.deepcopy(index)
 
     if path:
         names = path.split(os.path.sep)

@@ -695,6 +695,13 @@ class BundleModel(object):
             connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
 
     def update_bundle_contents_index(self, uuid, index):
+        """
+        Deletes the old contents of the index, and updates them with the new
+        values.
+
+        For reference on the format of index, see
+        worker.file_util.index_contents.
+        """
         rows = []
         def recurse(entry, parent_path):
             entry['bundle_uuid'] = uuid
@@ -722,6 +729,10 @@ class BundleModel(object):
             self.do_multirow_insert(connection, cl_bundle_contents_index, rows)
 
     def get_bundle_contents_index(self, uuid):
+        """
+        For reference on the format of the returned index, see
+        worker.file_util.index_contents.
+        """
         with self.engine.begin() as connection:
             # Sort so that all directories appear before the files inside them.
             rows = connection.execute(

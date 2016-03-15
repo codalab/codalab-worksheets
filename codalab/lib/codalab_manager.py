@@ -342,10 +342,9 @@ class CodaLabManager(object):
         return info
 
     def launch_new_worker_system(self):
-        try:
-            return self.config['workers']['launch_new_worker_system']
-        except KeyError:
-            return False
+        # TODO: This flag and all code in the False code path of this flag will
+        # get deleted once the new worker system is launched.
+        return self.config['workers'].get('launch_new_worker_system', False)
 
     @cached
     def model(self):
