@@ -2,6 +2,7 @@
 Legacy REST APIs moved from the codalab-worksheets Django REST server. 
 """
 import base64
+from contextlib import closing
 from cStringIO import StringIO
 from datetime import datetime, timedelta
 import json
@@ -24,7 +25,7 @@ from bottle import (
 from codalab.bundles import get_bundle_subclass
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.common import UsageError
+from codalab.common import State, UsageError
 from codalab.lib import (
   bundle_cli,
   file_util,
@@ -47,12 +48,10 @@ class BundleService(object):
     '''
     Adapts the LocalBundleClient for REST calls.
     '''
-    # Maximum number of lines of files to show
-    HEAD_MAX_LINES = 100
 
     def __init__(self):
         self.client = LocalBundleClient(
-            'local', local.bundle_store, local.model,
+            'local', local.bundle_store, local.model, local.download_manager,
             LocalUserAuthHandler(request.user, local.model), verbose=0)
 
     def get_bundle_info(self, uuid):
@@ -77,9 +76,6 @@ class BundleService(object):
         bundle_info['editable_metadata_fields'] = worksheet_util.get_editable_metadata_fields(cls, metadata)
 
         return bundle_info
-
-    def head_target(self, target, max_num_lines=HEAD_MAX_LINES):
-        return self.client.head_target(target, max_num_lines)
 
     def search_worksheets(self, keywords, worksheet_uuid=None):
         return self.client.search_worksheets(keywords)
@@ -168,42 +164,47 @@ class BundleService(object):
         self.client.update_worksheet_items(worksheet_info, new_items)
         # Note: commands are ignored
 
-    def get_bundle_contents(self, uuid):
+    def get_bundle_file_contents(self, uuid):
         """
         If bundle is a single file, get file contents.
         Otherwise, get stdout and stderr.
-        For each file, only return the first few lines.
+        For each file, return a truncated version.
         """
-        def get_lines(name):
-            lines = self.head_target((uuid, name), self.HEAD_MAX_LINES)
-            if lines is not None:
-                lines = ''.join(map(base64.b64decode, lines))
+        def get_summary(info, name):
+            if info['type'] == 'file':
+                TRUNCATION_TEXT = (
+                    '\n'
+                    '... Truncated. Click link above to see full file. ...\n'
+                    '\n')
+                contents = local.download_manager.summarize_file(
+                    uuid, name,
+                    num_head_lines=50, num_tail_lines=50, max_line_length=128,
+                    truncation_text=TRUNCATION_TEXT, gzipped=False)
+                return formatting.verbose_contents_str(contents)
+            elif info['type'] == 'link':
+                return  ' -> ' + info['link']
 
-            return formatting.verbose_contents_str(lines)
+        info = self.get_top_level_contents((uuid, ''))
+        if info is None:
+            return {}
 
-        info = self.get_target_info((uuid, ''), 2)  # List files
-        if info['type'] == 'file':
-            info['file_contents'] = get_lines('')
-        else:
+        if info['type'] == 'file' or info['type'] == 'link':
+            info['file_contents'] = get_summary(info, '')
+        elif info['type'] == 'directory':
             # Read contents of stdout and stderr.
             info['stdout'] = None
             info['stderr'] = None
-            contents = info.get('contents')
-            if contents:
-                for item in contents:
-                    name = item['name']
-                    if name in ['stdout', 'stderr']:
-                        info[name] = get_lines(name)
+            for item in info['contents']:
+                name = item['name']
+                if name in ['stdout', 'stderr'] and (item['type'] == 'file' or item['type'] == 'link'):
+                    info[name] = get_summary(item, name)
         return info
 
-    def get_target_info(self, target, depth=1):
-        info = self.client.get_target_info(target, depth)
-        contents = info.get('contents')
-        # Render the sizes
-        if contents:
-            for item in contents:
-                if 'size' in item:
-                    item['size_str'] = formatting.size_str(item['size'])
+    def get_top_level_contents(self, target):
+        info = self.client.get_target_info(target, 1)
+        if info is not None and info['type'] == 'directory':
+            for item in info['contents']:
+                item['size_str'] = formatting.size_str(item['size'])
         return info
 
     # Create an instance of a CLI.
@@ -343,21 +344,24 @@ class RemoteBundleService(object):
 
         # Upload it by creating a file handle and copying source_file to it (see RemoteBundleClient.upload_bundle in the CLI).
         remote_file_uuid = self.client.open_temp_file(metadata['name'])
-        dest = RPCFileHandle(remote_file_uuid, self.client.proxy)
-        file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
-        dest.close()
-
-        pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
-        if not pack and zip_util.path_is_archive(metadata['name']):
-            metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
-
-        # Then tell the client that the uploaded file handle is there.
-        new_bundle_uuid = self.client.finish_upload_bundle(
-            [remote_file_uuid],
-            not pack,  # unpack
-            info,
-            worksheet_uuid,
-            True)  # add_to_worksheet
+        try:
+            with closing(RPCFileHandle(remote_file_uuid, self.client.proxy)) as dest:
+                file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
+           
+            pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
+            if not pack and zip_util.path_is_archive(metadata['name']):
+                metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
+           
+            # Then tell the client that the uploaded file handle is there.
+            new_bundle_uuid = self.client.finish_upload_bundle(
+                [remote_file_uuid],
+                not pack,  # unpack
+                info,
+                worksheet_uuid,
+                True)  # add_to_worksheet
+        except:
+            self.client.finalize_file(remote_file_uuid)
+            raise
         return new_bundle_uuid
 
 
@@ -441,8 +445,8 @@ def post_worksheet_content(uuid):
 @get('/api/bundles/content/<uuid:re:%s>/<path:path>/' % spec_util.UUID_STR)
 def get_bundle_content(uuid, path=''):
     service = BundleService()
-    target = (uuid, path)
-    return service.get_target_info(target)
+    info = service.get_top_level_contents((uuid, path))
+    return info if info is not None else {}
 
 
 @post('/api/bundles/upload/')
@@ -466,7 +470,7 @@ def get_bundle_info(uuid):
     bundle_info = service.get_bundle_info(uuid)
     if bundle_info is None:
         abort(httplib.NOT_FOUND, 'The bundle is not available')
-    bundle_info.update(service.get_bundle_contents(uuid))
+    bundle_info.update(service.get_bundle_file_contents(uuid))
     return bundle_info
 
 

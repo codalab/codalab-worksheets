@@ -14,7 +14,7 @@ from codalab.server.cookie import LoginCookie
 
 def send_verification_key(username, email, key):
     # Send verification key to given email address
-    hostname = request.get_header('Host')
+    hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
     local.emailer.send_email(
         subject="Verify your new CodaLab account",
         body=template('email_verification_body', user=username, current_site=hostname, key=key),

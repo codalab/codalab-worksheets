@@ -44,8 +44,12 @@ from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
 )
 from codalab.lib.crypt_util import get_random_string
+from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
 from codalab.lib import formatting
+from codalab.model.worker_model import WorkerModel
+
+
 
 def cached(fn):
     def inner(self):
@@ -241,11 +245,15 @@ class CodaLabManager(object):
 
     @property
     @cached
-    def config_path(self): return os.path.join(self.codalab_home, 'config.json')
+    def config_path(self):
+        return os.getenv('CODALAB_CONFIG', 
+                         os.path.join(self.codalab_home, 'config.json'))
 
     @property
     @cached
-    def state_path(self): return os.path.join(self.codalab_home, 'state.json')
+    def state_path(self):
+        return os.getenv('CODALAB_STATE',
+                         os.path.join(self.codalab_home, 'state.json'))
 
     @property
     @cached
@@ -262,6 +270,14 @@ class CodaLabManager(object):
         # TODO: Fix this, this is bad
         tempfile.tempdir = os.path.join(home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
         return home
+
+    @property
+    @cached
+    def worker_socket_dir(self):
+        from codalab.lib import path_util
+        directory = os.path.join(self.codalab_home, 'worker_sockets')
+        path_util.make_directory(directory)
+        return directory
 
     @cached
     def bundle_store(self):
@@ -335,6 +351,11 @@ class CodaLabManager(object):
         info['disk_quota'] = formatting.parse_size(info['disk_quota'])
         return info
 
+    def launch_new_worker_system(self):
+        # TODO: This flag and all code in the False code path of this flag will
+        # get deleted once the new worker system is launched.
+        return self.config['workers'].get('launch_new_worker_system', False)
+
     @cached
     def model(self):
         """
@@ -356,6 +377,14 @@ class CodaLabManager(object):
         model.root_user_id = self.root_user_id()
         model.system_user_id = self.system_user_id()
         return model
+
+    @cached
+    def worker_model(self):
+        return WorkerModel(self.model().engine, self.worker_socket_dir)
+
+    @cached
+    def download_manager(self):
+        return DownloadManager(self.launch_new_worker_system(), self.model(), self.bundle_store())
 
     def auth_handler(self, mock=False):
         '''
@@ -436,10 +465,11 @@ class CodaLabManager(object):
         if is_local_address(address):
             bundle_store = self.bundle_store()
             model = self.model()
+            download_manager = self.download_manager()
             auth_handler = self.auth_handler(mock=is_cli)
 
             from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, auth_handler, self.cli_verbose)
+            client = LocalBundleClient(address, bundle_store, model, download_manager, auth_handler, self.cli_verbose)
             self.clients[address] = client
             if is_cli:
                 # Set current user

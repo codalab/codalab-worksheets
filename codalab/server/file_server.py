@@ -17,7 +17,7 @@ import tempfile
 import uuid
 import xmlrpclib
 
-from codalab.lib import path_util, zip_util
+from codalab.lib import path_util
 
 
 class FileServer(object):
@@ -27,30 +27,6 @@ class FileServer(object):
         self.file_paths = {}
         self.file_handles = {}
         self.delete_file_paths = {}
-
-    def open_file(self, path):
-        '''
-        Open a read-only file handle to the given path and return a uuid identifying it.
-        '''
-        if not os.path.exists(path) or os.path.islink(path):
-            # Note: don't follow symlinks!
-            return None
-        file_uuid = uuid.uuid4().hex
-        self.file_paths[file_uuid] = path
-        self.file_handles[file_uuid] = open(path, 'rb')
-        return file_uuid
-
-    def open_packed_path(self, path):
-        '''
-        Open a file handle corresponding to streaming the archived version of |path|.
-        '''
-        if not os.path.exists(path) or os.path.islink(path):
-            # Note: don't follow symlinks!
-            return None
-        file_uuid = uuid.uuid4().hex
-        self.file_paths[file_uuid] = path
-        self.file_handles[file_uuid] = zip_util.open_packed_path(path, follow_symlinks=False, exclude_patterns=None)
-        return file_uuid
 
     def open_temp_file(self, name):
         '''
@@ -66,6 +42,14 @@ class FileServer(object):
         self.delete_file_paths[file_uuid] = base_path
         return file_uuid
 
+    def manage_handle(self, handle):
+        '''
+        Take a handle to manage and return a file uuid identifying it.
+        '''
+        file_uuid = uuid.uuid4().hex
+        self.file_handles[file_uuid] = handle
+        return file_uuid
+
     def read_file(self, file_uuid, num_bytes=None):
         '''
         Read up to num_bytes from the given file uuid. Return an empty buffer
@@ -73,28 +57,6 @@ class FileServer(object):
         '''
         file_handle = self.file_handles[file_uuid]
         return xmlrpclib.Binary(file_handle.read(num_bytes))
-
-    def readline_file(self, file_uuid):
-        '''
-        Read one line from the given file uuid. Return an empty buffer
-        if and only if this file handle is at EOF.
-        '''
-        file_handle = self.file_handles[file_uuid]
-        return xmlrpclib.Binary(file_handle.readline());
-
-    def seek_file(self, file_uuid, offset, whence):
-        '''
-        Go to the desired position.
-        '''
-        file_handle = self.file_handles[file_uuid]
-        return file_handle.seek(offset, whence)
-
-    def tell_file(self, file_uuid):
-        '''
-        Return the current file position.
-        '''
-        file_handle = self.file_handles[file_uuid]
-        return file_handle.tell()
 
     def write_file(self, file_uuid, buffer):
         '''
@@ -114,8 +76,8 @@ class FileServer(object):
         '''
         Remove the record from the file server.
         '''
-        path = self.file_paths.pop(file_uuid)
-        file_handle = self.file_handles.pop(file_uuid, None)
+        self.file_paths.pop(file_uuid, None)
+        self.file_handles.pop(file_uuid, None)
         path = self.delete_file_paths.pop(file_uuid, None)
         if path:
             path_util.remove(path)
