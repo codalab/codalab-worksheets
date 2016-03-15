@@ -104,7 +104,8 @@ class WorkerModel(object):
             
     def get_workers(self):
         """
-        Returns information about all the workers in the database.
+        Returns information about all the workers in the database. The return
+        value is a list of dicts with the structure shown in the code below.
         """
         with self._engine.begin() as conn:
             worker_rows = conn.execute(cl_worker.select()).fetchall()
@@ -144,7 +145,7 @@ class WorkerModel(object):
                 'user_id': worker_row.user_id,
                 'worker_id': worker_row.worker_id,
                 'socket_id': worker_row.socket_id,
-                }
+            }
 
     def allocate_socket(self, user_id, worker_id, conn=None):
         """
