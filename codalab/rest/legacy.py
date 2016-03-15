@@ -143,13 +143,15 @@ class BundleService(object):
                     for k, v in row_map.iteritems():
                         if v is None:
                             row_map[k] = formatting.contents_str(v)
-            elif 'bundle_info' in item:
+            if 'bundle_info' in item:
                 infos = []
                 if isinstance(item['bundle_info'], list):
                     infos = item['bundle_info']
                 elif isinstance(item['bundle_info'], dict):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
+                    target_info = self.get_target_info((bundle_info['uuid'], ''))
+                    bundle_info['info'] = target_info
                     try:
                         if isinstance(bundle_info, dict):
                             worksheet_util.format_metadata(bundle_info.get('metadata'))
@@ -198,6 +200,8 @@ class BundleService(object):
 
     def get_target_info(self, target, depth=1):
         info = self.client.get_target_info(target, depth)
+        if info == None:
+            return None
         contents = info.get('contents')
         # Render the sizes
         if contents:
