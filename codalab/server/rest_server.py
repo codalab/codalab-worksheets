@@ -28,6 +28,7 @@ import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
+import codalab.rest.worker
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.oauth2_provider import oauth2_provider
@@ -36,6 +37,7 @@ from codalab.server.oauth2_provider import oauth2_provider
 # Don't log requests to routes matching these regexes.
 ROUTES_NOT_LOGGED_REGEXES = [
     re.compile(r'/oauth2/.*'),
+    re.compile(r'/worker/.*'),
 ]
 
 
@@ -52,6 +54,7 @@ class SaveEnvironmentPlugin(object):
             # the server. This is intentional to ensure that any MySQL engine
             # objects are created after forking.
             local.model = self.manager.model()
+            local.worker_model = self.manager.worker_model()
             local.download_manager = self.manager.download_manager()
             local.bundle_store = self.manager.bundle_store()
             local.config = self.manager.config
