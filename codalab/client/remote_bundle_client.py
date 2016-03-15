@@ -3,17 +3,19 @@ RemoteBundleClient is a BundleClient implementation that shells out to a
 BundleRPCServer for each command. Filesystem operations are implemented using
 the FileServer operations exposed by the RPC server.
 '''
+from contextlib import closing
 import os
-import contextlib
 import sys
 import urllib
 import tempfile
 import xmlrpclib
+import shutil
 import socket
 
 from codalab.client import get_address_host
 from codalab.client.bundle_client import BundleClient
 from codalab.common import (
+    NotFoundError,
     PermissionError,
     UsageError,
     AuthorizationError,
@@ -24,6 +26,7 @@ from codalab.lib import (
   zip_util,
 )
 from codalab.server.rpc_file_handle import RPCFileHandle
+from worker.file_util import gzip_file, tar_gzip_directory, un_tar_gzip_directory, un_gzip_stream, un_gzip_string
 
 # Hack to allow 64-bit integers
 xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)
@@ -120,16 +123,21 @@ class RemoteBundleClient(BundleClient):
     # Implemented by the BundleRPCServer.
     SERVER_COMMANDS = (
       'finish_upload_bundle',
-      'open_target',  # Limited access to files (read)
-      'open_target_archive',  # Limited access to files (read)
-    )
-    # Implemented by the FileServer (superclass of BundleRPCServer).
-    FILE_COMMANDS = (
-      'open_temp_file',  # Limited access to files (write)
-      'read_file',
+      'open_tarred_gzipped_directory',
+      'open_gzipped_file',
+      'read_gzipped_file_section',
+
+      # Deprecated methods below.
+      'open_target',
+      'open_target_archive',
       'readline_file',
       'tell_file',
       'seek_file',
+    )
+    # Implemented by the FileServer.
+    FILE_COMMANDS = (
+      'open_temp_file',  # Limited access to files (write)
+      'read_file',
       'write_file',
       'close_file',
       'finalize_file',
@@ -158,6 +166,9 @@ class RemoteBundleClient(BundleClient):
                         if 'codalab.common.UsageError' in e.faultString:
                             index = e.faultString.find(':')
                             raise UsageError(e.faultString[index + 1:])
+                        if 'codalab.common.NotFoundError' in e.faultString:
+                            index = e.faultString.find(':')
+                            raise NotFoundError(e.faultString[index + 1:])
                         elif 'codalab.common.PermissionError' in e.faultString:
                             index = e.faultString.find(':')
                             raise PermissionError(e.faultString[index + 1:])
@@ -190,46 +201,80 @@ class RemoteBundleClient(BundleClient):
         if all(path_util.path_is_url(source) for source in sources):
             return self.upload_bundle_url(sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet)
 
-        # 1) Copy sources up to the server (temporary remote zip file)
         remote_file_uuids = []
-        for source in sources:
-            remote_file_uuid = self.open_temp_file(zip_util.add_packed_suffix(os.path.basename(source)))
-            remote_file_uuids.append(remote_file_uuid)
-            dest_handle = RPCFileHandle(remote_file_uuid, self.proxy)
-            if zip_util.path_is_archive(source):
-                source_handle = open(source)
-            else:
-                source_handle = zip_util.open_packed_path(source, follow_symlinks, exclude_patterns)
-                unpack = True  # We packed it, so we have to unpack it
-            status = 'Uploading %s%s to %s' % (source, ' ('+info['uuid']+')' if 'uuid' in info else '', self.address)
-            # FileServer does not expose an API for forcibly flushing writes, so
-            # we rely on closing the file to flush it.
-            file_util.copy(source_handle, dest_handle, autoflush=False, print_status=status)
-            dest_handle.close()
+        try:
+            # 1) Copy sources up to the server (temporary remote zip file)
+            for source in sources:
+                if zip_util.path_is_archive(source):
+                    source_handle = open(source)
+                    temp_file_name = os.path.basename(source)
+                elif os.path.isdir(source):
+                    source_handle = tar_gzip_directory(source, follow_symlinks, exclude_patterns)
+                    temp_file_name = os.path.basename(source) + '.tar.gz'
+                    unpack = True  # We packed it, so we have to unpack it
+                else:
+                    resolved_source = source
+                    if follow_symlinks:
+                        resolved_source = os.path.realpath(source)
+                        if not os.path.exists(resolved_source):
+                            raise UsageError('Broken symlink')
+                    elif os.path.islink(source):
+                        raise UsageError('Not following symlinks.')
+                    source_handle = gzip_file(resolved_source)
+                    temp_file_name = os.path.basename(source) + '.gz'
+                    unpack = True  # We packed it, so we have to unpack it
 
-        # 2) Install upload (this call will be in charge of deleting the temporary file).
-        result = self.finish_upload_bundle(remote_file_uuids, unpack, info, worksheet_uuid, add_to_worksheet)
+                remote_file_uuid = self.open_temp_file(temp_file_name)
+                remote_file_uuids.append(remote_file_uuid)
+                with closing(RPCFileHandle(remote_file_uuid, self.proxy)) as dest_handle:
+                    status = 'Uploading %s%s to %s' % (source, ' ('+info['uuid']+')' if 'uuid' in info else '', self.address)
+                    file_util.copy(source_handle, dest_handle, autoflush=False, print_status=status)
 
-        return result
+            # 2) Install upload (this call will be in charge of deleting the temporary file).
+            return self.finish_upload_bundle(remote_file_uuids, unpack, info, worksheet_uuid, add_to_worksheet)
+        except:
+            for remote_file_uuid in remote_file_uuids:
+                self.finalize_file(remote_file_uuid)
+            raise
 
-    def open_target_handle(self, target):
-        remote_file_uuid = self.open_target(target)
-        if remote_file_uuid is not None:
-            return RPCFileHandle(remote_file_uuid, self.proxy)
-        return None
+    def download_directory(self, target, download_path):
+        """
+        Downloads the target directory to the given path. The caller should
+        ensure that the target is a directory.
+        """
+        remote_file_uuid = self.open_tarred_gzipped_directory(target)
+        with closing(RPCFileHandle(remote_file_uuid, self.proxy, finalize_on_close=True)) as fileobj:
+            os.mkdir(download_path)
+            un_tar_gzip_directory(fileobj, download_path)
 
-    def close_target_handle(self, handle):
-        handle.close()
-        self.finalize_file(handle.file_uuid)
+    def download_file(self, target, download_path):
+        """
+        Downloads the target file to the given path. The caller should
+        ensure that the target is a file.
+        """
+        self._do_download_file(target, out_path=download_path)
 
     def cat_target(self, target, out):
-        source = self.open_target_handle(target)
-        if not source: return
-        file_util.copy(source, out)
-        self.close_target_handle(source)
+        """
+        Prints the contents of the target file into the file-like object out.
+        The caller should ensure that the target is a file.
+        """
+        self._do_download_file(target, out_fileobj=out)
 
-    def download_target(self, target, final_path):
-        source_uuid = self.open_target_archive(target)
-        source = RPCFileHandle(source_uuid, self.proxy)
-        zip_util.unpack(source, final_path)
-        self.finalize_file(source_uuid)
+    def _do_download_file(self, target, out_path=None, out_fileobj=None):
+        remote_file_uuid = self.open_gzipped_file(target)
+        with closing(un_gzip_stream(RPCFileHandle(remote_file_uuid, self.proxy, finalize_on_close=True))) as fileobj:
+            if out_path is not None:
+                with open(out_path, 'wb') as out:
+                    shutil.copyfileobj(fileobj, out)
+            elif out_fileobj is not None:
+                shutil.copyfileobj(fileobj, out_fileobj)
+
+    def read_file_section(self, target, offset, length):
+        """
+        Returns the string representing the section of the given target file
+        starting at offset and of the given length. The caller should ensure
+        that the target is a file.
+        """
+        return un_gzip_string(
+            self.read_gzipped_file_section(target, offset, length).data)

@@ -5,9 +5,18 @@ Don't import from non-REST API code, since this file imports bottle.
 
 import base64
 import sys
+import urllib
 
-from bottle import request, HTTPResponse
+from bottle import request, HTTPResponse, redirect
 from oauthlib.common import to_unicode, bytes_type
+
+
+def redirect_with_query(redirect_uri, params):
+    """Return a Bottle redirect to the given target URI with query parameters
+    encoded from the params dict.
+    """
+    return redirect(redirect_uri + '?' + urllib.urlencode(params))
+
 
 """
 The following functions are adapted from flask_oauthlib.utils and are

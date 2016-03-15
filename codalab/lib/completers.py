@@ -163,12 +163,16 @@ class TargetsCompleter(CodaLabCompleter):
             return (suggestion_format.format(b) for b in BundlesCompleter(self.cli)(bundle_spec, action, parsed_args))
         else:
             # then suggest completions for subpath
-            target = self.cli.parse_target(client, worksheet_uuid, bundle_spec)
-            info = client.get_target_info(target, 0)
-            if 'type' in info and info['type'] == 'directory':
-                base_path = client.get_target_path(target)
-                completions = FilesCompleter()(os.path.join(base_path, subpath))
-                return (suggestion_format.format(p[len(base_path) + 1:]) for p in completions)
+            target = self.cli.parse_target(client, worksheet_uuid, bundle_spec + '/' + subpath)
+            dir_target = (target[0], os.path.dirname(subpath))
+            info = client.get_target_info(dir_target, 1)
+            if info is not None and info['type'] == 'directory':
+                matching_child_names = []
+                basename = os.path.basename(subpath)
+                for child in info['contents']:
+                    if child['name'].startswith(basename):
+                        matching_child_names.append(child['name'])
+                return (suggestion_format.format(os.path.join(dir_target[1], child_name)) for child_name in matching_child_names)
             else:
                 return ()
 

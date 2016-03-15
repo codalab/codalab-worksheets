@@ -1,0 +1,321 @@
+from contextlib import closing
+import datetime
+import json
+import os
+import socket
+import time
+
+from sqlalchemy import and_
+
+from codalab.common import precondition
+from codalab.model.tables import (
+  worker as cl_worker,
+  worker_socket as cl_worker_socket,
+  worker_run as cl_worker_run,
+  worker_dependency as cl_worker_dependency,
+)
+
+
+class WorkerModel(object):
+    """
+    Manages the worker, worker_dependency and worker_socket tables. This class
+    serves 2 primary functions:
+ 
+    1) It is used to add, remove and query information about workers.
+    2) It is used for communication with the workers. This communication happens
+       through Unix domain sockets stored in a special directory. This class
+       provides methods to allocate sockets (i.e. figure out unique paths in the
+       socket directory), clean up sockets (i.e. delete the socket files),
+       listen on these sockets for messages and send messages to these sockets.
+    """
+    def __init__(self, engine, socket_dir):
+        self._engine = engine
+        self._socket_dir = socket_dir
+
+    def worker_checkin(self, user_id, worker_id, slots, dependency_uuids):
+        """
+        Adds the worker to the database, if not yet there. Returns the socket ID
+        that the worker should listen for messages on.
+        """
+        with self._engine.begin() as conn:
+            worker_row = {
+                'slots': slots,
+                'checkin_time': datetime.datetime.now(),
+            }
+            existing_row = conn.execute(
+                cl_worker.select()
+                    .where(and_(cl_worker.c.user_id == user_id,
+                                cl_worker.c.worker_id == worker_id))
+            ).fetchone()
+            if existing_row:
+                socket_id = existing_row.socket_id  
+                conn.execute(
+                    cl_worker.update()
+                        .where(and_(cl_worker.c.user_id == user_id,
+                                    cl_worker.c.worker_id == worker_id))
+                        .values(worker_row))
+                conn.execute(
+                    cl_worker_dependency.delete()
+                        .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                    cl_worker_dependency.c.worker_id == worker_id)))   
+            else:
+                socket_id = self.allocate_socket(user_id, worker_id, conn)
+                worker_row.update({
+                    'user_id': user_id,
+                    'worker_id': worker_id,
+                    'socket_id': socket_id,
+                })
+                conn.execute(cl_worker.insert().values(worker_row))
+            dependency_rows = [{
+                'user_id': user_id,
+                'worker_id': worker_id,
+                'dependency_uuid': uuid,
+            } for uuid in dependency_uuids]
+            if dependency_rows:
+                conn.execute(cl_worker_dependency.insert(), dependency_rows)
+
+        return socket_id
+
+    def worker_cleanup(self, user_id, worker_id):
+        """
+        Deletes the worker and all associated data from the database as well
+        as the socket directory.
+        """
+        with self._engine.begin() as conn:
+            socket_rows = conn.execute(
+                cl_worker_socket.select()
+                    .where(and_(cl_worker_socket.c.user_id == user_id,
+                                cl_worker_socket.c.worker_id == worker_id))
+            ).fetchall()
+            for socket_row in socket_rows:
+                self._cleanup_socket(socket_row.socket_id)
+            conn.execute(cl_worker_socket.delete()
+                         .where(and_(cl_worker_socket.c.user_id == user_id,
+                                     cl_worker_socket.c.worker_id == worker_id)))   
+            conn.execute(cl_worker_run.delete()
+                         .where(and_(cl_worker_run.c.user_id == user_id,
+                                     cl_worker_run.c.worker_id == worker_id)))      
+            conn.execute(cl_worker_dependency.delete()
+                         .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                     cl_worker_dependency.c.worker_id == worker_id)))      
+            conn.execute(cl_worker.delete()
+                         .where(and_(cl_worker.c.user_id == user_id,
+                                     cl_worker.c.worker_id == worker_id)))
+            
+    def get_workers(self):
+        """
+        Returns information about all the workers in the database. The return
+        value is a list of dicts with the structure shown in the code below.
+        """
+        with self._engine.begin() as conn:
+            worker_rows = conn.execute(cl_worker.select()).fetchall()
+            worker_run_rows = (
+                conn.execute(cl_worker_run.select()).fetchall())
+            worker_dependency_rows = (
+                conn.execute(cl_worker_dependency.select()).fetchall())
+ 
+        worker_dict = {(row.user_id, row.worker_id): {
+            'user_id': row.user_id,
+            'worker_id': row.worker_id,
+            'slots': row.slots,
+            'checkin_time': row.checkin_time,
+            'socket_id': row.socket_id,
+            'run_uuids': [],
+            'dependency_uuids': [],
+        } for row in worker_rows}
+        for row in worker_run_rows:
+            worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
+        for row in worker_dependency_rows:
+            worker_dict[(row.user_id, row.worker_id)]['dependency_uuids'].append(row.dependency_uuid)
+        return worker_dict.values()
+
+    def get_bundle_worker(self, uuid):
+        """
+        Returns information about the worker that the given bundle is running
+        on. This method should be called only for bundles that are running.
+        """
+        with self._engine.begin() as connection:
+            row = connection.execute(cl_worker_run.select()
+                                     .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
+            precondition(row, 'Trying to find worker for bundle that is not running.')
+            worker_row = connection.execute(cl_worker.select()
+                                            .where(and_(cl_worker.c.user_id == row.user_id,
+                                                        cl_worker.c.worker_id == row.worker_id))).fetchone()
+            return {
+                'user_id': worker_row.user_id,
+                'worker_id': worker_row.worker_id,
+                'socket_id': worker_row.socket_id,
+            }
+
+    def allocate_socket(self, user_id, worker_id, conn=None):
+        """
+        Allocates a unique socket ID.
+        """
+        def do(conn):
+            socket_row = {
+               'user_id': user_id,
+               'worker_id': worker_id,
+            }
+            return conn.execute(
+                cl_worker_socket.insert().values(socket_row)
+            ).inserted_primary_key[0]
+        if conn is None:
+            with self._engine.begin() as conn:
+                return do(conn)
+        else:
+            return do(conn)
+
+    def deallocate_socket(self, socket_id):
+        """
+        Cleans up the socket, removing the associated file in the socket
+        directory.
+        """
+        self._cleanup_socket(socket_id)
+        with self._engine.begin() as conn:
+            conn.execute(cl_worker_socket.delete()
+                         .where(cl_worker_socket.c.socket_id == socket_id))
+
+    def _socket_path(self, socket_id):
+        return os.path.join(self._socket_dir, str(socket_id))
+
+    def _cleanup_socket(self, socket_id):
+        try:
+            os.remove(self._socket_path(socket_id))
+        except OSError:
+            pass
+
+    def start_listening(self, socket_id):
+        """
+        Returns a Python socket object that can be used to accept connections on
+        the socket with the given ID. This object should be passed to the
+        get_ methods below. as in:
+
+            with closing(worker_model.start_listening(socket_id)) as sock:
+                message = worker_model.get_json_message(sock, timeout_secs)
+        """
+        self._cleanup_socket(socket_id)
+        sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        sock.bind(self._socket_path(socket_id))
+        sock.listen(0)
+        return sock
+
+    def get_stream(self, sock, timeout_secs):
+        """
+        Receives a single message on the given socket and returns a file-like
+        object that can be used for streaming the message data.
+
+        If no messages are received within timeout_secs seconds, returns None.
+        """
+        sock.settimeout(timeout_secs)
+        try:
+            conn, _ = sock.accept()
+            conn.settimeout(None)  # Need to remove timeout before makefile.
+            fileobj = conn.makefile('rb')
+            conn.close()
+            return fileobj
+        except socket.timeout:
+            return None
+
+    def get_json_message(self, sock, timeout_secs):
+        """
+        Receives a single message on the given socket and returns the message
+        data parsed as JSON.
+
+        If no messages are received within timeout_secs seconds, returns None.
+        """
+        fileobj = self.get_stream(sock, timeout_secs)
+
+        if fileobj is None:
+            return None
+
+        with closing(fileobj):
+            return json.loads(fileobj.read())
+
+    def send_stream(self, socket_id, fileobj, timeout_secs):
+        """
+        Streams the given file-like object to the given socket.
+
+        If nothing accepts a connection on the socket for more than timeout_secs,
+        return False. Otherwise, returns True.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout_secs:
+            with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
+                sock.settimeout(timeout_secs)
+
+                try:
+                    sock.connect(self._socket_path(socket_id))
+                except socket.error:
+                    # Shouldn't be too expensive just to keep retrying.
+                    time.sleep(0.003)
+                    continue
+            
+                while True:
+                    data = fileobj.read(4096)
+                    if not data:
+                        return True
+                    sock.sendall(data)
+        
+        return False
+
+    def send_json_message(self, socket_id, message, timeout_secs, autoretry=True):
+        """
+        Sends a JSON message to the given socket, retrying until it is received
+        correctly.
+
+        If the message is not sent successfully after timeout_secs, return
+        False. Otherwise, returns True.
+
+        Note, only the worker should call this method with autoretry sent to
+        False. See comments below.
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout_secs:
+            with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
+                sock.settimeout(timeout_secs)
+
+                try:
+                    sock.connect(self._socket_path(socket_id))
+                    if autoretry:
+                        # This auto retry mechanisms helps ensure that messages
+                        # sent to a worker are received more reliably. The
+                        # socket API isn't particularly robust to our usage
+                        # where we continuously start and stop listening on a
+                        # socket, like the worker checkin mechanism does. In
+                        # fact, it seems to spuriously accept connections
+                        # just when a socket object is in the process of being
+                        # destroyed. On the sending end, such a scenario results
+                        # in a "Broken pipe" exception, which we catch here.
+                        sock.sendall(json.dumps(message))
+                        return True
+                except socket.error:
+                    # Shouldn't be too expensive just to keep retrying.
+                    time.sleep(0.003)
+                    continue
+
+                if not autoretry:
+                    # When messages are being sent from the worker, we don't
+                    # have the problem with "Broken pipe" as above, since
+                    # code waiting for a reply shouldn't just abruptly stop
+                    # listening.
+                    sock.sendall(json.dumps(message))
+                    return True
+
+        return False
+
+    def has_reply_permission(self, user_id, worker_id, socket_id):
+        """
+        Checks whether the given user running a worker with the given ID can
+        reply on the socket with the given ID. Used to prevent a user from
+        impersonating a worker from another user and replying to its messages.
+        """
+        with self._engine.begin() as conn:
+            row = conn.execute(
+                cl_worker_socket.select()
+                    .where(and_(cl_worker_socket.c.user_id == user_id,
+                                cl_worker_socket.c.worker_id == worker_id,
+                                cl_worker_socket.c.socket_id == socket_id))
+            ).fetchone()
+            if row:
+                return True
+            return False

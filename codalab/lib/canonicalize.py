@@ -2,7 +2,6 @@
 canonicalize provides helpers that convert ambiguous inputs to canonical forms:
   get_bundle_uuid: bundle_spec (which is <uuid>|<name>) -> uuid
   get_worksheet_uuid: worksheet_spec -> uuid
-  get_target_path: target (bundle_spec, subpath) -> filesystem path
 
 These methods are only available if we have direct access to the bundle system.
 Converting a bundle spec to a uuid requires access to the bundle databases,
@@ -109,18 +108,6 @@ def get_current_location(bundle_store, uuid):
     Return the on-disk location of currently running target.
     """
     return bundle_store.get_bundle_location(uuid)
-
-
-def get_target_path(bundle_store, model, target):
-    """
-    Return the on-disk location of the target (bundle_uuid, subpath) pair.
-    """
-    (uuid, path) = target
-    bundle_root = get_current_location(bundle_store, uuid)
-    final_path = path_util.safe_join(bundle_root, path)
-
-    result = path_util.TargetPath(final_path, target)
-    return result
 
 
 def get_worksheet_uuid(model, base_worksheet_uuid, worksheet_spec):

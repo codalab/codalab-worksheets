@@ -2,11 +2,10 @@
 Login and signup views.
 Handles create new user accounts and authenticating users.
 """
-
-
 from bottle import request, response, template, local, redirect, default_app, get, post
 
 from codalab.lib import spec_util
+from codalab.lib.server_util import redirect_with_query
 from codalab.objects.user import User
 from codalab.common import UsageError
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
@@ -15,18 +14,11 @@ from codalab.server.cookie import LoginCookie
 
 def send_verification_key(username, email, key):
     # Send verification key to given email address
-    hostname = request.get_header('Host')
+    hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
     local.emailer.send_email(
         subject="Verify your new CodaLab account",
         body=template('email_verification_body', user=username, current_site=hostname, key=key),
         recipient=email,
-    )
-
-    # Redirect to success page
-    return redirect(default_app().get_url(
-        'success_no_verify',
-        message="Thank you for signing up for a CodaLab account! "
-                "A link to verify your account has been sent to %s." % email)
     )
 
 
@@ -34,54 +26,32 @@ def send_verification_key(username, email, key):
 def do_logout():
     LoginCookie.clear()
     redirect_uri = request.query.get('redirect_uri')
-    if redirect_uri:
-        return redirect(redirect_uri)
-    else:
-        return redirect(default_app().get_url('login'))
-
-
-@get('/account/login', name='login')
-def show_login():
-    if request.user:
-        return redirect(default_app().get_url('success', message="You are already signed into CodaLab."))
-    return template("login")
+    return redirect(redirect_uri)
 
 
 @post('/account/login')
 def do_login():
-    redirect_uri = request.query.get('redirect_uri')
+    success_uri = request.forms.get('success_uri')
+    error_uri = request.forms.get('error_uri')
     username = request.forms.get('username')
     password = request.forms.get('password')
 
     user = local.model.get_user(username=username)
     if not (user and user.check_password(password)):
-        return template("login", errors=["Login/password did not match."])
+        return redirect_with_query(error_uri, {
+            "error": "Login/password did not match.",
+            "next": success_uri,
+        })
 
     # Save cookie in client
     cookie = LoginCookie(user.user_id, max_age=30 * 24 * 60 * 60)
     cookie.save()
 
     # Redirect client to next page
-    if redirect_uri:
-        return redirect(redirect_uri)
+    if success_uri:
+        return redirect(success_uri)
     else:
-        return redirect(default_app().get_url('success', message="Successfully signed into CodaLab."))
-
-
-@get('/account/success', name='success')
-@get('/account/success_no_verify', name='success_no_verify', skip=UserVerifiedPlugin)
-def show_success():
-    title = request.query.get('title', '') or request.params.get('title', '') or 'Success!'
-    message = request.query.get('message', '') or request.params.get('message', '')
-    return template('success', message=message, title=title)
-
-
-@get('/account/signup', name='signup')
-def show_signup():
-    if request.user:
-        return redirect(default_app().get_url('success', message="You are already logged into your account."))
-
-    return template('signup')
+        return redirect('/')
 
 
 @post('/account/signup')
@@ -89,6 +59,8 @@ def do_signup():
     if request.user:
         return redirect(default_app().get_url('success', message="You are already logged into your account."))
 
+    success_uri = request.forms.get('success_uri')
+    error_uri = request.forms.get('error_uri')
     username = request.forms.get('username')
     password = request.forms.get('password')
     email = request.forms.get('email')
@@ -114,28 +86,42 @@ def do_signup():
         errors.append("User with this username or email already exists.")
 
     if errors:
-        return template('signup', errors=errors)
+        return redirect_with_query(error_uri, {
+            "error": " ".join(errors),
+            "next": success_uri,
+            "email": email,
+            "username": username,
+        })
 
     # Create unverified user
     _, verification_key = local.model.add_user(username, email, password)
 
-    return send_verification_key(username, email, verification_key)
+    # Send key
+    send_verification_key(username, email, verification_key)
+
+    # Redirect to success page
+    return redirect_with_query(success_uri, {
+        "email": email
+    })
 
 
 @get('/account/verify/<key>', skip=UserVerifiedPlugin)
 def do_verify(key):
     if local.model.verify_user(key):
-        return redirect(default_app().get_url('success', message="Account verified!"))
+        return redirect('/account/verify/success')
     else:
-        return "Invalid or expired verification key."
+        return redirect('/account/verify/error')
 
 
 @get('/account/resend', name='resend_key', skip=UserVerifiedPlugin)
 def resend_key():
     if request.user.is_verified:
-        return redirect(default_app().get_url('success', message="Your account has already been verified."))
+        return redirect('/account/verify/success')
     key = local.model.get_verification_key(request.user.user_id)
-    return send_verification_key(request.user.user_name, request.user.email, key)
+    send_verification_key(request.user.user_name, request.user.email, key)
+    return redirect_with_query('/account/signup/success', {
+        "email": request.user.email,
+    })
 
 
 @get('/account/whoami', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
@@ -145,7 +131,7 @@ def whoami():
     return info
 
 
-@get('/account/css')
+@get('/account/css', skip=UserVerifiedPlugin)
 def css():
     response.content_type = 'text/css'
     if request.user is None:
