@@ -139,13 +139,15 @@ class BundleService(object):
                     for k, v in row_map.iteritems():
                         if v is None:
                             row_map[k] = formatting.contents_str(v)
-            elif 'bundle_info' in item:
+            if 'bundle_info' in item:
                 infos = []
                 if isinstance(item['bundle_info'], list):
                     infos = item['bundle_info']
                 elif isinstance(item['bundle_info'], dict):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
+                    target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
+                    bundle_info['target_info'] = target_info
                     try:
                         if isinstance(bundle_info, dict):
                             worksheet_util.format_metadata(bundle_info.get('metadata'))
@@ -290,7 +292,6 @@ class BundleService(object):
 class RemoteBundleService(object):
     '''
     Adapts the RemoteBundleClient for REST calls.
-
     TODO(klopyrev): This version should eventually go away once the file upload
     logic is cleaned up. See below where this class is used for more information.
     '''
