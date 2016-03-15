@@ -364,8 +364,6 @@ worker_run = Table(
   Column('worker_id', String(127), nullable=False),
   ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
 
-  Column('socket_id', Integer, nullable=False),  # The socket ID of the worker, to send messages on.
-
   Column('run_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
   Index('uuid_index', 'run_uuid'),
 )

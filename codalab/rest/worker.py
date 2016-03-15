@@ -1,3 +1,4 @@
+from contextlib import closing
 import httplib
 import json
 
@@ -19,7 +20,8 @@ def checkin(worker_id):
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id,
         request.json['slots'], request.json['dependency_uuids'])
-    return local.worker_model.get_json_message(socket_id, WAIT_TIME_SECS)
+    with closing(local.worker_model.start_listening(socket_id)) as sock:
+        return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 
 
 @post('/worker/<worker_id>/checkout',

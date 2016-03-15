@@ -25,7 +25,7 @@ class WorkerModel(object):
     2) It is used for communication with the workers. This communication happens
        through Unix domain sockets stored in a special directory. This class
        provides methods to allocate sockets (i.e. figure out unique paths in the
-       socket directory), clean-up sockets (i.e. delete the socket files),
+       socket directory), clean up sockets (i.e. delete the socket files),
        listen on these sockets for messages and send messages to these sockets.
     """
     def __init__(self, engine, socket_dir):
@@ -133,15 +133,17 @@ class WorkerModel(object):
         Returns information about the worker that the given bundle is running
         on. This method should be called only for bundles that are running.
         """
-        with self.engine.begin() as connection:
+        with self._engine.begin() as connection:
             row = connection.execute(cl_worker_run.select()
                                      .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
             precondition(row, 'Trying to find worker for bundle that is not running.')
-            if row:
-                return {
-                    'user_id': row.user_id,
-                    'worker_id': row.worker_id,
-                    'socket_id': row.socket_id,
+            worker_row = connection.execute(cl_worker.select()
+                                            .where(and_(cl_worker.c.user_id == row.user_id,
+                                                        cl_worker.c.worker_id == row.worker_id))).fetchone()
+            return {
+                'user_id': worker_row.user_id,
+                'worker_id': worker_row.worker_id,
+                'socket_id': worker_row.socket_id,
                 }
 
     def allocate_socket(self, user_id, worker_id, conn=None):
@@ -183,14 +185,12 @@ class WorkerModel(object):
 
     def start_listening(self, socket_id):
         """
-        Returns a Python socket object that can be used to accept connections.
-        
-        This method should be called externally only by code that needs to
-        receive more than 1 message on the same socket. The returned object
-        should be passed as the sock parameter to one of the get methods.
+        Returns a Python socket object that can be used to accept connections on
+        the socket with the given ID. This object should be passed to the
+        get_ methods below. as in:
 
-        For code that needs to receive only a single message, use the get
-        methods without providing a socket object.
+            with closing(worker_model.start_listening(socket_id)) as sock:
+                message = worker_model.get_json_message(sock, timeout_secs)
         """
         self._cleanup_socket(socket_id)
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -198,39 +198,37 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
-    def get_stream(self, socket_id, timeout_secs, sock=None):
+    def get_stream(self, sock, timeout_secs):
         """
-        Receives a single message on the socket with the given ID and returns a
-        file-like object that can be used for streaming the message data.
+        Receives a single message on the given socket and returns a file-like
+        object that can be used for streaming the message data.
 
         If no messages are received within timeout_secs seconds, returns None.
         """
-        def do(sock):
-            sock.settimeout(timeout_secs)
-            try:
-                conn, _ = sock.accept()
-                conn.settimeout(None)  # Need to remove timeout before makefile.
-                return conn.makefile('rb')
-            except socket.timeout:
-                return None
-        if sock is None:
-            return do(self.start_listening(socket_id))
-        else:
-            return do(sock)
-
-    def get_json_message(self, socket_id, timeout_secs, sock=None):
-        """
-        Receives a single message on the socket with the given ID and returns
-        the message data parsed as JSON.
-
-        If no messages are received within timeout_secs seconds, returns None.
-        """
-        fileobj = self.get_stream(socket_id, timeout_secs, sock)
-        if fileobj:
-            with closing(fileobj):
-                return json.loads(fileobj.read())
-        else:
+        sock.settimeout(timeout_secs)
+        try:
+            conn, _ = sock.accept()
+            conn.settimeout(None)  # Need to remove timeout before makefile.
+            fileobj = conn.makefile('rb')
+            conn.close()
+            return fileobj
+        except socket.timeout:
             return None
+
+    def get_json_message(self, sock, timeout_secs):
+        """
+        Receives a single message on the given socket and returns the message
+        data parsed as JSON.
+
+        If no messages are received within timeout_secs seconds, returns None.
+        """
+        fileobj = self.get_stream(sock, timeout_secs)
+
+        if fileobj is None:
+            return None
+
+        with closing(fileobj):
+            return json.loads(fileobj.read())
 
     def send_stream(self, socket_id, fileobj, timeout_secs):
         """
