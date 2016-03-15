@@ -9,12 +9,11 @@ There are a few classes of methods provided here:
     safe_join, get_relative_path, ls, recursive_ls
 
   Functions to read files to compute hashes, write results to stdout, etc:
-    cat, getmtime, get_size, hash_directory, hash_file_contents
+    getmtime, get_size, hash_directory, hash_file_contents
 
   Functions that modify that filesystem in controlled ways:
     copy, make_directory, set_write_permissions, rename, remove
 """
-import contextlib
 import errno
 import hashlib
 import itertools
@@ -22,13 +21,12 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 
 from codalab.common import (
   precondition,
   UsageError,
 )
-from codalab.lib import file_util, formatting
+from codalab.lib import file_util
 
 
 # Block sizes and canonical strings used when hashing files.
@@ -37,54 +35,11 @@ FILE_PREFIX = 'file'
 LINK_PREFIX = 'link'
 
 
-class TargetPath(unicode):
-    """
-    Wrapper around unicode objects that allows us to add extra attributes to them.
-    In particular, canonicalize.get_target_path will return a TargetPath with the
-    'target' attribute set to the un-canonicalized target.
-    """
-    def __new__(cls, value, target):
-        self = super(TargetPath, cls).__new__(cls, value)
-        self.target = target
-        return self
-
-
 def path_error(message, path):
     """
-    Raised when a user-supplied path causes an exception. If the path passed to
-    this error's constructor came from a call to get_target_path, the target will
-    be appended to the message instead of the computed path.
+    Raised when a user-supplied path causes an exception.
     """
-    if isinstance(path, TargetPath):
-        path = safe_join(*path.target)
-
     return UsageError(message + ': ' + path)
-
-@contextlib.contextmanager
-def mkdtemp(suffix="", dir=None):
-    """
-    Create a directory as a context manager. Python3.x supports this OOTB with
-    tempfile.TemporaryFile, but it doesn't exist in Python 2.7 so this is a
-    simple wrapper.
-    """
-    directory = tempfile.mkdtemp(suffix, dir=dir)
-    try:
-        yield directory
-    finally:
-        remove(directory)
-
-@contextlib.contextmanager
-def chdir(new_dir):
-    """
-    Context manager that changes the current working directory of this process
-    for the duration of the context.
-    """
-    cur_dir = os.getcwd()
-    try:
-        os.chdir(new_dir)
-        yield
-    finally:
-        os.chdir(cur_dir)
 
 
 ################################################################################
@@ -132,14 +87,6 @@ def check_isfile(path, fn_name):
     check_isvalid(path, fn_name)
     if os.path.isdir(path):
         raise path_error('%s got directory:' % (fn_name,), path)
-
-
-def check_under_path(path, parent_path):
-    """
-    Check that the path is under its parent path.
-    """
-    if not os.path.realpath(path).startswith(os.path.realpath(parent_path)):
-        raise path_error('Path not under %s' % (parent_path,), path)
 
 
 def path_is_url(path):
@@ -217,56 +164,6 @@ def recursive_ls(path):
 # Functions to read files to compute hashes, write results to stdout, etc.
 ################################################################################
 
-def cat(path, out):
-    """
-    Copy data from the file at the given path to the file descriptor |out|.
-    """
-    if not os.path.isfile(path):
-        return None
-
-    with open(path, 'rb') as file_handle:
-        file_util.copy(file_handle, out)
-
-
-def read_lines(path, max_num_lines=None, max_total_bytes=None):
-    """
-    Return list of lines (up to num_lines).
-
-    :param path: string path to file to read
-    :param max_num_lines: maximum number of lines to read from path
-    :param max_total_bytes: maximum total number of bytes to read from path
-    :return: list of strings read from path
-    """
-    if path is None or not os.path.isfile(path):
-        return None
-
-    lines = []
-    with open(path, 'rb') as file_handle:
-        num_bytes_read = 0
-        # While we haven't exceeded lines or bytes quota...
-        while (max_num_lines is None or num_bytes_read < max_total_bytes) and \
-              (max_total_bytes is None or len(lines) < max_num_lines):
-            # Read a line
-            line = file_handle.readline(max_total_bytes - num_bytes_read)
-            if not line:
-                break
-            # Update buffer and counts.
-            lines.append(line)
-            num_bytes_read += len(line)
-    return lines
-
-
-def base64_encode(path):
-    """
-    takes a file and returns a base64 encoded version
-    """
-    if not os.path.isfile(path):
-        return None
-
-    with open(path, 'rb') as file_handle:
-        import base64
-        return base64.b64encode(file_handle.read())
-
 
 def getmtime(path):
     """
@@ -285,7 +182,6 @@ def get_size(path, dirs_and_files=None):
     dirs_and_files = dirs_and_files or recursive_ls(path)
     return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
 
-
 def get_info(path, depth):
     """
     Return a hash containing properties of the path:
@@ -293,19 +189,23 @@ def get_info(path, depth):
         size: size of all files
         contents: list of files
     """
+    stat = os.lstat(path)
+
     result = {}
     result['name'] = os.path.basename(path)
+    result['size'] = stat.st_size
+    result['perm'] = stat.st_mode & 0777
     if os.path.islink(path):
+        result['type'] = 'link'
         result['link'] = os.readlink(path)
-    if os.path.isfile(path):
+    elif os.path.isfile(path):
         result['type'] = 'file'
-        result['size'] = get_size(path)
     elif os.path.isdir(path):
         result['type'] = 'directory'
         if depth > 0:
-            result['contents'] = [get_info(os.path.join(path, file_name), depth-1) for file_name in os.listdir(path)]
-    if os.path.exists(path):
-        result['perm'] = os.stat(path).st_mode & 0777
+            result['contents'] = [
+                get_info(os.path.join(path, file_name), depth - 1)
+                for file_name in os.listdir(path)]
     return result
 
 def hash_path(path, dirs_and_files=None):
@@ -384,6 +284,10 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
         with open(dest_path, 'wb') as dest:
             file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
     else:
+        if not follow_symlinks and os.path.islink(source_path):
+            raise path_error('not following symlinks', source_path)
+        if not os.path.exists(source_path):
+            raise path_error('does not exist', source_path)
         command = [
             'rsync',
             '-pr%s' % ('L' if follow_symlinks else 'l'),

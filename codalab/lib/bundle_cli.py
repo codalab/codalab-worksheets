@@ -15,6 +15,7 @@ results in the following:
   BundleCLI.do_upload_command(['foo'])
 """
 import argparse
+from contextlib import closing
 import copy
 import inspect
 import itertools
@@ -858,7 +859,7 @@ class BundleCLI(object):
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
         bundle_uuid, subpath = target
 
-        # Copy into desired path.
+        # Figure out where to download.
         info = client.get_bundle_info(bundle_uuid)
         if args.output_path:
             local_path = args.output_path
@@ -869,9 +870,18 @@ class BundleCLI(object):
             print >>self.stdout, 'Local file/directory \'%s\' already exists.' % local_path
             return
 
-        # Download first to a local location path.
-        client.download_target(target, final_path)
-        print >>self.stdout, 'Downloaded %s/%s => %s' % (self.simple_bundle_str(info), target[1], final_path)
+        # Do the download.
+        target_info = client.get_target_info(target, 0)
+        if target_info is None:
+            raise UsageError('Target doesn\'t exist.')
+        if target_info['type'] == 'directory':
+            client.download_directory(target, final_path)
+        elif target_info['type'] == 'file':
+            client.download_file(target, final_path)
+        elif target_info['type'] == 'link':
+            raise UsageError('Downloading symlinks is not allowed.')
+
+        print >>self.stdout, 'Downloaded %s/%s => %s' % (self.simple_bundle_str(info), subpath, final_path)
 
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies, add_to_worksheet):
         """
@@ -916,65 +926,81 @@ class BundleCLI(object):
 
         print >>self.stdout, "Copying %s..." % source_desc
         target = (source_bundle_uuid, '')
-
-        if source_info['data_hash']:
+        target_info = source_client.get_target_info(target, 0)
+        
+        source = None
+        dest_file_uuid = None
+        try:
             # Open source (as archive)
-            if isinstance(source_client, LocalBundleClient):
-                source = zip_util.open_packed_path(source_client.get_target_path(target), follow_symlinks=False, exclude_patterns=None)
-            else:
-                source_file_uuid = source_client.open_target_archive((source_bundle_uuid, ''))
-                source = RPCFileHandle(source_file_uuid, source_client.proxy)
+            if target_info is not None and target_info['type'] == 'directory':
+                filename_suffix = '.tar.gz'
+                if isinstance(source_client, LocalBundleClient):
+                    source = source_client.open_tarred_gzipped_directory(target)
+                else:
+                    source = RPCFileHandle(
+                        source_client.open_tarred_gzipped_directory(target),
+                        source_client.proxy, finalize_on_close=True)
+            elif target_info is not None and target_info['type'] == 'file':
+                filename_suffix = '.gz'
+                if isinstance(source_client, LocalBundleClient):
+                    source = source_client.open_gzipped_file(target)
+                else:
+                    source = RPCFileHandle(
+                        source_client.open_gzipped_file(target),
+                        source_client.proxy, finalize_on_close=True)
 
-            # Open target (temporary file)
-            if isinstance(dest_client, LocalBundleClient):
-                dest_path = tempfile.mkstemp('.tar.gz')[1]
-                dest = open(dest_path, 'w')
-            else:
-                dest_file_uuid = dest_client.open_temp_file('bundle.tar.gz')
-                dest = RPCFileHandle(dest_file_uuid, dest_client.proxy)
-
-            # Copy contents over from source to target.
-            file_util.copy(
-                source,
-                dest,
-                autoflush=False,
-                print_status='Copying %s from %s to %s' % (source_bundle_uuid, source_client.address, dest_client.address))
-            dest.close()
+            if source is not None:
+                # Open target (temporary file)
+                if isinstance(dest_client, LocalBundleClient):
+                    dest_path = tempfile.mkstemp(filename_suffix)[1]
+                    dest = open(dest_path, 'wb')
+                else:
+                    dest_file_uuid = dest_client.open_temp_file('bundle' + filename_suffix)
+                    dest = RPCFileHandle(dest_file_uuid, dest_client.proxy)
+                with closing(dest):
+                    # Copy contents over from source to target.
+                    file_util.copy(
+                        source,
+                        dest,
+                        autoflush=False,
+                        print_status='Copying %s from %s to %s' % (source_bundle_uuid, source_client.address, dest_client.address))
 
             # Set sources
-            if isinstance(dest_client, LocalBundleClient):
+            if source is None:
+                sources = [None]
+            elif isinstance(dest_client, LocalBundleClient):
                 sources = [dest_path]
             else:
                 sources = [dest_file_uuid]
-        else:
-            sources = None
 
-        # Finally, install the archive (this function will delete it).
-        if isinstance(dest_client, LocalBundleClient):
-            result = dest_client.upload_bundle(
-                sources=sources,
-                follow_symlinks=False,
-                exclude_patterns=None,
-                git=False,
-                unpack=True,
-                remove_sources=True,
-                info=source_info,
-                worksheet_uuid=dest_worksheet_uuid,
-                add_to_worksheet=add_to_worksheet,
-            )
-        else:
-            result = dest_client.finish_upload_bundle(
-                sources,
-                True,
-                source_info,
-                dest_worksheet_uuid,
-                add_to_worksheet)
-
-        if source_info['data_hash']:
-            if not isinstance(source_client, LocalBundleClient):
-                source_client.finalize_file(source_file_uuid)
-        return result
-
+            # Finally, install the archive (this function will delete it).
+            if isinstance(dest_client, LocalBundleClient):
+                result = dest_client.upload_bundle(
+                    sources=sources,
+                    follow_symlinks=False,
+                    exclude_patterns=None,
+                    git=False,
+                    unpack=True,
+                    remove_sources=True,
+                    info=source_info,
+                    worksheet_uuid=dest_worksheet_uuid,
+                    add_to_worksheet=add_to_worksheet,
+                )
+            else:
+                result = dest_client.finish_upload_bundle(
+                    sources,
+                    True,
+                    source_info,
+                    dest_worksheet_uuid,
+                    add_to_worksheet)
+            
+            return result
+        except:
+            if source is not None:
+                source.close()
+            if dest_file_uuid is not None:
+                dest_client.finalize_file(dest_file_uuid)
+            raise
 
     @Commands.command(
         'make',
@@ -1389,9 +1415,8 @@ class BundleCLI(object):
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
         info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
-        contents = info.get('contents')
-        if contents:
-            for item in contents:
+        if info is not None and info['type'] == 'directory':
+            for item in info['contents']:
                 if item['name'] not in ['stdout', 'stderr']:
                     continue
                 print >>self.stdout, wrap(item['name'])
@@ -1455,6 +1480,10 @@ class BundleCLI(object):
             contents = sorted(contents, key=lambda r: r['name'])
             self.print_table(('name', 'perm', 'size'), contents, justify={'size': 1}, indent='')
 
+        if info_type == 'link':
+            print >>self.stdout, ' -> ' + info['link']
+            
+
         return info
 
     @Commands.command(
@@ -1491,53 +1520,62 @@ class BundleCLI(object):
         subpaths: list of files to print >>self.stdout, out output as we go along.
         Return READY or FAILED based on whether it was computed successfully.
         """
-        handles = [None] * len(subpaths)
+        subpath_is_file = [None] * len(subpaths)
+        subpath_offset = [None] * len(subpaths)
 
-        # Constants for a simple exponential backoff routine that will decrease the
-        # frequency at which we check this bundle's state from 1s to 1m.
-        period = 1.0
-        backoff = 1.1
-        max_period = 60.0
-        info = None
+        SLEEP_PERIOD = 1.0
+
+        # Wait for the run to start.
         while True:
-            # Call update functions
-            change = False
-            for i, handle in enumerate(handles):
-                if not handle:
-                    handle = handles[i] = client.open_target_handle((bundle_uuid, subpaths[i]))
-                    if not handle: continue
-                    # Go to near the end of the file (TODO: make this match up with lines)
-                    pos = max(handle.tell() - 64, 0)
-                    handle.seek(pos, 0)
-                # Read from that file
+            info = client.get_bundle_info(bundle_uuid)
+            if info['state'] in (State.RUNNING, State.READY, State.FAILED):
+                break
+            time.sleep(SLEEP_PERIOD)
+
+        info = None
+        run_finished = False
+        while True:
+            if not run_finished:
+                info = client.get_bundle_info(bundle_uuid)
+                run_finished = info['state'] in (State.READY, State.FAILED)
+
+            # Read data.
+            for i in xrange(0, len(subpaths)):
+                # If the subpath we're interested in appears, check if it's a
+                # file and if so, initialize the offset.
+                if subpath_is_file[i] is None:
+                    target_info = client.get_target_info((bundle_uuid, subpaths[i]), 0)
+                    if target_info is not None:
+                        if target_info['type'] == 'file':
+                            subpath_is_file[i] = True
+                            # Go to near the end of the file (TODO: make this match up with lines)
+                            subpath_offset[i] = max(target_info['size'] - 64, 0)
+                        else:
+                            subpath_is_file[i] = False
+
+                if not subpath_is_file[i]:
+                    continue
+
+                # Read from that file.
                 while True:
-                    result = handle.read(16384)
-                    if result == '': break
-                    change = True
+                    READ_LENGTH = 16384
+                    result = client.read_file_section((bundle_uuid, subpaths[i]), subpath_offset[i], READ_LENGTH)
+                    if not result:
+                        break
+                    subpath_offset[i] += len(result)
                     self.stdout.write(result)
+                    if len(result) < READ_LENGTH:
+                        # No more to read.
+                        break
+
             self.stdout.flush()
 
-            # Update bundle info
-            info = client.get_bundle_info(bundle_uuid)
-            if info['state'] in (State.READY, State.FAILED): break
+            # The run finished and we read all the data.
+            if run_finished:
+                break
 
-            # Sleep if nothing happened
-            if not change:
-                time.sleep(period)
-                period = min(backoff*period, max_period)
-
-        for handle in handles:
-            if not handle:
-                continue
-
-            # Read the remainder of the file
-            while True:
-                result = handle.read(16384)
-                if result == '':
-                    break
-                self.stdout.write(result)
-
-            client.close_target_handle(handle)
+            # Sleep, since we've finished reading all the data available.
+            time.sleep(SLEEP_PERIOD)
 
         return info['state']
 

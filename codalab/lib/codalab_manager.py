@@ -44,8 +44,10 @@ from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
 )
 from codalab.lib.crypt_util import get_random_string
+from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
 from codalab.lib import formatting
+
 
 def cached(fn):
     def inner(self):
@@ -241,11 +243,15 @@ class CodaLabManager(object):
 
     @property
     @cached
-    def config_path(self): return os.path.join(self.codalab_home, 'config.json')
+    def config_path(self):
+        return os.getenv('CODALAB_CONFIG', 
+                         os.path.join(self.codalab_home, 'config.json'))
 
     @property
     @cached
-    def state_path(self): return os.path.join(self.codalab_home, 'state.json')
+    def state_path(self):
+        return os.getenv('CODALAB_STATE',
+                         os.path.join(self.codalab_home, 'state.json'))
 
     @property
     @cached
@@ -357,6 +363,10 @@ class CodaLabManager(object):
         model.system_user_id = self.system_user_id()
         return model
 
+    @cached
+    def download_manager(self):
+        return DownloadManager(self.bundle_store())
+
     def auth_handler(self, mock=False):
         '''
         Returns a class to authenticate users on the server-side.  Called by the server.
@@ -436,10 +446,11 @@ class CodaLabManager(object):
         if is_local_address(address):
             bundle_store = self.bundle_store()
             model = self.model()
+            download_manager = self.download_manager()
             auth_handler = self.auth_handler(mock=is_cli)
 
             from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, auth_handler, self.cli_verbose)
+            client = LocalBundleClient(address, bundle_store, model, download_manager, auth_handler, self.cli_verbose)
             self.clients[address] = client
             if is_cli:
                 # Set current user

@@ -443,9 +443,10 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
-        contents = client.head_target(target, MAX_LINES)
+        target_info = client.get_target_info(target, 0)
         # Try to interpret the structure of the file by looking inside it.
-        if contents is not None:
+        if target_info is not None and target_info['type'] == 'file':
+            contents = client.head_target(target, MAX_LINES)
             import base64
             contents = map(base64.b64decode, contents)
             if all('\t' in x for x in contents):
