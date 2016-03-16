@@ -75,20 +75,6 @@ bundle_action = Table(
   sqlite_autoincrement=True,
 )
 
-# Stores information about the files, directories and links stored in the
-# bundle.
-bundle_contents_index = Table(
-  'bundle_contents_index',
-  db_metadata,
-  Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-  Column('path', Text, nullable=False),
-  Column('type', String(63), nullable=False),
-  Column('size', Integer, nullable=False),
-  Column('perm', Integer, nullable=False),
-  Column('link', Text, nullable=True),
-  Index('bundle_uuid_index', 'bundle_uuid', mysql_length=63),
-)
-
 # The worksheet table does not have many columns now, but it will eventually
 # include columns for owner, group, permissions, etc.
 worksheet = Table(

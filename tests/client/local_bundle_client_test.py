@@ -25,7 +25,7 @@ class GroupsAndPermsTest(unittest.TestCase):
         cls.model.root_user_id = '0'
         users = [User('root', '0'), User('user1', '1'), User('user2', '2'), User('user4', '4')]
         cls.auth_handler = MockAuthHandler(users)
-        cls.client = LocalBundleClient('local', cls.bundle_store, cls.model, None, None, cls.auth_handler, verbose=1)
+        cls.client = LocalBundleClient('local', cls.bundle_store, cls.model, False, None, None, None, cls.auth_handler, verbose=1)
 
     @classmethod
     def tearDownClass(cls):
