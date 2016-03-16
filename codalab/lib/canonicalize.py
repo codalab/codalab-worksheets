@@ -2,7 +2,6 @@
 canonicalize provides helpers that convert ambiguous inputs to canonical forms:
   get_bundle_uuid: bundle_spec (which is <uuid>|<name>) -> uuid
   get_worksheet_uuid: worksheet_spec -> uuid
-  get_target_path: target (bundle_spec, subpath) -> filesystem path
 
 These methods are only available if we have direct access to the bundle system.
 Converting a bundle spec to a uuid requires access to the bundle databases,
@@ -10,6 +9,7 @@ while getting the on-disk location of a target requires access to both the
 database and the bundle store.
 """
 from codalab.common import (
+  NotFoundError,
   UsageError,
 )
 from codalab.lib import (
@@ -65,7 +65,7 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
         bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%'), 'user_id': user_id}, max_results=2)
         if len(bundle_uuids) == 0:
-            raise UsageError('uuid prefix %s doesn\'t match any bundles' % bundle_spec)
+            raise NotFoundError('uuid prefix %s doesn\'t match any bundles' % bundle_spec)
         elif len(bundle_uuids) == 1:
             return bundle_uuids[0]
         else:
@@ -95,7 +95,7 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
             raise UsageError('%d bundles, index %d out of bounds' %
                              (len(bundle_uuids), reverse_index))
         elif len(bundle_uuids) == 0:
-            raise UsageError('bundle spec %s doesn\'t match any bundles' % bundle_spec)
+            raise NotFoundError('bundle spec %s doesn\'t match any bundles' % bundle_spec)
         else:
             raise UsageError('bundle spec %s matches %d bundles, index %d out of bounds' %
                              (bundle_spec, len(bundle_uuids), reverse_index))
@@ -108,18 +108,6 @@ def get_current_location(bundle_store, uuid):
     Return the on-disk location of currently running target.
     """
     return bundle_store.get_bundle_location(uuid)
-
-
-def get_target_path(bundle_store, model, target):
-    """
-    Return the on-disk location of the target (bundle_uuid, subpath) pair.
-    """
-    (uuid, path) = target
-    bundle_root = get_current_location(bundle_store, uuid)
-    final_path = path_util.safe_join(bundle_root, path)
-
-    result = path_util.TargetPath(final_path, target)
-    return result
 
 
 def get_worksheet_uuid(model, base_worksheet_uuid, worksheet_spec):
@@ -144,7 +132,7 @@ def get_worksheet_uuid(model, base_worksheet_uuid, worksheet_spec):
         message = "name '%s'" % (worksheet_spec,)
 
     if not worksheets:
-        raise UsageError('No worksheet found with %s' % (message,))
+        raise NotFoundError('No worksheet found with %s' % (message,))
     if len(worksheets) > 1:
         raise UsageError(
           'Found multiple worksheets with %s:%s' %

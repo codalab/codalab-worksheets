@@ -29,7 +29,11 @@ NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 Changes from flask_oauthlib.provider.oauth2 include:
+ - Added a global variable for the singleton provider.
  - Removed the OAuth2Provider.init_app interface, since not necessary in Bottle.
+ - Removed the invalid_request method, since not used.
+ - Removed the before and after request methods, since not used.
+ - Replace require_oauth with check_oauth that populates request.user
  - Updated all Flask module function calls to their equivalent Bottle function calls
     - url_for -> get_url
     - request.args -> request.query
@@ -37,6 +41,8 @@ Changes from flask_oauthlib.provider.oauth2 include:
  - Added some additional log messages
  - Fixed some spelling errors in the documentation
  - Updated method documentation to reflect changes
+ - Removed reading parameters from body of request during token verification to
+   allow API endpoints that read request['wsgi.input'] directly (e.g. file uploads).
 """
 
 import datetime
@@ -44,7 +50,7 @@ from functools import wraps
 import logging
 import os
 
-from bottle import request, abort, redirect
+from bottle import default_app, request, abort, redirect
 from oauthlib import oauth2
 from oauthlib.common import to_unicode
 from oauthlib.oauth2 import RequestValidator, Server
@@ -90,15 +96,12 @@ class OAuth2Provider(object):
     And now you can protect the resource with scopes::
 
         @app.route('/api/user')
-        @oauth.require_oauth('email', 'username')
+        @oauth.check_oauth('email', 'username')
         def user():
-            return jsonify(request.oauth.user)
+            return jsonify(request.user)
     """
 
     def __init__(self, app=None):
-        self._before_request_funcs = []
-        self._after_request_funcs = []
-        self._invalid_response = None
         self.app = app
 
     @cached_property
@@ -187,58 +190,6 @@ class OAuth2Provider(object):
                 refresh_token_generator=refresh_token_generator,
             )
         raise RuntimeError('application not bound to required getters')
-
-    def before_request(self, f):
-        """Register functions to be invoked before accessing the resource.
-
-        The function accepts nothing as parameters, but you can get
-        information from `Bottle.request` object. It is usually useful
-        for setting limitation on the client request::
-
-            @oauth.before_request
-            def limit_client_request():
-                client_id = request.values.get('client_id')
-                if not client_id:
-                    return
-                client = Client.get(client_id)
-                if over_limit(client):
-                    return abort(403)
-
-                track_request(client)
-        """
-        self._before_request_funcs.append(f)
-        return f
-
-    def after_request(self, f):
-        """Register functions to be invoked after accessing the resource.
-
-        The function accepts ``valid`` and ``request`` as parameters,
-        and it should return a tuple of them::
-
-            @oauth.after_request
-            def valid_after_request(valid, oauth):
-                if oauth.user in black_list:
-                    return False, oauth
-                return valid, oauth
-        """
-        self._after_request_funcs.append(f)
-        return f
-
-    def invalid_response(self, f):
-        """Register a function for responsing with invalid request.
-
-        When an invalid request proceeds to :meth:`require_oauth`, we can
-        handle the request with the registered function. The function
-        accepts one parameter, which is an oauthlib Request object::
-
-            @oauth.invalid_response
-            def invalid_require_oauth(req):
-                return jsonify(message=req.error_message), 401
-
-        If no function is registered, it will return with ``abort(401)``.
-        """
-        self._invalid_response = f
-        return f
 
     def clientgetter(self, f):
         """Register a function as the client getter.
@@ -393,7 +344,7 @@ class OAuth2Provider(object):
         def decorated(*args, **kwargs):
             # raise if server not implemented
             server = self.server
-            uri, http_method, body, headers = extract_params()
+            uri, http_method, body, headers = extract_params(True)
 
             if request.method in ('GET', 'HEAD'):
                 redirect_uri = request.query.get('redirect_uri', self.error_uri)
@@ -453,7 +404,7 @@ class OAuth2Provider(object):
         redirect_uri = credentials.get('redirect_uri')
         log.debug('Found redirect_uri %s.', redirect_uri)
 
-        uri, http_method, body, headers = extract_params()
+        uri, http_method, body, headers = extract_params(True)
         try:
             ret = server.create_authorization_response(
                 uri, http_method, body, headers, scopes, credentials)
@@ -469,7 +420,7 @@ class OAuth2Provider(object):
     def verify_request(self, scopes):
         """Verify current request, get the oauth data.
 
-        If you can't use the ``require_oauth`` decorator, you can fetch
+        If you can't use the ``check_oauth`` decorator, you can fetch
         the data in your request body::
 
             def your_handler():
@@ -478,7 +429,7 @@ class OAuth2Provider(object):
                     return jsonify(user=req.user)
                 return jsonify(status='error')
         """
-        uri, http_method, body, headers = extract_params()
+        uri, http_method, body, headers = extract_params(False)
         return self.server.verify_request(
             uri, http_method, body, headers, scopes
         )
@@ -500,7 +451,7 @@ class OAuth2Provider(object):
         @wraps(f)
         def decorated(*args, **kwargs):
             server = self.server
-            uri, http_method, body, headers = extract_params()
+            uri, http_method, body, headers = extract_params(True)
             credentials = f(*args, **kwargs) or {}
             log.debug('Fetched extra credentials, %r.', credentials)
             ret = server.create_token_response(
@@ -535,33 +486,24 @@ class OAuth2Provider(object):
             if token:
                 request.token = token
 
-            uri, http_method, body, headers = extract_params()
+            uri, http_method, body, headers = extract_params(True)
             ret = server.create_revocation_response(
                 uri, headers=headers, body=body, http_method=http_method)
             return create_response(*ret)
         return decorated
 
-    def require_oauth(self, *scopes):
+    def check_oauth(self, *scopes):
         """Protect resource with specified scopes."""
         def wrapper(f):
             @wraps(f)
             def decorated(*args, **kwargs):
-                for func in self._before_request_funcs:
-                    func()
+                if not hasattr(request, 'user') or request.user is None:
+                    valid, req = self.verify_request(scopes)
+                    if valid:
+                        request.user = req.user
+                    else:
+                        request.user = None
 
-                if hasattr(request, 'oauth') and request.oauth:
-                    return f(*args, **kwargs)
-
-                valid, req = self.verify_request(scopes)
-
-                for func in self._after_request_funcs:
-                    valid, req = func(valid, req)
-
-                if not valid:
-                    if self._invalid_response:
-                        return self._invalid_response(req)
-                    return abort(401)
-                request.oauth = req
                 return f(*args, **kwargs)
             return decorated
         return wrapper
@@ -968,3 +910,6 @@ class OAuth2RequestValidator(RequestValidator):
         log.debug(msg)
         request.error_message = msg
         return False
+
+
+oauth2_provider = OAuth2Provider(default_app())

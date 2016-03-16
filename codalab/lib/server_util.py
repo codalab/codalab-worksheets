@@ -5,9 +5,18 @@ Don't import from non-REST API code, since this file imports bottle.
 
 import base64
 import sys
+import urllib
 
-from bottle import request, HTTPResponse
+from bottle import request, HTTPResponse, redirect
 from oauthlib.common import to_unicode, bytes_type
+
+
+def redirect_with_query(redirect_uri, params):
+    """Return a Bottle redirect to the given target URI with query parameters
+    encoded from the params dict.
+    """
+    return redirect(redirect_uri + '?' + urllib.urlencode(params))
+
 
 """
 The following functions are adapted from flask_oauthlib.utils and are
@@ -42,11 +51,14 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # BEGIN ADAPTED FROM flask_oauthlib.utils #
 
 
-def extract_params():
+def extract_params(extract_body):
     """Extract request params."""
     uri = request.url
     http_method = request.method
-    body = dict(request.forms)
+    if extract_body:
+        body = dict(request.forms)
+    else:
+        body = None
     headers = dict(request.headers)
     if 'wsgi.input' in headers:
         del headers['wsgi.input']

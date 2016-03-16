@@ -17,6 +17,14 @@ class User(ORMObject):
 
     PASSWORD_MIN_LENGTH = 8
 
+    @property
+    def unique_id(self):
+        return self.user_id
+
+    @property
+    def name(self):
+        return self.user_name
+
     def validate(self):
         pass
 

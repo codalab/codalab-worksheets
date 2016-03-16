@@ -3,8 +3,10 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
 
 import collections
+import copy
 import datetime
 import json
+import os.path
 import re
 import sys
 import time
@@ -31,6 +33,7 @@ from sqlalchemy.sql.expression import (
 from codalab.bundles import get_bundle_subclass
 from codalab.common import (
     IntegrityError,
+    NotFoundError,
     precondition,
     UsageError,
     State,
@@ -43,6 +46,7 @@ from codalab.lib import (
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
+    bundle_contents_index as cl_bundle_contents_index,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
     bundle_action as cl_bundle_action,
@@ -58,6 +62,7 @@ from codalab.model.tables import (
     worksheet_item as cl_worksheet_item,
     event as cl_event,
     user as cl_user,
+    chat as cl_chat,
     user_verification as cl_user_verification,
     oauth2_client,
     oauth2_token,
@@ -155,7 +160,7 @@ class BundleModel(object):
         '''
         bundles = self.batch_get_bundles(uuid=uuid)
         if not bundles:
-            raise UsageError('Could not find bundle with uuid %s' % (uuid,))
+            raise NotFoundError('Could not find bundle with uuid %s' % (uuid,))
         elif len(bundles) > 1:
             raise IntegrityError('Found multiple bundles with uuid %s' % (uuid,))
         return bundles[0]
@@ -678,6 +683,9 @@ class BundleModel(object):
             connection.execute(cl_bundle_dependency.delete().where(
                 cl_bundle_dependency.c.child_uuid.in_(uuids)
             ))
+            connection.execute(cl_bundle_contents_index.delete().where(
+                cl_bundle_contents_index.c.bundle_uuid.in_(uuids)
+            ))
             connection.execute(cl_bundle.delete().where(
                 cl_bundle.c.uuid.in_(uuids)
             ))
@@ -685,6 +693,75 @@ class BundleModel(object):
     def remove_data_hash_references(self, uuids):
         with self.engine.begin() as connection:
             connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
+
+    def update_bundle_contents_index(self, uuid, index):
+        """
+        Deletes the old contents of the index, and updates them with the new
+        values.
+
+        For reference on the format of index, see
+        worker.file_util.index_contents.
+        """
+        rows = []
+        def recurse(entry, parent_path):
+            entry['bundle_uuid'] = uuid
+            entry['path'] = os.path.join(parent_path, entry['name'])
+            del entry['name']
+            if 'contents' in entry:
+                for child_entry in entry['contents']:
+                    recurse(child_entry, entry['path'])
+                del entry['contents']
+            if 'link' not in entry:
+                entry['link'] = None
+            rows.append(entry)
+        index_copy = copy.deepcopy(index)
+        if index_copy['name'] != uuid:
+            raise UsageError(
+                'Valid indices have the directory with the name as the UUID '
+                'being the top-level directory.')
+        # Clear the top-level name to save space in the database.
+        index_copy['name'] = ''
+        recurse(index_copy, '/')
+        with self.engine.begin() as connection:
+            connection.execute(cl_bundle_contents_index.delete().where(
+                cl_bundle_contents_index.c.bundle_uuid == uuid
+            ))
+            self.do_multirow_insert(connection, cl_bundle_contents_index, rows)
+
+    def get_bundle_contents_index(self, uuid):
+        """
+        For reference on the format of the returned index, see
+        worker.file_util.index_contents.
+        """
+        with self.engine.begin() as connection:
+            # Sort so that all directories appear before the files inside them.
+            rows = connection.execute(
+                cl_bundle_contents_index.select()
+                    .where(cl_bundle_contents_index.c.bundle_uuid == uuid)
+                    .order_by(cl_bundle_contents_index.c.path)
+            ).fetchall()
+
+        if not rows:
+            return None
+
+        directories = {}
+        for row in rows:
+            result = str_key_dict(row)
+            del result['bundle_uuid']
+            del result['path']
+            if result['link'] is None:
+                del result['link']
+            if row.path == '/':
+                result['name'] = uuid
+                if row.type != 'directory':
+                    return result
+            else:
+                result['name'] = os.path.basename(row.path)
+                directories[os.path.dirname(row.path)]['contents'].append(result)
+            if row.type == 'directory':
+                result['contents'] = []
+                directories[row.path] = result
+        return directories['/']
 
     #############################################################################
     # Worksheet-related model methods follow!
@@ -696,7 +773,7 @@ class BundleModel(object):
         '''
         worksheets = self.batch_get_worksheets(fetch_items=fetch_items, uuid=uuid)
         if not worksheets:
-            raise UsageError('Could not find worksheet with uuid %s' % (uuid,))
+            raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
         elif len(worksheets) > 1:
             raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
         return worksheets[0]
@@ -1456,11 +1533,76 @@ class BundleModel(object):
             }
             connection.execute(cl_event.insert().values(info))
 
+    # Operations on the query log
+    def date_handler(self, obj): 
+        '''
+        Helper function to serialize DataTime
+        '''
+        return obj.isoformat() if isinstance(obj, datetime.datetime) or isinstance(obj, datetime.date) else None
+
+    def add_chat_log_info(self, query_info):
+        '''
+        Add the given chat into the database
+        Return a list of chats that the sender have had
+        '''
+        sender_user_id = query_info.get('sender_user_id')
+        recipient_user_id = query_info.get('recipient_user_id')
+        message = query_info.get('message')
+        worksheet_uuid = query_info.get('worksheet_uuid')
+        bundle_uuid = query_info.get('bundle_uuid')
+        with self.engine.begin() as connection:
+            info = {
+                'time': datetime.datetime.fromtimestamp(time.time()),
+                'sender_user_id': sender_user_id,
+                'recipient_user_id': recipient_user_id,
+                'message': message,
+                'worksheet_uuid': worksheet_uuid,
+                'bundle_uuid': bundle_uuid,
+            }
+            connection.execute(cl_chat.insert().values(info))
+        result = self.get_chat_log_info({'user_id': sender_user_id})
+        return result
+
+    def get_chat_log_info(self, query_info):
+        '''
+        Return a list of chats that the user have had given the user_id
+        '''
+        user_id1 = query_info.get('user_id')
+        if user_id1 == None:
+            return
+        limit = query_info.get('limit')
+        with self.engine.begin() as connection:
+            query = select([cl_chat.c.time, cl_chat.c.sender_user_id, cl_chat.c.recipient_user_id, cl_chat.c.message])
+            clause = []
+            # query all chats that this user sends or receives
+            clause.append(cl_chat.c.sender_user_id == user_id1)
+            clause.append(cl_chat.c.recipient_user_id == user_id1)
+            if user_id1 == self.root_user_id:
+                # if this user is root user, also query all chats that system user sends or receives
+                clause.append(cl_chat.c.sender_user_id == self.system_user_id)
+                clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
+            clause = or_(*clause)
+            query = query.where(clause)
+            if limit != None:
+                query = query.limit(limit)
+            # query = query.order_by(cl_chat.c.id.desc())
+            rows = connection.execute(query).fetchall()
+            result = [{
+                'message': row.message,
+                'time': row.time.strftime("%Y-%m-%d %H:%M:%S"),
+                'sender_user_id': row.sender_user_id,
+                'recipient_user_id': row.recipient_user_id
+                } for row in rows]
+            return result
+
+    ############################################################
+    # User functions
+    # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
     #############################################################################
     # User-related methods follow!
     #############################################################################
 
-    def get_user(self, user_id=None, username=None):
+    def get_user(self, user_id=None, username=None, check_active=True):
         """
         Get user.
 
@@ -1468,23 +1610,41 @@ class BundleModel(object):
         :param username: username or email of user to fetch
         :return: User object, or None if no matching user.
         """
-        clauses = []
-        clauses.append(cl_user.c.is_active == True)
+        user_ids = None
+        usernames = None
         if user_id is not None:
-            clauses.append(cl_user.c.user_id == user_id)
+            user_ids = [user_id]
         if username is not None:
+            usernames = [username]
+        result = self.get_users(user_ids, usernames, check_active)
+        if result:
+            return result[0]
+        return None
+
+    def get_users(self, user_ids=None, usernames=None, check_active=True):
+        """
+        Get users.
+
+        :param user_ids: user ids of users to fetch
+        :param usernames: usernames or emails of users to fetch
+        :return: list of matching User objects
+        """
+        clauses = []
+        if check_active:
+            clauses.append(cl_user.c.is_active == True)
+        if user_ids is not None:
+            clauses.append(cl_user.c.user_id.in_(user_ids))
+        if usernames is not None:
             # TODO(sckoo): Should we add an index on the email column?
-            clauses.append(or_(cl_user.c.user_name == username, cl_user.c.email == username))
+            clauses.append(or_(cl_user.c.user_name.in_(usernames),
+                               cl_user.c.email.in_(usernames)))
 
         with self.engine.begin() as connection:
-            row = connection.execute(select([
+            rows = connection.execute(select([
                 cl_user
-            ]).where(and_(*clauses)).limit(1)).fetchone()
+            ]).where(and_(*clauses))).fetchall()
 
-        if row is None or not row.is_active:
-            return None
-
-        return User(row)
+        return [User(row) for row in rows]
 
     def user_exists(self, username, email):
         """
@@ -1604,7 +1764,7 @@ class BundleModel(object):
 
         return True
 
-    def get_user_info(self, user_id):
+    def get_user_info(self, user_id, fetch_extra=False):
         """
         Return the user info corresponding to |user_id|.
         If a user doesn't exist, create a new one and set sane defaults.
@@ -1629,7 +1789,7 @@ class BundleModel(object):
                     'date_joined': datetime.datetime.utcnow(),
                     'is_active': True,
                     'is_verified': True,
-                    'is_superuser': str(user_id) == 0,
+                    'is_superuser': user_id == '0',
                     'password': '',
                 }
 
@@ -1639,6 +1799,13 @@ class BundleModel(object):
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
                     connection.execute(cl_user.insert().values(user_info))
+            if fetch_extra:
+                user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
+                if 'last_login' in user_info and user_info['last_login'] is not None:
+                    user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
+                user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
+                user_info['root_user_id'] = self.root_user_id
+                user_info['system_user_id'] = self.system_user_id
         return user_info
 
     def update_user_info(self, user_info):
@@ -1688,12 +1855,6 @@ class BundleModel(object):
             client.id = result.lastrowid
         return client
 
-    def delete_oauth2_client(self, client_id):
-        with self.engine.begin() as connection:
-            connection.execute(oauth2_client.delete().where(
-                oauth2_client.c.client_id == client_id
-            ))
-
     def get_oauth2_token(self, access_token=None, refresh_token=None):
         if access_token is not None:
             clause = (oauth2_token.c.access_token == access_token)
@@ -1710,6 +1871,20 @@ class BundleModel(object):
 
         return OAuth2Token(self, **row)
 
+    def find_oauth2_token(self, client_id, user_id, expires_after):
+        with self.engine.begin() as connection:
+            row = connection.execute(
+                select([oauth2_token])
+                    .where(and_(oauth2_token.c.client_id == client_id,
+                                oauth2_token.c.user_id == user_id,
+                                oauth2_token.c.expires > expires_after))
+                    .limit(1)).fetchone()
+
+        if row is None:
+            return None
+
+        return OAuth2Token(self, **row)
+
     def save_oauth2_token(self, token):
         with self.engine.begin() as connection:
             result = connection.execute(oauth2_token.insert().values(token.columns))
@@ -1719,7 +1894,9 @@ class BundleModel(object):
     def clear_oauth2_tokens(self, client_id, user_id):
         with self.engine.begin() as connection:
             connection.execute(oauth2_token.delete().where(
-                and_(oauth2_token.c.client_id == client_id, oauth2_token.c.user_id == user_id)
+                and_(oauth2_token.c.client_id == client_id,
+                     oauth2_token.c.user_id == user_id,
+                     oauth2_token.c.expires <= datetime.datetime.utcnow())
             ))
 
     def delete_oauth2_token(self, token_id):

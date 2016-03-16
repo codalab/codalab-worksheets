@@ -15,7 +15,7 @@ the decorator handles all of the logic completely. In the case of the 'authorize
 endpoint, we have to implement some additional logic to generate our personalized
 view and process our own form fields.
 
-Note that the 'authorize' endpoint also uses our AuthenticationPlugin, which
+Note that the 'authorize' endpoint also uses our AuthenticatedPlugin, which
 ensures that the user is signed in before allowing them to authorize a request.
 
 The 'errors' endpoint is simply the default redirect destination when the
@@ -27,10 +27,8 @@ from datetime import datetime, timedelta
 from bottle import request, template, local, route, post, get, default_app
 
 from codalab.objects.oauth2 import OAuth2AuthCode, OAuth2Token
-from codalab.rest.account import AuthenticationPlugin
-from codalab.server.oauth2_provider import OAuth2Provider
-
-oauth2_provider = OAuth2Provider(default_app())
+from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.oauth2_provider import oauth2_provider
 
 
 @oauth2_provider.clientgetter
@@ -53,7 +51,7 @@ def set_grant(client_id, code, _request, *args, **kwargs):
         code=code['code'],
         redirect_uri=_request.redirect_uri,
         scopes=','.join(_request.scopes),
-        user_id=local.user.user_id,
+        user_id=request.user.user_id,
         expires=expires
     )
     return local.model.save_oauth2_auth_code(grant)
@@ -67,9 +65,9 @@ def get_token(access_token=None, refresh_token=None):
 @oauth2_provider.tokensetter
 def set_token(token, _request, *args, **kwargs):
     # _request.user only available for "password" grant types,
-    # while local.user is available on views with @require_login,
+    # while request.user is available on views with @require_login,
     # i.e. the authorize view
-    user = _request.user or local.user
+    user = _request.user or request.user
 
     # Make sure that every client has only one token connected to a user
     local.model.clear_oauth2_tokens(_request.client.client_id, user.user_id)
@@ -93,12 +91,12 @@ def set_token(token, _request, *args, **kwargs):
 @oauth2_provider.usergetter
 def get_user(username, password, *args, **kwargs):
     user = local.model.get_user(username=username)
-    if user.check_password(password):
+    if user is not None and user.check_password(password):
         return user
     return None
 
 
-@route('/oauth2/authorize', ['GET', 'POST'], apply=AuthenticationPlugin())
+@route('/oauth2/authorize', ['GET', 'POST'], apply=AuthenticatedPlugin())
 @oauth2_provider.authorize_handler
 def authorize(*args, **kwargs):
     if request.method == 'GET':
@@ -122,6 +120,14 @@ def handle_token(): pass
 def revoke_token(): pass
 
 
+@get('/oauth2/validate', apply=AuthenticatedPlugin())
+def validate():
+    return {'user_name': request.user.user_name,
+            'user_id': request.user.user_id}
+
+
 @get('/oauth2/errors', name='oauth2_errors')
 def show_errors():
     return template('oauth2_errors', **request.query)
+
+default_app().config['OAUTH2_PROVIDER_ERROR_ENDPOINT'] = 'oauth2_errors'

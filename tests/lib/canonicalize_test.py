@@ -57,38 +57,3 @@ class CanonicalizeTest(unittest.TestCase):
       UsageError,
       lambda: canonicalize.get_bundle_uuid(model, user_id, worksheet_uuid, 'names have no exclamations!'),
     )
-
-  def test_get_target_path(self):
-    tester = self
-    test_bundle_spec = 'test_bundle_spec'
-    test_uuid = 'test_uuid'
-    test_data_hash = 'test_data_hash'
-    test_location = 'test_location'
-    test_path = 'test_path'
-    target = (test_uuid, test_path)
-
-    class MockBundleModel(object):
-      def get_bundle(self, uuid):
-        tester.assertEqual(uuid, test_uuid)
-        return self._bundle
-    test_model = MockBundleModel()
-
-    class MockBundleStore(object):
-      def get_bundle_location(self, uuid):
-        tester.assertEqual(uuid, test_uuid)
-        return test_location
-    bundle_store = MockBundleStore()
-
-    def get_bundle_uuid(model, bundle_spec):
-      self.assertEqual(model, test_model)
-      self.assertEqual(bundle_spec, test_bundle_spec)
-      return test_uuid
-
-    with mock.patch('codalab.lib.canonicalize.get_bundle_uuid', get_bundle_uuid):
-      test_model._bundle = type('MockBundle', (object,), {
-        'state': State.CREATED,
-        'data_hash': None,
-      })
-      test_model._bundle.data_hash = test_data_hash
-      result = canonicalize.get_target_path(bundle_store, test_model, target)
-      self.assertEqual(result, os.path.join(test_location, test_path))
