@@ -68,10 +68,12 @@ def authentication_required(func):
 
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, upload_manager, download_manager, auth_handler, verbose):
+    def __init__(self, address, bundle_store, model, launch_new_worker_system, worker_model, upload_manager, download_manager, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
+        self.launch_new_worker_system = launch_new_worker_system
+        self.worker_model = worker_model
         self.upload_manager = upload_manager
         self.download_manager = download_manager
         self.auth_handler = auth_handler
@@ -319,7 +321,15 @@ class LocalBundleClient(BundleClient):
         """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
-            self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
+            if not self.launch_new_worker_system:
+                self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
+            else:
+                worker_message = {
+                    'type': 'kill',
+                    'uuid': bundle_uuid,
+                }
+                action_string = BundleAction.kill()
+                self._do_bundle_action(bundle_uuid, worker_message, action_string)
 
     @authentication_required
     def write_targets(self, targets, string):
@@ -331,7 +341,36 @@ class LocalBundleClient(BundleClient):
         for bundle_uuid, subpath in targets:
             if not re.match('^\w+$', subpath):
                 raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
-            self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
+            
+            if not self.launch_new_worker_system:
+                self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
+            else:
+                worker_message = {
+                    'type': 'write',
+                    'uuid': bundle_uuid,
+                    'subpath': subpath,
+                    'string': string,
+                }
+                action_string = BundleAction.write(subpath, string)
+                self._do_bundle_action(bundle_uuid, worker_message, action_string)
+
+    def _do_bundle_action(self, bundle_uuid, worker_message, action_string):
+        """
+        Sends the message to the worker to do the bundle action, and adds the
+        action string to the bundle metadata.
+        """
+        bundle = self.model.get_bundle(bundle_uuid)
+        if bundle.state != State.RUNNING:
+            raise UsageError('Cannot execute this action on a bundle that is not running.')
+
+        worker = self.worker_model.get_bundle_worker(bundle_uuid)
+        precondition(
+            self.worker_model.send_json_message(worker['socket_id'],  worker_message, 60),
+            'Unable to reach worker.')
+
+        new_actions = getattr(bundle.metadata, 'actions', []) + [action_string]
+        db_update = {'metadata': {'actions': new_actions}}
+        self.model.update_bundle(bundle, db_update)
 
     @authentication_required
     def chown_bundles(self, bundle_uuids, user_spec):
@@ -375,6 +414,10 @@ class LocalBundleClient(BundleClient):
         check_bundles_have_all_permission(self.model, self._current_user(), relevant_uuids)
 
         # Make sure we don't delete bundles which are active.
+        # TODO(klopyrev): Remove the ability to delete a running bundle, since
+        #                 it is hard to ensure the integrity of the system if
+        #                 we allow that. Users need to kill running bundles
+        #                 first.
         if not force:
             states = self.model.get_bundle_states(uuids)
             active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
