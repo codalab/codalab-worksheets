@@ -23,7 +23,7 @@ from bottle import (
 from codalab.common import exception_to_http_error
 import codalab.rest.account
 import codalab.rest.bundle
-import codalab.rest.example  # TODO: Delete.
+import codalab.rest.example
 import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
@@ -101,10 +101,7 @@ class LoggingPlugin(object):
             args = [request.path, query_dict]
             if (route.method == 'POST'
                 and request.content_type == 'application/json'):
-                try:
-                    args.append(request.json)
-                except ValueError:
-                    pass
+                args.append(request.json)
 
             local.model.update_events_log(
                 start_time=start_time,
@@ -141,7 +138,6 @@ class ErrorAdapter(object):
                 raise HTTPError(code, message)
 
         return wrapper
-
 
 
 def error_handler(response):

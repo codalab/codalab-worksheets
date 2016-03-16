@@ -31,19 +31,19 @@ class WorkerModel(object):
     def __init__(self, engine, socket_dir, shared_file_system):
         self._engine = engine
         self._socket_dir = socket_dir
-        # TODO(klopyrev): Whether the worker running the bundle really shares
-        #                 file system with the bundle service depends on whether
-        #                 the worker is run by us or by a user.
         self.shared_file_system = shared_file_system
 
-    def worker_checkin(self, user_id, worker_id, slots, dependency_uuids):
+    def worker_checkin(self, user_id, worker_id, tag, slots, cpus, memory_bytes, dependencies):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
         """
         with self._engine.begin() as conn:
             worker_row = {
+                'tag': tag,
                 'slots': slots,
+                'cpus': cpus,
+                'memory_bytes': memory_bytes,
                 'checkin_time': datetime.datetime.now(),
             }
             existing_row = conn.execute(
@@ -74,7 +74,8 @@ class WorkerModel(object):
                 'user_id': user_id,
                 'worker_id': worker_id,
                 'dependency_uuid': uuid,
-            } for uuid in dependency_uuids]
+                'dependency_path': path,
+            } for uuid, path in dependencies]
             if dependency_rows:
                 conn.execute(cl_worker_dependency.insert(), dependency_rows)
 
@@ -121,16 +122,20 @@ class WorkerModel(object):
         worker_dict = {(row.user_id, row.worker_id): {
             'user_id': row.user_id,
             'worker_id': row.worker_id,
+            'tag': row.tag,
             'slots': row.slots,
+            'cpus': row.cpus,
+            'memory_bytes': row.memory_bytes,
             'checkin_time': row.checkin_time,
             'socket_id': row.socket_id,
             'run_uuids': [],
-            'dependency_uuids': [],
+            'dependencies': [],
         } for row in worker_rows}
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
         for row in worker_dependency_rows:
-            worker_dict[(row.user_id, row.worker_id)]['dependency_uuids'].append(row.dependency_uuid)
+            worker_dict[(row.user_id, row.worker_id)]['dependencies'].append(
+                (row.dependency_uuid, row.dependency_path))
         return worker_dict.values()
 
     def get_bundle_worker(self, uuid):

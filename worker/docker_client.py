@@ -183,7 +183,7 @@ No ldconfig found. Not loading libcuda libraries.
         volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
         for dependency_path, child_path in dependencies:
             volume_bindings.append('%s:%s:ro' % (
-                dependency_path,
+                os.path.abspath(dependency_path),
                 os.path.join(docker_bundle_path, child_path)))
 
         # Set up the devices.

@@ -10,6 +10,7 @@ from sqlalchemy import (
   UniqueConstraint,
 )
 from sqlalchemy.types import (
+  BigInteger,
   Integer,
   String,
   Text,
@@ -22,10 +23,6 @@ from sqlalchemy.sql.schema import ForeignKeyConstraint
 
 db_metadata = MetaData()
 
-# TODO: Add indices where needed.
-
-# TODO: Add index by id
-# TODO: Add index by state. This is really needed!!!
 bundle = Table(
   'bundle',
   db_metadata,
@@ -40,9 +37,9 @@ bundle = Table(
   Column('owner_id', String(255), nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('bundle_data_hash_index', 'data_hash'),
+  Index('state_index', 'state'),  # Needed for the bundle manager.
   sqlite_autoincrement=True,
 )
-# TODO: Add index by state.
 
 # Includes things like name, description, etc.
 bundle_metadata = Table(
@@ -339,7 +336,10 @@ worker = Table(
   Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
   Column('worker_id', String(127), primary_key=True, nullable=False),
 
-  Column('slots', Integer, nullable=False),  # Number of additional bundles the worker can run.
+  Column('tag', Text, nullable=True),  # Tag that allows for scheduling runs on specific workers.
+  Column('slots', Integer, nullable=False),  # Number of bundles the worker can run.
+  Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
+  Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.
   Column('checkin_time', DateTime, nullable=False),  # When the worker last checked in with the bundle service.
   Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.
 )
@@ -382,4 +382,5 @@ worker_dependency = Table(
   # No foreign key here, since we don't have any logic to clean-up bundles that
   # are deleted.
   Column('dependency_uuid', String(63), nullable=False),
+  Column('dependency_path', Text, nullable=False),
 )

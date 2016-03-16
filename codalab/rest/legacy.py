@@ -513,7 +513,7 @@ def post_bundle_info(uuid):
 
         # TODO: do this generally based on the CLI specs.
         # Remove generated fields.
-        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated', 'job_handle']:
+        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated', 'run_status', 'job_handle']:
             if key in new_metadata:
                 del new_metadata[key]
 
@@ -529,7 +529,6 @@ def post_bundle_info(uuid):
 
         service.update_bundle_metadata(uuid, new_metadata)
         bundle_info = service.get_bundle_info(uuid)
-
         return bundle_info
     else:
         abort(httplib.FORBIDDEN, 'Can\'t save unless you\'re the owner')

@@ -46,6 +46,7 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
                 with closing(self._worker_model.start_listening(response_socket_id)) as sock:
                     result = self._worker_model.get_json_message(sock, 60)
+                precondition(result is not None, 'Unable to reach worker')
                 if 'error_code' in result:
                     raise http_error_to_exception(result['error_code'], result['error_message'])
                 return result['target_info']
@@ -165,9 +166,14 @@ class DownloadManager(object):
             return string
 
     def _is_available_locally(self, uuid):
-        if self._worker_model.shared_file_system:
-            return True
-        return self._bundle_model.get_bundle_state(uuid) not in [State.RUNNING]
+        if self._bundle_model.get_bundle_state(uuid) == State.RUNNING:
+            if self._worker_model.shared_file_system:
+                worker = self._worker_model.get_bundle_worker(uuid)
+                return worker['user_id'] == self._bundle_model.root_user_id
+            else:
+                return False
+
+        return True
 
     def _get_target_path(self, uuid, path):
         bundle_path = self._bundle_store.get_bundle_location(uuid)

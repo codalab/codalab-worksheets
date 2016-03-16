@@ -104,7 +104,6 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
 
 
 def get_current_location(bundle_store, uuid):
-    # TODO: Get rid of this once deleting old worker code.
     """
     Return the on-disk location of currently running target.
     """

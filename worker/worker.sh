@@ -1,9 +1,10 @@
 #!/bin/bash
 # Wrapper around the worker Python code that restarts the worker when upgrading.
 
-# TODO: Add comments.
 if ! [ -z "$PBS_JOBID" ]; then
-  # Running on Torque.
+  # For jobs running on Torque, we use the ID to figure out which worker should
+  # run which bundle. Additionally, we need to save the stdout and stderr
+  # somewhere to debug workers that fail to start.
   ID_ARG="--id $PBS_JOBID"
   STDOUT=$LOG_DIR/stdout.$PBS_JOBID
   STDERR=$LOG_DIR/stderr.$PBS_JOBID

@@ -176,12 +176,12 @@ class BundleServiceClient(object):
 
     @authorized
     @wrap_exception('Unable to get bundle contents from bundle service')
-    def get_bundle_contents(self, uuid):
+    def get_bundle_contents(self, uuid, path):
         """
         Returns a file-like object and a file name.
         """
         response = self._make_request(
-            'GET', '/bundle/' + uuid + '/contents/blob/',
+            'GET', '/bundle/' + uuid + '/contents/blob/' + path,
             headers={'Accept-Encoding': 'gzip'}, return_response=True)
         match = re.match('filename="(.*)"',
                          response.headers['Content-Disposition'])

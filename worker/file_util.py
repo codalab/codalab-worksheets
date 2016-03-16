@@ -15,8 +15,8 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
     given directory.
 
     follow_symlinks: Whether symbolic links should be followed.
-    ignore_names: Any top-level directory entries with names in ignore_names
-                  are not included.
+    exclude_names: Any top-level directory entries with names in exclude_names
+                   are not included.
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     """
@@ -199,17 +199,17 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     
     return ''.join(lines)
 
-def get_path_size(path, ignore_paths=[]):
+def get_path_size(path, exclude_names=[]):
     """
     Returns the size of the contents of the given path, in bytes.
 
-    If path is a directory, any directory entries in ignore_paths will be
+    If path is a directory, any directory entries in exclude_names will be
     ignored.
     """
     result = os.lstat(path).st_size
     if not os.path.islink(path) and os.path.isdir(path):
         for child in os.listdir(path):
-            if child not in ignore_paths:
+            if child not in exclude_names:
                 result += get_path_size(os.path.join(path, child))
     return result
 

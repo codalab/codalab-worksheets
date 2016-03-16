@@ -94,10 +94,15 @@ class State(object):
     """
     CREATED = 'created'   # Just created
     STAGED = 'staged'     # All the dependencies are met
-    QUEUED = 'queued'     # Submitted to the queue (and possibly copying files around)
+    MAKING = 'making'  # Creating a make bundle.
+    WAITING_FOR_TORQUE = 'waiting_for_torque'  # Waiting for Torque to start the job.
+    STARTING = 'starting'  # Wait for the worker to start running the bundle.
     RUNNING = 'running'   # Actually running
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
+    
+    # TODO(klopyrev): Deprecate this state once the new worker system is launched.
+    QUEUED = 'queued'     # Submitted to the queue (and possibly copying files around)
 
     OPTIONS = {CREATED, STAGED, RUNNING, READY, FAILED}
     FINAL_STATES = {READY, FAILED}

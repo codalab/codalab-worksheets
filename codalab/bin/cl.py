@@ -2,6 +2,7 @@
 # Main entry point for CodaLab.
 # Run 'cl' rather than this script.
 import os
+import signal
 import sys
 import time
 import subprocess
@@ -108,11 +109,6 @@ def do_rest_server_command(bundle_cli, args):
     help = 'Start the bundle manager that executes run and make bundles.',
     arguments=(
         Commands.Argument(
-            '--num-iterations',
-            help='Number of bundles to process before exiting '
-                 '(for debugging).',
-            type=int, default=None),
-        Commands.Argument(
             '--sleep-time',
             help='Number of seconds to wait between successive actions.',
             type=int, default=0.5),
@@ -120,8 +116,13 @@ def do_rest_server_command(bundle_cli, args):
 )
 def do_bundle_manager_command(bundle_cli, args):
     from codalab.worker.bundle_manager import BundleManager
-    BundleManager(bundle_cli.manager).run(args.num_iterations,
-                                          args.sleep_time)
+    manager = BundleManager.create(bundle_cli.manager)
+
+    # Register a signal handler to ensure safe shutdown.
+    for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
+        signal.signal(sig, lambda signup, frame: manager.signal())
+
+    manager.run(args.sleep_time)
 
 
 if __name__ == '__main__':

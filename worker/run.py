@@ -109,22 +109,23 @@ class Run(object):
             dependencies = []
             for dep in self._bundle['dependencies']:
                 if self._worker.shared_file_system:
-                    dependency_path = dep['location']
-                else:
-                    dependency_path = self._worker.add_dependee(
-                        dep['parent_uuid'], self._uuid, check_killed)
+                    parent_bundle_path = dep['location']
 
-                # Check that the dependency is valid (i.e. points inside the
-                # bundle and isn't a broken symlink).
-                dependency_path = os.path.realpath(dependency_path)
-                parent_path = os.path.realpath(
-                    os.path.join(dependency_path, dep['parent_path']))
-                if (not parent_path.startswith(dependency_path) or
-                    not os.path.exists(parent_path)):
-                    raise Exception('Invalid dependency %s/%s' % (
-                        dep['parent_uuid'], dep['parent_path']))
-    
-                dependencies.append((parent_path, dep['child_path']))
+                    # Check that the dependency is valid (i.e. points inside the
+                    # bundle and isn't a broken symlink).
+                    parent_bundle_path = os.path.realpath(parent_bundle_path)
+                    dependency_path = os.path.realpath(
+                        os.path.join(parent_bundle_path, dep['parent_path']))
+                    if (not dependency_path.startswith(parent_bundle_path) or
+                        not os.path.exists(dependency_path)):
+                        raise Exception('Invalid dependency %s/%s' % (
+                            dep['parent_uuid'], dep['parent_path']))
+                else:
+                    dependency_path = self._worker.add_dependency(
+                        dep['parent_uuid'], dep['parent_path'], self._uuid,
+                        check_killed)
+
+                dependencies.append((dependency_path, dep['child_path']))
 
             def do_start():
                 self._update_run_status('Starting Docker container')
@@ -148,6 +149,7 @@ class Run(object):
                     raise
         except Exception as e:
             self._finish(failure_message=str(e))
+            self._worker.finish_run(self._uuid)
             return
 
         self._update_run_status('Running')
@@ -347,7 +349,8 @@ class Run(object):
             # Clean-up dependencies.
             for dep in self._bundle['dependencies']:
                 if not self._worker.shared_file_system:
-                    self._worker.remove_dependee(dep['parent_uuid'], self._uuid)
+                    self._worker.remove_dependency(
+                        dep['parent_uuid'], dep['parent_path'], self._uuid)
                 # Docker creates files for each mounted volume. Delete them.
                 child_path = os.path.realpath(
                     os.path.join(self._bundle_path, dep['child_path']))

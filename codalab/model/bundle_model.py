@@ -593,28 +593,41 @@ class BundleModel(object):
                 return success
         return True
 
-    def torque_stage_bundle(self, bundle, torque_job_handle):
+    def set_waiting_for_torque_bundle(self, bundle, torque_job_handle):
+        '''
+        Sets the bundle to WAITING_FOR_TORQUE, updating the job_handle and
+        last_updated metadata. 
+        '''
         with self.engine.begin() as connection:
             # Check that it still exists.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
             if not row:
+                # The user deleted the bundle.
                 return
 
-            metadata_update = {
-                 'job_handle': torque_job_handle,
-                 'last_updated': int(time.time())
-            }
-            self.update_bundle(bundle, {'metadata': metadata_update}, connection)
+            bundle_update = {
+                'state': State.WAITING_FOR_TORQUE,
+                'metadata': {
+                     'job_handle': torque_job_handle,
+                     'last_updated': int(time.time())
+                },
+            } 
+            self.update_bundle(bundle, bundle_update, connection)
 
-    def queue_bundle(self, bundle, user_id, worker_id):
+    def set_starting_bundle(self, bundle, user_id, worker_id):
+        '''
+        Sets the bundle to STARTING, updating the last_updated metadata. Adds
+        a worker_run row that tracks which worker will run the bundle.
+        '''
         with self.engine.begin() as connection:
             # Check that it still exists.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
             if not row:
+                # The user deleted the bundle.
                 return False
 
             bundle_update = {
-                'state': State.QUEUED,
+                'state': State.STARTING,
                 'metadata': {
                     'last_updated': int(time.time()),
                 },
@@ -630,13 +643,20 @@ class BundleModel(object):
 
             return True
 
-    def unqueue_bundle(self, bundle):
+    def restage_bundle(self, bundle):
+        '''
+        Sets a bundle back from STARTING to STAGED, returning False if the
+        bundle was not in STARTING state. Clears the job_handle metadata and
+        removes the worker_run row.
+        '''
         with self.engine.begin() as connection:
             # Make sure it's still queued.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
             if not row:
-                raise IntegrityError('Queued bundle got deleted')
-            if row.state != State.QUEUED:
+                raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
+            if row.state != State.STARTING:
+                # It is possible that this method is called on a bundle
+                # that has started running.
                 return False
 
             update_message = {
@@ -652,6 +672,11 @@ class BundleModel(object):
             return True
 
     def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+        '''
+        Marks the bundle as running but only if it is still scheduled to run
+        on the given worker (done by checking the worker_run table). Returns
+        True if it is. Updates a few metadata fields and the events log.
+        '''
         with self.engine.begin() as connection:
             # Check that still assigned to this worker.
             run_row = connection.execute(
@@ -678,7 +703,13 @@ class BundleModel(object):
 
         return True
 
-    def finalize_bundle(self, bundle, exitcode, failure_message):
+    def finalize_bundle(self, bundle, user_id, exitcode, failure_message):
+        '''
+        Marks the bundle as READY / FAILED, updating a few metadata fields, the
+        events log and removing the worker_run row. Additionally, if the user
+        running the bundle was the CodaLab root user, increments the time
+        used by the bundle owner.
+        '''
         state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
@@ -694,10 +725,9 @@ class BundleModel(object):
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
 
-        # TODO(klopyrev): Users running their own workers shouldn't get their
-        # time incremented here.
-        self.increment_user_time_used(bundle.owner_id,
-                                      getattr(bundle.metadata, 'time', 0))
+        if user_id == self.root_user_id:
+            self.increment_user_time_used(bundle.owner_id,
+                                          getattr(bundle.metadata, 'time', 0))
 
         self.update_events_log(
             user_id=bundle.owner_id,

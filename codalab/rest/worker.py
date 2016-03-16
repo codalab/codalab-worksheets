@@ -23,14 +23,16 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 2.0
 
-    if 'torque' not in local.config['workers'] and request.json['version'] != VERSION:
-        # TODO(klopyrev): Don't resend the upgrade message if already sent and
-        #                 the worker is still running bundles.
-        # TODO(klopyrev): Also, Torque should be ignored for own workers.
+    torque_worker = ('torque' in local.config['workers'] and
+                     request.user.user_id == local.model.root_user_id)
+    if (not torque_worker and
+        request.json['version'] != VERSION and
+        not request.json['will_upgrade']):
         return {'type': 'upgrade'}
     socket_id = local.worker_model.worker_checkin(
-        request.user.user_id, worker_id,
-        request.json['slots'], request.json['dependency_uuids'])
+        request.user.user_id, worker_id, request.json['tag'],
+        request.json['slots'], request.json['cpus'], request.json['memory_bytes'],
+        request.json['dependencies'])
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 
@@ -170,13 +172,14 @@ def finalize_bundle(worker_id, uuid):
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
 
-    if local.worker_model.shared_file_system:
+    if (local.worker_model.shared_file_system and
+        request.user.user_id == local.model.root_user_id):
         # On a shared file system, the worker doesn't upload the contents, so
         # we need to run this metadata update here. With no shared file system
         # it happens in update_bundle_contents.
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 
-    local.model.finalize_bundle(bundle,
+    local.model.finalize_bundle(bundle, request.user.user_id,
                                 request.json['exitcode'],
                                 request.json['failure_message'])
 

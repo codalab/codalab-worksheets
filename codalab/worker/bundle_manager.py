@@ -1,48 +1,50 @@
 import datetime
 import os
 import re
-import subprocess
 import sys
+import threading
 import time
 import traceback
 
 from codalab.common import State
-from codalab.lib import bundle_util, formatting, path_util
-from codalab.objects.permission import check_bundle_have_run_permission
+from codalab.lib import bundle_util, formatting
+from worker.file_util import remove_path
 
 
 class BundleManager(object):
-    def __init__(self, codalab_manager):
-        self._model = codalab_manager.model()
-        self._worker_model = codalab_manager.worker_model()
-        self._bundle_store = codalab_manager.bundle_store()
+    """
+    Assigns run bundles to workers and makes make bundles.
+    """
 
-        # Parse the config.
+    @staticmethod
+    def create(codalab_manager):
         config = codalab_manager.config.get('workers')
         if not config:
             print >> sys.stderr, 'Config is missing a workers section'
             exit(1)
 
+        if 'torque' in config:
+            from codalab.worker.torque_bundle_manager import TorqueBundleManager
+            self = TorqueBundleManager(codalab_manager, config['torque'])
+        else:
+            from codalab.worker.default_bundle_manager import DefaultBundleManager
+            self = DefaultBundleManager()
+
+        self._model = codalab_manager.model()
+        self._worker_model = codalab_manager.worker_model()
+        self._bundle_store = codalab_manager.bundle_store()
+        self._upload_manager = codalab_manager.upload_manager()
+        
+        self._exiting_lock = threading.Lock()
+        self._exiting = False
+
+        self._make_uuids_lock = threading.Lock()
+        self._make_uuids = set()
+
         if 'default_docker_image' not in config:
             print >> sys.stderr, 'workers config missing default_docker_image'
             exit(1)
         self._default_docker_image = config['default_docker_image']
-
-        if 'torque' in config:
-            assert(self._worker_model.shared_file_system)
-            self._use_torque = True
-            self._torque_host = config['torque']['host']
-            self._torque_bundle_service_url = config['torque']['bundle_service_url']
-            self._torque_password_file = config['torque']['password_file']
-            self._torque_log_dir = config['torque']['log_dir']
-            path_util.make_directory(self._torque_log_dir)
-            if 'worker_code_dir' in config['torque']:
-                self._torque_worker_code_dir = config['torque']['worker_code_dir']
-            else:
-                codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-                self._torque_worker_code_dir = os.path.join(codalab_cli, 'worker')
-        else:
-            self._use_torque = False
 
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
@@ -58,22 +60,32 @@ class BundleManager(object):
         self._default_request_queue = config.get('default_request_queue')
         self._default_request_priority = config.get('default_request_priority')
 
-    def run(self, num_iterations, sleep_time):
-        iteration = 1
-        while True:
+        return self
+
+    def run(self, sleep_time):
+        while not self._is_exiting():
             try:
                 self._run_iteration()
             except Exception:
                 traceback.print_exc()
-            iteration += 1
-            if num_iterations and iteration > num_iterations:
-                return
+
             time.sleep(sleep_time)
+
+        while self._is_making_bundles():
+            time.sleep(sleep_time)
+
+    def signal(self):
+        with self._exiting_lock:
+            self._exiting = True
+
+    def _is_exiting(self):
+        with self._exiting_lock:
+            return self._exiting
 
     def _run_iteration(self):
         self._stage_bundles()
-        # TODO: Handle make bundles.
-        self._schedule()
+        self._make_bundles()
+        self._schedule_run_bundles()
 
     def _stage_bundles(self):
         """
@@ -83,7 +95,7 @@ class BundleManager(object):
         """
         bundles = self._model.batch_get_bundles(state=State.CREATED)
         parent_uuids = set(
-          dep.parent_uuid for bundle in bundles for dep in bundle.dependencies)
+            dep.parent_uuid for bundle in bundles for dep in bundle.dependencies)
         parents = self._model.batch_get_bundles(uuid=parent_uuids)
         all_parent_states = {parent.uuid: parent.state for parent in parents}
         all_parent_uuids = set(all_parent_states)
@@ -103,18 +115,20 @@ class BundleManager(object):
             parent_states = {uuid: all_parent_states[uuid]
                              for uuid in parent_uuids}
 
-            # TODO: Allow failed dependencies.
-            # TODO: Don't depend on bundles that you can't read.
-            failed_uuids = [
-              uuid for uuid, state in parent_states.iteritems()
-              if state == State.FAILED]
-            if failed_uuids:
-                bundles_to_fail.append(
-                  (bundle,
-                   'Parent bundles failed: %s' % ', '.join(failed_uuids)))
-                continue
+            acceptable_states = [State.READY]
+            if bundle.metadata.allow_failed_dependencies:
+                acceptable_states.append(State.FAILED)
+            else:
+                failed_uuids = [
+                    uuid for uuid, state in parent_states.iteritems()
+                    if state == State.FAILED]
+                if failed_uuids:
+                    bundles_to_fail.append(
+                        (bundle,
+                         'Parent bundles failed: %s' % ', '.join(failed_uuids)))
+                    continue
 
-            if all(state == State.READY for state in parent_states.itervalues()):
+            if all(state in acceptable_states for state in parent_states.itervalues()):
                 bundles_to_stage.append(bundle)
 
         for bundle, failure_message in bundles_to_fail:
@@ -125,207 +139,194 @@ class BundleManager(object):
             self._model.update_bundle(
                 bundle, {'state': State.STAGED})
 
-    def _schedule(self):
+    def _make_bundles(self):
+        # Re-stage any stuck bundles. This would happen if the bundle manager
+        # died.
+        for bundle in self._model.batch_get_bundles(state=State.MAKING, bundle_type='make'):
+            if not self._is_making_bundle(bundle.uuid):
+                self._model.update_bundle(bundle, {'state': State.STAGED})
+
+        for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='make'):
+            self._model.update_bundle(bundle, {'state': State.MAKING})
+            with self._make_uuids_lock:
+                self._make_uuids.add(bundle.uuid)
+            # Making a bundle could take time, so do the work in a separate
+            # thread to ensure quick scheduling.
+            threading.Thread(
+                target=BundleManager._make_bundle, args=[self, bundle]
+            ).start()
+
+    def _is_making_bundles(self):
+        with self._make_uuids_lock:
+            return bool(self._make_uuids)
+
+    def _is_making_bundle(self, uuid):
+        with self._make_uuids_lock:
+            return uuid in self._make_uuids
+
+    def _make_bundle(self, bundle):
+        try:
+            path = os.path.abspath(self._bundle_store.get_bundle_location(bundle.uuid))
+            remove_path(path)
+            os.mkdir(path)
+
+            # Compute a dict mapping parent_uuid -> parent for each dep of this bundle.
+            parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
+            parents = self._model.batch_get_bundles(uuid=parent_uuids)
+            parent_dict = {parent.uuid: parent for parent in parents}
+
+            bundle.install_dependencies(self._bundle_store, parent_dict, path, copy=True)
+
+            self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+            self._model.update_bundle(bundle, {'state': State.READY})
+        except Exception as e:
+            self._model.update_bundle(
+                bundle, {'state': State.FAILED,
+                         'metadata': {'failure_message': str(e)}})
+        finally:
+            with self._make_uuids_lock:
+                self._make_uuids.remove(bundle.uuid)
+
+    def _cleanup_dead_workers(self, workers, callback=None):
         """
-        This method implements a state machine. It is different between whether
-        we are using Torque or not.
-
-        With Torque, the states are:
-
-        Staged, no job_handle, no worker, no worker_run DB entry:
-            Needs a Torque worker to be started.
-        Staged, has job_handle, worker starting, no worker_run DB entry:
-            Waiting for the Torque worker to start before sending a run message.
-        Queued, has job_handle, worker running, has worker_run DB entry:
-            Run message sent, waiting for the run to start. 
-        Running, has job_handle, worker running, has worker_run DB entry:
-            Worker reported that the run has started.
-        Ready / Failed, has job_handle, worker running, no worker_run DB entry:
-            Will send shutdown message to worker.
-        Ready / Failed, has job_handle, no worker, no worker_run DB entry:
-            Finished.
-
-        Without Torque, the states are:
-
-        Staged, no worker_run DB entry:
-            Ready to schedule send run message to available worker.
-        Queued, has worker_run DB entry:
-            Run message sent, waiting for the run to start.
-        Running, has worker_run DB entry:
-            Worker reported that the run has started.
-        Ready / Failed, no worker_run DB entry:
-            Finished.
+        Clean-up workers that we haven't heard from for more than 5 minutes.
+        Such workers probably died without checking out properly.
         """
-        # TODO: Can't we just add a new state for Torque.
-        workers = WorkerInfoAccessor(self._worker_model.get_workers())
-
-        # Clean-up dead workers. If we haven't heard from a worker for 5
-        # minutes, it's considered dead and should be cleaned up.
         for worker in workers.workers():
             if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(minutes=5):
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker)
-                if self._use_torque:
-                    self._clear_torque_logs(worker['worker_id'])
+                if callback is not None:
+                    callback(worker)
 
-        # Re-stage bundles that got stuck in QUEUED state.
-        for bundle in self._model.batch_get_bundles(state=State.QUEUED, bundle_type='run'):
+    def _restage_stuck_starting_bundles(self, workers):
+        """
+        Moves bundles that got stuck in the STARTING state back to the STAGED
+        state so that they can be scheduled to run again.
+        """
+        for bundle in self._model.batch_get_bundles(state=State.STARTING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > 5 * 60):  # Run message went missing.
-                if self._model.unqueue_bundle(bundle):
-                    workers.unqueue(bundle.uuid)
+                if self._model.restage_bundle(bundle):
+                    workers.restage(bundle.uuid)
 
-        # Fail bundles that got stuck in RUNNING state.
+    def _fail_stuck_running_bundles(self, workers):
+        """
+        Fails bundles that got stuck in the RUNNING state.
+        """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > 60 * 60):  # Shouldn't really happen, but let's be safe.
-                self._model.finalize_bundle(bundle, exitcode=None, failure_message='Worker died')
+                self._model.finalize_bundle(bundle, -1, exitcode=None, failure_message='Worker died')
                 workers.unqueue(bundle.uuid)
-                
-        if self._use_torque:
-            for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-                if hasattr(bundle.metadata, 'job_handle'):
-                    # Fail bundles where the worker didn't start.
-                    failure_message = self._read_torque_error_log(bundle.metadata.job_handle)
-                    if failure_message is None and time.time() - bundle.metadata.last_updated > 20 * 60:
-                        failure_message = 'Worker disappeared'
-                    if failure_message is not None:
-                        self._model.finalize_bundle(bundle, exitcode=None, failure_message=failure_message)
-                        self._clear_torque_logs(bundle.metadata.job_handle)
-                else:
-                    # Start Torque workers.
-                    try:
-                        job_handle = self._start_torque_worker(bundle)
-                    except TorqueException as e:
-                        self._model.finalize_bundle(bundle, exitcode=None, failure_message=e.message)
-                        continue
-                    self._model.torque_stage_bundle(bundle, job_handle)
-                 
-        # Run bundles.
+
+    def _schedule_run_bundles_on_workers(self, workers, user_owned):
+        """
+        Schedules STAGED bundles to run on the given workers. If user_owned is
+        True, then schedules on workers run by the owner of each bundle.
+        Otherwise, uses CodaLab-owned workers, which have user ID root_user_id.
+        """
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
-            if self._use_torque and not hasattr(bundle.metadata, 'job_handle'):
-                continue
-            for worker in self._schedule_bundle(workers, bundle):
-                if self._model.queue_bundle(bundle, worker['user_id'], worker['worker_id']):
-                    workers.queue(bundle.uuid, worker)
-                    if self._worker_model.send_json_message(
-                        worker['socket_id'], self._construct_run_message(bundle), 0.2):
-                        break
-                    else:
-                        self._model.unqueue_bundle(bundle)
-                        workers.unqueue(bundle.uuid)
-                        # Try the next worker.
+            if user_owned:
+                workers_list = workers.user_owned_workers(bundle.owner_id)
+            else:
+                workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-        if self._use_torque:
-            # Shutdown finished Torque workers.
-            running_job_handles = set()
-            for bundle in self._model.batch_get_bundles(state=[State.STAGED, State.QUEUED, State.RUNNING], bundle_type='run'):
-                if hasattr(bundle.metadata, 'job_handle'):
-                    running_job_handles.add(bundle.metadata.job_handle)
-            for worker in workers.workers():
-                if worker['worker_id'] not in running_job_handles:
-                    shutdown_message = {
-                        'type': 'shutdown',
-                    }
-                    self._worker_model.send_json_message(
-                        worker['socket_id'], shutdown_message, 0.2)
-                    self._clear_torque_logs(worker['worker_id'])
+            workers_list = self._filter_and_sort_workers(workers_list, bundle)
 
-    def _start_torque_worker(self, bundle):
-        resource_args = []
+            for worker in workers_list:
+                if self._try_start_bundle(workers, worker, bundle):
+                    break
+                else:
+                    continue  # Try the next worker.
 
-        request_cpus = bundle.metadata.request_cpus or self._default_request_cpus
+    def _filter_and_sort_workers(self, workers_list, bundle):
+        """
+        Filters the workers to those than can run the given bundle and returns
+        the list sorted in order of preference for running the bundle.
+        """
+        # Filter by slots.
+        workers_list = filter(lambda worker: worker['slots'] - len(worker['run_uuids']) > 0,
+                              workers_list)
+
+        # Filter by CPUs.
+        request_cpus = self._compute_request_cpus(bundle)
         if request_cpus:
-            resource_args.extend(['-l', 'nodes=1:ppn=%d' % request_cpus])
+            workers_list = filter(lambda worker: worker['cpus'] >= request_cpus,
+                                  workers_list)
 
-        request_memory = self._construct_run_message(bundle)['resources']['request_memory']
+        # Filter by memory.
+        request_memory = self._compute_request_memory(bundle)
         if request_memory:
-            resource_args.extend(['-l', 'mem=%d' % request_memory])
+            workers_list = filter(lambda worker: worker['memory_bytes'] >= request_memory,
+                                  workers_list)
 
+        # Filter by tag.
         request_queue = bundle.metadata.request_queue or self._default_request_queue
         if request_queue:
-            # Either host=<host-name> or <queue-name>
-            m = re.match('^host=(.+)$', request_queue)
-            if m:
-                resource_args.extend(['-l', 'host=' + m.group(1)])
+            tagm = re.match('tag=(.+)', request_queue)
+            if tagm:
+                workers_list = filter(lambda worker: worker['tag'] == tagm.group(1),
+                                      workers_list)
             else:
-                resource_args.extend(['-q', request_queue])
+                # We don't know how to handle this type of request queue
+                # argument.
+                return []
 
-        request_priority = bundle.metadata.request_priority or self._default_request_priority
-        if request_priority:
-            resource_args.extend(['-p', str(request_priority)])
+        # Sort according to the number of dependencies available, breaking
+        # ties by the number of free slots.
+        needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path),
+                              bundle.dependencies))
+        def get_sort_key(worker):
+            deps = set(worker['dependencies'])
+            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']))
+        workers_list.sort(key=get_sort_key, reverse=True)
 
-        script_args = [
-            '--bundle-service-url',  self._torque_bundle_service_url,
-            '--password-file', self._torque_password_file,
-            '--shared-file-system',
-        ]
+        return workers_list
 
-        script_env = {
-            'LOG_DIR': self._torque_log_dir,
-            'WORKER_CODE_DIR': self._torque_worker_code_dir,
-              # -v doesn't work with spaces, so we have to hack it.
-            'WORKER_ARGS': '|'.join(script_args),
-        }
-
-        command = self._torque_ssh_command(
-            ['qsub', '-o', '/dev/null', '-e', '/dev/null',
-             '-v', ','.join([k + '=' + v for k, v in script_env.iteritems()])] +
-            resource_args +
-            [ '-S', '/bin/bash', os.path.join(self._torque_worker_code_dir, 'worker.sh')])
-
-        try:
-            return subprocess.check_output(command, stderr=subprocess.STDOUT).strip()
-        except subprocess.CalledProcessError as e:
-            raise TorqueException('Failed to launch Torque job: ' + e.output)
-
-    def _torque_ssh_command(self, args):
-        args = ['"' + arg.replace('"', '\\"') + '"' for arg in args]  # Quote arguments
-        return ['ssh', '-oBatchMode=yes', '-x', self._torque_host] + args
-
-    def _read_torque_error_log(self, job_handle):
-        error_log_path = os.path.join(self._torque_log_dir, 'stderr.' + job_handle)
-        if os.path.exists(error_log_path):
-            with open(error_log_path) as f:
-                lines = [line for line in f.readlines() if not line.startswith('PBS')]
-                if lines:
-                    return ''.join(lines)
-                    
-        return None
-
-    def _clear_torque_logs(self, job_handle):
-        try:
-            os.remove(os.path.join(self._torque_log_dir, 'stdout.' + job_handle))
-        except OSError:
-            pass
-        try:
-            os.remove(os.path.join(self._torque_log_dir, 'stderr.' + job_handle))
-        except OSError:
-            pass
-
-    def _schedule_bundle(self, workers, bundle):
-        # TODO: Prefer user worker!!!!
-        if self._use_torque:
-            for worker in workers.workers():
-                if worker['worker_id'] == bundle.metadata.job_handle:
-                    yield worker
+    def _try_start_bundle(self, workers, worker, bundle):
+        """
+        Tries to start running the bundle on the given worker, returning False
+        if that failed.
+        """
+        if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
+            workers.set_starting(bundle.uuid, worker)
+            if self._worker_model.send_json_message(
+                worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
+                return True
+            else:
+                self._model.restage_bundle(bundle)
+                workers.restage(bundle.uuid)
+                return False
         else:
-            # TODO: Make this more intelligent.
-            # TODO: Handle case of shared_file_system.
-            for worker in workers.workers():
-                if (check_bundle_have_run_permission(self._model, worker['user_id'], bundle) and
-                    worker['slots'] - len(worker['run_uuids']) > 0):
-                    yield worker
+            return False
 
-    def _construct_run_message(self, bundle):
+    def _compute_request_cpus(self, bundle):
+        """
+        Compute the CPU limit used for scheduling the run.
+        """
+        return bundle.metadata.request_cpus or self._default_request_cpus
+
+    def _compute_request_memory(self, bundle):
+        """
+        Compute the memory limit used for scheduling the run.
+        """
+        if bundle.metadata.request_memory:
+            return formatting.parse_size(bundle.metadata.request_memory)
+        return self._default_request_memory
+
+    def _construct_run_message(self, worker, bundle):
+        """
+        Constructs the run message that is sent to the given worker to tell it
+        to run the given bundle.
+        """
         message = {}
         message['type'] = 'run'
         message['bundle'] = bundle_util.bundle_to_bundle_info(self._model, bundle)
-        if self._worker_model.shared_file_system:
+        if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
                 dependency['location'] = self._bundle_store.get_bundle_location(dependency['parent_uuid'])
-
 
         # Figure out the resource requirements.
         resources = message['resources'] = {}
@@ -348,6 +349,8 @@ class BundleManager(object):
                 return int(max_value)
             else:
                 return None
+
+        # These limits are used for killing runs that use too many resources.
         resources['request_time'] = parse_and_min(formatting.parse_duration,
                                                   bundle.metadata.request_time,
                                                   self._default_request_time,
@@ -360,42 +363,8 @@ class BundleManager(object):
                                                   bundle.metadata.request_disk,
                                                   self._default_request_disk,
                                                   self._max_request_disk)
+
         resources['request_network'] = (bundle.metadata.request_network or
                                         self._default_request_network)
 
         return message
-
-
-class WorkerInfoAccessor(object):
-    def __init__(self, workers):
-        self._workers = workers
-        self._uuid_to_worker = {}
-        for worker in self._workers:
-            for uuid in worker['run_uuids']:
-                self._uuid_to_worker[uuid] = worker
-
-    def workers(self):
-        return list(self._workers)
-
-    def remove(self, worker):
-        self._workers.remove(worker)
-        for uuid in worker['run_uuids']:
-            del self._uuid_to_worker[uuid]
-
-    def is_running(self, uuid):
-        return uuid in self._uuid_to_worker
-
-    def queue(self, uuid, worker):
-        worker['run_uuids'].append(uuid)
-        self._uuid_to_worker[uuid] = worker
-
-    def unqueue(self, uuid):
-        if uuid in self._uuid_to_worker:
-            worker = self._uuid_to_worker[uuid]
-            worker['run_uuids'].remove(uuid)
-            del self._uuid_to_worker[uuid]
-
-
-class TorqueException(Exception):
-    def __init__(self, message):
-        super(TorqueException, self).__init__(message)

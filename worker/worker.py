@@ -1,5 +1,6 @@
 from contextlib import closing
 import logging
+import multiprocessing
 import os
 import shutil
 import threading
@@ -31,24 +32,19 @@ class Worker(object):
            their dependencies.
         4) Upgrading the worker.
     """
-    def __init__(self, id, work_dir, shared_file_system, slots,
+    def __init__(self, id, tag, work_dir, max_work_dir_size_mb,
+                 shared_file_system, slots,
                  bundle_service, docker):
         self.id = id
+        self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._docker = docker
         self._slots = slots
 
         if not self.shared_file_system:
-            self._work_dir = os.path.realpath(work_dir)
-            # TODO(klopyrev): Don't delete the work directory when the worker
-            #                 stops and starts, and instead figure out which
-            #                 dependencies are already there and use them.
-            remove_path(self._work_dir)
-            os.makedirs(self._work_dir, 0770)
-
             # Manages which dependencies are available.
-            self._dependency_manager = DependencyManager()
+            self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_mb)
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed
@@ -61,6 +57,9 @@ class Worker(object):
         self._should_upgrade = False
 
     def run(self):
+        if not self.shared_file_system:
+            self._dependency_manager.start_cleanup_thread()
+
         while self._should_run():
             try:
                 self._checkin()
@@ -71,7 +70,7 @@ class Worker(object):
         self._checkout()
 
         if not self.shared_file_system:
-            remove_path(self._work_dir)
+            self._dependency_manager.stop_cleanup_thread()
 
         if self._should_upgrade:
             self._upgrade()
@@ -97,8 +96,12 @@ class Worker(object):
     def _checkin(self):
         request = {
             'version': VERSION,
+            'will_upgrade': self._should_upgrade,
+            'tag': self._tag,
             'slots': self._slots if not self._is_exiting() else 0,
-            'dependency_uuids': [] if self.shared_file_system else self._dependency_manager.dependencies()
+            'cpus': multiprocessing.cpu_count(),
+            'memory_bytes': os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES'),
+            'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
         response = self._bundle_service.checkin(self.id, request)
         if response:
@@ -118,58 +121,57 @@ class Worker(object):
                 with self._exiting_lock:
                     self._exiting = True
                 self._should_upgrade = True
-            elif type == 'shutdown':
-                with self._exiting_lock:
-                    self._exiting = True
 
     def _run(self, bundle, resources):
         if self.shared_file_system:
             bundle_path = bundle['location']
         else:
-            bundle_path = os.path.join(self._work_dir, bundle['uuid'])
+            bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
         run = Run(self._bundle_service, self._docker, self,
                   bundle, bundle_path, resources)
         if run.run():
             with self._runs_lock:
                 self._runs[bundle['uuid']] = run
 
-    def add_dependee(self, uuid, dependee_uuid, loop_callback):
+    def add_dependency(self, parent_uuid, parent_path, uuid, loop_callback):
         """
-        Registers that the run with UUID dependee_uuid depends on bundle with
-        UUID uuid. Downloads the dependency if necessary, and returns the path
-        to the dependency. Note, remove_dependee should be called for every
-        dependency added.
+        Registers that the run with UUID uuid depends on path parent_path in
+        bundle with UUID parent_uuid. Downloads the dependency if necessary, and
+        returns the path to the dependency. Note, remove_dependency should be
+        called for every dependency added.
 
         loop_callback is a method that is called repeatedly while downloading
         the dependency. If that method throws an exception, the download gets
-        interrupted and add_dependee fails with that same exception.
+        interrupted and add_dependency fails with that same exception.
         """
         assert(not self.shared_file_system)
-        dependency_path = os.path.join(self._work_dir, uuid)
-        if self._dependency_manager.add_dependee(uuid, dependee_uuid):
-            logger.debug('Downloading dependency %s', uuid)
-            download_success = False
+        dependency_path, should_download = (
+            self._dependency_manager.add_dependency(parent_uuid, parent_path, uuid))
+        if should_download:
+            logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
             try:
-                fileobj, filename = self._bundle_service.get_bundle_contents(uuid)
+                download_success = False
+                fileobj, filename = (
+                    self._bundle_service.get_bundle_contents(parent_uuid, parent_path))
                 with closing(fileobj):
                     old_read_method = fileobj.read
                     def interruptable_read(*args, **kwargs):
                         loop_callback()
                         return old_read_method(*args, **kwargs)
                     fileobj.read = interruptable_read
-
+  
                     self._store_dependency(dependency_path, fileobj, filename)
                     download_success = True
             finally:
-                logger.debug('Finished downloading dependency %s', uuid)
-                self._dependency_manager.finish_download(uuid, success=download_success)
-
+                logger.debug('Finished downloading dependency %s/%s', parent_uuid, parent_path)
+                self._dependency_manager.finish_download(
+                    parent_uuid, parent_path, download_success)
+        
         return dependency_path
 
     def _store_dependency(self, dependency_path, fileobj, filename):
         try:
             if filename.endswith('.tar.gz'):
-                os.mkdir(dependency_path)
                 un_tar_directory(fileobj, dependency_path, 'gz')
             else:
                 with open(dependency_path, 'wb') as f:
@@ -178,14 +180,14 @@ class Worker(object):
             remove_path(dependency_path)
             raise
 
-    def remove_dependee(self, uuid, dependee_uuid):
+    def remove_dependency(self, parent_uuid, parent_path, uuid):
         """
-        Unregisters that the run with UUID dependee_uuid depends on bundle with
-        UUID uuid. This method is safe to call on dependencies that were never
-        added with add_dependee.
+        Unregisters that the run with UUID uuid depends on path parent_path in
+        bundle with UUID parent_uuid. This method is safe to call on
+        dependencies that were never added with add_dependency.
         """
         assert(not self.shared_file_system)
-        self._dependency_manager.remove_dependee(uuid, dependee_uuid)
+        self._dependency_manager.remove_dependency(parent_uuid, parent_path, uuid)
 
     def _read(self, socket_id, uuid, path, read_args):
         run = self._get_run(uuid)
@@ -217,7 +219,7 @@ class Worker(object):
         with self._runs_lock:
             del self._runs[uuid]
         if not self.shared_file_system:
-            self._dependency_manager.finish_run(uuid)          
+            self._dependency_manager.finish_run(uuid)
 
     def _checkout(self):
         try:
@@ -233,7 +235,6 @@ class Worker(object):
             try:
                 with closing(self._bundle_service.get_code()) as code:
                     remove_path(worker_dir)
-                    os.mkdir(worker_dir)
                     un_tar_directory(code, worker_dir, 'gz')
                     break
             except Exception:

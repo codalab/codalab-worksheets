@@ -391,16 +391,26 @@ class LocalBundleClient(BundleClient):
         check_bundles_have_all_permission(self.model, self._current_user(), relevant_uuids)
 
         # Make sure we don't delete bundles which are active.
-        # TODO(klopyrev): Remove the ability to delete a running bundle, since
-        #                 it is hard to ensure the integrity of the system if
-        #                 we allow that. Users need to kill running bundles
-        #                 first.
+        # TODO(klopyrev): Deprecate this code and the force flag once the new
+        #                 worker system is launched.
         if not force:
             states = self.model.get_bundle_states(uuids)
             active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
             if len(active_uuids) > 0:
                 raise UsageError('Can\'t delete queued or running bundles (--force to override): %s' %
                                  ' '.join(active_uuids))
+
+        # Make sure we don't delete bundles which are active.
+        if self.launch_new_worker_system:
+            states = self.model.get_bundle_states(uuids)
+            active_states = set([State.MAKING, State.WAITING_FOR_TORQUE, State.STARTING, State.RUNNING])
+            active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
+            if len(active_uuids) > 0:
+                raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
+                                 'For run bundles, kill them first. ' +
+                                 'Bundles stuck not running will eventually ' +
+                                 'automatically be moved to a state where they ' +
+                                 'can be deleted.')
 
         # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
         result = self.model.get_host_worksheet_uuids(relevant_uuids)
