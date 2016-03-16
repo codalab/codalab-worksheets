@@ -1,4 +1,4 @@
 bottle==0.12.9
-gevent==1.0.2
+futures==3.0.5
 gunicorn==19.4.5
 oauthlib==1.0.3
