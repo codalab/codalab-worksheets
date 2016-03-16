@@ -110,15 +110,18 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
         raise IOError(e.output)
 
 
-def un_tar_gzip_directory(fileobj, directory_path):
+def un_tar_directory(fileobj, directory_path, compression=''):
     """
-    Extracts the given file-like object containing a tarred and gzipped archive
-    into the given directory. The directory should already exist.
+    Extracts the given file-like object containing a tar archive into the given
+    directory. The directory should already exist.
+
+    compression specifies the compression scheme and can be one of '', 'gz' or
+    'bz2'.
 
     Raises tarfile.TarError if the archive is not valid.
     """
     directory_path = os.path.realpath(directory_path)
-    with tarfile.open(fileobj=fileobj, mode='r|gz') as tar:
+    with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
             # Make sure that there is no trickery going on (see note in
             # TarFile.extractall() documentation.
