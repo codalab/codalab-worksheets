@@ -22,6 +22,10 @@ from sqlalchemy.sql.schema import ForeignKeyConstraint
 
 db_metadata = MetaData()
 
+# TODO: Add indices where needed.
+
+# TODO: Add index by id
+# TODO: Add index by state. This is really needed!!!
 bundle = Table(
   'bundle',
   db_metadata,
@@ -38,6 +42,7 @@ bundle = Table(
   Index('bundle_data_hash_index', 'data_hash'),
   sqlite_autoincrement=True,
 )
+# TODO: Add index by state.
 
 # Includes things like name, description, etc.
 bundle_metadata = Table(
