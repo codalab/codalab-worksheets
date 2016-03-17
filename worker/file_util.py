@@ -3,81 +3,10 @@ import copy
 from cStringIO import StringIO
 import gzip
 import os
+import shutil
 import subprocess
 import tarfile
 import zlib
-
-
-def index_contents(path, depth=1000000):
-    """
-    Generates an index of the contents of the given path. The index contains
-    the fields:
-        name: Name of the entry.
-        type: Type of the entry, one of 'file', 'directory' or 'link'.
-        size: Size of the entry.
-        perm: Permissions of the entry.
-        link: If type is 'link', where the symbolic link points to.
-        contents: If type is 'directory', a list of entries for the contents.
-    """
-    stat = os.lstat(path)
-
-    result = {}
-    result['name'] = os.path.basename(path)
-    result['size'] = stat.st_size
-    result['perm'] = stat.st_mode & 0777
-    if os.path.islink(path):
-        result['type'] = 'link'
-        result['link'] = os.readlink(path)
-    elif os.path.isfile(path):
-        result['type'] = 'file'
-    elif os.path.isdir(path):
-        result['type'] = 'directory'
-        if depth > 0:
-            result['contents'] = [
-                index_contents(os.path.join(path, file_name), depth - 1)
-                for file_name in os.listdir(path)]
-    return result
-
-
-def restrict_contents_index(index, path, depth=None):
-    """
-    Given an index generates a restricted version.
-    
-    First, it finds the entry in the index for the given path. If no entry is
-    found, None is returned.
-
-    Then, if depth is not None, it filters out any entries more than depth levels
-    deep. Depth 0, for example, means only the top-level entry is included, and
-    no contents. Depth 1 means the contents of the top-level are included, but
-    nothing deeper.
-    """
-    index = copy.deepcopy(index)
-
-    if path:
-        names = path.split(os.path.sep)
-        for name in names:
-            if index['type'] != 'directory':
-                return None
-            found = False
-            for sub_index in index['contents']:
-                if sub_index['name'] == name:
-                    found = True
-                    index = sub_index
-                    break
-            if not found:
-                return None
-
-    if depth is not None:
-        def restrict_to_depth(index, depth):
-            if index['type'] == 'directory':
-                if depth > 0:
-                    for sub_index in index['contents']:
-                        restrict_to_depth(sub_index, depth - 1)
-                else:
-                    del index['contents']
-        restrict_to_depth(index, depth)
-
-    return index
 
 
 def tar_gzip_directory(directory_path, follow_symlinks=False,
@@ -110,15 +39,18 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
         raise IOError(e.output)
 
 
-def un_tar_gzip_directory(fileobj, directory_path):
+def un_tar_directory(fileobj, directory_path, compression=''):
     """
-    Extracts the given file-like object containing a tarred and gzipped archive
-    into the given directory. The directory should already exist.
+    Extracts the given file-like object containing a tar archive into the given
+    directory. The directory should already exist.
+
+    compression specifies the compression scheme and can be one of '', 'gz' or
+    'bz2'.
 
     Raises tarfile.TarError if the archive is not valid.
     """
     directory_path = os.path.realpath(directory_path)
-    with tarfile.open(fileobj=fileobj, mode='r|gz') as tar:
+    with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
             # Make sure that there is no trickery going on (see note in
             # TarFile.extractall() documentation.
@@ -266,3 +198,29 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                     lines = lines[-num_tail_lines:]
     
     return ''.join(lines)
+
+
+def get_path_size(path, ignore_paths=[]):
+    """
+    Returns the size of the contents of the given path, in bytes.
+
+    If path is a directory, any directory entries in ignore_paths will be
+    ignored.
+    """
+    result = os.lstat(path).st_size
+    if not os.path.islink(path) and os.path.isdir(path):
+        for child in os.listdir(path):
+            if child not in ignore_paths:
+                result += get_path_size(os.path.join(path, child))
+    return result
+
+
+def remove_path(path):
+    """
+    Removes a path if it exists.
+    """
+    if os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)

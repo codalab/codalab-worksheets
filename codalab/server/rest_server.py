@@ -23,7 +23,7 @@ from bottle import (
 from codalab.common import exception_to_http_error
 import codalab.rest.account
 import codalab.rest.bundle
-import codalab.rest.example
+import codalab.rest.example  # TODO: Delete.
 import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
@@ -54,7 +54,9 @@ class SaveEnvironmentPlugin(object):
             # the server. This is intentional to ensure that any MySQL engine
             # objects are created after forking.
             local.model = self.manager.model()
+            local.launch_new_worker_system = self.manager.launch_new_worker_system()
             local.worker_model = self.manager.worker_model()
+            local.upload_manager = self.manager.upload_manager()
             local.download_manager = self.manager.download_manager()
             local.bundle_store = self.manager.bundle_store()
             local.config = self.manager.config
@@ -99,7 +101,10 @@ class LoggingPlugin(object):
             args = [request.path, query_dict]
             if (route.method == 'POST'
                 and request.content_type == 'application/json'):
-                args.append(request.json)
+                try:
+                    args.append(request.json)
+                except ValueError:
+                    pass
 
             local.model.update_events_log(
                 start_time=start_time,
@@ -136,6 +141,7 @@ class ErrorAdapter(object):
                 raise HTTPError(code, message)
 
         return wrapper
+
 
 
 def error_handler(response):

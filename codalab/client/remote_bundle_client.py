@@ -26,7 +26,7 @@ from codalab.lib import (
   zip_util,
 )
 from codalab.server.rpc_file_handle import RPCFileHandle
-from worker.file_util import gzip_file, tar_gzip_directory, un_tar_gzip_directory, un_gzip_stream, un_gzip_string
+from worker.file_util import gzip_file, tar_gzip_directory, un_tar_directory, un_gzip_stream, un_gzip_string
 
 # Hack to allow 64-bit integers
 xmlrpclib.Marshaller.dispatch[int] = lambda _, v, w : w("<value><i8>%d</i8></value>" % v)
@@ -245,7 +245,7 @@ class RemoteBundleClient(BundleClient):
         remote_file_uuid = self.open_tarred_gzipped_directory(target)
         with closing(RPCFileHandle(remote_file_uuid, self.proxy, finalize_on_close=True)) as fileobj:
             os.mkdir(download_path)
-            un_tar_gzip_directory(fileobj, download_path)
+            un_tar_directory(fileobj, download_path, 'gz')
 
     def download_file(self, target, download_path):
         """

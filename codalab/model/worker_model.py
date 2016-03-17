@@ -28,9 +28,13 @@ class WorkerModel(object):
        socket directory), clean up sockets (i.e. delete the socket files),
        listen on these sockets for messages and send messages to these sockets.
     """
-    def __init__(self, engine, socket_dir):
+    def __init__(self, engine, socket_dir, shared_file_system):
         self._engine = engine
         self._socket_dir = socket_dir
+        # TODO(klopyrev): Whether the worker running the bundle really shares
+        #                 file system with the bundle service depends on whether
+        #                 the worker is run by us or by a user.
+        self.shared_file_system = shared_file_system
 
     def worker_checkin(self, user_id, worker_id, slots, dependency_uuids):
         """

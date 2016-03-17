@@ -29,8 +29,8 @@ from codalab.common import (
 from codalab.client.bundle_client import BundleClient
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib import (
+    bundle_util,
     canonicalize,
-    path_util,
     worksheet_util,
     spec_util,
     formatting,
@@ -52,7 +52,7 @@ from codalab.objects.permission import (
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_READ,
 )
-from worker.file_util import un_tar_gzip_directory
+from worker.file_util import un_tar_directory
 
 
 def authentication_required(func):
@@ -69,10 +69,13 @@ def authentication_required(func):
 
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, download_manager, auth_handler, verbose):
+    def __init__(self, address, bundle_store, model, launch_new_worker_system, worker_model, upload_manager, download_manager, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
+        self.launch_new_worker_system = launch_new_worker_system
+        self.worker_model = worker_model
+        self.upload_manager = upload_manager
         self.download_manager = download_manager
         self.auth_handler = auth_handler
         self.verbose = verbose
@@ -87,30 +90,6 @@ class LocalBundleClient(BundleClient):
     def _current_user_name(self):
         user = self._current_user()
         return user.name if user else None
-
-    def _bundle_to_bundle_info(self, bundle):
-        """
-        Helper: Convert bundle to bundle_info.
-        """
-        # See tables.py
-        result = {
-            'uuid': bundle.uuid,
-            'bundle_type': bundle.bundle_type,
-            'owner_id': bundle.owner_id,
-            'command': bundle.command,
-            'data_hash': bundle.data_hash,
-            'state': bundle.state,
-            'metadata': bundle.metadata.to_dict(),
-            'dependencies': [dep.to_dict() for dep in bundle.dependencies],
-        }
-        for dep in result['dependencies']:
-            uuid = dep['parent_uuid']
-            dep['parent_name'] = self.model.get_bundle_names([uuid]).get(uuid)
-
-        # Shim in args
-        result['args'] = worksheet_util.interpret_genpath(result, 'args')
-
-        return result
 
     @staticmethod
     def _mask_bundle_info(bundle_info):
@@ -228,7 +207,8 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def upload_bundle(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
         """
-        |sources|, |follow_symlinks|, |exclude_patterns|, |git|, |unpack|, |remove_sources|: see BundleStore.upload()
+        |sources|, |follow_symlinks|, |exclude_patterns|, |git|, |unpack|,
+        |remove_sources|: see codalab.lib.upload_manager
         |info|: information about the bundle.
         |worksheet_uuid|: which worksheet to inherit permissions on
         |add_to_worksheet|: whether to add to this worksheet or not.
@@ -255,34 +235,17 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
-        """Generate a UUID so that BundleStore knows where to store the bundle on disk"""
-        uuid = spec_util.generate_uuid()
-        construct_args['uuid'] = uuid
-
-        # Upload the source and record additional metadata from the upload.
-        if sources is not None:
-            (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=sources,
-                                                                          follow_symlinks=follow_symlinks,
-                                                                          exclude_patterns=exclude_patterns,
-                                                                          git=git,
-                                                                          unpack=unpack,
-                                                                          remove_sources=remove_sources,
-                                                                          uuid=uuid)
-            metadata.update(bundle_store_metadata)
-        else:
-            data_hash = None
-        if construct_args.get('data_hash', data_hash) != data_hash:
-            print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' %\
-                                (construct_args.get('data_hash'), data_hash)
-        construct_args['data_hash'] = data_hash
-
-        # Set the owner
+        construct_args['uuid'] = spec_util.generate_uuid()
         construct_args['owner_id'] = self._current_user_id()
-        bundle = bundle_subclass.construct(**construct_args)
-        self.model.save_bundle(bundle)
+        construct_args['data_hash'] = None  # Will be set later.
 
-        # Update user statistics
-        self.model.update_user_disk_used(bundle.owner_id)
+        bundle = bundle_subclass.construct(**construct_args)
+
+        # Upload the data and save the bundle.
+        self.upload_manager.upload_to_bundle_store(
+            bundle, sources, follow_symlinks, exclude_patterns, remove_sources,
+            git, unpack, simplify_archives=True)
+        self.upload_manager.update_metadata_and_save(bundle, new_bundle=True)
 
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
@@ -336,7 +299,15 @@ class LocalBundleClient(BundleClient):
         """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
-            self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
+            if not self.launch_new_worker_system:
+                self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
+            else:
+                worker_message = {
+                    'type': 'kill',
+                    'uuid': bundle_uuid,
+                }
+                action_string = BundleAction.kill()
+                self._do_bundle_action(bundle_uuid, worker_message, action_string)
 
     @authentication_required
     def write_targets(self, targets, string):
@@ -348,7 +319,36 @@ class LocalBundleClient(BundleClient):
         for bundle_uuid, subpath in targets:
             if not re.match('^\w+$', subpath):
                 raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
-            self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
+            
+            if not self.launch_new_worker_system:
+                self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
+            else:
+                worker_message = {
+                    'type': 'write',
+                    'uuid': bundle_uuid,
+                    'subpath': subpath,
+                    'string': string,
+                }
+                action_string = BundleAction.write(subpath, string)
+                self._do_bundle_action(bundle_uuid, worker_message, action_string)
+
+    def _do_bundle_action(self, bundle_uuid, worker_message, action_string):
+        """
+        Sends the message to the worker to do the bundle action, and adds the
+        action string to the bundle metadata.
+        """
+        bundle = self.model.get_bundle(bundle_uuid)
+        if bundle.state != State.RUNNING:
+            raise UsageError('Cannot execute this action on a bundle that is not running.')
+
+        worker = self.worker_model.get_bundle_worker(bundle_uuid)
+        precondition(
+            self.worker_model.send_json_message(worker['socket_id'],  worker_message, 60),
+            'Unable to reach worker.')
+
+        new_actions = getattr(bundle.metadata, 'actions', []) + [action_string]
+        db_update = {'metadata': {'actions': new_actions}}
+        self.model.update_bundle(bundle, db_update)
 
     @authentication_required
     def chown_bundles(self, bundle_uuids, user_spec):
@@ -392,6 +392,10 @@ class LocalBundleClient(BundleClient):
         check_bundles_have_all_permission(self.model, self._current_user(), relevant_uuids)
 
         # Make sure we don't delete bundles which are active.
+        # TODO(klopyrev): Remove the ability to delete a running bundle, since
+        #                 it is hard to ensure the integrity of the system if
+        #                 we allow that. Users need to kill running bundles
+        #                 first.
         if not force:
             states = self.model.get_bundle_states(uuids)
             active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
@@ -450,7 +454,7 @@ class LocalBundleClient(BundleClient):
         if len(uuids) == 0:
             return {}
         bundles = self.model.batch_get_bundles(uuid=uuids)
-        bundle_dict = {bundle.uuid: self._bundle_to_bundle_info(bundle) for bundle in bundles}
+        bundle_dict = {bundle.uuid: bundle_util.bundle_to_bundle_info(self.model, bundle) for bundle in bundles}
 
         # Filter out bundles that we don't have read permission on
         def select_unreadable_bundles(uuids):
@@ -547,7 +551,7 @@ class LocalBundleClient(BundleClient):
         self.check_target_has_read_permission(target)
         with closing(self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])) as fileobj:
             os.mkdir(download_path)
-            un_tar_gzip_directory(fileobj, download_path)
+            un_tar_directory(fileobj, download_path, 'gz')
 
     def download_file(self, target, download_path):
         """
