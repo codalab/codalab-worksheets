@@ -94,6 +94,7 @@ class Bundle(ORMObject):
         return [spec for spec in cls.METADATA_SPECS if not spec.generated]
 
     def get_dependency_paths(self, bundle_store, parent_dict, dest_path, relative_symlinks=False):
+        # TODO: This can be removed / refactored.
         def process_dep(dep):
             parent = parent_dict[dep.parent_uuid]
             # Compute an absolute target and check that the dependency exists.

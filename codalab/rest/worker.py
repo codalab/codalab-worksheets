@@ -23,9 +23,10 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 2.0
 
-    if request.json['version'] != VERSION:
+    if 'torque' not in local.config['workers'] and request.json['version'] != VERSION:
         # TODO(klopyrev): Don't resend the upgrade message if already sent and
         #                 the worker is still running bundles.
+        # TODO(klopyrev): Also, Torque should be ignored for own workers.
         return {'type': 'upgrade'}
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id,

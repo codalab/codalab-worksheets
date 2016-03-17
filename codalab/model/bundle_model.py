@@ -593,6 +593,64 @@ class BundleModel(object):
                 return success
         return True
 
+    def torque_stage_bundle(self, bundle, torque_job_handle):
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                return
+
+            metadata_update = {
+                 'job_handle': torque_job_handle,
+                 'last_updated': int(time.time())
+            }
+            self.update_bundle(bundle, {'metadata': metadata_update}, connection)
+
+    def queue_bundle(self, bundle, user_id, worker_id):
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                return False
+
+            bundle_update = {
+                'state': State.QUEUED,
+                'metadata': {
+                    'last_updated': int(time.time()),
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+
+            worker_run_row = {
+                'user_id': user_id,
+                'worker_id': worker_id,
+                'run_uuid': bundle.uuid,
+            }
+            connection.execute(cl_worker_run.insert().values(worker_run_row))
+
+            return True
+
+    def unqueue_bundle(self, bundle):
+        with self.engine.begin() as connection:
+            # Make sure it's still queued.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                raise IntegrityError('Queued bundle got deleted')
+            if row.state != State.QUEUED:
+                return False
+
+            update_message = {
+                'state': State.STAGED,
+                'metadata': {
+                    'job_handle': None, 
+                },
+            }
+            self.update_bundle(bundle, update_message, connection)
+            connection.execute(
+                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
+
+            return True
+
     def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
         with self.engine.begin() as connection:
             # Check that still assigned to this worker.

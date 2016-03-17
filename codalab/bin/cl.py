@@ -103,6 +103,27 @@ def do_rest_server_command(bundle_cli, args):
         run_rest_server(bundle_cli.manager, args.debug, args.processes, args.threads)
 
 
+@Commands.command(
+    'bundle-manager',
+    help = 'Start the bundle manager that executes run and make bundles.',
+    arguments=(
+        Commands.Argument(
+            '--num-iterations',
+            help='Number of bundles to process before exiting '
+                 '(for debugging).',
+            type=int, default=None),
+        Commands.Argument(
+            '--sleep-time',
+            help='Number of seconds to wait between successive actions.',
+            type=int, default=0.5),
+    ),
+)
+def do_bundle_manager_command(bundle_cli, args):
+    from codalab.worker.bundle_manager import BundleManager
+    BundleManager(bundle_cli.manager).run(args.num_iterations,
+                                          args.sleep_time)
+
+
 if __name__ == '__main__':
     cli = BundleCLI(CodaLabManager())
     try:

@@ -43,4 +43,3 @@ class FileUtilTest(unittest.TestCase):
 
     def test_gzip_string(self):
         self.assertEqual(un_gzip_string(gzip_string('contents')), 'contents')
-    

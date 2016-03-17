@@ -513,7 +513,7 @@ def post_bundle_info(uuid):
 
         # TODO: do this generally based on the CLI specs.
         # Remove generated fields.
-        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated']:
+        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated', 'job_handle']:
             if key in new_metadata:
                 del new_metadata[key]
 
