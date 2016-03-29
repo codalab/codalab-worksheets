@@ -232,8 +232,8 @@ user = Table(
 
   # Basic information
   Column('user_id', String(63), nullable=False),
-  Column('user_name', String(63), nullable=False),
-  Column('email', String(254), nullable=False),  # Length of 254 to be compliant with RFC3696/5321
+  Column('user_name', String(63), nullable=False, unique=True),
+  Column('email', String(254), nullable=False, unique=True),  # Length of 254 to be compliant with RFC3696/5321
   Column('last_login', DateTime),  # Null if user has never logged in
   Column('is_active', Boolean, nullable=False, default=True),  # Set to False instead of deleting users to maintain foreign key integrity
   Column('first_name', String(30)),
