@@ -178,7 +178,7 @@ class CodaLabManager(object):
                 'rest_host': 'localhost',
                 'rest_port': 2900,
                 'auth': {
-                    'class': 'RestAuthHandler'
+                    'class': 'RestOAuthHandler'
                 },
                 'verbose': 1,
             },
