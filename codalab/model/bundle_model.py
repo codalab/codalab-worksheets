@@ -117,6 +117,7 @@ class BundleModel(object):
         '''
         db_metadata.create_all(self.engine)
         self._create_default_groups()
+        self._create_default_clients()
 
     def do_multirow_insert(self, connection, table, values):
         '''
@@ -1835,6 +1836,26 @@ class BundleModel(object):
     #############################################################################
     # OAuth-related methods follow!
     #############################################################################
+
+    def _create_default_clients(self):
+        DEFAULT_CLIENTS = [
+            ('codalab_cli_client', 'CodaLab CLI'),
+            ('codalab_worker_client', 'CodaLab Worker'),
+            ]
+
+        for client_id, client_name in DEFAULT_CLIENTS:
+            if not self.get_oauth2_client(client_id):
+                self.save_oauth2_client(OAuth2Client(
+                    self,
+                    client_id=client_id,
+                    secret=None,
+                    name=client_name,
+                    user_id=None,
+                    grant_type='password',
+                    response_type='token',
+                    scopes='default',
+                    redirect_uris='',
+                ))
 
     def get_oauth2_client(self, client_id):
         with self.engine.begin() as connection:
