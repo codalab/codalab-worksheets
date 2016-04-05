@@ -39,6 +39,8 @@ class UploadManager(object):
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
+            # Note that for uploads with a single source, the directory
+            # structure is simplified at the end.
             for source in sources:
                 is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
                 source_output_path = os.path.join(bundle_path, filename)
@@ -111,6 +113,11 @@ class UploadManager(object):
             self._simplify_archive(dest_path)
 
     def _simplify_archive(self, path):
+        """
+        Modifies |path| in place: If |path| is a directory containing exactly
+        one file / directory that is not ignored, then replace |path| with that
+        file / directory.
+        """
         if not os.path.isdir(path):
             return
 
@@ -129,6 +136,10 @@ class UploadManager(object):
         return any([pattern.match(filename) for pattern in self.IGNORE_FILE_PATTERNS])
 
     def _simplify_directory(self, path, child_path=None):
+        """
+        Modifies |path| in place: If the |path| directory contains exactly
+        one file / directory, then replace |path| with that file / directory.
+        """
         if child_path is None:
             child_path = os.listdir(path)[0]
 

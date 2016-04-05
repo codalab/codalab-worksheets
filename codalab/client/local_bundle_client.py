@@ -258,7 +258,6 @@ class LocalBundleClient(BundleClient):
 
         construct_args['uuid'] = spec_util.generate_uuid()
         construct_args['owner_id'] = self._current_user_id()
-        construct_args['data_hash'] = None  # Will be set later.
 
         bundle = bundle_subclass.construct(**construct_args)
 

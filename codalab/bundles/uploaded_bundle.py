@@ -13,11 +13,11 @@ class UploadedBundle(NamedBundle):
     METADATA_SPECS.append(MetadataSpec('source_url', basestring, 'URL corresponding to the original source of this bundle.'))
 
     @classmethod
-    def construct(cls, data_hash, metadata, owner_id, uuid=None):
+    def construct(cls, metadata, owner_id, uuid=None):
         row = {
           'bundle_type': cls.BUNDLE_TYPE,
           'command': None,
-          'data_hash': data_hash,
+          'data_hash': None,
           'state': State.READY,
           'metadata': metadata,
           'dependencies': [],
