@@ -6,6 +6,7 @@ from bottle import abort, get, local, request, response
 from codalab.lib import spec_util, zip_util
 from codalab.objects.permission import check_bundles_have_read_permission
 
+
 @get('/bundle/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
 @get('/bundle/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
 def get_blob(uuid, path=''):

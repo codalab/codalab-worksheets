@@ -51,7 +51,8 @@ class BundleService(object):
 
     def __init__(self):
         self.client = LocalBundleClient(
-            'local', local.bundle_store, local.model, local.download_manager,
+            'local', local.bundle_store, local.model,
+            local.upload_manager, local.download_manager,
             LocalUserAuthHandler(request.user, local.model), verbose=0)
 
     def get_bundle_info(self, uuid):

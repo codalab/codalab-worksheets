@@ -3,6 +3,7 @@ import copy
 from cStringIO import StringIO
 import gzip
 import os
+import shutil
 import subprocess
 import tarfile
 import zlib
@@ -110,15 +111,19 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
         raise IOError(e.output)
 
 
-def un_tar_gzip_directory(fileobj, directory_path):
+def un_tar_directory(fileobj, directory_path, compression=''):
     """
-    Extracts the given file-like object containing a tarred and gzipped archive
-    into the given directory. The directory should already exist.
+    Extracts the given file-like object containing a tar archive into the given
+    directory, which will be created and should not already exist.
+
+    compression specifies the compression scheme and can be one of '', 'gz' or
+    'bz2'.
 
     Raises tarfile.TarError if the archive is not valid.
     """
     directory_path = os.path.realpath(directory_path)
-    with tarfile.open(fileobj=fileobj, mode='r|gz') as tar:
+    os.mkdir(directory_path)
+    with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
             # Make sure that there is no trickery going on (see note in
             # TarFile.extractall() documentation.
@@ -266,3 +271,13 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                     lines = lines[-num_tail_lines:]
     
     return ''.join(lines)
+
+def remove_path(path):
+    """
+    Removes a path if it exists.
+    """
+    if os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)
