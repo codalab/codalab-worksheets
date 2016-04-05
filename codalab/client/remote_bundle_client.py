@@ -244,7 +244,6 @@ class RemoteBundleClient(BundleClient):
         """
         remote_file_uuid = self.open_tarred_gzipped_directory(target)
         with closing(RPCFileHandle(remote_file_uuid, self.proxy, finalize_on_close=True)) as fileobj:
-            os.mkdir(download_path)
             un_tar_directory(fileobj, download_path, 'gz')
 
     def download_file(self, target, download_path):

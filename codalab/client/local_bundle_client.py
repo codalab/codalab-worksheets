@@ -530,7 +530,6 @@ class LocalBundleClient(BundleClient):
         """
         self.check_target_has_read_permission(target)
         with closing(self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])) as fileobj:
-            os.mkdir(download_path)
             un_tar_directory(fileobj, download_path, 'gz')
 
     def download_file(self, target, download_path):
