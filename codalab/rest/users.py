@@ -1,13 +1,12 @@
 """
 Worksheets REST API Users Views.
-
-TODO(sckoo): Factor out the reusable parts of the JSON API views.
 """
-from bottle import get, route, response, request, local, HTTPResponse
+import httplib
+
+from bottle import abort, get, route, request, local
 from marshmallow import ValidationError
 from marshmallow_jsonapi import Schema, fields
 
-from codalab.common import UsageError
 from codalab.lib import formatting
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
@@ -55,19 +54,18 @@ class UserSchema(Schema):
 @get('/user', apply=[JsonApiPlugin(), AuthenticatedPlugin()])
 def fetch_authenticated_user():
     """Fetch authenticated user."""
-    fieldset = request.jsonapi.fields.get('users', None)
-    return UserSchema(only=fieldset).dump(request.user).data
+    return UserSchema().dump(request.user).data
 
 
-@route('/user', method=['PUT', 'PATCH'], apply=[JsonApiPlugin(), AuthenticatedPlugin()])
+@route('/user', method='PATCH', apply=[JsonApiPlugin(), AuthenticatedPlugin()])
 def update_authenticated_user():
     """Update one or multiple fields of the authenticated user."""
     # Load update request data
     try:
         user_info, errors = UserSchema(strict=True).load(request.json, partial=True)
-    except ValidationError as e:
-        response.status = '403 Forbidden'
-        return e.messages
+    except ValidationError as err:
+        message = ' '.join([e['detail'] for e in err.messages['errors']])
+        abort(httplib.BAD_REQUEST, message)
 
     # Patch in user_id manually (do not allow requests to change id)
     user_info['user_id'] = request.user.user_id
@@ -75,8 +73,7 @@ def update_authenticated_user():
     # Ensure that user name is not taken
     if (user_info.get('user_name', request.user.user_name) != request.user.user_name and
         local.model.user_exists(user_info['user_name'], None)):
-        response.status = '403 Forbidden'
-        raise UsageError("User name %s is already taken." % user_info['user_name'])
+        abort(httplib.BAD_REQUEST, "User name %s is already taken." % user_info['user_name'])
 
     # Update user
     local.model.update_user_info(user_info)
@@ -91,43 +88,22 @@ def fetch_user(id):
     """Fetch a single user."""
     user = local.model.get_user(id)
     if user is None:
-        return HTTPResponse(status=404)
-
-    # Filter fieldset if specified (None means dump all attributes)
-    # Additionally filter fieldset for users that aren't the current user
-    fieldset = request.jsonapi.fields.get('users', None)
-    if request.user is None or request.user.user_id != id:
-        if fieldset is None:
-            fieldset = PUBLIC_USER_FIELDS
-        else:
-            fieldset &= set(PUBLIC_USER_FIELDS)
-
-    return UserSchema(only=fieldset).dump(user).data
-
-
-@route('/users/<id>', method=['PUT', 'PATCH'], apply=JsonApiPlugin())
-def update_user(id):
-    """Allow updates to authenticated user ONLY."""
-    if request.user is None or request.user.user_id != id:
-        return HTTPResponse(status='403 Forbidden')
-    return update_authenticated_user()
+        abort(httplib.NOT_FOUND)
+    return UserSchema(only=PUBLIC_USER_FIELDS).dump(user).data
 
 
 @get('/users', apply=[JsonApiPlugin()])
-def get_users():
-    """Fetch list of users, filterable by username and email."""
-    # Fetch users, combining username and email filters
-    usernames = set(request.jsonapi.filter.get('user_name', []))
-    usernames |= set(request.jsonapi.filter.get('email', []))
+def fetch_users():
+    """Fetch list of users, filterable by username and email.
+
+    Takes the following query parameters:
+        filter[user_name]=name1,name2,...
+        filter[email]=email1,email2,...
+
+    Fetches all users that match any of these usernames or emails.
+    """
+    # Combine username and email filters
+    usernames = set(request.query.get('filter[user_name]', '').split(','))
+    usernames |= set(request.query.get('filter[email]', '').split(','))
     users = local.model.get_users(usernames=(usernames or None))
-
-    # Filter fieldset if specified (None means dump all attributes)
-    fieldset = request.jsonapi.fields.get('users', None)
-    if fieldset is None:
-        fieldset = PUBLIC_USER_FIELDS
-    else:
-        fieldset &= set(PUBLIC_USER_FIELDS)
-
-    return UserSchema(many=True, only=fieldset).dump(users).data
-
-
+    return UserSchema(many=True, only=PUBLIC_USER_FIELDS).dump(users).data
