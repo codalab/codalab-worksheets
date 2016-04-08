@@ -9,7 +9,6 @@ from marshmallow_jsonapi import Schema, fields
 
 from codalab.lib import formatting
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalab.server.json_api_plugin import JsonApiPlugin
 
 
 PUBLIC_USER_FIELDS = ('id', 'user_name', 'email', 'first_name', 'last_name',
@@ -51,13 +50,13 @@ class UserSchema(Schema):
         type_ = 'users'
 
 
-@get('/user', apply=[JsonApiPlugin(), AuthenticatedPlugin()])
+@get('/user', apply=AuthenticatedPlugin())
 def fetch_authenticated_user():
     """Fetch authenticated user."""
     return UserSchema().dump(request.user).data
 
 
-@route('/user', method='PATCH', apply=[JsonApiPlugin(), AuthenticatedPlugin()])
+@route('/user', method='PATCH', apply=AuthenticatedPlugin())
 def update_authenticated_user():
     """Update one or multiple fields of the authenticated user."""
     # Load update request data
@@ -77,22 +76,21 @@ def update_authenticated_user():
 
     # Update user
     local.model.update_user_info(user_info)
-    request.user = local.model.get_user(request.user.user_id)
 
     # Return updated user
-    return fetch_authenticated_user()
+    return UserSchema().dump(local.model.get_user(request.user.user_id)).data
 
 
-@get('/users/<id>', apply=JsonApiPlugin())
+@get('/users/<id>')
 def fetch_user(id):
     """Fetch a single user."""
     user = local.model.get_user(id)
     if user is None:
-        abort(httplib.NOT_FOUND)
+        abort(httplib.NOT_FOUND, "User %s not found" % id)
     return UserSchema(only=PUBLIC_USER_FIELDS).dump(user).data
 
 
-@get('/users', apply=[JsonApiPlugin()])
+@get('/users')
 def fetch_users():
     """Fetch list of users, filterable by username and email.
 
@@ -105,5 +103,6 @@ def fetch_users():
     # Combine username and email filters
     usernames = set(request.query.get('filter[user_name]', '').split(','))
     usernames |= set(request.query.get('filter[email]', '').split(','))
+    usernames.discard('')  # str.split(',') will return '' on empty strings
     users = local.model.get_users(usernames=(usernames or None))
     return UserSchema(many=True, only=PUBLIC_USER_FIELDS).dump(users).data
