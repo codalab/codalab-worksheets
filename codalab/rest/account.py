@@ -43,6 +43,9 @@ def do_login():
             "next": success_uri,
         })
 
+    # Update last login
+    local.model.update_user_last_login(user.user_id)
+
     # Save cookie in client
     cookie = LoginCookie(user.user_id, max_age=30 * 24 * 60 * 60)
     cookie.save()
