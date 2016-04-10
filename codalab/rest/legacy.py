@@ -25,7 +25,7 @@ from bottle import (
 from codalab.bundles import get_bundle_subclass
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.common import State, UsageError
+from codalab.common import State, UsageError, PermissionError
 from codalab.lib import (
   bundle_cli,
   file_util,
@@ -203,11 +203,14 @@ class BundleService(object):
         return info
 
     def get_top_level_contents(self, target):
-        info = self.client.get_target_info(target, 1)
-        if info is not None and info['type'] == 'directory':
-            for item in info['contents']:
-                item['size_str'] = formatting.size_str(item['size'])
-        return info
+        try:
+            info = self.client.get_target_info(target, 1)
+            if info is not None and info['type'] == 'directory':
+                for item in info['contents']:
+                    item['size_str'] = formatting.size_str(item['size'])
+            return info
+        except PermissionError, e:
+            return None
 
     # Create an instance of a CLI.
     def _create_cli(self, worksheet_uuid):
