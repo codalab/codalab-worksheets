@@ -64,6 +64,7 @@ from codalab.model.tables import (
     user as cl_user,
     chat as cl_chat,
     user_verification as cl_user_verification,
+    user_reset_code as cl_user_reset_code,
     oauth2_client,
     oauth2_token,
     oauth2_auth_code,
@@ -1760,6 +1761,53 @@ class BundleModel(object):
             }))
 
         return True
+
+    def new_user_reset_code(self, user_id):
+        """
+        Generate a new password reset code.
+        :param user_id: user_id of user for whom to reset password
+        :return: reset code
+        """
+        with self.engine.begin() as connection:
+            now = datetime.datetime.utcnow()
+            code = uuid.uuid4().hex
+
+            connection.execute(cl_user_reset_code.insert().values({
+                "user_id": user_id,
+                "date_created": now,
+                "code": code,
+            }))
+
+        return code
+    
+    def get_reset_code_user_id(self, code, delete=False):
+        """
+        Check if reset code is valid.
+        :param code: reset code
+        :param delete: True iff delete code when found
+        :return: user_id of associated user if succeeded, None otherwise
+        """
+        with self.engine.begin() as connection:
+            reset_code_row = connection.execute(cl_user_reset_code.select().where(
+                cl_user_reset_code.c.code == code
+            ).limit(1)).fetchone()
+
+            # No matching key found
+            if reset_code_row is None:
+                return None
+
+            user_id = reset_code_row.user_id
+
+            # Already done if not deleting code
+            if not delete:
+                return user_id
+
+            # Delete matching reset code
+            connection.execute(cl_user_reset_code.delete().where(
+                cl_user_reset_code.c.code == code
+            ))
+
+        return user_id
 
     def get_user_info(self, user_id, fetch_extra=False):
         """
