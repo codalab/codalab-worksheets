@@ -146,8 +146,12 @@ class BundleService(object):
                 elif isinstance(item['bundle_info'], dict):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
-                    target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
-                    bundle_info['target_info'] = target_info
+                    try:
+                        target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
+                        bundle_info['target_info'] = target_info
+                    except PermissionError, e:
+                        # bundle_info will show a private bundle
+                        pass
                     try:
                         if isinstance(bundle_info, dict):
                             worksheet_util.format_metadata(bundle_info.get('metadata'))
@@ -210,7 +214,7 @@ class BundleService(object):
                     item['size_str'] = formatting.size_str(item['size'])
             return info
         except PermissionError, e:
-            return None
+            raise e
 
     # Create an instance of a CLI.
     def _create_cli(self, worksheet_uuid):
@@ -449,7 +453,10 @@ def post_worksheet_content(uuid):
 @get('/api/bundles/content/<uuid:re:%s>/<path:path>/' % spec_util.UUID_STR)
 def get_bundle_content(uuid, path=''):
     service = BundleService()
-    info = service.get_top_level_contents((uuid, path))
+    try:
+        info = service.get_top_level_contents((uuid, path))
+    except PermissionError, e:
+        raise e
     return info if info is not None else {}
 
 
@@ -474,7 +481,11 @@ def get_bundle_info(uuid):
     bundle_info = service.get_bundle_info(uuid)
     if bundle_info is None:
         abort(httplib.NOT_FOUND, 'The bundle is not available')
-    bundle_info.update(service.get_bundle_file_contents(uuid))
+    try:
+        bundle_info.update(service.get_bundle_file_contents(uuid))
+    except PermissionError, e:
+        # bundle_info will show a private bundle
+        pass
     return bundle_info
 
 
