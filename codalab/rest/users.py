@@ -8,7 +8,10 @@ from marshmallow import ValidationError
 from marshmallow_jsonapi import Schema, fields
 
 from codalab.lib import formatting
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalab.server.authenticated_plugin import (
+    AuthenticatedPlugin,
+    UserVerifiedPlugin,
+)
 
 
 PUBLIC_USER_FIELDS = ('id', 'user_name', 'email', 'first_name', 'last_name',
@@ -50,13 +53,13 @@ class UserSchema(Schema):
         type_ = 'users'
 
 
-@get('/user', apply=AuthenticatedPlugin())
+@get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_authenticated_user():
     """Fetch authenticated user."""
     return UserSchema().dump(request.user).data
 
 
-@route('/user', method='PATCH', apply=AuthenticatedPlugin())
+@route('/user', method='PATCH', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def update_authenticated_user():
     """Update one or multiple fields of the authenticated user."""
     # Load update request data
