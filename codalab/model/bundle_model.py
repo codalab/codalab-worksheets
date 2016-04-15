@@ -1596,9 +1596,6 @@ class BundleModel(object):
                 } for row in rows]
             return result
 
-    ############################################################
-    # User functions
-    # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
     #############################################################################
     # User-related methods follow!
     #############################################################################
@@ -1636,7 +1633,6 @@ class BundleModel(object):
         if user_ids is not None:
             clauses.append(cl_user.c.user_id.in_(user_ids))
         if usernames is not None:
-            # TODO(sckoo): Should we add an index on the email column?
             clauses.append(or_(cl_user.c.user_name.in_(usernames),
                                cl_user.c.email.in_(usernames)))
 
