@@ -1820,6 +1820,15 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
+    def update_user_last_login(self, user_id):
+        """
+        Update user's last login date to now.
+        """
+        self.update_user_info({
+            'user_id': user_id,
+            'last_login': datetime.datetime.utcnow(),
+        })
+
     def _get_disk_used(self, user_id):
         return self.search_bundle_uuids(user_id, None, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
 
