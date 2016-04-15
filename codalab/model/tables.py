@@ -271,6 +271,17 @@ user_verification = Table(
   sqlite_autoincrement=True,
 )
 
+# Stores password reset codes
+user_reset_code = Table(
+  'user_reset_code',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('date_created', DateTime, nullable=False),
+  Column('code', String(64), nullable=False),
+  sqlite_autoincrement=True,
+)
+
 # OAuth2 Tables
 
 oauth2_client = Table(
