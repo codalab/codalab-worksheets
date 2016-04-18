@@ -28,15 +28,15 @@ class DependencyManagerTest(unittest.TestCase):
         self.assertNotIn('random_file', os.listdir(self.work_dir))
 
     def test_downloading(self):
-        self.manager.add_dependee('uuid1', '', 'uuid2')
+        self.manager.add_dependency('uuid1', '', 'uuid2')
 
         # Check cases that should not block.
-        self.check_add_dependee_blocks('uuid1', 'a', 'uuid5', False, True)  # Different path
-        self.check_add_dependee_blocks('uuid6', '', 'uuid7', False, True)  # Different UUID
+        self.check_add_dependency_blocks('uuid1', 'a', 'uuid5', False, True)  # Different path
+        self.check_add_dependency_blocks('uuid6', '', 'uuid7', False, True)  # Different UUID
         
         # This call will block until the failed download. Then, it will be asked
         # to retry the download.
-        self.check_add_dependee_blocks('uuid1', '', 'uuid3', True, True)
+        self.check_add_dependency_blocks('uuid1', '', 'uuid3', True, True)
         
         self.manager.finish_download('uuid1', '', False)
         self.check_state([])
@@ -44,31 +44,31 @@ class DependencyManagerTest(unittest.TestCase):
 
         # This call will block until both attempts to download are done. Then, 
         # it will not be asked to retry the download.
-        self.check_add_dependee_blocks('uuid1', '', 'uuid4', True, False)
+        self.check_add_dependency_blocks('uuid1', '', 'uuid4', True, False)
 
         self.manager.finish_download('uuid1', '', True)
         self.check_state([('uuid1', '')])
 
     def test_download_path_conflict(self):
-        self.assertEqual(self.manager.add_dependee('uuid1', 'a/b_c', 'uuid2')[0],
+        self.assertEqual(self.manager.add_dependency('uuid1', 'a/b_c', 'uuid2')[0],
                          os.path.join(self.work_dir, 'uuid1_a_b_c'))
-        self.assertEqual(self.manager.add_dependee('uuid1', 'a_b/c', 'uuid2')[0],
+        self.assertEqual(self.manager.add_dependency('uuid1', 'a_b/c', 'uuid2')[0],
                          os.path.join(self.work_dir, 'uuid1_a_b_c_'))
 
     def test_cleanup(self):
         self.manager = DependencyManager(self.work_dir, 2)
 
-        self.manager.finish_run('uuid1') # Has dependee, so will not be removed.
-        self.manager.add_dependee('uuid1', '', 'uuid100')
+        self.manager.finish_run('uuid1') # Has dependency, so will not be removed.
+        self.manager.add_dependency('uuid1', '', 'uuid100')
 
-        self.manager.add_dependee('uuid2', '', 'uuid100') # Downloading, so will not be removed.
+        self.manager.add_dependency('uuid2', '', 'uuid100') # Downloading, so will not be removed.
     
         self.manager.finish_run('uuid3')  # Used after uuid4, so will be left.
         self.manager.finish_run('uuid4')  # Will be removed.
-        self.manager.add_dependee('uuid4', '', 'uuid100')
-        self.manager.remove_dependee('uuid4', '', 'uuid100')
-        self.manager.add_dependee('uuid3', '', 'uuid100')
-        self.manager.remove_dependee('uuid3', '', 'uuid100')
+        self.manager.add_dependency('uuid4', '', 'uuid100')
+        self.manager.remove_dependency('uuid4', '', 'uuid100')
+        self.manager.add_dependency('uuid3', '', 'uuid100')
+        self.manager.remove_dependency('uuid3', '', 'uuid100')
 
         for uuid in ['uuid1', 'uuid2', 'uuid3', 'uuid4']:
             with open(self.manager.get_run_path(uuid), 'wb') as f:
@@ -103,11 +103,11 @@ class DependencyManagerTest(unittest.TestCase):
                 state_file_targets.append(tuple(dep['target']))
             self.assertItemsEqual(expected_targets, state_file_targets)
 
-    def check_add_dependee_blocks(self, parent_uuid, parent_path, uuid,
+    def check_add_dependency_blocks(self, parent_uuid, parent_path, uuid,
                                   expected_blocks, expected_should_download):
         blocked = [True]
         def blocking_code():
-            _, should_download = self.manager.add_dependee(parent_uuid, parent_path, uuid)
+            _, should_download = self.manager.add_dependency(parent_uuid, parent_path, uuid)
             self.assertEqual(should_download, expected_should_download, msg='%s/%s from %s' % (parent_uuid, parent_path, uuid))
             blocked[0] = False
 

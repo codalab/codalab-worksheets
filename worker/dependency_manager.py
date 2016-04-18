@@ -87,7 +87,7 @@ class DependencyManager(object):
                         self._save_state()
 
                     total_size_bytes += dependency.size_bytes
-                    if (not dependency.has_dependees() and
+                    if (not dependency.has_children() and
                         dependency.last_used < first_used_time):
                         first_used_time = dependency.last_used
                         first_used_target = target
@@ -97,9 +97,9 @@ class DependencyManager(object):
                     first_used_target is not None):
                     with self._lock:
                         dependency = self._dependencies[first_used_target]
-                        if dependency.has_dependees():
+                        if dependency.has_children():
                             # Since we released the lock there could be new
-                            # dependees.
+                            # children.
                             continue
                         del self._dependencies[first_used_target]
                         self._paths.remove(dependency.path)
@@ -130,7 +130,7 @@ class DependencyManager(object):
         with self._lock:
             return self._dependencies.keys()
 
-    def add_dependee(self, parent_uuid, parent_path, uuid):
+    def add_dependency(self, parent_uuid, parent_path, uuid):
         """
         Reports that the bundle with UUID uuid is starting to run and
         has the path parent_path of bundle with UUID parent_uuid as a
@@ -141,8 +141,8 @@ class DependencyManager(object):
         once the download is finished, whether successful or not.
 
         Note that if multiple runs need to download the same dependency at the
-        same time, add_dependee will return True for only one of them, and will
-        block the others until the download has finished.
+        same time, add_dependency will return True for only one of them, and
+        will block the others until the download has finished.
         """
         target = (parent_uuid, parent_path)
         with self._lock:
@@ -160,7 +160,7 @@ class DependencyManager(object):
                         dependency.wait_on_download()
                     else:
                         # Already downloaded.
-                        dependency.add_dependee(uuid)
+                        dependency.add_child(uuid)
                         return os.path.join(self._work_dir, dependency.path), False
                 else:
                     if parent_path:
@@ -177,7 +177,7 @@ class DependencyManager(object):
                     dependency = self._dependencies[target] = (
                         Dependency(path, True, self._lock))
                     self._paths.add(path)
-                    dependency.add_dependee(uuid)
+                    dependency.add_child(uuid)
                     return os.path.join(self._work_dir, path), True
 
     def finish_download(self, uuid, path, success):
@@ -200,7 +200,7 @@ class DependencyManager(object):
             # able to grab self._lock.
             dependency.notify_download_finished()
 
-    def remove_dependee(self, parent_uuid, parent_path, uuid):
+    def remove_dependency(self, parent_uuid, parent_path, uuid):
         """
         Reports that the bundle with UUID uuid has finished running and
         no longer needs the path parent_path of bundle with UUID parent_uuid as
@@ -209,7 +209,7 @@ class DependencyManager(object):
         target = (parent_uuid, parent_path)
         with self._lock:
             if target in self._dependencies:
-                self._dependencies[target].remove_dependee(uuid)
+                self._dependencies[target].remove_child(uuid)
                 self._save_state()
 
     def get_run_path(self, uuid):
@@ -236,7 +236,7 @@ class Dependency(object):
         self.downloading = downloading
         self._download_condition = threading.Condition(lock)
         self.size_bytes = None
-        self._dependees = set()
+        self._children = set()
         self.last_used = time.time()
 
     @staticmethod
@@ -253,17 +253,17 @@ class Dependency(object):
             'last_used': self.last_used,
         }
 
-    def add_dependee(self, uuid):
-        self._dependees.add(uuid)
+    def add_child(self, uuid):
+        self._children.add(uuid)
 
-    def remove_dependee(self, uuid):
-        if uuid in self._dependees:
-            self._dependees.remove(uuid)
+    def remove_child(self, uuid):
+        if uuid in self._children:
+            self._children.remove(uuid)
 
         self.last_used = time.time()
 
-    def has_dependees(self):
-        return bool(self._dependees)
+    def has_children(self):
+        return bool(self._children)
 
     def wait_on_download(self):
         self._download_condition.wait()
