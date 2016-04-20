@@ -210,7 +210,6 @@ class BundleService(object):
                 item['size_str'] = formatting.size_str(item['size'])
         return info
 
-
     # Create an instance of a CLI.
     def _create_cli(self, worksheet_uuid):
         output_buffer = StringIO()
@@ -453,6 +452,7 @@ def get_bundle_content(uuid, path=''):
     if bundle_info and bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
         info = service.get_top_level_contents((uuid, path))
     return info if info is not None else {}
+
 
 @post('/api/bundles/upload/')
 def post_bundle_upload():
