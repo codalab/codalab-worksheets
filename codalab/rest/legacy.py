@@ -22,7 +22,7 @@ from bottle import (
   response,
 )
 
-from codalab.bundles import get_bundle_subclass
+from codalab.bundles import get_bundle_subclass, PrivateBundle
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.common import State, UsageError
@@ -146,7 +146,7 @@ class BundleService(object):
                 elif isinstance(item['bundle_info'], dict):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
-                    if bundle_info['bundle_type'] != 'private':
+                    if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
                         target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
                         bundle_info['target_info'] = target_info
                     try:
@@ -448,11 +448,11 @@ def post_worksheet_content(uuid):
 @get('/api/bundles/content/<uuid:re:%s>/<path:path>/' % spec_util.UUID_STR)
 def get_bundle_content(uuid, path=''):
     service = BundleService()
+    info = None
     bundle_info = service.get_bundle_info(uuid)
-    if bundle_info and bundle_info['bundle_type'] != 'private':
+    if bundle_info and bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
         info = service.get_top_level_contents((uuid, path))
     return info if info is not None else {}
-
 
 @post('/api/bundles/upload/')
 def post_bundle_upload():
@@ -475,7 +475,7 @@ def get_bundle_info(uuid):
     bundle_info = service.get_bundle_info(uuid)
     if bundle_info is None:
         abort(httplib.NOT_FOUND, 'The bundle is not available')
-    if bundle_info['bundle_type'] != 'private':
+    if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
         bundle_info.update(service.get_bundle_file_contents(uuid))
     return bundle_info
 
