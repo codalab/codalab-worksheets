@@ -272,6 +272,20 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
     
     return ''.join(lines)
 
+def get_path_size(path, ignore_paths=[]):
+    """
+    Returns the size of the contents of the given path, in bytes.
+
+    If path is a directory, any directory entries in ignore_paths will be
+    ignored.
+    """
+    result = os.lstat(path).st_size
+    if not os.path.islink(path) and os.path.isdir(path):
+        for child in os.listdir(path):
+            if child not in ignore_paths:
+                result += get_path_size(os.path.join(path, child))
+    return result
+
 def remove_path(path):
     """
     Removes a path if it exists.
