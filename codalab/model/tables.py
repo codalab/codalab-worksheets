@@ -232,8 +232,8 @@ user = Table(
 
   # Basic information
   Column('user_id', String(63), nullable=False),
-  Column('user_name', String(63), nullable=False),
-  Column('email', String(254), nullable=False),  # Length of 254 to be compliant with RFC3696/5321
+  Column('user_name', String(63), nullable=False, unique=True),
+  Column('email', String(254), nullable=False, unique=True),  # Length of 254 to be compliant with RFC3696/5321
   Column('last_login', DateTime),  # Null if user has never logged in
   Column('is_active', Boolean, nullable=False, default=True),  # Set to False instead of deleting users to maintain foreign key integrity
   Column('first_name', String(30)),
@@ -268,6 +268,17 @@ user_verification = Table(
   Column('date_created', DateTime, nullable=False),
   Column('date_sent', DateTime, nullable=True),
   Column('key', String(64), nullable=False),
+  sqlite_autoincrement=True,
+)
+
+# Stores password reset codes
+user_reset_code = Table(
+  'user_reset_code',
+  db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
+  Column('date_created', DateTime, nullable=False),
+  Column('code', String(64), nullable=False),
   sqlite_autoincrement=True,
 )
 

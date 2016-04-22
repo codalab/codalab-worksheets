@@ -1,12 +1,12 @@
 import os
 import re
 import sys
-import time
 
 from .hash_ring import HashRing
 
-from codalab.lib import file_util, path_util, print_util, spec_util, zip_util
-from codalab.common import UsageError, State
+from codalab.lib import path_util, spec_util
+from codalab.common import State
+
 
 def require_partitions(f):
     """Decorator added to MulitDiskBundleStore methods that require a disk to
@@ -67,12 +67,6 @@ class BaseBundleStore(object):
         """
         pass
 
-    def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources):
-        """
-        Allow the client to create a bundle via uploading a file, directory, or Git repository.
-        """
-        pass
-
     def get_bundle_location(self, data_hash):
         """
         Gets the location of the bundle with cryptographic hash digest data_hash. Returns the location in the method
@@ -119,116 +113,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         """
         disk = self.ring.get_node(uuid)
         return os.path.join(self.partitions, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
-
-    @require_partitions
-    def upload(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, uuid):
-        """
-        |sources|: specifies the locations of the contents to upload.  Each element is either a URL or a local path.
-        |follow_symlinks|: for local path(s), whether to follow (resolve) symlinks
-        |exclude_patterns|: for local path(s), don't upload these patterns (e.g., *.o)
-        |git|: for URL, whether |source| is a git repo to clone.
-        |unpack|: for each source in |sources|, whether to unpack it if it's an archive.
-        |remove_sources|: remove |sources|.
-
-        If |sources| contains one source, then the bundle contents will be that source.
-        Otherwise, the bundle contents will be a directory with each of the sources.
-        Exceptions:
-        - If |git|, then each source is replaced with the result of running 'git clone |source|'
-        - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
-
-        Install the contents of the directory at |source| into
-        DATA_SUBDIRECTORY in a subdirectory named by a hash of the contents.
-
-        Return a (data_hash, metadata) pair, where the metadata is a dict mapping
-        keys to precomputed statistics about the new data directory.
-        """
-        to_delete = []
-
-        # If just a single file, set the final path to be equal to that file
-        single_path = len(sources) == 1
-
-        # Determine which disk this will go on
-        disk_choice = self.ring.get_node(uuid)
-
-        final_path = os.path.join(self.partitions, disk_choice, self.DATA_SUBDIRECTORY, uuid)
-        if os.path.exists(final_path):
-            raise UsageError('Path %s already present in bundle store' % final_path)
-        # Only make if not there
-        elif not single_path:
-            path_util.make_directory(final_path)
-
-        # Paths to resources
-        subpaths = []
-
-        for source in sources:
-            # Where to save |source| to (might change this value if we unpack).
-            if not single_path:
-                subpath = os.path.join(final_path, os.path.basename(source))
-            else:
-                subpath = final_path
-
-            if remove_sources:
-                to_delete.append(source)
-            source_unpack = unpack and zip_util.path_is_archive(source)
-
-            if source_unpack and single_path:
-                # Load the file into the bundle store under the given path
-                subpath += zip_util.get_archive_ext(source)
-
-            if path_util.path_is_url(source):
-                # Download the URL.
-                print_util.open_line('BundleStore.upload: downloading %s to %s' % (source, subpath))
-                if git:
-                    file_util.git_clone(source, subpath)
-                else:
-                    file_util.download_url(source, subpath, print_status=True)
-                    if source_unpack:
-                        zip_util.unpack(subpath, zip_util.strip_archive_ext(subpath))
-                        path_util.remove(subpath)
-                        subpath = zip_util.strip_archive_ext(subpath)
-                print_util.clear_line()
-            else:
-                # Copy the local path.
-                source_path = path_util.normalize(source)
-                path_util.check_isvalid(source_path, 'upload')
-
-                # Recursively copy the directory into the BundleStore
-                print_util.open_line('BundleStore.upload: %s => %s' % (source_path, subpath))
-                if source_unpack:
-                    zip_util.unpack(source_path, zip_util.strip_archive_ext(subpath))
-                    subpath = zip_util.strip_archive_ext(subpath)
-                else:
-                    if remove_sources:
-                        path_util.rename(source_path, subpath)
-                    else:
-                        path_util.copy(source_path, subpath, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
-                print_util.clear_line()
-
-            subpaths.append(subpath)
-
-        dirs_and_files = None
-        if os.path.isdir(final_path):
-            dirs_and_files = path_util.recursive_ls(final_path)
-        else:
-            dirs_and_files = [], [final_path]
-
-        # Hash the contents of the bundle directory. Update the data_hash attribute
-        # for the bundle
-        print_util.open_line('BundleStore.upload: hashing %s' % final_path)
-        data_hash = '0x%s' % (path_util.hash_directory(final_path, dirs_and_files))
-        print_util.clear_line()
-        print_util.open_line('BundleStore.upload: computing size of %s' % final_path)
-        data_size = path_util.get_size(final_path, dirs_and_files)
-        print_util.clear_line()
-
-        # Delete paths.
-        for path in to_delete:
-            if os.path.exists(path):
-                path_util.remove(path)
-
-        # After this operation there should always be a directory at the final path.
-        assert (os.path.lexists(final_path)), 'Uploaded to %s failed!' % (final_path,)
-        return (data_hash, {'data_size': data_size})
 
     def initialize_store(self):
         """

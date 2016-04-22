@@ -3,6 +3,7 @@ import copy
 from cStringIO import StringIO
 import gzip
 import os
+import shutil
 import subprocess
 import tarfile
 import zlib
@@ -110,15 +111,19 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
         raise IOError(e.output)
 
 
-def un_tar_gzip_directory(fileobj, directory_path):
+def un_tar_directory(fileobj, directory_path, compression=''):
     """
-    Extracts the given file-like object containing a tarred and gzipped archive
-    into the given directory. The directory should already exist.
+    Extracts the given file-like object containing a tar archive into the given
+    directory, which will be created and should not already exist.
+
+    compression specifies the compression scheme and can be one of '', 'gz' or
+    'bz2'.
 
     Raises tarfile.TarError if the archive is not valid.
     """
     directory_path = os.path.realpath(directory_path)
-    with tarfile.open(fileobj=fileobj, mode='r|gz') as tar:
+    os.mkdir(directory_path)
+    with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
         for member in tar:
             # Make sure that there is no trickery going on (see note in
             # TarFile.extractall() documentation.
@@ -266,3 +271,27 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                     lines = lines[-num_tail_lines:]
     
     return ''.join(lines)
+
+def get_path_size(path, ignore_paths=[]):
+    """
+    Returns the size of the contents of the given path, in bytes.
+
+    If path is a directory, any directory entries in ignore_paths will be
+    ignored.
+    """
+    result = os.lstat(path).st_size
+    if not os.path.islink(path) and os.path.isdir(path):
+        for child in os.listdir(path):
+            if child not in ignore_paths:
+                result += get_path_size(os.path.join(path, child))
+    return result
+
+def remove_path(path):
+    """
+    Removes a path if it exists.
+    """
+    if os.path.exists(path):
+        if os.path.isdir(path):
+            shutil.rmtree(path)
+        else:
+            os.remove(path)

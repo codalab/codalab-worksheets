@@ -4,7 +4,7 @@ Handles create new user accounts and authenticating users.
 """
 from bottle import request, response, template, local, redirect, default_app, get, post
 
-from codalab.lib import spec_util
+from codalab.lib import crypt_util, spec_util
 from codalab.lib.server_util import redirect_with_query
 from codalab.objects.user import User
 from codalab.common import UsageError
@@ -42,6 +42,9 @@ def do_login():
             "error": "Login/password did not match.",
             "next": success_uri,
         })
+
+    # Update last login
+    local.model.update_user_last_login(user.user_id)
 
     # Save cookie in client
     cookie = LoginCookie(user.user_id, max_age=30 * 24 * 60 * 60)
@@ -87,10 +90,10 @@ def do_signup():
 
     if errors:
         return redirect_with_query(error_uri, {
-            "error": " ".join(errors),
-            "next": success_uri,
-            "email": email,
-            "username": username,
+            'error': ' '.join(errors),
+            'next': success_uri,
+            'email': email,
+            'username': username,
         })
 
     # Create unverified user
@@ -101,7 +104,7 @@ def do_signup():
 
     # Redirect to success page
     return redirect_with_query(success_uri, {
-        "email": email
+        'email': email
     })
 
 
@@ -120,7 +123,7 @@ def resend_key():
     key = local.model.get_verification_key(request.user.user_id)
     send_verification_key(request.user.user_name, request.user.email, key)
     return redirect_with_query('/account/signup/success', {
-        "email": request.user.email,
+        'email': request.user.email,
     })
 
 
@@ -138,3 +141,90 @@ def css():
         return template('user_not_authenticated_css')
     else:
         return template('user_authenticated_css', username=request.user.user_name)
+
+
+@post('/account/reset')
+def request_reset():
+    """
+    Password reset form POST endpoint.
+    """
+    email = request.forms.get('email')
+    user = local.model.get_user(username=email)
+    if user is None:
+        # Redirect back to form page
+        return redirect_with_query('/account/reset', {
+            'error': "User with email %s not found." % email
+        })
+
+    # Generate reset code
+    reset_code = local.model.new_user_reset_code(user.user_id)
+
+    # Send code
+    hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
+    user_name = user.first_name or user.user_name
+    local.emailer.send_email(
+        subject="CodaLab password reset link",
+        body=template('password_reset_body', user=user_name, current_site=hostname, code=reset_code),
+        recipient=email,
+    )
+
+    # Redirect to success page
+    return redirect('/account/reset/sent')
+
+
+@get('/account/reset/verify/<code>')
+def verify_reset_code(code):
+    """
+    Target endpoint for password reset code links.
+    Does an initial verification of the reset code and redirects to the
+    frontend page with the appropriate parameters.
+    """
+    if local.model.get_reset_code_user_id(code, delete=False) is not None:
+        redirect_with_query('/account/reset/verified', {
+            'code_valid': True,
+            'code': code,
+        })
+    else:
+        redirect_with_query('/account/reset/verified', {
+            'code_valid': False,
+        })
+
+
+@post('/account/reset/finalize')
+def reset_password():
+    """
+    Final password reset form POST endpoint.
+    """
+    code = request.forms.get('code')
+    password = request.forms.get('password')
+    confirm_password = request.forms.get('confirm_password')
+
+    # Validate password
+    if confirm_password != password:
+        return redirect_with_query('/account/reset/verified', {
+            'code_valid': True,
+            'code': code,
+            'error': "Passwords do not match."
+        })
+    try:
+        User.validate_password(password)
+    except UsageError as e:
+        return redirect_with_query('/account/reset/verified', {
+            'code_valid': True,
+            'code': code,
+            'error': e.message
+        })
+
+    # Verify reset code again and get user_id
+    user_id = local.model.get_reset_code_user_id(code, delete=True)
+    if user_id is None:
+        return redirect_with_query('/account/reset/verified', {
+            'code_valid': False,
+        })
+
+    # Update user password
+    user_info = local.model.get_user_info(user_id)
+    user_info['password'] = User.encode_password(password, crypt_util.get_random_string()),
+    local.model.update_user_info(user_info)
+
+    return redirect('/account/reset/complete')
