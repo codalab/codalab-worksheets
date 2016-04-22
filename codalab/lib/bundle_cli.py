@@ -825,7 +825,7 @@ class BundleCLI(object):
         # Type-check the bundle metadata BEFORE uploading the bundle data.
         # This optimization will avoid file copies on failed bundle creations.
         # pass in a null owner to validate. Will be set to the correct owner in the client upload_bundle below.
-        bundle_subclass.construct(owner_id=0, data_hash='', metadata=metadata).validate()
+        bundle_subclass.construct(owner_id=0, metadata=metadata).validate()
         info = {'bundle_type': bundle_type, 'metadata': metadata}
 
         # Finally, once everything has been checked, then call the client to upload.

@@ -64,6 +64,7 @@ from codalab.model.tables import (
     user as cl_user,
     chat as cl_chat,
     user_verification as cl_user_verification,
+    user_reset_code as cl_user_reset_code,
     oauth2_client,
     oauth2_token,
     oauth2_auth_code,
@@ -117,6 +118,7 @@ class BundleModel(object):
         '''
         db_metadata.create_all(self.engine)
         self._create_default_groups()
+        self._create_default_clients()
 
     def do_multirow_insert(self, connection, table, values):
         '''
@@ -1595,9 +1597,6 @@ class BundleModel(object):
                 } for row in rows]
             return result
 
-    ############################################################
-    # User functions
-    # TODO: move this logic somewhere else and merge it with the OAuth notion of user.
     #############################################################################
     # User-related methods follow!
     #############################################################################
@@ -1635,7 +1634,6 @@ class BundleModel(object):
         if user_ids is not None:
             clauses.append(cl_user.c.user_id.in_(user_ids))
         if usernames is not None:
-            # TODO(sckoo): Should we add an index on the email column?
             clauses.append(or_(cl_user.c.user_name.in_(usernames),
                                cl_user.c.email.in_(usernames)))
 
@@ -1764,6 +1762,53 @@ class BundleModel(object):
 
         return True
 
+    def new_user_reset_code(self, user_id):
+        """
+        Generate a new password reset code.
+        :param user_id: user_id of user for whom to reset password
+        :return: reset code
+        """
+        with self.engine.begin() as connection:
+            now = datetime.datetime.utcnow()
+            code = uuid.uuid4().hex
+
+            connection.execute(cl_user_reset_code.insert().values({
+                "user_id": user_id,
+                "date_created": now,
+                "code": code,
+            }))
+
+        return code
+    
+    def get_reset_code_user_id(self, code, delete=False):
+        """
+        Check if reset code is valid.
+        :param code: reset code
+        :param delete: True iff delete code when found
+        :return: user_id of associated user if succeeded, None otherwise
+        """
+        with self.engine.begin() as connection:
+            reset_code_row = connection.execute(cl_user_reset_code.select().where(
+                cl_user_reset_code.c.code == code
+            ).limit(1)).fetchone()
+
+            # No matching key found
+            if reset_code_row is None:
+                return None
+
+            user_id = reset_code_row.user_id
+
+            # Already done if not deleting code
+            if not delete:
+                return user_id
+
+            # Delete matching reset code
+            connection.execute(cl_user_reset_code.delete().where(
+                cl_user_reset_code.c.code == code
+            ))
+
+        return user_id
+
     def get_user_info(self, user_id, fetch_extra=False):
         """
         Return the user info corresponding to |user_id|.
@@ -1823,6 +1868,15 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
+    def update_user_last_login(self, user_id):
+        """
+        Update user's last login date to now.
+        """
+        self.update_user_info({
+            'user_id': user_id,
+            'last_login': datetime.datetime.utcnow(),
+        })
+
     def _get_disk_used(self, user_id):
         return self.search_bundle_uuids(user_id, None, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
 
@@ -1835,6 +1889,26 @@ class BundleModel(object):
     #############################################################################
     # OAuth-related methods follow!
     #############################################################################
+
+    def _create_default_clients(self):
+        DEFAULT_CLIENTS = [
+            ('codalab_cli_client', 'CodaLab CLI'),
+            ('codalab_worker_client', 'CodaLab Worker'),
+            ]
+
+        for client_id, client_name in DEFAULT_CLIENTS:
+            if not self.get_oauth2_client(client_id):
+                self.save_oauth2_client(OAuth2Client(
+                    self,
+                    client_id=client_id,
+                    secret=None,
+                    name=client_name,
+                    user_id=None,
+                    grant_type='password',
+                    response_type='token',
+                    scopes='default',
+                    redirect_uris='',
+                ))
 
     def get_oauth2_client(self, client_id):
         with self.engine.begin() as connection:

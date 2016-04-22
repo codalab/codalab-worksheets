@@ -28,6 +28,12 @@ def copy(source, dest, autoflush=True, print_status=None):
     if print_status:
         print >>sys.stderr, "\r%s: %s [done]" % (print_status, formatting.size_str(n))
 
+def strip_git_ext(path):
+    GIT_EXT = '.git'
+    if path.endswith(GIT_EXT):
+        path = path[:-len(GIT_EXT)]
+    return path
+
 def git_clone(source_url, target_path):
     return subprocess.call(['git', 'clone', source_url, target_path])
 

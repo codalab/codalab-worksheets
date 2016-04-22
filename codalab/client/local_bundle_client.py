@@ -30,7 +30,6 @@ from codalab.client.bundle_client import BundleClient
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib import (
     canonicalize,
-    path_util,
     worksheet_util,
     spec_util,
     formatting,
@@ -52,7 +51,7 @@ from codalab.objects.permission import (
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_READ,
 )
-from worker.file_util import un_tar_gzip_directory
+from worker.file_util import un_tar_directory
 
 
 def authentication_required(func):
@@ -69,10 +68,11 @@ def authentication_required(func):
 
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, download_manager, auth_handler, verbose):
+    def __init__(self, address, bundle_store, model, upload_manager, download_manager, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
+        self.upload_manager = upload_manager
         self.download_manager = download_manager
         self.auth_handler = auth_handler
         self.verbose = verbose
@@ -228,7 +228,8 @@ class LocalBundleClient(BundleClient):
     @authentication_required
     def upload_bundle(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
         """
-        |sources|, |follow_symlinks|, |exclude_patterns|, |git|, |unpack|, |remove_sources|: see BundleStore.upload()
+        |sources|, |follow_symlinks|, |exclude_patterns|, |git|, |unpack|,
+        |remove_sources|: see codalab.lib.upload_manager
         |info|: information about the bundle.
         |worksheet_uuid|: which worksheet to inherit permissions on
         |add_to_worksheet|: whether to add to this worksheet or not.
@@ -255,34 +256,16 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
-        """Generate a UUID so that BundleStore knows where to store the bundle on disk"""
-        uuid = spec_util.generate_uuid()
-        construct_args['uuid'] = uuid
-
-        # Upload the source and record additional metadata from the upload.
-        if sources is not None:
-            (data_hash, bundle_store_metadata) = self.bundle_store.upload(sources=sources,
-                                                                          follow_symlinks=follow_symlinks,
-                                                                          exclude_patterns=exclude_patterns,
-                                                                          git=git,
-                                                                          unpack=unpack,
-                                                                          remove_sources=remove_sources,
-                                                                          uuid=uuid)
-            metadata.update(bundle_store_metadata)
-        else:
-            data_hash = None
-        if construct_args.get('data_hash', data_hash) != data_hash:
-            print >>sys.stderr, 'ERROR: provided data_hash doesn\'t match: %s versus %s' %\
-                                (construct_args.get('data_hash'), data_hash)
-        construct_args['data_hash'] = data_hash
-
-        # Set the owner
+        construct_args['uuid'] = spec_util.generate_uuid()
         construct_args['owner_id'] = self._current_user_id()
-        bundle = bundle_subclass.construct(**construct_args)
-        self.model.save_bundle(bundle)
 
-        # Update user statistics
-        self.model.update_user_disk_used(bundle.owner_id)
+        bundle = bundle_subclass.construct(**construct_args)
+
+        # Upload the data and save the bundle.
+        self.upload_manager.upload_to_bundle_store(
+            bundle, sources, follow_symlinks, exclude_patterns, remove_sources,
+            git, unpack, simplify_archives=True)
+        self.upload_manager.update_metadata_and_save(bundle, new_bundle=True)
 
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
@@ -546,8 +529,7 @@ class LocalBundleClient(BundleClient):
         """
         self.check_target_has_read_permission(target)
         with closing(self.download_manager.stream_tarred_gzipped_directory(target[0], target[1])) as fileobj:
-            os.mkdir(download_path)
-            un_tar_gzip_directory(fileobj, download_path)
+            un_tar_directory(fileobj, download_path, 'gz')
 
     def download_file(self, target, download_path):
         """

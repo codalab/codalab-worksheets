@@ -111,11 +111,12 @@ else:
 # Begin Transaction
 ###############################################################
 
-with model.engine.begin() as bundle_db, django_db as django_cursor:
+with model.engine.begin() as bundle_db:
     ###############################################################
     # Get existing users from both databases
     ###############################################################
     # General SQL query should work on both MySQL and sqlite3
+    django_cursor = django_db.cursor()
     django_cursor.execute("""
         SELECT
         cluser.id as b_user_id,  -- prevent clash with user_id column on update
@@ -129,7 +130,7 @@ with model.engine.begin() as bundle_db, django_db as django_cursor:
         cluser.organization_or_affiliation AS affiliation,
         cluser.is_superuser,
         cluser.is_active,
-        IF(NOT ISNULL(email.verified), email.verified, 0) AS is_verified
+        IFNULL(email.verified, 0) AS is_verified
         FROM authenz_cluser AS cluser
         LEFT OUTER JOIN account_emailaddress AS email
         ON cluser.id = email.user_id

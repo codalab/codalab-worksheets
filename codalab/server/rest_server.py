@@ -55,6 +55,7 @@ class SaveEnvironmentPlugin(object):
             # objects are created after forking.
             local.model = self.manager.model()
             local.worker_model = self.manager.worker_model()
+            local.upload_manager = self.manager.upload_manager()
             local.download_manager = self.manager.download_manager()
             local.bundle_store = self.manager.bundle_store()
             local.config = self.manager.config
