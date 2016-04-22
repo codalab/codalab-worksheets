@@ -16,7 +16,7 @@ def send_verification_key(username, email, key):
     # Send verification key to given email address
     hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
     local.emailer.send_email(
-        subject="Verify your new CodaLab account",
+        subject="Verify your CodaLab account",
         body=template('email_verification_body', user=username, current_site=hostname, key=key),
         recipient=email,
     )
@@ -127,13 +127,6 @@ def resend_key():
     })
 
 
-@get('/account/whoami', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
-def whoami():
-    info = request.user.to_dict()
-    del info['password']
-    return info
-
-
 @get('/account/css', skip=UserVerifiedPlugin)
 def css():
     response.content_type = 'text/css'
@@ -141,6 +134,27 @@ def css():
         return template('user_not_authenticated_css')
     else:
         return template('user_authenticated_css', username=request.user.user_name)
+
+
+@get('/account/reset', apply=AuthenticatedPlugin())
+def request_reset():
+    """
+    Password reset endpoint for authenticated users.
+    """
+    # Generate reset code
+    reset_code = local.model.new_user_reset_code(request.user.user_id)
+
+    # Send code
+    hostname = request.get_header('X-Forwarded-Host') or request.get_header('Host')
+    user_name = request.user.first_name or request.user.user_name
+    local.emailer.send_email(
+        subject="CodaLab password reset link",
+        body=template('password_reset_body', user=user_name, current_site=hostname, code=reset_code),
+        recipient=request.user.email,
+    )
+
+    # Redirect to success page
+    return redirect('/account/reset/sent')
 
 
 @post('/account/reset')
@@ -228,3 +242,38 @@ def reset_password():
     local.model.update_user_info(user_info)
 
     return redirect('/account/reset/complete')
+
+
+@post('/account/changeemail', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
+def request_reset():
+    """
+    Email change form POST endpoint.
+    """
+    email = request.forms.get('email').strip()
+
+    if email == request.user.email:
+        return redirect_with_query('/account/changeemail', {
+            'error': "Your email address is already %s." % email
+        })
+
+    if not spec_util.BASIC_EMAIL_REGEX.match(email):
+        return redirect_with_query('/account/changeemail', {
+            'error': "Invalid email address."
+        })
+
+    if local.model.user_exists(None, email):
+        return redirect_with_query('/account/changeemail', {
+            'error': "User with this email already exists."
+        })
+
+    local.model.update_user_info({
+        'user_id': request.user.user_id,
+        'email': email,
+        'is_verified': False,
+    })
+
+    key = local.model.get_verification_key(request.user.user_id)
+    send_verification_key(request.user.user_name, request.user.email, key)
+
+    return redirect('/account/changeemail/sent')
+
