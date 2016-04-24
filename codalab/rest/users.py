@@ -8,6 +8,7 @@ from marshmallow import ValidationError
 from marshmallow_jsonapi import Schema, fields
 
 from codalab.lib import formatting
+from codalab.lib.spec_util import NAME_REGEX
 from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
@@ -76,6 +77,10 @@ def update_authenticated_user():
     if (user_info.get('user_name', request.user.user_name) != request.user.user_name and
         local.model.user_exists(user_info['user_name'], None)):
         abort(httplib.BAD_REQUEST, "User name %s is already taken." % user_info['user_name'])
+
+    # Validate user name
+    if not NAME_REGEX.match(user_info.get('user_name', request.user.user_name)):
+        abort(httplib.BAD_REQUEST, "User name characters must be alphanumeric, underscores, periods, or dashes.")
 
     # Update user
     local.model.update_user_info(user_info)
