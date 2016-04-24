@@ -6,6 +6,7 @@ from bottle import request, response, template, local, redirect, default_app, ge
 
 from codalab.lib import crypt_util, spec_util
 from codalab.lib.server_util import redirect_with_query
+from codalab.lib.spec_util import NAME_REGEX
 from codalab.objects.user import User
 from codalab.common import UsageError
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
@@ -87,6 +88,9 @@ def do_signup():
 
     if local.model.user_exists(username, email):
         errors.append("User with this username or email already exists.")
+
+    if not NAME_REGEX.match(username):
+        errors.append("Username characters must be alphanumeric, underscores, periods, or dashes.")
 
     if errors:
         return redirect_with_query(error_uri, {

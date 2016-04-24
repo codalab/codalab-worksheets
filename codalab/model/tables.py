@@ -236,16 +236,16 @@ user = Table(
   Column('email', String(254), nullable=False, unique=True),  # Length of 254 to be compliant with RFC3696/5321
   Column('last_login', DateTime),  # Null if user has never logged in
   Column('is_active', Boolean, nullable=False, default=True),  # Set to False instead of deleting users to maintain foreign key integrity
-  Column('first_name', String(30)),
-  Column('last_name', String(30)),
+  Column('first_name', String(30, convert_unicode=True)),
+  Column('last_name', String(30, convert_unicode=True)),
   Column('date_joined', DateTime, nullable=False),
   Column('is_verified', Boolean, nullable=False, default=False),
   Column('is_superuser', Boolean, nullable=False, default=False),
   Column('password', String(128), nullable=False),
 
   # Additional information
-  Column('affiliation', String(255), nullable=True),
-  Column('url', String(255), nullable=True),
+  Column('affiliation', String(255, convert_unicode=True), nullable=True),
+  Column('url', String(255, convert_unicode=True), nullable=True),
 
   # Quotas
   Column('time_quota', Float, nullable=False),  # Number of seconds allowed

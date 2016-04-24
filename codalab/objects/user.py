@@ -2,8 +2,6 @@
 User objects representing rows from the user table
 """
 import base64
-import hashlib
-import hmac
 
 from codalab.common import UsageError
 from codalab.model.orm_object import ORMObject
@@ -24,9 +22,6 @@ class User(ORMObject):
     @property
     def name(self):
         return self.user_name
-
-    def validate(self):
-        pass
 
     @staticmethod
     def encode_password(password, salt, iterations=30000):
