@@ -209,6 +209,10 @@ class WorkerModel(object):
         sock.settimeout(timeout_secs)
         try:
             conn, _ = sock.accept()
+            # Send Ack. This helps protect from messages to the worker being
+            # lost due to spuriously accepted connections when the socket
+            # file is deleted.
+            conn.sendall('a')
             conn.settimeout(None)  # Need to remove timeout before makefile.
             fileobj = conn.makefile('rb')
             conn.close()
@@ -249,13 +253,14 @@ class WorkerModel(object):
                     # Shouldn't be too expensive just to keep retrying.
                     time.sleep(0.003)
                     continue
-            
+
+                sock.recv(1)
                 while True:
                     data = fileobj.read(4096)
                     if not data:
                         return True
                     sock.sendall(data)
-        
+
         return False
 
     def send_json_message(self, socket_id, message, timeout_secs, autoretry=True):
@@ -286,8 +291,7 @@ class WorkerModel(object):
                         # just when a socket object is in the process of being
                         # destroyed. On the sending end, such a scenario results
                         # in a "Broken pipe" exception, which we catch here.
-                        sock.sendall(json.dumps(message))
-                        return True
+                        sock.recv(1)
                 except socket.error:
                     # Shouldn't be too expensive just to keep retrying.
                     time.sleep(0.003)
@@ -298,8 +302,10 @@ class WorkerModel(object):
                     # have the problem with "Broken pipe" as above, since
                     # code waiting for a reply shouldn't just abruptly stop
                     # listening.
-                    sock.sendall(json.dumps(message))
-                    return True
+                    sock.recv(1)
+
+                sock.sendall(json.dumps(message))
+                return True
 
         return False
 
