@@ -1708,10 +1708,9 @@ class BundleModel(object):
 
     def get_verification_key(self, user_id):
         """
-        Get verification key again for given user.
+        Get verification key for given user.
+        If one does not exist yet, create one and return it.
         Updates the "date_sent" field of the verification key to the current date.
-        Note: we can also choose to refresh the verification key itself too in the future
-        if that is more secure.
 
         :param user_id: id of user to get verification key for
         :return: verification key, or None if none found for user
@@ -1722,16 +1721,24 @@ class BundleModel(object):
             ).limit(1)).fetchone()
 
             if verify_row is None:
-                return None
+                key = uuid.uuid4().hex
+                now = datetime.datetime.utcnow()
+                connection.execute(cl_user_verification.insert().values({
+                    "user_id": user_id,
+                    "date_created": now,
+                    "date_sent": now,
+                    "key": key,
+                }))
+            else:
+                key = verify_row.key
+                # Update date sent
+                connection.execute(cl_user_verification.update().where(
+                    cl_user_verification.c.user_id == user_id
+                ).values({
+                    "date_sent": datetime.datetime.utcnow(),
+                }))
 
-            # Update date sent
-            connection.execute(cl_user_verification.update().where(
-                cl_user_verification.c.user_id == user_id
-            ).values({
-                "date_sent": datetime.datetime.utcnow(),
-            }))
-
-        return verify_row.key
+        return key
 
     def verify_user(self, key):
         """
