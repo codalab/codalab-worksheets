@@ -1,6 +1,11 @@
+import logging
+
 from codalab.common import State
 from codalab.worker.bundle_manager import BundleManager
 from codalab.worker.worker_info_accessor import WorkerInfoAccessor
+
+
+logger = logging.getLogger(__name__)
 
 
 class DefaultBundleManager(BundleManager):
@@ -52,6 +57,7 @@ class DefaultBundleManager(BundleManager):
                     failure_message = 'No workers with enough memory'
 
             if failure_message is not None:
+                logger.info('Failing %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(
                     bundle, {'state': State.FAILED,
                              'metadata': {'failure_message': failure_message}})

@@ -187,8 +187,11 @@ class BundleServiceClient(object):
                          response.headers['Content-Disposition'])
         return (response, match.group(1))
 
-    def _make_request(self, method, url, query_params=None, headers={}, data=None,
+    def _make_request(self, method, url, query_params=None, headers=None, data=None,
                       return_response=False, authorized=True):
+        if headers is None:
+            headers = {}
+
         if authorized:
             with self._authorization_lock:
                 headers['Authorization'] = 'Bearer ' + self._access_token

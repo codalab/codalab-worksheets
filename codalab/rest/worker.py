@@ -29,6 +29,7 @@ def checkin(worker_id):
         request.json['version'] != VERSION and
         not request.json['will_upgrade']):
         return {'type': 'upgrade'}
+
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
         request.json['slots'], request.json['cpus'], request.json['memory_bytes'],
@@ -114,6 +115,7 @@ def start_bundle(worker_id, uuid):
     if local.model.start_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'],
                                 request.json['start_time']):
+        print 'Started bundle %s' % uuid
         return json.dumps(True)
     return json.dumps(False)
 
@@ -179,6 +181,7 @@ def finalize_bundle(worker_id, uuid):
         # it happens in update_bundle_contents.
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 
+    print 'Finalized bundle %s' % uuid
     local.model.finalize_bundle(bundle, request.user.user_id,
                                 request.json['exitcode'],
                                 request.json['failure_message'])

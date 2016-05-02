@@ -95,7 +95,7 @@ class State(object):
     CREATED = 'created'   # Just created
     STAGED = 'staged'     # All the dependencies are met
     MAKING = 'making'  # Creating a make bundle.
-    WAITING_FOR_TORQUE = 'waiting_for_torque'  # Waiting for Torque to start the job.
+    WAITING_FOR_WORKER_STARTUP = 'waiting_for_worker_startup'  # Waiting for the worker to start up.
     STARTING = 'starting'  # Wait for the worker to start running the bundle.
     RUNNING = 'running'   # Actually running
     READY = 'ready'       # Done running and succeeded

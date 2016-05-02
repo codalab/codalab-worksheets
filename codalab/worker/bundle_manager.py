@@ -1,4 +1,5 @@
 import datetime
+import logging
 import os
 import re
 import sys
@@ -11,6 +12,9 @@ from codalab.lib import bundle_util, formatting
 from worker.file_util import remove_path
 
 
+logger = logging.getLogger(__name__)
+
+
 class BundleManager(object):
     """
     Assigns run bundles to workers and makes make bundles.
@@ -20,7 +24,7 @@ class BundleManager(object):
     def create(codalab_manager):
         config = codalab_manager.config.get('workers')
         if not config:
-            print >> sys.stderr, 'Config is missing a workers section'
+            print >> sys.stderr, 'config.json file missing a workers section.'
             exit(1)
 
         if 'torque' in config:
@@ -42,7 +46,7 @@ class BundleManager(object):
         self._make_uuids = set()
 
         if 'default_docker_image' not in config:
-            print >> sys.stderr, 'workers config missing default_docker_image'
+            print >> sys.stderr, 'default_docker_image missing from workers section of config.json.'
             exit(1)
         self._default_docker_image = config['default_docker_image']
 
@@ -60,9 +64,13 @@ class BundleManager(object):
         self._default_request_queue = config.get('default_request_queue')
         self._default_request_priority = config.get('default_request_priority')
 
+        logging.basicConfig(format='%(asctime)s %(message)s',
+                            level=logging.INFO)
+
         return self
 
     def run(self, sleep_time):
+        logger.info('Bundle manager running.')
         while not self._is_exiting():
             try:
                 self._run_iteration()
@@ -132,10 +140,12 @@ class BundleManager(object):
                 bundles_to_stage.append(bundle)
 
         for bundle, failure_message in bundles_to_fail:
+            logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
             self._model.update_bundle(
                 bundle, {'state': State.FAILED,
                          'metadata': {'failure_message': failure_message}})
         for bundle in bundles_to_stage:
+            logger.info('Staging %s', bundle.uuid)
             self._model.update_bundle(
                 bundle, {'state': State.STAGED})
 
@@ -144,9 +154,11 @@ class BundleManager(object):
         # died.
         for bundle in self._model.batch_get_bundles(state=State.MAKING, bundle_type='make'):
             if not self._is_making_bundle(bundle.uuid):
+                logger.info('Re-staging make bundle %s', bundle.uuid)
                 self._model.update_bundle(bundle, {'state': State.STAGED})
 
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='make'):
+            logger.info('Making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.MAKING})
             with self._make_uuids_lock:
                 self._make_uuids.add(bundle.uuid)
@@ -178,8 +190,10 @@ class BundleManager(object):
             bundle.install_dependencies(self._bundle_store, parent_dict, path, copy=True)
 
             self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+            logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
+            logger.info('Failing bundle %s: %s', bundle.uuid, str(e))
             self._model.update_bundle(
                 bundle, {'state': State.FAILED,
                          'metadata': {'failure_message': str(e)}})
@@ -194,6 +208,7 @@ class BundleManager(object):
         """
         for worker in workers.workers():
             if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(minutes=5):
+                logger.info('Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id'])
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker)
                 if callback is not None:
@@ -207,6 +222,7 @@ class BundleManager(object):
         for bundle in self._model.batch_get_bundles(state=State.STARTING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > 5 * 60):  # Run message went missing.
+                logger.info('Re-staging run bundle %s', bundle.uuid)
                 if self._model.restage_bundle(bundle):
                     workers.restage(bundle.uuid)
 
@@ -217,7 +233,9 @@ class BundleManager(object):
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > 60 * 60):  # Shouldn't really happen, but let's be safe.
-                self._model.finalize_bundle(bundle, -1, exitcode=None, failure_message='Worker died')
+                failure_message = 'Worker died'
+                logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
+                self._model.finalize_bundle(bundle, -1, exitcode=None, failure_message=failure_message)
                 workers.unqueue(bundle.uuid)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
@@ -293,6 +311,7 @@ class BundleManager(object):
             workers.set_starting(bundle.uuid, worker)
             if self._worker_model.send_json_message(
                 worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
+                logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
                 self._model.restage_bundle(bundle)

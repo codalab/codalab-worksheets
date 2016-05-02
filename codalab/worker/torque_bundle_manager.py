@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import subprocess
@@ -9,6 +10,9 @@ from codalab.lib import path_util
 from codalab.worker.bundle_manager import BundleManager
 from codalab.worker.worker_info_accessor import WorkerInfoAccessor
 from worker.file_util import remove_path
+
+
+logger = logging.getLogger(__name__)
 
 
 class TorqueBundleManager(BundleManager):
@@ -81,11 +85,12 @@ class TorqueBundleManager(BundleManager):
             2) If Torque fails to schedule the worker at all, for example, when
                the user has requested too many resources. 
         """
-        for bundle in self._model.batch_get_bundles(state=State.WAITING_FOR_TORQUE, bundle_type='run'):
+        for bundle in self._model.batch_get_bundles(state=State.WAITING_FOR_WORKER_STARTUP, bundle_type='run'):
             failure_message = self._read_torque_error_log(bundle.metadata.job_handle)
             if failure_message is None and time.time() - bundle.metadata.last_updated > 20 * 60:
                 failure_message = 'Worker failed to start. You may have requested too many resources.'
             if failure_message is not None:
+                logger.info('Failing %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(
                     bundle, {'state': State.FAILED,
                              'metadata': {'failure_message': failure_message}})
@@ -138,7 +143,7 @@ class TorqueBundleManager(BundleManager):
             script_env = {
                 'LOG_DIR': self._torque_log_dir,
                 'WORKER_CODE_DIR': self._torque_worker_code_dir,
-                  # -v doesn't work with spaces, so we have to hack it.
+                # -v doesn't work with spaces, so we have to hack it.
                 'WORKER_ARGS': '|'.join(script_args),
             }
             
@@ -152,22 +157,25 @@ class TorqueBundleManager(BundleManager):
                 job_handle = subprocess.check_output(command, stderr=subprocess.STDOUT).strip()
             except subprocess.CalledProcessError as e:
                 failure_message = 'Failed to launch Torque job: ' + e.output
+                logger.info('Failing %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(
                     bundle, {'state': State.FAILED,
                              'metadata': {'failure_message': failure_message}})
                 continue
 
-            self._model.set_waiting_for_torque_bundle(bundle, job_handle)
+            logger.info('Started Torque worker for bundle %s, job handle %s', bundle.uuid, job_handle)
+            self._model.set_waiting_for_worker_startup_bundle(bundle, job_handle)
 
     def _start_bundles(self, workers):
         """
         Send run messages once the Torque worker starts and checks in.
         """
-        for bundle in self._model.batch_get_bundles(state=State.WAITING_FOR_TORQUE, bundle_type='run'):
+        for bundle in self._model.batch_get_bundles(state=State.WAITING_FOR_WORKER_STARTUP, bundle_type='run'):
             worker = workers.worker_with_id(self._model.root_user_id, bundle.metadata.job_handle)
             if worker is not None:
                 if not self._try_start_bundle(workers, worker, bundle):
                     failure_message = 'Unable to communicate to Torque worker.'
+                    logger.info('Failing %s: %s', bundle.uuid, failure_message)
                     self._model.update_bundle(
                         bundle, {'state': State.FAILED,
                                  'metadata': {'failure_message': failure_message}})
@@ -180,7 +188,7 @@ class TorqueBundleManager(BundleManager):
         such as the run message going missing.
         """
         running_job_handles = set()
-        running_states = [State.WAITING_FOR_TORQUE, State.STARTING, State.RUNNING]
+        running_states = [State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING]
         for bundle in self._model.batch_get_bundles(state=running_states, bundle_type='run'):
             if hasattr(bundle.metadata, 'job_handle'):
                 running_job_handles.add(bundle.metadata.job_handle)
@@ -188,6 +196,7 @@ class TorqueBundleManager(BundleManager):
         for worker in workers.user_owned_workers(self._model.root_user_id):
             job_handle = worker['worker_id']
             if job_handle not in running_job_handles:
+                logger.info('Delete Torque worker with handle %s', job_handle)
                 # Delete the worker job.
                 command = self._torque_ssh_command(['qdel', job_handle])
                 try:

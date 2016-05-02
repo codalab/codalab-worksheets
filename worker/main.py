@@ -14,6 +14,7 @@ import sys
 
 from bundle_service_client import BundleServiceClient
 from docker_client import DockerClient
+from formatting import parse_size
 from worker import Worker
 
 if __name__ == '__main__':
@@ -28,8 +29,9 @@ if __name__ == '__main__':
                         help='Directory where to store temporary bundle data, '
                              'including dependencies and the data from run '
                              'bundles.')
-    parser.add_argument('--max-work-dir-size-mb', type=int, default=10240,
-                        help='Maximum size of the temporary bundle data, in MB.')
+    parser.add_argument('--max-work-dir-size', type=str, default='10g',
+                        help='Maximum size of the temporary bundle data '
+                             '(e.g., 3, 3k, 3m, 3g, 3t).')
     parser.add_argument('--slots', type=int, default=1,
                         help='Number of slots to use for running bundles. '
                              'A single bundle takes up a single slot.')
@@ -69,7 +71,8 @@ chmod 600 %s""" % args.password_file
         logging.basicConfig(format='%(asctime)s %(message)s',
                             level=logging.DEBUG)
 
-    worker = Worker(args.id, args.tag, args.work_dir, args.max_work_dir_size_mb,
+    max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
+    worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     args.shared_file_system, args.slots,
                     BundleServiceClient(args.bundle_service_url,
                                         username, password),

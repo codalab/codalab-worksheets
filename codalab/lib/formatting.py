@@ -6,6 +6,8 @@ import datetime
 import sys
 import shlex
 
+from worker import formatting as worker_formatting
+
 
 def contents_str(input_string):
     """
@@ -39,56 +41,15 @@ def verbose_contents_str(input_string):
     return input_string
 
 
-def size_str(size):
-    """
-    size: number of bytes
-    Return a human-readable string.
-    """
-    if size is None:
-        return None
-
-    for unit in ('', 'k', 'm', 'g', 't'):
-        if size < 100 and size != int(size):
-            return '%.1f%s' % (size, unit)
-        if size < 1024:
-            return '%d%s' % (size, unit)
-        size /= 1024.0
+size_str = worker_formatting.size_str
 
 
 def date_str(ts):
     return datetime.datetime.fromtimestamp(ts).isoformat().replace('T', ' ')
 
 
-def duration_str(s):
-    """
-    s: number of seconds
-    Return a human-readable string.
-    Example: 100 => "1m40s", 10000 => "2h46m"
-    """
-    if s is None:
-        return None
+duration_str = worker_formatting.duration_str
 
-    m = int(s / 60)
-    if m == 0:
-        return "%.1fs" % s
-
-    s -= m * 60
-    h = int(m / 60)
-    if h == 0:
-        return "%dm%ds" % (m, s)
-
-    m -= h * 60
-    d = int(h / 24)
-    if d == 0:
-        return "%dh%dm" % (h, m)
-
-    h -= d * 24
-    y = int(d / 365)
-    if y == 0:
-        return "%dd%dh" % (d, h)
-
-    d -= y * 365
-    return "%dy%dd" % (y, d)
 
 def ratio_str(to_str, a, b):
     """
@@ -97,23 +58,7 @@ def ratio_str(to_str, a, b):
     return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b)
 
 
-def parse_size(s):
-    """
-    s: <number>[<k|m|g|t>]
-    Returns the number of bytes.
-    """
-    if s[-1].isdigit():
-        return float(s)
-    n, unit = float(s[0:-1]), s[-1].lower()
-    if unit == 'k':
-        return n * 1024
-    if unit == 'm':
-        return n * 1024 * 1024
-    if unit == 'g':
-        return n * 1024 * 1024 * 1024
-    if unit == 't':
-        return n * 1024 * 1024 * 1024 * 1024
-    raise ValueError('Invalid size: %s, expected <number>[<k|m|g|t>]' % s)
+parse_size = worker_formatting.parse_size
 
 
 def parse_duration(s):

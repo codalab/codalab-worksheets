@@ -403,7 +403,7 @@ class LocalBundleClient(BundleClient):
         # Make sure we don't delete bundles which are active.
         if self.launch_new_worker_system:
             states = self.model.get_bundle_states(uuids)
-            active_states = set([State.MAKING, State.WAITING_FOR_TORQUE, State.STARTING, State.RUNNING])
+            active_states = set([State.MAKING, State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING])
             active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
             if len(active_uuids) > 0:
                 raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +

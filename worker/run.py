@@ -11,6 +11,7 @@ from bundle_service_client import BundleServiceException
 from docker_client import DockerException
 from download_util import get_target_info, get_target_path, PathException
 from file_util import get_path_size, gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory, remove_path
+from formatting import duration_str, size_str
 
 
 logger = logging.getLogger(__name__)
@@ -179,21 +180,21 @@ class Run(object):
         new_metadata['time'] = time.time() - self._start_time
         if (self._resources['request_time'] and
             new_metadata['time'] > self._resources['request_time']):
-            self.kill('Out of time')
+            self.kill('Time limit %s exceeded.' % duration_str(self._resources['request_time']))
 
         # Get memory, time_user and time_system.
         new_metadata.update(self._docker.get_container_stats(self._container_id))
         if (self._resources['request_memory'] and
             'memory' in new_metadata and
             new_metadata['memory'] > self._resources['request_memory']):
-            self.kill('Out of memory')
+            self.kill('Memory limit %sb exceeded.' % size_str(self._resources['request_memory']))
 
         # Get disk utilization.
         with self._disk_utilization_lock:
             new_metadata['data_size'] = self._disk_utilization
         if (self._resources['request_disk'] and
             new_metadata['data_size'] > self._resources['request_disk']):
-            self.kill('Out of disk')
+            self.kill('Disk limit %sb exceeded.' % size_str(self._resources['request_disk']))
 
         new_metadata['last_updated'] = int(time.time())
 
@@ -287,7 +288,6 @@ class Run(object):
         except Exception as e:
             traceback.print_exc()
             reply_error(httplib.INTERNAL_SERVER_ERROR, e.message)
-            return
 
     def write(self, subpath, string):
         # Make sure you're not trying to write over a dependency.

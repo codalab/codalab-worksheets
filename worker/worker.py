@@ -32,7 +32,7 @@ class Worker(object):
            their dependencies.
         4) Upgrading the worker.
     """
-    def __init__(self, id, tag, work_dir, max_work_dir_size_mb,
+    def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
                  shared_file_system, slots,
                  bundle_service, docker):
         self.id = id
@@ -44,7 +44,7 @@ class Worker(object):
 
         if not self.shared_file_system:
             # Manages which dependencies are available.
-            self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_mb)
+            self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed

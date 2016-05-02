@@ -593,10 +593,10 @@ class BundleModel(object):
                 return success
         return True
 
-    def set_waiting_for_torque_bundle(self, bundle, torque_job_handle):
+    def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
         '''
-        Sets the bundle to WAITING_FOR_TORQUE, updating the job_handle and
-        last_updated metadata. 
+        Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle
+        and last_updated metadata. 
         '''
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -606,9 +606,9 @@ class BundleModel(object):
                 return
 
             bundle_update = {
-                'state': State.WAITING_FOR_TORQUE,
+                'state': State.WAITING_FOR_WORKER_STARTUP,
                 'metadata': {
-                     'job_handle': torque_job_handle,
+                     'job_handle': job_handle,
                      'last_updated': int(time.time())
                 },
             } 
