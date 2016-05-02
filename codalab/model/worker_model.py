@@ -199,6 +199,8 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
+    ACK = 'a'
+
     def get_stream(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns a file-like
@@ -212,7 +214,7 @@ class WorkerModel(object):
             # Send Ack. This helps protect from messages to the worker being
             # lost due to spuriously accepted connections when the socket
             # file is deleted.
-            conn.sendall('a')
+            conn.sendall(WorkerModel.ACK)
             conn.settimeout(None)  # Need to remove timeout before makefile.
             fileobj = conn.makefile('rb')
             conn.close()
@@ -254,7 +256,7 @@ class WorkerModel(object):
                     time.sleep(0.003)
                     continue
 
-                sock.recv(1)
+                sock.recv(len(WorkerModel.ACK))
                 while True:
                     data = fileobj.read(4096)
                     if not data:
@@ -291,7 +293,7 @@ class WorkerModel(object):
                         # just when a socket object is in the process of being
                         # destroyed. On the sending end, such a scenario results
                         # in a "Broken pipe" exception, which we catch here.
-                        sock.recv(1)
+                        sock.recv(len(WorkerModel.ACK))
                 except socket.error:
                     # Shouldn't be too expensive just to keep retrying.
                     time.sleep(0.003)
@@ -302,7 +304,7 @@ class WorkerModel(object):
                     # have the problem with "Broken pipe" as above, since
                     # code waiting for a reply shouldn't just abruptly stop
                     # listening.
-                    sock.recv(1)
+                    sock.recv(len(WorkerModel.ACK))
 
                 sock.sendall(json.dumps(message))
                 return True
