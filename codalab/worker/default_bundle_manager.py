@@ -13,13 +13,13 @@ class DefaultBundleManager(BundleManager):
         """
         This method implements a state machine. The states are:
 
-        Staged, no worker_run DB entry:
+        STAGED, no worker_run DB entry:
             Ready to send run message to available worker.
-        Starting, has worker_run DB entry:
+        STARTING, has worker_run DB entry:
             Run message sent, waiting for the run to start.
-        Running, has worker_run DB entry:
+        RUNNING, has worker_run DB entry:
             Worker reported that the run has started.
-        Ready / Failed, no worker_run DB entry:
+        READY / FAILED, no worker_run DB entry:
             Finished.
         """
         workers = WorkerInfoAccessor(self._worker_model.get_workers())

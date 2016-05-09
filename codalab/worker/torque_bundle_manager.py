@@ -33,31 +33,31 @@ class TorqueBundleManager(BundleManager):
         """
         This method implements a state machine. The states are:
 
-        Staged, no job_handle, no worker, no worker_run DB entry:
+        STAGED, no job_handle, no worker, no worker_run DB entry:
             Ready to run on a CodaLab-owned Torque worker or on a user-owned
             worker.
 
         For user-owned workers, the states are the same as used in the
         DefaultBundleManager:
 
-        Starting, no job_handle, has worker_run DB entry:
+        STARTING, no job_handle, has worker_run DB entry:
             Run message sent, waiting for the run to start.
-        Running, no job_handle, has worker_run DB entry:
+        RUNNING, no job_handle, has worker_run DB entry:
             Worker reported that the run has started.
-        Ready / Failed, no job_handle, no worker_run DB entry:
+        READY / FAILED, no job_handle, no worker_run DB entry:
             Finished.
 
         For CodaLab-owned Torque workers:
 
-        Waiting for Torque, has job_handle, worker starting, no worker_run DB entry:
+        WAITING_FOR_WORKER_STARTUP, has job_handle, worker starting, no worker_run DB entry:
             Waiting for the Torque worker to start before sending a run message.
-        Starting, has job_handle, worker running, has worker_run DB entry:
+        STARTING, has job_handle, worker running, has worker_run DB entry:
             Run message sent, waiting for the run to start. 
-        Running, has job_handle, worker running, has worker_run DB entry:
+        RUNNING, has job_handle, worker running, has worker_run DB entry:
             Worker reported that the run has started.
-        Ready / Failed, has job_handle, worker running, no worker_run DB entry:
+        READY / FAILED, has job_handle, worker running, no worker_run DB entry:
             Will send shutdown message to worker.
-        Ready / Failed, has job_handle, no worker, no worker_run DB entry:
+        READY / FAILED, has job_handle, no worker, no worker_run DB entry:
             Finished.
         """
         workers = WorkerInfoAccessor(self._worker_model.get_workers())
