@@ -50,6 +50,7 @@ from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
 
+
 def cached(fn):
     def inner(self):
         if fn.__name__ not in self.cache:
@@ -379,7 +380,11 @@ class CodaLabManager(object):
 
     @cached
     def worker_model(self):
-        return WorkerModel(self.model().engine, self.worker_socket_dir)
+        # Whether the file system is shared between the worker and the bundle
+        # service. Note, that the file system is considered to be shared only if
+        # the worker is running as the root user.
+        shared_file_system = self.config['workers'].get('shared_file_system', False)
+        return WorkerModel(self.model().engine, self.worker_socket_dir, shared_file_system)
 
     @cached
     def upload_manager(self):
@@ -387,7 +392,7 @@ class CodaLabManager(object):
 
     @cached
     def download_manager(self):
-        return DownloadManager(self.launch_new_worker_system(), self.model(), self.bundle_store())
+        return DownloadManager(self.launch_new_worker_system(), self.model(), self.worker_model(), self.bundle_store())
 
     def auth_handler(self, mock=False):
         '''
@@ -468,12 +473,14 @@ class CodaLabManager(object):
         if is_local_address(address):
             bundle_store = self.bundle_store()
             model = self.model()
+            launch_new_worker_system = self.launch_new_worker_system()
+            worker_model = self.worker_model()
             upload_manager = self.upload_manager()
             download_manager = self.download_manager()
             auth_handler = self.auth_handler(mock=is_cli)
 
             from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, upload_manager, download_manager, auth_handler, self.cli_verbose)
+            client = LocalBundleClient(address, bundle_store, model, launch_new_worker_system, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
             self.clients[address] = client
             if is_cli:
                 # Set current user

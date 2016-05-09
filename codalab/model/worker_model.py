@@ -28,18 +28,22 @@ class WorkerModel(object):
        socket directory), clean up sockets (i.e. delete the socket files),
        listen on these sockets for messages and send messages to these sockets.
     """
-    def __init__(self, engine, socket_dir):
+    def __init__(self, engine, socket_dir, shared_file_system):
         self._engine = engine
         self._socket_dir = socket_dir
+        self.shared_file_system = shared_file_system
 
-    def worker_checkin(self, user_id, worker_id, slots, dependency_uuids):
+    def worker_checkin(self, user_id, worker_id, tag, slots, cpus, memory_bytes, dependencies):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
         """
         with self._engine.begin() as conn:
             worker_row = {
+                'tag': tag,
                 'slots': slots,
+                'cpus': cpus,
+                'memory_bytes': memory_bytes,
                 'checkin_time': datetime.datetime.now(),
             }
             existing_row = conn.execute(
@@ -70,7 +74,8 @@ class WorkerModel(object):
                 'user_id': user_id,
                 'worker_id': worker_id,
                 'dependency_uuid': uuid,
-            } for uuid in dependency_uuids]
+                'dependency_path': path,
+            } for uuid, path in dependencies]
             if dependency_rows:
                 conn.execute(cl_worker_dependency.insert(), dependency_rows)
 
@@ -117,16 +122,20 @@ class WorkerModel(object):
         worker_dict = {(row.user_id, row.worker_id): {
             'user_id': row.user_id,
             'worker_id': row.worker_id,
+            'tag': row.tag,
             'slots': row.slots,
+            'cpus': row.cpus,
+            'memory_bytes': row.memory_bytes,
             'checkin_time': row.checkin_time,
             'socket_id': row.socket_id,
             'run_uuids': [],
-            'dependency_uuids': [],
+            'dependencies': [],
         } for row in worker_rows}
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
         for row in worker_dependency_rows:
-            worker_dict[(row.user_id, row.worker_id)]['dependency_uuids'].append(row.dependency_uuid)
+            worker_dict[(row.user_id, row.worker_id)]['dependencies'].append(
+                (row.dependency_uuid, row.dependency_path))
         return worker_dict.values()
 
     def get_bundle_worker(self, uuid):
@@ -199,6 +208,8 @@ class WorkerModel(object):
         sock.listen(0)
         return sock
 
+    ACK = 'a'
+
     def get_stream(self, sock, timeout_secs):
         """
         Receives a single message on the given socket and returns a file-like
@@ -209,6 +220,10 @@ class WorkerModel(object):
         sock.settimeout(timeout_secs)
         try:
             conn, _ = sock.accept()
+            # Send Ack. This helps protect from messages to the worker being
+            # lost due to spuriously accepted connections when the socket
+            # file is deleted.
+            conn.sendall(WorkerModel.ACK)
             conn.settimeout(None)  # Need to remove timeout before makefile.
             fileobj = conn.makefile('rb')
             conn.close()
@@ -249,13 +264,14 @@ class WorkerModel(object):
                     # Shouldn't be too expensive just to keep retrying.
                     time.sleep(0.003)
                     continue
-            
+
+                sock.recv(len(WorkerModel.ACK))
                 while True:
                     data = fileobj.read(4096)
                     if not data:
                         return True
                     sock.sendall(data)
-        
+
         return False
 
     def send_json_message(self, socket_id, message, timeout_secs, autoretry=True):
@@ -286,8 +302,7 @@ class WorkerModel(object):
                         # just when a socket object is in the process of being
                         # destroyed. On the sending end, such a scenario results
                         # in a "Broken pipe" exception, which we catch here.
-                        sock.sendall(json.dumps(message))
-                        return True
+                        sock.recv(len(WorkerModel.ACK))
                 except socket.error:
                     # Shouldn't be too expensive just to keep retrying.
                     time.sleep(0.003)
@@ -298,8 +313,10 @@ class WorkerModel(object):
                     # have the problem with "Broken pipe" as above, since
                     # code waiting for a reply shouldn't just abruptly stop
                     # listening.
-                    sock.sendall(json.dumps(message))
-                    return True
+                    sock.recv(len(WorkerModel.ACK))
+
+                sock.sendall(json.dumps(message))
+                return True
 
         return False
 
