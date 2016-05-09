@@ -128,6 +128,11 @@ def check_worksheet_has_read_permission(model, user, worksheet):
 def check_worksheet_has_all_permission(model, user, worksheet):
     _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}, GROUP_OBJECT_PERMISSION_ALL)
 
+# We use a simpler permission model for running bundles. Only the root user
+# or the user who owns the bundle can run it.
+def check_bundle_have_run_permission(model, user_id, bundle):
+    return user_id in [model.root_user_id, bundle.owner_id]
+
 ############################################################
 # Parsing functions for permissions.
 
