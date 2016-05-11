@@ -1,7 +1,8 @@
-from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST
+from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST, FORBIDDEN
 import os
 import re
 import sys
+import threading
 import time
 import traceback
 
@@ -16,6 +17,7 @@ from bottle import (
     install,
     local,
     request,
+    response,
     run,
     static_file,
 )
@@ -39,6 +41,77 @@ ROUTES_NOT_LOGGED_REGEXES = [
     re.compile(r'/oauth2/.*'),
     re.compile(r'/worker/.*'),
 ]
+
+
+class RequestCounter(object):
+    def __init__(self, window_seconds):
+        self._lock = threading.Lock()
+        self._counts = {}
+        self._window_seconds = window_seconds
+
+    def count(self, user_id, limit):
+        """
+        Atomically counts requests associated with the given user key.
+        Returns the remaining requests and the remaining seconds in the window
+        since the user's first request.
+        """
+        with self._lock:
+            now = time.time()
+            count, first_time = self._counts.get(user_id, (0, now))
+            time_remaining = int(self._window_seconds - (now - first_time))
+
+            # Check if reset time is reached and reset accordingly
+            if time_remaining > 0:
+                count += 1
+            else:
+                count = 1
+                first_time = now
+                time_remaining = self._window_seconds
+
+            # Update count and prevent integer overflow
+            self._counts[user_id] = (min(count, limit), first_time)
+
+            # Returning remaining count and (truncated) remaining time
+            return limit - count, time_remaining
+
+
+class RateLimitPlugin(object):
+    """
+    Limit the request rate.
+    Request counts are associated with user for authenticated requests,
+    and with IP address for unauthenticated requests. Different limits can be
+    configured for these two cases.
+    Sets the appropriate headers following the GitHub API's conventions.
+    """
+    api = 2
+
+    def __init__(self, window_seconds=60*60, auth_limit=5000, unauth_limit=60):
+        self.request_counter = RequestCounter(window_seconds)
+        self.auth_limit = auth_limit
+        self.unauth_limit = unauth_limit
+
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            # Unauthenticated users are identified by IP address and have
+            # a different (more restrictive) limit
+            if request.user:
+                user_id = request.user.user_id
+                limit = self.auth_limit
+            else:
+                user_id = request.environ.get('REMOTE_ADDR')
+                limit = self.unauth_limit
+
+            remaining, reset = self.request_counter.count(user_id, limit)
+            response.set_header('X-RateLimit-Limit', limit)
+            response.set_header('X-RateLimit-Remaining', remaining)
+            response.set_header('X-RateLimit-Reset', reset)
+            if remaining < 0:
+                # Cannot use abort, since it ignores the headers on response
+                response.status = FORBIDDEN
+                response.set_header('X-RateLimit-Remaining', 0)
+                return "Request rate limit exceeded for user %s" % user_id
+            return callback(*args, **kwargs)
+        return wrapper
 
 
 class SaveEnvironmentPlugin(object):
@@ -164,6 +237,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(oauth2_provider.check_oauth())
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
+    install(RateLimitPlugin())
     install(ErrorAdapter())
 
     for code in xrange(100, 600):
