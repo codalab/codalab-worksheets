@@ -15,6 +15,7 @@ from bottle import (
     HTTPResponse,
     install,
     local,
+    response,
     request,
     run,
     static_file,
@@ -24,11 +25,13 @@ from codalab.common import exception_to_http_error
 import codalab.rest.account
 import codalab.rest.bundle
 import codalab.rest.example
+import codalab.rest.groups
 import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.worker
+import codalab.rest.worksheets
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.oauth2_provider import oauth2_provider
@@ -135,6 +138,9 @@ class ErrorAdapter(object):
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
                     traceback.print_exc()
+                    # Internal error details should not be echoed to client
+                    message = 'Server encountered unexpected error while ' \
+                              'fulfilling your request.'
                 raise HTTPError(code, message)
 
         return wrapper

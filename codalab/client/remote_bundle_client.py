@@ -2,6 +2,8 @@
 RemoteBundleClient is a BundleClient implementation that shells out to a
 BundleRPCServer for each command. Filesystem operations are implemented using
 the FileServer operations exposed by the RPC server.
+
+TODO(sckoo): delete when REST API complete
 '''
 from contextlib import closing
 import os

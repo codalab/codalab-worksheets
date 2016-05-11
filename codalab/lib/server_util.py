@@ -4,11 +4,79 @@ Don't import from non-REST API code, since this file imports bottle.
 """
 
 import base64
+import httplib
 import sys
 import urllib
 
-from bottle import request, HTTPResponse, redirect
+from bottle import abort, request, HTTPResponse, redirect, app, local
 from oauthlib.common import to_unicode, bytes_type
+
+from codalab.common import precondition
+
+
+def query_get_list(key):
+    value = request.query.get(key)
+    if not value:
+        return []
+    else:
+        return value.split(',')
+
+
+def query_get_type(type_, key, default=None):
+    value = request.query.get(key, None)
+    if value is None:
+        return default
+    try:
+        return type_(value)
+    except ValueError:
+        abort(httplib.BAD_REQUEST, "Invalid %s %r" % (type_.__name__, value))
+
+
+def query_get_bool(key, default=False):
+    value = request.query.get(key, None)
+    if value is None:
+        return default
+    elif value == 'True':
+        return True
+    else:
+        return False
+
+
+def diff_info(original, new):
+    diff = {}
+    for key, value in new.iteritems():
+        if key not in original:
+            raise KeyError("Key %r in new not in original dict." % key)  # FIXME?
+        elif value != original[key]:
+            diff[key] = value
+        else:
+            pass
+    return diff
+
+
+def json_api_meta(doc, meta):
+    precondition(isinstance(meta, dict), "Meta data must be dict")
+    doc['meta'] = meta
+    return doc
+
+
+def json_api_include(doc, schema, resources):
+    if not isinstance(resources, list):
+        resources = [resources]
+
+    if 'included' not in doc:
+        doc['included'] = []
+
+    schema.many = True
+    doc['included'].extend(schema.dump(resources).data['data'])
+    return doc
+
+
+def bottle_patch(path=None, method='PATCH', **options):
+    """Convenience decorator of the same form as @get and @post in the
+    Bottle module.
+    """
+    return app().route(path, method, **options)
 
 
 def redirect_with_query(redirect_uri, params):

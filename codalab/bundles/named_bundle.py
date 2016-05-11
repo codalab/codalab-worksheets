@@ -3,7 +3,7 @@ NameBundle is an abstract Bundle supertype that all other bundle types subclass.
 It requires name, description, and tags metadata for all of its subclasses.
 TODO: merge into bundle.py.
 '''
-import time, re
+import time
 
 from codalab.common import UsageError
 from codalab.lib import spec_util
@@ -15,7 +15,7 @@ class NamedBundle(Bundle):
     NAME_LENGTH = 32
 
     METADATA_SPECS = (
-      MetadataSpec('name', basestring, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, short_key='n'),
+      MetadataSpec('name', basestring, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, validate=spec_util.validate_name, short_key='n'),
       MetadataSpec('description', basestring, 'Full description of the bundle.', short_key='d'),
       MetadataSpec('tags', list, 'Space-separated list of tags used for search (e.g., machine-learning).', metavar='TAG'),
       MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),
@@ -23,6 +23,7 @@ class NamedBundle(Bundle):
       MetadataSpec('failure_message', basestring, 'Error message if this run bundle failed.', generated=True),
     )
 
+    # TODO(sckoo): delete when REST API complete
     @classmethod
     def construct(cls, row):
         # The base NamedBundle construct method takes a bundle row and adds in
@@ -30,6 +31,7 @@ class NamedBundle(Bundle):
         row['metadata'] = dict(row['metadata'], created=int(time.time()))
         return cls(row)
 
+    # TODO(sckoo): delete when REST API complete
     def validate(self):
         super(NamedBundle, self).validate()
         bundle_type = self.bundle_type.title()
@@ -37,6 +39,7 @@ class NamedBundle(Bundle):
             raise UsageError('%ss must have non-empty names' % (bundle_type,))
         spec_util.check_name(self.metadata.name)
 
+    # TODO(sckoo): delete when REST API complete
     def __repr__(self):
         return '%s(uuid=%r, name=%r)' % (
           self.__class__.__name__,
@@ -44,5 +47,6 @@ class NamedBundle(Bundle):
           str(self.metadata.name),
         )
 
+    # TODO(sckoo): delete when REST API complete
     def simple_str(self):
         return self.metadata.name + '(' + self.uuid + ')'

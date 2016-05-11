@@ -30,6 +30,9 @@ from codalab.objects.dependency import Dependency
 from codalab.objects.metadata import Metadata
 
 
+# TODO(sckoo): remove all methods and move all Bundle classes into one file
+
+
 class Bundle(ORMObject):
     COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state', 'owner_id')
     # Bundle subclasses should have the following class-level attributes:

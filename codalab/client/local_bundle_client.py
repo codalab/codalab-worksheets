@@ -1,6 +1,8 @@
 """
 LocalBundleClient is BundleClient implementation that interacts directly with a
 BundleStore and a BundleModel. All filesystem operations are handled locally.
+
+TODO(sckoo): delete when REST API complete
 """
 import base64
 from contextlib import closing

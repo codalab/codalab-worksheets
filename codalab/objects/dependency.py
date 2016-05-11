@@ -1,5 +1,7 @@
 '''
 Dependency is the ORMObject wrapper around rows of the dependency table.
+
+TODO(sckoo): delete when REST API complete
 '''
 import re
 

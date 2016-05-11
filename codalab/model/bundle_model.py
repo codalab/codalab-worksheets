@@ -521,6 +521,7 @@ class BundleModel(object):
             rows = connection.execute(query).fetchall()
         return [row[0] for row in rows]
 
+    # TODO(sckoo): merge with batch_get_bundles_rest when REST migration complete
     def batch_get_bundles(self, **kwargs):
         '''
         Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
@@ -528,16 +529,65 @@ class BundleModel(object):
         clause = self.make_kwargs_clause(cl_bundle, kwargs)
         with self.engine.begin() as connection:
             bundle_rows = connection.execute(
-              cl_bundle.select().where(clause)
+                cl_bundle.select().where(clause)
+            ).fetchall()
+            if not bundle_rows:
+                return []
+            uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
+            dependency_rows = connection.execute(
+                cl_bundle_dependency.select().where(
+                    cl_bundle_dependency.c.child_uuid.in_(uuids)
+                ).order_by(cl_bundle_dependency.c.id)).fetchall()
+            metadata_rows = connection.execute(
+                cl_bundle_metadata.select().where(
+                    cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+                )).fetchall()
+
+        # Make a dictionary for each bundle with both data and metadata.
+        bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
+        for bundle_value in bundle_values.itervalues():
+            bundle_value['dependencies'] = []
+            bundle_value['metadata'] = []
+        for dep_row in dependency_rows:
+            if dep_row.child_uuid not in bundle_values:
+                raise IntegrityError(
+                    'Got dependency %s without bundle' % (dep_row,))
+            bundle_values[dep_row.child_uuid]['dependencies'].append(dep_row)
+        for metadata_row in metadata_rows:
+            if metadata_row.bundle_uuid not in bundle_values:
+                raise IntegrityError(
+                    'Got metadata %s without bundle' % (metadata_row,))
+            bundle_values[metadata_row.bundle_uuid]['metadata'].append(
+                metadata_row)
+
+        # Construct and validate all of the retrieved bundles.
+        sorted_values = sorted(bundle_values.itervalues(),
+                               key=lambda r: r['id'])
+        bundles = [
+            get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
+            for bundle_value in sorted_values
+            ]
+        for bundle in bundles:
+            bundle.validate()
+        return bundles
+
+    def batch_get_bundles_rest(self, **kwargs):
+        """
+        Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
+        """
+        clause = self.make_kwargs_clause(cl_bundle, kwargs)
+        with self.engine.begin() as connection:
+            bundle_rows = connection.execute(
+                cl_bundle.select().where(clause)
             ).fetchall()
             if not bundle_rows:
                 return []
             uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
             dependency_rows = connection.execute(cl_bundle_dependency.select().where(
-              cl_bundle_dependency.c.child_uuid.in_(uuids)
+                cl_bundle_dependency.c.child_uuid.in_(uuids)
             ).order_by(cl_bundle_dependency.c.id)).fetchall()
             metadata_rows = connection.execute(cl_bundle_metadata.select().where(
-              cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+                cl_bundle_metadata.c.bundle_uuid.in_(uuids)
             )).fetchall()
 
         # Make a dictionary for each bundle with both data and metadata.
@@ -554,15 +604,7 @@ class BundleModel(object):
                 raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
             bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
-        # Construct and validate all of the retrieved bundles.
-        sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
-        bundles = [
-          get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
-          for bundle_value in sorted_values
-        ]
-        for bundle in bundles:
-            bundle.validate()
-        return bundles
+        return bundle_values.values()
 
     def batch_update_bundles(self, bundles, update, condition=None):
         '''
@@ -746,6 +788,7 @@ class BundleModel(object):
             connection.execute(cl_bundle_action.delete())  # Delete all actions
             return [x for x in results]
 
+    # TODO(sckoo): merge with save_bundle_rest when REST migration complete
     def save_bundle(self, bundle):
         '''
         Save a bundle. On success, sets the Bundle object's id from the result.
@@ -763,6 +806,45 @@ class BundleModel(object):
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
                 bundle.id = result.lastrowid
 
+    def save_bundle_rest(self, bundle_info):
+        """
+        Save a bundle. On success, sets the bundle's id from the result.
+        Bundle info should be validated prior to calling this method.
+        """
+        dependency_values = bundle_info.pop('dependencies')
+        metadata_values = bundle_info.pop('metadata')
+
+        # Check to see if bundle is already present, as in a local 'cl cp'
+        if not self.batch_get_bundles(uuid=bundle_info['uuid']):
+            with self.engine.begin() as connection:
+                connection.execute(cl_bundle.insert().values(bundle_info))
+                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+
+    def update_bundle_rest(self, bundle_update):
+        """
+        Update group.
+        """
+        # Construct clauses and update lists for updating certain bundle columns.
+        metadata_update = bundle_update.pop('metadata', {})
+        if bundle_update:
+            clause = cl_bundle.c.uuid == bundle_update['uuid']
+        if metadata_update:
+            metadata_update_keys = set(m['metadata_key'] for m in metadata_update)
+            metadata_delete_clause = and_(
+                cl_bundle_metadata.c.bundle_uuid == bundle_update['uuid'],
+                cl_bundle_metadata.c.metadata_key.in_(metadata_update_keys)
+            )
+
+        # Perform the actual updates.
+        with self.engine.begin() as connection:
+            if bundle_update:
+                connection.execute(cl_bundle.update().where(clause).values(bundle_update))
+            if metadata_update:
+                connection.execute(cl_bundle_metadata.delete().where(metadata_delete_clause))
+                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_update)
+
+    # TODO(sckoo): merge with update_bundle_rest when REST migration complete
     def update_bundle(self, bundle, update, connection=None):
         '''
         Update a bundle's columns and metadata in the database and in memory.
@@ -850,6 +932,69 @@ class BundleModel(object):
     #############################################################################
     # Worksheet-related model methods follow!
     #############################################################################
+
+    def get_worksheet_rest(self, uuid, fetch_items):
+        '''
+        Get a worksheet given its uuid.
+        '''
+        worksheets = self.batch_get_worksheets_rest(fetch_items=fetch_items, uuid=uuid)
+        if not worksheets:
+            raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
+        elif len(worksheets) > 1:
+            raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
+        return worksheets[0]
+
+    def batch_get_worksheets_rest(self, fetch_items, **kwargs):
+        '''
+        Get a list of worksheets, all of which satisfy the clause given by kwargs.
+        '''
+        base_worksheet_uuid = kwargs.pop('base_worksheet_uuid', None)
+        clause = self.make_kwargs_clause(cl_worksheet, kwargs)
+        # Handle base_worksheet_uuid specially
+        if base_worksheet_uuid:
+            clause = and_(clause,
+                          cl_worksheet_item.c.subworksheet_uuid == cl_worksheet.c.uuid,
+                          cl_worksheet_item.c.worksheet_uuid == base_worksheet_uuid)
+
+        with self.engine.begin() as connection:
+            worksheet_rows = connection.execute(
+                cl_worksheet.select().distinct().where(clause)
+            ).fetchall()
+            if not worksheet_rows:
+                if base_worksheet_uuid != None:
+                    # We didn't find any results restricting to base_worksheet_uuid,
+                    # so do a global search
+                    return self.batch_get_worksheets(fetch_items, **kwargs)
+                return []
+            # Get the tags
+            uuids = set(row.uuid for row in worksheet_rows)
+            tag_rows = connection.execute(cl_worksheet_tag.select().where(
+                cl_worksheet_tag.c.worksheet_uuid.in_(uuids)
+            )).fetchall()
+            # Fetch the items of all the worksheets
+            if fetch_items:
+                item_rows = connection.execute(cl_worksheet_item.select().where(
+                    cl_worksheet_item.c.worksheet_uuid.in_(uuids)
+                )).fetchall()
+
+
+        # Make a dictionary for each worksheet with both its main row and its items.
+        worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
+        # Set tags
+        for value in worksheet_values.itervalues():
+            value['tags'] = []
+        for row in tag_rows:
+            worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
+        if fetch_items:
+            for value in worksheet_values.itervalues():
+                value['items'] = []
+            for item_row in sorted(item_rows, key=item_sort_key):
+                if item_row.worksheet_uuid not in worksheet_values:
+                    raise IntegrityError('Got item %s without worksheet' % (item_row,))
+                item_row = {key: item_row[key] for key in item_row.keys()}
+                item_row['value'] = self.decode_str(item_row['value'])
+                worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
+        return worksheet_values.values()
 
     def get_worksheet(self, uuid, fetch_items):
         '''
@@ -1223,21 +1368,12 @@ class BundleModel(object):
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
 
-    def list_groups(self, owner_id):
-        '''
-        Return a list of row dicts --one per group-- for the given owner.
-        '''
-        with self.engine.begin() as connection:
-            rows = connection.execute(cl_group.select().where(
-                cl_group.c.owner_id == owner_id
-            )).fetchall()
-        return [str_key_dict(row) for row in sorted(rows, key=lambda row: row.id)]
-
     def create_group(self, group_dict):
         '''
         Create the group specified by the given row dict.
         '''
         with self.engine.begin() as connection:
+            group_dict['uuid'] = uuid.uuid4().hex
             result = connection.execute(cl_group.insert().values(group_dict))
             group_dict['id'] = result.lastrowid
         return group_dict
@@ -1310,6 +1446,13 @@ class BundleModel(object):
             values = {row['uuid']: row for row in rows}
             return [value for value in values.itervalues()]
 
+    def update_group(self, group_info):
+        '''
+        Update group.
+        '''
+        with self.engine.begin() as connection:
+            connection.execute(cl_group.update().where(cl_group.c.uuid == group_info['uuid']).values(group_info))
+
     def delete_group(self, uuid):
         '''
         Delete the group with the given uuid.
@@ -1350,7 +1493,7 @@ class BundleModel(object):
 
     def update_user_in_group(self, user_id, group_uuid, is_admin):
         '''
-        Add user as a member of a group.
+        Update user role in group.
         '''
         with self.engine.begin() as connection:
             connection.execute(cl_user_group.update().\
@@ -1450,7 +1593,7 @@ class BundleModel(object):
             ).fetchall()
             result = collections.defaultdict(list)  # object_uuid => list of rows
             for row in rows:
-                result[row.object_uuid].append({'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
+                result[row.object_uuid].append({'id': row.id, 'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
             return result
     def batch_get_group_bundle_permissions(self, user_id, bundle_uuids):
         return self.batch_get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuids)
