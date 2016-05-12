@@ -20,6 +20,8 @@ from codalab.model.tables import (
 )
 from codalab.model.util import LikeQuery
 
+
+# TODO(sckoo): delete when REST API is complete
 class Group(ORMObject):
     '''
     Defines a group object which is used to assign permissions to a set of users.

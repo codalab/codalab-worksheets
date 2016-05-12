@@ -66,6 +66,14 @@ class JsonApiRelationship(object):
         self.type_ = type_
         self.id_ = id_
 
+    def as_dict(self):
+        return {
+            'data': {
+                'type': self.type_,
+                'id': self.id_,
+            }
+        }
+
 
 class JsonApiClient(RestClient):
     """
@@ -78,14 +86,16 @@ class JsonApiClient(RestClient):
         super(JsonApiClient, self).__init__(base_url)
 
     @staticmethod
-    def _get_resource_path(resource_type, resource_id=None):
+    def _get_resource_path(resource_type, resource_id=None, relationship=None):
         """
         Build and return API path.
         """
-        if resource_id is None:
-            return '/' + resource_type
-        else:
-            return '/' + resource_type + '/' + str(resource_id)
+        path = '/' + resource_type
+        if resource_id is not None:
+            path += '/' + str(resource_id)
+        if relationship is not None:
+            path += '/relationships/' + relationship
+        return path
 
     @staticmethod
     def _pack_params(params):
@@ -179,8 +189,10 @@ class JsonApiClient(RestClient):
 
         def unpack_object(obj_data):
             # Merge attributes, id, meta, and relationships into a single dict
-            obj = obj_data['attributes'].copy()
+            obj = {}
             obj['id'] = obj_data['id']
+            if 'attributes' in obj_data:
+                obj.update(obj_data['attributes'])
             if 'meta' in obj_data:
                 obj['meta'] = obj_data['meta']
             for key, relationship in obj_data.get('relationships', {}).iteritems():
@@ -211,6 +223,8 @@ class JsonApiClient(RestClient):
             else:
                 result = {}
         except KeyError:
+            from codalab.lib.print_util import pretty_print
+            pretty_print(document)
             raise JsonApiException('Invalid or unsupported JSON API '
                                    'document format', True)
 
@@ -265,12 +279,7 @@ class JsonApiClient(RestClient):
             relationships = {}
             for key, value in obj.iteritems():
                 if isinstance(value, JsonApiRelationship):
-                    relationships[key] = {
-                        'data': {
-                            'id': value.id_,
-                            'type': value.type_,
-                        }
-                    }
+                    relationships[key] = value.as_dict()
                 elif key == 'id':
                     packed_obj['id'] = value
                 else:
@@ -374,3 +383,44 @@ class JsonApiClient(RestClient):
                 query_params=self._pack_params(params),
                 data=data))
 
+    @wrap_exception('Unable to create {1}/{2}/relationships/{3}')
+    def create_relationship(self, resource_type, resource_id, relationship_key,
+                            relationship, params=None):
+        """
+        Request to add to a to-many relationship.
+
+        :param resource_type: resource type as string
+        :param resource_id: id of resource to update
+        :param relationship_key: name of the relationship to add to
+        :param relationship: JsonApiRelationship defining link to add
+        :param params: dict of query parameters
+        :return: response data as dict, but otherwise undefined
+        """
+        return self._unpack_document(
+            self._make_request(
+                method='POST',
+                path=self._get_resource_path(
+                    resource_type, resource_id, relationship_key),
+                query_params=self._pack_params(params),
+                data=(relationship and relationship.as_dict())))
+
+    @wrap_exception('Unable to delete {1}/{2}/relationships/{3}')
+    def delete_relationship(self, resource_type, resource_id, relationship_key,
+                            relationship, params=None):
+        """
+        Request to delete from a to-many relationship.
+
+        :param resource_type: resource type as string
+        :param resource_id: id of resource to update
+        :param relationship_key: name of the relationship to delete from
+        :param relationship: JsonApiRelationship defining link to delete
+        :param params: dict of query parameters
+        :return: response data as dict, but otherwise undefined
+        """
+        return self._unpack_document(
+            self._make_request(
+                method='DELETE',
+                path=self._get_resource_path(
+                    resource_type, resource_id, relationship_key),
+                query_params=self._pack_params(params),
+                data=(relationship and relationship.as_dict())))

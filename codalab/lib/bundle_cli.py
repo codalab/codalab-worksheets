@@ -54,8 +54,12 @@ from codalab.lib import (
     formatting,
     ui_actions,
 )
-from codalab.objects.permission import permission_str, group_permissions_str
+from codalab.objects.permission import (
+    permission_str,
+    group_permissions_str,
+)
 from codalab.client.local_bundle_client import LocalBundleClient
+from codalab.client.json_api_client import JsonApiRelationship
 from codalab.server.rpc_file_handle import RPCFileHandle
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
@@ -2065,12 +2069,25 @@ class BundleCLI(object):
         ),
     )
     def do_gls_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        group_dicts = client.list_groups()
-        if group_dicts:
-            for row in group_dicts:
-                row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
-            self.print_table(('name', 'uuid', 'owner', 'role'), group_dicts)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
+        user_id = client.fetch('user')['id']
+        groups = client.fetch('groups')
+
+        if groups:
+            for group in groups:
+                group['uuid'] = group['id']
+                if any(member['id'] == user_id for member in group['admins']):
+                    group['role'] = 'admin'
+                elif group['owner'] and group['owner']['id'] == user_id:
+                    group['role'] = 'owner'
+                else:
+                    group['role'] = 'member'
+                # Set owner string for print_table
+                # group['owner'] may be None (i.e. for the public group)
+                if group['owner']:
+                    group['owner'] = '%s(%s)' % (group['owner']['user_name'], group['owner']['id'])
+
+            self.print_table(('name', 'uuid', 'owner', 'role'), groups)
         else:
             print >>self.stdout, 'No groups found.'
 
@@ -2082,9 +2099,9 @@ class BundleCLI(object):
         ),
     )
     def do_gnew_command(self, args):
-        client = self.manager.current_client()
-        group_dict = client.new_group(args.name)
-        print >>self.stdout, 'Created new group %s(%s).' % (group_dict['name'], group_dict['uuid'])
+        client = self.manager.current_client(use_rest=True)
+        group = client.create('groups', {'name': args.name})
+        print >>self.stdout, 'Created new group %s(%s).' % (group['name'], group['id'])
 
     @Commands.command(
         'grm',
@@ -2094,9 +2111,10 @@ class BundleCLI(object):
         ),
     )
     def do_grm_command(self, args):
-        client = self.manager.current_client()
-        group_dict = client.rm_group(args.group_spec)
-        print >>self.stdout, 'Deleted group %s(%s).' % (group_dict['name'], group_dict['uuid'])
+        client = self.manager.current_client(use_rest=True)
+        group = client.fetch('groups', args.group_spec)
+        client.delete('groups', group['id'])
+        print >>self.stdout, 'Deleted group %s(%s).' % (group['name'], group['id'])
 
     @Commands.command(
         'ginfo',
@@ -2106,13 +2124,29 @@ class BundleCLI(object):
         ),
     )
     def do_ginfo_command(self, args):
-        client = self.manager.current_client()
-        group_dict = client.group_info(args.group_spec)
-        members = group_dict['members']
-        for row in members:
-            row['user'] = '%s(%s)' % (row['user_name'], row['user_id'])
-        print >>self.stdout, 'Members of group %s(%s):' % (group_dict['name'], group_dict['uuid'])
-        self.print_table(('user', 'role'), group_dict['members'])
+        client = self.manager.current_client(use_rest=True)
+        group = client.fetch('groups', args.group_spec)
+
+        members = []
+        # group['owner'] may be None (i.e. for the public group)
+        if group['owner']:
+            members.append({
+                'role': 'owner',
+                'user': '%s(%s)' % (group['owner']['user_name'], group['owner']['id']),
+            })
+        for member in group['admins']:
+            members.append({
+                'role': 'admin',
+                'user': '%s(%s)' % (member['user_name'], member['id']),
+            })
+        for member in group['members']:
+            members.append({
+                'role': 'member',
+                'user': '%s(%s)' % (member['user_name'], member['id']),
+            })
+
+        print >>self.stdout, 'Members of group %s(%s):' % (group['name'], group['id'])
+        self.print_table(('user', 'role'), members)
 
     @Commands.command(
         'uadd',
@@ -2124,15 +2158,19 @@ class BundleCLI(object):
         ),
     )
     def do_uadd_command(self, args):
-        client = self.manager.current_client()
-        user_info = client.add_user(args.user_spec, args.group_spec, args.admin)
-        if 'operation' in user_info:
-            print >>self.stdout, '%s %s %s group %s' % (user_info['operation'],
-                                         user_info['name'],
-                                         'to' if user_info['operation'] == 'Added' else 'in',
-                                         user_info['group_uuid'])
-        else:
-            print >>self.stdout, '%s is already in group %s' % (user_info['name'], user_info['group_uuid'])
+        client = self.manager.current_client(use_rest=True)
+
+        user = client.fetch('users', args.user_spec)
+        group = client.fetch('groups', args.group_spec)
+        client.create_relationship('groups', group['id'],
+                                   'admins' if args.admin else 'members',
+                                   JsonApiRelationship('users', user['id']))
+
+        print >>self.stdout, '%s in group %s as %s' % (
+            user['user_name'],
+            group['name'],
+            'admin' if args.admin else 'member'
+        )
 
     @Commands.command(
         'urm',
@@ -2143,12 +2181,23 @@ class BundleCLI(object):
         ),
     )
     def do_urm_command(self, args):
-        client = self.manager.current_client()
-        user_info = client.rm_user(args.user_spec, args.group_spec)
-        if user_info is None:
-            print >>self.stdout, '%s is not a member of group %s.' % (user_info['name'], user_info['group_uuid'])
+        client = self.manager.current_client(use_rest=True)
+        user = client.fetch('users', args.user_spec)
+        group = client.fetch('groups', args.group_spec)
+
+        # Get the first member that matches the target user ID
+        member = next(
+            itertools.ifilter(
+                lambda m: m['id'] == user['id'],
+                group['members'] + group['admins']),
+            None)
+
+        if member is None:
+            print >>self.stdout, '%s is not a member of group %s.' % (user['user_name'], group['name'])
         else:
-            print >>self.stdout, 'Removed %s from group %s.' % (user_info['name'], user_info['group_uuid'])
+            client.delete_relationship('groups', group['id'], 'members',
+                                       JsonApiRelationship('users', user['id']))
+            print >>self.stdout, 'Removed %s from group %s.' % (user['user_name'], group['name'])
 
     @Commands.command(
         'perm',
