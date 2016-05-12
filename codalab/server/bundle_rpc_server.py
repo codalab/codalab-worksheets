@@ -17,6 +17,8 @@ These methods are supported by the FileServer.
 
 Important: each call to open_temp_file, open_target, open_target_archive should
 have a matching call to finalize_file.
+
+TODO(sckoo): delete when REST API complete
 '''
 from SimpleXMLRPCServer import  SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 import SocketServer

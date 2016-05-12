@@ -10,6 +10,7 @@ import httplib
 # http://semver.org/
 CODALAB_VERSION = '0.1.7'
 
+
 class IntegrityError(ValueError):
     """
     Raised by the model when there is a database integrity issue.
@@ -56,6 +57,7 @@ class PermissionError(UsageError):
     Raised when access to a resource is refused because the user does not have
     necessary permissions. Similar to HTTP status 403.
     """
+
 
 # Listed in order of most specific to least specific.
 http_codes_and_exceptions = [

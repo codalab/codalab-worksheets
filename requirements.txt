@@ -2,6 +2,7 @@ argcomplete==1.1.0
 PyYAML==3.11
 SQLAlchemy==1.0.8
 alembic==0.8.2
+marshmallow-jsonapi==0.6.0
 psutil==3.3.0
 six==1.10.0
 watchdog==0.8.3

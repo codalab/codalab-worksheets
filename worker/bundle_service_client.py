@@ -9,8 +9,8 @@ import threading
 import time
 import urllib
 import urllib2
-import urlparse
 
+from codalab.client.rest_client import RestClient, RestClientException
 from file_util import tar_gzip_directory
 
 
@@ -19,7 +19,7 @@ def wrap_exception(message):
         def wrapper(*args, **kwargs):
             try:
                 return f(*args, **kwargs)
-            except BundleServiceException as e:
+            except RestClientException as e:
                 raise BundleServiceException, \
                     BundleServiceException(message + ': ' + e.message,
                                            e.client_error), \
@@ -39,15 +39,12 @@ def wrap_exception(message):
     return decorator
 
 
-class BundleServiceException(Exception):
+class BundleServiceException(RestClientException):
     """
     Exception raised by the BundleServiceClient methods on error. If
     client_error is False, the failure is caused by a server-side error and
     can be retried.
     """
-    def __init__(self, message, client_error):
-        super(BundleServiceException, self).__init__(message)
-        self.client_error = client_error
 
 
 def authorized(f):
@@ -57,12 +54,11 @@ def authorized(f):
     return wrapper
 
 
-class BundleServiceClient(object):
+class BundleServiceClient(RestClient):
     """
     Methods for calling the bundle service.
     """
     def __init__(self, base_url, username, password):
-        self._base_url = base_url + '/rest'
         self._username = username
         self._password = password
 
@@ -70,11 +66,15 @@ class BundleServiceClient(object):
         self._access_token = None
         self._token_expiration_time = None
 
-    def _check_authorization(self):
+        base_url += '/rest'
+        super(BundleServiceClient, self).__init__(base_url)
+
+    def _get_access_token(self):
         with self._authorization_lock:
             if (not self._access_token
                 or time.time() > self._token_expiration_time - 5 * 60):
                 self._authorize()
+            return self._access_token
 
     @wrap_exception('Unable to authorize with bundle service')
     def _authorize(self):
@@ -186,65 +186,3 @@ class BundleServiceClient(object):
         match = re.match('filename="(.*)"',
                          response.headers['Content-Disposition'])
         return (response, match.group(1))
-
-    def _make_request(self, method, url, query_params=None, headers=None, data=None,
-                      return_response=False, authorized=True):
-        if headers is None:
-            headers = {}
-
-        if authorized:
-            with self._authorization_lock:
-                headers['Authorization'] = 'Bearer ' + self._access_token
-        
-        if data is not None and isinstance(data, dict):
-            headers['Content-Type'] = 'application/json'
-            data = json.dumps(data)
-        headers['X-Requested-With'] = 'XMLHttpRequest'
-        if query_params is not None:
-            url = url + '?' + urllib.urlencode(query_params)
-        request = urllib2.Request(self._base_url + url, data=data, headers=headers)
-        request.get_method = lambda: method
-        if return_response:
-            return urllib2.urlopen(request)
-        with closing(urllib2.urlopen(request)) as response:
-            if response.headers.get('Content-Type') == 'application/json':
-                response_data = response.read()
-                try:
-                    return json.loads(response_data)
-                except ValueError:
-                    raise BundleServiceException(
-                        'Invalid JSON: ' + response_data, False)
-
-    def _upload_with_chunked_encoding(self, method, url, query_params, fileobj):
-        # Start the request.
-        parsed_base_url = urlparse.urlparse(self._base_url)
-        if parsed_base_url.scheme == 'http':
-            conn = httplib.HTTPConnection(parsed_base_url.netloc)
-        else:
-            conn = httplib.HTTPSConnection(parsed_base_url.netloc)
-        with closing(conn):
-            conn.putrequest(
-                method, parsed_base_url.path + url + '?' + urllib.urlencode(query_params))
-
-            # Set headers.
-            with self._authorization_lock:
-                access_token = self._access_token
-            conn.putheader('Authorization', 'Bearer ' + access_token)
-            conn.putheader('Transfer-Encoding', 'chunked')
-            conn.putheader('X-Requested-With', 'XMLHttpRequest')
-            conn.endheaders()
-
-            # Use chunked transfer encoding to send the data through.
-            while True:
-                to_send = fileobj.read(16 * 1024)
-                if not to_send:
-                    break
-                conn.send('%X\r\n%s\r\n' % (len(to_send), to_send))
-            conn.send('0\r\n\r\n')
-
-            # Read the response.
-            response = conn.getresponse()
-            if response.status != 200:
-                raise BundleServiceException(
-                    httplib.responses[response.status] + ' - ' + response.read(),
-                    response.status >= 400 and response.status < 500)

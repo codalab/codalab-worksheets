@@ -12,3 +12,4 @@ def clear_line(f=sys.stderr):
 
 def pretty_print(obj, f=sys.stdout):
     json.dump(obj, f, sort_keys=True, indent=4, separators=(',', ': '))
+    f.write('\n')

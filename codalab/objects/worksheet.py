@@ -10,6 +10,7 @@ from codalab.common import precondition
 from codalab.lib import spec_util
 from codalab.model.orm_object import ORMObject
 
+# TODO(sckoo): delete when REST API complete
 
 # We will keep worksheet items sorted in the database by maintining a sort_key
 # for each item that was batch-added to a worksheet by a call to update_worksheet_items.

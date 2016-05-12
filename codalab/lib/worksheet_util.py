@@ -34,6 +34,7 @@ import types
 import yaml
 import json
 from itertools import izip
+from codalab.client.json_api_client import JsonApiClient
 from codalab.common import UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
 from codalab.objects.permission import permission_str, group_permissions_str
@@ -47,6 +48,7 @@ TYPE_MARKUP = 'markup'
 TYPE_DIRECTIVE = 'directive'
 TYPE_BUNDLE = 'bundle'
 TYPE_WORKSHEET = 'worksheet'
+WORKSHEET_ITEM_TYPES = [TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET]
 
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
@@ -168,7 +170,8 @@ def get_formatted_metadata(cls, metadata, raw=False):
     return result
 
 
-def get_editable_metadata_fields(cls, metadata):
+# TODO(sckoo): remove metadata argument when legacy code removed
+def get_editable_metadata_fields(cls, metadata=None):
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
@@ -217,7 +220,15 @@ def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
             unresolved.append(spec)
 
     # Resolve uuids with a batch call to the client and update dict
-    bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
+    if unresolved:
+        if isinstance(client, JsonApiClient):
+            bundles = client.fetch('bundles', params={
+                'worksheet': worksheet_uuid,
+                'specs': unresolved
+            })
+            bundle_uuids.update(zip(unresolved, [b['id'] for b in bundles]))
+        else:
+            bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
 
     # Return uuids for the bundle_specs in the original order provided
     return [bundle_uuids[spec] for spec in bundle_specs]
@@ -1034,3 +1045,4 @@ def interpret_wsearch(client, data):
 
     # Finally, interpret the items
     return interpret_items([], items)
+

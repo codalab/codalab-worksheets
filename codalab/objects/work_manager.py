@@ -109,6 +109,7 @@ class Worker(object):
 
                     status = self.machine.start_bundle(bundle, self.bundle_store, self.get_parent_dict(bundle), username)
                     if status != None:
+                        self.update_bundle_states([bundle], State.RUNNING)
                         status['started'] = int(time.time())
                         started = True
 
