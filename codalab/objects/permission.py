@@ -1,12 +1,15 @@
 '''
 Defines ORM classes for groups and permissions.
 '''
+from marshmallow import fields, ValidationError
+
 from codalab.model.orm_object import ORMObject
 from codalab.common import (
     NotFoundError,
     precondition,
     UsageError,
     PermissionError,
+    IntegrityError,
 )
 from codalab.lib import (
     spec_util,
@@ -19,6 +22,20 @@ from codalab.model.tables import (
     group_object_permission as cl_group_worksheet_permission,
 )
 from codalab.model.util import LikeQuery
+
+
+class PermissionSpec(fields.Field):
+    def _serialize(self, value, attr, obj):
+        try:
+            return permission_str(value)
+        except UsageError as e:
+            raise ValidationError(e.message)
+
+    def _deserialize(self, value, attr, data):
+        try:
+            return parse_permission(value)
+        except UsageError as e:
+            raise ValidationError(e.message)
 
 
 # TODO(sckoo): delete when REST API is complete

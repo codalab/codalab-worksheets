@@ -2,6 +2,8 @@
 Metadata is a wrapper around all of the metadata rows for a single bundle.
 Its constructor takes both the metadata and the bundle's metadata specs,
 and validates the metadata before returning.
+
+TODO(sckoo): delete when REST API complete
 '''
 from codalab.common import UsageError
 

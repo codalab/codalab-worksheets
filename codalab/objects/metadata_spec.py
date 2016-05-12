@@ -22,6 +22,7 @@ class MetadataSpec(object):
         key,
         type,
         description,
+        validate=None,
         short_key=None,
         metavar=None,
         default=None,
@@ -32,6 +33,7 @@ class MetadataSpec(object):
         self.key = key
         self.type = type
         self.description = description
+        self.validate = validate
         self.short_key = short_key
         self.metavar = metavar or (self.short_key or self.key).upper()
         self.default = default

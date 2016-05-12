@@ -4,8 +4,14 @@ User objects representing rows from the user table
 import base64
 
 from codalab.common import UsageError
+from codalab.lib import formatting
+from codalab.lib.crypt_util import (
+    force_bytes,
+    get_random_string,
+    pbkdf2,
+    constant_time_compare,
+)
 from codalab.model.orm_object import ORMObject
-from codalab.lib.crypt_util import force_bytes, get_random_string, pbkdf2, constant_time_compare
 
 
 class User(ORMObject):
@@ -79,3 +85,12 @@ class User(ORMObject):
         encoded = self.encode_password(password, salt, int(iterations))
         return constant_time_compare(force_bytes(self.password), force_bytes(encoded))
 
+    def check_quota(self, need_time=False, need_disk=False):
+        if need_time:
+            if self.time_used >= self.time_quota:
+                raise UsageError('Out of time quota: %s' %
+                                 formatting.ratio_str(formatting.duration_str, self.time_used, self.time_quota))
+        if need_disk:
+            if self.disk_used >= self.disk_quota:
+                raise UsageError('Out of disk quota: %s' %
+                                 formatting.ratio_str(formatting.size_str, self.disk_used, self.disk_quota))
