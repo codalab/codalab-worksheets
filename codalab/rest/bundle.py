@@ -14,7 +14,12 @@ from marshmallow import (
 )
 from marshmallow_jsonapi import Schema, fields
 
-from codalab.bundles import BUNDLE_SUBCLASSES, get_bundle_subclass, PrivateBundle
+from codalab.bundles import (
+    BUNDLE_SUBCLASSES,
+    get_bundle_subclass,
+    PrivateBundle,
+    UploadedBundle,
+)
 from codalab.common import precondition, State, UsageError
 from codalab.lib import (
     bundle_util,
@@ -240,15 +245,18 @@ def _create_bundles():
         # Hopefully this can all be unified after REST migration is complete
         bundle_uuid = spec_util.generate_uuid()
         created_uuids.append(bundle_uuid)
+        bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['uuid'] = bundle_uuid
         bundle['owner_id'] = request.user.user_id
-        bundle['state'] = State.CREATED
+        bundle['state'] = (State.UPLOADING
+                           if issubclass(bundle_class, UploadedBundle)
+                           else State.CREATED)
         bundle.setdefault('metadata', {})['created'] = int(time.time())
-        for dep in bundle.get('dependencies', []):
+        for dep in bundle.setdefault('dependencies', []):
             dep['child_uuid'] = bundle_uuid
 
         # Create bundle object
-        bundle = get_bundle_subclass(bundle['bundle_type'])(bundle, strict=False)
+        bundle = bundle_class(bundle, strict=False)
 
         # Save bundle into model
         local.model.save_bundle(bundle)
@@ -339,8 +347,21 @@ def _set_bundle_permissions():
     return BundlePermissionSchema(many=True).dump(new_permissions).data
 
 
-@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
-@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+@get('/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+def _fetch_bundle_contents_info(uuid, path=''):
+    depth = query_get_type(int, 'depth', default=0)
+    if depth < 0:
+        abort(httplib.BAD_REQUEST, "Depth must be at least 0")
+
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
+    return {
+        'data': local.download_manager.get_target_info(uuid, path, depth)
+    }
+
+
+@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
 def _fetch_bundle_contents_blob(uuid, path=''):
     """
     API to download the contents of a bundle or a subpath within a bundle.
@@ -351,6 +372,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     For files, if the request has an Accept-Encoding header containing gzip,
     then the returned file is gzipped.
     """
+    byte_range = get_request_range()
+    head_lines = query_get_type(int, 'head', default=0)
+    tail_lines = query_get_type(int, 'tail', default=0)
+    max_line_length = query_get_type(int, 'max_line_length', default=128)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
 
@@ -365,21 +390,34 @@ def _fetch_bundle_contents_blob(uuid, path=''):
         filename = target_info['name']
 
     if target_info['type'] == 'directory':
+        if byte_range:
+            abort(httplib.BAD_REQUEST, 'Range not supported for directory blobs.')
+        if head_lines:
+            abort(httplib.BAD_REQUEST, 'Head not supported for directory blobs.')
         # Always tar and gzip directories.
         filename = filename + '.tar.gz'
         fileobj = local.download_manager.stream_tarred_gzipped_directory(uuid, path)
     elif target_info['type'] == 'file':
+        gzipped = False
         if not zip_util.path_is_archive(filename) and request_accepts_gzip_encoding():
             # Let's gzip to save bandwidth. The browser will transparently decode
             # the file.
             filename = filename + '.gz'
-            fileobj = local.download_manager.stream_file(uuid, path, gzipped=True)
+            gzipped = True
+
+        if byte_range and (head_lines or tail_lines):
+            abort(httplib.BAD_REQUEST, 'Head and range not supported on the same request.')
+        elif byte_range:
+            start, end = byte_range
+            fileobj = local.download_manager.read_file_section(uuid, path, start, end - start + 1, gzipped)
+        elif head_lines or tail_lines:
+            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, None, gzipped)
         else:
-            fileobj = local.download_manager.stream_file(uuid, path, gzipped=False)
+            fileobj = local.download_manager.stream_file(uuid, path, gzipped)
     else:
         # Symlinks.
         abort(httplib.FORBIDDEN, 'Cannot download files of this type.')
-    
+
     # Set headers.
     mimetype, _ = mimetypes.guess_type(filename, strict=False)
     response.set_header('Content-Type', mimetype or 'text/plain')
@@ -399,9 +437,24 @@ def _update_bundle_contents_blob(uuid):
     """
     Update the contents of the given running or uploading bundle.
 
-    Accepts the filename as a query parameter, used to determine whether the
-    upload contains an archive.
+    Query parameters:
+        urls - comma-separated list of URLs from which to fetch data to fill the
+               bundle, using this option will ignore any uploaded file data
+        git - (optional) 1 if URL should be interpreted as git repos to clone
+              or 0 otherwise, default is 0
+    OR
+        filename - (optional) filename of the uploaded file, used to indicate
+                   whether or not it is an archive, default is 'contents'
+
+    Query parameters that are always available:
+        unpack - (optional) 1 if the uploaded file should be unpacked if it is
+                 an archive, or 0 otherwise, default is 1
+        finalize - (optional) 1 if this should be considered the final version
+                   of the bundle contents and thus mark the bundle as 'ready'
+                   when upload is complete and 'failed' if upload fails, or 0 if
+                   should allow future updates, default is 0
     """
+    finalize = query_get_bool('finalize', default=False)
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
 
@@ -411,21 +464,55 @@ def _update_bundle_contents_blob(uuid):
 
     # Store the data.
     try:
+        if request.query.urls:
+            sources = query_get_list('urls')
+        else:
+            filename = request.query.get('filename', default='contents')
+            sources = [(filename, request['wsgi.input'])]
+
         local.upload_manager.upload_to_bundle_store(
-            bundle, sources=[(request.query.filename, request['wsgi.input'])],
-            follow_symlinks=False, exclude_patterns=False, remove_sources=False,
-            git=False, unpack=True, simplify_archives=False)
+            bundle, sources=sources, follow_symlinks=False,
+            exclude_patterns=None, remove_sources=False,
+            git=query_get_bool('git', default=False),
+            unpack=query_get_bool('unpack', default=True),
+            simplify_archives=True)
+
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 
-    except Exception:
+        if finalize:
+            local.model.finalize_bundle(bundle, request.user.user_id,
+                                        exitcode=None, failure_message=None)
+
+    except Exception as e:
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
+        if finalize:
+            msg = "Upload failed: %s" % e
+            local.model.finalize_bundle(bundle, request.user.user_id,
+                                        exitcode=None, failure_message=msg)
         raise
 
 
 #############################################################
 #  BUNDLE HELPER FUNCTIONS
 #############################################################
+
+def get_request_range():
+    """
+    Parses header of the form:
+        Range: bytes=START-END
+    into tuple:
+        (int(START), int(END))
+    """
+    if 'Range' not in request.headers:
+        return None
+
+    m = re.match(r'bytes=(\d+)-(\d+)', request.headers['Range'].strip())
+    if m is None:
+        abort(httplib.BAD_REQUEST, "Range must be 'bytes=START-END'.")
+
+    start, end = m.groups()
+    return int(start), int(end)
 
 
 def request_accepts_gzip_encoding():

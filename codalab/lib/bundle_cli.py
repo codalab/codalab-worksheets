@@ -21,6 +21,8 @@ import inspect
 import itertools
 import os
 import shlex
+import shutil
+from StringIO import StringIO
 import sys
 import time
 import tempfile
@@ -77,6 +79,8 @@ from codalab.lib.completers import (
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore
 )
+from codalab.lib.print_util import FileTransferProgress
+from worker.file_util import un_tar_directory
 
 # Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
@@ -857,61 +861,76 @@ class BundleCLI(object):
         if self.headless and not args.path and args.contents is None:
             return ui_actions.serialize([ui_actions.Upload()])
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
 
-        # Verify arguments are valid.
-        for path in args.path:
-            if path_util.path_is_url(path):
-                # OK: We have already checked that there are no other bundles to upload.
-                pass
-            elif self.headless:
-                # Important: don't allow uploading files if headless.
-                raise UsageError("Cannot upload from path %s: no filesystem available." % path)
-            else:
-                # Check that the upload path exists.
-                path_util.check_isvalid(path_util.normalize(path), 'upload')
+        if args.contents is not None and args.path:
+            raise UsageError("Upload does not support mixing content strings and local files")
 
-        # If contents of file are specified on the command-line, then include that with the bundles to upload.
-        if args.contents is not None:
-            if not args.md_name:
-                args.md_name = 'contents'
-            tmp_path = tempfile.mkstemp()[1]
-            f = open(tmp_path, 'w')
-            print >>f, args.contents
-            f.close()
-            args.path.append(tmp_path)
-
-        # Canonicalize (e.g., removing trailing /)
-        sources = [path_util.normalize(path) for path in args.path]
-
-        # Pull out the upload bundle type from the arguments and validate it.
-        # Note: only allow dataset bundles (eventually deprecate the program bundle and just have uploaded bundles).
-        bundle_type = 'dataset'
-        bundle_subclass = get_bundle_subclass(bundle_type)
-        metadata = self.get_missing_metadata(bundle_subclass, args, initial_metadata={})
+        # Build bundle info
+        metadata = self.get_missing_metadata(UploadedBundle, args, initial_metadata={})
         # name = 'test.zip' => name = 'test'
+        if args.contents is not None:
+            metadata['name'] = 'contents'
         if not args.pack and zip_util.path_is_archive(metadata['name']):
             metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
+        bundle_info = {
+            'bundle_type': 'dataset',  # TODO: deprecate Dataset and ProgramBundles
+            'metadata': metadata,
+        }
 
-        # Type-check the bundle metadata BEFORE uploading the bundle data.
-        # This optimization will avoid file copies on failed bundle creations.
-        # pass in a null owner to validate. Will be set to the correct owner in the client upload_bundle below.
-        bundle_subclass.construct(owner_id=0, metadata=metadata).validate()
-        info = {'bundle_type': bundle_type, 'metadata': metadata}
+        # Create bundle
+        new_bundle = client.create('bundles', bundle_info, params={
+            'worksheet': worksheet_uuid
+        })
 
-        # Finally, once everything has been checked, then call the client to upload.
-        uuid = client.upload_bundle(
-            sources=sources,
-            follow_symlinks=args.follow_symlinks,
-            exclude_patterns=args.exclude_patterns,
-            git=args.git,
-            unpack=not args.pack,
-            remove_sources=(args.contents is not None),
-            info=info,
-            worksheet_uuid=worksheet_uuid,
-            add_to_worksheet=True,
-        )
-        print >>self.stdout, uuid
+        # Option 1: Upload contents string
+        if args.contents is not None:
+            contents_buffer = StringIO(args.contents)
+            client.upload_contents_blob(
+                new_bundle['id'],
+                fileobj=contents_buffer,
+                params={'filename': 'contents', 'unpack': False})
+
+        # Option 2: Upload URL(s)
+        elif any(map(path_util.path_is_url, args.path)):
+            if self.headless:
+                raise UsageError("Local file paths not allowed without a filesystem.")
+            if not all(map(path_util.path_is_url, args.path)):
+                raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
+
+            client.upload_contents_blob(new_bundle['id'], params={
+                'urls': args.path,
+                'git': args.git,
+            })
+
+        # Option 3: Upload file(s) from the local filesystem
+        else:
+            # Check that the upload paths exist
+            for path in args.path:
+                path_util.check_isvalid(path_util.normalize(path), 'upload')
+
+            # Canonicalize paths (e.g., removing trailing /)
+            sources = [path_util.normalize(path) for path in args.path]
+
+            print >>self.stderr, "Preparing upload archive..."
+            upload_blob, filename, total_bytes, unpack_at_server =\
+                zip_util.pack_files_for_upload(
+                    sources, should_unpack=(not args.pack),
+                    follow_symlinks=args.follow_symlinks,
+                    exclude_patterns=args.exclude_patterns)
+
+            print >>self.stderr, 'Uploading %s (%s) to %s' %\
+                                 (filename, new_bundle['id'], client.address)
+            progress = FileTransferProgress('Sent ', total_bytes, f=self.stderr)
+            with closing(upload_blob), progress:
+                client.upload_contents_blob(
+                    new_bundle['id'],
+                    fileobj=upload_blob,
+                    params={'filename': filename, 'unpack': unpack_at_server},
+                    progress_callback=progress.update)
+
+        print >>self.stdout, new_bundle['id']
 
     @Commands.command(
         'download',
@@ -926,12 +945,12 @@ class BundleCLI(object):
     def do_download_command(self, args):
         self._fail_if_headless('download')
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
         bundle_uuid, subpath = target
 
         # Figure out where to download.
-        info = client.get_bundle_info(bundle_uuid)
+        info = client.fetch('bundles', bundle_uuid)
         if args.output_path:
             local_path = args.output_path
         else:
@@ -942,17 +961,23 @@ class BundleCLI(object):
             return
 
         # Do the download.
-        target_info = client.get_target_info(target, 0)
+        target_info = client.fetch_contents_info(target[0], target[1], 0)
         if target_info is None:
             raise UsageError('Target doesn\'t exist.')
-        if target_info['type'] == 'directory':
-            client.download_directory(target, final_path)
-        elif target_info['type'] == 'file':
-            client.download_file(target, final_path)
-        elif target_info['type'] == 'link':
+        if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
-        print >>self.stdout, 'Downloaded %s/%s => %s' % (self.simple_bundle_str(info), subpath, final_path)
+        print >>self.stdout, 'Downloading %s/%s => %s' % (self.simple_bundle_str(info), subpath, final_path)
+
+        progress = FileTransferProgress('Received ', f=self.stderr)
+        contents = file_util.tracked(
+            client.fetch_contents_blob(target[0], target[1]), progress.update)
+        with progress, closing(contents):
+            if target_info['type'] == 'directory':
+                un_tar_directory(contents, final_path, 'gz')
+            elif target_info['type'] == 'file':
+                with open(final_path, 'wb') as out:
+                    shutil.copyfileobj(contents, out)
 
     def copy_bundle(self, source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies, add_to_worksheet):
         """
@@ -1142,7 +1167,6 @@ class BundleCLI(object):
     def do_run_command(self, args):
         # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
-        bundle_client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
         targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = self.get_missing_metadata(RunBundle, args)
@@ -1153,7 +1177,7 @@ class BundleCLI(object):
         )
 
         print >>self.stdout, new_bundle['uuid']
-        self.wait(bundle_client, args, new_bundle['uuid'])
+        self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
         'edit',
@@ -1365,8 +1389,9 @@ class BundleCLI(object):
 
     def create_reference_map(self, info_type, info_list):
         """
-        Return dict of dicts containing name, uuid and type for each bundle/worksheet
-        in the info_list. This information is needed to recover URL on the cient side.
+        Return dict of dicts containing name, uuid and type for each
+        bundle/worksheet in the info_list. This information is needed to recover
+        URL on the web client.
         """
         return {
             worksheet_util.apply_func(UUID_POST_FUNC, info['uuid']) : {
@@ -1454,7 +1479,6 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
-        bundle_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch('bundles', params={
             'specs': args.bundle_spec,
@@ -1482,7 +1506,7 @@ class BundleCLI(object):
                     self.print_host_worksheets(info)
                     # TODO(sckoo): clean up use_rest hack when REST API migration complete
                     self.print_permissions(info, use_rest=True)
-                    self.print_contents(bundle_client, info)
+                    self.print_contents(client, info)
 
         # Headless client should fire OpenBundle UI action if no special flags used
         if self.headless and not (args.field or args.raw or args.verbose):
@@ -1581,13 +1605,13 @@ class BundleCLI(object):
     def do_cat_command(self, args):
         self._fail_if_headless('cat')  # Files might be too big
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
         self.print_target_info(client, target, decorate=False, fail_if_not_exist=True)
 
     # Helper: shared between info and cat
     def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
-        info = client.get_target_info(target, 1)
+        info = client.fetch_contents_info(target[0], target[1], 1)
         info_type = info.get('type') if info is not None else None
 
         if info_type is None:
@@ -1598,11 +1622,11 @@ class BundleCLI(object):
 
         if info_type == 'file':
             if decorate:
-                import base64
-                for line in client.head_target(target, maxlines):
-                    print >>self.stdout, formatting.verbose_contents_str(base64.b64decode(line)),
+                contents = client.fetch_contents_blob(target[0], target[1], head=maxlines)
             else:
-                client.cat_target(target, self.stdout)
+                contents = client.fetch_contents_blob(target[0], target[1])
+            with closing(contents):
+                shutil.copyfileobj(contents, self.stdout)
 
         def size(x):
             t = x.get('type', '???')
@@ -1628,7 +1652,6 @@ class BundleCLI(object):
         if info_type == 'link':
             print >>self.stdout, ' -> ' + info['link']
             
-
         return info
 
     @Commands.command(
@@ -1643,7 +1666,7 @@ class BundleCLI(object):
     def do_wait_command(self, args):
         self._fail_if_headless('wait')
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
         (bundle_uuid, subpath) = target
 
@@ -1672,7 +1695,7 @@ class BundleCLI(object):
 
         # Wait for the run to start.
         while True:
-            info = client.get_bundle_info(bundle_uuid)
+            info = client.fetch('bundles', bundle_uuid)
             if info['state'] in (State.RUNNING, State.READY, State.FAILED):
                 break
             time.sleep(SLEEP_PERIOD)
@@ -1681,7 +1704,7 @@ class BundleCLI(object):
         run_finished = False
         while True:
             if not run_finished:
-                info = client.get_bundle_info(bundle_uuid)
+                info = client.fetch('bundles', bundle_uuid)
                 run_finished = info['state'] in (State.READY, State.FAILED)
 
             # Read data.
@@ -1689,7 +1712,7 @@ class BundleCLI(object):
                 # If the subpath we're interested in appears, check if it's a
                 # file and if so, initialize the offset.
                 if subpath_is_file[i] is None:
-                    target_info = client.get_target_info((bundle_uuid, subpaths[i]), 0)
+                    target_info = client.fetch_contents_info(bundle_uuid, subpaths[i], 0)
                     if target_info is not None:
                         if target_info['type'] == 'file':
                             subpath_is_file[i] = True
@@ -1704,7 +1727,9 @@ class BundleCLI(object):
                 # Read from that file.
                 while True:
                     READ_LENGTH = 16384
-                    result = client.read_file_section((bundle_uuid, subpaths[i]), subpath_offset[i], READ_LENGTH)
+                    byte_range = (subpath_offset[i], subpath_offset[i] + READ_LENGTH - 1)
+                    with closing(client.fetch_contents_blob(bundle_uuid, subpaths[i], byte_range)) as contents:
+                        result = contents.read()
                     if not result:
                         break
                     subpath_offset[i] += len(result)
@@ -2265,6 +2290,7 @@ class BundleCLI(object):
         self._fail_if_headless('print')
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
         if args.raw:
             lines = worksheet_util.get_worksheet_lines(worksheet_info)
@@ -2273,9 +2299,9 @@ class BundleCLI(object):
         else:
             print >>self.stdout, self._worksheet_description(worksheet_info)
             interpreted = worksheet_util.interpret_items(worksheet_util.get_default_schemas(), worksheet_info['items'])
-            self.display_interpreted(client, worksheet_info, interpreted)
+            self.display_interpreted(client, rest_client, worksheet_info, interpreted)
 
-    def display_interpreted(self, client, worksheet_info, interpreted):
+    def display_interpreted(self, client, rest_client, worksheet_info, interpreted):
         for item in interpreted['items']:
             mode = item['mode']
             data = item['interpreted']
@@ -2287,7 +2313,7 @@ class BundleCLI(object):
                     if maxlines:
                         maxlines = int(maxlines)
                     try:
-                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                        self.print_target_info(rest_client, data, decorate=True, maxlines=maxlines)
                     except UsageError, e:
                         print >>self.stdout, 'ERROR:', e
                 else:
@@ -2303,10 +2329,10 @@ class BundleCLI(object):
                 print >>self.stdout, '[' + mode + ']'
             elif mode == 'search':
                 search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
-                self.display_interpreted(client, worksheet_info, search_interpreted)
+                self.display_interpreted(client, rest_client, worksheet_info, search_interpreted)
             elif mode == 'wsearch':
                 wsearch_interpreted = worksheet_util.interpret_wsearch(client, data)
-                self.display_interpreted(client, worksheet_info, wsearch_interpreted)
+                self.display_interpreted(client, rest_client, worksheet_info, wsearch_interpreted)
             elif mode == 'worksheet':
                 print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(data) + ']'
             else:

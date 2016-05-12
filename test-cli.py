@@ -278,6 +278,8 @@ def test(ctx):
     check_contains(['bundle_type', 'uuid', 'owner', 'created'], run_command([cl, 'info', uuid]))
     check_contains('license', run_command([cl, 'info', '--raw', uuid]))
     check_contains(['host_worksheets', 'contents'], run_command([cl, 'info', '--verbose', uuid]))
+    # test interpret_file_genpath
+    check_equals(' '.join(test_path_contents('a.txt').splitlines(False)), get_info(uuid, '/'))
 
     # rm
     run_command([cl, 'rm', '--dry-run', uuid])
@@ -323,6 +325,12 @@ def test(ctx):
     # Upload directory with excluded files
     uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
     check_num_lines(2 + 2, run_command([cl, 'cat', uuid]))  # 2 header lines, Only two files left after excluding and extracting.
+
+    # Upload multiple files with excluded files
+    uuid = run_command([cl, 'upload', test_path('dir1'), test_path('echo'), test_path(crazy_name), '--exclude-patterns', 'f*'])
+    check_num_lines(2 + 3, run_command([cl, 'cat', uuid]))  # 2 header lines, 3 items at bundle target root
+    check_num_lines(2 + 2, run_command([cl, 'cat', uuid + '/dir1']))  # 2 header lines, Only two files left after excluding and extracting.
+
 
 @TestModule.register('upload2')
 def test(ctx):
