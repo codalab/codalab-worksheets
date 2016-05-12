@@ -7,8 +7,45 @@ import base64
 import sys
 import urllib
 
-from bottle import request, HTTPResponse, redirect
+from bottle import abort, request, HTTPResponse, redirect, app, local
 from oauthlib.common import to_unicode, bytes_type
+
+
+def query_get_list(key):
+    value = request.query.get(key)
+    if not value:
+        return []
+    else:
+        return value.split(',')
+
+
+def query_get_bool(key, default=False):
+    value = request.query.get(key, None)
+    if value is None:
+        return default
+    elif value == 'True':
+        return True
+    else:
+        return False
+
+
+def json_api_include(doc, schema, resources):
+    if not isinstance(resources, list):
+        resources = [resources]
+
+    if 'included' not in doc:
+        doc['included'] = []
+
+    schema.many = True
+    doc['included'].extend(schema.dump(resources).data['data'])
+    return doc
+
+
+def bottle_patch(path=None, method='PATCH', **options):
+    """Convenience decorator of the same form as @get and @post in the
+    Bottle module.
+    """
+    return app().route(path, method, **options)
 
 
 def redirect_with_query(redirect_uri, params):
