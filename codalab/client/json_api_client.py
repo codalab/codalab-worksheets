@@ -52,7 +52,8 @@ class JsonApiRelationship(object):
     Used to build requests to create or update a resource.
 
     For example, to update the owner of a bundle:
-        client.update('bundles', uuid, data={
+        client.update('bundles', {
+            'id': '0x7d67f3e0fda249e5b0531670f473c04f',
             'owner': JsonApiRelationship('users', owner_id)
         })
     """
@@ -114,7 +115,7 @@ class JsonApiClient(RestClient):
          >> unpack_document({
                 'data': {
                     'id': '123',
-                    'type: 'bundles',
+                    'type': 'bundles',
                     'attributes': {
                         'name': 'hello'
                     },
@@ -135,7 +136,7 @@ class JsonApiClient(RestClient):
                 },
                 'included': [
                     {
-                        'type': 'users':
+                        'type': 'users',
                         'id': '345',
                         'attributes': {
                             'name': 'percy',
@@ -149,7 +150,7 @@ class JsonApiClient(RestClient):
                 'owner': {
                     'id': '345',
                     'name': 'percy',
-                    'affiliation: 'stanford'
+                    'affiliation': 'stanford'
                 },
                 'parent': {
                     'id': '567'
