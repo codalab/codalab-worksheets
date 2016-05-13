@@ -28,7 +28,8 @@ class RestClient(object):
 
     def _get_access_token(self):
         """
-        Should be implemented to return a valid access token.
+        Should be overriden with a thread-safe method that returns a valid
+        access token.
         """
         raise NotImplementedError
 
