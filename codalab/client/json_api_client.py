@@ -149,10 +149,10 @@ class JsonApiClient(RestClient):
         def unpack_linkage(linkage):
             # Return recursively unpacked object if the data was included in the
             # document, otherwise just return the linkage object
-            if linkage is None or (linkage['id'], linkage['type']) not in included:
+            if linkage is None or (linkage['type'], linkage['id']) not in included:
                 return linkage
             else:
-                return unpack_object(included[linkage['id'], linkage['type']])
+                return unpack_object(included[linkage['type'], linkage['id']])
 
         def unpack_object(obj_data):
             # Merge attributes, id, meta, and relationships into a single dict
