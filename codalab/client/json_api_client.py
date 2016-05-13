@@ -1,29 +1,49 @@
+import httplib
+import socket
+import sys
 import urllib2
 
 from codalab.client.rest_client import RestClient, RestClientException
-from codalab.common import (
-    http_error_to_exception,
-    precondition,
-    PreconditionViolation,
-    UsageError,
-)
+from codalab.common import http_error_to_exception, UsageError
 
 
-# TODO(sckoo): deal with more error cases
-def wrap_exception(f):
-    def wrapper(*args, **kwargs):
-        # Translate errors to the standard CodaLab errors
-        try:
-            return f(*args, **kwargs)
-        except urllib2.HTTPError as e:
-            raise http_error_to_exception(e.code, e.read())
-        except RestClientException as e:
-            if e.client_error:
-                raise UsageError(e.message)
-            else:
-                raise PreconditionViolation()
+def wrap_exception(message):
+    def decorator(f):
+        def wrapper(*args, **kwargs):
+            try:
+                return f(*args, **kwargs)
+            except urllib2.HTTPError as e:
+                # Translate known errors to the standard CodaLab errors
+                exc = http_error_to_exception(e.code, e.read())
+                if isinstance(exc, UsageError):
+                    raise exc.__class__, exc, sys.exc_info()[2]
+                else:
+                    raise JsonApiException, \
+                        JsonApiException(message.format(*args, **kwargs) +
+                                         ': ' + httplib.responses[e.code] +
+                                         ' - ' + e.read(),
+                                         400 <= e.code < 500), \
+                        sys.exc_info()[2]
+            except RestClientException as e:
+                raise JsonApiException, \
+                    JsonApiException(message.format(*args, **kwargs) +
+                                     ': ' + e.message, e.client_error), \
+                    sys.exc_info()[2]
+            except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
+                raise JsonApiException, \
+                    JsonApiException(message.format(*args, **kwargs) +
+                                     ': ' + str(e), False), \
+                    sys.exc_info()[2]
+        return wrapper
+    return decorator
 
-    return wrapper
+
+class JsonApiException(RestClientException):
+    """
+    Exception raised by the JsonApiClient methods on error. If
+    client_error is False, the failure is caused by a server-side error and
+    can be retried.
+    """
 
 
 class JsonApiRelationship(object):
@@ -139,9 +159,9 @@ class JsonApiClient(RestClient):
             }
 
         If the document does not follow the expected JSON API format, this
-        function throws a ValueError.
+        method throws a JsonApiException.
         If relationships do not contain resource linkages (the 'data' item),
-        this function also throws a ValueError.
+        this method also throws a JsonApiException.
 
         :param document: the JSON-API payload as a dict
         :return: unpacked resource info as a dict
@@ -184,7 +204,8 @@ class JsonApiClient(RestClient):
             else:
                 result = {}
         except KeyError:
-            raise ValueError('Invalid or unsupported JSON API document format')
+            raise JsonApiException('Invalid or unsupported JSON API '
+                                   'document format', True)
 
         # Include meta
         # (Warning: this may overwrite meta present at the resource object level.)
@@ -224,6 +245,9 @@ class JsonApiClient(RestClient):
                 }
             }
 
+        If the dict does not follow the expected format, this method throws a
+        JsonApiException.
+
         :param objects: a dict or list of dicts representing resources
         :param type_: resource type as string
         :return: packed JSON API document
@@ -259,13 +283,13 @@ class JsonApiClient(RestClient):
             else:
                 packed_objects = pack_object(objects)
         except KeyError:
-            raise ValueError('Invalid resource info format')
+            raise JsonApiException('Invalid resource info format', True)
 
         return {
             'data': packed_objects
         }
 
-    @wrap_exception
+    @wrap_exception('Unable to fetch {1}')
     def fetch(self, resource_type, resource_id=None, params=None):
         """
         Request to fetch a resource or resources.
@@ -280,7 +304,7 @@ class JsonApiClient(RestClient):
         return self._unpack_document(
             self._make_request('GET', url, query_params=params))
 
-    @wrap_exception
+    @wrap_exception('Unable to create {1}')
     def create(self, resource_type, data, params=None):
         """
         Request to create a resource or resources.
@@ -296,7 +320,7 @@ class JsonApiClient(RestClient):
         return self._unpack_document(
             self._make_request('POST', url, query_params=params, data=data))
 
-    @wrap_exception
+    @wrap_exception('Unable to update {1}')
     def update(self, resource_type, data, params=None):
         """
         Request to update a resource or resources.
@@ -313,7 +337,7 @@ class JsonApiClient(RestClient):
         return self._unpack_document(
             self._make_request('PATCH', path, query_params=params, data=data))
 
-    @wrap_exception
+    @wrap_exception('Unable to delete {1}')
     def delete(self, resource_type, resource_id, params=None):
         """
         Request to delete a resource or resources.
