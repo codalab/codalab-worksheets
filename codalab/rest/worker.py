@@ -4,6 +4,7 @@ import httplib
 import json
 import os
 import subprocess
+import time
 
 from bottle import abort, get, local, post, put, request, response
 
@@ -177,8 +178,24 @@ def finalize_bundle(worker_id, uuid):
     if (local.worker_model.shared_file_system and
         request.user.user_id == local.model.root_user_id):
         # On a shared file system, the worker doesn't upload the contents, so
-        # we need to run this metadata update here. With no shared file system
+        # we need to run a metadata update here. With no shared file system
         # it happens in update_bundle_contents.
+
+        # On the NFS file system the contents of directories are cached, so the
+        # new directory that has been created for the bundle might not appear
+        # right away. We use this loop to check for it. There might be some
+        # inconsistencies in the actual contents due to newly created files not
+        # be seen. Although, that's very unlikely to give a large difference
+        # in the final bundle size.
+        bundle_location = local.bundle_store.get_bundle_location(uuid)
+        for _ in xrange(120):
+            if os.path.exists(bundle_location):
+                break
+            else:
+                time.sleep(1)
+        # If the directory still doesn't exist after 2 minutes, the following
+        # call will return an error.
+
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 
     print 'Finalized bundle %s' % uuid
