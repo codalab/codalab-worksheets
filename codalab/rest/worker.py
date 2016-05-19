@@ -136,35 +136,6 @@ def update_bundle_metadata(worker_id, uuid):
     local.model.update_bundle(bundle, {'metadata': metadata_update})
 
 
-@put('/worker/<worker_id>/update_bundle_contents/<uuid:re:%s>' % spec_util.UUID_STR,
-     apply=AuthenticatedPlugin())
-def update_bundle_contents(worker_id, uuid):
-    """
-    Update the contents of the given running bundle.
-
-    Accepts the filename as a query parameter, used to determine whether the
-    upload contains an archive.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-
-    # If this bundle already has data, remove it.
-    if local.upload_manager.has_contents(bundle):
-        local.upload_manager.cleanup_existing_contents(bundle)
-
-    # Store the data.
-    try:
-        local.upload_manager.upload_to_bundle_store(
-            bundle, sources=[(request.query.filename, request['wsgi.input'])],
-            follow_symlinks=False, exclude_patterns=False, remove_sources=False,
-            git=False, unpack=True, simplify_archives=False)
-        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
-    except Exception:
-        if local.upload_manager.has_contents(bundle):
-            local.upload_manager.cleanup_existing_contents(bundle)
-        raise
-
-
 @post('/worker/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def finalize_bundle(worker_id, uuid):
