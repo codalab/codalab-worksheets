@@ -300,10 +300,11 @@ class JsonApiClient(RestClient):
         :param params: dict of query parameters
         :return: the fetched objects
         """
-        url = self._get_resource_path(resource_type, resource_id)
-        params = self._pack_params(params)
         return self._unpack_document(
-            self._make_request('GET', url, query_params=params))
+            self._make_request(
+                method='GET',
+                path=self._get_resource_path(resource_type, resource_id),
+                query_params=self._pack_params(params)))
 
     @wrap_exception('Unable to create {1}')
     def create(self, resource_type, data, params=None):
@@ -315,11 +316,12 @@ class JsonApiClient(RestClient):
         :param params: dict of query parameters
         :return: the created object(s)
         """
-        url = self._get_resource_path(resource_type)
-        params = self._pack_params(params)
-        doc = self._pack_document(data, resource_type)
         return self._unpack_document(
-            self._make_request('POST', url, query_params=params, data=doc))
+            self._make_request(
+                method='POST',
+                path=self._get_resource_path(resource_type),
+                query_params=self._pack_params(params),
+                data=self._pack_document(data, resource_type)))
 
     @wrap_exception('Unable to update {1}')
     def update(self, resource_type, data, params=None):
@@ -332,11 +334,12 @@ class JsonApiClient(RestClient):
         :param params: dict of query parameters
         :return: the updated object(s)
         """
-        path = self._get_resource_path(resource_type)
-        params = self._pack_params(params)
-        doc = self._pack_document(data, resource_type)
         result = self._unpack_document(
-            self._make_request('PATCH', path, query_params=params, data=doc))
+            self._make_request(
+                method='PATCH',
+                path=self._get_resource_path(resource_type),
+                query_params=self._pack_params(params),
+                data=self._pack_document(data, resource_type)))
         return result if isinstance(data, list) else result[0]
 
     @wrap_exception('Unable to delete {1}')
@@ -349,16 +352,18 @@ class JsonApiClient(RestClient):
         :param params: dict of query parameters
         :return: response data as dict, but otherwise undefined
         """
-        url = self._get_resource_path(resource_type)
         if not isinstance(resource_ids, list):
             resource_ids = [resource_ids]
-        doc = {
+        data = {
             'data': [{
                 'id': id_,
                 'type': resource_type,
             } for id_ in resource_ids],
         }
-        params = self._pack_params(params)
         return self._unpack_document(
-            self._make_request('DELETE', url, query_params=params, data=doc))
+            self._make_request(
+                method='DELETE',
+                path=self._get_resource_path(resource_type),
+                query_params=self._pack_params(params),
+                data=data))
 
