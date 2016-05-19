@@ -11,8 +11,8 @@ from codalab.objects.permission import (
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
-@get('/bundle/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
-@get('/bundle/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
 def get_blob(uuid, path=''):
     """
     API to download the contents of a bundle or a subpath within a bundle.

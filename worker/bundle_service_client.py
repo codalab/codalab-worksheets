@@ -181,7 +181,7 @@ class BundleServiceClient(object):
         Returns a file-like object and a file name.
         """
         response = self._make_request(
-            'GET', '/bundle/' + uuid + '/contents/blob/' + path,
+            'GET', '/bundles/' + uuid + '/contents/blob/' + path,
             headers={'Accept-Encoding': 'gzip'}, return_response=True)
         match = re.match('filename="(.*)"',
                          response.headers['Content-Disposition'])
