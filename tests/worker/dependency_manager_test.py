@@ -22,7 +22,7 @@ class DependencyManagerTest(unittest.TestCase):
         with open(os.path.join(self.work_dir, 'random_file'), 'w'):
             pass
         self.assertIn('random_file', os.listdir(self.work_dir))
-        new_manager = DependencyManager(self.work_dir, 1)
+        new_manager = DependencyManager(self.work_dir, 1 * 1024 * 1024)
         self.check_state([('uuid1', ''), ('uuid2', '')], new_manager)
         self.assertIn('state.json', os.listdir(self.work_dir))
         self.assertNotIn('random_file', os.listdir(self.work_dir))
@@ -56,7 +56,7 @@ class DependencyManagerTest(unittest.TestCase):
                          os.path.join(self.work_dir, 'uuid1_a_b_c_'))
 
     def test_cleanup(self):
-        self.manager = DependencyManager(self.work_dir, 2)
+        self.manager = DependencyManager(self.work_dir, 2 * 1024 * 1024)
 
         self.manager.finish_run('uuid1') # Has dependency, so will not be removed.
         self.manager.add_dependency('uuid1', '', 'uuid100')

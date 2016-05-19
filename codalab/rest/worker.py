@@ -1,10 +1,17 @@
+from __future__ import absolute_import  # Without this line "from worker.worker import VERSION" doesn't work.
 from contextlib import closing
 import httplib
 import json
+import os
+import subprocess
+import time
 
-from bottle import abort, local, post, request
+from bottle import abort, get, local, post, put, request, response
 
+from codalab.lib import spec_util
+from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from worker.worker import VERSION
 
 
 @post('/worker/<worker_id>/checkin',
@@ -17,9 +24,17 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 2.0
 
+    torque_worker = ('torque' in local.config['workers'] and
+                     request.user.user_id == local.model.root_user_id)
+    if (not torque_worker and
+        request.json['version'] != VERSION and
+        not request.json['will_upgrade']):
+        return {'type': 'upgrade'}
+
     socket_id = local.worker_model.worker_checkin(
-        request.user.user_id, worker_id,
-        request.json['slots'], request.json['dependency_uuids'])
+        request.user.user_id, worker_id, request.json['tag'],
+        request.json['slots'], request.json['cpus'], request.json['memory_bytes'],
+        request.json['dependencies'])
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 
@@ -77,3 +92,103 @@ def reply_data(worker_id, socket_id):
     check_reply_permission(worker_id, socket_id)
     local.worker_model.send_json_message(socket_id, header_message, 60, autoretry=False)
     local.worker_model.send_stream(socket_id, request['wsgi.input'], 60)
+
+
+def check_run_permission(bundle):
+    """
+    Checks whether the current user can run the bundle.
+    """
+    if not check_bundle_have_run_permission(local.model, request.user.user_id, bundle):
+        abort(httplib.FORBIDDEN, 'User does not have permission to run bundle.')
+
+
+@post('/worker/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
+      apply=AuthenticatedPlugin())
+def start_bundle(worker_id, uuid):
+    """
+    Checks whether the bundle is still assigned to run on the worker with the
+    given ID. If so, reports that it's starting to run and returns True.
+    Otherwise, returns False, meaning the worker shouldn't run the bundle.
+    """
+    bundle = local.model.get_bundle(uuid)
+    check_run_permission(bundle)
+    response.content_type = 'application/json'
+    if local.model.start_bundle(bundle, request.user.user_id, worker_id,
+                                request.json['hostname'],
+                                request.json['start_time']):
+        print 'Started bundle %s' % uuid
+        return json.dumps(True)
+    return json.dumps(False)
+
+
+@put('/worker/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
+      apply=AuthenticatedPlugin())
+def update_bundle_metadata(worker_id, uuid):
+    """
+    Updates metadata related to a running bundle.
+    """
+    bundle = local.model.get_bundle(uuid)
+    check_run_permission(bundle)
+    allowed_keys = set(['run_status', 'time', 'time_user', 'time_system', 'memory', 'data_size', 'last_updated'])
+    metadata_update = {}
+    for key, value in request.json.iteritems():
+        if key in allowed_keys:
+            metadata_update[key] = value
+    local.model.update_bundle(bundle, {'metadata': metadata_update})
+
+
+@post('/worker/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
+      apply=AuthenticatedPlugin())
+def finalize_bundle(worker_id, uuid):
+    """
+    Reports that the bundle has finished running.
+    """
+    bundle = local.model.get_bundle(uuid)
+    check_run_permission(bundle)
+
+    if (local.worker_model.shared_file_system and
+        request.user.user_id == local.model.root_user_id):
+        # On a shared file system, the worker doesn't upload the contents, so
+        # we need to run a metadata update here. With no shared file system
+        # it happens in update_bundle_contents.
+
+        # On the NFS file system the contents of directories are cached, so the
+        # new directory that has been created for the bundle might not appear
+        # right away. We use this loop to check for it. There might be some
+        # inconsistencies in the actual contents due to newly created files not
+        # be seen. Although, that's very unlikely to give a large difference
+        # in the final bundle size.
+        bundle_location = local.bundle_store.get_bundle_location(uuid)
+        for _ in xrange(120):
+            if os.path.exists(bundle_location):
+                break
+            else:
+                time.sleep(1)
+        # If the directory still doesn't exist after 2 minutes, the following
+        # call will return an error.
+
+        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+
+    print 'Finalized bundle %s' % uuid
+    local.model.finalize_bundle(bundle, request.user.user_id,
+                                request.json['exitcode'],
+                                request.json['failure_message'])
+
+
+@get('/worker/code.tar.gz')
+def code():
+    """
+    Returns .tar.gz archive containing the code of the worker.
+    """
+    response.set_header('Content-Disposition', 'filename="code.tar.gz"')
+    response.set_header('Content-Encoding', 'gzip')
+    response.set_header('Content-Type', 'application/x-tar')
+    codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    code_dir = os.path.join(codalab_cli, 'worker')
+    args = ['tar', 'czf', '-', '-C', code_dir]
+    for filename in os.listdir(code_dir):
+        if filename.endswith('.py') or filename.endswith('.sh'):
+            args.append(filename)
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+    result = proc.stdout.read()
+    return result

@@ -8,7 +8,7 @@ import httplib
 
 # Increment this on the develop branch when develop is merged into master.
 # http://semver.org/
-CODALAB_VERSION = '0.1.7'
+CODALAB_VERSION = '0.1.8'
 
 class IntegrityError(ValueError):
     """
@@ -94,10 +94,15 @@ class State(object):
     """
     CREATED = 'created'   # Just created
     STAGED = 'staged'     # All the dependencies are met
-    QUEUED = 'queued'     # Submitted to the queue (and possibly copying files around)
+    MAKING = 'making'  # Creating a make bundle.
+    WAITING_FOR_WORKER_STARTUP = 'waiting_for_worker_startup'  # Waiting for the worker to start up.
+    STARTING = 'starting'  # Wait for the worker to start running the bundle.
     RUNNING = 'running'   # Actually running
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
+    
+    # TODO(klopyrev): Deprecate this state once the new worker system is launched.
+    QUEUED = 'queued'     # Submitted to the queue (and possibly copying files around)
 
     OPTIONS = {CREATED, STAGED, RUNNING, READY, FAILED}
     FINAL_STATES = {READY, FAILED}

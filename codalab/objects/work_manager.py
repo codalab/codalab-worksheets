@@ -204,7 +204,7 @@ class Worker(object):
         new_statuses = []
         # Lookup all the uuids and bundles of the relevant job handles
         handles = [status['job_handle'] for status in statuses]
-        uuids = self.model.search_bundle_uuids(worksheet_uuid=None, user_id=self.model.root_user_id, keywords=['job_handle='+','.join(handles)])
+        uuids = self.model.search_bundle_uuids(worksheet_uuid=None, user_id=self.model.root_user_id, keywords=['job_handle='+','.join(handles), '.limit=10000'])
         bundles = self.model.batch_get_bundles(uuid=uuids)
         handle_to_bundles = {}
         for bundle in bundles:

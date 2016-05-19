@@ -10,6 +10,7 @@ from sqlalchemy import (
   UniqueConstraint,
 )
 from sqlalchemy.types import (
+  BigInteger,
   Integer,
   String,
   Text,
@@ -36,6 +37,7 @@ bundle = Table(
   Column('owner_id', String(255), nullable=True),
   UniqueConstraint('uuid', name='uix_1'),
   Index('bundle_data_hash_index', 'data_hash'),
+  Index('state_index', 'state'),  # Needed for the bundle manager.
   sqlite_autoincrement=True,
 )
 
@@ -73,20 +75,6 @@ bundle_action = Table(
   Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
   Column('action', Text, nullable=False),
   sqlite_autoincrement=True,
-)
-
-# Stores information about the files, directories and links stored in the
-# bundle.
-bundle_contents_index = Table(
-  'bundle_contents_index',
-  db_metadata,
-  Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-  Column('path', Text, nullable=False),
-  Column('type', String(63), nullable=False),
-  Column('size', Integer, nullable=False),
-  Column('perm', Integer, nullable=False),
-  Column('link', Text, nullable=True),
-  Index('bundle_uuid_index', 'bundle_uuid', mysql_length=63),
 )
 
 # The worksheet table does not have many columns now, but it will eventually
@@ -348,7 +336,10 @@ worker = Table(
   Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
   Column('worker_id', String(127), primary_key=True, nullable=False),
 
-  Column('slots', Integer, nullable=False),  # Number of additional bundles the worker can run.
+  Column('tag', Text, nullable=True),  # Tag that allows for scheduling runs on specific workers.
+  Column('slots', Integer, nullable=False),  # Number of bundles the worker can run.
+  Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
+  Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.
   Column('checkin_time', DateTime, nullable=False),  # When the worker last checked in with the bundle service.
   Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.
 )
@@ -391,4 +382,5 @@ worker_dependency = Table(
   # No foreign key here, since we don't have any logic to clean-up bundles that
   # are deleted.
   Column('dependency_uuid', String(63), nullable=False),
+  Column('dependency_path', Text, nullable=False),
 )

@@ -65,20 +65,27 @@ to run the worker from the Docker shell.
 """
             raise
         
-        # Find libcuda. We pick up the 64-bit version only and put it in a
-        # semi-standard directory. It works for the Tensorflow Docker image.
-        self._libcuda_files = []
+        # Find libcuda. We use ldconfig to find directories where libcuda is
+        # stored and then pick up all libcuda.* files. If we use just ldconfig
+        # we miss files like libcuda.so.352.63.
         try:
+            libcuda_dirs = set()
             for lib in subprocess.check_output(['/sbin/ldconfig', '-p']).split('\n'):
-                if 'libcuda.' not in lib or 'x86-64' not in lib:
-                    continue
-                self._libcuda_files.append(lib.split(' => ')[-1])
+                if 'libcuda.' in lib:
+                    libcuda_dirs.add(os.path.dirname(lib.split(' => ')[-1]))
         except OSError:
             # ldconfig isn't available on Mac OS X. Let's just say that we
             # don't support libcuda on Mac.
             print >> sys.stderr, """
 No ldconfig found. Not loading libcuda libraries.
 """
+        self._libcuda_files = []
+        libcuda_file_set = set()
+        for dir_path in libcuda_dirs:
+            for filename in os.listdir(dir_path):
+                if filename.startswith('libcuda.') and filename not in libcuda_file_set:
+                    self._libcuda_files.append(os.path.join(dir_path, filename))
+                    libcuda_file_set.add(filename)
 
         # Find all the NVIDIA device files.
         self._nvidia_device_files = []
@@ -148,6 +155,7 @@ No ldconfig found. Not loading libcuda libraries.
         # Set up the command.
         docker_bundle_path = '/' + uuid
         docker_commands = [
+            'ldconfig',
             'BASHRC=$(pwd)/.bashrc',
             # Run as the user that owns the bundle directory. That way
             # any new files are created as that user and not root.
@@ -175,7 +183,7 @@ No ldconfig found. Not loading libcuda libraries.
         volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
         for dependency_path, child_path in dependencies:
             volume_bindings.append('%s:%s:ro' % (
-                dependency_path,
+                os.path.abspath(dependency_path),
                 os.path.join(docker_bundle_path, child_path)))
 
         # Set up the devices.
@@ -195,7 +203,6 @@ No ldconfig found. Not loading libcuda libraries.
             'HostConfig': {
                 'Binds': volume_bindings,
                 'Devices': devices,
-                'ReadonlyRootfs': True,
                 },
         }
         with closing(self._create_connection()) as create_conn:
