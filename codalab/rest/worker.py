@@ -4,6 +4,7 @@ import httplib
 import json
 import os
 import subprocess
+import time
 
 from bottle import abort, get, local, post, put, request, response
 
@@ -136,35 +137,6 @@ def update_bundle_metadata(worker_id, uuid):
     local.model.update_bundle(bundle, {'metadata': metadata_update})
 
 
-@put('/worker/<worker_id>/update_bundle_contents/<uuid:re:%s>' % spec_util.UUID_STR,
-     apply=AuthenticatedPlugin())
-def update_bundle_contents(worker_id, uuid):
-    """
-    Update the contents of the given running bundle.
-
-    Accepts the filename as a query parameter, used to determine whether the
-    upload contains an archive.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-
-    # If this bundle already has data, remove it.
-    if local.upload_manager.has_contents(bundle):
-        local.upload_manager.cleanup_existing_contents(bundle)
-
-    # Store the data.
-    try:
-        local.upload_manager.upload_to_bundle_store(
-            bundle, sources=[(request.query.filename, request['wsgi.input'])],
-            follow_symlinks=False, exclude_patterns=False, remove_sources=False,
-            git=False, unpack=True, simplify_archives=False)
-        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
-    except Exception:
-        if local.upload_manager.has_contents(bundle):
-            local.upload_manager.cleanup_existing_contents(bundle)
-        raise
-
-
 @post('/worker/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def finalize_bundle(worker_id, uuid):
@@ -177,8 +149,24 @@ def finalize_bundle(worker_id, uuid):
     if (local.worker_model.shared_file_system and
         request.user.user_id == local.model.root_user_id):
         # On a shared file system, the worker doesn't upload the contents, so
-        # we need to run this metadata update here. With no shared file system
+        # we need to run a metadata update here. With no shared file system
         # it happens in update_bundle_contents.
+
+        # On the NFS file system the contents of directories are cached, so the
+        # new directory that has been created for the bundle might not appear
+        # right away. We use this loop to check for it. There might be some
+        # inconsistencies in the actual contents due to newly created files not
+        # be seen. Although, that's very unlikely to give a large difference
+        # in the final bundle size.
+        bundle_location = local.bundle_store.get_bundle_location(uuid)
+        for _ in xrange(120):
+            if os.path.exists(bundle_location):
+                break
+            else:
+                time.sleep(1)
+        # If the directory still doesn't exist after 2 minutes, the following
+        # call will return an error.
+
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 
     print 'Finalized bundle %s' % uuid

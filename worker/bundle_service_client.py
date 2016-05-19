@@ -159,7 +159,7 @@ class BundleServiceClient(RestClient):
     def update_bundle_contents(self, worker_id, uuid, path):
         with closing(tar_gzip_directory(path)) as fileobj:
             self._upload_with_chunked_encoding(
-                'PUT', self._worker_url_prefix(worker_id) + '/update_bundle_contents/' + uuid,
+                'PUT', '/bundles/' + uuid + '/contents/blob/',
                 query_params={'filename': 'bundle.tar.gz'}, fileobj=fileobj)
 
     @authorized
@@ -181,7 +181,7 @@ class BundleServiceClient(RestClient):
         Returns a file-like object and a file name.
         """
         response = self._make_request(
-            'GET', '/bundle/' + uuid + '/contents/blob/' + path,
+            'GET', '/bundles/' + uuid + '/contents/blob/' + path,
             headers={'Accept-Encoding': 'gzip'}, return_response=True)
         match = re.match('filename="(.*)"',
                          response.headers['Content-Disposition'])

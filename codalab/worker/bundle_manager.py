@@ -236,7 +236,7 @@ class BundleManager(object):
                 failure_message = 'Worker died'
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
                 self._model.finalize_bundle(bundle, -1, exitcode=None, failure_message=failure_message)
-                workers.unqueue(bundle.uuid)
+                workers.restage(bundle.uuid)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
         """

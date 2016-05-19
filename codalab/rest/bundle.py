@@ -1,14 +1,18 @@
 import httplib
 import mimetypes
 
-from bottle import abort, get, local, request, response
+from bottle import abort, get, local, put, request, response
 
 from codalab.lib import spec_util, zip_util
-from codalab.objects.permission import check_bundles_have_read_permission
+from codalab.objects.permission import (
+    check_bundles_have_all_permission,
+    check_bundles_have_read_permission,
+)
+from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
-@get('/bundle/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
-@get('/bundle/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
 def get_blob(uuid, path=''):
     """
     API to download the contents of a bundle or a subpath within a bundle.
@@ -59,6 +63,36 @@ def get_blob(uuid, path=''):
     response.set_header('Content-Disposition', 'filename="%s"' % filename)
 
     return fileobj
+
+
+@put('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
+     apply=AuthenticatedPlugin())
+def update_blob(uuid):
+    """
+    Update the contents of the given running or uploading bundle.
+
+    Accepts the filename as a query parameter, used to determine whether the
+    upload contains an archive.
+    """
+    check_bundles_have_all_permission(local.model, request.user, [uuid])
+    bundle = local.model.get_bundle(uuid)
+
+    # If this bundle already has data, remove it.
+    if local.upload_manager.has_contents(bundle):
+        local.upload_manager.cleanup_existing_contents(bundle)
+
+    # Store the data.
+    try:
+        local.upload_manager.upload_to_bundle_store(
+            bundle, sources=[(request.query.filename, request['wsgi.input'])],
+            follow_symlinks=False, exclude_patterns=False, remove_sources=False,
+            git=False, unpack=True, simplify_archives=False)
+        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+
+    except Exception:
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
+        raise
 
 
 def request_accepts_gzip_encoding():
