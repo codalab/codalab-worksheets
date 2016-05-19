@@ -1,4 +1,5 @@
 from contextlib import closing
+from subprocess import check_output
 import logging
 import multiprocessing
 import os
@@ -91,7 +92,14 @@ class Worker(object):
         with self._runs_lock:
             if self._runs:
                 return True
-        return False 
+        return False
+
+    def _get_memory_bytes(self):
+        try:
+            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+        except ValueError:
+            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
+            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
 
     def _checkin(self):
         request = {
@@ -100,7 +108,7 @@ class Worker(object):
             'tag': self._tag,
             'slots': self._slots if not self._is_exiting() else 0,
             'cpus': multiprocessing.cpu_count(),
-            'memory_bytes': os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES'),
+            'memory_bytes': self._get_memory_bytes(),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
         response = self._bundle_service.checkin(self.id, request)
