@@ -317,9 +317,9 @@ class JsonApiClient(RestClient):
         """
         url = self._get_resource_path(resource_type)
         params = self._pack_params(params)
-        data = self._pack_document(data, resource_type)
+        doc = self._pack_document(data, resource_type)
         return self._unpack_document(
-            self._make_request('POST', url, query_params=params, data=data))
+            self._make_request('POST', url, query_params=params, data=doc))
 
     @wrap_exception('Unable to update {1}')
     def update(self, resource_type, data, params=None):
@@ -334,30 +334,31 @@ class JsonApiClient(RestClient):
         """
         path = self._get_resource_path(resource_type)
         params = self._pack_params(params)
-        data = self._pack_document(data, resource_type)
-        return self._unpack_document(
-            self._make_request('PATCH', path, query_params=params, data=data))
+        doc = self._pack_document(data, resource_type)
+        result = self._unpack_document(
+            self._make_request('PATCH', path, query_params=params, data=doc))
+        return result if isinstance(data, list) else result[0]
 
     @wrap_exception('Unable to delete {1}')
-    def delete(self, resource_type, resource_id, params=None):
+    def delete(self, resource_type, resource_ids, params=None):
         """
         Request to delete a resource or resources.
 
         :param resource_type: resource type as string
-        :param resource_id: id or list of ids of resources to delete
+        :param resource_ids: id or list of ids of resources to delete
         :param params: dict of query parameters
         :return: response data as dict, but otherwise undefined
         """
         url = self._get_resource_path(resource_type)
-        if not isinstance(resource_id, list):
-            resource_id = [resource_id]
-        data = {
+        if not isinstance(resource_ids, list):
+            resource_ids = [resource_ids]
+        doc = {
             'data': [{
                 'id': id_,
                 'type': resource_type,
-            } for id_ in resource_id],
+            } for id_ in resource_ids],
         }
         params = self._pack_params(params)
         return self._unpack_document(
-            self._make_request('DELETE', url, query_params=params, data=data))
+            self._make_request('DELETE', url, query_params=params, data=doc))
 
