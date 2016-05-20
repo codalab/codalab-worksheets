@@ -147,6 +147,7 @@ class CodaLabManager(object):
         self.state = read_json_or_die(self.state_path)
 
         self.clients = {}  # map from address => client
+        self.rest_clients = {}
 
     def init_config(self, dry_run=False):
         '''
@@ -454,23 +455,42 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
-    def local_client(self):
-        return self.client('local')
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def local_client(self, use_rest=False):
+        return self.client('local', use_rest=use_rest)
 
-    def current_client(self):
-        return self.client(self.session()['address'])
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def current_client(self, use_rest=False):
+        return self.client(self.session()['address'], use_rest=use_rest)
 
-    def client(self, address, is_cli=True):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def client(self, address, is_cli=True, use_rest=False):
         '''
         Return a client given the address.  Note that this can either be called
         by the CLI (is_cli=True) or the server (is_cli=False).
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
-        if address in self.clients:
-            return self.clients[address]
-        # if local force mockauth or if local server use correct auth
-        if is_local_address(address):
+        client_cache = self.rest_clients if use_rest else self.clients
+        if address in client_cache:
+            return client_cache[address]
+        if use_rest:
+            # FIXME(sckoo): Temporary hack
+            # Always use rest-server at localhost for now for testing.
+            # When BundleCLI is no longer dependent on RemoteBundleClient
+            # or LocalBundleClient, simplify everything to only using
+            # JsonApiClient, and remove all use_rest kwargs.
+            # Users should also then update their aliases to point at the
+            # addresses of the REST servers.
+            from codalab.server.auth import RestOAuthHandler
+            from codalab.client.json_api_client import JsonApiClient
+            address = "http://localhost"
+            auth_handler = RestOAuthHandler(address, None)
+            client = JsonApiClient(
+                address, lambda: self.get_access_token(address, auth_handler))
+            self.rest_clients[address] = client
+        elif is_local_address(address):
+            # if local force mockauth or if local server use correct auth
             bundle_store = self.bundle_store()
             model = self.model()
             launch_new_worker_system = self.launch_new_worker_system()
@@ -497,6 +517,69 @@ class CodaLabManager(object):
     def cli_verbose(self):
         return self.config.get('cli', {}).get('verbose')
 
+    def get_access_token(self, address, auth_handler):
+        """
+        Get a valid access token for the REST server at the given address.
+        Tries the following in order:
+        1. checks local token cache for a valid access token
+        2. uses refresh token in cache to fetch a new access token
+        3. prompts user for credentials to fetch a new access token
+
+        :param address: scheme://hostname:port
+        :param auth_handler: AuthHandler for authentication
+        :return: access token
+        """
+        def _cache_token(token_info, username=None):
+            """
+            Helper to update state with new token info and optional username.
+            Returns the latest access token.
+            """
+            # Make sure this is in sync with auth.py.
+            token_info['expires_at'] = time.time() + float(token_info['expires_in'])
+            del token_info['expires_in']
+            auth['token_info'] = token_info
+            if username is not None:
+                auth['username'] = username
+            self.save_state()
+            return token_info['access_token']
+
+        # Check the cache for a valid token
+        auth = self.state['auth'].get(address, {})
+        if 'token_info' in auth:
+            token_info = auth['token_info']
+            expires_at = token_info.get('expires_at', 0.0)
+
+            # If token is not nearing expiration, just return it.
+            if expires_at >= (time.time() + 10 * 60):
+                return token_info['access_token']
+
+            # Otherwise, let's refresh the token.
+            token_info = auth_handler.generate_token(
+                'refresh_token', auth['username'], token_info['refresh_token'])
+            if token_info is not None:
+                return _cache_token(token_info)
+
+        # If we get here, a valid token is not already available.
+        auth = self.state['auth'][address] = {}
+
+        username = None
+        # For a local client with mock credentials, use the default username.
+        if is_local_address(address):
+            username = self.root_user_name()
+            password = ''
+        if not username:
+            print 'Requesting access at %s' % address
+            sys.stdout.write('Username: ')  # Use write to avoid extra space
+            username = sys.stdin.readline().rstrip()
+            password = getpass.getpass()
+
+        token_info = auth_handler.generate_token(
+            'credentials', username, password)
+        if token_info is None:
+            raise PermissionError("Invalid username or password.")
+        return _cache_token(token_info, username)
+
+    # TODO(sckoo): replaced by get_access_token, delete along with BundleClients
     def _authenticate(self, client):
         '''
         Authenticate with the given client. This will prompt user for password
@@ -558,7 +641,8 @@ class CodaLabManager(object):
             raise PermissionError("Invalid username or password.")
         return _cache_token(token_info, username)
 
-    def get_current_worksheet_uuid(self):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def get_current_worksheet_uuid(self, use_rest=False):
         '''
         Return a worksheet_uuid for the current worksheet, or None if there is none.
 
@@ -566,10 +650,11 @@ class CodaLabManager(object):
         across multiple invocations in the same shell.
         '''
         session = self.session()
-        client = self.client(session['address'])
+        client = self.client(session['address'], use_rest=use_rest)
+        bundle_client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
         if not worksheet_uuid:
-            worksheet_uuid = client.get_worksheet_uuid(None, '')
+            worksheet_uuid = bundle_client.get_worksheet_uuid(None, '')
         return (client, worksheet_uuid)
 
     def set_current_worksheet_uuid(self, client, worksheet_uuid):
