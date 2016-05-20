@@ -191,6 +191,10 @@ class JsonApiClient(RestClient):
                     obj[key] = unpack_linkage(linkage)
             return obj
 
+        # No response data
+        if document is None:
+            return None
+
         # Load included resources into dict indexed by (type, id)
         included = {
             (resource['type'], resource['id']): resource
