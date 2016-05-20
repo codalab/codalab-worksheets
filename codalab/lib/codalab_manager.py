@@ -147,6 +147,7 @@ class CodaLabManager(object):
         self.state = read_json_or_die(self.state_path)
 
         self.clients = {}  # map from address => client
+        self.rest_clients = {}
 
     def init_config(self, dry_run=False):
         '''
@@ -436,23 +437,42 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
-    def local_client(self):
-        return self.client('local')
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def local_client(self, use_rest=False):
+        return self.client('local', use_rest=use_rest)
 
-    def current_client(self):
-        return self.client(self.session()['address'])
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def current_client(self, use_rest=False):
+        return self.client(self.session()['address'], use_rest=use_rest)
 
-    def client(self, address, is_cli=True):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def client(self, address, is_cli=True, use_rest=False):
         '''
         Return a client given the address.  Note that this can either be called
         by the CLI (is_cli=True) or the server (is_cli=False).
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
-        if address in self.clients:
-            return self.clients[address]
-        # if local force mockauth or if local server use correct auth
-        if is_local_address(address):
+        client_cache = self.rest_clients if use_rest else self.clients
+        if address in client_cache:
+            return client_cache[address]
+        if use_rest:
+            # FIXME(sckoo): Temporary hack
+            # Always use rest-server at localhost for now for testing.
+            # When BundleCLI is no longer dependent on RemoteBundleClient
+            # or LocalBundleClient, simplify everything to only using
+            # JsonApiClient, and remove all use_rest kwargs.
+            # Users should also then update their aliases to point at the
+            # addresses of the REST servers.
+            from codalab.server.auth import RestOAuthHandler
+            from codalab.client.json_api_client import JsonApiClient
+            address = "http://localhost"
+            auth_handler = RestOAuthHandler(address, None)
+            client = JsonApiClient(
+                address, lambda: self.get_access_token(address, auth_handler))
+            self.rest_clients[address] = client
+        elif is_local_address(address):
+            # if local force mockauth or if local server use correct auth
             bundle_store = self.bundle_store()
             model = self.model()
             worker_model = self.worker_model()
@@ -543,7 +563,8 @@ class CodaLabManager(object):
             raise PermissionError("Invalid username or password.")
         return _cache_token(token_info, username)
 
-    def get_current_worksheet_uuid(self):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def get_current_worksheet_uuid(self, use_rest=False):
         '''
         Return a worksheet_uuid for the current worksheet, or None if there is none.
 
@@ -551,10 +572,11 @@ class CodaLabManager(object):
         across multiple invocations in the same shell.
         '''
         session = self.session()
-        client = self.client(session['address'])
+        client = self.client(session['address'], use_rest=use_rest)
+        bundle_client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
         if not worksheet_uuid:
-            worksheet_uuid = client.get_worksheet_uuid(None, '')
+            worksheet_uuid = bundle_client.get_worksheet_uuid(None, '')
         return (client, worksheet_uuid)
 
     def set_current_worksheet_uuid(self, client, worksheet_uuid):
