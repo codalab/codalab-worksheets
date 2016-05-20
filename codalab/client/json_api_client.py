@@ -3,8 +3,8 @@ import socket
 import sys
 import urllib2
 
-from codalab.client.rest_client import RestClient, RestClientException
 from codalab.common import http_error_to_exception, UsageError
+from worker.rest_client import RestClient, RestClientException
 
 
 def wrap_exception(message):
@@ -15,6 +15,7 @@ def wrap_exception(message):
             except urllib2.HTTPError as e:
                 # Translate known errors to the standard CodaLab errors
                 exc = http_error_to_exception(e.code, e.read())
+                # All standard CodaLab errors are subclasses of UsageError
                 if isinstance(exc, UsageError):
                     raise exc.__class__, exc, sys.exc_info()[2]
                 else:

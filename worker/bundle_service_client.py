@@ -10,7 +10,7 @@ import time
 import urllib
 import urllib2
 
-from codalab.client.rest_client import RestClient, RestClientException
+from rest_client import RestClient, RestClientException
 from file_util import tar_gzip_directory
 
 
@@ -45,13 +45,6 @@ class BundleServiceException(RestClientException):
     client_error is False, the failure is caused by a server-side error and
     can be retried.
     """
-
-
-def authorized(f):
-    def wrapper(bundle_service_client, *args, **kwargs):
-        bundle_service_client._check_authorization()
-        return f(bundle_service_client, *args, **kwargs)
-    return wrapper
 
 
 class BundleServiceClient(RestClient):
@@ -105,27 +98,23 @@ class BundleServiceClient(RestClient):
     def _worker_url_prefix(self, worker_id):
         return '/worker/' + urllib.quote(worker_id)
 
-    @authorized
     @wrap_exception('Unable to check in with bundle service')
     def checkin(self, worker_id, request_data):
         return self._make_request(
             'POST', self._worker_url_prefix(worker_id) + '/checkin',
             data=request_data)
 
-    @authorized
     @wrap_exception('Unable to check out from bundle service')
     def checkout(self, worker_id):
         return self._make_request(
             'POST', self._worker_url_prefix(worker_id) + '/checkout')
 
-    @authorized
     @wrap_exception('Unable to reply to message from bundle service')
     def reply(self, worker_id, socket_id, message):
         self._make_request(
             'POST', self._worker_url_prefix(worker_id) + '/reply/' + str(socket_id),
             data=message)
 
-    @authorized
     @wrap_exception('Unable to reply to message from bundle service')
     def reply_data(self, worker_id, socket_id, header_message, fileobj_or_string):
         method = 'POST'
@@ -140,21 +129,18 @@ class BundleServiceClient(RestClient):
             self._upload_with_chunked_encoding(
                 method, url, query_params, fileobj_or_string)
 
-    @authorized
     @wrap_exception('Unable to start bundle in bundle service')
     def start_bundle(self, worker_id, uuid, request_data):
         return self._make_request(
             'POST', self._worker_url_prefix(worker_id) + '/start_bundle/' + uuid,
             data=request_data)
 
-    @authorized
     @wrap_exception('Unable to update bundle metadata in bundle service')
     def update_bundle_metadata(self, worker_id, uuid, new_metadata):
         self._make_request(
             'PUT', self._worker_url_prefix(worker_id) + '/update_bundle_metadata/' + uuid,
             data=new_metadata)
 
-    @authorized
     @wrap_exception('Unable to update bundle contents in bundle service')
     def update_bundle_contents(self, worker_id, uuid, path):
         with closing(tar_gzip_directory(path)) as fileobj:
@@ -162,7 +148,6 @@ class BundleServiceClient(RestClient):
                 'PUT', '/bundles/' + uuid + '/contents/blob/',
                 query_params={'filename': 'bundle.tar.gz'}, fileobj=fileobj)
 
-    @authorized
     @wrap_exception('Unable to finalize bundle in bundle service')
     def finalize_bundle(self, worker_id, uuid, request_data):
         self._make_request(
@@ -174,7 +159,6 @@ class BundleServiceClient(RestClient):
         return self._make_request(
             'GET', '/worker/code.tar.gz', return_response=True, authorized=False)
 
-    @authorized
     @wrap_exception('Unable to get bundle contents from bundle service')
     def get_bundle_contents(self, uuid, path):
         """

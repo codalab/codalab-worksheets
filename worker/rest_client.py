@@ -1,4 +1,5 @@
 from contextlib import closing
+from cStringIO import StringIO
 import httplib
 import json
 import urllib
@@ -90,6 +91,10 @@ class RestClient(object):
             # Read the response.
             response = conn.getresponse()
             if response.status != 200:
-                raise RestClientException(
-                    httplib.responses[response.status] + ' - ' + response.read(),
-                    response.status >= 400 and response.status < 500)
+                # Low-level httplib module doesn't throw HTTPErrors
+                raise urllib2.HTTPError(
+                    self._base_url + url,
+                    response.status,
+                    response.reason,
+                    dict(response.getheaders()),
+                    StringIO(response.read()))
