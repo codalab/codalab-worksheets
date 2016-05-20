@@ -9,6 +9,7 @@ import json
 from oauthlib.common import generate_token
 import random
 import shlex
+import threading
 
 from bottle import (
   abort,
@@ -52,6 +53,7 @@ class BundleService(object):
     def __init__(self):
         self.client = LocalBundleClient(
             'local', local.bundle_store, local.model,
+            local.launch_new_worker_system, local.worker_model,
             local.upload_manager, local.download_manager,
             LocalUserAuthHandler(request.user, local.model), verbose=0)
 
@@ -172,13 +174,13 @@ class BundleService(object):
         Otherwise, get stdout and stderr.
         For each file, return a truncated version.
         """
-        def get_summary(info, name):
+        def get_summary(download_manager, info, name):
             if info['type'] == 'file':
                 TRUNCATION_TEXT = (
                     '\n'
                     '... Truncated. Click link above to see full file. ...\n'
                     '\n')
-                contents = local.download_manager.summarize_file(
+                contents = download_manager.summarize_file(
                     uuid, name,
                     num_head_lines=50, num_tail_lines=50, max_line_length=128,
                     truncation_text=TRUNCATION_TEXT, gzipped=False)
@@ -191,15 +193,29 @@ class BundleService(object):
             return {}
 
         if info['type'] == 'file' or info['type'] == 'link':
-            info['file_contents'] = get_summary(info, '')
+            info['file_contents'] = get_summary(local.download_manager, info, '')
         elif info['type'] == 'directory':
-            # Read contents of stdout and stderr.
+            # Read contents of stdout and stderr, in parallel since when
+            # fetching the data from a worker the read can be slow.
             info['stdout'] = None
             info['stderr'] = None
+
+            info_lock = threading.Lock()
+            def get_and_update_summary(download_manager, item, name):
+                result = get_summary(download_manager, item, name)
+                with info_lock:
+                    info[name] = result
+
+            read_threads = []            
             for item in info['contents']:
                 name = item['name']
                 if name in ['stdout', 'stderr'] and (item['type'] == 'file' or item['type'] == 'link'):
-                    info[name] = get_summary(item, name)
+                    th = threading.Thread(target=get_and_update_summary, args=[local.download_manager, item, name])
+                    th.start()
+                    read_threads.append(th)
+
+            for th in read_threads:
+                th.join()
         return info
 
     def get_top_level_contents(self, target):
@@ -495,7 +511,7 @@ def post_bundle_info(uuid):
 
         # TODO: do this generally based on the CLI specs.
         # Remove generated fields.
-        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated']:
+        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated', 'run_status', 'job_handle']:
             if key in new_metadata:
                 del new_metadata[key]
 

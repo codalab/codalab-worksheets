@@ -12,9 +12,9 @@ class DependencyManager(object):
     runs download the same dependency at the same time. Ensures that the total
     size of all the dependencies doesn't exceed the given limit.
     """
-    def __init__(self, work_dir, max_work_dir_size_mb):
+    def __init__(self, work_dir, max_work_dir_size_bytes):
         self._work_dir = work_dir
-        self._max_work_dir_size_mb = max_work_dir_size_mb
+        self._max_work_dir_size_bytes = max_work_dir_size_bytes
         self._state_file = os.path.join(work_dir, 'state.json')
         self._lock = threading.Lock()
         self._stop_cleanup = False
@@ -66,7 +66,7 @@ class DependencyManager(object):
         while not self._should_stop_cleanup():
             while True:
                 # If the total size of all dependencies exceeds
-                # self._max_work_dir_size_mb, remove the oldest unused
+                # self._max_work_dir_size_bytes, remove the oldest unused
                 # dependency. Otherwise, break out of the loop.
                 total_size_bytes = 0
                 first_used_time = float('inf')
@@ -93,7 +93,7 @@ class DependencyManager(object):
                         first_used_target = target
                 self._lock.release()
 
-                if (total_size_bytes > self._max_work_dir_size_mb * 1024 * 1024 and
+                if (total_size_bytes > self._max_work_dir_size_bytes and
                     first_used_target is not None):
                     with self._lock:
                         dependency = self._dependencies[first_used_target]

@@ -46,7 +46,6 @@ from codalab.lib import (
 from codalab.model.util import LikeQuery
 from codalab.model.tables import (
     bundle as cl_bundle,
-    bundle_contents_index as cl_bundle_contents_index,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
     bundle_action as cl_bundle_action,
@@ -68,6 +67,7 @@ from codalab.model.tables import (
     oauth2_client,
     oauth2_token,
     oauth2_auth_code,
+    worker_run as cl_worker_run,
     db_metadata,
 )
 from codalab.objects.worksheet import (
@@ -593,6 +593,149 @@ class BundleModel(object):
                 return success
         return True
 
+    def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
+        '''
+        Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle
+        and last_updated metadata. 
+        '''
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return
+
+            bundle_update = {
+                'state': State.WAITING_FOR_WORKER_STARTUP,
+                'metadata': {
+                     'job_handle': job_handle,
+                     'last_updated': int(time.time())
+                },
+            } 
+            self.update_bundle(bundle, bundle_update, connection)
+
+    def set_starting_bundle(self, bundle, user_id, worker_id):
+        '''
+        Sets the bundle to STARTING, updating the last_updated metadata. Adds
+        a worker_run row that tracks which worker will run the bundle.
+        '''
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return False
+
+            bundle_update = {
+                'state': State.STARTING,
+                'metadata': {
+                    'last_updated': int(time.time()),
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+
+            worker_run_row = {
+                'user_id': user_id,
+                'worker_id': worker_id,
+                'run_uuid': bundle.uuid,
+            }
+            connection.execute(cl_worker_run.insert().values(worker_run_row))
+
+            return True
+
+    def restage_bundle(self, bundle):
+        '''
+        Sets a bundle back from STARTING to STAGED, returning False if the
+        bundle was not in STARTING state. Clears the job_handle metadata and
+        removes the worker_run row.
+        '''
+        with self.engine.begin() as connection:
+            # Make sure it's still queued.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
+            if row.state != State.STARTING:
+                # It is possible that this method is called on a bundle
+                # that has started running.
+                return False
+
+            update_message = {
+                'state': State.STAGED,
+                'metadata': {
+                    'job_handle': None, 
+                },
+            }
+            self.update_bundle(bundle, update_message, connection)
+            connection.execute(
+                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
+
+            return True
+
+    def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+        '''
+        Marks the bundle as running but only if it is still scheduled to run
+        on the given worker (done by checking the worker_run table). Returns
+        True if it is. Updates a few metadata fields and the events log.
+        '''
+        with self.engine.begin() as connection:
+            # Check that still assigned to this worker.
+            run_row = connection.execute(
+                cl_worker_run.select().where(cl_worker_run.c.run_uuid == bundle.uuid)).fetchone()
+            if not run_row or run_row.user_id != user_id or run_row.worker_id != worker_id:
+                return False
+
+            bundle_update = {
+                'state': State.RUNNING,
+                'metadata': {
+                    'remote': hostname,
+                    'started': start_time,
+                    'last_updated': start_time,
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+
+        self.update_events_log(
+            user_id=bundle.owner_id,
+            user_name=None,  # Don't know
+            command='start_bundle',
+            args=(bundle.uuid),
+            uuid=bundle.uuid)
+
+        return True
+
+    def finalize_bundle(self, bundle, user_id, exitcode, failure_message):
+        '''
+        Marks the bundle as READY / FAILED, updating a few metadata fields, the
+        events log and removing the worker_run row. Additionally, if the user
+        running the bundle was the CodaLab root user, increments the time
+        used by the bundle owner.
+        '''
+        state = State.FAILED if failure_message or exitcode else State.READY
+        if failure_message is None and exitcode is not None and exitcode != 0:
+            failure_message = 'Exit code %d' % exitcode
+        with self.engine.begin() as connection:
+            bundle_update = {
+                'state': state,
+                'metadata': {
+                    'exitcode': exitcode,
+                    'failure_message': failure_message,
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+            connection.execute(
+                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
+
+        if user_id == self.root_user_id:
+            self.increment_user_time_used(bundle.owner_id,
+                                          getattr(bundle.metadata, 'time', 0))
+
+        self.update_events_log(
+            user_id=bundle.owner_id,
+            user_name=None,  # Don't know
+            command='finalize_bundle',
+            args=(bundle.uuid, state, bundle.metadata.to_dict()),
+            uuid=bundle.uuid)
+
     def add_bundle_action(self, uuid, action):
         with self.engine.begin() as connection:
             connection.execute(cl_bundle_action.insert().values({'bundle_uuid': uuid, 'action': action}))
@@ -620,8 +763,7 @@ class BundleModel(object):
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
                 bundle.id = result.lastrowid
 
-
-    def update_bundle(self, bundle, update):
+    def update_bundle(self, bundle, update, connection=None):
         '''
         Update a bundle's columns and metadata in the database and in memory.
         The update is done as a diff: columns that do not appear in the update dict
@@ -650,13 +792,25 @@ class BundleModel(object):
               row_dict for row_dict in bundle.to_dict().pop('metadata')
               if row_dict['metadata_key'] in metadata_update
             ]
+
         # Perform the actual updates.
-        with self.engine.begin() as connection:
+        def do_update(connection):
             if update:
                 connection.execute(cl_bundle.update().where(clause).values(update))
             if metadata_update:
                 connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+        if connection:
+            do_update(connection)
+        else:
+            with self.engine.begin() as connection:
+                do_update(connection)
+
+    def get_bundle_state(self, uuid):
+        result_dict = self.get_bundle_states([uuid])
+        if uuid not in result_dict:
+            raise UsageError('Could not find bundle with uuid %s' % uuid)
+        return result_dict[uuid]
 
     def get_bundle_states(self, uuids):
         '''
@@ -685,9 +839,6 @@ class BundleModel(object):
             connection.execute(cl_bundle_dependency.delete().where(
                 cl_bundle_dependency.c.child_uuid.in_(uuids)
             ))
-            connection.execute(cl_bundle_contents_index.delete().where(
-                cl_bundle_contents_index.c.bundle_uuid.in_(uuids)
-            ))
             connection.execute(cl_bundle.delete().where(
                 cl_bundle.c.uuid.in_(uuids)
             ))
@@ -695,75 +846,6 @@ class BundleModel(object):
     def remove_data_hash_references(self, uuids):
         with self.engine.begin() as connection:
             connection.execute(cl_bundle.update().where(cl_bundle.c.uuid.in_(uuids)).values({'data_hash': None}))
-
-    def update_bundle_contents_index(self, uuid, index):
-        """
-        Deletes the old contents of the index, and updates them with the new
-        values.
-
-        For reference on the format of index, see
-        worker.file_util.index_contents.
-        """
-        rows = []
-        def recurse(entry, parent_path):
-            entry['bundle_uuid'] = uuid
-            entry['path'] = os.path.join(parent_path, entry['name'])
-            del entry['name']
-            if 'contents' in entry:
-                for child_entry in entry['contents']:
-                    recurse(child_entry, entry['path'])
-                del entry['contents']
-            if 'link' not in entry:
-                entry['link'] = None
-            rows.append(entry)
-        index_copy = copy.deepcopy(index)
-        if index_copy['name'] != uuid:
-            raise UsageError(
-                'Valid indices have the directory with the name as the UUID '
-                'being the top-level directory.')
-        # Clear the top-level name to save space in the database.
-        index_copy['name'] = ''
-        recurse(index_copy, '/')
-        with self.engine.begin() as connection:
-            connection.execute(cl_bundle_contents_index.delete().where(
-                cl_bundle_contents_index.c.bundle_uuid == uuid
-            ))
-            self.do_multirow_insert(connection, cl_bundle_contents_index, rows)
-
-    def get_bundle_contents_index(self, uuid):
-        """
-        For reference on the format of the returned index, see
-        worker.file_util.index_contents.
-        """
-        with self.engine.begin() as connection:
-            # Sort so that all directories appear before the files inside them.
-            rows = connection.execute(
-                cl_bundle_contents_index.select()
-                    .where(cl_bundle_contents_index.c.bundle_uuid == uuid)
-                    .order_by(cl_bundle_contents_index.c.path)
-            ).fetchall()
-
-        if not rows:
-            return None
-
-        directories = {}
-        for row in rows:
-            result = str_key_dict(row)
-            del result['bundle_uuid']
-            del result['path']
-            if result['link'] is None:
-                del result['link']
-            if row.path == '/':
-                result['name'] = uuid
-                if row.type != 'directory':
-                    return result
-            else:
-                result['name'] = os.path.basename(row.path)
-                directories[os.path.dirname(row.path)]['contents'].append(result)
-            if row.type == 'directory':
-                result['contents'] = []
-                directories[row.path] = result
-        return directories['/']
 
     #############################################################################
     # Worksheet-related model methods follow!
@@ -1708,10 +1790,9 @@ class BundleModel(object):
 
     def get_verification_key(self, user_id):
         """
-        Get verification key again for given user.
+        Get verification key for given user.
+        If one does not exist yet, create one and return it.
         Updates the "date_sent" field of the verification key to the current date.
-        Note: we can also choose to refresh the verification key itself too in the future
-        if that is more secure.
 
         :param user_id: id of user to get verification key for
         :return: verification key, or None if none found for user
@@ -1722,16 +1803,24 @@ class BundleModel(object):
             ).limit(1)).fetchone()
 
             if verify_row is None:
-                return None
+                key = uuid.uuid4().hex
+                now = datetime.datetime.utcnow()
+                connection.execute(cl_user_verification.insert().values({
+                    "user_id": user_id,
+                    "date_created": now,
+                    "date_sent": now,
+                    "key": key,
+                }))
+            else:
+                key = verify_row.key
+                # Update date sent
+                connection.execute(cl_user_verification.update().where(
+                    cl_user_verification.c.user_id == user_id
+                ).values({
+                    "date_sent": datetime.datetime.utcnow(),
+                }))
 
-            # Update date sent
-            connection.execute(cl_user_verification.update().where(
-                cl_user_verification.c.user_id == user_id
-            ).values({
-                "date_sent": datetime.datetime.utcnow(),
-            }))
-
-        return verify_row.key
+        return key
 
     def verify_user(self, key):
         """
