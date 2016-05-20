@@ -1223,21 +1223,12 @@ class BundleModel(object):
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
 
-    def list_groups(self, owner_id):
-        '''
-        Return a list of row dicts --one per group-- for the given owner.
-        '''
-        with self.engine.begin() as connection:
-            rows = connection.execute(cl_group.select().where(
-                cl_group.c.owner_id == owner_id
-            )).fetchall()
-        return [str_key_dict(row) for row in sorted(rows, key=lambda row: row.id)]
-
     def create_group(self, group_dict):
         '''
         Create the group specified by the given row dict.
         '''
         with self.engine.begin() as connection:
+            group_dict['uuid'] = spec_util.generate_uuid()
             result = connection.execute(cl_group.insert().values(group_dict))
             group_dict['id'] = result.lastrowid
         return group_dict
@@ -1350,7 +1341,7 @@ class BundleModel(object):
 
     def update_user_in_group(self, user_id, group_uuid, is_admin):
         '''
-        Add user as a member of a group.
+        Update user role in group.
         '''
         with self.engine.begin() as connection:
             connection.execute(cl_user_group.update().\
@@ -1450,7 +1441,7 @@ class BundleModel(object):
             ).fetchall()
             result = collections.defaultdict(list)  # object_uuid => list of rows
             for row in rows:
-                result[row.object_uuid].append({'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
+                result[row.object_uuid].append({'id': row.id, 'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
             return result
     def batch_get_group_bundle_permissions(self, user_id, bundle_uuids):
         return self.batch_get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuids)

@@ -20,6 +20,8 @@ from codalab.model.tables import (
 )
 from codalab.model.util import LikeQuery
 
+
+# TODO(sckoo): delete when REST API is complete
 class Group(ORMObject):
     '''
     Defines a group object which is used to assign permissions to a set of users.
@@ -48,6 +50,7 @@ class Group(ORMObject):
 
 ############################################################
 
+# TODO(sckoo): delete when REST API is complete
 def unique_group(model, group_spec, user_id):
     '''
     Return a group_info corresponding to |group_spec|.
@@ -68,6 +71,7 @@ def unique_group(model, group_spec, user_id):
         search = search_user
     return get_single_group(model, group_spec, search)
 
+# TODO(sckoo): delete when REST API is complete
 def get_single_group(model, group_spec, search_fn):
     '''
     Helper function.
@@ -152,9 +156,14 @@ def permission_str(permission):
     raise UsageError("Invalid permission: %s" % permission)
 
 # [{'group_name':'a', 'permission:1}, {'group_name':'b', 'permission':2}] => 'a:read,b:all'
-def group_permissions_str(group_permissions):
+def group_permissions_str(group_permissions, use_rest=False):
     if len(group_permissions) == 0:
         return '-'
-    return ','.join(
-            '%s(%s):%s' % (row['group_name'], row['group_uuid'][0:8], permission_str(row['permission']))
-    for row in group_permissions)
+    if use_rest:
+        return ','.join(
+            '%s(%s):%s' % (row['group_name'], row['group']['id'][0:8], permission_str(row['permission']))
+            for row in group_permissions)
+    else:
+        return ','.join(
+                '%s(%s):%s' % (row['group_name'], row['group_uuid'][0:8], permission_str(row['permission']))
+        for row in group_permissions)
