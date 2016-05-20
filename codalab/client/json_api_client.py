@@ -3,7 +3,11 @@ import socket
 import sys
 import urllib2
 
-from codalab.common import http_error_to_exception, UsageError
+from codalab.client.bundle_client import BundleClient
+from codalab.common import (
+    http_error_to_exception,
+    UsageError,
+)
 from worker.rest_client import RestClient, RestClientException
 
 
@@ -64,12 +68,18 @@ class JsonApiRelationship(object):
         self.id_ = id_
 
 
-class JsonApiClient(RestClient):
+class JsonApiClient(RestClient, BundleClient):
     """
     Simple JSON API client.
     """
-    def __init__(self, address, authenticate):
+    def __init__(self, address, auth_handler, authenticate):
         self._authenticate = authenticate
+
+        # Used by CodaLabManager to look up the associated server address
+        self.address = address
+
+        # Used by BundleClient.login(), which is called by CodaLabManager._authenticate()
+        self.auth_handler = auth_handler
 
         base_url = address + '/rest'
         super(JsonApiClient, self).__init__(base_url)
