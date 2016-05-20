@@ -19,6 +19,7 @@ def wrap_exception(message):
                 if isinstance(exc, UsageError):
                     raise exc.__class__, exc, sys.exc_info()[2]
                 else:
+                    # Shunt other exceptions into one class
                     raise JsonApiException, \
                         JsonApiException(message.format(*args, **kwargs) +
                                          ': ' + httplib.responses[e.code] +
@@ -200,9 +201,9 @@ class JsonApiClient(RestClient):
         try:
             data = document.get('data', None)
             if isinstance(data, list):
-                result = [unpack_object(d) for d in document['data']]
+                result = [unpack_object(d) for d in data]
             elif isinstance(data, dict):
-                result = unpack_object(document['data'])
+                result = unpack_object(data)
             else:
                 result = {}
         except KeyError:
@@ -341,6 +342,7 @@ class JsonApiClient(RestClient):
                 path=self._get_resource_path(resource_type),
                 query_params=self._pack_params(params),
                 data=self._pack_document(data, resource_type)))
+        # Return list iff original data was list
         return result if isinstance(data, list) else result[0]
 
     @wrap_exception('Unable to delete {1}')

@@ -65,14 +65,13 @@ class RestClient(object):
     def _upload_with_chunked_encoding(self, method, url, query_params, fileobj):
         # Start the request.
         parsed_base_url = urlparse.urlparse(self._base_url)
+        path = url + '?' + urllib.urlencode(query_params)
         if parsed_base_url.scheme == 'http':
             conn = httplib.HTTPConnection(parsed_base_url.netloc)
         else:
             conn = httplib.HTTPSConnection(parsed_base_url.netloc)
         with closing(conn):
-            conn.putrequest(
-                method, parsed_base_url.path + url + '?' + urllib.urlencode(
-                    query_params))
+            conn.putrequest(method, parsed_base_url.path + path)
 
             # Set headers.
             conn.putheader('Authorization', 'Bearer ' + self._get_access_token())
@@ -91,9 +90,9 @@ class RestClient(object):
             # Read the response.
             response = conn.getresponse()
             if response.status != 200:
-                # Low-level httplib module doesn't throw HTTPErrors
+                # Low-level httplib module doesn't throw HTTPError
                 raise urllib2.HTTPError(
-                    self._base_url + url,
+                    self._base_url + path,
                     response.status,
                     response.reason,
                     dict(response.getheaders()),
