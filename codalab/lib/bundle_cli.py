@@ -1188,6 +1188,7 @@ class BundleCLI(object):
             '  search <keyword> ... <keyword> : Match name and description.',
             '  search name=<name>             : More targeted search of using metadata fields.',
             '  search size=.sort              : Sort by a particular field.',
+            '  search size=.sort-             : Sort by a particular field in reverse.',
             '  search size=.sum               : Compute total of a particular field.',
             '  search .mine                   : Match only bundles I own.',
             '  search .floating               : Match bundles that aren\'t on any worksheet.',
