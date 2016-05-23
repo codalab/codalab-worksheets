@@ -199,12 +199,13 @@ No ldconfig found. Not loading libcuda libraries.
         create_request = {
             'Cmd': ['bash', '-c', '; '.join(docker_commands)],
             'Image': docker_image,
-            'NetworkDisabled': not request_network,
             'HostConfig': {
                 'Binds': volume_bindings,
                 'Devices': devices,
                 },
         }
+        if not request_network:
+            create_request['HostConfig']['NetworkMode'] = 'none'
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',
                                 json.dumps(create_request),
