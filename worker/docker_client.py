@@ -312,5 +312,5 @@ class DockerUnixConnection(httplib.HTTPConnection, object):
  
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.settimeout(60)
+        self.sock.settimeout(300)
         self.sock.connect('//var/run/docker.sock')
