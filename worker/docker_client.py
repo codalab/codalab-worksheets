@@ -154,6 +154,7 @@ No ldconfig found. Not loading libcuda libraries.
                         request_network, dependencies):
         # Set up the command.
         docker_bundle_path = '/' + uuid
+        docker_dependencies_path = '/' + uuid + '_dependencies'
         docker_commands = [
             'ldconfig',
             'BASHRC=$(pwd)/.bashrc',
@@ -182,9 +183,12 @@ No ldconfig found. Not loading libcuda libraries.
                 libcuda_file, os.path.basename(libcuda_file)))
         volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
         for dependency_path, child_path in dependencies:
+            bundle_dependency_path = os.path.join(bundle_path, child_path)
+            docker_dependency_path = os.path.join(docker_dependencies_path, child_path)
             volume_bindings.append('%s:%s:ro' % (
                 os.path.abspath(dependency_path),
-                os.path.join(docker_bundle_path, child_path)))
+                docker_dependency_path))
+            os.symlink(docker_dependency_path, bundle_dependency_path)
 
         # Set up the devices.
         devices = []

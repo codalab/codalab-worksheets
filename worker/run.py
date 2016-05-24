@@ -126,6 +126,12 @@ class Run(object):
                         dep['parent_uuid'], dep['parent_path'], self._uuid,
                         check_killed)
 
+                child_path = os.path.normpath(
+                    os.path.join(self._bundle_path, dep['child_path']))
+                if not child_path.startswith(self._bundle_path):
+                    raise Exception('Invalid key for dependency: %s' % (
+                        dep['child_path']))
+
                 dependencies.append((dependency_path, dep['child_path']))
 
             def do_start():
@@ -351,11 +357,10 @@ class Run(object):
                 if not self._worker.shared_file_system:
                     self._worker.remove_dependency(
                         dep['parent_uuid'], dep['parent_path'], self._uuid)
-                # Docker creates files for each mounted volume. Delete them.
-                child_path = os.path.realpath(
-                    os.path.join(self._bundle_path, dep['child_path']))
-                if child_path.startswith(self._bundle_path):
-                    remove_path(child_path)
+                # The DockerClient creates symlinks for dependencies. Delete
+                # them.
+                child_path = os.path.join(self._bundle_path, dep['child_path'])
+                remove_path(child_path)
 
             if not self._worker.shared_file_system:
                 logger.debug('Uploading results for run with UUID %s', self._uuid)
