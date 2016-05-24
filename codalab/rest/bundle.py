@@ -1,6 +1,5 @@
 import httplib
 import mimetypes
-import re
 import os
 import sys
 import time
@@ -36,6 +35,7 @@ from codalab.rest.users import UserSchema
 from codalab.rest.util import (
     check_worksheet_not_frozen,
     get_bundle_infos,
+    get_resource_ids,
     resolve_bundle_specs,
     resolve_owner_in_keywords,
 )
@@ -200,7 +200,7 @@ UPDATE_RESTRICTED_FIELDS = ('command', 'data_hash', 'state', 'dependencies',
 #############################################################
 
 
-@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=[AuthenticatedPlugin(), JsonApiPlugin()])
+@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
 def fetch_bundle(uuid):
     document = fetch_bundles_helper([uuid])
     document['data'] = document['data'][0]
@@ -217,15 +217,18 @@ def fetch_bundles():
     worksheet_uuid = request.query.get('worksheet')
 
     if keywords:
+        # Handle search keywords
         keywords = resolve_owner_in_keywords(keywords)
         bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, worksheet_uuid, keywords)
     elif specs:
+        # Resolve bundle specs
         bundle_uuids = resolve_bundle_specs(worksheet_uuid, specs)
     else:
         abort(httplib.BAD_REQUEST,
-              "Request must include either 'keywords' or'specs' query parameter")
+              "Request must include either 'keywords' "
+              "or 'specs' query parameter")
 
-    # Direct result (e.g. .sum or .count queries)
+    # Scalar result (e.g. .sum or .count queries)
     if not isinstance(bundle_uuids, list):
         return json_api_meta({}, {'result': bundle_uuids})
 
@@ -233,13 +236,12 @@ def fetch_bundles():
 
 
 def fetch_bundles_helper(bundle_uuids):
-    include = set(query_get_list('include'))
     descendant_depth = query_get_type(int, 'list-descendants', None)
 
     bundles_dict = get_bundle_infos(
         bundle_uuids,
         get_children=True,
-        get_permissions=('bundle-permissions' in include),
+        get_permissions=True,
         get_host_worksheets=True,
     )
 
@@ -252,24 +254,27 @@ def fetch_bundles_helper(bundle_uuids):
     # Build response document
     document = BundleSchema(many=True).dump(bundles).data
 
+    # Shim in editable metadata keys
+    # Used by the front-end application
     for bundle, data in zip(bundles, document['data']):
         json_api_meta(data, {
             'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
                 get_bundle_subclass(bundle['bundle_type']))
         })
 
-    if 'users' in include:
-        owner_ids = set(b['owner_id'] for b in bundles)
-        json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
+    # Include users
+    owner_ids = set(b['owner_id'] for b in bundles)
+    json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
 
-    if 'bundle-permissions' in include:
-        for bundle in bundles:
-            json_api_include(document, BundlePermissionSchema(), bundle['group_permissions'])
+    # Include permissions
+    for bundle in bundles:
+        json_api_include(document, BundlePermissionSchema(), bundle['group_permissions'])
 
-    if 'bundles' in include:
-        children_uuids = set(uuid for bundle in bundles for uuid in bundle['children'])
-        json_api_include(document, BundleSchema(), get_bundle_infos(children_uuids).values())
+    # Include child bundles
+    children_uuids = set(uuid for bundle in bundles for uuid in bundle['children'])
+    json_api_include(document, BundleSchema(), get_bundle_infos(children_uuids).values())
 
+    # Include descendant ids
     if descendant_depth is not None:
         descendant_ids = local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth)
         json_api_meta(document, {'descendant_ids': descendant_ids})
@@ -277,7 +282,7 @@ def fetch_bundles_helper(bundle_uuids):
     return document
 
 
-@post('/bundles', apply=[AuthenticatedPlugin(), JsonApiPlugin()])
+@post('/bundles', apply=AuthenticatedPlugin())
 def create_bundles():
     many = isinstance(request.json['data'], list)
     bundles = BundleSchema(
@@ -352,18 +357,7 @@ def create_bundles_helper(bundles):
     return [bundles_dict[uuid] for uuid in created_uuids]
 
 
-@patch('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=[AuthenticatedPlugin(), JsonApiPlugin()])
-def update_bundle(uuid):
-    bundle_update = BundleSchema(
-        strict=True,
-        dump_only=UPDATE_RESTRICTED_FIELDS,
-    ).load(request.json, partial=True).data
-    bundle_update['uuid'] = uuid
-    bundle = update_bundles_helper([bundle_update])[0]
-    return BundleSchema().dump(bundle).data
-
-
-@patch('/bundles', apply=[AuthenticatedPlugin(), JsonApiPlugin()])
+@patch('/bundles', apply=AuthenticatedPlugin())
 def update_bundles():
     bundle_updates = BundleSchema(
         strict=True,
@@ -390,7 +384,6 @@ def update_bundles_helper(bundle_updates):
             abort(httplib.FORBIDDEN, "Updating bundle_type is forbidden")
 
     # Update bundles
-    # FIXME(sckoo): This is not transactional!
     for update in bundle_updates:
         # Prep bundle and save to model
         for dep in update.get('metadata', []):
@@ -406,18 +399,8 @@ def update_bundles_helper(bundle_updates):
     return bundles
 
 
-@delete('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=[AuthenticatedPlugin(), JsonApiPlugin()])
-def delete_bundle(uuid):
-    return delete_bundles_helper([uuid])
-
-
-@delete('/bundles', apply=[AuthenticatedPlugin(), JsonApiPlugin()])
+@delete('/bundles', apply=AuthenticatedPlugin())
 def delete_bundles():
-    bundles = BundleSchema(strict=True, many=True).load(request.json, partial=True).data
-    return delete_bundles_helper([b['uuid'] for b in bundles])
-
-
-def delete_bundles_helper(uuids):
     """
     Delete the bundles specified.
     If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
@@ -425,6 +408,7 @@ def delete_bundles_helper(uuids):
     If |data-only|, only remove from the bundle store, not the bundle metadata.
     If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
     """
+    uuids = get_resource_ids(request.json, 'bundles')
     force = query_get_bool('force', default=False)
     recursive = query_get_bool('recursive', default=False)
     data_only = query_get_bool('data-only', default=False)
@@ -489,7 +473,7 @@ def delete_bundles_helper(uuids):
     return json_api_meta({}, {'ids': relevant_uuids})
 
 
-@post('/bundle-permissions', apply=[AuthenticatedPlugin(), JsonApiPlugin()])
+@post('/bundle-permissions', apply=AuthenticatedPlugin())
 def set_bundle_permissions():
     many = isinstance(request.json['data'], list)
     new_permissions = BundlePermissionSchema(
@@ -505,7 +489,7 @@ def set_bundle_permissions():
     return BundlePermissionSchema(many=many).dump(new_permissions).data
 
 
-# TODO(sckoo): Return updated permissions
+# TODO(sckoo): JSON API requires that we return updated permissions
 def set_bundle_permissions_helper(new_permissions):
     # Check permissions
     bundle_uuids = [p['object_uuid'] for p in new_permissions]

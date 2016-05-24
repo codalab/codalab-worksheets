@@ -21,6 +21,7 @@ from codalab.objects.permission import (
 from codalab.objects.worksheet import Worksheet
 
 
+
 def get_resource_ids(document, type_):
     links = document['data']
     if not isinstance(links, list):

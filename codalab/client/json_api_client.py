@@ -223,8 +223,6 @@ class JsonApiClient(RestClient):
             else:
                 result = {}
         except KeyError:
-            from codalab.lib.print_util import pretty_print
-            pretty_print(document)
             raise JsonApiException('Invalid or unsupported JSON API '
                                    'document format', True)
 
