@@ -38,7 +38,7 @@ import textwrap
 from distutils.util import strtobool
 
 from codalab.client import is_local_address
-from codalab.common import UsageError, PermissionError
+from codalab.common import UsageError, PermissionError, precondition
 from codalab.server.auth import User
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
@@ -475,19 +475,54 @@ class CodaLabManager(object):
         if address in client_cache:
             return client_cache[address]
         if use_rest:
-            # FIXME(sckoo): Temporary hack
-            # Always use rest-server at localhost for now for testing.
-            # When BundleCLI is no longer dependent on RemoteBundleClient
-            # or LocalBundleClient, simplify everything to only using
-            # JsonApiClient, and remove all use_rest kwargs.
-            # Users should also then update their aliases to point at the
-            # addresses of the REST servers.
+            """
+            FIXME(sckoo): Temporary hack
+            When BundleCLI is no longer dependent on RemoteBundleClient
+            or LocalBundleClient, simplify everything to only using
+            JsonApiClient, and remove all use_rest kwargs.
+            Users should also then update their aliases to point at the
+            addresses of the REST servers.
+            """
+            # Manually translate known bundle service address to REST address
+            from urlparse import urlparse
+            o = urlparse(address)
+            if is_local_address(address):
+                # local => http://localhost:<rest_port>
+                precondition('server' in self.config and
+                             'rest_port' in self.config['server'],
+                             'Working on local now requires running a local '
+                             'server, please configure "rest_host" and '
+                             '"rest_port" under "server" in your config.json.')
+                address = ('http://localhost:' +
+                           str(self.config['server']['rest_port']))
+            elif (o.hostname == 'localhost' and
+                    'server' in self.config and
+                    'port' in self.config['server'] and
+                    'rest_port' in self.config['server'] and
+                    o.port == self.config['server']['port']):
+                # http://localhost:<port> => http://localhost:<rest_port>
+                # Note that this does not affect the address of the NLP
+                # CodaLab instance behind an SSH tunnel
+                address = address.replace(
+                    str(self.config['server']['port']),
+                    str(self.config['server']['rest_port']))
+            elif (o.netloc == 'worksheets.codalab.org' or
+                    o.netloc == 'worksheets-test.codalab.org'):
+                # http://worksheets.codalab.org/bundleservice
+                #   => http://worksheets.codalab.org
+                address = address.replace('/bundleservice', '')
+
+            # Create RestOAuthHandler that authenticates directly with
+            # OAuth endpoints on the REST server
             from codalab.server.auth import RestOAuthHandler
-            from codalab.client.json_api_client import JsonApiClient
-            address = "http://localhost"
             auth_handler = RestOAuthHandler(address, None)
+
+            # Create JsonApiClient with a callback to get access tokens
+            from codalab.client.json_api_client import JsonApiClient
             client = JsonApiClient(
                 address, lambda: self.get_access_token(address, auth_handler))
+
+            # Save JsonApiClient instances in a separate cache
             self.rest_clients[address] = client
         elif is_local_address(address):
             # if local force mockauth or if local server use correct auth
