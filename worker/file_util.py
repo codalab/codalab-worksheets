@@ -217,8 +217,10 @@ def remove_path(path):
     """
     Removes a path if it exists.
     """
-    if os.path.exists(path):
-        if os.path.isdir(path):
+    if os.path.islink(path) or os.path.exists(path):
+        if os.path.islink(path):
+            os.remove(path)
+        elif os.path.isdir(path):
             shutil.rmtree(path)
         else:
             os.remove(path)

@@ -29,13 +29,18 @@ class DownloadManager(object):
         For information about the format of the return value, see
         worker.download_util.get_target_info.
         """
-        if not self._launch_new_worker_system or self._is_available_locally(uuid):
+        if (not self._launch_new_worker_system or
+            self._bundle_model.get_bundle_state(uuid) != State.RUNNING):
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
             except download_util.PathException as e:
                 raise UsageError(e.message)
         else:
+            # get_target_info calls are sent to the worker even on a shared file
+            # system since 1) due to NFS caching the worker has more up to date
+            # information on directory contents, and 2) the logic of hiding
+            # the dependency paths doesn't need to be re-implemented here.
             worker = self._worker_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
