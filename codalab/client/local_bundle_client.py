@@ -377,11 +377,9 @@ class LocalBundleClient(BundleClient):
         If |data_only|, only remove from the bundle store, not the bundle metadata.
         """
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
-        uuids_set = set(uuids)
-        relevant_uuids_set = set(relevant_uuids)
         if not recursive:
             # If any descendants exist, then we only delete uuids if force = True.
-            if (not force) and uuids_set != relevant_uuids_set:
+            if (not force) and set(uuids) != set(relevant_uuids):
                 relevant = self.model.batch_get_bundles(uuid=(set(relevant_uuids) - set(uuids)))
                 raise UsageError('Can\'t delete bundles %s because the following bundles depend on them:\n  %s' % (
                   ' '.join(uuids),
@@ -426,11 +424,6 @@ class LocalBundleClient(BundleClient):
                                  "(--force to override):\n  %s" %
                                  (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
-        # Get data hashes
-        relevant_data_hashes = set(bundle.data_hash
-                                   for bundle in self.model.batch_get_bundles(uuid=relevant_uuids)
-                                   if bundle.data_hash)
-
         # Delete the actual bundle
         if not dry_run:
             if data_only:
@@ -443,8 +436,8 @@ class LocalBundleClient(BundleClient):
             # Update user statistics
             self.model.update_user_disk_used(self._current_user_id())
 
-        # Delete the data_hash
-        for uuid in relevant_uuids_set:
+        # Delete the data.
+        for uuid in relevant_uuids:
             # check first is needs to be deleted
             bundle_location = self.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
