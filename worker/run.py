@@ -108,6 +108,7 @@ class Run(object):
             if not self._worker.shared_file_system:
                 self._update_run_status('Downloading dependencies')
             dependencies = []
+            docker_dependencies_path = '/' + self._uuid + '_dependencies'
             for dep in self._bundle['dependencies']:
                 if self._worker.shared_file_system:
                     parent_bundle_path = dep['location']
@@ -132,7 +133,10 @@ class Run(object):
                     raise Exception('Invalid key for dependency: %s' % (
                         dep['child_path']))
 
-                dependencies.append((dependency_path, dep['child_path']))
+                docker_dependency_path = os.path.join(
+                    docker_dependencies_path, dep['child_path'])
+                os.symlink(docker_dependency_path, child_path)
+                dependencies.append((dependency_path, docker_dependency_path))
 
             def do_start():
                 self._update_run_status('Starting Docker container')
@@ -357,8 +361,7 @@ class Run(object):
                 if not self._worker.shared_file_system:
                     self._worker.remove_dependency(
                         dep['parent_uuid'], dep['parent_path'], self._uuid)
-                # The DockerClient creates symlinks for dependencies. Delete
-                # them.
+                # Clean-up the symlinks we created.
                 child_path = os.path.join(self._bundle_path, dep['child_path'])
                 remove_path(child_path)
 
