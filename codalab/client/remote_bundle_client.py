@@ -187,6 +187,9 @@ class RemoteBundleClient(BundleClient):
         for command in self.COMMANDS:
             setattr(self, command, do_command(command))
 
+    def generate_token(self, grant_type, username, key):
+        return self.login(grant_type, username, key)
+
     def upload_bundle(self, sources, follow_symlinks, exclude_patterns, git, unpack, remove_sources, info, worksheet_uuid, add_to_worksheet):
         """
         See local_bundle_client.py for documentation on the usage.
