@@ -36,6 +36,7 @@ import psutil
 import tempfile
 import textwrap
 from distutils.util import strtobool
+from urlparse import urlparse
 
 from codalab.client import is_local_address
 from codalab.common import UsageError, PermissionError, precondition
@@ -466,7 +467,6 @@ class CodaLabManager(object):
             addresses of the REST servers.
             """
             # Manually translate known bundle service address to REST address
-            from urlparse import urlparse
             o = urlparse(address)
             if is_local_address(address):
                 # local => http://localhost:<rest_port>
