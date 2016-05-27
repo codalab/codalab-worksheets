@@ -9,7 +9,7 @@ import traceback
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
-from download_util import get_target_info, get_target_path, PathException
+from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
 from file_util import get_path_size, gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory, remove_path
 from formatting import duration_str, size_str
 
@@ -233,7 +233,7 @@ class Run(object):
     def read_run_missing(bundle_service, worker, socket_id):
         message = {
             'error_code': httplib.INTERNAL_SERVER_ERROR,
-            'error_message': 'Bundle no longer running',
+            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         bundle_service.reply(worker.id, socket_id, message)
 

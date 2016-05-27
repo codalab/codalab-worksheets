@@ -5,6 +5,25 @@ from worker import download_util
 from worker import file_util
 
 
+def retry_if_no_longer_running(f):
+    """
+    Decorator that retries a download if the bundle finishes running in the
+    middle of the download, after the download message is sent but before it is
+    handled.
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            if e.message == download_util.BUNDLE_NO_LONGER_RUNNING_MESSAGE:
+                # Retry just once, since by now the state should already be set
+                # to READY / FAILED, unless there's some internal error.
+                return f(*args, **kwargs)
+            else:
+                raise
+    return wrapper
+
+
 class DownloadManager(object):
     """
     Used for downloading the contents of bundles. The main purpose of this class
@@ -21,6 +40,7 @@ class DownloadManager(object):
         self._worker_model = worker_model
         self._bundle_store = bundle_store
 
+    @retry_if_no_longer_running
     def get_target_info(self, uuid, path, depth):
         """
         Returns information about an individual target inside the bundle, or
@@ -58,6 +78,7 @@ class DownloadManager(object):
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 
+    @retry_if_no_longer_running
     def stream_tarred_gzipped_directory(self, uuid, path):
         """
         Returns a file-like object containing a tarred and gzipped archive
@@ -80,6 +101,7 @@ class DownloadManager(object):
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise
 
+    @retry_if_no_longer_running
     def stream_file(self, uuid, path, gzipped):
         """
         Returns a file-like object reading the given file. This file is gzipped
@@ -107,6 +129,7 @@ class DownloadManager(object):
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise
 
+    @retry_if_no_longer_running
     def read_file_section(self, uuid, path, offset, length, gzipped):
         """
         Reads length bytes of the file at the given path in the bundle.
@@ -136,6 +159,7 @@ class DownloadManager(object):
                 string = file_util.un_gzip_string(string)
             return string
 
+    @retry_if_no_longer_running
     def summarize_file(self, uuid, path, num_head_lines, num_tail_lines, max_line_length, truncation_text, gzipped):
         """
         Summarizes the file at the given path in the bundle, returning a string
