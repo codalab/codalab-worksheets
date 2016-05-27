@@ -277,6 +277,8 @@ class LocalBundleClient(BundleClient):
         Helper function that creates the bundle but doesn't add it to the worksheet.
         Returns the uuid.
         """
+        check_bundles_have_read_permission(self.model, self._current_user(),
+                                           [target[1][0] for target in targets])
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
         owner_id = self._current_user_id()
