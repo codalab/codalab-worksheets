@@ -502,7 +502,7 @@ class CodaLabManager(object):
             # Create JsonApiClient with a callback to get access tokens
             from codalab.client.json_api_client import JsonApiClient
             client = JsonApiClient(
-                address, lambda: self.get_access_token(address, auth_handler))
+                address, lambda: self._authenticate(address, auth_handler))
 
             # Save JsonApiClient instances in a separate cache
             self.rest_clients[address] = client
