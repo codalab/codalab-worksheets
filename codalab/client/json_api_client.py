@@ -73,6 +73,7 @@ class JsonApiClient(RestClient):
     """
     def __init__(self, address, get_access_token):
         self._get_access_token = get_access_token
+        self.address = address  # Used as key in client and token caches
         base_url = address + '/rest'
         super(JsonApiClient, self).__init__(base_url)
 

@@ -454,9 +454,6 @@ class CodaLabManager(object):
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
-        client_cache = self.rest_clients if use_rest else self.clients
-        if address in client_cache:
-            return client_cache[address]
         if use_rest:
             """
             FIXME(sckoo): Temporary hack
@@ -494,18 +491,24 @@ class CodaLabManager(object):
                 #   => http://worksheets.codalab.org
                 address = address.replace('/bundleservice', '')
 
-            # Create RestOAuthHandler that authenticates directly with
-            # OAuth endpoints on the REST server
-            from codalab.server.auth import RestOAuthHandler
-            auth_handler = RestOAuthHandler(address, None)
+            # Check cache for existing REST client
+            if address in self.rest_clients:
+                client = self.rest_clients[address]
+            else:
+                # Create RestOAuthHandler that authenticates directly with
+                # OAuth endpoints on the REST server
+                from codalab.server.auth import RestOAuthHandler
+                auth_handler = RestOAuthHandler(address, None)
 
-            # Create JsonApiClient with a callback to get access tokens
-            from codalab.client.json_api_client import JsonApiClient
-            client = JsonApiClient(
-                address, lambda: self._authenticate(address, auth_handler))
+                # Create JsonApiClient with a callback to get access tokens
+                from codalab.client.json_api_client import JsonApiClient
+                client = JsonApiClient(
+                    address, lambda: self._authenticate(address, auth_handler))
 
-            # Save JsonApiClient instances in a separate cache
-            self.rest_clients[address] = client
+                # Save JsonApiClient instances in a separate cache
+                self.rest_clients[address] = client
+        elif address in self.clients:
+            client = self.clients[address]
         elif is_local_address(address):
             # if local force mockauth or if local server use correct auth
             bundle_store = self.bundle_store()
@@ -626,9 +629,11 @@ class CodaLabManager(object):
             if 'worksheet_uuid' in session: del session['worksheet_uuid']
         self.save_state()
 
-    def logout(self, client):
-        del self.state['auth'][client.address]  # Clear credentials
-        self.save_state()
+    def logout(self, address):
+        """Clear credentials associated with given address."""
+        if address in self.state['auth']:
+            del self.state['auth'][address]
+            self.save_state()
 
     def save_config(self):
         if self.temporary: return

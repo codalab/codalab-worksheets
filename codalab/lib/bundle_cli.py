@@ -721,7 +721,9 @@ class BundleCLI(object):
     def do_logout_command(self, args):
         self._fail_if_headless('logout')
         client = self.manager.current_client()
-        self.manager.logout(client)
+        self.manager.logout(client.address)
+        client = self.manager.current_client(use_rest=True)
+        self.manager.logout(client.address)
 
     @Commands.command(
         'alias',
