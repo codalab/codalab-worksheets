@@ -13,7 +13,6 @@ from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
 )
-from codalab.server.json_api_plugin import JsonApiPlugin
 
 
 class DataSize(fields.Field):
@@ -54,13 +53,13 @@ class AuthenticatedUserSchema(UserSchema):
     last_login = fields.LocalDateTime("%c", dump_only=True)
 
 
-@get('/user', apply=[AuthenticatedPlugin(), JsonApiPlugin()], skip=UserVerifiedPlugin)
+@get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_authenticated_user():
     """Fetch authenticated user."""
     return AuthenticatedUserSchema().dump(request.user).data
 
 
-@patch('/user', apply=[AuthenticatedPlugin(), JsonApiPlugin()], skip=UserVerifiedPlugin)
+@patch('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def update_authenticated_user():
     """Update one or multiple fields of the authenticated user."""
     # Load update request data
@@ -85,7 +84,7 @@ def update_authenticated_user():
     return AuthenticatedUserSchema().dump(local.model.get_user(request.user.user_id)).data
 
 
-@get('/users/<user_spec>', apply=JsonApiPlugin())
+@get('/users/<user_spec>')
 def fetch_user(user_spec):
     """Fetch a single user."""
     user = local.model.get_user(user_id=user_spec)
@@ -95,7 +94,7 @@ def fetch_user(user_spec):
     return UserSchema().dump(user).data
 
 
-@get('/users', apply=JsonApiPlugin())
+@get('/users')
 def fetch_users():
     """Fetch list of users, filterable by username and email.
 
