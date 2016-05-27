@@ -114,7 +114,7 @@ class CodaLabManager(object):
     '''
     temporary: don't use config files
     '''
-    def __init__(self, temporary=False, clients=None):
+    def __init__(self, temporary=False, clients=None, rest_clients=None):
         self.cache = {}
         self.temporary = temporary
 
@@ -122,6 +122,7 @@ class CodaLabManager(object):
             self.config = {}
             self.state = {'auth': {}, 'sessions': {}}
             self.clients = clients
+            self.rest_clients = rest_clients
             return
 
         # Read config file, creating if it doesn't exist.
@@ -468,12 +469,12 @@ class CodaLabManager(object):
             if is_local_address(address):
                 # local => http://localhost:<rest_port>
                 precondition('server' in self.config and
+                             'rest_host' in self.config['server'] and
                              'rest_port' in self.config['server'],
                              'Working on local now requires running a local '
                              'server, please configure "rest_host" and '
                              '"rest_port" under "server" in your config.json.')
-                address = ('http://localhost:' +
-                           str(self.config['server']['rest_port']))
+                address = 'http://{rest_host}:{rest_port}'.format(**self.config['server'])
             elif (o.hostname == 'localhost' and
                     'server' in self.config and
                     'port' in self.config['server'] and
@@ -617,12 +618,12 @@ class CodaLabManager(object):
             worksheet_uuid = bundle_client.get_worksheet_uuid(None, '')
         return (client, worksheet_uuid)
 
-    def set_current_worksheet_uuid(self, client, worksheet_uuid):
+    def set_current_worksheet_uuid(self, address, worksheet_uuid):
         '''
         Set the current worksheet to the given worksheet_uuid.
         '''
         session = self.session()
-        session['address'] = client.address
+        session['address'] = address
         if worksheet_uuid:
             session['worksheet_uuid'] = worksheet_uuid
         else:

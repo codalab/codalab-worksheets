@@ -1813,7 +1813,7 @@ class BundleCLI(object):
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenWorksheet(worksheet_uuid)])
 
-        self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
+        self.manager.set_current_worksheet_uuid(client.address, worksheet_uuid)
 
         if verbose:
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)

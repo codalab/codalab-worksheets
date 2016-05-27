@@ -24,6 +24,7 @@ from bottle import (
 )
 
 from codalab.bundles import get_bundle_subclass, PrivateBundle
+from codalab.client.json_api_client import JsonApiClient
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.common import State, UsageError
@@ -40,7 +41,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.oauth2 import OAuth2Token
 from codalab.objects.permission import permission_str
-from codalab.server.auth import LocalUserAuthHandler
+from codalab.server.auth import LocalUserAuthHandler, RestOAuthHandler
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.server.rpc_file_handle import RPCFileHandle
 
@@ -226,70 +227,6 @@ class BundleService(object):
                 item['size_str'] = formatting.size_str(item['size'])
         return info
 
-    # Create an instance of a CLI.
-    def _create_cli(self, worksheet_uuid):
-        output_buffer = StringIO()
-        manager = CodaLabManager(temporary=True, clients={'local': self.client})
-        manager.set_current_worksheet_uuid(self.client, worksheet_uuid)
-        cli = bundle_cli.BundleCLI(manager, headless=True, stdout=output_buffer, stderr=output_buffer)
-        return cli, output_buffer
-
-    def complete_command(self, worksheet_uuid, command):
-        """
-        Given a command string, return a list of suggestions to complete the last token.
-        """
-        cli, output_buffer = self._create_cli(worksheet_uuid)
-
-        command = command.lstrip()
-        if not command.startswith('cl'):
-            command = 'cl ' + command
-
-        return cli.complete_command(command)
-
-    def get_command(self, raw_command_map):
-        """
-        Return a cli-command corresponding to raw_command_map contents.
-        Input:
-            raw_command_map: a map containing the info to edit, new_value and the action to perform
-        """
-        return worksheet_util.get_worksheet_info_edit_command(raw_command_map)
-
-    def general_command(self, worksheet_uuid, command):
-        """
-        Executes an arbitrary CLI command with |worksheet_uuid| as the current worksheet.
-        Basically, all CLI functionality should go through this command.
-        The method currently intercepts stdout/stderr and returns it back to the user.
-        """
-        # Tokenize
-        if isinstance(command, basestring):
-            args = shlex.split(command)
-        else:
-            args = list(command)
-
-        # Ensure command always starts with 'cl'
-        if args[0] == 'cl':
-            args = args[1:]
-
-        cli, output_buffer = self._create_cli(worksheet_uuid)
-        exception = None
-        structured_result = None
-        try:
-            structured_result = cli.do_command(args)
-        except SystemExit:  # as exitcode:
-            # this should not happen under normal circumstances
-            pass
-        except BaseException as e:
-            exception = str(e)
-
-        output_str = output_buffer.getvalue()
-        output_buffer.close()
-
-        return {
-            'structured_result': structured_result,
-            'output': output_str,
-            'exception': exception
-        }
-
     def update_bundle_metadata(self, uuid, new_metadata):
         self.client.update_bundle_metadata(uuid, new_metadata)
         return
@@ -316,8 +253,14 @@ class RemoteBundleService(object):
         self.client = RemoteBundleClient(self._cli_url(),
                                          lambda command: self._get_user_token(), verbose=0)
 
+        self.rest_client = JsonApiClient(self._rest_url(),
+                                         lambda: self._get_user_token())
+
     def _cli_url(self):
         return 'http://' + local.config['server']['host'] + ':' + str(local.config['server']['port'])
+
+    def _rest_url(self):
+        return 'http://' + local.config['server']['rest_host'] + ':' + str(local.config['server']['rest_port'])
 
     def _get_user_token(self):
         """
@@ -382,6 +325,75 @@ class RemoteBundleService(object):
             raise
         return new_bundle_uuid
 
+    # Create an instance of a CLI.
+    def _create_cli(self, worksheet_uuid):
+        output_buffer = StringIO()
+        manager = CodaLabManager(
+            temporary=True,
+            clients={'local': self.client},
+            rest_clients={self._rest_url(): self.rest_client})
+        manager.set_current_worksheet_uuid('local', worksheet_uuid)
+        manager.config = local.config
+        cli = bundle_cli.BundleCLI(manager, headless=True, stdout=output_buffer, stderr=output_buffer)
+        return cli, output_buffer
+
+    def complete_command(self, worksheet_uuid, command):
+        """
+        Given a command string, return a list of suggestions to complete the last token.
+        """
+        cli, output_buffer = self._create_cli(worksheet_uuid)
+
+        command = command.lstrip()
+        if not command.startswith('cl'):
+            command = 'cl ' + command
+
+        return cli.complete_command(command)
+
+    def get_command(self, raw_command_map):
+        """
+        Return a cli-command corresponding to raw_command_map contents.
+        Input:
+            raw_command_map: a map containing the info to edit, new_value and the action to perform
+        """
+        return worksheet_util.get_worksheet_info_edit_command(raw_command_map)
+
+    def general_command(self, worksheet_uuid, command):
+        """
+        Executes an arbitrary CLI command with |worksheet_uuid| as the current worksheet.
+        Basically, all CLI functionality should go through this command.
+        The method currently intercepts stdout/stderr and returns it back to the user.
+        """
+        # Tokenize
+        if isinstance(command, basestring):
+            args = shlex.split(command)
+        else:
+            args = list(command)
+
+        # Ensure command always starts with 'cl'
+        if args[0] == 'cl':
+            args = args[1:]
+
+        cli, output_buffer = self._create_cli(worksheet_uuid)
+        exception = None
+        structured_result = None
+        try:
+            structured_result = cli.do_command(args)
+        except SystemExit:  # as exitcode:
+            # this should not happen under normal circumstances
+            pass
+        except BaseException as e:
+            exception = str(e)
+
+        output_str = output_buffer.getvalue()
+        output_buffer.close()
+
+        return {
+            'structured_result': structured_result,
+            'output': output_str,
+            'exception': exception
+        }
+
+
 
 @get('/worksheets/sample/')
 def get_sample_worksheets():
@@ -420,7 +432,7 @@ def post_worksheets_command():
     # TODO(klopyrev): The Content-Type header is not set correctly in
     # editable_field.jsx, so we can't use request.json.
     data = json.loads(request.body.read())
-    service = BundleService()
+    service = RemoteBundleService()
 
     if data.get('raw_command', None):
         data['command'] = service.get_command(data['raw_command'])
