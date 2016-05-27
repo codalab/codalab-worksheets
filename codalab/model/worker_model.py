@@ -258,14 +258,18 @@ class WorkerModel(object):
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(timeout_secs)
 
+                success = False
                 try:
                     sock.connect(self._socket_path(socket_id))
+                    success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
                 except socket.error:
+                    pass
+
+                if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     time.sleep(0.003)
                     continue
 
-                sock.recv(len(WorkerModel.ACK))
                 while True:
                     data = fileobj.read(4096)
                     if not data:
@@ -290,6 +294,7 @@ class WorkerModel(object):
             with closing(socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)) as sock:
                 sock.settimeout(timeout_secs)
 
+                success = False
                 try:
                     sock.connect(self._socket_path(socket_id))
                     if autoretry:
@@ -302,8 +307,13 @@ class WorkerModel(object):
                         # just when a socket object is in the process of being
                         # destroyed. On the sending end, such a scenario results
                         # in a "Broken pipe" exception, which we catch here.
-                        sock.recv(len(WorkerModel.ACK))
+                        success = sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK
+                    else:
+                        success = True
                 except socket.error:
+                    pass
+
+                if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     time.sleep(0.003)
                     continue
@@ -313,7 +323,8 @@ class WorkerModel(object):
                     # have the problem with "Broken pipe" as above, since
                     # code waiting for a reply shouldn't just abruptly stop
                     # listening.
-                    sock.recv(len(WorkerModel.ACK))
+                    precondition(sock.recv(len(WorkerModel.ACK)) == WorkerModel.ACK,
+                                 'Received invalid ack on socket.')
 
                 sock.sendall(json.dumps(message))
                 return True
