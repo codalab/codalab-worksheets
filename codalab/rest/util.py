@@ -4,6 +4,7 @@ Most of these are adapted from the LocalBundleClient methods,
 Placed in this central location to prevent circular imports.
 """
 import httplib
+import os
 import re
 
 from bottle import abort, HTTPError, local, request

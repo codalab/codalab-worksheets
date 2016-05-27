@@ -359,13 +359,20 @@ def create_bundles_helper(bundles):
 
 @patch('/bundles', apply=AuthenticatedPlugin())
 def update_bundles():
+    many = isinstance(request.json['data'], list)
     bundle_updates = BundleSchema(
         strict=True,
-        many=True,
+        many=many,
         dump_only=UPDATE_RESTRICTED_FIELDS,
     ).load(request.json, partial=True).data
-    bundles = update_bundles_helper(bundle_updates)
-    return BundleSchema(many=True).dump(bundles).data
+
+    # Multiplex between single and bulk requests
+    if many:
+        updated_bundles = update_bundles_helper(bundle_updates)
+    else:
+        updated_bundles = update_bundles_helper([bundle_updates])[0]
+
+    return BundleSchema(many=many).dump(updated_bundles).data
 
 
 def update_bundles_helper(bundle_updates):
