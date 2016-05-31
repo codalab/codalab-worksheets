@@ -42,6 +42,8 @@ class Run(object):
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
+        
+        self._max_memory = 0
 
         self._kill_lock = threading.Lock()
         self._killed = False
@@ -194,6 +196,9 @@ class Run(object):
 
         # Get memory, time_user and time_system.
         new_metadata.update(self._docker.get_container_stats(self._container_id))
+        if 'memory' in new_metadata and new_metadata['memory'] > self._max_memory:
+            self._max_memory = new_metadata['memory']
+        new_metadata['memory_max'] = self._max_memory
         if (self._resources['request_memory'] and
             'memory' in new_metadata and
             new_metadata['memory'] > self._resources['request_memory']):
