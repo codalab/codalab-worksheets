@@ -320,7 +320,7 @@ class LocalBundleClient(BundleClient):
         for bundle_uuid, subpath in targets:
             if not re.match('^\w+$', subpath):
                 raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
-            
+
             if not self.launch_new_worker_system:
                 self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
             else:
@@ -1050,6 +1050,8 @@ class LocalBundleClient(BundleClient):
         The result can be serialized via JSON.
         """
         for item in interpreted_items:
+            if item == None:
+                continue
             mode = item['mode']
             data = item['interpreted']
             properties = item['properties']

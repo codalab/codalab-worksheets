@@ -1,5 +1,5 @@
 """
-Legacy REST APIs moved from the codalab-worksheets Django REST server. 
+Legacy REST APIs moved from the codalab-worksheets Django REST server.
 """
 import base64
 from contextlib import closing
@@ -29,6 +29,7 @@ from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.common import State, UsageError
 from codalab.lib import (
   bundle_cli,
+  bundle_util,
   file_util,
   formatting,
   metadata_util,
@@ -90,7 +91,7 @@ class BundleService(object):
         else:
             return worksheet_util.get_worksheet_uuid(self.client, None, spec)
 
-    def full_worksheet(self, uuid):
+    def full_worksheet(self, uuid, bundle_uuids=None):
         """
         Return information about a worksheet. Calls
         - get_worksheet_info: get basic info
@@ -122,6 +123,22 @@ class BundleService(object):
             interpreted_items = {'items': []}
             worksheet_info['error'] = str(e)
 
+        if bundle_uuids:
+            for i, item in enumerate(interpreted_items['items']):
+                if ('bundle_info' not in item):
+                    interpreted_items['items'][i] = None
+                else:
+                    if isinstance(item['bundle_info'], dict):
+                        item['bundle_info'] = [item['bundle_info']]
+                    is_relavant_item = False
+                    for j, bundle in enumerate(item['bundle_info']):
+                        if bundle['uuid'] in bundle_uuids:
+                            is_relavant_item = True
+                        else:
+                            item['bundle_info'][j] = None
+                    if not is_relavant_item:
+                        interpreted_items['items'][i] = None
+
         worksheet_info['items'] = self.client.resolve_interpreted_items(interpreted_items['items'])
         worksheet_info['raw_to_interpreted'] = interpreted_items['raw_to_interpreted']
         worksheet_info['interpreted_to_raw'] = interpreted_items['interpreted_to_raw']
@@ -135,6 +152,8 @@ class BundleService(object):
 
         # Currently, only certain fields are base64 encoded.
         for item in worksheet_info['items']:
+            if item == None:
+                continue
             if item['mode'] in ['html', 'contents']:
                 item['interpreted'] = decode_lines(item['interpreted'])
             elif item['mode'] == 'table':
@@ -149,6 +168,8 @@ class BundleService(object):
                 elif isinstance(item['bundle_info'], dict):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
+                    if bundle_info == None:
+                        continue
                     if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
                         target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
                         bundle_info['target_info'] = target_info
@@ -158,7 +179,8 @@ class BundleService(object):
                     except Exception, e:
                         print e
                         import ipdb; ipdb.set_trace()
-
+        if bundle_uuids:
+            return {'items': worksheet_info['items']}
         return worksheet_info
 
     def parse_and_update_worksheet(self, uuid, lines):
@@ -208,7 +230,7 @@ class BundleService(object):
                 with info_lock:
                     info[name] = result
 
-            read_threads = []            
+            read_threads = []
             for item in info['contents']:
                 name = item['name']
                 if name in ['stdout', 'stderr'] and (item['type'] == 'file' or item['type'] == 'link'):
@@ -296,7 +318,7 @@ class BundleService(object):
         return
 
     def add_chat_log_info(self, query_info):
-        return self.client.add_chat_log_info(query_info)    
+        return self.client.add_chat_log_info(query_info)
 
     def get_chat_log_info(self, query_info):
         return self.client.get_chat_log_info(query_info)
@@ -326,10 +348,10 @@ class RemoteBundleService(object):
         with the bundle service.
         """
         CLIENT_ID = 'codalab_cli_client'
-    
+
         if request.user is None:
             return None
-    
+
         # Try to find an existing token that will work.
         token = local.model.find_oauth2_token(
             CLIENT_ID,
@@ -337,7 +359,7 @@ class RemoteBundleService(object):
             datetime.utcnow() + timedelta(minutes=5))
         if token is not None:
             return token.access_token
-    
+
         # Otherwise, generate a new one.
         token = OAuth2Token(
             local.model,
@@ -349,7 +371,7 @@ class RemoteBundleService(object):
             user_id=request.user.user_id,
         )
         local.model.save_oauth2_token(token)
-    
+
         return token.access_token
 
     def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
@@ -366,11 +388,11 @@ class RemoteBundleService(object):
         try:
             with closing(RPCFileHandle(remote_file_uuid, self.client.proxy)) as dest:
                 file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
-           
+
             pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
             if not pack and zip_util.path_is_archive(metadata['name']):
                 metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
-           
+
             # Then tell the client that the uploaded file handle is there.
             new_bundle_uuid = self.client.finish_upload_bundle(
                 [remote_file_uuid],
@@ -447,6 +469,23 @@ def get_worksheet_content(uuid):
     service = BundleService()
     return service.full_worksheet(uuid)
 
+# Needs to store the last unfinished bundle uuids because if a bundle just finished running,
+# unfinished_bundle_uuids won't include that bundle (from the backend points of view, it's a finished bundle)
+# whereas the frontend is still waiting to update its state from running to ready/failed.
+last_unfinished_bundle_uuids = set()
+# Get items that include unfinished run bundles in a worksheet, uuid is the uuid for that worksheet
+@get('/api/worksheets/unfinished_bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
+def get_worksheet_content_with_unfinished_bundles(uuid):
+    global last_unfinished_bundle_uuids
+    service = BundleService()
+    unfinished_bundle_uuids = [bundle.uuid for bundle in local.model.batch_get_bundles(state=State.OPTIONS - State.FINAL_STATES)]
+    bundle_uuids_to_worksheet = local.model.get_host_worksheet_uuids(unfinished_bundle_uuids) if len(unfinished_bundle_uuids) > 0 else {}
+    unfinished_bundle_uuids = set(filter(lambda bundle_uuid: uuid in set(bundle_uuids_to_worksheet[bundle_uuid]), unfinished_bundle_uuids))
+    relavant_bundle_uuids = unfinished_bundle_uuids.union(last_unfinished_bundle_uuids);
+    last_unfinished_bundle_uuids = unfinished_bundle_uuids
+    if len(relavant_bundle_uuids) == 0:
+        return {}
+    return service.full_worksheet(uuid, bundle_uuids=relavant_bundle_uuids)
 
 @post('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
