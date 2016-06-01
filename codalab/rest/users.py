@@ -32,25 +32,29 @@ class Duration(fields.Field):
 
 
 class UserSchema(Schema):
-    id = fields.String(dump_only=True, attribute='user_id')
+    id = fields.String(attribute='user_id')
     user_name = fields.String()
     first_name = fields.String(allow_none=True)
     last_name = fields.String(allow_none=True)
     affiliation = fields.String(allow_none=True)
     url = fields.Url(allow_none=True)
-    date_joined = fields.LocalDateTime("%c", dump_only=True)
+    date_joined = fields.LocalDateTime("%c")
 
     class Meta:
         type_ = 'users'
 
 
 class AuthenticatedUserSchema(UserSchema):
-    email = fields.Email(dump_only=True)
-    time_quota = Duration(dump_only=True)
-    time_used = Duration(dump_only=True)
-    disk_quota = DataSize(dump_only=True)
-    disk_used = DataSize(dump_only=True)
-    last_login = fields.LocalDateTime("%c", dump_only=True)
+    email = fields.Email()
+    time_quota = fields.Integer()
+    time_used = fields.Integer()
+    disk_quota = fields.Integer()
+    disk_used = fields.Integer()
+    last_login = fields.LocalDateTime("%c")
+
+
+USER_READ_ONLY_FIELDS = ('id', 'email', 'time_quota', 'time_used', 'disk_quota',
+                         'disk_used', 'date_joined', 'last_login')
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
@@ -63,7 +67,10 @@ def fetch_authenticated_user():
 def update_authenticated_user():
     """Update one or multiple fields of the authenticated user."""
     # Load update request data
-    user_info, errors = AuthenticatedUserSchema(strict=True).load(request.json, partial=True)
+    user_info = AuthenticatedUserSchema(
+        strict=True,
+        dump_only=USER_READ_ONLY_FIELDS,
+    ).load(request.json, partial=True).data
 
     # Patch in user_id manually (do not allow requests to change id)
     user_info['user_id'] = request.user.user_id
@@ -109,4 +116,23 @@ def fetch_users():
     usernames |= set(request.query.get('filter[email]', '').split(','))
     usernames.discard('')  # str.split(',') will return '' on empty strings
     users = local.model.get_users(usernames=(usernames or None))
+    return UserSchema(many=True).dump(users).data
+
+
+@patch('/users')
+def update_users():
+    """Update users."""
+    if request.user.user_id != local.model.root_user_id:
+        abort(httplib.FORBIDDEN, "Only root user can update users.")
+
+    # Deserialize and update
+    users = AuthenticatedUserSchema(
+        strict=True, many=True
+    ).load(request.json, partial=True).data
+
+    for user in users:
+        local.model.update_user_info(user)
+
+    # Return updated users
+    users = local.model.get_users(user_ids=[u['user_id'] for u in users])
     return UserSchema(many=True).dump(users).data

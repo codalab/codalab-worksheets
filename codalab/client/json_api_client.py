@@ -424,3 +424,20 @@ class JsonApiClient(RestClient):
                     resource_type, resource_id, relationship_key),
                 query_params=self._pack_params(params),
                 data=(relationship and relationship.as_dict())))
+
+    @wrap_exception('Unable to update authenticated user')
+    def update_authenticated_user(self, data, params=None):
+        """
+        Request to update the authenticated user.
+        Uses special /user endpoint, but keeps the 'users' resource type.
+
+        :param data: dict containing user field updates
+        :param params: dict of query parameters
+        :return: updated user dict
+        """
+        return self._unpack_document(
+            self._make_request(
+                method='PATCH',
+                path=self._get_resource_path('user'),
+                query_params=self._pack_params(params),
+                data=self._pack_document(data, 'users')))
