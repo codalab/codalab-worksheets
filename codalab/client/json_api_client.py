@@ -471,7 +471,7 @@ class JsonApiClient(RestClient):
                 query_params=self._pack_params(params),
                 data=self._pack_document(data, 'users')))
 
-    @wrap_exception
+    @wrap_exception('Unable to fetch contents info of bundle {1}')
     def fetch_contents_info(self, bundle_id, target_path='', depth=0):
         request_path = '/bundles/%s/contents/info/%s' % \
                        (bundle_id, urllib.quote(target_path))
@@ -479,7 +479,7 @@ class JsonApiClient(RestClient):
                                       query_params={'depth': depth})
         return response['data']
 
-    @wrap_exception
+    @wrap_exception('Unable to fetch contents blob of bundle {1}')
     def fetch_contents_blob(self, bundle_id, target_path='', range_=None,
                             head=None, tail=None):
         """
@@ -492,7 +492,7 @@ class JsonApiClient(RestClient):
         :param tail: number of lines to summarize from end of file
         :return: file-like object containing requested data blob
         """
-        request_path = '/bundle/%s/contents/blob/%s' % \
+        request_path = '/bundles/%s/contents/blob/%s' % \
                        (bundle_id, urllib.quote(target_path))
         headers = {'Accept-Encoding': 'gzip'}
         if range_ is not None:
