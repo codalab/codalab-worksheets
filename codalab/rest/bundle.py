@@ -40,7 +40,6 @@ from codalab.rest.util import (
     resolve_owner_in_keywords,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalab.server.json_api_plugin import JsonApiPlugin
 
 
 #############################################################
@@ -207,7 +206,7 @@ def fetch_bundle(uuid):
     return document
 
 
-@get('/bundles', apply=[AuthenticatedPlugin(), JsonApiPlugin()])
+@get('/bundles', apply=AuthenticatedPlugin())
 def fetch_bundles():
     """
     Fetch bundles by bundle specs OR search keywords.
