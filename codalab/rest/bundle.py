@@ -366,6 +366,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)
     tail_lines = query_get_type(int, 'tail', default=0)
+    max_line_length = query_get_type(int, 'max_line_length', default=128)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
 
@@ -401,7 +402,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             start, end = byte_range
             fileobj = local.download_manager.read_file_section(uuid, path, start, end - start + 1, gzipped)
         elif head_lines or tail_lines:
-            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, 128, None, gzipped)
+            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, None, gzipped)
         else:
             fileobj = local.download_manager.stream_file(uuid, path, gzipped)
     else:
