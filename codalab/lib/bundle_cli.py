@@ -2293,12 +2293,15 @@ class BundleCLI(object):
         Edit properties of users.
         """
         client = self.manager.current_client()
-        user_info = client.get_user_info(args.user_id)
+        user_update = {}
         if args.time_quota is not None:
-            user_info['time_quota'] = formatting.parse_duration(args.time_quota)
+            user_update['time_quota'] = formatting.parse_duration(args.time_quota)
         if args.disk_quota is not None:
-            user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
-        client.update_user_info(user_info)
+            user_update['disk_quota'] = formatting.parse_size(args.disk_quota)
+        if args.user_id is not None:
+            user_update['user_id'] = args.user_id
+        if user_update:
+            client.update_user_info(user_update)
 
     @Commands.command(
         'reset',
