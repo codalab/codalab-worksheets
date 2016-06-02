@@ -1911,28 +1911,7 @@ class BundleModel(object):
             for row in rows:
                 user_info = str_key_dict(row)
             if not user_info:
-                print >>sys.stderr, 'Creating new entry for user ' + user_id
-                user_info = {
-                    'user_id': user_id,
-                    'time_quota': self.default_user_info['time_quota'],
-                    'time_used': 0,
-                    'disk_quota': self.default_user_info['disk_quota'],
-                    'disk_used': self._get_disk_used(user_id),
-                    'user_name': '',  # TODO(skoo): replace these values in future migration
-                    'email': '',
-                    'date_joined': datetime.datetime.utcnow(),
-                    'is_active': True,
-                    'is_verified': True,
-                    'is_superuser': user_id == '0',
-                    'password': '',
-                }
-
-                # TODO(skoo): remove when user data migration is complete
-                # Temporarily suppress the "doesn't have default value" warnings until user data migration is complete
-                import warnings
-                with warnings.catch_warnings():
-                    warnings.simplefilter("ignore")
-                    connection.execute(cl_user.insert().values(user_info))
+                raise NotFoundError("User with ID %s not found" % user_id)
             if fetch_extra:
                 user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
                 if 'last_login' in user_info and user_info['last_login'] is not None:

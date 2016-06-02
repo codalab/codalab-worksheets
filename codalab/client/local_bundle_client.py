@@ -1339,7 +1339,8 @@ class LocalBundleClient(BundleClient):
     def update_user_info(self, user_info):
         user_id = self._current_user_id()
         is_root = (user_id == self.model.root_user_id)
-        is_user = (user_id == user_info['user_id'])
+        if 'user_id' not in user_info:
+            user_info['user_id'] = user_id
         if is_root:
             # TODO: in the future, allow user to update, but only in limited ways
             self.model.update_user_info(user_info)
