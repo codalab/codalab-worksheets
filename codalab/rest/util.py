@@ -5,8 +5,9 @@ Placed in this central location to prevent circular imports.
 """
 import httplib
 
-from bottle import abort, local, request
+from bottle import abort, HTTPError, local, request
 
+from codalab.common import http_error_to_exception
 from codalab.objects.permission import unique_group
 
 
@@ -19,12 +20,55 @@ def get_resource_ids(document, type_):
     return [link['id'] for link in links]
 
 
+class DummyRequest(object):
+    """Dummy classes for local_bundle_client_compatible shim."""
+    class DummyUser(object):
+        def __init__(self, user_id):
+            self.user_id = user_id
+
+    def __init__(self, user=None, user_id=None):
+        if user is not None:
+            self.user = user
+        elif user_id is not None:
+            self.user = DummyRequest.DummyUser(user_id)
+
+
+def local_bundle_client_compatible(f):
+    """
+    Temporary hack to make decorated functions callable from LocalBundleClient.
+    This allows us to share code between LocalBundleClient and the REST server.
+    To call a decorated function from LocalBundleClient, pass in self as the
+    |client| kwarg and optionally the authenticated User as |user| or the
+    ID of the authenticated user as |user_id|.
+
+    TODO(sckoo): To clean up, for each decorated function:
+        - Un-decorate function
+        - Remove |local| and |request| arguments
+    """
+    def wrapper(*args, **kwargs):
+        # Shim in local and request
+        local_ = kwargs.pop('client', local)
+        if 'user' in kwargs:
+            request_ = DummyRequest(user=kwargs.pop('user'))
+        elif 'user_id' in kwargs:
+            request_ = DummyRequest(user_id=kwargs.pop('user_id'))
+        else:
+            request_ = request
+        # Translate HTTP errors back to CodaLab exceptions
+        try:
+            return f(local_, request_, *args, **kwargs)
+        except HTTPError as e:
+            raise http_error_to_exception(e.status_code, e.message)
+    return wrapper
+
+
 #############################################################
 # GROUPS
 #############################################################
 
 
-def ensure_unused_group_name(name):
+@local_bundle_client_compatible
+def ensure_unused_group_name(local, request, name):
     """
     Ensure group names are unique.  Note: for simplicity, we are
     ensuring uniqueness across the system, even on group names that
@@ -35,7 +79,8 @@ def ensure_unused_group_name(name):
         abort(httplib.CONFLICT, 'Group with name %s already exists' % name)
 
 
-def get_group_info(group_spec, need_admin):
+@local_bundle_client_compatible
+def get_group_info(local, request, group_spec, need_admin):
     """
     Resolve |group_spec| and return the associated group_info.
     """

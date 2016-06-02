@@ -48,6 +48,7 @@ from codalab.objects.permission import (
     permission_str,
     Group
 )
+from codalab.rest import util as rest_util
 
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_READ,
@@ -802,12 +803,7 @@ class LocalBundleClient(BundleClient):
     #############################################################################
 
     def ensure_unused_group_name(self, name):
-        # Ensure group names are unique.  Note: for simplicity, we are
-        # ensuring uniqueness across the system, even on group names that
-        # the user may not have access to.
-        groups = self.model.batch_get_groups(name=name)
-        if len(groups) != 0:
-            raise UsageError('Group with name %s already exists' % name)
+        return rest_util.ensure_unused_group_name(name, client=self)
 
     def ensure_unused_worksheet_name(self, name):
         # Ensure worksheet names are unique.  Note: for simplicity, we are
@@ -1301,23 +1297,9 @@ class LocalBundleClient(BundleClient):
         """
         Resolve |group_spec| and return the associated group_info.
         """
-        user_id = self._current_user_id()
-
-        # If we're root, then we can access any group.
-        if user_id == self.model.root_user_id:
-            user_id = None
-
-        group_info = permission.unique_group(self.model, group_spec, user_id)
-
-        # If not root and need admin access, but don't have it, raise error.
-        if user_id and need_admin and not group_info['is_admin']:
-            raise UsageError('You are not the admin of group %s.' % group_spec)
-
-        # No one can admin the public group (not even root), because it's a special group.
-        if need_admin and group_info['uuid'] == self.model.public_group_uuid:
-            raise UsageError('Cannot modify the public group %s.' % group_spec)
-
-        return group_info
+        return rest_util.get_group_info(group_spec, need_admin,
+                                        client=self,
+                                        user_id=self._current_user_id())
 
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
