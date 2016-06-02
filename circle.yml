@@ -4,6 +4,7 @@ machine:
 
 dependencies:
   override:
+    - sudo apt-get install -y jq sshpass
     - ./setup.sh server
     - ./venv/bin/pip install --upgrade pip
     - ./venv/bin/pip install -r requirements-tests.txt
@@ -11,6 +12,12 @@ dependencies:
 test:
   override:
     - (printf 'n\nn\n\n' | ./codalab/bin/cl) || true
+    - ./codalab/bin/cl bs-health-check
+    - jq '.server.rest_host = "127.0.0.1" | .server.rest_port = 80' /home/ubuntu/.codalab/config.json > /home/ubuntu/.codalab/config.new.json
+    - mv /home/ubuntu/.codalab/config.new.json /home/ubuntu/.codalab/config.json
+    - ./scripts/create-root-user.py testpassword
+    - 'sudo ./codalab/bin/cl rest-server':
+        background: true
     - './codalab/bin/cl work-manager':
         background: true
-    - ./scripts/ci-tests.sh
+    - echo 'codalab' | sshpass -p testpassword ./scripts/ci-tests.sh
