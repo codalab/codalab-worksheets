@@ -164,8 +164,8 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(oauth2_provider.check_oauth())
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
-    install(JsonApiPlugin())
     install(ErrorAdapter())
+    install(JsonApiPlugin())
 
     for code in xrange(100, 600):
         default_app().error(code)(error_handler)
