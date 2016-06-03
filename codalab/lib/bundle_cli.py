@@ -2304,12 +2304,12 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument('user_spec', nargs='?', help='Username or id of user to update [default: the authenticated user]'),
-            Commands.Argument('-t', '--time-quota', help='Total amount of time allowed (e.g., 3, 3m, 3h, 3d)'),
-            Commands.Argument('-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'),
             Commands.Argument('--first-name', help='First name'),
             Commands.Argument('--last-name', help='Last name'),
             Commands.Argument('--affiliation', help='Affiliation'),
             Commands.Argument('--url', help='Website URL'),
+            Commands.Argument('-t', '--time-quota', help='Total amount of time allowed (e.g., 3, 3m, 3h, 3d)'),
+            Commands.Argument('-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'),
         ),
     )
     def do_uedit_command(self, args):
@@ -2319,23 +2319,32 @@ class BundleCLI(object):
         client = self.manager.current_client(use_rest=True)
 
         # Build user info
-        user_info = {}
-        for key in ('time_quota', 'disk_quota', 'first_name', 'last_name',
-                    'affiliation', 'url'):
-            if getattr(args, key) is not None:
-                user_info[key] = getattr(args, key)
-
+        user_info = {
+            key: getattr(args, key)
+            for key in (
+                'first_name',
+                'last_name',
+                'affiliation',
+                'url',
+            )
+            if getattr(args, key) is not None
+        }
+        if args.time_quota is not None:
+            user_info['time_quota'] = formatting.parse_duration(args.time_quota)
+        if args.disk_quota is not None:
+            user_info['disk_quota'] = formatting.parse_size(args.disK_quota)
         if not user_info:
             raise UsageError("No fields to update.")
 
-        # If user id is not specified, update the authenticated user
+        # Send update request
         if args.user_spec is None:
+            # If user id is not specified, update the authenticated user
             user = client.update_authenticated_user(user_info)
-            self.print_user_info(user, include_private=True)
         else:
+            # Resolve user id from user spec
             user_info['id'] = client.fetch('users', args.user_spec)['id']
-            user = client.update('users', [user_info])[0]
-            self.print_user_info(user, include_private=False)
+            user = client.update('users', user_info)
+        self.print_user_info(user)
 
     @Commands.command(
         'uinfo',
@@ -2351,22 +2360,22 @@ class BundleCLI(object):
         Edit properties of users.
         """
         client = self.manager.current_client(use_rest=True)
-
         if args.user_spec is None:
             user = client.fetch('user')
-            self.print_user_info(user, include_private=True)
         else:
             user = client.fetch('users', args.user_spec)
-            self.print_user_info(user, include_private=False)
+        self.print_user_info(user)
 
     def print_user_info(self, user, include_private=False):
         for key in ('id', 'user_name', 'first_name', 'last_name',
                     'affiliation', 'url', 'date_joined'):
             print >>self.stdout, u'{:<15}: {}'.format(key, user.get(key, None))
 
-        if include_private:
-            for key in ('email', 'last_login'):
-                print >>self.stdout, u'{:<15}: {}'.format(key, user.get(key, None))
+        # These fields will not be returned by the server if the
+        # authenticated user is not root, so stop early on first KeyError
+        try:
+            for key in ('last_login', 'email'):
+                print >>self.stdout, u'{:<15}: {}'.format(key, user[key])
 
             print >>self.stdout, u'{:<15}: {}'.format(
                 'time', formatting.ratio_str(
@@ -2378,6 +2387,8 @@ class BundleCLI(object):
                 'disk', formatting.ratio_str(formatting.size_str,
                                              user['disk_used'],
                                              user['disk_quota']))
+        except KeyError:
+            pass
 
     @Commands.command(
         'reset',

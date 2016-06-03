@@ -342,6 +342,7 @@ class JsonApiClient(RestClient):
     def update(self, resource_type, data, params=None):
         """
         Request to update a resource or resources.
+        Always uses bulk update.
 
         :param resource_type: resource type as string
         :param data: update dict or list of update dicts, update dicts
@@ -354,7 +355,8 @@ class JsonApiClient(RestClient):
                 method='PATCH',
                 path=self._get_resource_path(resource_type),
                 query_params=self._pack_params(params),
-                data=self._pack_document(data, resource_type)))
+                data=self._pack_document(
+                    data if isinstance(data, list) else [data], resource_type)))
         # Return list iff original data was list
         return result if isinstance(data, list) else result[0]
 

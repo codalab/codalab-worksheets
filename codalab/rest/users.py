@@ -6,29 +6,12 @@ import httplib
 from bottle import abort, get, request, local
 from marshmallow_jsonapi import Schema, fields
 
-from codalab.lib import formatting
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.lib.server_util import bottle_patch as patch
 from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
 )
-
-
-class DataSize(fields.Field):
-    def _serialize(self, value, attr, obj):
-        return formatting.size_str(value)
-
-    def _deserialize(self, value, attr, data):
-        return formatting.parse_size(value)
-
-
-class Duration(fields.Field):
-    def _serialize(self, value, attr, obj):
-        return formatting.duration_str(value)
-
-    def _deserialize(self, value, attr, data):
-        return formatting.parse_duration(value)
 
 
 class UserSchema(Schema):
@@ -45,7 +28,7 @@ class UserSchema(Schema):
 
 
 class AuthenticatedUserSchema(UserSchema):
-    email = fields.Email()
+    email = fields.String()
     time_quota = fields.Integer()
     time_used = fields.Integer()
     disk_quota = fields.Integer()
@@ -53,7 +36,8 @@ class AuthenticatedUserSchema(UserSchema):
     last_login = fields.LocalDateTime("%c")
 
 
-USER_READ_ONLY_FIELDS = ('id', 'email', 'time_quota', 'time_used', 'disk_quota',
+# Email must be updated through the /account/changeemail interface
+USER_READ_ONLY_FIELDS = ('email', 'time_quota', 'time_used', 'disk_quota',
                          'disk_used', 'date_joined', 'last_login')
 
 
@@ -69,8 +53,11 @@ def update_authenticated_user():
     # Load update request data
     user_info = AuthenticatedUserSchema(
         strict=True,
-        dump_only=USER_READ_ONLY_FIELDS,
-    ).load(request.json, partial=True).data
+    ).load(request.json, partial=False).data
+
+    if any(k in user_info for k in USER_READ_ONLY_FIELDS):
+        abort(httplib.FORBIDDEN,
+              "These fields are read-only: " + ', '.join(USER_READ_ONLY_FIELDS))
 
     # Patch in user_id manually (do not allow requests to change id)
     user_info['user_id'] = request.user.user_id
@@ -91,6 +78,14 @@ def update_authenticated_user():
     return AuthenticatedUserSchema().dump(local.model.get_user(request.user.user_id)).data
 
 
+def allowed_user_schema():
+    """Return schema with more fields if authenticated user is root."""
+    if request.user.user_id == local.model.root_user_id:
+        return AuthenticatedUserSchema
+    else:
+        return UserSchema
+
+
 @get('/users/<user_spec>')
 def fetch_user(user_spec):
     """Fetch a single user."""
@@ -98,12 +93,13 @@ def fetch_user(user_spec):
     user = user or local.model.get_user(username=user_spec)
     if user is None:
         abort(httplib.NOT_FOUND, "User %s not found" % user_spec)
-    return UserSchema().dump(user).data
+    return allowed_user_schema()().dump(user).data
 
 
 @get('/users')
 def fetch_users():
-    """Fetch list of users, filterable by username and email.
+    """
+    Fetch list of users, filterable by username and email.
 
     Takes the following query parameters:
         filter[user_name]=name1,name2,...
@@ -116,23 +112,31 @@ def fetch_users():
     usernames |= set(request.query.get('filter[email]', '').split(','))
     usernames.discard('')  # str.split(',') will return '' on empty strings
     users = local.model.get_users(usernames=(usernames or None))
-    return UserSchema(many=True).dump(users).data
+    return allowed_user_schema()(many=True).dump(users).data
 
 
 @patch('/users')
 def update_users():
-    """Update users."""
-    if request.user.user_id != local.model.root_user_id:
-        abort(httplib.FORBIDDEN, "Only root user can update users.")
+    """
+    Update arbitrary users.
 
-    # Deserialize and update
+    This operation is reserved for the root user. Other users can update their
+    information through the /user "authenticated user" API.
+    Follows the bulk-update convention in the CodaLab API, but currently only
+    allows one update at a time.
+    """
+    if request.user.user_id != local.model.root_user_id:
+        abort(httplib.FORBIDDEN, "Only root user can update other users.")
+
     users = AuthenticatedUserSchema(
         strict=True, many=True
     ).load(request.json, partial=True).data
 
-    for user in users:
-        local.model.update_user_info(user)
+    if len(users) != 1:
+        abort(httplib.BAD_REQUEST, "Users can only be updated on at a time.")
+
+    local.model.update_user_info(users[0])
 
     # Return updated users
-    users = local.model.get_users(user_ids=[u['user_id'] for u in users])
-    return UserSchema(many=True).dump(users).data
+    users = local.model.get_users(user_ids=[users[0]['user_id']])
+    return AuthenticatedUserSchema(many=True).dump(users).data
