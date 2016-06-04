@@ -114,7 +114,7 @@ class CodaLabManager(object):
     '''
     temporary: don't use config files
     '''
-    def __init__(self, temporary=False, clients=None, rest_clients=None):
+    def __init__(self, temporary=False, clients=None):
         self.cache = {}
         self.temporary = temporary
 
@@ -122,7 +122,6 @@ class CodaLabManager(object):
             self.config = {}
             self.state = {'auth': {}, 'sessions': {}}
             self.clients = clients
-            self.rest_clients = rest_clients
             return
 
         # Read config file, creating if it doesn't exist.
@@ -149,7 +148,6 @@ class CodaLabManager(object):
         self.state = read_json_or_die(self.state_path)
 
         self.clients = {}  # map from address => client
-        self.rest_clients = {}
 
     def init_config(self, dry_run=False):
         '''
@@ -439,6 +437,38 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
+    def derive_rest_address(self, address):
+        """
+        Given bundle service address, return corresponding REST address
+        using manual translations (described in the comments below).
+        Temporary hack to ease transition to REST API.
+        """
+        o = urlparse(address)
+        if is_local_address(address):
+            # local => http://localhost:<rest_port>
+            precondition('server' in self.config and
+                         'rest_host' in self.config['server'] and
+                         'rest_port' in self.config['server'],
+                         'Working on local now requires running a local '
+                         'server, please configure "rest_host" and '
+                         '"rest_port" under "server" in your config.json.')
+            address = 'http://{rest_host}:{rest_port}'.format(**self.config['server'])
+        elif (o.hostname == 'localhost' and
+                      'server' in self.config and
+                      'port' in self.config['server'] and
+                      'rest_port' in self.config['server'] and
+                      o.port == self.config['server']['port']):
+            # http://localhost:<port> => http://localhost:<rest_port>
+            # Note that this does not affect the address of the NLP
+            # CodaLab instance behind an SSH tunnel
+            address = address.replace(str(self.config['server']['port']),
+                                      str(self.config['server']['rest_port']))
+        elif (o.netloc == 'worksheets.codalab.org' or
+                      o.netloc == 'worksheets-test.codalab.org'):
+            # http://worksheets.codalab.org/bundleservice => http://worksheets.codalab.org
+            address = address.replace('/bundleservice', '')
+        return address
+
     # TODO(sckoo): clean up backward compatibility hacks when REST API complete
     def local_client(self, use_rest=False):
         return self.client('local', use_rest=use_rest)
@@ -455,61 +485,30 @@ class CodaLabManager(object):
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
+        # FIXME(sckoo): temporary hack
+        # When BundleCLI is no longer dependent on RemoteBundleClient
+        # or LocalBundleClient, simplify everything to only using
+        # JsonApiClient, and remove all use_rest kwargs.
+        # Users should also then update their aliases to point at the
+        # correct addresses of the REST servers.
         if use_rest:
-            """
-            FIXME(sckoo): Temporary hack
-            When BundleCLI is no longer dependent on RemoteBundleClient
-            or LocalBundleClient, simplify everything to only using
-            JsonApiClient, and remove all use_rest kwargs.
-            Users should also then update their aliases to point at the
-            addresses of the REST servers.
-            """
-            # Manually translate known bundle service address to REST address
-            o = urlparse(address)
-            if is_local_address(address):
-                # local => http://localhost:<rest_port>
-                precondition('server' in self.config and
-                             'rest_host' in self.config['server'] and
-                             'rest_port' in self.config['server'],
-                             'Working on local now requires running a local '
-                             'server, please configure "rest_host" and '
-                             '"rest_port" under "server" in your config.json.')
-                address = 'http://{rest_host}:{rest_port}'.format(**self.config['server'])
-            elif (o.hostname == 'localhost' and
-                    'server' in self.config and
-                    'port' in self.config['server'] and
-                    'rest_port' in self.config['server'] and
-                    o.port == self.config['server']['port']):
-                # http://localhost:<port> => http://localhost:<rest_port>
-                # Note that this does not affect the address of the NLP
-                # CodaLab instance behind an SSH tunnel
-                address = address.replace(
-                    str(self.config['server']['port']),
-                    str(self.config['server']['rest_port']))
-            elif (o.netloc == 'worksheets.codalab.org' or
-                    o.netloc == 'worksheets-test.codalab.org'):
-                # http://worksheets.codalab.org/bundleservice
-                #   => http://worksheets.codalab.org
-                address = address.replace('/bundleservice', '')
+            address = self.derive_rest_address(address)
 
-            # Check cache for existing REST client
-            if address in self.rest_clients:
-                client = self.rest_clients[address]
-            else:
-                # Create RestOAuthHandler that authenticates directly with
-                # OAuth endpoints on the REST server
-                from codalab.server.auth import RestOAuthHandler
-                auth_handler = RestOAuthHandler(address, None)
+        # Return cached client
+        if address in self.clients:
+            return self.clients[address]
 
-                # Create JsonApiClient with a callback to get access tokens
-                from codalab.client.json_api_client import JsonApiClient
-                client = JsonApiClient(
-                    address, lambda: self._authenticate(address, auth_handler))
+        # Create new client
+        if use_rest:
+            # Create RestOAuthHandler that authenticates directly with
+            # OAuth endpoints on the REST server
+            from codalab.server.auth import RestOAuthHandler
+            auth_handler = RestOAuthHandler(address, None)
 
-                # Save JsonApiClient instances in a separate cache
-                self.rest_clients[address] = client
-        elif address in self.clients:
-            client = self.clients[address]
+            # Create JsonApiClient with a callback to get access tokens
+            from codalab.client.json_api_client import JsonApiClient
+            client = JsonApiClient(
+                address, lambda: self._authenticate(address, auth_handler))
         elif is_local_address(address):
             # if local force mockauth or if local server use correct auth
             bundle_store = self.bundle_store()
@@ -521,17 +520,18 @@ class CodaLabManager(object):
 
             from codalab.client.local_bundle_client import LocalBundleClient
             client = LocalBundleClient(address, bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
-            self.clients[address] = client
             if is_cli:
                 # Set current user
                 access_token = self._authenticate(client.address, client.auth_handler)
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            
+
             client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client.address, a_client), self.cli_verbose)
-            self.clients[address] = client
             self._authenticate(client.address, client)
+
+        # Cache and return client
+        self.clients[address] = client
         return client
 
     @property

@@ -46,6 +46,39 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.server.rpc_file_handle import RPCFileHandle
 
 
+def get_user_token():
+    """
+    Returns an access token for the authenticated user.
+    This function facilitates interactions with the bundle service.
+    """
+    CLIENT_ID = 'codalab_cli_client'
+
+    if request.user is None:
+        return None
+
+    # Try to find an existing token that will work.
+    token = local.model.find_oauth2_token(
+        CLIENT_ID,
+        request.user.user_id,
+        datetime.utcnow() + timedelta(minutes=5))
+    if token is not None:
+        return token.access_token
+
+    # Otherwise, generate a new one.
+    token = OAuth2Token(
+        local.model,
+        access_token=generate_token(),
+        refresh_token=None,
+        scopes='',
+        expires=datetime.utcnow() + timedelta(hours=10),
+        client_id=CLIENT_ID,
+        user_id=request.user.user_id,
+    )
+    local.model.save_oauth2_token(token)
+
+    return token.access_token
+
+
 class BundleService(object):
     '''
     Adapts the LocalBundleClient for REST calls.
@@ -56,6 +89,9 @@ class BundleService(object):
             'local', local.bundle_store, local.model, local.worker_model,
             local.upload_manager, local.download_manager,
             LocalUserAuthHandler(request.user, local.model), verbose=0)
+
+    def _rest_url(self):
+        return 'http://{rest_host}:{rest_port}'.format(**local.config['server'])
 
     def get_bundle_info(self, uuid):
         bundle_info = self.client.get_bundle_info(uuid, True, True, True)
@@ -227,111 +263,22 @@ class BundleService(object):
                 item['size_str'] = formatting.size_str(item['size'])
         return info
 
-    def update_bundle_metadata(self, uuid, new_metadata):
-        self.client.update_bundle_metadata(uuid, new_metadata)
-        return
-
-    def add_chat_log_info(self, query_info):
-        return self.client.add_chat_log_info(query_info)    
-
-    def get_chat_log_info(self, query_info):
-        return self.client.get_chat_log_info(query_info)
-
-    def get_user_info(self, user_id):
-        return self.client.get_user_info(user_id, True)
-
-    def get_faq(self):
-        return self.client.get_faq()
-
-class RemoteBundleService(object):
-    '''
-    Adapts the RemoteBundleClient for REST calls.
-    TODO(klopyrev): This version should eventually go away once the file upload
-    logic is cleaned up. See below where this class is used for more information.
-    '''
-    def __init__(self):
-        self.client = RemoteBundleClient(self._cli_url(),
-                                         lambda command: self._get_user_token(), verbose=0)
-
-        self.rest_client = JsonApiClient(self._rest_url(),
-                                         lambda: self._get_user_token())
-
-    def _cli_url(self):
-        return 'http://' + local.config['server']['host'] + ':' + str(local.config['server']['port'])
-
-    def _rest_url(self):
-        return 'http://' + local.config['server']['rest_host'] + ':' + str(local.config['server']['rest_port'])
-
-    def _get_user_token(self):
-        """
-        Returns an access token for the user. This function facilitates interactions
-        with the bundle service.
-        """
-        CLIENT_ID = 'codalab_cli_client'
-    
-        if request.user is None:
-            return None
-    
-        # Try to find an existing token that will work.
-        token = local.model.find_oauth2_token(
-            CLIENT_ID,
-            request.user.user_id,
-            datetime.utcnow() + timedelta(minutes=5))
-        if token is not None:
-            return token.access_token
-    
-        # Otherwise, generate a new one.
-        token = OAuth2Token(
-            local.model,
-            access_token=generate_token(),
-            refresh_token=None,
-            scopes='',
-            expires=datetime.utcnow() + timedelta(hours=10),
-            client_id=CLIENT_ID,
-            user_id=request.user.user_id,
-        )
-        local.model.save_oauth2_token(token)
-    
-        return token.access_token
-
-    def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
-        """
-        Upload |source_file| (a stream) to |worksheet_uuid|.
-        """
-        # Construct info for creating the bundle.
-        bundle_subclass = get_bundle_subclass(bundle_type) # program or data
-        metadata = metadata_util.fill_missing_metadata(bundle_subclass, {}, initial_metadata={'name': source_file.filename, 'description': 'Upload ' + source_file.filename})
-        info = {'bundle_type': bundle_type, 'metadata': metadata}
-
-        # Upload it by creating a file handle and copying source_file to it (see RemoteBundleClient.upload_bundle in the CLI).
-        remote_file_uuid = self.client.open_temp_file(metadata['name'])
-        try:
-            with closing(RPCFileHandle(remote_file_uuid, self.client.proxy)) as dest:
-                file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
-           
-            pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
-            if not pack and zip_util.path_is_archive(metadata['name']):
-                metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
-           
-            # Then tell the client that the uploaded file handle is there.
-            new_bundle_uuid = self.client.finish_upload_bundle(
-                [remote_file_uuid],
-                not pack,  # unpack
-                info,
-                worksheet_uuid,
-                True)  # add_to_worksheet
-        except:
-            self.client.finalize_file(remote_file_uuid)
-            raise
-        return new_bundle_uuid
-
-    # Create an instance of a CLI.
     def _create_cli(self, worksheet_uuid):
+        """
+        Create an instance of the CLI.
+
+        The CLI uses JsonApiClient to communicate back to the REST API.
+        This is admittedly not ideal since now the REST API is essentially
+        making HTTP requests back to itself.
+        """
         output_buffer = StringIO()
+        rest_client = JsonApiClient(self._rest_url(), lambda: get_user_token())
         manager = CodaLabManager(
             temporary=True,
-            clients={'local': self.client},
-            rest_clients={self._rest_url(): self.rest_client})
+            clients={
+                'local': self.client,
+                self._rest_url(): rest_client
+            })
         manager.set_current_worksheet_uuid('local', worksheet_uuid)
         manager.config = local.config
         cli = bundle_cli.BundleCLI(manager, headless=True, stdout=output_buffer, stderr=output_buffer)
@@ -393,6 +340,66 @@ class RemoteBundleService(object):
             'exception': exception
         }
 
+    def update_bundle_metadata(self, uuid, new_metadata):
+        self.client.update_bundle_metadata(uuid, new_metadata)
+        return
+
+    def add_chat_log_info(self, query_info):
+        return self.client.add_chat_log_info(query_info)    
+
+    def get_chat_log_info(self, query_info):
+        return self.client.get_chat_log_info(query_info)
+
+    def get_user_info(self, user_id):
+        return self.client.get_user_info(user_id, True)
+
+    def get_faq(self):
+        return self.client.get_faq()
+
+
+class RemoteBundleService(object):
+    '''
+    Adapts the RemoteBundleClient for REST calls.
+    TODO(klopyrev): This version should eventually go away once the file upload
+    logic is cleaned up. See below where this class is used for more information.
+    '''
+    def __init__(self):
+        self.client = RemoteBundleClient(self._cli_url(),
+                                         lambda command: get_user_token(), verbose=0)
+
+    def _cli_url(self):
+        return 'http://' + local.config['server']['host'] + ':' + str(local.config['server']['port'])
+
+    def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
+        """
+        Upload |source_file| (a stream) to |worksheet_uuid|.
+        """
+        # Construct info for creating the bundle.
+        bundle_subclass = get_bundle_subclass(bundle_type) # program or data
+        metadata = metadata_util.fill_missing_metadata(bundle_subclass, {}, initial_metadata={'name': source_file.filename, 'description': 'Upload ' + source_file.filename})
+        info = {'bundle_type': bundle_type, 'metadata': metadata}
+
+        # Upload it by creating a file handle and copying source_file to it (see RemoteBundleClient.upload_bundle in the CLI).
+        remote_file_uuid = self.client.open_temp_file(metadata['name'])
+        try:
+            with closing(RPCFileHandle(remote_file_uuid, self.client.proxy)) as dest:
+                file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
+           
+            pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
+            if not pack and zip_util.path_is_archive(metadata['name']):
+                metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
+           
+            # Then tell the client that the uploaded file handle is there.
+            new_bundle_uuid = self.client.finish_upload_bundle(
+                [remote_file_uuid],
+                not pack,  # unpack
+                info,
+                worksheet_uuid,
+                True)  # add_to_worksheet
+        except:
+            self.client.finalize_file(remote_file_uuid)
+            raise
+        return new_bundle_uuid
 
 
 @get('/worksheets/sample/')
@@ -432,7 +439,7 @@ def post_worksheets_command():
     # TODO(klopyrev): The Content-Type header is not set correctly in
     # editable_field.jsx, so we can't use request.json.
     data = json.loads(request.body.read())
-    service = RemoteBundleService()
+    service = BundleService()
 
     if data.get('raw_command', None):
         data['command'] = service.get_command(data['raw_command'])
