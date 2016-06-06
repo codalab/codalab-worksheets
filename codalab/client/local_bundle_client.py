@@ -184,8 +184,7 @@ class LocalBundleClient(BundleClient):
         """
         bundle_type = info['bundle_type']
         if bundle_type == 'program' or bundle_type == 'dataset':
-            construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
-                              'data_hash': info['data_hash']}
+            construct_args = {'metadata': info['metadata'], 'uuid': info['uuid']}
         elif bundle_type == 'make' or bundle_type == 'run':
             targets = [(item['child_path'], (item['parent_uuid'], item['parent_path']))
                        for item in info['dependencies']]
@@ -224,9 +223,16 @@ class LocalBundleClient(BundleClient):
         if 'uuid' in info:  # Happens when we're copying bundles.
             existing = True
             construct_args = self.bundle_info_to_construct_args(info)
+            try:
+                self.model.get_bundle(construct_args['uuid'])
+                raise UsageError('Bundle with UUID %s already exists.' % construct_args['uuid'])
+            except UsageError:
+                pass
         else:
             existing = False
-            construct_args = {'metadata': info['metadata']}
+            construct_args = {
+                'uuid': spec_util.generate_uuid(),
+                'metadata': info['metadata']}
         metadata = construct_args['metadata']
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
         if not existing:
@@ -235,7 +241,7 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
-        construct_args['uuid'] = spec_util.generate_uuid()
+        
         construct_args['owner_id'] = self._current_user_id()
 
         bundle = bundle_subclass.construct(**construct_args)
