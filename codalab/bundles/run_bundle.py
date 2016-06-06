@@ -39,10 +39,6 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of time (seconds) by user.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of time (seconds) by the system.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
-    # TODO(klopyrev): These statistics are wrong in the old worker system and are not reported in the new worker system.
-    #                 These metadata fields should be removed.
-    METADATA_SPECS.append(MetadataSpec('disk_read', float, 'Number of bytes read.', generated=True, formatting='size'))
-    METADATA_SPECS.append(MetadataSpec('disk_write', float, 'Number of bytes written.', generated=True, formatting='size'))
 
     METADATA_SPECS.append(MetadataSpec('started', int, 'Time when this bundle started executing.', generated=True, formatting='date'))
     METADATA_SPECS.append(MetadataSpec('last_updated', int, 'Time when information about this bundle was last updated.', generated=True, formatting='date'))
@@ -53,7 +49,6 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('exitcode', int, 'Exitcode of the process.', generated=True))
     METADATA_SPECS.append(MetadataSpec('job_handle', basestring, 'Identifies the job handle (internal).', generated=True))
     METADATA_SPECS.append(MetadataSpec('remote', basestring, 'Where this job is/was run (internal).', generated=True))
-    METADATA_SPECS.append(MetadataSpec('temp_dir', basestring, 'Temporary directory where job is/was running (internal)', generated=True))
 
     @classmethod
     def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):
