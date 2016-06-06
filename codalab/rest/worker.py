@@ -129,7 +129,7 @@ def update_bundle_metadata(worker_id, uuid):
     """
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
-    allowed_keys = set(['run_status', 'time', 'time_user', 'time_system', 'memory', 'data_size', 'last_updated'])
+    allowed_keys = set(['run_status', 'time', 'time_user', 'time_system', 'memory', 'memory_max', 'data_size', 'last_updated'])
     metadata_update = {}
     for key, value in request.json.iteritems():
         if key in allowed_keys:

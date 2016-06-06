@@ -277,6 +277,8 @@ class LocalBundleClient(BundleClient):
         Helper function that creates the bundle but doesn't add it to the worksheet.
         Returns the uuid.
         """
+        check_bundles_have_read_permission(self.model, self._current_user(),
+                                           [target[1][0] for target in targets])
         bundle_subclass = get_bundle_subclass(bundle_type)
         self.validate_user_metadata(bundle_subclass, metadata)
         owner_id = self._current_user_id()
@@ -377,11 +379,9 @@ class LocalBundleClient(BundleClient):
         If |data_only|, only remove from the bundle store, not the bundle metadata.
         """
         relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
-        uuids_set = set(uuids)
-        relevant_uuids_set = set(relevant_uuids)
         if not recursive:
             # If any descendants exist, then we only delete uuids if force = True.
-            if (not force) and uuids_set != relevant_uuids_set:
+            if (not force) and set(uuids) != set(relevant_uuids):
                 relevant = self.model.batch_get_bundles(uuid=(set(relevant_uuids) - set(uuids)))
                 raise UsageError('Can\'t delete bundles %s because the following bundles depend on them:\n  %s' % (
                   ' '.join(uuids),
@@ -426,11 +426,6 @@ class LocalBundleClient(BundleClient):
                                  "(--force to override):\n  %s" %
                                  (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
-        # Get data hashes
-        relevant_data_hashes = set(bundle.data_hash
-                                   for bundle in self.model.batch_get_bundles(uuid=relevant_uuids)
-                                   if bundle.data_hash)
-
         # Delete the actual bundle
         if not dry_run:
             if data_only:
@@ -443,8 +438,8 @@ class LocalBundleClient(BundleClient):
             # Update user statistics
             self.model.update_user_disk_used(self._current_user_id())
 
-        # Delete the data_hash
-        for uuid in relevant_uuids_set:
+        # Delete the data.
+        for uuid in relevant_uuids:
             # check first is needs to be deleted
             bundle_location = self.bundle_store.get_bundle_location(uuid)
             if os.path.lexists(bundle_location):
@@ -1344,7 +1339,8 @@ class LocalBundleClient(BundleClient):
     def update_user_info(self, user_info):
         user_id = self._current_user_id()
         is_root = (user_id == self.model.root_user_id)
-        is_user = (user_id == user_info['user_id'])
+        if 'user_id' not in user_info:
+            user_info['user_id'] = user_id
         if is_root:
             # TODO: in the future, allow user to update, but only in limited ways
             self.model.update_user_info(user_info)

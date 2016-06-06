@@ -104,7 +104,7 @@ class State(object):
     # TODO(klopyrev): Deprecate this state once the new worker system is launched.
     QUEUED = 'queued'     # Submitted to the queue (and possibly copying files around)
 
-    OPTIONS = {CREATED, STAGED, RUNNING, READY, FAILED}
+    OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED, QUEUED}
     FINAL_STATES = {READY, FAILED}
 
 

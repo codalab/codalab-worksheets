@@ -5,6 +5,25 @@ from worker import download_util
 from worker import file_util
 
 
+def retry_if_no_longer_running(f):
+    """
+    Decorator that retries a download if the bundle finishes running in the
+    middle of the download, after the download message is sent but before it is
+    handled.
+    """
+    def wrapper(*args, **kwargs):
+        try:
+            return f(*args, **kwargs)
+        except Exception as e:
+            if e.message == download_util.BUNDLE_NO_LONGER_RUNNING_MESSAGE:
+                # Retry just once, since by now the state should already be set
+                # to READY / FAILED, unless there's some internal error.
+                return f(*args, **kwargs)
+            else:
+                raise
+    return wrapper
+
+
 class DownloadManager(object):
     """
     Used for downloading the contents of bundles. The main purpose of this class
@@ -21,6 +40,7 @@ class DownloadManager(object):
         self._worker_model = worker_model
         self._bundle_store = bundle_store
 
+    @retry_if_no_longer_running
     def get_target_info(self, uuid, path, depth):
         """
         Returns information about an individual target inside the bundle, or
@@ -29,13 +49,18 @@ class DownloadManager(object):
         For information about the format of the return value, see
         worker.download_util.get_target_info.
         """
-        if not self._launch_new_worker_system or self._is_available_locally(uuid):
+        if (not self._launch_new_worker_system or
+            self._bundle_model.get_bundle_state(uuid) != State.RUNNING):
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
             except download_util.PathException as e:
                 raise UsageError(e.message)
         else:
+            # get_target_info calls are sent to the worker even on a shared file
+            # system since 1) due to NFS caching the worker has more up to date
+            # information on directory contents, and 2) the logic of hiding
+            # the dependency paths doesn't need to be re-implemented here.
             worker = self._worker_model.get_bundle_worker(uuid)
             response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
             try:
@@ -53,6 +78,7 @@ class DownloadManager(object):
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 
+    @retry_if_no_longer_running
     def stream_tarred_gzipped_directory(self, uuid, path):
         """
         Returns a file-like object containing a tarred and gzipped archive
@@ -75,6 +101,7 @@ class DownloadManager(object):
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise
 
+    @retry_if_no_longer_running
     def stream_file(self, uuid, path, gzipped):
         """
         Returns a file-like object reading the given file. This file is gzipped
@@ -102,6 +129,7 @@ class DownloadManager(object):
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise
 
+    @retry_if_no_longer_running
     def read_file_section(self, uuid, path, offset, length, gzipped):
         """
         Reads length bytes of the file at the given path in the bundle.
@@ -131,6 +159,7 @@ class DownloadManager(object):
                 string = file_util.un_gzip_string(string)
             return string
 
+    @retry_if_no_longer_running
     def summarize_file(self, uuid, path, num_head_lines, num_tail_lines, max_line_length, truncation_text, gzipped):
         """
         Summarizes the file at the given path in the bundle, returning a string
