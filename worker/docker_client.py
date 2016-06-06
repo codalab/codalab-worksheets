@@ -195,7 +195,6 @@ No ldconfig found. Not loading libcuda libraries.
                 'CgroupPermissions': 'mrw'})
 
         # Create the container.
-        logger.debug('Creating Docker container with command %s', command)
         create_request = {
             'Cmd': ['bash', '-c', '; '.join(docker_commands)],
             'Image': docker_image,
@@ -216,8 +215,8 @@ No ldconfig found. Not loading libcuda libraries.
             container_id = json.loads(create_response.read())['Id']
 
         # Start the container.
-        logger.debug('Starting Docker container with command %s, container ID %s',
-            command, container_id)
+        logger.debug('Starting Docker container for UUID %s with command %s, container ID %s',
+            uuid, command, container_id)
         with closing(self._create_connection()) as start_conn:
             start_conn.request('POST', '/containers/%s/start' % container_id)
             start_response = start_conn.getresponse()
@@ -227,7 +226,6 @@ No ldconfig found. Not loading libcuda libraries.
         return container_id
 
     def get_container_stats(self, container_id):
-        logger.debug('Getting statistics for container ID %s', container_id)
         # We don't use the stats API since it doesn't seem to be reliable, and
         # is definitely slow. This doesn't work on Mac.
         cgroup = None

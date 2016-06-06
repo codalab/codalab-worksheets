@@ -22,7 +22,7 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
-    WAIT_TIME_SECS = 2.0
+    WAIT_TIME_SECS = 5.0
 
     torque_worker = ('torque' in local.config['workers'] and
                      request.user.user_id == local.model.root_user_id)

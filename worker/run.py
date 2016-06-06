@@ -171,19 +171,29 @@ class Run(object):
         # slow if there are lots of files.
         threading.Thread(target=Run._compute_disk_utilization, args=[self]).start()
 
+        REPORT_DELAY_SECS = 5.0
+        last_report_time = 0
         while True:
             self._handle_kill()
             if self._check_and_report_finished():
                 break
-            self._check_and_report_resource_utilization()
+
+            if time.time() - last_report_time >= REPORT_DELAY_SECS:
+                report = True
+                last_report_time = time.time()
+            else:
+                report = False
+            self._check_and_report_resource_utilization(report)
+
             # TODO(klopyrev): Upload the contents of the running bundle to the
             #                 bundle service every few hours, so that they are
             #                 available in case the worker dies.
+
             time.sleep(0.5)
 
         self._worker.finish_run(self._uuid)
 
-    def _check_and_report_resource_utilization(self):
+    def _check_and_report_resource_utilization(self, report):
         new_metadata = {}
 
         # Get wall clock time.
@@ -208,11 +218,12 @@ class Run(object):
 
         new_metadata['last_updated'] = int(time.time())
 
-        logger.debug('Reporting resource utilization for run with UUID %s', self._uuid)
-        try:
-            self._bundle_service.update_bundle_metadata(self._worker.id, self._uuid, new_metadata)
-        except BundleServiceException:
-            traceback.print_exc()
+        if report:
+            logger.debug('Reporting resource utilization for run with UUID %s', self._uuid)
+            try:
+                self._bundle_service.update_bundle_metadata(self._worker.id, self._uuid, new_metadata)
+            except BundleServiceException:
+                traceback.print_exc()
 
     def _compute_disk_utilization(self):
         while not self._is_finished():
