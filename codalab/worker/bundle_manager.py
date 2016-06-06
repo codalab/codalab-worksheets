@@ -8,7 +8,7 @@ import time
 import traceback
 
 from codalab.common import State
-from codalab.lib import bundle_util, formatting
+from codalab.lib import bundle_util, formatting, path_util
 from worker.file_util import remove_path
 
 
@@ -178,16 +178,32 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            path = os.path.abspath(self._bundle_store.get_bundle_location(bundle.uuid))
+            path = os.path.normpath(self._bundle_store.get_bundle_location(bundle.uuid))
+
+            deps = []
+            for dep in bundle.dependencies:
+                parent_bundle_path = os.path.normpath(
+                    self._bundle_store.get_bundle_location(dep.parent_uuid))
+                dependency_path = os.path.normpath(
+                    os.path.join(parent_bundle_path, dep.parent_path))
+                if (not dependency_path.startswith(parent_bundle_path) or
+                    (not os.path.islink(dependency_path) and
+                     not os.path.exists(dependency_path))):
+                    raise Exception('Invalid dependency %s' % (
+                        path_util.safe_join(dep.parent_uuid, dep.parent_path)))
+
+                child_path = os.path.normpath(
+                    os.path.join(path, dep.child_path))
+                if not child_path.startswith(path):
+                    raise Exception('Invalid key for dependency: %s' % (
+                        dep.child_path))
+
+                deps.append((dependency_path, child_path))
+
             remove_path(path)
             os.mkdir(path)
-
-            # Compute a dict mapping parent_uuid -> parent for each dep of this bundle.
-            parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
-            parents = self._model.batch_get_bundles(uuid=parent_uuids)
-            parent_dict = {parent.uuid: parent for parent in parents}
-
-            bundle.install_dependencies(self._bundle_store, parent_dict, path, copy=True)
+            for dependency_path, child_path in deps:
+                path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
             self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
             logger.info('Finished making bundle %s', bundle.uuid)
