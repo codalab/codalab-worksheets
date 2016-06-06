@@ -23,7 +23,6 @@ from bottle import (
 from codalab.common import exception_to_http_error
 import codalab.rest.account
 import codalab.rest.bundle
-import codalab.rest.example
 import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
