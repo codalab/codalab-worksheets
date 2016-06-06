@@ -181,10 +181,10 @@ No ldconfig found. Not loading libcuda libraries.
             volume_bindings.append('%s:/usr/lib/x86_64-linux-gnu/%s:ro' % (
                 libcuda_file, os.path.basename(libcuda_file)))
         volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
-        for dependency_path, child_path in dependencies:
+        for dependency_path, docker_dependency_path in dependencies:
             volume_bindings.append('%s:%s:ro' % (
                 os.path.abspath(dependency_path),
-                os.path.join(docker_bundle_path, child_path)))
+                docker_dependency_path))
 
         # Set up the devices.
         devices = []
@@ -199,12 +199,13 @@ No ldconfig found. Not loading libcuda libraries.
         create_request = {
             'Cmd': ['bash', '-c', '; '.join(docker_commands)],
             'Image': docker_image,
-            'NetworkDisabled': not request_network,
             'HostConfig': {
                 'Binds': volume_bindings,
                 'Devices': devices,
                 },
         }
+        if not request_network:
+            create_request['HostConfig']['NetworkMode'] = 'none'
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',
                                 json.dumps(create_request),
@@ -307,5 +308,5 @@ class DockerUnixConnection(httplib.HTTPConnection, object):
  
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.settimeout(60)
+        self.sock.settimeout(300)
         self.sock.connect('//var/run/docker.sock')

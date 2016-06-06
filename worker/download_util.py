@@ -49,6 +49,9 @@ def get_target_path(bundle_path, uuid, path):
     return final_path
 
 
+BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
+
+
 def _get_normalized_target_path(bundle_path, uuid, path):
     real_bundle_path = os.path.realpath(bundle_path)
     normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, path))

@@ -39,6 +39,7 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of time (seconds) by user.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of time (seconds) by the system.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
+    METADATA_SPECS.append(MetadataSpec('memory_max', float, 'Maximum amount of memory (bytes) used by this run at any time during execution.', generated=True, formatting='size'))
     # TODO(klopyrev): These statistics are wrong in the old worker system and are not reported in the new worker system.
     #                 These metadata fields should be removed.
     METADATA_SPECS.append(MetadataSpec('disk_read', float, 'Number of bytes read.', generated=True, formatting='size'))

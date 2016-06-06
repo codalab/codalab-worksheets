@@ -9,7 +9,7 @@ import traceback
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
-from download_util import get_target_info, get_target_path, PathException
+from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
 from file_util import get_path_size, gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory, remove_path
 from formatting import duration_str, size_str
 
@@ -42,6 +42,8 @@ class Run(object):
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
+        
+        self._max_memory = 0
 
         self._kill_lock = threading.Lock()
         self._killed = False
@@ -108,6 +110,7 @@ class Run(object):
             if not self._worker.shared_file_system:
                 self._update_run_status('Downloading dependencies')
             dependencies = []
+            docker_dependencies_path = '/' + self._uuid + '_dependencies'
             for dep in self._bundle['dependencies']:
                 if self._worker.shared_file_system:
                     parent_bundle_path = dep['location']
@@ -126,7 +129,16 @@ class Run(object):
                         dep['parent_uuid'], dep['parent_path'], self._uuid,
                         check_killed)
 
-                dependencies.append((dependency_path, dep['child_path']))
+                child_path = os.path.normpath(
+                    os.path.join(self._bundle_path, dep['child_path']))
+                if not child_path.startswith(self._bundle_path):
+                    raise Exception('Invalid key for dependency: %s' % (
+                        dep['child_path']))
+
+                docker_dependency_path = os.path.join(
+                    docker_dependencies_path, dep['child_path'])
+                os.symlink(docker_dependency_path, child_path)
+                dependencies.append((dependency_path, docker_dependency_path))
 
             def do_start():
                 self._update_run_status('Starting Docker container')
@@ -184,6 +196,9 @@ class Run(object):
 
         # Get memory, time_user and time_system.
         new_metadata.update(self._docker.get_container_stats(self._container_id))
+        if 'memory' in new_metadata and new_metadata['memory'] > self._max_memory:
+            self._max_memory = new_metadata['memory']
+        new_metadata['memory_max'] = self._max_memory
         if (self._resources['request_memory'] and
             'memory' in new_metadata and
             new_metadata['memory'] > self._resources['request_memory']):
@@ -223,7 +238,7 @@ class Run(object):
     def read_run_missing(bundle_service, worker, socket_id):
         message = {
             'error_code': httplib.INTERNAL_SERVER_ERROR,
-            'error_message': 'Bundle no longer running',
+            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         bundle_service.reply(worker.id, socket_id, message)
 
@@ -351,11 +366,9 @@ class Run(object):
                 if not self._worker.shared_file_system:
                     self._worker.remove_dependency(
                         dep['parent_uuid'], dep['parent_path'], self._uuid)
-                # Docker creates files for each mounted volume. Delete them.
-                child_path = os.path.realpath(
-                    os.path.join(self._bundle_path, dep['child_path']))
-                if child_path.startswith(self._bundle_path):
-                    remove_path(child_path)
+                # Clean-up the symlinks we created.
+                child_path = os.path.join(self._bundle_path, dep['child_path'])
+                remove_path(child_path)
 
             if not self._worker.shared_file_system:
                 logger.debug('Uploading results for run with UUID %s', self._uuid)
