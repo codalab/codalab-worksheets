@@ -187,10 +187,7 @@ class CodaLabManager(object):
                 'localhost': 'http://localhost:2800',
             },
             'workers': {
-                'q': {
-                    'verbose': 1,
-                    'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
-                }
+                'default_docker_image': 'codalab/ubuntu:1.9',
             }
         }
 
