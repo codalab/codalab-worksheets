@@ -100,11 +100,8 @@ class State(object):
     RUNNING = 'running'   # Actually running
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
-    
-    # TODO(klopyrev): Deprecate this state once the new worker system is launched.
-    QUEUED = 'queued'     # Submitted to the queue (and possibly copying files around)
 
-    OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED, QUEUED}
+    OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED}
     FINAL_STATES = {READY, FAILED}
 
 

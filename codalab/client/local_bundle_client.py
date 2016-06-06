@@ -69,11 +69,10 @@ def authentication_required(func):
 
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, launch_new_worker_system, worker_model, upload_manager, download_manager, auth_handler, verbose):
+    def __init__(self, address, bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
-        self.launch_new_worker_system = launch_new_worker_system
         self.worker_model = worker_model
         self.upload_manager = upload_manager
         self.download_manager = download_manager
@@ -298,15 +297,12 @@ class LocalBundleClient(BundleClient):
         """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
-            if not self.launch_new_worker_system:
-                self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
-            else:
-                worker_message = {
-                    'type': 'kill',
-                    'uuid': bundle_uuid,
-                }
-                action_string = BundleAction.kill()
-                self._do_bundle_action(bundle_uuid, worker_message, action_string)
+            worker_message = {
+                'type': 'kill',
+                'uuid': bundle_uuid,
+            }
+            action_string = BundleAction.kill()
+            self._do_bundle_action(bundle_uuid, worker_message, action_string)
 
     @authentication_required
     def write_targets(self, targets, string):
@@ -319,17 +315,14 @@ class LocalBundleClient(BundleClient):
             if not re.match('^\w+$', subpath):
                 raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
             
-            if not self.launch_new_worker_system:
-                self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
-            else:
-                worker_message = {
-                    'type': 'write',
-                    'uuid': bundle_uuid,
-                    'subpath': subpath,
-                    'string': string,
-                }
-                action_string = BundleAction.write(subpath, string)
-                self._do_bundle_action(bundle_uuid, worker_message, action_string)
+            worker_message = {
+                'type': 'write',
+                'uuid': bundle_uuid,
+                'subpath': subpath,
+                'string': string,
+            }
+            action_string = BundleAction.write(subpath, string)
+            self._do_bundle_action(bundle_uuid, worker_message, action_string)
 
     def _do_bundle_action(self, bundle_uuid, worker_message, action_string):
         """
@@ -389,26 +382,15 @@ class LocalBundleClient(BundleClient):
         check_bundles_have_all_permission(self.model, self._current_user(), relevant_uuids)
 
         # Make sure we don't delete bundles which are active.
-        # TODO(klopyrev): Deprecate this code and the force flag once the new
-        #                 worker system is launched.
-        if not force:
-            states = self.model.get_bundle_states(uuids)
-            active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
-            if len(active_uuids) > 0:
-                raise UsageError('Can\'t delete queued or running bundles (--force to override): %s' %
-                                 ' '.join(active_uuids))
-
-        # Make sure we don't delete bundles which are active.
-        if self.launch_new_worker_system:
-            states = self.model.get_bundle_states(uuids)
-            active_states = set([State.MAKING, State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING])
-            active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
-            if len(active_uuids) > 0:
-                raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
-                                 'For run bundles, kill them first. ' +
-                                 'Bundles stuck not running will eventually ' +
-                                 'automatically be moved to a state where they ' +
-                                 'can be deleted.')
+        states = self.model.get_bundle_states(uuids)
+        active_states = set([State.MAKING, State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING])
+        active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
+        if len(active_uuids) > 0:
+            raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
+                             'For run bundles, kill them first. ' +
+                             'Bundles stuck not running will eventually ' +
+                             'automatically be moved to a state where they ' +
+                             'can be deleted.')
 
         # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
         result = self.model.get_host_worksheet_uuids(relevant_uuids)

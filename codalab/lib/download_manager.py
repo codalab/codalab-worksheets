@@ -15,8 +15,7 @@ class DownloadManager(object):
     responsible for doing all required permissions checks.
     """
 
-    def __init__(self, launch_new_worker_system, bundle_model, worker_model, bundle_store):
-        self._launch_new_worker_system = launch_new_worker_system
+    def __init__(self, bundle_model, worker_model, bundle_store):
         self._bundle_model = bundle_model
         self._worker_model = worker_model
         self._bundle_store = bundle_store
@@ -29,8 +28,7 @@ class DownloadManager(object):
         For information about the format of the return value, see
         worker.download_util.get_target_info.
         """
-        if (not self._launch_new_worker_system or
-            self._bundle_model.get_bundle_state(uuid) != State.RUNNING):
+        if self._bundle_model.get_bundle_state(uuid) != State.RUNNING:
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
@@ -63,7 +61,7 @@ class DownloadManager(object):
         Returns a file-like object containing a tarred and gzipped archive
         of the given directory.
         """
-        if not self._launch_new_worker_system or self._is_available_locally(uuid):
+        if self._is_available_locally(uuid):
             directory_path = self._get_target_path(uuid, path)
             return file_util.tar_gzip_directory(directory_path)
         else:
@@ -85,7 +83,7 @@ class DownloadManager(object):
         Returns a file-like object reading the given file. This file is gzipped
         if gzipped is True.
         """
-        if not self._launch_new_worker_system or self._is_available_locally(uuid):
+        if self._is_available_locally(uuid):
             file_path = self._get_target_path(uuid, path)
             if gzipped:
                 return file_util.gzip_file(file_path)
@@ -112,7 +110,7 @@ class DownloadManager(object):
         Reads length bytes of the file at the given path in the bundle.
         The result is gzipped if gzipped is True.
         """
-        if not self._launch_new_worker_system or self._is_available_locally(uuid):
+        if self._is_available_locally(uuid):
             file_path = self._get_target_path(uuid, path)
             string = file_util.read_file_section(file_path, offset, length)
             if gzipped:
@@ -144,7 +142,7 @@ class DownloadManager(object):
         truncation point.
         This string is gzipped if gzipped is True.
         """
-        if not self._launch_new_worker_system or self._is_available_locally(uuid):
+        if self._is_available_locally(uuid):
             file_path = self._get_target_path(uuid, path)
             string = file_util.summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text)
             if gzipped:

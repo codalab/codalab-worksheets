@@ -351,11 +351,6 @@ class CodaLabManager(object):
         info['disk_quota'] = formatting.parse_size(info['disk_quota'])
         return info
 
-    def launch_new_worker_system(self):
-        # TODO: This flag and all code in the False code path of this flag will
-        # get deleted once the new worker system is launched.
-        return self.config['workers'].get('launch_new_worker_system', False)
-
     @cached
     def model(self):
         """
@@ -392,7 +387,7 @@ class CodaLabManager(object):
 
     @cached
     def download_manager(self):
-        return DownloadManager(self.launch_new_worker_system(), self.model(), self.worker_model(), self.bundle_store())
+        return DownloadManager(self.model(), self.worker_model(), self.bundle_store())
 
     def auth_handler(self, mock=False):
         '''
@@ -473,14 +468,13 @@ class CodaLabManager(object):
         if is_local_address(address):
             bundle_store = self.bundle_store()
             model = self.model()
-            launch_new_worker_system = self.launch_new_worker_system()
             worker_model = self.worker_model()
             upload_manager = self.upload_manager()
             download_manager = self.download_manager()
             auth_handler = self.auth_handler(mock=is_cli)
 
             from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, launch_new_worker_system, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
+            client = LocalBundleClient(address, bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
             self.clients[address] = client
             if is_cli:
                 # Set current user
