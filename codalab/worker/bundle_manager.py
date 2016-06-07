@@ -201,9 +201,13 @@ class BundleManager(object):
                 deps.append((dependency_path, child_path))
 
             remove_path(path)
-            os.mkdir(path)
-            for dependency_path, child_path in deps:
-                path_util.copy(dependency_path, child_path, follow_symlinks=False)
+            
+            if len(deps) == 1 and deps[0][1] == path:
+                path_util.copy(deps[0][0], path, follow_symlinks=False)
+            else:
+                os.mkdir(path)
+                for dependency_path, child_path in deps:
+                    path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
             self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
             logger.info('Finished making bundle %s', bundle.uuid)
