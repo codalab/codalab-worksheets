@@ -247,10 +247,13 @@ class LocalBundleClient(BundleClient):
         bundle = bundle_subclass.construct(**construct_args)
 
         # Upload the data and save the bundle.
-        self.upload_manager.upload_to_bundle_store(
-            bundle, sources, follow_symlinks, exclude_patterns, remove_sources,
-            git, unpack, simplify_archives=True)
-        self.upload_manager.update_metadata_and_save(bundle, new_bundle=True)
+        if sources is not None:
+            self.upload_manager.upload_to_bundle_store(
+                bundle, sources, follow_symlinks, exclude_patterns, remove_sources,
+                git, unpack, simplify_archives=True)
+            self.upload_manager.update_metadata_and_save(bundle, new_bundle=True)
+        else:
+            self.model.save_bundle(bundle)
 
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)

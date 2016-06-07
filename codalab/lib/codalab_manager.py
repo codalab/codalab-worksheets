@@ -529,16 +529,20 @@ class CodaLabManager(object):
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}
 
-        username = None
         # For a local client with mock credentials, use the default username.
         if is_local_address(address):
             username = self.root_user_name()
             password = ''
-        if not username:
-            print 'Requesting access at %s' % address
-            sys.stdout.write('Username: ')  # Use write to avoid extra space
-            username = sys.stdin.readline().rstrip()
-            password = getpass.getpass()
+        else:
+            username = os.environ.get('CODALAB_USERNAME')
+            password = os.environ.get('CODALAB_PASSWORD')
+            if username is None or password is None:
+                print 'Requesting access at %s' % address
+            if username is None:
+                sys.stdout.write('Username: ')  # Use write to avoid extra space
+                username = sys.stdin.readline().rstrip()
+            if password is None:
+                password = getpass.getpass()
 
         token_info = auth_handler.generate_token('credentials', username, password)
         if token_info is None:
