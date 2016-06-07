@@ -403,11 +403,9 @@ class CodaLabManager(object):
 
         if mock or handler_class == 'MockAuthHandler':
             return self.mock_auth_handler()
-        if handler_class == 'OAuthHandler':
-            return self.oauth_handler()
         if handler_class == 'RestOAuthHandler':
             return self.rest_oauth_handler()
-        raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
+        raise UsageError('Unexpected auth handler class: %s, expected RestOAuthHandler or MockAuthHandler' % (handler_class,))
 
     @cached
     def mock_auth_handler(self):
@@ -415,14 +413,6 @@ class CodaLabManager(object):
         # Just create one user corresponding to the root
         users = [User(self.root_user_name(), self.root_user_id())]
         return MockAuthHandler(users)
-
-    @cached
-    def oauth_handler(self):
-        arguments = ('address', 'app_id', 'app_key')
-        auth_config = self.config['server']['auth']
-        kwargs = {arg: auth_config[arg] for arg in arguments}
-        from codalab.server.auth import OAuthHandler
-        return OAuthHandler(**kwargs)
 
     @cached
     def rest_oauth_handler(self):
