@@ -10,21 +10,9 @@ they may override a number of methods of the base class:
   construct: different bundle subclass might take different parameters
   validate: bundle subclasses may require additional validation
   run: bundle subclasses that must be executed must override this method
-
-The base class provides one method, install_dependencies, that may be useful
-when implementing the run method.
 '''
-import os
-
-from codalab.common import (
-  precondition,
-  NotFoundError,
-  UsageError,
-)
-from codalab.lib import (
-  path_util,
-  spec_util,
-)
+from codalab.common import precondition
+from codalab.lib import spec_util
 from codalab.model.orm_object import ORMObject
 from codalab.objects.dependency import Dependency
 from codalab.objects.metadata import Metadata
@@ -92,58 +80,3 @@ class Bundle(ORMObject):
         Return a list of metadata specs for metadata that must be input by the user.
         '''
         return [spec for spec in cls.METADATA_SPECS if not spec.generated]
-
-    def get_dependency_paths(self, bundle_store, parent_dict, dest_path, relative_symlinks=False):
-        def process_dep(dep):
-            parent = parent_dict[dep.parent_uuid]
-            # Compute an absolute target and check that the dependency exists.
-            if not parent.uuid:
-                raise UsageError('Parent %s does not have uuid' % parent)
-            target = path_util.safe_join(
-              bundle_store.get_bundle_location(parent.uuid),
-              dep.parent_path,
-            )
-            if not os.path.exists(target):
-                parent_spec = getattr(parent.metadata, 'name', parent.uuid)
-                target_text = path_util.safe_join(parent_spec, dep.parent_path)
-                raise NotFoundError('Target not found: %s' % (target_text,))
-            if relative_symlinks:
-                # Create a symlink that points to the dependency's relative target.
-                target = path_util.safe_join(
-                  (os.pardir if dep.child_path else ''),
-                  bundle_store.get_bundle_location(parent.uuid, relative=True),
-                  dep.parent_path,
-                )
-            link_path = path_util.safe_join(dest_path, dep.child_path)
-
-            return (target, link_path)
-
-        return [process_dep(dep) for dep in self.dependencies]
-
-    def install_dependencies(self, bundle_store, parent_dict, dest_path, copy):
-        '''
-        Symlink or copy this bundle's dependencies into the directory at dest_path.
-        The caller is responsible for cleaning up this directory.
-        '''
-        precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
-        pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks=not copy)
-        for (target, link_path) in pairs:
-            # If the dependency already exists, remove it (this happens when we are reinstalling)
-            if os.path.exists(link_path):
-                path_util.remove(link_path)
-            # Either copy (but not follow further symlinks) or symlink.
-            if copy:
-                path_util.copy(target, link_path, follow_symlinks=False)
-            else:
-                os.symlink(target, link_path)
-
-    def remove_dependencies(self, bundle_store, parent_dict, dest_path):
-        '''
-        Remove dependencies (for RunBundles).
-        '''
-        precondition(os.path.isabs(dest_path), '%s is a relative path!' % (dest_path,))
-        pairs = self.get_dependency_paths(bundle_store, parent_dict, dest_path, relative_symlinks=False)
-        for (target, link_path) in pairs:
-            # If the dependency already exists, remove it (this happens when we are reinstalling)
-            if os.path.exists(link_path):
-                path_util.remove(link_path)
