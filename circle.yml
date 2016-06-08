@@ -19,7 +19,7 @@ test:
     - mysql -e "CREATE DATABASE codalab_bundles;"
     - (printf 'n\ny\nlocalhost\n\nroot\n' | sshpass -p "" ./codalab/bin/cl) || true
     - ./codalab/bin/cl bs-health-check
-    - jq '.cli.default_address = "http://localhost:2800" | .workers.default_docker_image = "ubuntu:14.04" |.workers.launch_new_worker_system = true' /home/ubuntu/.codalab/config.json > /home/ubuntu/.codalab/config.new.json
+    - jq '.cli.default_address = "http://localhost:2800" | .workers.default_docker_image = "ubuntu:14.04"' /home/ubuntu/.codalab/config.json > /home/ubuntu/.codalab/config.new.json
     - mv /home/ubuntu/.codalab/config.new.json /home/ubuntu/.codalab/config.json
     - rm /home/ubuntu/.codalab/state.json
     - ./scripts/create-root-user.py $CODALAB_PASSWORD

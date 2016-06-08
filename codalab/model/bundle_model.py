@@ -48,7 +48,6 @@ from codalab.model.tables import (
     bundle as cl_bundle,
     bundle_dependency as cl_bundle_dependency,
     bundle_metadata as cl_bundle_metadata,
-    bundle_action as cl_bundle_action,
     group as cl_group,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
@@ -564,35 +563,6 @@ class BundleModel(object):
             bundle.validate()
         return bundles
 
-    def batch_update_bundles(self, bundles, update, condition=None):
-        '''
-        Update a list of bundles given a dict mapping columns to new values and
-        return True if all updates succeed. This method does NOT update metadata.
-
-        If a condition is specified, only update bundles that satisfy the condition.
-
-        In general, this method should only be used for programmatic updates, as in
-        the bundle worker. It is provided as an efficient way to perform a simple
-        update on many, but these updates are not validated.
-        '''
-        message = 'Illegal update: %s' % (update,)
-        precondition('id' not in update and 'uuid' not in update, message)
-        if bundles:
-            bundle_ids = set(bundle.id for bundle in bundles)
-            clause = cl_bundle.c.id.in_(bundle_ids)
-            if condition:
-                clause = and_(clause, self.make_kwargs_clause(cl_bundle, condition))
-            with self.engine.begin() as connection:
-                result = connection.execute(
-                  cl_bundle.update().where(clause).values(update)
-                )
-                success = result.rowcount == len(bundle_ids)
-                if success:
-                    for bundle in bundles:
-                        bundle.update_in_memory(update)
-                return success
-        return True
-
     def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
         '''
         Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle
@@ -650,7 +620,7 @@ class BundleModel(object):
         removes the worker_run row.
         '''
         with self.engine.begin() as connection:
-            # Make sure it's still queued.
+            # Make sure it's still starting.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
             if not row:
                 raise IntegrityError('Missing bundle with UUID %s' % bundle.uuid)
@@ -735,16 +705,6 @@ class BundleModel(object):
             command='finalize_bundle',
             args=(bundle.uuid, state, bundle.metadata.to_dict()),
             uuid=bundle.uuid)
-
-    def add_bundle_action(self, uuid, action):
-        with self.engine.begin() as connection:
-            connection.execute(cl_bundle_action.insert().values({'bundle_uuid': uuid, 'action': action}))
-
-    def pop_bundle_actions(self):
-        with self.engine.begin() as connection:
-            results = connection.execute(cl_bundle_action.select()).fetchall()  # Get the actions
-            connection.execute(cl_bundle_action.delete())  # Delete all actions
-            return [x for x in results]
 
     def save_bundle(self, bundle):
         '''

@@ -183,14 +183,6 @@ def get_size(path, dirs_and_files=None):
     return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
 
 
-def hash_path(path, dirs_and_files=None):
-    if os.path.isfile(path):
-        return hash_file_contents(path)
-    elif os.path.isdir(path):
-        return hash_directory(path, dirs_and_files)
-    else:
-        print >> sys.stderr, 'Path %s not valid' % path
-
 def hash_directory(path, dirs_and_files=None):
     """
     Return the hash of the contents of the folder at the given path.

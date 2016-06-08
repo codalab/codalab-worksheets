@@ -67,16 +67,6 @@ bundle_dependency = Table(
   sqlite_autoincrement=True,
 )
 
-# Stores actions sent from the client to the worker.
-bundle_action = Table(
-  'bundle_action',
-  db_metadata,
-  Column('id', Integer, primary_key=True, nullable=False),
-  Column('bundle_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
-  Column('action', Text, nullable=False),
-  sqlite_autoincrement=True,
-)
-
 # The worksheet table does not have many columns now, but it will eventually
 # include columns for owner, group, permissions, etc.
 worksheet = Table(
