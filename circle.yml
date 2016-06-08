@@ -1,6 +1,11 @@
 machine:
   python:
     version: 2.7.5
+  services:
+    - docker
+  environment:
+    CODALAB_USERNAME: codalab
+    CODALAB_PASSWORD: testpassword
 
 dependencies:
   override:
@@ -11,13 +16,21 @@ dependencies:
 
 test:
   override:
-    - (printf 'n\nn\n\n' | ./codalab/bin/cl) || true
+    - mysql -e "CREATE DATABASE codalab_bundles;"
+    - (printf 'n\ny\nlocalhost\n\nroot\n' | sshpass -p "" ./codalab/bin/cl) || true
     - ./codalab/bin/cl bs-health-check
-    - jq '.server.rest_host = "127.0.0.1" | .server.rest_port = 80' /home/ubuntu/.codalab/config.json > /home/ubuntu/.codalab/config.new.json
+    - jq '.cli.default_address = "http://localhost:2800" | .workers.default_docker_image = "ubuntu:14.04" |.workers.launch_new_worker_system = true' /home/ubuntu/.codalab/config.json > /home/ubuntu/.codalab/config.new.json
     - mv /home/ubuntu/.codalab/config.new.json /home/ubuntu/.codalab/config.json
-    - ./scripts/create-root-user.py testpassword
-    - 'sudo ./codalab/bin/cl rest-server':
+    - rm /home/ubuntu/.codalab/state.json
+    - ./scripts/create-root-user.py $CODALAB_PASSWORD
+    - './codalab/bin/cl server':
         background: true
-    - './codalab/bin/cl work-manager':
+    - './codalab/bin/cl rest-server':
         background: true
-    - echo 'codalab' | sshpass -p testpassword ./scripts/ci-tests.sh
+    - './codalab/bin/cl bundle-manager':
+        background: true
+    - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/ubuntu/.codalab/password
+    - chmod 600 /home/ubuntu/.codalab/password
+    - './worker/worker.sh --bundle-service-url http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/password --verbose':
+        background: true
+    - ./scripts/ci-tests.sh

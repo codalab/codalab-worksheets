@@ -967,7 +967,7 @@ class BundleCLI(object):
 
             # Set sources
             if source is None:
-                sources = [None]
+                sources = None
             elif isinstance(dest_client, LocalBundleClient):
                 sources = [dest_path]
             else:
