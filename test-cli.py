@@ -13,7 +13,6 @@ pipeline, and also as a non-root user, to hammer out unanticipated permission is
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
-- Worker system
 '''
 
 import subprocess
@@ -440,22 +439,6 @@ def test(ctx):
     run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
 
-@TestModule.register('run')
-def test(ctx):
-    name = random_name()
-    uuid = run_command([cl, 'run', 'echo hello', '-n', name])
-    wait(uuid)
-    # test search
-    check_contains(name, run_command([cl, 'search', name]))
-    check_equals(uuid, run_command([cl, 'search', name, '-u']))
-    run_command([cl, 'search', name, '--append'])
-    # get info
-    check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
-    check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
-    check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
-    # block
-    check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
-
 @TestModule.register('worksheet')
 def test(ctx):
     wname = random_name()
@@ -577,6 +560,71 @@ def test(ctx):
     size1 = float(run_command([cl, 'info', '-f', 'data_size', uuid1]))
     size2 = float(run_command([cl, 'info', '-f', 'data_size', uuid2]))
     check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
+
+@TestModule.register('run')
+def test(ctx):
+    name = random_name()
+    uuid = run_command([cl, 'run', 'echo hello', '-n', name])
+    wait(uuid)
+    # test search
+    check_contains(name, run_command([cl, 'search', name]))
+    check_equals(uuid, run_command([cl, 'search', name, '-u']))
+    run_command([cl, 'search', name, '--append'])
+    # get info
+    check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
+    check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
+    check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
+    # block
+    check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
+
+@TestModule.register('read')
+def test(ctx):
+    dep_uuid = run_command([cl, 'upload', test_path('')])
+    uuid = run_command([cl, 'run',
+                        'dir:' + dep_uuid,
+                        'file:' + dep_uuid + '/a.txt',
+                        'ls dir; cat file; seq 1 10; touch done; sleep 60'])
+    wait_until_running(uuid)
+
+    # Tests reading first while the bundle is running and then after it is
+    # killed.
+    for running in [True, False]:
+        # Wait for the output to appear. Also, tests cat on a directory.
+        while 'done' not in run_command([cl, 'cat', uuid]):
+            time.sleep(0.5)
+
+        # Info has only the first 10 lines.
+        info_output = run_command([cl, 'info', uuid, '--verbose'])
+        print info_output
+        check_contains('passwd', info_output)
+        check_contains('This is a simple text file for CodaLab.', info_output)
+        assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
+
+        # Cat has everything.
+        check_contains('5\n6\n7', run_command([cl, 'cat', uuid + '/stdout']))
+
+        # Read a non-existant file.
+        run_command([cl, 'cat', uuid + '/unknown'], 1)
+
+        # Dependencies should not be visible.
+        dir_cat = run_command([cl, 'cat', uuid])
+        assert 'dir' not in dir_cat, '"dir" should not be in bundle'
+        assert 'file' not in dir_cat, '"file" should not be in bundle'
+        run_command([cl, 'cat', uuid + '/dir'], 1)
+        run_command([cl, 'cat', uuid + '/file'], 1)
+
+        # Download the whole bundle.
+        path = temp_path('')
+        run_command([cl, 'download', uuid, '-o', path])
+        assert not os.path.exists(os.path.join(path, 'dir')), '"dir" should not be in bundle'
+        assert not os.path.exists(os.path.join(path, 'file')), '"file" should not be in bundle'
+        with open(os.path.join(path, 'stdout')) as fileobj:
+            check_contains('5\n6\n7', fileobj.read())
+        shutil.rmtree(path)
+
+        if running:
+            run_command([cl, 'kill', uuid])
+            wait(uuid, 1)
 
 @TestModule.register('kill')
 def test(ctx):
