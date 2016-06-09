@@ -2,6 +2,7 @@ import logging
 import os
 import re
 import subprocess
+import sys
 import time
 import traceback
 
@@ -28,6 +29,7 @@ class TorqueBundleManager(BundleManager):
         else:
             codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             self._torque_worker_code_dir = os.path.join(codalab_cli, 'worker')
+        self._last_delete_attempt = {}
 
     def _schedule_run_bundles(self):
         """
@@ -196,13 +198,20 @@ class TorqueBundleManager(BundleManager):
         for worker in workers.user_owned_workers(self._model.root_user_id):
             job_handle = worker['worker_id']
             if job_handle not in running_job_handles:
+                if (job_handle in self._last_delete_attempt and
+                    self._last_delete_attempt[job_handle] - time.time() < 60):
+                    # Throttle the deletes in case there is a Torque problem.
+                    continue
+
                 logger.info('Delete Torque worker with handle %s', job_handle)
                 # Delete the worker job.
                 command = self._torque_ssh_command(['qdel', job_handle])
                 try:
                     subprocess.check_output(command, stderr=subprocess.STDOUT).strip()
-                except subprocess.CalledProcessError:
+                except subprocess.CalledProcessError as e:
+                    print >> sys.stderr, 'Failure deleting Torque worker:', e.output
                     traceback.print_exc()
+                    self._last_delete_attempt[job_handle] = time.time()
 
                 # Clear the logs.
                 remove_path(os.path.join(self._torque_log_dir, 'stdout.' + job_handle))
