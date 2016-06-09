@@ -214,8 +214,11 @@ class TorqueBundleManager(BundleManager):
                     self._last_delete_attempt[job_handle] = time.time()
 
                 # Clear the logs.
-                remove_path(os.path.join(self._torque_log_dir, 'stdout.' + job_handle))
-                remove_path(os.path.join(self._torque_log_dir, 'stderr.' + job_handle))
+                self._clear_torque_logs(job_handle)
+
+    def _clear_torque_logs(self, job_handle):
+        remove_path(os.path.join(self._torque_log_dir, 'stdout.' + job_handle))
+        remove_path(os.path.join(self._torque_log_dir, 'stderr.' + job_handle))
 
     def _torque_ssh_command(self, args):
         args = ['"' + arg.replace('"', '\\"') + '"' for arg in args]  # Quote arguments
