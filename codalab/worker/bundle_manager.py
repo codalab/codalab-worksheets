@@ -329,6 +329,12 @@ class BundleManager(object):
         """
         if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
+            if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
+                # On a shared file system we create the path here to avoid NFS
+                # directory cache issues.
+                path = self._bundle_store.get_bundle_location(bundle.uuid)
+                remove_path(path)
+                os.mkdir(path)
             if self._worker_model.send_json_message(
                 worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
                 logger.info('Starting run bundle %s', bundle.uuid)
