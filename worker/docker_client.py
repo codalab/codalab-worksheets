@@ -71,7 +71,7 @@ to run the worker from the Docker shell.
         try:
             libcuda_dirs = set()
             for lib in subprocess.check_output(['/sbin/ldconfig', '-p']).split('\n'):
-                if 'libcuda.' in lib:
+                if 'libcuda.' in lib and 'x86-64' in lib:
                     libcuda_dirs.add(os.path.dirname(lib.split(' => ')[-1]))
         except OSError:
             # ldconfig isn't available on Mac OS X. Let's just say that we
