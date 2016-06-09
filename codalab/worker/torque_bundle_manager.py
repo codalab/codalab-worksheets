@@ -202,6 +202,7 @@ class TorqueBundleManager(BundleManager):
                     self._last_delete_attempt[job_handle] - time.time() < 60):
                     # Throttle the deletes in case there is a Torque problem.
                     continue
+                self._last_delete_attempt[job_handle] = time.time()
 
                 logger.info('Delete Torque worker with handle %s', job_handle)
                 # Delete the worker job.
@@ -211,7 +212,7 @@ class TorqueBundleManager(BundleManager):
                 except subprocess.CalledProcessError as e:
                     print >> sys.stderr, 'Failure deleting Torque worker:', e.output
                     traceback.print_exc()
-                    self._last_delete_attempt[job_handle] = time.time()
+                    continue
 
                 # Clear the logs.
                 self._clear_torque_logs(job_handle)
