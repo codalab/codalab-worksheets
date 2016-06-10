@@ -5,13 +5,14 @@ import datetime
 from collections import defaultdict
 from smtplib import SMTP
 from email.mime.text import MIMEText
-from getpass import getpass
 import subprocess
 import re
 import time
 import socket
 import argparse
 import json
+
+CODALAB_CLI = os.path.dirname(__file__)
 
 # This script runs in a loop monitoring the health of the CodaLab instance.
 # It reads config.json and website-config.json in your CodaLab Home (~/.codalab).
@@ -43,7 +44,7 @@ hostname = socket.gethostname()
 config_path = os.path.join(args.codalab_home, 'config.json')
 config = json.loads(open(config_path).read())
 engine_url = config['server']['engine_url']
-m = re.match('mysql://(.+):(.+)@localhost:3306/(.+)', engine_url)
+m = re.match('mysql://(.+):(.+)@localhost(?::3306)?/(.+)', engine_url)
 if not m:
     print 'Can\'t extract server.engine_url from %s' % config_path
     sys.exit(1)
@@ -52,17 +53,8 @@ bundles_user = m.group(1)
 bundles_password = m.group(2)
 print 'bundles DB: %s; user: %s' % (bundles_db, bundles_user)
 
-# Get MySQL username and password for website (this should go away when we merge the DBs!)
-config_path = os.path.join(args.codalab_home, 'website-config.json')
-config = json.loads(open(config_path).read())
-db_info = config['database']
-website_db = db_info['NAME']
-website_user = db_info['USER']
-website_password = db_info['PASSWORD']
-print 'website DB: %s, user: %s' % (website_db, website_user)
-
 # Email
-recipient = config['django']['admin-email']
+recipient = config['admin-email']
 sender_info = config['email']
 
 # Create backup directory
@@ -122,7 +114,7 @@ def error_logs(error_type, s):
         send_email('%s [%d times]' % (error_type, n), s.split('\n'))
 
 durations = defaultdict(list)  # Command => durations for that command
-def run_command(args, soft_time_limit=5, hard_time_limit=60):
+def run_command(args, soft_time_limit=5, hard_time_limit=60, include_output=True):
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
     try:
@@ -145,7 +137,7 @@ def run_command(args, soft_time_limit=5, hard_time_limit=60):
 
     message = '>> %s (exit code %s, time %.2fs [limit: %ds,%ds]; avg %.2fs; max %.2fs)\n%s' % \
         (' '.join(args), exitcode, duration, soft_time_limit, hard_time_limit,
-        average_duration, max_duration, output)
+        average_duration, max_duration, output if include_output else '')
     if exitcode == 0:
         logs(message)
     else:
@@ -175,7 +167,8 @@ def backup_db(db, user, password):
         print >>f, 'user="%s"' % user
         print >>f, 'password="%s"' % password
     run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/%s-%s.mysqldump' % \
-        (mysql_conf_path, db, args.backup_path, db, date)])
+        (mysql_conf_path, db, args.backup_path, db, date)],
+        600, 600)  # Back-up might take a while.
     os.unlink(mysql_conf_path)
 
 # Begin monitoring loop
@@ -189,7 +182,6 @@ while True:
         # Backup DB
         if email_time():
             log('Backup DB')
-            backup_db(website_db, website_user, website_password)
             backup_db(bundles_db, bundles_user, bundles_password)
 
         # Check remaining disk space
@@ -209,11 +201,15 @@ while True:
             run_command(['cl', 'search', 'size=.sort-', '.limit=5'], 20)
             run_command(['cl', 'search', '.last', '.limit=5'])
 
-        # Try to run a job
+        # Try uploading, downloading and running a job with a dependency.
         if run_time():
-            uuid = run_command(['cl', 'run', 'echo hello'])
+            upload_uuid = run_command(['cl', 'upload', os.path.join(CODALAB_CLI, 'scripts', 'stress-test.pl')])
+            uuid = run_command(['cl', 'run', 'stress-test.pl:' + upload_uuid, 'perl stress-test.pl 5 10 10'])
             run_command(['cl', 'wait', uuid], 30, 300)  # Running might take a while
-            run_command(['cl', 'rm', uuid])
+            cat_result = run_command(['cl', 'cat', uuid + '/stdout'], include_output=False)
+            if 'time = 4' not in cat_result:
+                error_logs('download failed', 'Uploaded file should contain the string "time = 4", contents:\n' + cat_result)
+            run_command(['cl', 'rm', upload_uuid, uuid])
     except Exception, e:
         error_logs('exception', 'Exception: %s' % e)
 
