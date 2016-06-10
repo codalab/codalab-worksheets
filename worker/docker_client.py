@@ -8,6 +8,8 @@ import ssl
 import subprocess
 import sys
 
+from formatting import size_str
+
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +132,6 @@ No ldconfig found. Not loading libcuda libraries.
             # character at a time until what we have so far parses as a valid
             # JSON object.
             while True:
-                loop_callback()
                 response = None
                 line = ''
                 while True:
@@ -148,6 +149,19 @@ No ldconfig found. Not loading libcuda libraries.
                     break
                 if 'error' in response:
                     raise DockerException(response['error'])
+
+                status = ''
+                try:
+                    status = response['status']
+                except KeyError:
+                    pass
+                try:
+                    status += ' (%s / %s)' % (
+                        size_str(response['progressDetail']['current']),
+                        size_str(response['progressDetail']['total']))
+                except KeyError:
+                    pass
+                loop_callback(status)
 
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,

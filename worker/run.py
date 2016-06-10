@@ -87,19 +87,25 @@ class Run(object):
 
         return True
 
-    def _update_run_status(self, status):
-        update = {
-            'run_status': status,
-            'last_updated': int(time.time()),
-            'time': time.time() - self._start_time,
-        }
-        self._bundle_service.update_bundle_metadata(self._worker.id, self._uuid, update)
-
     def _safe_update_run_status(self, status):
         try:
-            self._update_run_status(status)
+            update = {
+                'run_status': status,
+                'last_updated': int(time.time()),
+                'time': time.time() - self._start_time,
+            }
+            self._bundle_service.update_bundle_metadata(self._worker.id, self._uuid, update)
         except BundleServiceException:
-            pass
+            traceback.print_exc()
+
+    def _throttled_updater(self):
+        PROGRESS_UPDATE_FREQ_SECS = 2.0
+        last_update_time = [0]
+        def update(status):
+            if (time.time() - last_update_time[0] >= PROGRESS_UPDATE_FREQ_SECS):
+                last_update_time[0] = time.time()
+                self._safe_update_run_status(status)
+        return update
 
     def _start(self):
         """
@@ -114,11 +120,15 @@ class Run(object):
                 if self._is_killed():
                     raise Exception(self._get_kill_message())
 
-            if not self._worker.shared_file_system:
-                self._update_run_status('Downloading dependencies')
             dependencies = []
             docker_dependencies_path = '/' + self._uuid + '_dependencies'
             for dep in self._bundle['dependencies']:
+                child_path = os.path.normpath(
+                    os.path.join(self._bundle_path, dep['child_path']))
+                if not child_path.startswith(self._bundle_path):
+                    raise Exception('Invalid key for dependency: %s' % (
+                        dep['child_path']))
+
                 if self._worker.shared_file_system:
                     parent_bundle_path = dep['location']
 
@@ -132,15 +142,14 @@ class Run(object):
                         raise Exception('Invalid dependency %s/%s' % (
                             dep['parent_uuid'], dep['parent_path']))
                 else:
+                    updater = self._throttled_updater()
+                    def update_status_and_check_killed(bytes_downloaded):
+                        updater('Downloading dependency %s: %s done (archived size)' % (
+                            dep['child_path'], size_str(bytes_downloaded)))
+                        check_killed()
                     dependency_path = self._worker.add_dependency(
                         dep['parent_uuid'], dep['parent_path'], self._uuid,
-                        check_killed)
-
-                child_path = os.path.normpath(
-                    os.path.join(self._bundle_path, dep['child_path']))
-                if not child_path.startswith(self._bundle_path):
-                    raise Exception('Invalid key for dependency: %s' % (
-                        dep['child_path']))
+                        update_status_and_check_killed)
 
                 docker_dependency_path = os.path.join(
                     docker_dependencies_path, dep['child_path'])
@@ -148,7 +157,7 @@ class Run(object):
                 dependencies.append((dependency_path, docker_dependency_path))
 
             def do_start():
-                self._update_run_status('Starting Docker container')
+                self._safe_update_run_status('Starting Docker container')
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
                     self._resources['docker_image'], self._resources['request_network'],
@@ -161,9 +170,12 @@ class Run(object):
                 # available. Thus, we only make it if we know the image is not
                 # available. Start-up is much faster that way.
                 if 'No such image' in e.message:
-                    self._update_run_status('Downloading Docker image')
+                    updater = self._throttled_updater()
+                    def update_status_and_check_killed(status):
+                        updater('Downloading Docker image: ' + status)
+                        check_killed()
                     self._docker.download_image(self._resources['docker_image'],
-                                                check_killed)
+                                                update_status_and_check_killed)
                     self._container_id = do_start()
                 else:
                     raise
@@ -172,7 +184,7 @@ class Run(object):
             self._worker.finish_run(self._uuid)
             return
 
-        self._update_run_status('Running')
+        self._safe_update_run_status('Running')
         self._monitor()
 
     def _monitor(self):
@@ -180,14 +192,14 @@ class Run(object):
         # slow if there are lots of files.
         threading.Thread(target=Run._compute_disk_utilization, args=[self]).start()
 
-        REPORT_DELAY_SECS = 5.0
+        REPORT_FREQ_SECS = 5.0
         last_report_time = 0
         while True:
             self._handle_kill()
             if self._check_and_report_finished():
                 break
 
-            if time.time() - last_report_time >= REPORT_DELAY_SECS:
+            if time.time() - last_report_time >= REPORT_FREQ_SECS:
                 report = True
                 last_report_time = time.time()
             else:
@@ -390,10 +402,14 @@ class Run(object):
 
             if not self._worker.shared_file_system:
                 logger.debug('Uploading results for run with UUID %s', self._uuid)
-                self._safe_update_run_status('Uploading results')
+                updater = self._throttled_updater()
+                def update_status(bytes_uploaded):
+                    updater('Uploading results: %s done (archived size)' % 
+                        size_str(bytes_uploaded))
                 self._execute_bundle_service_command_with_retry(
                     lambda: self._bundle_service.update_bundle_contents(
-                        self._worker.id, self._uuid, self._bundle_path))
+                        self._worker.id, self._uuid, self._bundle_path,
+                        update_status))
 
             logger.debug('Finalizing run with UUID %s', self._uuid)
             self._safe_update_run_status('Finished')  # Also, reports the finish time.

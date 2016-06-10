@@ -62,7 +62,8 @@ class RestClient(object):
                     raise RestClientException(
                         'Invalid JSON: ' + response_data, False)
 
-    def _upload_with_chunked_encoding(self, method, url, query_params, fileobj):
+    def _upload_with_chunked_encoding(self, method, url, query_params, fileobj,
+                                      progress_callback=None):
         # Start the request.
         parsed_base_url = urlparse.urlparse(self._base_url)
         path = url + '?' + urllib.urlencode(query_params)
@@ -80,11 +81,15 @@ class RestClient(object):
             conn.endheaders()
 
             # Use chunked transfer encoding to send the data through.
+            bytes_uploaded = 0
             while True:
                 to_send = fileobj.read(16 * 1024)
                 if not to_send:
                     break
                 conn.send('%X\r\n%s\r\n' % (len(to_send), to_send))
+                bytes_uploaded += len(to_send)
+                if progress_callback is not None:
+                    progress_callback(bytes_uploaded)
             conn.send('0\r\n\r\n')
 
             # Read the response.
