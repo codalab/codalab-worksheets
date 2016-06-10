@@ -71,9 +71,16 @@ class Run(object):
                                                  start_message):
             return False
 
-        # Set up a directory to store the bundle.
-        remove_path(self._bundle_path)
-        os.mkdir(self._bundle_path)
+        if self._worker.shared_file_system:
+            # On a shared file system we create the path in the bundle manager
+            # to avoid NFS directory cache issues. Here, we wait for the cache
+            # on this machine to expire and for the path to appear.
+            while not os.path.exists(self._bundle_path):
+                time.sleep(0.5)
+        else:
+            # Set up a directory to store the bundle.
+            remove_path(self._bundle_path)
+            os.mkdir(self._bundle_path)
 
         # Start a thread for this run.
         threading.Thread(target=Run._start, args=[self]).start()
