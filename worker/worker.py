@@ -14,7 +14,7 @@ from file_util import remove_path, un_gzip_stream, un_tar_directory
 from run import Run
 
 
-VERSION = 3
+VERSION = 4
 
 
 logger = logging.getLogger(__name__)
