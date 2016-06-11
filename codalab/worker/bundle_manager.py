@@ -201,9 +201,13 @@ class BundleManager(object):
                 deps.append((dependency_path, child_path))
 
             remove_path(path)
-            os.mkdir(path)
-            for dependency_path, child_path in deps:
-                path_util.copy(dependency_path, child_path, follow_symlinks=False)
+            
+            if len(deps) == 1 and deps[0][1] == path:
+                path_util.copy(deps[0][0], path, follow_symlinks=False)
+            else:
+                os.mkdir(path)
+                for dependency_path, child_path in deps:
+                    path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
             self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
             logger.info('Finished making bundle %s', bundle.uuid)
@@ -325,6 +329,12 @@ class BundleManager(object):
         """
         if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
+            if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
+                # On a shared file system we create the path here to avoid NFS
+                # directory cache issues.
+                path = self._bundle_store.get_bundle_location(bundle.uuid)
+                remove_path(path)
+                os.mkdir(path)
             if self._worker_model.send_json_message(
                 worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
                 logger.info('Starting run bundle %s', bundle.uuid)

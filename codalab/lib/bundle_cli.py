@@ -55,9 +55,6 @@ from codalab.lib import (
     ui_actions,
 )
 from codalab.objects.permission import permission_str, group_permissions_str
-from codalab.objects.work_manager import Worker
-from codalab.machines.remote_machine import RemoteMachine
-from codalab.machines.local_machine import LocalMachine
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.server.rpc_file_handle import RPCFileHandle
 from codalab.lib.formatting import contents_str
@@ -967,7 +964,7 @@ class BundleCLI(object):
 
             # Set sources
             if source is None:
-                sources = [None]
+                sources = None
             elif isinstance(dest_client, LocalBundleClient):
                 sources = [dest_path]
             else:
@@ -2210,34 +2207,6 @@ class BundleCLI(object):
     #############################################################################
     # LocalBundleClient-only commands follow!
     #############################################################################
-
-    @Commands.command(
-        'work-manager',
-        help='Run the CodaLab bundle work manager (to execute run bundles).',
-        arguments=(
-            Commands.Argument('-t', '--worker-type', type=str, help='Worker type (defined in config.json).', default='local'),
-            Commands.Argument('--num-iterations', help='Number of bundles to process before exiting (for debugging).', type=int, default=None),
-            Commands.Argument('--sleep-time', type=int, help='Number of seconds to wait between successive actions.', default=1),
-        ),
-    )
-    def do_work_manager_command(self, args):
-        self._fail_if_headless('work-manager')
-        # This command only works if client is a LocalBundleClient.
-
-        worker_config = self.manager.config['workers']
-        if args.worker_type == 'local':
-            machine = LocalMachine()
-        elif args.worker_type in worker_config:
-            machine = RemoteMachine(worker_config[args.worker_type])
-        else:
-            print >>self.stdout, '\'' + args.worker_type + '\'' + \
-                  ' is not specified in your config file: ' + self.manager.config_path
-            print >>self.stdout, 'Options are ' + str(map(str, worker_config.keys()))
-            return
-
-        client = self.manager.local_client()  # Always use the local bundle client
-        worker = Worker(client.bundle_store, client.model, machine, client.auth_handler)
-        worker.run_loop(args.num_iterations, args.sleep_time)
 
     @Commands.command(
         'events',

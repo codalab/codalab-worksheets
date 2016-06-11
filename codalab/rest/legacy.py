@@ -52,8 +52,7 @@ class BundleService(object):
 
     def __init__(self):
         self.client = LocalBundleClient(
-            'local', local.bundle_store, local.model,
-            local.launch_new_worker_system, local.worker_model,
+            'local', local.bundle_store, local.model, local.worker_model,
             local.upload_manager, local.download_manager,
             LocalUserAuthHandler(request.user, local.model), verbose=0)
 
@@ -513,7 +512,7 @@ def post_bundle_info(uuid):
 
         # TODO: do this generally based on the CLI specs.
         # Remove generated fields.
-        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'disk_read', 'disk_write', 'exitcode', 'actions', 'started', 'last_updated', 'run_status', 'job_handle']:
+        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'exitcode', 'actions', 'started', 'last_updated', 'run_status', 'job_handle']:
             if key in new_metadata:
                 del new_metadata[key]
 
