@@ -29,8 +29,7 @@ These are bundles that are currently running or queued to be run.
 % add time time duration
 % add state
 % display table r
-% search state=running created=.sort- .limit=10000 .mine
-% search state=queued created=.sort- .limit=10000 .mine
+% search state=created,staged,making,waiting_for_worker_startup,starting,running created=.sort- .limit=10000 .mine
 
 ## **My floating bundles**
 These are bundles that are not on any worksheet (you might have lost track of these).

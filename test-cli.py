@@ -13,7 +13,6 @@ pipeline, and also as a non-root user, to hammer out unanticipated permission is
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
-- Worker system
 '''
 
 import subprocess
@@ -30,11 +29,6 @@ cl = 'cl'
 base_path = os.path.dirname(os.path.abspath(__file__))  # Directory where this script lives.
 
 crazy_name = 'crazy ("ain\'t it?")'
-
-DOCKER_MODULES = [
-        'write',
-        'resources'
-        ]
 
 def test_path(name):
     """
@@ -80,6 +74,10 @@ def run_command(args, expected_exit_code=0):
 
 def get_info(uuid, key):
     return run_command([cl, 'info', '-f', key, uuid])
+
+def wait_until_running(uuid):
+    while get_info(uuid, 'state') != 'running':
+        time.sleep(0.5)
 
 def wait(uuid, expected_exit_code=0):
     run_command([cl, 'wait', uuid], expected_exit_code)
@@ -212,14 +210,11 @@ class TestModule(object):
         for name in query:
             if name == 'all':
                 modules_to_run.extend(cls.modules.values())
-            elif name == 'no-docker':
-                no_docker_modules = [cls.modules[mod] for mod in cls.modules.keys() if mod not in DOCKER_MODULES]
-                modules_to_run.extend(no_docker_modules)
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
                 print 'Could not find module %s' % name
-                print 'Modules: all no-docker ' + ' '.join(cls.modules.keys())
+                print 'Modules: all ' + ' '.join(cls.modules.keys())
                 sys.exit(1)
 
         print 'Running modules ' + ' '.join([m.name for m in modules_to_run])
@@ -444,22 +439,6 @@ def test(ctx):
     run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
 
-@TestModule.register('run')
-def test(ctx):
-    name = random_name()
-    uuid = run_command([cl, 'run', 'echo hello', '-n', name])
-    wait(uuid)
-    # test search
-    check_contains(name, run_command([cl, 'search', name]))
-    check_equals(uuid, run_command([cl, 'search', name, '-u']))
-    run_command([cl, 'search', name, '--append'])
-    # get info
-    check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
-    check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
-    check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
-    # block
-    check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
-
 @TestModule.register('worksheet')
 def test(ctx):
     wname = random_name()
@@ -582,17 +561,84 @@ def test(ctx):
     size2 = float(run_command([cl, 'info', '-f', 'data_size', uuid2]))
     check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
 
+@TestModule.register('run')
+def test(ctx):
+    name = random_name()
+    uuid = run_command([cl, 'run', 'echo hello', '-n', name])
+    wait(uuid)
+    # test search
+    check_contains(name, run_command([cl, 'search', name]))
+    check_equals(uuid, run_command([cl, 'search', name, '-u']))
+    run_command([cl, 'search', name, '--append'])
+    # get info
+    check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
+    check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
+    check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
+    # block
+    check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
+
+@TestModule.register('read')
+def test(ctx):
+    dep_uuid = run_command([cl, 'upload', test_path('')])
+    uuid = run_command([cl, 'run',
+                        'dir:' + dep_uuid,
+                        'file:' + dep_uuid + '/a.txt',
+                        'ls dir; cat file; seq 1 10; touch done; sleep 60'])
+    wait_until_running(uuid)
+
+    # Tests reading first while the bundle is running and then after it is
+    # killed.
+    for running in [True, False]:
+        # Wait for the output to appear. Also, tests cat on a directory.
+        while 'done' not in run_command([cl, 'cat', uuid]):
+            time.sleep(0.5)
+
+        # Info has only the first 10 lines.
+        info_output = run_command([cl, 'info', uuid, '--verbose'])
+        print info_output
+        check_contains('passwd', info_output)
+        check_contains('This is a simple text file for CodaLab.', info_output)
+        assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
+
+        # Cat has everything.
+        check_contains('5\n6\n7', run_command([cl, 'cat', uuid + '/stdout']))
+
+        # Read a non-existant file.
+        run_command([cl, 'cat', uuid + '/unknown'], 1)
+
+        # Dependencies should not be visible.
+        dir_cat = run_command([cl, 'cat', uuid])
+        assert 'dir' not in dir_cat, '"dir" should not be in bundle'
+        assert 'file' not in dir_cat, '"file" should not be in bundle'
+        run_command([cl, 'cat', uuid + '/dir'], 1)
+        run_command([cl, 'cat', uuid + '/file'], 1)
+
+        # Download the whole bundle.
+        path = temp_path('')
+        run_command([cl, 'download', uuid, '-o', path])
+        assert not os.path.exists(os.path.join(path, 'dir')), '"dir" should not be in bundle'
+        assert not os.path.exists(os.path.join(path, 'file')), '"file" should not be in bundle'
+        with open(os.path.join(path, 'stdout')) as fileobj:
+            check_contains('5\n6\n7', fileobj.read())
+        shutil.rmtree(path)
+
+        if running:
+            run_command([cl, 'kill', uuid])
+            wait(uuid, 1)
+
 @TestModule.register('kill')
 def test(ctx):
     uuid = run_command([cl, 'run', 'sleep 1000'])
+    wait_until_running(uuid)
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str([u'kill']), get_info(uuid, 'actions'))
+    check_equals(str(['kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
     uuid = run_command([cl, 'run', 'sleep 5'])
+    wait_until_running(uuid)
     target = uuid + '/message'
     run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
@@ -666,29 +712,32 @@ def test(ctx):
 @TestModule.register('resources')
 def test(ctx):
     '''Test whether resource constraints are respected'''
-    uuid = run_command([cl, 'upload', 'scripts/stress-test.py'])
-    def stress(use_time, request_time, use_memory, request_memory, use_disk, request_disk, expected_exit_code):
+    uuid = run_command([cl, 'upload', 'scripts/stress-test.pl'])
+    def stress(use_time, request_time, use_memory, request_memory, use_disk, request_disk, expected_exit_code, expected_failure_message):
         run_uuid = run_command([
-            cl, 'run', 'main.py:' + uuid, 'python main.py --time %s --memory %s --disk %s' % (use_time, use_memory, use_disk),
+            cl, 'run', 'main.pl:' + uuid, 'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
             '--request-time', str(request_time),
             '--request-memory', str(request_memory) + 'm',
             '--request-disk', str(request_disk) + 'm',
         ])
         wait(run_uuid, expected_exit_code)
-        get_info(run_uuid, 'failure_message')
+        if expected_failure_message:
+            check_equals(expected_failure_message, get_info(run_uuid, 'failure_message'))
 
     # Good
-    stress(use_time=1, request_time=10, use_memory=50, request_memory=100, use_disk=10, request_disk=100, expected_exit_code=0)
+    stress(use_time=1, request_time=10, use_memory=50, request_memory=1000, use_disk=10, request_disk=100, expected_exit_code=0, expected_failure_message=None)
     # Too much time
-    stress(use_time=10, request_time=1, use_memory=50, request_memory=100, use_disk=10, request_disk=100, expected_exit_code=1)
+    stress(use_time=10, request_time=1, use_memory=50, request_memory=1000, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Time limit 1.0s exceeded.')
     # Too much memory
-    stress(use_time=1, request_time=10, use_memory=1000, request_memory=100, use_disk=0, request_disk=10, expected_exit_code=1)
+    # TODO(klopyrev): CircleCI doesn't seem to support cgroups, so we can't get
+    # the memory usage of a Docker container.
+    # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
     # Too much disk
-    stress(use_time=1, request_time=10, use_memory=50, request_memory=100, use_disk=200, request_disk=100, expected_exit_code=1)
+    stress(use_time=2, request_time=10, use_memory=50, request_memory=1000, use_disk=10, request_disk=2, expected_exit_code=1, expected_failure_message='Disk limit 2mb exceeded.')
 
     # Test network access
-    wait(run_command([cl, 'run', 'wget google.com']), 1)
-    wait(run_command([cl, 'run', 'wget google.com', '--request-network']), 0)
+    wait(run_command([cl, 'run', 'ping -c 1 google.com']), 1)
+    wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
 @TestModule.register('copy')
 def test(ctx):
@@ -706,7 +755,10 @@ def test(ctx):
     #home = 'temp-home'  # For consistency
     os.environ['CODALAB_HOME'] = home
     local_worksheet = 'local::'
-    # Initialize: press n, n and type in username/password for current worksheet.
+    
+    # Initialize.
+    subprocess.call('printf "n\nn\n" | cl status', shell=True)
+    subprocess.call(['scripts/create-root-user.py', '1234'])
     subprocess.call([cl, 'work', remote_worksheet])
 
     def check_agree(command):
@@ -732,6 +784,12 @@ def test(ctx):
     run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
     run_command([cl, 'add', 'bundle', uuid, local_worksheet])
 
+    # Upload to local, transfer to remote (metadata only)
+    run_command([cl, 'work', local_worksheet])
+    uuid = run_command([cl, 'upload', '-c', 'hello'])
+    run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
+    run_command([cl, 'add', 'bundle', uuid, remote_worksheet])
+
     # Test adding worksheet items
     run_command([cl, 'wadd', local_worksheet, remote_worksheet])
     run_command([cl, 'wadd', remote_worksheet, local_worksheet])
@@ -746,7 +804,7 @@ if __name__ == '__main__':
         print 'Usage: python %s <module> ... <module>' % sys.argv[0]
         print 'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
         print 'Remember to run this both in local and remote modes.',
-        print 'Modules: all no-docker ' + ' '.join(TestModule.modules.keys())
+        print 'Modules: all ' + ' '.join(TestModule.modules.keys())
     else:
         success = TestModule.run(sys.argv[1:])
         if not success:
