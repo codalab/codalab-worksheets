@@ -381,6 +381,11 @@ class BundleManager(object):
 
         # Parse |request_string| using |to_value|, but don't exceed |max_value|.
         def parse_and_min(to_value, request_string, default_value, max_value):
+            # On user-owned workers, ignore the maximum value. Users are free to
+            # use as many resources as they wish on their own machines.
+            if worker['user_id'] != self._model.root_user_id:
+                max_value = None
+            
             # Use default if request value doesn't exist
             if request_string:
                 request_value = to_value(request_string)
