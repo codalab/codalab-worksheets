@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
-# TODO(klopyrev): This worker in general needs client level documentation. I
-#                 need to figure out where it is most appropriate and put it
-#                 there. Thus, I'm omitting any documentation here for now.
+# For information about the design of the worker, see design.pdf in the same
+# directory as this file. For information about running a worker, see the
+# tutorial on the CodaLab Wiki.
 
 import argparse
 import getpass
