@@ -132,6 +132,11 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'chown',
 )
 
+USER_COMMANDS = (
+    'uinfo',
+    'uedit',
+)
+
 OTHER_COMMANDS = (
     'help',
     'status',
@@ -326,12 +331,16 @@ class Commands(object):
         Commands for groups and permissions:
         {group_and_permission_commands}
 
+        Commands for users:
+        {user_commands}
+
         Other commands:
         {other_commands}
         """).format(
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
+            user_commands=command_group_help_text(USER_COMMANDS),
             other_commands=command_group_help_text(available_other_commands),
         ).strip()
 
@@ -713,10 +722,6 @@ class BundleCLI(object):
         worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
         print >>self.stdout, "current_worksheet: %s" % self.simple_worksheet_str(worksheet_info)
         print >>self.stdout, "user: %s" % self.simple_user_str(client.user_info(None))
-
-        user_info = client.get_user_info(None)
-        print >>self.stdout, "time: %s" % formatting.ratio_str(formatting.duration_str, user_info['time_used'], user_info['time_quota'])
-        print >>self.stdout, "disk: %s" % formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota'])
 
     @Commands.command(
         'logout',
@@ -2304,9 +2309,14 @@ class BundleCLI(object):
         'uedit',
         help=[
             'Edit user information.',
+            'Note that password and email can only be changed through the web interface.',
         ],
         arguments=(
-            Commands.Argument('-u', '--user-id', help='User to set quota for'),
+            Commands.Argument('user_spec', nargs='?', help='Username or id of user to update [default: the authenticated user]'),
+            Commands.Argument('--first-name', help='First name'),
+            Commands.Argument('--last-name', help='Last name'),
+            Commands.Argument('--affiliation', help='Affiliation'),
+            Commands.Argument('--url', help='Website URL'),
             Commands.Argument('-t', '--time-quota', help='Total amount of time allowed (e.g., 3, 3m, 3h, 3d)'),
             Commands.Argument('-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'),
         ),
@@ -2315,16 +2325,82 @@ class BundleCLI(object):
         """
         Edit properties of users.
         """
-        client = self.manager.current_client()
-        user_update = {}
+        client = self.manager.current_client(use_rest=True)
+
+        # Build user info
+        user_info = {
+            key: getattr(args, key)
+            for key in (
+                'first_name',
+                'last_name',
+                'affiliation',
+                'url',
+            )
+            if getattr(args, key) is not None
+        }
         if args.time_quota is not None:
-            user_update['time_quota'] = formatting.parse_duration(args.time_quota)
+            user_info['time_quota'] = formatting.parse_duration(args.time_quota)
         if args.disk_quota is not None:
-            user_update['disk_quota'] = formatting.parse_size(args.disk_quota)
-        if args.user_id is not None:
-            user_update['user_id'] = args.user_id
-        if user_update:
-            client.update_user_info(user_update)
+            user_info['disk_quota'] = formatting.parse_size(args.disK_quota)
+        if not user_info:
+            raise UsageError("No fields to update.")
+
+        # Send update request
+        if args.user_spec is None:
+            # If user id is not specified, update the authenticated user
+            user = client.update_authenticated_user(user_info)
+        else:
+            # Resolve user id from user spec
+            user_info['id'] = client.fetch('users', args.user_spec)['id']
+            user = client.update('users', user_info)
+        self.print_user_info(user)
+
+    @Commands.command(
+        'uinfo',
+        help=[
+            'Show user information.',
+        ],
+        arguments=(
+            Commands.Argument('user_spec', nargs='?', help='Username or id of user to show [default: the authenticated user]'),
+        ),
+    )
+    def do_uinfo_command(self, args):
+        """
+        Edit properties of users.
+        """
+        client = self.manager.current_client(use_rest=True)
+        if args.user_spec is None:
+            user = client.fetch('user')
+        else:
+            user = client.fetch('users', args.user_spec)
+        self.print_user_info(user)
+
+    def print_user_info(self, user):
+        def print_attribute(key, value):
+            print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+
+        for key in ('id', 'user_name', 'first_name', 'last_name',
+                    'affiliation', 'url', 'date_joined'):
+            print_attribute(key, user.get(key, None))
+
+        # These fields will not be returned by the server if the
+        # authenticated user is not root, so stop early on first KeyError
+        try:
+            for key in ('last_login', 'email'):
+                print_attribute(key, user[key])
+
+            print_attribute(
+                'time', formatting.ratio_str(
+                    formatting.duration_str,
+                    user['time_used'],
+                    user['time_quota']))
+
+            print_attribute(
+                'disk', formatting.ratio_str(formatting.size_str,
+                                             user['disk_used'],
+                                             user['disk_quota']))
+        except KeyError:
+            pass
 
     @Commands.command(
         'reset',

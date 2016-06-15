@@ -342,6 +342,7 @@ class JsonApiClient(RestClient):
     def update(self, resource_type, data, params=None):
         """
         Request to update a resource or resources.
+        Always uses bulk update.
 
         :param resource_type: resource type as string
         :param data: update dict or list of update dicts, update dicts
@@ -354,7 +355,8 @@ class JsonApiClient(RestClient):
                 method='PATCH',
                 path=self._get_resource_path(resource_type),
                 query_params=self._pack_params(params),
-                data=self._pack_document(data, resource_type)))
+                data=self._pack_document(
+                    data if isinstance(data, list) else [data], resource_type)))
         # Return list iff original data was list
         return result if isinstance(data, list) else result[0]
 
@@ -424,3 +426,20 @@ class JsonApiClient(RestClient):
                     resource_type, resource_id, relationship_key),
                 query_params=self._pack_params(params),
                 data=(relationship and relationship.as_dict())))
+
+    @wrap_exception('Unable to update authenticated user')
+    def update_authenticated_user(self, data, params=None):
+        """
+        Request to update the authenticated user.
+        Uses special /user endpoint, but keeps the 'users' resource type.
+
+        :param data: dict containing user field updates
+        :param params: dict of query parameters
+        :return: updated user dict
+        """
+        return self._unpack_document(
+            self._make_request(
+                method='PATCH',
+                path=self._get_resource_path('user'),
+                query_params=self._pack_params(params),
+                data=self._pack_document(data, 'users')))
