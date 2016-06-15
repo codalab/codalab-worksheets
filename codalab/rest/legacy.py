@@ -1,5 +1,5 @@
 """
-Legacy REST APIs moved from the codalab-worksheets Django REST server. 
+Legacy REST APIs moved from the codalab-worksheets Django REST server.
 """
 import base64
 from contextlib import closing
@@ -122,6 +122,9 @@ class BundleService(object):
             interpreted_items = {'items': []}
             worksheet_info['error'] = str(e)
 
+        for item in interpreted_items['items']:
+            item['interpreted_schema'] = item['interpreted']
+
         worksheet_info['items'] = self.client.resolve_interpreted_items(interpreted_items['items'])
         worksheet_info['raw_to_interpreted'] = interpreted_items['raw_to_interpreted']
         worksheet_info['interpreted_to_raw'] = interpreted_items['interpreted_to_raw']
@@ -184,7 +187,7 @@ class BundleService(object):
                     '\n')
                 contents = download_manager.summarize_file(
                     uuid, name,
-                    num_head_lines=50, num_tail_lines=50, max_line_length=128,
+                    num_head_lines=1000, num_tail_lines=0, max_line_length=128,
                     truncation_text=TRUNCATION_TEXT, gzipped=False)
                 return formatting.verbose_contents_str(contents)
             elif info['type'] == 'link':
@@ -208,10 +211,10 @@ class BundleService(object):
                 with info_lock:
                     info[name] = result
 
-            read_threads = []            
+            read_threads = []
             for item in info['contents']:
                 name = item['name']
-                if name in ['stdout', 'stderr'] and (item['type'] == 'file' or item['type'] == 'link'):
+                if name in ['stdout', 'stderr'] or (item['type'] == 'file' or item['type'] == 'link'):
                     th = threading.Thread(target=get_and_update_summary, args=[local.download_manager, item, name])
                     th.start()
                     read_threads.append(th)
@@ -296,7 +299,7 @@ class BundleService(object):
         return
 
     def add_chat_log_info(self, query_info):
-        return self.client.add_chat_log_info(query_info)    
+        return self.client.add_chat_log_info(query_info)
 
     def get_chat_log_info(self, query_info):
         return self.client.get_chat_log_info(query_info)
@@ -326,10 +329,10 @@ class RemoteBundleService(object):
         with the bundle service.
         """
         CLIENT_ID = 'codalab_cli_client'
-    
+
         if request.user is None:
             return None
-    
+
         # Try to find an existing token that will work.
         token = local.model.find_oauth2_token(
             CLIENT_ID,
@@ -337,7 +340,7 @@ class RemoteBundleService(object):
             datetime.utcnow() + timedelta(minutes=5))
         if token is not None:
             return token.access_token
-    
+
         # Otherwise, generate a new one.
         token = OAuth2Token(
             local.model,
@@ -349,7 +352,7 @@ class RemoteBundleService(object):
             user_id=request.user.user_id,
         )
         local.model.save_oauth2_token(token)
-    
+
         return token.access_token
 
     def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
@@ -366,11 +369,11 @@ class RemoteBundleService(object):
         try:
             with closing(RPCFileHandle(remote_file_uuid, self.client.proxy)) as dest:
                 file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
-           
+
             pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
             if not pack and zip_util.path_is_archive(metadata['name']):
                 metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
-           
+
             # Then tell the client that the uploaded file handle is there.
             new_bundle_uuid = self.client.finish_upload_bundle(
                 [remote_file_uuid],
