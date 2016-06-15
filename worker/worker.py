@@ -14,7 +14,7 @@ from file_util import remove_path, un_gzip_stream, un_tar_directory
 from run import Run
 
 
-VERSION = 1
+VERSION = 4
 
 
 logger = logging.getLogger(__name__)
@@ -163,9 +163,12 @@ class Worker(object):
                     self._bundle_service.get_bundle_contents(parent_uuid, parent_path))
                 with closing(fileobj):
                     old_read_method = fileobj.read
+                    bytes_downloaded = [0]
                     def interruptable_read(*args, **kwargs):
-                        loop_callback()
-                        return old_read_method(*args, **kwargs)
+                        data = old_read_method(*args, **kwargs)
+                        bytes_downloaded[0] += len(data)
+                        loop_callback(bytes_downloaded[0])
+                        return data
                     fileobj.read = interruptable_read
   
                     self._store_dependency(dependency_path, fileobj, filename)

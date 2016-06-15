@@ -36,9 +36,10 @@ import psutil
 import tempfile
 import textwrap
 from distutils.util import strtobool
+from urlparse import urlparse
 
 from codalab.client import is_local_address
-from codalab.common import UsageError, PermissionError
+from codalab.common import UsageError, PermissionError, precondition
 from codalab.server.auth import User
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
@@ -113,12 +114,12 @@ class CodaLabManager(object):
     '''
     temporary: don't use config files
     '''
-    def __init__(self, temporary=False, clients=None):
+    def __init__(self, temporary=False, config=None, clients=None):
         self.cache = {}
         self.temporary = temporary
 
         if self.temporary:
-            self.config = {}
+            self.config = config
             self.state = {'auth': {}, 'sessions': {}}
             self.clients = clients
             return
@@ -187,10 +188,7 @@ class CodaLabManager(object):
                 'localhost': 'http://localhost:2800',
             },
             'workers': {
-                'q': {
-                    'verbose': 1,
-                    'dispatch_command': "python $CODALAB_CLI/scripts/dispatch-q.py",
-                }
+                'default_docker_image': 'codalab/ubuntu:1.9',
             }
         }
 
@@ -351,11 +349,6 @@ class CodaLabManager(object):
         info['disk_quota'] = formatting.parse_size(info['disk_quota'])
         return info
 
-    def launch_new_worker_system(self):
-        # TODO: This flag and all code in the False code path of this flag will
-        # get deleted once the new worker system is launched.
-        return self.config['workers'].get('launch_new_worker_system', False)
-
     @cached
     def model(self):
         """
@@ -392,7 +385,7 @@ class CodaLabManager(object):
 
     @cached
     def download_manager(self):
-        return DownloadManager(self.launch_new_worker_system(), self.model(), self.worker_model(), self.bundle_store())
+        return DownloadManager(self.model(), self.worker_model(), self.bundle_store())
 
     def auth_handler(self, mock=False):
         '''
@@ -403,11 +396,9 @@ class CodaLabManager(object):
 
         if mock or handler_class == 'MockAuthHandler':
             return self.mock_auth_handler()
-        if handler_class == 'OAuthHandler':
-            return self.oauth_handler()
         if handler_class == 'RestOAuthHandler':
             return self.rest_oauth_handler()
-        raise UsageError('Unexpected auth handler class: %s, expected OAuthHandler or MockAuthHandler' % (handler_class,))
+        raise UsageError('Unexpected auth handler class: %s, expected RestOAuthHandler or MockAuthHandler' % (handler_class,))
 
     @cached
     def mock_auth_handler(self):
@@ -415,14 +406,6 @@ class CodaLabManager(object):
         # Just create one user corresponding to the root
         users = [User(self.root_user_name(), self.root_user_id())]
         return MockAuthHandler(users)
-
-    @cached
-    def oauth_handler(self):
-        arguments = ('address', 'app_id', 'app_key')
-        auth_config = self.config['server']['auth']
-        kwargs = {arg: auth_config[arg] for arg in arguments}
-        from codalab.server.auth import OAuthHandler
-        return OAuthHandler(**kwargs)
 
     @cached
     def rest_oauth_handler(self):
@@ -454,44 +437,101 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
-    def local_client(self):
-        return self.client('local')
+    def derive_rest_address(self, address):
+        """
+        Given bundle service address, return corresponding REST address
+        using manual translations (described in the comments below).
+        Temporary hack to ease transition to REST API.
+        """
+        o = urlparse(address)
+        if is_local_address(address):
+            # local => http://localhost:<rest_port>
+            precondition('server' in self.config and
+                         'rest_host' in self.config['server'] and
+                         'rest_port' in self.config['server'],
+                         'Working on local now requires running a local '
+                         'server, please configure "rest_host" and '
+                         '"rest_port" under "server" in your config.json.')
+            address = 'http://{rest_host}:{rest_port}'.format(**self.config['server'])
+        elif (o.hostname == 'localhost' and
+                      'server' in self.config and
+                      'port' in self.config['server'] and
+                      'rest_port' in self.config['server'] and
+                      o.port == self.config['server']['port']):
+            # http://localhost:<port> => http://localhost:<rest_port>
+            # Note that this does not affect the address of the NLP
+            # CodaLab instance behind an SSH tunnel
+            address = address.replace(str(self.config['server']['port']),
+                                      str(self.config['server']['rest_port']))
+        elif (o.netloc == 'worksheets.codalab.org' or
+                      o.netloc == 'worksheets-test.codalab.org'):
+            # http://worksheets.codalab.org/bundleservice => http://worksheets.codalab.org
+            address = address.replace('/bundleservice', '')
+        return address
 
-    def current_client(self):
-        return self.client(self.session()['address'])
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def local_client(self, use_rest=False):
+        return self.client('local', use_rest=use_rest)
 
-    def client(self, address, is_cli=True):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def current_client(self, use_rest=False):
+        return self.client(self.session()['address'], use_rest=use_rest)
+
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def client(self, address, is_cli=True, use_rest=False):
         '''
         Return a client given the address.  Note that this can either be called
         by the CLI (is_cli=True) or the server (is_cli=False).
         If called by the CLI, we don't need to authenticate.
         Cache the Client if necessary.
         '''
+        # FIXME(sckoo): temporary hack
+        # When BundleCLI is no longer dependent on RemoteBundleClient
+        # or LocalBundleClient, simplify everything to only using
+        # JsonApiClient, and remove all use_rest kwargs.
+        # Users should also then update their aliases to point at the
+        # correct addresses of the REST servers.
+        if use_rest:
+            address = self.derive_rest_address(address)
+
+        # Return cached client
         if address in self.clients:
             return self.clients[address]
-        # if local force mockauth or if local server use correct auth
-        if is_local_address(address):
+
+        # Create new client
+        if use_rest:
+            # Create RestOAuthHandler that authenticates directly with
+            # OAuth endpoints on the REST server
+            from codalab.server.auth import RestOAuthHandler
+            auth_handler = RestOAuthHandler(address, None)
+
+            # Create JsonApiClient with a callback to get access tokens
+            from codalab.client.json_api_client import JsonApiClient
+            client = JsonApiClient(
+                address, lambda: self._authenticate(address, auth_handler))
+        elif is_local_address(address):
+            # if local force mockauth or if local server use correct auth
             bundle_store = self.bundle_store()
             model = self.model()
-            launch_new_worker_system = self.launch_new_worker_system()
             worker_model = self.worker_model()
             upload_manager = self.upload_manager()
             download_manager = self.download_manager()
             auth_handler = self.auth_handler(mock=is_cli)
 
             from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, launch_new_worker_system, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
-            self.clients[address] = client
+            client = LocalBundleClient(address, bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
             if is_cli:
                 # Set current user
                 access_token = self._authenticate(client.address, client.auth_handler)
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
-            
+
             client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client.address, a_client), self.cli_verbose)
-            self.clients[address] = client
             self._authenticate(client.address, client)
+
+        # Cache and return client
+        self.clients[address] = client
         return client
 
     @property
@@ -542,23 +582,28 @@ class CodaLabManager(object):
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][address] = {}
 
-        username = None
         # For a local client with mock credentials, use the default username.
         if is_local_address(address):
             username = self.root_user_name()
             password = ''
-        if not username:
-            print 'Requesting access at %s' % address
-            sys.stdout.write('Username: ')  # Use write to avoid extra space
-            username = sys.stdin.readline().rstrip()
-            password = getpass.getpass()
+        else:
+            username = os.environ.get('CODALAB_USERNAME')
+            password = os.environ.get('CODALAB_PASSWORD')
+            if username is None or password is None:
+                print 'Requesting access at %s' % address
+            if username is None:
+                sys.stdout.write('Username: ')  # Use write to avoid extra space
+                username = sys.stdin.readline().rstrip()
+            if password is None:
+                password = getpass.getpass()
 
         token_info = auth_handler.generate_token('credentials', username, password)
         if token_info is None:
             raise PermissionError("Invalid username or password.")
         return _cache_token(token_info, username)
 
-    def get_current_worksheet_uuid(self):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def get_current_worksheet_uuid(self, use_rest=False):
         '''
         Return a worksheet_uuid for the current worksheet, or None if there is none.
 
@@ -566,27 +611,30 @@ class CodaLabManager(object):
         across multiple invocations in the same shell.
         '''
         session = self.session()
-        client = self.client(session['address'])
+        client = self.client(session['address'], use_rest=use_rest)
+        bundle_client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
         if not worksheet_uuid:
-            worksheet_uuid = client.get_worksheet_uuid(None, '')
+            worksheet_uuid = bundle_client.get_worksheet_uuid(None, '')
         return (client, worksheet_uuid)
 
-    def set_current_worksheet_uuid(self, client, worksheet_uuid):
+    def set_current_worksheet_uuid(self, address, worksheet_uuid):
         '''
         Set the current worksheet to the given worksheet_uuid.
         '''
         session = self.session()
-        session['address'] = client.address
+        session['address'] = address
         if worksheet_uuid:
             session['worksheet_uuid'] = worksheet_uuid
         else:
             if 'worksheet_uuid' in session: del session['worksheet_uuid']
         self.save_state()
 
-    def logout(self, client):
-        del self.state['auth'][client.address]  # Clear credentials
-        self.save_state()
+    def logout(self, address):
+        """Clear credentials associated with given address."""
+        if address in self.state['auth']:
+            del self.state['auth'][address]
+            self.save_state()
 
     def save_config(self):
         if self.temporary: return
