@@ -114,12 +114,12 @@ class CodaLabManager(object):
     '''
     temporary: don't use config files
     '''
-    def __init__(self, temporary=False, clients=None):
+    def __init__(self, temporary=False, config=None, clients=None):
         self.cache = {}
         self.temporary = temporary
 
         if self.temporary:
-            self.config = {}
+            self.config = config
             self.state = {'auth': {}, 'sessions': {}}
             self.clients = clients
             return

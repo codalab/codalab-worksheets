@@ -269,18 +269,20 @@ class BundleService(object):
 
         The CLI uses JsonApiClient to communicate back to the REST API.
         This is admittedly not ideal since now the REST API is essentially
-        making HTTP requests back to itself.
+        making HTTP requests back to itself. Future potential solutions might
+        include creating a subclass of JsonApiClient that can reroute HTTP
+        requests directly to the appropriate Bottle view functions.
         """
         output_buffer = StringIO()
         rest_client = JsonApiClient(self._rest_url(), lambda: get_user_token())
         manager = CodaLabManager(
             temporary=True,
+            config=local.config,
             clients={
                 'local': self.client,
                 self._rest_url(): rest_client
             })
         manager.set_current_worksheet_uuid('local', worksheet_uuid)
-        manager.config = local.config
         cli = bundle_cli.BundleCLI(manager, headless=True, stdout=output_buffer, stderr=output_buffer)
         return cli, output_buffer
 
