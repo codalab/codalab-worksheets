@@ -103,13 +103,6 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
     return bundle_uuids[reverse_index - 1]
 
 
-def get_current_location(bundle_store, uuid):
-    """
-    Return the on-disk location of currently running target.
-    """
-    return bundle_store.get_bundle_location(uuid)
-
-
 def get_worksheet_uuid(model, base_worksheet_uuid, worksheet_spec):
     """
     Resolve a string worksheet_spec to a unique worksheet uuid.

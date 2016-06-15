@@ -8,7 +8,7 @@ import time
 import traceback
 
 from codalab.common import State
-from codalab.lib import bundle_util, formatting
+from codalab.lib import bundle_util, formatting, path_util
 from worker.file_util import remove_path
 
 
@@ -178,16 +178,36 @@ class BundleManager(object):
 
     def _make_bundle(self, bundle):
         try:
-            path = os.path.abspath(self._bundle_store.get_bundle_location(bundle.uuid))
+            path = os.path.normpath(self._bundle_store.get_bundle_location(bundle.uuid))
+
+            deps = []
+            for dep in bundle.dependencies:
+                parent_bundle_path = os.path.normpath(
+                    self._bundle_store.get_bundle_location(dep.parent_uuid))
+                dependency_path = os.path.normpath(
+                    os.path.join(parent_bundle_path, dep.parent_path))
+                if (not dependency_path.startswith(parent_bundle_path) or
+                    (not os.path.islink(dependency_path) and
+                     not os.path.exists(dependency_path))):
+                    raise Exception('Invalid dependency %s' % (
+                        path_util.safe_join(dep.parent_uuid, dep.parent_path)))
+
+                child_path = os.path.normpath(
+                    os.path.join(path, dep.child_path))
+                if not child_path.startswith(path):
+                    raise Exception('Invalid key for dependency: %s' % (
+                        dep.child_path))
+
+                deps.append((dependency_path, child_path))
+
             remove_path(path)
-            os.mkdir(path)
-
-            # Compute a dict mapping parent_uuid -> parent for each dep of this bundle.
-            parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
-            parents = self._model.batch_get_bundles(uuid=parent_uuids)
-            parent_dict = {parent.uuid: parent for parent in parents}
-
-            bundle.install_dependencies(self._bundle_store, parent_dict, path, copy=True)
+            
+            if len(deps) == 1 and deps[0][1] == path:
+                path_util.copy(deps[0][0], path, follow_symlinks=False)
+            else:
+                os.mkdir(path)
+                for dependency_path, child_path in deps:
+                    path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
             self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
             logger.info('Finished making bundle %s', bundle.uuid)
@@ -309,6 +329,12 @@ class BundleManager(object):
         """
         if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
+            if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
+                # On a shared file system we create the path here to avoid NFS
+                # directory cache issues.
+                path = self._bundle_store.get_bundle_location(bundle.uuid)
+                remove_path(path)
+                os.mkdir(path)
             if self._worker_model.send_json_message(
                 worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
                 logger.info('Starting run bundle %s', bundle.uuid)
@@ -355,6 +381,11 @@ class BundleManager(object):
 
         # Parse |request_string| using |to_value|, but don't exceed |max_value|.
         def parse_and_min(to_value, request_string, default_value, max_value):
+            # On user-owned workers, ignore the maximum value. Users are free to
+            # use as many resources as they wish on their own machines.
+            if worker['user_id'] != self._model.root_user_id:
+                max_value = None
+            
             # Use default if request value doesn't exist
             if request_string:
                 request_value = to_value(request_string)

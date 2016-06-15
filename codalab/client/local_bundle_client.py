@@ -48,6 +48,7 @@ from codalab.objects.permission import (
     permission_str,
     Group
 )
+from codalab.rest import util as rest_util
 
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_READ,
@@ -69,11 +70,10 @@ def authentication_required(func):
 
 
 class LocalBundleClient(BundleClient):
-    def __init__(self, address, bundle_store, model, launch_new_worker_system, worker_model, upload_manager, download_manager, auth_handler, verbose):
+    def __init__(self, address, bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, verbose):
         self.address = address
         self.bundle_store = bundle_store
         self.model = model
-        self.launch_new_worker_system = launch_new_worker_system
         self.worker_model = worker_model
         self.upload_manager = upload_manager
         self.download_manager = download_manager
@@ -184,8 +184,7 @@ class LocalBundleClient(BundleClient):
         """
         bundle_type = info['bundle_type']
         if bundle_type == 'program' or bundle_type == 'dataset':
-            construct_args = {'metadata': info['metadata'], 'uuid': info['uuid'],
-                              'data_hash': info['data_hash']}
+            construct_args = {'metadata': info['metadata'], 'uuid': info['uuid']}
         elif bundle_type == 'make' or bundle_type == 'run':
             targets = [(item['child_path'], (item['parent_uuid'], item['parent_path']))
                        for item in info['dependencies']]
@@ -224,9 +223,16 @@ class LocalBundleClient(BundleClient):
         if 'uuid' in info:  # Happens when we're copying bundles.
             existing = True
             construct_args = self.bundle_info_to_construct_args(info)
+            try:
+                self.model.get_bundle(construct_args['uuid'])
+                raise UsageError('Bundle with UUID %s already exists.' % construct_args['uuid'])
+            except UsageError:
+                pass
         else:
             existing = False
-            construct_args = {'metadata': info['metadata']}
+            construct_args = {
+                'uuid': spec_util.generate_uuid(),
+                'metadata': info['metadata']}
         metadata = construct_args['metadata']
         message = 'Invalid upload bundle_type: %s' % (bundle_type,)
         if not existing:
@@ -235,16 +241,19 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
-        construct_args['uuid'] = spec_util.generate_uuid()
+        
         construct_args['owner_id'] = self._current_user_id()
 
         bundle = bundle_subclass.construct(**construct_args)
 
         # Upload the data and save the bundle.
-        self.upload_manager.upload_to_bundle_store(
-            bundle, sources, follow_symlinks, exclude_patterns, remove_sources,
-            git, unpack, simplify_archives=True)
-        self.upload_manager.update_metadata_and_save(bundle, new_bundle=True)
+        if sources is not None:
+            self.upload_manager.upload_to_bundle_store(
+                bundle, sources, follow_symlinks, exclude_patterns, remove_sources,
+                git, unpack, simplify_archives=True)
+            self.upload_manager.update_metadata_and_save(bundle, new_bundle=True)
+        else:
+            self.model.save_bundle(bundle)
 
         # Inherit properties of worksheet
         self._bundle_inherit_workheet_permissions(bundle.uuid, worksheet_uuid)
@@ -300,15 +309,12 @@ class LocalBundleClient(BundleClient):
         """
         check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         for bundle_uuid in bundle_uuids:
-            if not self.launch_new_worker_system:
-                self.model.add_bundle_action(bundle_uuid, BundleAction.kill())
-            else:
-                worker_message = {
-                    'type': 'kill',
-                    'uuid': bundle_uuid,
-                }
-                action_string = BundleAction.kill()
-                self._do_bundle_action(bundle_uuid, worker_message, action_string)
+            worker_message = {
+                'type': 'kill',
+                'uuid': bundle_uuid,
+            }
+            action_string = BundleAction.kill()
+            self._do_bundle_action(bundle_uuid, worker_message, action_string)
 
     @authentication_required
     def write_targets(self, targets, string):
@@ -321,17 +327,14 @@ class LocalBundleClient(BundleClient):
             if not re.match('^\w+$', subpath):
                 raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
             
-            if not self.launch_new_worker_system:
-                self.model.add_bundle_action(bundle_uuid, BundleAction.write(subpath, string))
-            else:
-                worker_message = {
-                    'type': 'write',
-                    'uuid': bundle_uuid,
-                    'subpath': subpath,
-                    'string': string,
-                }
-                action_string = BundleAction.write(subpath, string)
-                self._do_bundle_action(bundle_uuid, worker_message, action_string)
+            worker_message = {
+                'type': 'write',
+                'uuid': bundle_uuid,
+                'subpath': subpath,
+                'string': string,
+            }
+            action_string = BundleAction.write(subpath, string)
+            self._do_bundle_action(bundle_uuid, worker_message, action_string)
 
     def _do_bundle_action(self, bundle_uuid, worker_message, action_string):
         """
@@ -391,26 +394,15 @@ class LocalBundleClient(BundleClient):
         check_bundles_have_all_permission(self.model, self._current_user(), relevant_uuids)
 
         # Make sure we don't delete bundles which are active.
-        # TODO(klopyrev): Deprecate this code and the force flag once the new
-        #                 worker system is launched.
-        if not force:
-            states = self.model.get_bundle_states(uuids)
-            active_uuids = [uuid for (uuid, state) in states.items() if state in [State.QUEUED, State.RUNNING]]
-            if len(active_uuids) > 0:
-                raise UsageError('Can\'t delete queued or running bundles (--force to override): %s' %
-                                 ' '.join(active_uuids))
-
-        # Make sure we don't delete bundles which are active.
-        if self.launch_new_worker_system:
-            states = self.model.get_bundle_states(uuids)
-            active_states = set([State.MAKING, State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING])
-            active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
-            if len(active_uuids) > 0:
-                raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
-                                 'For run bundles, kill them first. ' +
-                                 'Bundles stuck not running will eventually ' +
-                                 'automatically be moved to a state where they ' +
-                                 'can be deleted.')
+        states = self.model.get_bundle_states(uuids)
+        active_states = set([State.MAKING, State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING])
+        active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
+        if len(active_uuids) > 0:
+            raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
+                             'For run bundles, kill them first. ' +
+                             'Bundles stuck not running will eventually ' +
+                             'automatically be moved to a state where they ' +
+                             'can be deleted.')
 
         # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
         result = self.model.get_host_worksheet_uuids(relevant_uuids)
@@ -811,12 +803,7 @@ class LocalBundleClient(BundleClient):
     #############################################################################
 
     def ensure_unused_group_name(self, name):
-        # Ensure group names are unique.  Note: for simplicity, we are
-        # ensuring uniqueness across the system, even on group names that
-        # the user may not have access to.
-        groups = self.model.batch_get_groups(name=name)
-        if len(groups) != 0:
-            raise UsageError('Group with name %s already exists' % name)
+        return rest_util.ensure_unused_group_name(name, client=self)
 
     def ensure_unused_worksheet_name(self, name):
         # Ensure worksheet names are unique.  Note: for simplicity, we are
@@ -1310,23 +1297,9 @@ class LocalBundleClient(BundleClient):
         """
         Resolve |group_spec| and return the associated group_info.
         """
-        user_id = self._current_user_id()
-
-        # If we're root, then we can access any group.
-        if user_id == self.model.root_user_id:
-            user_id = None
-
-        group_info = permission.unique_group(self.model, group_spec, user_id)
-
-        # If not root and need admin access, but don't have it, raise error.
-        if user_id and need_admin and not group_info['is_admin']:
-            raise UsageError('You are not the admin of group %s.' % group_spec)
-
-        # No one can admin the public group (not even root), because it's a special group.
-        if need_admin and group_info['uuid'] == self.model.public_group_uuid:
-            raise UsageError('Cannot modify the public group %s.' % group_spec)
-
-        return group_info
+        return rest_util.get_group_info(group_spec, need_admin,
+                                        client=self,
+                                        user_id=self._current_user_id())
 
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
@@ -1339,7 +1312,8 @@ class LocalBundleClient(BundleClient):
     def update_user_info(self, user_info):
         user_id = self._current_user_id()
         is_root = (user_id == self.model.root_user_id)
-        is_user = (user_id == user_info['user_id'])
+        if 'user_id' not in user_info:
+            user_info['user_id'] = user_id
         if is_root:
             # TODO: in the future, allow user to update, but only in limited ways
             self.model.update_user_info(user_info)

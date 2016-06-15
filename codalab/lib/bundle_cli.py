@@ -54,11 +54,12 @@ from codalab.lib import (
     formatting,
     ui_actions,
 )
-from codalab.objects.permission import permission_str, group_permissions_str
-from codalab.objects.work_manager import Worker
-from codalab.machines.remote_machine import RemoteMachine
-from codalab.machines.local_machine import LocalMachine
+from codalab.objects.permission import (
+    permission_str,
+    group_permissions_str,
+)
 from codalab.client.local_bundle_client import LocalBundleClient
+from codalab.client.json_api_client import JsonApiRelationship
 from codalab.server.rpc_file_handle import RPCFileHandle
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
@@ -129,6 +130,11 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'perm',
     'wperm',
     'chown',
+)
+
+USER_COMMANDS = (
+    'uinfo',
+    'uedit',
 )
 
 OTHER_COMMANDS = (
@@ -325,12 +331,16 @@ class Commands(object):
         Commands for groups and permissions:
         {group_and_permission_commands}
 
+        Commands for users:
+        {user_commands}
+
         Other commands:
         {other_commands}
         """).format(
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
+            user_commands=command_group_help_text(USER_COMMANDS),
             other_commands=command_group_help_text(available_other_commands),
         ).strip()
 
@@ -527,7 +537,8 @@ class BundleCLI(object):
             if i == 0:
                 print >>self.stdout, indent + (sum(lengths) + 2*(len(columns) - 1)) * '-'
 
-    def parse_spec(self, spec):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def parse_spec(self, spec, use_rest=False):
         """
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
         Example: https://worksheets.codalab.org/bundleservice::wine
@@ -540,25 +551,27 @@ class BundleCLI(object):
         else:
             address = self.manager.apply_alias(tokens[0])
             spec = tokens[1]
-        return (self.manager.client(address), spec)
+        return (self.manager.client(address, use_rest=use_rest), spec)
 
-    def parse_client_worksheet_uuid(self, spec):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def parse_client_worksheet_uuid(self, spec, use_rest=False):
         """
         Return the worksheet referred to by |spec|.
         """
         if not spec or spec == worksheet_util.CURRENT_WORKSHEET:
             # Empty spec, just return current worksheet.
-            client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+            client, worksheet_uuid = self.manager.get_current_worksheet_uuid(use_rest=use_rest)
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
-            client, spec = self.parse_spec(spec)
+            bundle_client, _ = self.parse_spec(spec)
+            client, spec = self.parse_spec(spec, use_rest=use_rest)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
             if client_is_explicit:
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            worksheet_uuid = worksheet_util.get_worksheet_uuid(client, base_worksheet_uuid, spec)
+            worksheet_uuid = worksheet_util.get_worksheet_uuid(bundle_client, base_worksheet_uuid, spec)
         return (client, worksheet_uuid)
 
     @staticmethod
@@ -710,10 +723,6 @@ class BundleCLI(object):
         print >>self.stdout, "current_worksheet: %s" % self.simple_worksheet_str(worksheet_info)
         print >>self.stdout, "user: %s" % self.simple_user_str(client.user_info(None))
 
-        user_info = client.get_user_info(None)
-        print >>self.stdout, "time: %s" % formatting.ratio_str(formatting.duration_str, user_info['time_used'], user_info['time_quota'])
-        print >>self.stdout, "disk: %s" % formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota'])
-
     @Commands.command(
         'logout',
         help='Logout of the current session.',
@@ -721,7 +730,9 @@ class BundleCLI(object):
     def do_logout_command(self, args):
         self._fail_if_headless('logout')
         client = self.manager.current_client()
-        self.manager.logout(client)
+        self.manager.logout(client.address)
+        client = self.manager.current_client(use_rest=True)
+        self.manager.logout(client.address)
 
     @Commands.command(
         'alias',
@@ -967,7 +978,7 @@ class BundleCLI(object):
 
             # Set sources
             if source is None:
-                sources = [None]
+                sources = None
             elif isinstance(dest_client, LocalBundleClient):
                 sources = [dest_path]
             else:
@@ -1811,7 +1822,7 @@ class BundleCLI(object):
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenWorksheet(worksheet_uuid)])
 
-        self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
+        self.manager.set_current_worksheet_uuid(client.address, worksheet_uuid)
 
         if verbose:
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
@@ -2063,12 +2074,25 @@ class BundleCLI(object):
         ),
     )
     def do_gls_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        group_dicts = client.list_groups()
-        if group_dicts:
-            for row in group_dicts:
-                row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
-            self.print_table(('name', 'uuid', 'owner', 'role'), group_dicts)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
+        user_id = client.fetch('user')['id']
+        groups = client.fetch('groups')
+
+        if groups:
+            for group in groups:
+                group['uuid'] = group['id']
+                if any(member['id'] == user_id for member in group['admins']):
+                    group['role'] = 'admin'
+                elif group['owner'] and group['owner']['id'] == user_id:
+                    group['role'] = 'owner'
+                else:
+                    group['role'] = 'member'
+                # Set owner string for print_table
+                # group['owner'] may be None (i.e. for the public group)
+                if group['owner']:
+                    group['owner'] = '%s(%s)' % (group['owner']['user_name'], group['owner']['id'])
+
+            self.print_table(('name', 'uuid', 'owner', 'role'), groups)
         else:
             print >>self.stdout, 'No groups found.'
 
@@ -2080,9 +2104,9 @@ class BundleCLI(object):
         ),
     )
     def do_gnew_command(self, args):
-        client = self.manager.current_client()
-        group_dict = client.new_group(args.name)
-        print >>self.stdout, 'Created new group %s(%s).' % (group_dict['name'], group_dict['uuid'])
+        client = self.manager.current_client(use_rest=True)
+        group = client.create('groups', {'name': args.name})
+        print >>self.stdout, 'Created new group %s(%s).' % (group['name'], group['id'])
 
     @Commands.command(
         'grm',
@@ -2092,9 +2116,10 @@ class BundleCLI(object):
         ),
     )
     def do_grm_command(self, args):
-        client = self.manager.current_client()
-        group_dict = client.rm_group(args.group_spec)
-        print >>self.stdout, 'Deleted group %s(%s).' % (group_dict['name'], group_dict['uuid'])
+        client = self.manager.current_client(use_rest=True)
+        group = client.fetch('groups', args.group_spec)
+        client.delete('groups', group['id'])
+        print >>self.stdout, 'Deleted group %s(%s).' % (group['name'], group['id'])
 
     @Commands.command(
         'ginfo',
@@ -2104,13 +2129,29 @@ class BundleCLI(object):
         ),
     )
     def do_ginfo_command(self, args):
-        client = self.manager.current_client()
-        group_dict = client.group_info(args.group_spec)
-        members = group_dict['members']
-        for row in members:
-            row['user'] = '%s(%s)' % (row['user_name'], row['user_id'])
-        print >>self.stdout, 'Members of group %s(%s):' % (group_dict['name'], group_dict['uuid'])
-        self.print_table(('user', 'role'), group_dict['members'])
+        client = self.manager.current_client(use_rest=True)
+        group = client.fetch('groups', args.group_spec)
+
+        members = []
+        # group['owner'] may be None (i.e. for the public group)
+        if group['owner']:
+            members.append({
+                'role': 'owner',
+                'user': '%s(%s)' % (group['owner']['user_name'], group['owner']['id']),
+            })
+        for member in group['admins']:
+            members.append({
+                'role': 'admin',
+                'user': '%s(%s)' % (member['user_name'], member['id']),
+            })
+        for member in group['members']:
+            members.append({
+                'role': 'member',
+                'user': '%s(%s)' % (member['user_name'], member['id']),
+            })
+
+        print >>self.stdout, 'Members of group %s(%s):' % (group['name'], group['id'])
+        self.print_table(('user', 'role'), members)
 
     @Commands.command(
         'uadd',
@@ -2122,15 +2163,19 @@ class BundleCLI(object):
         ),
     )
     def do_uadd_command(self, args):
-        client = self.manager.current_client()
-        user_info = client.add_user(args.user_spec, args.group_spec, args.admin)
-        if 'operation' in user_info:
-            print >>self.stdout, '%s %s %s group %s' % (user_info['operation'],
-                                         user_info['name'],
-                                         'to' if user_info['operation'] == 'Added' else 'in',
-                                         user_info['group_uuid'])
-        else:
-            print >>self.stdout, '%s is already in group %s' % (user_info['name'], user_info['group_uuid'])
+        client = self.manager.current_client(use_rest=True)
+
+        user = client.fetch('users', args.user_spec)
+        group = client.fetch('groups', args.group_spec)
+        client.create_relationship('groups', group['id'],
+                                   'admins' if args.admin else 'members',
+                                   JsonApiRelationship('users', user['id']))
+
+        print >>self.stdout, '%s in group %s as %s' % (
+            user['user_name'],
+            group['name'],
+            'admin' if args.admin else 'member'
+        )
 
     @Commands.command(
         'urm',
@@ -2141,12 +2186,23 @@ class BundleCLI(object):
         ),
     )
     def do_urm_command(self, args):
-        client = self.manager.current_client()
-        user_info = client.rm_user(args.user_spec, args.group_spec)
-        if user_info is None:
-            print >>self.stdout, '%s is not a member of group %s.' % (user_info['name'], user_info['group_uuid'])
+        client = self.manager.current_client(use_rest=True)
+        user = client.fetch('users', args.user_spec)
+        group = client.fetch('groups', args.group_spec)
+
+        # Get the first member that matches the target user ID
+        member = next(
+            itertools.ifilter(
+                lambda m: m['id'] == user['id'],
+                group['members'] + group['admins']),
+            None)
+
+        if member is None:
+            print >>self.stdout, '%s is not a member of group %s.' % (user['user_name'], group['name'])
         else:
-            print >>self.stdout, 'Removed %s from group %s.' % (user_info['name'], user_info['group_uuid'])
+            client.delete_relationship('groups', group['id'], 'members',
+                                       JsonApiRelationship('users', user['id']))
+            print >>self.stdout, 'Removed %s from group %s.' % (user['user_name'], group['name'])
 
     @Commands.command(
         'perm',
@@ -2212,34 +2268,6 @@ class BundleCLI(object):
     #############################################################################
 
     @Commands.command(
-        'work-manager',
-        help='Run the CodaLab bundle work manager (to execute run bundles).',
-        arguments=(
-            Commands.Argument('-t', '--worker-type', type=str, help='Worker type (defined in config.json).', default='local'),
-            Commands.Argument('--num-iterations', help='Number of bundles to process before exiting (for debugging).', type=int, default=None),
-            Commands.Argument('--sleep-time', type=int, help='Number of seconds to wait between successive actions.', default=1),
-        ),
-    )
-    def do_work_manager_command(self, args):
-        self._fail_if_headless('work-manager')
-        # This command only works if client is a LocalBundleClient.
-
-        worker_config = self.manager.config['workers']
-        if args.worker_type == 'local':
-            machine = LocalMachine()
-        elif args.worker_type in worker_config:
-            machine = RemoteMachine(worker_config[args.worker_type])
-        else:
-            print >>self.stdout, '\'' + args.worker_type + '\'' + \
-                  ' is not specified in your config file: ' + self.manager.config_path
-            print >>self.stdout, 'Options are ' + str(map(str, worker_config.keys()))
-            return
-
-        client = self.manager.local_client()  # Always use the local bundle client
-        worker = Worker(client.bundle_store, client.model, machine, client.auth_handler)
-        worker.run_loop(args.num_iterations, args.sleep_time)
-
-    @Commands.command(
         'events',
         help='Print the history of commands on this CodaLab instance (local only).',
         arguments=(
@@ -2281,9 +2309,14 @@ class BundleCLI(object):
         'uedit',
         help=[
             'Edit user information.',
+            'Note that password and email can only be changed through the web interface.',
         ],
         arguments=(
-            Commands.Argument('-u', '--user-id', help='User to set quota for'),
+            Commands.Argument('user_spec', nargs='?', help='Username or id of user to update [default: the authenticated user]'),
+            Commands.Argument('--first-name', help='First name'),
+            Commands.Argument('--last-name', help='Last name'),
+            Commands.Argument('--affiliation', help='Affiliation'),
+            Commands.Argument('--url', help='Website URL'),
             Commands.Argument('-t', '--time-quota', help='Total amount of time allowed (e.g., 3, 3m, 3h, 3d)'),
             Commands.Argument('-d', '--disk-quota', help='Total amount of disk allowed (e.g., 3, 3k, 3m, 3g, 3t)'),
         ),
@@ -2292,13 +2325,82 @@ class BundleCLI(object):
         """
         Edit properties of users.
         """
-        client = self.manager.current_client()
-        user_info = client.get_user_info(args.user_id)
+        client = self.manager.current_client(use_rest=True)
+
+        # Build user info
+        user_info = {
+            key: getattr(args, key)
+            for key in (
+                'first_name',
+                'last_name',
+                'affiliation',
+                'url',
+            )
+            if getattr(args, key) is not None
+        }
         if args.time_quota is not None:
             user_info['time_quota'] = formatting.parse_duration(args.time_quota)
         if args.disk_quota is not None:
-            user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
-        client.update_user_info(user_info)
+            user_info['disk_quota'] = formatting.parse_size(args.disK_quota)
+        if not user_info:
+            raise UsageError("No fields to update.")
+
+        # Send update request
+        if args.user_spec is None:
+            # If user id is not specified, update the authenticated user
+            user = client.update_authenticated_user(user_info)
+        else:
+            # Resolve user id from user spec
+            user_info['id'] = client.fetch('users', args.user_spec)['id']
+            user = client.update('users', user_info)
+        self.print_user_info(user)
+
+    @Commands.command(
+        'uinfo',
+        help=[
+            'Show user information.',
+        ],
+        arguments=(
+            Commands.Argument('user_spec', nargs='?', help='Username or id of user to show [default: the authenticated user]'),
+        ),
+    )
+    def do_uinfo_command(self, args):
+        """
+        Edit properties of users.
+        """
+        client = self.manager.current_client(use_rest=True)
+        if args.user_spec is None:
+            user = client.fetch('user')
+        else:
+            user = client.fetch('users', args.user_spec)
+        self.print_user_info(user)
+
+    def print_user_info(self, user):
+        def print_attribute(key, value):
+            print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+
+        for key in ('id', 'user_name', 'first_name', 'last_name',
+                    'affiliation', 'url', 'date_joined'):
+            print_attribute(key, user.get(key, None))
+
+        # These fields will not be returned by the server if the
+        # authenticated user is not root, so stop early on first KeyError
+        try:
+            for key in ('last_login', 'email'):
+                print_attribute(key, user[key])
+
+            print_attribute(
+                'time', formatting.ratio_str(
+                    formatting.duration_str,
+                    user['time_used'],
+                    user['time_quota']))
+
+            print_attribute(
+                'disk', formatting.ratio_str(formatting.size_str,
+                                             user['disk_used'],
+                                             user['disk_quota']))
+        except KeyError:
+            pass
 
     @Commands.command(
         'reset',
