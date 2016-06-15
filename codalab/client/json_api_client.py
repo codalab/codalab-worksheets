@@ -3,7 +3,10 @@ import socket
 import sys
 import urllib2
 
-from codalab.common import http_error_to_exception, UsageError
+from codalab.common import (
+    http_error_to_exception,
+    UsageError,
+)
 from worker.rest_client import RestClient, RestClientException
 
 
@@ -68,14 +71,11 @@ class JsonApiClient(RestClient):
     """
     Simple JSON API client.
     """
-    def __init__(self, address, authenticate):
-        self._authenticate = authenticate
-
+    def __init__(self, address, get_access_token):
+        self._get_access_token = get_access_token
+        self.address = address  # Used as key in client and token caches
         base_url = address + '/rest'
         super(JsonApiClient, self).__init__(base_url)
-
-    def _get_access_token(self):
-        return self._authenticate(self)
 
     @staticmethod
     def _get_resource_path(resource_type, resource_id=None):

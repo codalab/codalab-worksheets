@@ -524,7 +524,8 @@ class BundleCLI(object):
             if i == 0:
                 print >>self.stdout, indent + (sum(lengths) + 2*(len(columns) - 1)) * '-'
 
-    def parse_spec(self, spec):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def parse_spec(self, spec, use_rest=False):
         """
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
         Example: https://worksheets.codalab.org/bundleservice::wine
@@ -537,25 +538,27 @@ class BundleCLI(object):
         else:
             address = self.manager.apply_alias(tokens[0])
             spec = tokens[1]
-        return (self.manager.client(address), spec)
+        return (self.manager.client(address, use_rest=use_rest), spec)
 
-    def parse_client_worksheet_uuid(self, spec):
+    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
+    def parse_client_worksheet_uuid(self, spec, use_rest=False):
         """
         Return the worksheet referred to by |spec|.
         """
         if not spec or spec == worksheet_util.CURRENT_WORKSHEET:
             # Empty spec, just return current worksheet.
-            client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+            client, worksheet_uuid = self.manager.get_current_worksheet_uuid(use_rest=use_rest)
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
-            client, spec = self.parse_spec(spec)
+            bundle_client, _ = self.parse_spec(spec)
+            client, spec = self.parse_spec(spec, use_rest=use_rest)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
             if client_is_explicit:
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            worksheet_uuid = worksheet_util.get_worksheet_uuid(client, base_worksheet_uuid, spec)
+            worksheet_uuid = worksheet_util.get_worksheet_uuid(bundle_client, base_worksheet_uuid, spec)
         return (client, worksheet_uuid)
 
     @staticmethod
@@ -718,7 +721,9 @@ class BundleCLI(object):
     def do_logout_command(self, args):
         self._fail_if_headless('logout')
         client = self.manager.current_client()
-        self.manager.logout(client)
+        self.manager.logout(client.address)
+        client = self.manager.current_client(use_rest=True)
+        self.manager.logout(client.address)
 
     @Commands.command(
         'alias',
@@ -1808,7 +1813,7 @@ class BundleCLI(object):
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenWorksheet(worksheet_uuid)])
 
-        self.manager.set_current_worksheet_uuid(client, worksheet_uuid)
+        self.manager.set_current_worksheet_uuid(client.address, worksheet_uuid)
 
         if verbose:
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
