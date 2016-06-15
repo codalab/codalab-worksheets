@@ -132,6 +132,11 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'chown',
 )
 
+USER_COMMANDS = (
+    'uinfo',
+    'uedit',
+)
+
 OTHER_COMMANDS = (
     'help',
     'status',
@@ -326,12 +331,16 @@ class Commands(object):
         Commands for groups and permissions:
         {group_and_permission_commands}
 
+        Commands for users:
+        {user_commands}
+
         Other commands:
         {other_commands}
         """).format(
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
+            user_commands=command_group_help_text(USER_COMMANDS),
             other_commands=command_group_help_text(available_other_commands),
         ).strip()
 
@@ -2366,24 +2375,27 @@ class BundleCLI(object):
             user = client.fetch('users', args.user_spec)
         self.print_user_info(user)
 
-    def print_user_info(self, user, include_private=False):
+    def print_user_info(self, user):
+        def print_attribute(key, value):
+            print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+
         for key in ('id', 'user_name', 'first_name', 'last_name',
                     'affiliation', 'url', 'date_joined'):
-            print >>self.stdout, u'{:<15}: {}'.format(key, user.get(key, None))
+            print_attribute(key, user.get(key, None))
 
         # These fields will not be returned by the server if the
         # authenticated user is not root, so stop early on first KeyError
         try:
             for key in ('last_login', 'email'):
-                print >>self.stdout, u'{:<15}: {}'.format(key, user[key])
+                print_attribute(key, user[key])
 
-            print >>self.stdout, u'{:<15}: {}'.format(
+            print_attribute(
                 'time', formatting.ratio_str(
                     formatting.duration_str,
                     user['time_used'],
                     user['time_quota']))
 
-            print >>self.stdout, u'{:<15}: {}'.format(
+            print_attribute(
                 'disk', formatting.ratio_str(formatting.size_str,
                                              user['disk_used'],
                                              user['disk_quota']))
