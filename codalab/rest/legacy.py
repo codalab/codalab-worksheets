@@ -159,20 +159,23 @@ class BundleService(object):
             interpreted_items = {'items': []}
             worksheet_info['error'] = str(e)
 
+        # bundle_uuids is an optional argument that, if exists, contain the uuids of all the unfinished run bundles that need to be updated
+        # In this case, full_worksheet will return a partial worksheet that contains only those relevant bundles, other parts of the worksheet
+        # will remain as None.
         if bundle_uuids:
             for i, item in enumerate(interpreted_items['items']):
-                if ('bundle_info' not in item):
+                if 'bundle_info' not in item:
                     interpreted_items['items'][i] = None
                 else:
                     if isinstance(item['bundle_info'], dict):
                         item['bundle_info'] = [item['bundle_info']]
-                    is_relavant_item = False
+                    is_relevant_item = False
                     for j, bundle in enumerate(item['bundle_info']):
                         if bundle['uuid'] in bundle_uuids:
-                            is_relavant_item = True
+                            is_relevant_item = True
                         else:
                             item['bundle_info'][j] = None
-                    if not is_relavant_item:
+                    if not is_relevant_item:
                         interpreted_items['items'][i] = None
 
         worksheet_info['items'] = self.client.resolve_interpreted_items(interpreted_items['items'])
