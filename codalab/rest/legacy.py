@@ -188,7 +188,7 @@ class BundleService(object):
 
         # Currently, only certain fields are base64 encoded.
         for item in worksheet_info['items']:
-            if item == None:
+            if item is None:
                 continue
             if item['mode'] in ['html', 'contents']:
                 item['interpreted'] = decode_lines(item['interpreted'])
@@ -204,7 +204,7 @@ class BundleService(object):
                 elif isinstance(item['bundle_info'], dict):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
-                    if bundle_info == None:
+                    if bundle_info is None:
                         continue
                     if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
                         target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
@@ -487,25 +487,8 @@ def post_worksheets_command():
 @get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_worksheet_content(uuid):
     service = BundleService()
-    return service.full_worksheet(uuid)
-
-# Needs to store the last unfinished bundle uuids because if a bundle just finished running,
-# unfinished_bundle_uuids won't include that bundle (from the backend points of view, it's a finished bundle)
-# whereas the frontend is still waiting to update its state from running to ready/failed.
-last_unfinished_bundle_uuids = set()
-# Get items that include unfinished run bundles in a worksheet, uuid is the uuid for that worksheet
-@get('/api/worksheets/unfinished_bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
-def get_worksheet_content_with_unfinished_bundles(uuid):
-    global last_unfinished_bundle_uuids
-    service = BundleService()
-    unfinished_bundle_uuids = [bundle.uuid for bundle in local.model.batch_get_bundles(state=State.OPTIONS - State.FINAL_STATES)]
-    bundle_uuids_to_worksheet = local.model.get_host_worksheet_uuids(unfinished_bundle_uuids) if len(unfinished_bundle_uuids) > 0 else {}
-    unfinished_bundle_uuids = set(filter(lambda bundle_uuid: uuid in set(bundle_uuids_to_worksheet[bundle_uuid]), unfinished_bundle_uuids))
-    relavant_bundle_uuids = unfinished_bundle_uuids.union(last_unfinished_bundle_uuids);
-    last_unfinished_bundle_uuids = unfinished_bundle_uuids
-    if len(relavant_bundle_uuids) == 0:
-        return {}
-    return service.full_worksheet(uuid, bundle_uuids=relavant_bundle_uuids)
+    bundle_uuids = request.query.getall('bundle_uuid')
+    return service.full_worksheet(uuid, bundle_uuids)
 
 @post('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
