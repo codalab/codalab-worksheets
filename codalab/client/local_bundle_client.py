@@ -1197,18 +1197,9 @@ class LocalBundleClient(BundleClient):
         if worksheet.frozen:
             raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
 
-
     def _check_quota(self, need_time, need_disk):
-        user_info = self.get_user_info(None)
-        if need_time:
-            if user_info['time_used'] >= user_info['time_quota']:
-                raise UsageError('Out of time quota: %s' %
-                    formatting.ratio_str(formatting.duration_str, user_info['time_used'], user_info['time_quota']))
-        if need_disk:
-            if user_info['disk_used'] >= user_info['disk_quota']:
-                raise UsageError('Out of disk quota: %s' %
-                    formatting.ratio_str(formatting.size_str, user_info['disk_used'], user_info['disk_quota']))
-
+        user = self.model.get_user(user_id=self._current_user_id())
+        return user.check_quota(need_time, need_disk)
 
     # methods related to chat box and chat portal
     def format_message_response(self, params):

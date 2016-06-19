@@ -15,7 +15,7 @@ class NamedBundle(Bundle):
     NAME_LENGTH = 32
 
     METADATA_SPECS = (
-      MetadataSpec('name', basestring, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, validate=spec_util.validate_name, short_key='n'),
+      MetadataSpec('name', basestring, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, short_key='n'),
       MetadataSpec('description', basestring, 'Full description of the bundle.', short_key='d'),
       MetadataSpec('tags', list, 'Space-separated list of tags used for search (e.g., machine-learning).', metavar='TAG'),
       MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),
