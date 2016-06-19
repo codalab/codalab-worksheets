@@ -33,7 +33,6 @@ from codalab.objects.permission import (
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import (
-    check_worksheet_not_frozen,
     delete_bundles as _delete_bundles,
     get_bundle_infos,
     get_resource_ids,
@@ -230,7 +229,7 @@ def create_bundles_helper(bundles):
     # Check for all necessary permissions
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
-    check_worksheet_not_frozen(worksheet)
+    worksheet_util.check_worksheet_not_frozen(worksheet)
     request.user.check_quota(need_time=True, need_disk=True)
 
     created_uuids = []

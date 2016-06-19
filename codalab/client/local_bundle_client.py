@@ -91,26 +91,6 @@ class LocalBundleClient(BundleClient):
         user = self._current_user()
         return user.name if user else None
 
-    @staticmethod
-    def _mask_bundle_info(bundle_info):
-        """
-        Return a copy of the bundle_info dict that returns '<hidden>'
-        for all fields except 'uuid'.
-        """
-        private_str = '<private>'
-        return {
-            'uuid': bundle_info['uuid'],
-            'bundle_type': PrivateBundle.BUNDLE_TYPE,
-            'owner_id': None,
-            'command': None,
-            'data_hash': None,
-            'state': None,
-            'metadata': {
-                'name': private_str
-            },
-            'dependencies': [],
-        }
-
     def get_bundle_uuids(self, worksheet_uuid, bundle_specs):
         return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
 
@@ -123,14 +103,7 @@ class LocalBundleClient(BundleClient):
         return canonicalize.get_bundle_uuid(self.model, self._current_user_id(), worksheet_uuid, bundle_spec)
 
     def resolve_owner_in_keywords(self, keywords):
-        # Resolve references to owner ids
-        def resolve(keyword):
-            # Example: owner=codalab => owner_id=0
-            m = re.match('owner=(.+)', keyword)
-            if not m:
-                return keyword
-            return 'owner_id=%s' % self._user_name_to_id(m.group(1))
-        return map(resolve, keywords)
+        return rest_util.resolve_owner_in_keywords(keywords, client=self)
 
     def search_bundle_uuids(self, worksheet_uuid, keywords):
         keywords = self.resolve_owner_in_keywords(keywords)
@@ -199,7 +172,7 @@ class LocalBundleClient(BundleClient):
         """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        self._check_worksheet_not_frozen(worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
         self._check_quota(need_time=False, need_disk=True)
 
         # Construct initial metadata
@@ -256,7 +229,7 @@ class LocalBundleClient(BundleClient):
         """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        self._check_worksheet_not_frozen(worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
         self._check_quota(need_time=True, need_disk=True)
 
         bundle_uuid = self._derive_bundle(bundle_type, targets, command, metadata, worksheet_uuid)
@@ -489,7 +462,7 @@ class LocalBundleClient(BundleClient):
         """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        self._check_worksheet_not_frozen(worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
 
         # Build the graph (get all the infos).
         # If old_output is given, look at ancestors of old_output until we
@@ -795,7 +768,7 @@ class LocalBundleClient(BundleClient):
         """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        self._check_worksheet_not_frozen(worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
         self.model.add_worksheet_item(worksheet_uuid, item)
 
     @authentication_required
@@ -808,7 +781,7 @@ class LocalBundleClient(BundleClient):
         length = len(worksheet_info['items'])
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        self._check_worksheet_not_frozen(worksheet)
+        worksheet_util.check_worksheet_not_frozen(worksheet)
         try:
             new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
             self.model.update_worksheet_items(worksheet_uuid, last_item_id, length, new_items)
@@ -1142,10 +1115,6 @@ class LocalBundleClient(BundleClient):
             self.model.update_user_info(user_info)
         else:
             raise PermissionError('Only the root user has permissions to edit users.')
-
-    @staticmethod
-    def _check_worksheet_not_frozen(worksheet):
-        return rest_util.check_worksheet_not_frozen(worksheet)
 
     def _check_quota(self, need_time, need_disk):
         user = self.model.get_user(user_id=self._current_user_id())

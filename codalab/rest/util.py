@@ -77,11 +77,6 @@ def local_bundle_client_compatible(f):
 #############################################################
 
 
-def check_worksheet_not_frozen(worksheet):
-    if worksheet.frozen:
-        raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
-
-
 @local_bundle_client_compatible
 def set_worksheet_permission(local, request, worksheet_uuid, group_uuid, permission):
     """
@@ -366,7 +361,8 @@ def get_bundle_infos(local, request, uuids, get_children=False,
     return bundle_dict
 
 
-def resolve_owner_in_keywords(keywords):
+@local_bundle_client_compatible
+def resolve_owner_in_keywords(local, request, keywords):
     # Resolve references to owner ids
     def resolve(keyword):
         # Example: owner=codalab => owner_id=0

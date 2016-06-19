@@ -35,7 +35,7 @@ import yaml
 import json
 from itertools import izip
 from codalab.client.json_api_client import JsonApiClient
-from codalab.common import UsageError
+from codalab.common import PermissionError, UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
 from codalab.objects.permission import permission_str, group_permissions_str
 
@@ -1044,3 +1044,9 @@ def interpret_wsearch(client, data):
 
     # Finally, interpret the items
     return interpret_items([], items)
+
+
+def check_worksheet_not_frozen(worksheet):
+    if worksheet.frozen:
+        raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
+
