@@ -88,27 +88,13 @@ def check_worksheet_not_frozen(worksheet):
         raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
 
 
-def set_worksheet_perm(worksheet_uuid, group_spec, permission_spec):
+@local_bundle_client_compatible
+def set_worksheet_permission(local, request, worksheet_uuid, group_uuid, permission):
     """
-    Give the given |group_spec| the desired |permission_spec| on |worksheet_uuid|.
+    Give the given |group_uuid| the desired |permission| on |worksheet_uuid|.
     """
-    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
-    check_worksheet_has_all_permission(local.model, request.user.user_id, worksheet)
-    group_info = get_group_info(group_spec, need_admin=False)
-    old_permission = local.model.get_group_worksheet_permission(group_info['uuid'], worksheet.uuid)
-    new_permission = parse_permission(permission_spec)
-
-    if new_permission > 0:
-        if old_permission > 0:
-            local.model.update_worksheet_permission(group_info['uuid'], worksheet.uuid, new_permission)
-        else:
-            local.model.add_worksheet_permission(group_info['uuid'], worksheet.uuid, new_permission)
-    else:
-        if old_permission > 0:
-            local.model.delete_worksheet_permission(group_info['uuid'], worksheet.uuid)
-    return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
-            'group_info': group_info,
-            'permission': new_permission}
+    check_worksheet_has_all_permission(local.model, request.user.user_id, worksheet_uuid)
+    local.model.set_group_worksheet_permission(group_uuid, worksheet_uuid, permission)
 
 
 # FIXME(sckoo): fix when implementing worksheets API
@@ -161,7 +147,8 @@ def new_worksheet(name):
     local.model.new_worksheet(worksheet)
 
     # Make worksheet publicly readable by default
-    set_worksheet_perm(worksheet.uuid, local.model.public_group_uuid, 'read')
+    set_worksheet_permission(worksheet.uuid, local.model.public_group_uuid,
+                             GROUP_OBJECT_PERMISSION_READ)
     if spec_util.is_dashboard(name):
         pass
         # FIXME
@@ -392,22 +379,13 @@ def resolve_owner_in_keywords(keywords):
 
 @local_bundle_client_compatible
 def set_bundle_permissions(local, request, new_permissions):
-    # Check permissions
-    bundle_uuids = [p['object_uuid'] for p in new_permissions]
-    check_bundles_have_all_permission(local.model, request.user, bundle_uuids)
-
-    # Multiplex between updating, adding, or deleting permissions
+    # Check if current user has permission to set bundle permissions
+    check_bundles_have_all_permission(
+        local.model, request.user, [p['object_uuid'] for p in new_permissions])
+    # Sequentially set bundle permissions
     for p in new_permissions:
-        old_permission = local.model.get_group_bundle_permission(p['group_uuid'], p['object_uuid'])
-        new_permission = p['permission']
-        if new_permission > 0:
-            if old_permission > 0:
-                local.model.update_bundle_permission(p['group_uuid'], p['object_uuid'], new_permission)
-            else:
-                local.model.add_bundle_permission(p['group_uuid'], p['object_uuid'], new_permission)
-        else:
-            if old_permission > 0:
-                local.model.delete_bundle_permission(p['group_uuid'], p['object_uuid'])
+        local.model.set_group_bundle_permission(
+            p['group_uuid'], p['object_uuid'], p['permission'])
 
 
 #############################################################

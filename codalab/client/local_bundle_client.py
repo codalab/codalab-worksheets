@@ -1156,22 +1156,14 @@ class LocalBundleClient(BundleClient):
         Give the given |group_spec| the desired |permission_spec| on |worksheet_uuid|.
         """
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
         group_info = self._get_group_info(group_spec, need_admin=False)
-        old_permission = self.model.get_group_worksheet_permission(group_info['uuid'], worksheet.uuid)
-        new_permission = parse_permission(permission_spec)
-
-        if new_permission > 0:
-            if old_permission > 0:
-                self.model.update_worksheet_permission(group_info['uuid'], worksheet.uuid, new_permission)
-            else:
-                self.model.add_worksheet_permission(group_info['uuid'], worksheet.uuid, new_permission)
-        else:
-            if old_permission > 0:
-                self.model.delete_worksheet_permission(group_info['uuid'], worksheet.uuid)
+        permission = parse_permission(permission_spec)
+        rest_util.set_worksheet_permission(
+            worksheet.uuid, group_info['uuid'], permission,
+            client=self, user_id=self._current_user_id())
         return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
                 'group_info': group_info,
-                'permission': new_permission}
+                'permission': permission}
 
     def _get_group_info(self, group_spec, need_admin):
         """
