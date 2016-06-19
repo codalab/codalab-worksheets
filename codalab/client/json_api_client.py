@@ -325,18 +325,22 @@ class JsonApiClient(RestClient):
     def create(self, resource_type, data, params=None):
         """
         Request to create a resource or resources.
+        Always uses bulk update.
 
         :param resource_type: resource type as string
         :param data: info dict or list of info dicts
         :param params: dict of query parameters
         :return: the created object(s)
         """
-        return self._unpack_document(
+        result = self._unpack_document(
             self._make_request(
                 method='POST',
                 path=self._get_resource_path(resource_type),
                 query_params=self._pack_params(params),
-                data=self._pack_document(data, resource_type)))
+                data=self._pack_document(
+                    data if isinstance(data, list) else [data], resource_type)))
+        # Return list iff original data was list
+        return result if isinstance(data, list) else result[0]
 
     @wrap_exception('Unable to update {1}')
     def update(self, resource_type, data, params=None):

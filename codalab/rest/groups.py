@@ -113,12 +113,16 @@ def delete_groups():
 @post('/groups', apply=AuthenticatedPlugin())
 def create_group():
     """Create a group."""
-    group = GroupSchema(strict=True).load(request.json, partial=True).data
-    ensure_unused_group_name(group['name'])
-    group['owner_id'] = request.user.user_id
-    group = local.model.create_group(group)
-    local.model.add_user_in_group(request.user.user_id, group['uuid'], True)
-    return GroupSchema().dump(group).data
+    groups = GroupSchema(strict=True, many=True).load(request.json, partial=True).data
+    created_groups = []
+    for group in groups:
+        ensure_unused_group_name(group['name'])
+        group['owner_id'] = request.user.user_id
+        group['user_defined'] = True
+        group = local.model.create_group(group)
+        local.model.add_user_in_group(request.user.user_id, group['uuid'], True)
+        created_groups.append(group)
+    return GroupSchema(many=True).dump(created_groups).data
 
 
 @post('/groups/<group_spec>/relationships/admins', apply=AuthenticatedPlugin())
