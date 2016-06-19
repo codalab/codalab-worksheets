@@ -1347,7 +1347,6 @@ class BundleModel(object):
                 table.c.group_uuid == group_uuid,
             )).limit(1)).fetchone()
             old_permission = row.permission if row else GROUP_OBJECT_PERMISSION_NONE
-            print row
 
             if new_permission > 0:
                 if old_permission > 0:
