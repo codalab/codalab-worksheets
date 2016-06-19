@@ -41,6 +41,11 @@ class DummyRequest(object):
     def __init__(self, user):
         self.user = user
 
+import threading
+context = threading.local()
+context.local = None
+context.request = None
+
 
 def local_bundle_client_compatible(f):
     """
@@ -58,8 +63,12 @@ def local_bundle_client_compatible(f):
         if 'client' in kwargs:
             client = kwargs.pop('client')
             user = client.model.get_user(user_id=client._current_user_id())
-            request_ = DummyRequest(user=user)
-            local_ = client
+            context.local = client
+            context.request = DummyRequest(user)
+
+        if context.local and context.request:
+            request_ = context.request
+            local_ = context.local
         else:
             request_ = request
             local_ = local
@@ -69,6 +78,7 @@ def local_bundle_client_compatible(f):
             return f(local_, request_, *args, **kwargs)
         except HTTPError as e:
             raise http_error_to_exception(e.status_code, e.message)
+
     return wrapper
 
 
@@ -78,12 +88,12 @@ def local_bundle_client_compatible(f):
 
 
 @local_bundle_client_compatible
-def set_worksheet_permission(local, request, worksheet_uuid, group_uuid, permission):
+def set_worksheet_permission(local, request, worksheet, group_uuid, permission):
     """
     Give the given |group_uuid| the desired |permission| on |worksheet_uuid|.
     """
-    check_worksheet_has_all_permission(local.model, request.user.user_id, worksheet_uuid)
-    local.model.set_group_worksheet_permission(group_uuid, worksheet_uuid, permission)
+    check_worksheet_has_all_permission(local.model, request.user, worksheet)
+    local.model.set_group_worksheet_permission(group_uuid, worksheet.uuid, permission)
 
 
 # FIXME(sckoo): fix when implementing worksheets API
@@ -142,7 +152,7 @@ def new_worksheet(local, request, name):
     local.model.new_worksheet(worksheet)
 
     # Make worksheet publicly readable by default
-    set_worksheet_permission(worksheet.uuid, local.model.public_group_uuid,
+    set_worksheet_permission(worksheet, local.model.public_group_uuid,
                              GROUP_OBJECT_PERMISSION_READ)
     if spec_util.is_dashboard(name):
         populate_dashboard(worksheet)

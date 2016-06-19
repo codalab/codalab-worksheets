@@ -1086,7 +1086,7 @@ class LocalBundleClient(BundleClient):
         group_info = self._get_group_info(group_spec, need_admin=False)
         permission = parse_permission(permission_spec)
         rest_util.set_worksheet_permission(
-            worksheet.uuid, group_info['uuid'], permission, client=self)
+            worksheet, group_info['uuid'], permission, client=self)
         return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
                 'group_info': group_info,
                 'permission': permission}
