@@ -633,7 +633,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str(['kill']), get_info(uuid, 'actions'))
+    check_equals(str([u'kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
@@ -644,7 +644,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
-    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
+    check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 @TestModule.register('mimic')
 def test(ctx):
