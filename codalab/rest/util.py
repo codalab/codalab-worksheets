@@ -43,8 +43,6 @@ class DummyRequest(object):
 
 import threading
 context = threading.local()
-context.local = None
-context.request = None
 
 
 def local_bundle_client_compatible(f):
@@ -65,13 +63,8 @@ def local_bundle_client_compatible(f):
             user = client.model.get_user(user_id=client._current_user_id())
             context.local = client
             context.request = DummyRequest(user)
-
-        if context.local and context.request:
-            request_ = context.request
-            local_ = context.local
-        else:
-            request_ = request
-            local_ = local
+        request_ = getattr(context, 'request', request)
+        local_ = getattr(context, 'local', local)
 
         # Translate HTTP errors back to CodaLab exceptions
         try:
@@ -167,7 +160,7 @@ def get_worksheet_uuid(local, request, base_worksheet_uuid, worksheet_spec):
     or dashboard. Otherwise, throw an error.
     """
     if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-        worksheet_spec = spec_util.home_worksheet(request.user.user_id)
+        worksheet_spec = spec_util.home_worksheet(request.user.user_name)
     worksheet_uuid = get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec)
     if worksheet_uuid is not None:
         return worksheet_uuid
