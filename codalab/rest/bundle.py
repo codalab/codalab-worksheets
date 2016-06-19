@@ -203,28 +203,20 @@ def fetch_bundles_helper(bundle_uuids):
 
 @post('/bundles', apply=AuthenticatedPlugin())
 def create_bundles():
-    many = isinstance(request.json['data'], list)
-    bundles = BundleSchema(
-        strict=True,
-        many=many,
-        dump_only=CREATE_RESTRICTED_FIELDS,
-    ).load(request.json).data
-
-    # Multiplex between single and bulk requests
-    if many:
-        bundles = create_bundles_helper(bundles)
-    else:
-        bundles = create_bundles_helper([bundles])[0]
-
-    return BundleSchema(many=many).dump(bundles).data
-
-
-def create_bundles_helper(bundles):
+    """
+    Bulk create bundles.
+    """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadows')
     if worksheet_uuid is None:
         abort(httplib.BAD_REQUEST, "Parent worksheet id must be specified as"
                                    "'worksheet' query parameter")
+
+    # Deserialize bundle fields
+    bundles = BundleSchema(
+        strict=True, many=True,
+        dump_only=CREATE_RESTRICTED_FIELDS,
+    ).load(request.json).data
 
     # Check for all necessary permissions
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
@@ -270,21 +262,21 @@ def create_bundles_helper(bundles):
             local.model.add_shadow_worksheet_items(
                 shadow_parent_uuid, bundle_uuid)
 
-    # Get updated bundles
+    # Get created bundles
     bundles_dict = get_bundle_infos(created_uuids)
 
-    # Return list of bundles in original order
-    return [bundles_dict[uuid] for uuid in created_uuids]
+    # Return bundles in original order
+    bundles = [bundles_dict[uuid] for uuid in created_uuids]
+    return BundleSchema(many=True).dump(bundles).data
 
 
 @patch('/bundles', apply=AuthenticatedPlugin())
 def update_bundles():
     """
-    Bulk-update bundles.
+    Bulk update bundles.
     """
     bundle_updates = BundleSchema(
-        strict=True,
-        many=True,
+        strict=True, many=True,
         dump_only=UPDATE_RESTRICTED_FIELDS,
     ).load(request.json, partial=True).data
 
@@ -329,18 +321,14 @@ def delete_bundles():
 
 @post('/bundle-permissions', apply=AuthenticatedPlugin())
 def set_bundle_permissions():
-    many = isinstance(request.json['data'], list)
+    """
+    Bulk set bundle permissions.
+    """
     new_permissions = BundlePermissionSchema(
-        strict=True, many=many,
+        strict=True, many=True,
     ).load(request.json).data
-
-    # Multiplex between single and bulk requests
-    if many:
-        _set_bundle_permissions(new_permissions)
-    else:
-        _set_bundle_permissions([new_permissions])
-
-    return BundlePermissionSchema(many=many).dump(new_permissions).data
+    _set_bundle_permissions(new_permissions)
+    return BundlePermissionSchema(many=True).dump(new_permissions).data
 
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
