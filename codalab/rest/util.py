@@ -35,18 +35,11 @@ def get_resource_ids(document, type_):
 
 class DummyRequest(object):
     """
-    Dummy classes for local_bundle_client_compatible shim.
+    Dummy class for local_bundle_client_compatible shim.
     Delete along with the decorator when cleaning up.
     """
-    class DummyUser(object):
-        def __init__(self, user_id):
-            self.user_id = user_id
-
-    def __init__(self, user=None, user_id=None):
-        if user is not None:
-            self.user = user
-        elif user_id is not None:
-            self.user = DummyRequest.DummyUser(user_id)
+    def __init__(self, user):
+        self.user = user
 
 
 def local_bundle_client_compatible(f):
@@ -54,8 +47,7 @@ def local_bundle_client_compatible(f):
     Temporary hack to make decorated functions callable from LocalBundleClient.
     This allows us to share code between LocalBundleClient and the REST server.
     To call a decorated function from LocalBundleClient, pass in self as the
-    |client| kwarg and optionally the authenticated User as |user| or the
-    ID of the authenticated user as |user_id|.
+    |client| kwarg.
 
     TODO(sckoo): To clean up, for each decorated function:
         - Un-decorate function
@@ -63,13 +55,15 @@ def local_bundle_client_compatible(f):
     """
     def wrapper(*args, **kwargs):
         # Shim in local and request
-        local_ = kwargs.pop('client', local)
-        if 'user' in kwargs:
-            request_ = DummyRequest(user=kwargs.pop('user'))
-        elif 'user_id' in kwargs:
-            request_ = DummyRequest(user_id=kwargs.pop('user_id'))
+        if 'client' in kwargs:
+            client = kwargs.pop('client')
+            user = client.model.get_user(user_id=client._current_user_id())
+            request_ = DummyRequest(user=user)
+            local_ = client
         else:
             request_ = request
+            local_ = local
+
         # Translate HTTP errors back to CodaLab exceptions
         try:
             return f(local_, request_, *args, **kwargs)
@@ -98,7 +92,9 @@ def set_worksheet_permission(local, request, worksheet_uuid, group_uuid, permiss
 
 
 # FIXME(sckoo): fix when implementing worksheets API
-def populate_dashboard(worksheet):
+@local_bundle_client_compatible
+def populate_dashboard(local, request, worksheet):
+    raise NotImplementedError
     file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/dashboard.ws')
     lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
     items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)
@@ -107,7 +103,8 @@ def populate_dashboard(worksheet):
     self.update_worksheet_metadata(worksheet.uuid, {'title': 'Codalab Dashboard'})
 
 
-def get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec):
+@local_bundle_client_compatible
+def get_worksheet_uuid_or_none(local, request, base_worksheet_uuid, worksheet_spec):
     """
     Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
     """
@@ -117,11 +114,13 @@ def get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec):
         return None
 
 
-def ensure_unused_worksheet_name(name):
-    # Ensure worksheet names are unique.  Note: for simplicity, we are
-    # ensuring uniqueness across the system, even on worksheet names that
-    # the user may not have access to.
-
+@local_bundle_client_compatible
+def ensure_unused_worksheet_name(local, request, name):
+    """
+    Ensure worksheet names are unique.
+    Note: for simplicity, we are ensuring uniqueness across the system, even on
+    worksheet names that the user may not have access to.
+    """
     # If trying to set the name to a home worksheet, then it better be
     # user's home worksheet.
     if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(request.user.user_name) != name:
@@ -130,7 +129,8 @@ def ensure_unused_worksheet_name(name):
         raise UsageError('Worksheet with name %s already exists' % name)
 
 
-def new_worksheet(name):
+@local_bundle_client_compatible
+def new_worksheet(local, request, name):
     """
     Create a new worksheet with the given |name|.
     """
@@ -150,16 +150,16 @@ def new_worksheet(name):
     set_worksheet_permission(worksheet.uuid, local.model.public_group_uuid,
                              GROUP_OBJECT_PERMISSION_READ)
     if spec_util.is_dashboard(name):
-        pass
-        # FIXME
-        # self.populate_dashboard(worksheet)
+        populate_dashboard(worksheet)
     return worksheet.uuid
 
 
-def get_worksheet_uuid(base_worksheet_uuid, worksheet_spec):
+@local_bundle_client_compatible
+def get_worksheet_uuid(local, request, base_worksheet_uuid, worksheet_spec):
     """
     Return the uuid of the specified worksheet if it exists.
-    If not, create a new worksheet if the specified worksheet is home_worksheet or dashboard. Otherwise, throw an error.
+    If not, create a new worksheet if the specified worksheet is home_worksheet
+    or dashboard. Otherwise, throw an error.
     """
     if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
         worksheet_spec = spec_util.home_worksheet(request.user.user_id)
@@ -267,7 +267,7 @@ def delete_bundles(local, request, uuids, force, recursive, data_only, dry_run):
             local.model.delete_bundles(relevant_uuids)
 
         # Update user statistics
-        local.model.update_user_disk_used(request.user.unique_id)
+        local.model.update_user_disk_used(request.user.user_id)
 
     # Delete the data.
     for uuid in relevant_uuids:

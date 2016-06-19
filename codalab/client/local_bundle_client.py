@@ -137,30 +137,14 @@ class LocalBundleClient(BundleClient):
         return self.model.search_bundle_uuids(self._current_user_id(), worksheet_uuid, keywords)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        """
-        Return the uuid of the specified worksheet if it exists.
-        If not, create a new worksheet if the specified worksheet is home_worksheet or dashboard. Otherwise, throw an error.
-        """
-        if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-            worksheet_spec = spec_util.home_worksheet(self._current_user_name())
-        worksheet_uuid = self.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec)
-        if worksheet_uuid != None:
-            return worksheet_uuid
-        else:
-            if spec_util.is_home_worksheet(worksheet_spec) or spec_util.is_dashboard(worksheet_spec):
-                return self.new_worksheet(worksheet_spec)
-            else:
-                # let it throw the correct error message
-                return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+        return rest_util.get_worksheet_uuid(
+            base_worksheet_uuid, worksheet_spec, client=self)
 
     def get_worksheet_uuid_or_none(self, base_worksheet_uuid, worksheet_spec):
         """
         Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
         """
-        try:
-            return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
-        except UsageError:
-            return None
+        return rest_util.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec, client=self)
 
     @staticmethod
     def validate_user_metadata(bundle_subclass, metadata):
@@ -383,7 +367,7 @@ class LocalBundleClient(BundleClient):
         """
         return rest_util.delete_bundles(uuids, force=force, recursive=recursive,
                                         data_only=data_only, dry_run=dry_run,
-                                        client=self, user=self._current_user())
+                                        client=self)
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
         return self.get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
@@ -398,7 +382,7 @@ class LocalBundleClient(BundleClient):
             get_children=get_children,
             get_host_worksheets=get_host_worksheets,
             get_permissions=get_permissions,
-            client=self, user_id=self._current_user_id())
+            client=self)
 
     def check_target_has_read_permission(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
@@ -694,41 +678,11 @@ class LocalBundleClient(BundleClient):
         return rest_util.ensure_unused_group_name(name, client=self)
 
     def ensure_unused_worksheet_name(self, name):
-        # Ensure worksheet names are unique.  Note: for simplicity, we are
-        # ensuring uniqueness across the system, even on worksheet names that
-        # the user may not have access to.
-
-        # If trying to set the name to a home worksheet, then it better be
-        # user's home worksheet.
-        username = self._current_user_name()
-        if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(username) != name:
-            raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
-        if self.get_worksheet_uuid_or_none(None, name) != None:
-            raise UsageError('Worksheet with name %s already exists' % name)
+        return rest_util.ensure_unused_worksheet_name(name, client=self)
 
     @authentication_required
     def new_worksheet(self, name):
-        """
-        Create a new worksheet with the given |name|.
-        """
-
-        self.ensure_unused_worksheet_name(name)
-
-        # Don't need any permissions to do this.
-        worksheet = Worksheet({
-            'name': name,
-            'title': None,
-            'frozen': None,
-            'items': [],
-            'owner_id': self._current_user_id()
-        })
-        self.model.new_worksheet(worksheet)
-
-        # Make worksheet publicly readable by default
-        self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
-        if spec_util.is_dashboard(name):
-            self.populate_dashboard(worksheet)
-        return worksheet.uuid
+        return rest_util.new_worksheet(name, client=self)
 
     def populate_dashboard(self, worksheet):
         file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/dashboard.ws')
@@ -1147,7 +1101,7 @@ class LocalBundleClient(BundleClient):
             'object_uuid': uuid,
             'permission': new_permission,
             'group_uuid': group_info['uuid']
-        } for uuid in bundle_uuids], client=self, user=self._current_user())
+        } for uuid in bundle_uuids], client=self)
         return {'group_info': group_info, 'permission': new_permission}
 
     @authentication_required
@@ -1159,8 +1113,7 @@ class LocalBundleClient(BundleClient):
         group_info = self._get_group_info(group_spec, need_admin=False)
         permission = parse_permission(permission_spec)
         rest_util.set_worksheet_permission(
-            worksheet.uuid, group_info['uuid'], permission,
-            client=self, user_id=self._current_user_id())
+            worksheet.uuid, group_info['uuid'], permission, client=self)
         return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
                 'group_info': group_info,
                 'permission': permission}
@@ -1169,9 +1122,7 @@ class LocalBundleClient(BundleClient):
         """
         Resolve |group_spec| and return the associated group_info.
         """
-        return rest_util.get_group_info(group_spec, need_admin,
-                                        client=self,
-                                        user_id=self._current_user_id())
+        return rest_util.get_group_info(group_spec, need_admin, client=self)
 
     def get_events_log_info(self, query_info, offset, limit):
         return self.model.get_events_log_info(query_info, offset, limit)
@@ -1194,8 +1145,7 @@ class LocalBundleClient(BundleClient):
 
     @staticmethod
     def _check_worksheet_not_frozen(worksheet):
-        if worksheet.frozen:
-            raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
+        return rest_util.check_worksheet_not_frozen(worksheet)
 
     def _check_quota(self, need_time, need_disk):
         user = self.model.get_user(user_id=self._current_user_id())

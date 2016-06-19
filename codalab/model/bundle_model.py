@@ -527,19 +527,17 @@ class BundleModel(object):
         clause = self.make_kwargs_clause(cl_bundle, kwargs)
         with self.engine.begin() as connection:
             bundle_rows = connection.execute(
-                cl_bundle.select().where(clause)
+              cl_bundle.select().where(clause)
             ).fetchall()
             if not bundle_rows:
                 return []
             uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
-            dependency_rows = connection.execute(
-                cl_bundle_dependency.select().where(
-                    cl_bundle_dependency.c.child_uuid.in_(uuids)
-                ).order_by(cl_bundle_dependency.c.id)).fetchall()
-            metadata_rows = connection.execute(
-                cl_bundle_metadata.select().where(
-                    cl_bundle_metadata.c.bundle_uuid.in_(uuids)
-                )).fetchall()
+            dependency_rows = connection.execute(cl_bundle_dependency.select().where(
+              cl_bundle_dependency.c.child_uuid.in_(uuids)
+            ).order_by(cl_bundle_dependency.c.id)).fetchall()
+            metadata_rows = connection.execute(cl_bundle_metadata.select().where(
+              cl_bundle_metadata.c.bundle_uuid.in_(uuids)
+            )).fetchall()
 
         # Make a dictionary for each bundle with both data and metadata.
         bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
@@ -548,23 +546,19 @@ class BundleModel(object):
             bundle_value['metadata'] = []
         for dep_row in dependency_rows:
             if dep_row.child_uuid not in bundle_values:
-                raise IntegrityError(
-                    'Got dependency %s without bundle' % (dep_row,))
+                raise IntegrityError('Got dependency %s without bundle' % (dep_row,))
             bundle_values[dep_row.child_uuid]['dependencies'].append(dep_row)
         for metadata_row in metadata_rows:
             if metadata_row.bundle_uuid not in bundle_values:
-                raise IntegrityError(
-                    'Got metadata %s without bundle' % (metadata_row,))
-            bundle_values[metadata_row.bundle_uuid]['metadata'].append(
-                metadata_row)
+                raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
+            bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
 
         # Construct and validate all of the retrieved bundles.
-        sorted_values = sorted(bundle_values.itervalues(),
-                               key=lambda r: r['id'])
+        sorted_values = sorted(bundle_values.itervalues(), key=lambda r: r['id'])
         bundles = [
-            get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
-            for bundle_value in sorted_values
-            ]
+          get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
+          for bundle_value in sorted_values
+        ]
         for bundle in bundles:
             bundle.validate()
         return bundles
@@ -1339,7 +1333,8 @@ class BundleModel(object):
 
     def set_group_permission(self, table, group_uuid, object_uuid, new_permission):
         """
-        Atomically set group permission on object.
+        Atomically set group permission on object. Does NOT check for user
+        permissions on the bundle or the group.
 
         :param table: cl_group_bundle_permission or cl_group_worksheet_permission
         :param group_uuid: uuid of group for which to set permission
@@ -1427,8 +1422,6 @@ class BundleModel(object):
         return self.get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuid)
     def get_group_worksheet_permissions(self, user_id, worksheet_uuid):
         return self.get_group_permissions(cl_group_worksheet_permission, user_id, worksheet_uuid)
-
-
 
     def get_user_permissions(self, table, user_id, object_uuids, owner_ids):
         '''
