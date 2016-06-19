@@ -34,10 +34,12 @@ from codalab.objects.permission import (
 from codalab.rest.users import UserSchema
 from codalab.rest.util import (
     check_worksheet_not_frozen,
+    delete_bundles as _delete_bundles,
     get_bundle_infos,
     get_resource_ids,
     resolve_bundle_specs,
     resolve_owner_in_keywords,
+    set_bundle_permissions as _set_bundle_permissions,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
@@ -47,90 +49,9 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 #############################################################
 
 
-class Metadata(fields.Field):
-    @staticmethod
-    def _get_metadata_specs(bundle):
-        if 'bundle_type' not in bundle:
-            raise ValidationError("'bundle_type' required to serialize metadata")
-        return get_bundle_subclass(bundle['bundle_type']).METADATA_SPECS
-
-    def _serialize(self, rows, attr, bundle):
-        """
-        Serialize metadata rows into map from metadata key to value.
-        Originally Metadata.collapse_dicts
-        """
-        metadata_specs = self._get_metadata_specs(bundle)
-        metadata_dict = {}
-        metadata_spec_dict = {}
-        for spec in metadata_specs:
-            if spec.type == list or not spec.generated:
-                metadata_dict[spec.key] = spec.get_constructor()()
-            metadata_spec_dict[spec.key] = spec
-        for row in rows:
-            (maybe_unicode_key, value) = (row['metadata_key'], row['metadata_value'])
-            # If the key is Unicode text (which is the case if it was extracted from a
-            # database), cast it to a string. This operation encodes it with UTF-8.
-            key = str(maybe_unicode_key)
-            if key not in metadata_spec_dict:
-                continue  # Somewhat dangerous since we might lose information
-
-            spec = metadata_spec_dict[key]
-            if spec.type == list:
-                metadata_dict[key].append(value)
-            else:
-                if metadata_dict.get(key):
-                    # Should be internal error
-                    from codalab.common import UsageError
-                    raise UsageError(
-                        'Got duplicate values %s and %s for key %s' %
-                        (metadata_dict[key], value, key)
-                    )
-                # Convert string to the right type (e.g., string to int)
-                metadata_dict[key] = spec.get_constructor()(value)
-        return metadata_dict
-
-    def _deserialize(self, metadata_dict, attr, bundle_info):
-        """
-        Serialize this metadata object and return a list of dicts that can be
-        saved to a MySQL table.
-        Originally Metadata.to_dicts and Metadata.validate
-        """
-        metadata_specs = self._get_metadata_specs(bundle_info)
-        expected_keys = set(spec.key for spec in metadata_specs)
-        for key in metadata_dict:
-            if key not in expected_keys:
-                raise ValidationError('Unexpected metadata key: %s' % (key,))
-        result = []
-        for spec in metadata_specs:
-            if spec.key in metadata_dict:
-                raw_value = metadata_dict[spec.key]
-                if raw_value is None:
-                    continue
-                if spec.validate is not None:
-                    spec.validate(raw_value)
-                if spec.type == float and isinstance(raw_value, int):
-                    # cast int to float
-                    raw_value = float(raw_value)
-                if raw_value is not None and not isinstance(raw_value, spec.type):
-                    raise ValidationError(
-                        'Metadata value for %s should be of type %s, was %s (type %s)' %
-                        (spec.key, spec.type, raw_value, type(raw_value))
-                    )
-                values = raw_value if spec.type == list else (raw_value,)
-                for value in values:
-                    result.append({
-                        'metadata_key': unicode(spec.key),
-                        'metadata_value': unicode(value),
-                    })
-            elif not spec.generated:
-                raise ValidationError('Missing metadata key: %s' % (spec.key,))
-
-        return result
-
-
 class BundleDependencySchema(PlainSchema):
     """
-    Plain (non-JSON API) Marshmallow schema for a single bundle dependency.
+    Plain (non-JSONAPI) Marshmallow schema for a single bundle dependency.
     Not defining this as a separate resource with Relationships because we only
     create a set of dependencies once at bundle creation.
     """
@@ -170,7 +91,7 @@ class BundleSchema(Schema):
     data_hash = fields.String()
     state = fields.String()
     owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
-    metadata = Metadata()
+    metadata = fields.Dict()
     dependencies = fields.Nested(BundleDependencySchema, many=True)
     children = fields.Relationship(many=True, type_='bundles', id_field='uuid', include_data=True)
     group_permissions = fields.Relationship(many=True, type_='bundle-permissions', id_field='id', include_data=True)
@@ -191,7 +112,7 @@ CREATE_RESTRICTED_FIELDS = ('id', 'uuid', 'data_hash', 'state', 'owner',
 
 UPDATE_RESTRICTED_FIELDS = ('command', 'data_hash', 'state', 'dependencies',
                             'children', 'group_permissions', 'host_worksheets',
-                            'permission', 'permission_spec')
+                            'permission', 'permission_spec', 'bundle_type')
 
 
 #############################################################
@@ -270,7 +191,7 @@ def fetch_bundles_helper(bundle_uuids):
         json_api_include(document, BundlePermissionSchema(), bundle['group_permissions'])
 
     # Include child bundles
-    children_uuids = set(uuid for bundle in bundles for uuid in bundle['children'])
+    children_uuids = set(c['uuid'] for bundle in bundles for c in bundle['children'])
     json_api_include(document, BundleSchema(), get_bundle_infos(children_uuids).values())
 
     # Include descendant ids
@@ -306,6 +227,7 @@ def create_bundles_helper(bundles):
         abort(httplib.BAD_REQUEST, "Parent worksheet id must be specified as"
                                    "'worksheet' query parameter")
 
+    # Check for all necessary permissions
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     check_worksheet_not_frozen(worksheet)
@@ -314,28 +236,28 @@ def create_bundles_helper(bundles):
     created_uuids = []
     for bundle in bundles:
         # Prep bundle info for saving into database
+        # Unfortunately cannot use the `construct` methods because they don't
+        # provide a uniform interface for constructing bundles for all types
+        # Hopefully this can all be unified after REST migration is complete
         bundle_uuid = spec_util.generate_uuid()
         created_uuids.append(bundle_uuid)
         bundle['uuid'] = bundle_uuid
         bundle['owner_id'] = request.user.user_id
         bundle['state'] = State.CREATED
-        bundle.setdefault('metadata', [])
-        bundle['metadata'].append({
-            'metadata_key': 'created',
-            'metadata_value': int(time.time()),
-        })
+        bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.get('dependencies', []):
             dep['child_uuid'] = bundle_uuid
-        for dep in bundle.get('metadata', []):
-            dep['bundle_uuid'] = bundle_uuid
+
+        # Create bundle object
+        bundle = get_bundle_subclass(bundle['bundle_type'])(bundle, strict=False)
 
         # Save bundle into model
-        local.model.save_bundle_rest(bundle)
+        local.model.save_bundle(bundle)
 
         # Inherit worksheet permissions
         group_permissions = local.model.get_group_worksheet_permissions(
             request.user.user_id, worksheet_uuid)
-        set_bundle_permissions_helper([{
+        _set_bundle_permissions([{
             'object_uuid': bundle_uuid,
             'group_uuid': p['group_uuid'],
             'permission': p['permission'],
@@ -358,51 +280,31 @@ def create_bundles_helper(bundles):
 
 @patch('/bundles', apply=AuthenticatedPlugin())
 def update_bundles():
-    many = isinstance(request.json['data'], list)
+    """
+    Bulk-update bundles.
+    """
     bundle_updates = BundleSchema(
         strict=True,
-        many=many,
+        many=True,
         dump_only=UPDATE_RESTRICTED_FIELDS,
     ).load(request.json, partial=True).data
 
-    # Multiplex between single and bulk requests
-    if many:
-        updated_bundles = update_bundles_helper(bundle_updates)
-    else:
-        updated_bundles = update_bundles_helper([bundle_updates])[0]
-
-    return BundleSchema(many=many).dump(updated_bundles).data
-
-
-def update_bundles_helper(bundle_updates):
-    """
-    Update bundle owners and/or metadata.
-    """
     # Check permissions
     bundle_uuids = [b['uuid'] for b in bundle_updates]
     check_bundles_have_all_permission(local.model, request.user, bundle_uuids)
 
-    # Check that bundle_types match original
-    bundles_dict = get_bundle_infos(bundle_uuids)
-    for update in bundle_updates:
-        if ('bundle_type' in update and
-                    update['bundle_type'] != bundles_dict[update['uuid']]['bundle_type']):
-            abort(httplib.FORBIDDEN, "Updating bundle_type is forbidden")
-
     # Update bundles
     for update in bundle_updates:
-        # Prep bundle and save to model
-        for dep in update.get('metadata', []):
-            dep['bundle_uuid'] = update['uuid']
-        local.model.update_bundle_rest(update)
+        bundle = local.model.get_bundle(update.pop('uuid'))
+        local.model.update_bundle(bundle, update)
 
     # Get updated bundles
     bundles_dict = get_bundle_infos(bundle_uuids)
 
     # Create list of bundles in original order
-    bundles = [bundles_dict[uuid] for uuid in bundle_uuids]
+    updated_bundles = [bundles_dict[uuid] for uuid in bundle_uuids]
 
-    return bundles
+    return BundleSchema(many=True).dump(updated_bundles).data
 
 
 @delete('/bundles', apply=AuthenticatedPlugin())
@@ -419,67 +321,11 @@ def delete_bundles():
     recursive = query_get_bool('recursive', default=False)
     data_only = query_get_bool('data-only', default=False)
     dry_run = query_get_bool('dry-run', default=False)
+    deleted_uuids = _delete_bundles(uuids, force=force, recursive=recursive,
+                                    data_only=data_only, dry_run=dry_run)
 
-    relevant_uuids = local.model.get_self_and_descendants(uuids, depth=sys.maxint)
-    uuids_set = set(uuids)
-    relevant_uuids_set = set(relevant_uuids)
-    if not recursive:
-        # If any descendants exist, then we only delete uuids if force = True.
-        if (not force) and uuids_set != relevant_uuids_set:
-            relevant = local.model.batch_get_bundles(uuid=(set(relevant_uuids) - set(uuids)))
-            raise UsageError('Can\'t delete bundles %s because the following bundles depend on them:\n  %s' % (
-                ' '.join(uuids),
-                '\n  '.join(bundle.simple_str() for bundle in relevant),
-            ))
-        relevant_uuids = uuids
-    check_bundles_have_all_permission(local.model, request.user, relevant_uuids)
-
-    # Make sure we don't delete bundles which are active
-    states = local.model.get_bundle_states(uuids)
-    active_states = set([State.MAKING, State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING])
-    active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
-    if len(active_uuids) > 0:
-        raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
-                         'For run bundles, kill them first. ' +
-                         'Bundles stuck not running will eventually ' +
-                         'automatically be moved to a state where they ' +
-                         'can be deleted.')
-
-    # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
-    result = local.model.get_host_worksheet_uuids(relevant_uuids)
-    for uuid, host_worksheet_uuids in result.items():
-        worksheets = local.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
-        frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]
-        if len(frozen_worksheets) > 0:
-            raise UsageError("Can't delete bundle %s because it appears in frozen worksheets "
-                             "(need to delete worksheet first):\n  %s" %
-                             (uuid, '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
-        if not force and len(host_worksheet_uuids) > 1:
-            raise UsageError("Can't delete bundle %s because it appears in multiple worksheets "
-                             "(--force to override):\n  %s" %
-                             (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
-
-    # Delete the actual bundle
-    if not dry_run:
-        if data_only:
-            # Just remove references to the data hashes
-            local.model.remove_data_hash_references(relevant_uuids)
-        else:
-            # Actually delete the bundle
-            local.model.delete_bundles(relevant_uuids)
-
-        # Update user statistics
-        local.model.update_user_disk_used(request.user.user_id)
-
-    # Delete the data_hash
-    for uuid in relevant_uuids_set:
-        # check first is needs to be deleted
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        if os.path.lexists(bundle_location):
-            local.bundle_store.cleanup(uuid, dry_run)
-
-    # Return list of deleted ids
-    return json_api_meta({}, {'ids': relevant_uuids})
+    # Return list of deleted ids as meta
+    return json_api_meta({}, {'ids': deleted_uuids})
 
 
 @post('/bundle-permissions', apply=AuthenticatedPlugin())
@@ -491,31 +337,11 @@ def set_bundle_permissions():
 
     # Multiplex between single and bulk requests
     if many:
-        set_bundle_permissions_helper(new_permissions)
+        _set_bundle_permissions(new_permissions)
     else:
-        set_bundle_permissions_helper([new_permissions])
+        _set_bundle_permissions([new_permissions])
 
     return BundlePermissionSchema(many=many).dump(new_permissions).data
-
-
-# TODO(sckoo): JSON API requires that we return updated permissions
-def set_bundle_permissions_helper(new_permissions):
-    # Check permissions
-    bundle_uuids = [p['object_uuid'] for p in new_permissions]
-    check_bundles_have_all_permission(local.model, request.user, bundle_uuids)
-
-    # Multiplex between updating, adding, or deleting permissions
-    for p in new_permissions:
-        old_permission = local.model.get_group_bundle_permission(p['group_uuid'], p['object_uuid'])
-        new_permission = p['permission']
-        if new_permission > 0:
-            if old_permission > 0:
-                local.model.update_bundle_permission(p['group_uuid'], p['object_uuid'], new_permission)
-            else:
-                local.model.add_bundle_permission(p['group_uuid'], p['object_uuid'], new_permission)
-        else:
-            if old_permission > 0:
-                local.model.delete_bundle_permission(p['group_uuid'], p['object_uuid'])
 
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)

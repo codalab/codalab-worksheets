@@ -520,7 +520,6 @@ class BundleModel(object):
             rows = connection.execute(query).fetchall()
         return [row[0] for row in rows]
 
-    # TODO(sckoo): merge with batch_get_bundles_rest when REST migration complete
     def batch_get_bundles(self, **kwargs):
         '''
         Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
@@ -569,41 +568,6 @@ class BundleModel(object):
         for bundle in bundles:
             bundle.validate()
         return bundles
-
-    def batch_get_bundles_rest(self, **kwargs):
-        """
-        Return a list of bundles given a SQLAlchemy clause on the cl_bundle table.
-        """
-        clause = self.make_kwargs_clause(cl_bundle, kwargs)
-        with self.engine.begin() as connection:
-            bundle_rows = connection.execute(
-                cl_bundle.select().where(clause)
-            ).fetchall()
-            if not bundle_rows:
-                return []
-            uuids = set(bundle_row.uuid for bundle_row in bundle_rows)
-            dependency_rows = connection.execute(cl_bundle_dependency.select().where(
-                cl_bundle_dependency.c.child_uuid.in_(uuids)
-            ).order_by(cl_bundle_dependency.c.id)).fetchall()
-            metadata_rows = connection.execute(cl_bundle_metadata.select().where(
-                cl_bundle_metadata.c.bundle_uuid.in_(uuids)
-            )).fetchall()
-
-        # Make a dictionary for each bundle with both data and metadata.
-        bundle_values = {row.uuid: str_key_dict(row) for row in bundle_rows}
-        for bundle_value in bundle_values.itervalues():
-            bundle_value['dependencies'] = []
-            bundle_value['metadata'] = []
-        for dep_row in dependency_rows:
-            if dep_row.child_uuid not in bundle_values:
-                raise IntegrityError('Got dependency %s without bundle' % (dep_row,))
-            bundle_values[dep_row.child_uuid]['dependencies'].append(dep_row)
-        for metadata_row in metadata_rows:
-            if metadata_row.bundle_uuid not in bundle_values:
-                raise IntegrityError('Got metadata %s without bundle' % (metadata_row,))
-            bundle_values[metadata_row.bundle_uuid]['metadata'].append(metadata_row)
-
-        return bundle_values.values()
 
     def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
         '''
@@ -748,13 +712,12 @@ class BundleModel(object):
             args=(bundle.uuid, state, bundle.metadata.to_dict()),
             uuid=bundle.uuid)
 
-    # TODO(sckoo): merge with save_bundle_rest when REST migration complete
     def save_bundle(self, bundle):
         '''
         Save a bundle. On success, sets the Bundle object's id from the result.
         '''
         bundle.validate()
-        bundle_value = bundle.to_dict()
+        bundle_value = bundle.to_dict(strict=False)
         dependency_values = bundle_value.pop('dependencies')
         metadata_values = bundle_value.pop('metadata')
 
@@ -766,45 +729,6 @@ class BundleModel(object):
                 self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
                 bundle.id = result.lastrowid
 
-    def save_bundle_rest(self, bundle_info):
-        """
-        Save a bundle. On success, sets the bundle's id from the result.
-        Bundle info should be validated prior to calling this method.
-        """
-        dependency_values = bundle_info.pop('dependencies')
-        metadata_values = bundle_info.pop('metadata')
-
-        # Check to see if bundle is already present, as in a local 'cl cp'
-        if not self.batch_get_bundles(uuid=bundle_info['uuid']):
-            with self.engine.begin() as connection:
-                connection.execute(cl_bundle.insert().values(bundle_info))
-                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-
-    def update_bundle_rest(self, bundle_update):
-        """
-        Update group.
-        """
-        # Construct clauses and update lists for updating certain bundle columns.
-        metadata_update = bundle_update.pop('metadata', {})
-        if bundle_update:
-            clause = cl_bundle.c.uuid == bundle_update['uuid']
-        if metadata_update:
-            metadata_update_keys = set(m['metadata_key'] for m in metadata_update)
-            metadata_delete_clause = and_(
-                cl_bundle_metadata.c.bundle_uuid == bundle_update['uuid'],
-                cl_bundle_metadata.c.metadata_key.in_(metadata_update_keys)
-            )
-
-        # Perform the actual updates.
-        with self.engine.begin() as connection:
-            if bundle_update:
-                connection.execute(cl_bundle.update().where(clause).values(bundle_update))
-            if metadata_update:
-                connection.execute(cl_bundle_metadata.delete().where(metadata_delete_clause))
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_update)
-
-    # TODO(sckoo): merge with update_bundle_rest when REST migration complete
     def update_bundle(self, bundle, update, connection=None):
         '''
         Update a bundle's columns and metadata in the database and in memory.

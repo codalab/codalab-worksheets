@@ -381,63 +381,9 @@ class LocalBundleClient(BundleClient):
         If |recursive|, add all bundles downstream too.
         If |data_only|, only remove from the bundle store, not the bundle metadata.
         """
-        relevant_uuids = self.model.get_self_and_descendants(uuids, depth=sys.maxint)
-        if not recursive:
-            # If any descendants exist, then we only delete uuids if force = True.
-            if (not force) and set(uuids) != set(relevant_uuids):
-                relevant = self.model.batch_get_bundles(uuid=(set(relevant_uuids) - set(uuids)))
-                raise UsageError('Can\'t delete bundles %s because the following bundles depend on them:\n  %s' % (
-                  ' '.join(uuids),
-                  '\n  '.join(bundle.simple_str() for bundle in relevant),
-                ))
-            relevant_uuids = uuids
-        check_bundles_have_all_permission(self.model, self._current_user(), relevant_uuids)
-
-        # Make sure we don't delete bundles which are active.
-        states = self.model.get_bundle_states(uuids)
-        active_states = set([State.MAKING, State.WAITING_FOR_WORKER_STARTUP, State.STARTING, State.RUNNING])
-        active_uuids = [uuid for (uuid, state) in states.items() if state in active_states]
-        if len(active_uuids) > 0:
-            raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
-                             'For run bundles, kill them first. ' +
-                             'Bundles stuck not running will eventually ' +
-                             'automatically be moved to a state where they ' +
-                             'can be deleted.')
-
-        # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
-        result = self.model.get_host_worksheet_uuids(relevant_uuids)
-        for uuid, host_worksheet_uuids in result.items():
-            worksheets = self.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
-            frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]
-            if len(frozen_worksheets) > 0:
-                raise UsageError("Can't delete bundle %s because it appears in frozen worksheets "
-                                 "(need to delete worksheet first):\n  %s" %
-                                 (uuid, '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
-            if not force and len(host_worksheet_uuids) > 1:
-                raise UsageError("Can't delete bundle %s because it appears in multiple worksheets "
-                                 "(--force to override):\n  %s" %
-                                 (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
-
-        # Delete the actual bundle
-        if not dry_run:
-            if data_only:
-                # Just remove references to the data hashes
-                self.model.remove_data_hash_references(relevant_uuids)
-            else:
-                # Actually delete the bundle
-                self.model.delete_bundles(relevant_uuids)
-
-            # Update user statistics
-            self.model.update_user_disk_used(self._current_user_id())
-
-        # Delete the data.
-        for uuid in relevant_uuids:
-            # check first is needs to be deleted
-            bundle_location = self.bundle_store.get_bundle_location(uuid)
-            if os.path.lexists(bundle_location):
-                self.bundle_store.cleanup(uuid, dry_run)
-
-        return relevant_uuids
+        return rest_util.delete_bundles(uuids, force=force, recursive=recursive,
+                                        data_only=data_only, dry_run=dry_run,
+                                        client=self, user=self._current_user())
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
         return self.get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
@@ -447,70 +393,12 @@ class LocalBundleClient(BundleClient):
         get_children, get_host_worksheets, get_permissions: whether we want to return more detailed information.
         Return map from bundle uuid to info.
         """
-        if len(uuids) == 0:
-            return {}
-        bundles = self.model.batch_get_bundles(uuid=uuids)
-        bundle_dict = {bundle.uuid: bundle_util.bundle_to_bundle_info(self.model, bundle) for bundle in bundles}
-
-        # Filter out bundles that we don't have read permission on
-        def select_unreadable_bundles(uuids):
-            permissions = self.model.get_user_bundle_permissions(self._current_user_id(), uuids, self.model.get_bundle_owner_ids(uuids))
-            return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
-
-        def select_unreadable_worksheets(uuids):
-            permissions = self.model.get_user_worksheet_permissions(self._current_user_id(), uuids, self.model.get_worksheet_owner_ids(uuids))
-            return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
-
-        # Mask bundles that we can't access
-        for uuid in select_unreadable_bundles(uuids):
-            if uuid in bundle_dict:
-                bundle_dict[uuid] = self._mask_bundle_info(bundle_dict[uuid])
-
-        # Lookup the user names of all the owners
-        user_ids = [info['owner_id'] for info in bundle_dict.values()]
-        users = self.auth_handler.get_users('ids', user_ids) if len(user_ids) > 0 else []
-        if users:
-            for info in bundle_dict.values():
-                user = users[info['owner_id']]
-                info['owner_name'] = user.name if user else None
-                info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
-
-        if get_children:
-            result = self.model.get_children_uuids(uuids)
-            # Gather all children bundle uuids
-            children_uuids = [uuid for l in result.values() for uuid in l]
-            unreadable = set(select_unreadable_bundles(children_uuids))
-            children_uuids = [uuid for uuid in children_uuids if uuid not in unreadable]
-            # Lookup bundle names
-            names = self.model.get_bundle_names(children_uuids)
-            # Fill in info
-            for uuid, info in bundle_dict.items():
-                info['children'] = [{'uuid': child_uuid, 'metadata': {'name': names[child_uuid]}} \
-                    for child_uuid in result[uuid] if child_uuid not in unreadable]
-
-        if get_host_worksheets:
-            # bundle_uuids -> list of worksheet_uuids
-            result = self.model.get_host_worksheet_uuids(uuids)
-            # Gather all worksheet uuids
-            worksheet_uuids = [uuid for l in result.values() for uuid in l]
-            unreadable = set(select_unreadable_worksheets(worksheet_uuids))
-            worksheet_uuids = [uuid for uuid in worksheet_uuids if uuid not in unreadable]
-            # Lookup names
-            worksheets = dict((worksheet.uuid, worksheet) for worksheet in self.model.batch_get_worksheets(fetch_items=False, uuid=worksheet_uuids))
-            # Fill the info
-            for uuid, info in bundle_dict.items():
-                info['host_worksheets'] = [{'uuid': worksheet_uuid, 'name': worksheets[worksheet_uuid].name} \
-                    for worksheet_uuid in result[uuid] if worksheet_uuid not in unreadable]
-
-        if get_permissions:
-            # Fill the info
-            group_result = self.model.batch_get_group_bundle_permissions(self._current_user_id(), uuids)
-            result = self.model.get_user_bundle_permissions(self._current_user_id(), uuids, self.model.get_bundle_owner_ids(uuids))
-            for uuid, info in bundle_dict.items():
-                info['group_permissions'] = group_result[uuid]
-                info['permission'] = result[uuid]
-
-        return bundle_dict
+        return rest_util.get_bundle_infos(
+            uuids,
+            get_children=get_children,
+            get_host_worksheets=get_host_worksheets,
+            get_permissions=get_permissions,
+            client=self, user_id=self._current_user_id())
 
     def check_target_has_read_permission(self, target):
         check_bundles_have_read_permission(self.model, self._current_user(), [target[0]])
@@ -1253,21 +1141,13 @@ class LocalBundleClient(BundleClient):
         """
         Give the given |group_spec| the desired |permission_spec| on |bundle_uuids|.
         """
-        check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
         group_info = self._get_group_info(group_spec, need_admin=False)
-
-        for bundle_uuid in bundle_uuids:
-            old_permission = self.model.get_group_bundle_permission(group_info['uuid'], bundle_uuid)
-            new_permission = parse_permission(permission_spec)
-            if new_permission > 0:
-                if old_permission > 0:
-                    self.model.update_bundle_permission(group_info['uuid'], bundle_uuid, new_permission)
-                else:
-                    self.model.add_bundle_permission(group_info['uuid'], bundle_uuid, new_permission)
-            else:
-                if old_permission > 0:
-                    self.model.delete_bundle_permission(group_info['uuid'], bundle_uuid)
-
+        new_permission = parse_permission(permission_spec)
+        rest_util.set_bundle_permissions([{
+            'object_uuid': uuid,
+            'permission': new_permission,
+            'group_uuid': group_info['uuid']
+        } for uuid in bundle_uuids], client=self, user=self._current_user())
         return {'group_info': group_info, 'permission': new_permission}
 
     @authentication_required
