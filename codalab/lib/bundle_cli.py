@@ -1728,8 +1728,7 @@ class BundleCLI(object):
             for bundle_uuid in bundle_uuids:
                 if bundle_uuid in infos:
                     continue  # Already visited
-                info = infos[bundle_uuid] = rest_client.fetch('bundles',
-                                                              bundle_uuid)
+                info = infos[bundle_uuid] = rest_client.fetch('bundles', bundle_uuid)
                 for dep in info['dependencies']:
                     parent_uuid = dep['parent_uuid']
                     if parent_uuid not in infos:
@@ -1822,13 +1821,12 @@ class BundleCLI(object):
             for uuid in all_bundle_uuids:
                 recurse(uuid)
 
-        # TODO(sckoo): restify
+        # TODO(sckoo): restify when worksheets API is ready
         # Add to worksheet
         if not dry_run and not shadow:
             raise NotImplementedError("Non-shadow mimic not implemented yet.")
             def newline():
-                self.model.add_worksheet_item(worksheet_uuid,
-                                              worksheet_util.markup_item(''))
+                self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
 
             # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup,
             # directives, etc.)
@@ -1839,8 +1837,7 @@ class BundleCLI(object):
                 anchor_uuid = old_output
             elif len(old_inputs) > 0:
                 anchor_uuid = old_inputs[0]
-            host_worksheet_uuids = \
-            self.model.get_host_worksheet_uuids([anchor_uuid])[anchor_uuid]
+            host_worksheet_uuids = self.model.get_host_worksheet_uuids([anchor_uuid])[anchor_uuid]
             new_bundle_uuids_added = set()
 
             # Whether there were items that we didn't include in the prelude (in which case we want to put '')
@@ -1856,13 +1853,11 @@ class BundleCLI(object):
                     host_worksheet_uuid = host_worksheet_uuids[0]
 
                 # Fetch the worksheet
-                worksheet_info = self.get_worksheet_info(
-                    host_worksheet_uuid, fetch_items=True)
+                worksheet_info = self.get_worksheet_info(host_worksheet_uuid, fetch_items=True)
 
                 prelude_items = []  # The prelude that we're building up
                 for item in worksheet_info['items']:
-                    (bundle_info, subworkheet_info, value_obj,
-                     item_type) = item
+                    (bundle_info, subworkheet_info, value_obj, item_type) = item
                     just_added = False
 
                     if item_type == worksheet_util.TYPE_BUNDLE:
@@ -1877,17 +1872,12 @@ class BundleCLI(object):
 
                                 # Add prelude and items
                                 for item2 in prelude_items:
-                                    self.add_worksheet_item(worksheet_uuid,
-worksheet_util.convert_item_to_db(
-                                                                item2))
-                                self.add_worksheet_item(worksheet_uuid,
-                                                        worksheet_util.bundle_item(
-                                                            new_bundle_uuid))
+                                    self.add_worksheet_item(worksheet_uuid, worksheet_util.convert_item_to_db(item2))
+                                self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
                                 new_bundle_uuids_added.add(new_bundle_uuid)
                                 just_added = True
 
-                    if (
-                            item_type == worksheet_util.TYPE_MARKUP and value_obj != '') or item_type == worksheet_util.TYPE_DIRECTIVE:
+                    if (item_type == worksheet_util.TYPE_MARKUP and value_obj != '') or item_type == worksheet_util.TYPE_DIRECTIVE:
                         prelude_items.append(item)  # Include in prelude
                         skipped = False
                     else:
@@ -1901,9 +1891,7 @@ worksheet_util.convert_item_to_db(
                     if skipped:
                         newline()
                         skipped = False
-                    self.add_worksheet_item(worksheet_uuid,
-                                            worksheet_util.bundle_item(
-                                                new_bundle_uuid))
+                    self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
 
         return plan
 
