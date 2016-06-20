@@ -29,16 +29,13 @@ from codalab.common import (
 from codalab.client.bundle_client import BundleClient
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib import (
-    bundle_util,
     canonicalize,
     worksheet_util,
     spec_util,
     formatting,
 )
-from codalab.objects.worksheet import Worksheet
 from codalab.objects.chat_box_qa import ChatBoxQA
 
-from codalab.objects import permission
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
     check_bundles_have_all_permission,
@@ -49,10 +46,9 @@ from codalab.objects.permission import (
     Group
 )
 from codalab.rest import util as rest_util
+from codalab.rest import bundle as bundle_rest
+from codalab.rest import worksheets as worksheet_rest
 
-from codalab.model.tables import (
-    GROUP_OBJECT_PERMISSION_READ,
-)
 from worker.file_util import un_tar_directory
 
 
@@ -103,21 +99,21 @@ class LocalBundleClient(BundleClient):
         return canonicalize.get_bundle_uuid(self.model, self._current_user_id(), worksheet_uuid, bundle_spec)
 
     def resolve_owner_in_keywords(self, keywords):
-        return rest_util.resolve_owner_in_keywords(keywords, client=self)
+        return bundle_rest.resolve_owner_in_keywords(keywords, client=self)
 
     def search_bundle_uuids(self, worksheet_uuid, keywords):
         keywords = self.resolve_owner_in_keywords(keywords)
         return self.model.search_bundle_uuids(self._current_user_id(), worksheet_uuid, keywords)
 
     def get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        return rest_util.get_worksheet_uuid(
+        return worksheet_rest.get_worksheet_uuid(
             base_worksheet_uuid, worksheet_spec, client=self)
 
     def get_worksheet_uuid_or_none(self, base_worksheet_uuid, worksheet_spec):
         """
         Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
         """
-        return rest_util.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec, client=self)
+        return worksheet_rest.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec, client=self)
 
     @staticmethod
     def validate_user_metadata(bundle_subclass, metadata):
@@ -338,9 +334,9 @@ class LocalBundleClient(BundleClient):
         If |recursive|, add all bundles downstream too.
         If |data_only|, only remove from the bundle store, not the bundle metadata.
         """
-        return rest_util.delete_bundles(uuids, force=force, recursive=recursive,
-                                        data_only=data_only, dry_run=dry_run,
-                                        client=self)
+        return bundle_rest.delete_bundles(
+            uuids, force=force, recursive=recursive, data_only=data_only,
+            dry_run=dry_run, client=self)
 
     def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
         return self.get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
@@ -350,7 +346,7 @@ class LocalBundleClient(BundleClient):
         get_children, get_host_worksheets, get_permissions: whether we want to return more detailed information.
         Return map from bundle uuid to info.
         """
-        return rest_util.get_bundle_infos(
+        return bundle_rest.get_bundle_infos(
             uuids,
             get_children=get_children,
             get_host_worksheets=get_host_worksheets,
@@ -651,11 +647,11 @@ class LocalBundleClient(BundleClient):
         return rest_util.ensure_unused_group_name(name, client=self)
 
     def ensure_unused_worksheet_name(self, name):
-        return rest_util.ensure_unused_worksheet_name(name, client=self)
+        return worksheet_rest.ensure_unused_worksheet_name(name, client=self)
 
     @authentication_required
     def new_worksheet(self, name):
-        return rest_util.new_worksheet(name, client=self)
+        return worksheet_rest.new_worksheet(name, client=self)
 
     def populate_dashboard(self, worksheet):
         file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/dashboard.ws')
@@ -1070,7 +1066,7 @@ class LocalBundleClient(BundleClient):
         """
         group_info = self._get_group_info(group_spec, need_admin=False)
         new_permission = parse_permission(permission_spec)
-        rest_util.set_bundle_permissions([{
+        bundle_rest.set_bundle_permissions([{
             'object_uuid': uuid,
             'permission': new_permission,
             'group_uuid': group_info['uuid']
@@ -1085,7 +1081,7 @@ class LocalBundleClient(BundleClient):
         worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
         group_info = self._get_group_info(group_spec, need_admin=False)
         permission = parse_permission(permission_spec)
-        rest_util.set_worksheet_permission(
+        worksheet_rest.set_worksheet_permission(
             worksheet, group_info['uuid'], permission, client=self)
         return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
                 'group_info': group_info,
