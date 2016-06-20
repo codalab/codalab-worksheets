@@ -739,9 +739,7 @@ def test(ctx):
     wait(run_command([cl, 'run', 'ping -c 1 google.com']), 1)
     wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
-# Automated testing of copying is made harder now that we have to run two servers,
-# putting this off for the future.
-# @TestModule.register('copy')
+@TestModule.register('copy')
 def test(ctx):
     '''Test copying between instances.'''
     # Figure out the current instance
@@ -751,13 +749,17 @@ def test(ctx):
         print 'Not a remote instance, skipping test.'
         return
     remote_worksheet = m.group(1)
+    local_worksheet = 'local::'
 
     # Create another local CodaLab instance.
+    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
     home = temp_path('-home')
-    #home = 'temp-home'  # For consistency
     os.environ['CODALAB_HOME'] = home
-    local_worksheet = 'local::'
-    
+
+    # Copy credentials (stored in state) to avoid logging in again
+    os.mkdir(home)
+    shutil.copyfile(os.path.join(old_home, 'state.json'), os.path.join(home, 'state.json'))
+
     # Initialize.
     subprocess.call('printf "n\nn\n" | scripts/create-root-user.py 1234', shell=True)
     subprocess.call([cl, 'work', remote_worksheet])

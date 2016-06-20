@@ -564,8 +564,8 @@ class BundleCLI(object):
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid(use_rest=use_rest)
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
-            bundle_client, spec = self.parse_spec(spec)
-            client, _ = self.parse_spec(spec, use_rest=use_rest)
+            bundle_client, _ = self.parse_spec(spec)
+            client, spec = self.parse_spec(spec, use_rest=use_rest)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
             if client_is_explicit:
