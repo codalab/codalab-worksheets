@@ -151,8 +151,8 @@ class CodaLabManager(object):
 
     def init_config(self, dry_run=False):
         '''
-        Initialize configurations.
-        TODO: create nice separate abstraction for building/modifying config
+        Initialize configuration for a simple client.
+        For the server, see config_gen in the codalab-worksheets repo.
         '''
         print_block(r"""
            ____          _       _            _
@@ -163,14 +163,15 @@ class CodaLabManager(object):
 
         Welcome to the CodaLab CLI!
 
-        Your CodaLab data will be stored in: {0.codalab_home}
-
-        Initializing your configurations at: {0.config_path}
-
+        Your CodaLab configuration and state will be stored in: {0.codalab_home}
         """.format(self))
+
+        sqlite_db_path = os.path.join(self.codalab_home, 'bundle.db')
+        main_bundle_service = 'https://worksheets.codalab.org/bundleservice'
 
         config = {
             'cli': {
+                'default_address': main_bundle_service,
                 'verbose': 1,
             },
             'server': {
@@ -178,63 +179,20 @@ class CodaLabManager(object):
                 'port': 2800,
                 'rest_host': 'localhost',
                 'rest_port': 2900,
+                'class': 'SQLiteModel',
+                'engine_url': 'sqlite:///{}'.format(sqlite_db_path),
                 'auth': {
                     'class': 'RestOAuthHandler'
                 },
                 'verbose': 1,
             },
             'aliases': {
-                'main': 'https://worksheets.codalab.org/bundleservice',
-                'localhost': 'http://localhost:2800',
+                'main': main_bundle_service,
             },
             'workers': {
                 'default_docker_image': 'codalab/ubuntu:1.9',
             }
         }
-
-        if prompt_bool("Would you like to connect to worksheets.codalab.org by default?", default=True):
-            config['cli']['default_address'] = 'https://worksheets.codalab.org/bundleservice'
-            print_block("""
-            Set 'https://codalab.org/bundleservice' as the default bundle service.
-            You may still optionally configure a local bundle service (available as 'local').
-            """)
-            using_local = False
-        else:
-            config['cli']['default_address'] = 'local'
-            print "Using local bundle service as default."
-            using_local = True
-
-        # Database
-        print_block(r"""
-        The local bundle service can use either MySQL or SQLite as the backing store
-        for the bundle metadata. Note that some actions are not guaranteed to work as
-        expected on SQLite, so it is recommended that you use MySQL if possible.
-        """)
-
-        if prompt_bool("Would you like to use a MySQL database for your local bundle service?", default=using_local):
-            config['server']['class'] = 'MySQLModel'
-            config['server']['engine_url'] = "mysql://{username}:{password}@{host}/{database}".format(**{
-                'host': prompt_str("Host:"),
-                'database': prompt_str("Database:", default='codalab_bundles'),
-                'username': prompt_str("Username:"),
-                'password': getpass.getpass(),
-            })
-        else:
-            config['server']['class'] = 'SQLiteModel'
-            sqlite_db_path = os.path.join(self.codalab_home, 'bundle.db')
-            config['server']['engine_url'] = "sqlite:///{}".format(sqlite_db_path)
-            print "Using SQLite database at: {}".format(sqlite_db_path)
-
-        # Generate secret key
-        config['server']['secret_key'] = get_random_string(
-            48, "=+/abcdefghijklmnopqrstuvwxyz"
-                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-
-        # Rest of instructions
-        print_block(r"""
-        Please follow the instructions here to finish the setup (e.g., installing docker, OAuth):
-        https://github.com/codalab/codalab-worksheets/wiki/Setup-Local-Worksheets
-        """)
 
         if not dry_run:
             write_pretty_json(config, self.config_path)
