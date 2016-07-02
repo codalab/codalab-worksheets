@@ -142,6 +142,7 @@ OTHER_COMMANDS = (
     'status',
     'uedit',
     'alias',
+    'config',
     'work-manager',
     'server',
     'rest-server',
@@ -768,6 +769,61 @@ class BundleCLI(object):
         else:
             for name, instance in aliases.items():
                 print >>self.stdout, name + ': ' + instance
+
+    @Commands.command(
+        'config',
+        help=[
+            'Set CodaLab configuration.',
+            '  config <key>         : Shows the value of <key>.',
+            '  config <key> <value> : Sets <key> to <value>.',
+        ],
+        arguments=(
+            Commands.Argument('key', help='key to set (e.g., cli/verbose).'),
+            Commands.Argument('value', help='Instance to bind the alias to (e.g., https://codalab.org/bundleservice).', nargs='?'),
+            Commands.Argument('-r', '--remove', help='Remove this key.', action='store_true'),
+        ),
+    )
+    def do_config_command(self, args):
+        """
+        Only modifies the CLI configuration, doesn't need a BundleClient.
+        """
+        self._fail_if_headless('config')
+        config = self.manager.config
+
+        # Suppose key = "a/b/c".
+
+        # Traverse "a/b" to the appropriate section of the config.
+        path = args.key.split('/')
+        for x in path[:-1]:
+            if x not in config:
+                raise UsageError('Non-existent key: %s' % args.key)
+            config = config[x]
+
+        def auto_convert_type(value):
+            if value == 'true':
+                return True
+            if value == 'false':
+                return False
+            try:
+                return int(value)
+            except:
+                pass
+            try:
+                return float(value)
+            except:
+                pass
+            return value
+
+        # Set "c" to the value.
+        key = path[-1]
+        if args.remove:  # Remove key
+            del config[key]
+            self.manager.save_config()
+        if args.value:  # Modify value
+            config[key] = auto_convert_type(args.value)
+            self.manager.save_config()
+        else:  # Print out value
+            print config[key]
 
     @Commands.command(
         'upload',
