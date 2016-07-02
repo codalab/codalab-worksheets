@@ -51,6 +51,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Get the username and password.
+    print 'Connecting to %s' % args.server
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
             print >> sys.stderr, """
@@ -81,4 +82,5 @@ chmod 600 %s""" % args.password_file
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: worker.signal())
 
+    print 'Worker started.'
     worker.run()
