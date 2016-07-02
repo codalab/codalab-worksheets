@@ -22,8 +22,8 @@ if __name__ == '__main__':
     parser.add_argument('--tag',
                         help='Tag that allows for scheduling runs on specific '
                              'workers.')
-    parser.add_argument('--bundle-service-url', required=True,
-                        help='URL of the bundle service, in the format '
+    parser.add_argument('--server', required=True,
+                        help='URL of the CodaLab server, in the format '
                              '<http|https>://<hostname>[:<port>]')
     parser.add_argument('--work-dir', default='scratch',
                         help='Directory where to store temporary bundle data, '
@@ -74,8 +74,7 @@ chmod 600 %s""" % args.password_file
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     args.shared_file_system, args.slots,
-                    BundleServiceClient(args.bundle_service_url,
-                                        username, password),
+                    BundleServiceClient(args.server, username, password),
                     DockerClient())
 
     # Register a signal handler to ensure safe shutdown.
