@@ -166,7 +166,6 @@ class CodaLabManager(object):
         Your CodaLab configuration and state will be stored in: {0.codalab_home}
         """.format(self))
 
-        sqlite_db_path = os.path.join(self.codalab_home, 'bundle.db')
         main_bundle_service = 'https://worksheets.codalab.org/bundleservice'
 
         config = {
@@ -179,8 +178,8 @@ class CodaLabManager(object):
                 'port': 2800,
                 'rest_host': 'localhost',
                 'rest_port': 2900,
-                'class': 'SQLiteModel',
-                'engine_url': 'sqlite:///{}'.format(sqlite_db_path),
+                'class': 'MySQLModel',
+                'engine_url': 'mysql://codalab@localhost:3306/codalab_bundles',
                 'auth': {
                     'class': 'RestOAuthHandler'
                 },
@@ -188,11 +187,17 @@ class CodaLabManager(object):
             },
             'aliases': {
                 'main': main_bundle_service,
+                'localhost': 'http://localhost:2800',
             },
             'workers': {
                 'default_docker_image': 'codalab/ubuntu:1.9',
             }
         }
+
+        # Generate secret key
+        config['server']['secret_key'] = get_random_string(
+            48, "=+/abcdefghijklmnopqrstuvwxyz"
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
         if not dry_run:
             write_pretty_json(config, self.config_path)
