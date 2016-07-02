@@ -15,7 +15,7 @@ from marshmallow import (
 from marshmallow_jsonapi import Schema, fields
 
 from codalab.bundles import BUNDLE_SUBCLASSES, get_bundle_subclass, PrivateBundle
-from codalab.common import State, UsageError
+from codalab.common import precondition, State, UsageError
 from codalab.lib import (
     bundle_util,
     canonicalize,
@@ -72,8 +72,8 @@ class BundleDependencySchema(PlainSchema):
 
 class BundlePermissionSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
-    bundle = fields.Relationship(required=True, load_only=True, include_data=True, type_='bundles', attribute='object_uuid')
-    group = fields.Relationship(required=True, include_data=True, type_='groups', attribute='group_uuid')
+    bundle = fields.Relationship(include_data=True, attribute='object_uuid', type_='bundles', load_only=True, required=True)
+    group = fields.Relationship(include_data=True, attribute='group_uuid', type_='groups', required=True)
     group_name = fields.String(dump_only=True)  # for convenience
     permission = fields.Integer(validate=lambda p: 0 <= p <= 2)
     permission_spec = PermissionSpec(attribute='permission')  # for convenience
@@ -97,8 +97,8 @@ class BundleSchema(Schema):
     owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
     metadata = fields.Dict()
     dependencies = fields.Nested(BundleDependencySchema, many=True)
-    children = fields.Relationship(many=True, type_='bundles', id_field='uuid', include_data=True)
-    group_permissions = fields.Relationship(many=True, type_='bundle-permissions', id_field='id', include_data=True)
+    children = fields.Relationship(include_data=True, type_='bundles', id_field='uuid', many=True)
+    group_permissions = fields.Relationship(include_data=True, type_='bundle-permissions', id_field='id', many=True)
     host_worksheets = fields.List(fields.Dict)
     args = fields.String()
 
@@ -129,6 +129,7 @@ UPDATE_RESTRICTED_FIELDS = ('command', 'data_hash', 'state', 'dependencies',
 @get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
 def _fetch_bundle(uuid):
     document = build_bundles_document([uuid])
+    precondition(len(document['data']) == 1, "data should have exactly one element")
     document['data'] = document['data'][0]  # Flatten data list
     return document
 
@@ -162,7 +163,7 @@ def _fetch_bundles():
 
 
 def build_bundles_document(bundle_uuids):
-    descendant_depth = query_get_type(int, 'list-descendants', None)
+    descendant_depth = query_get_type(int, 'depth', None)
 
     bundles_dict = get_bundle_infos(
         bundle_uuids,
@@ -214,7 +215,7 @@ def _create_bundles():
     Bulk create bundles.
     """
     worksheet_uuid = request.query.get('worksheet')
-    shadow_parent_uuid = request.query.get('shadows')
+    shadow_parent_uuid = request.query.get('shadow')
     if worksheet_uuid is None:
         abort(httplib.BAD_REQUEST, "Parent worksheet id must be specified as"
                                    "'worksheet' query parameter")

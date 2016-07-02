@@ -171,7 +171,12 @@ def permission_str(permission):
     raise UsageError("Invalid permission: %s" % permission)
 
 # [{'group_name':'a', 'permission:1}, {'group_name':'b', 'permission':2}] => 'a:read,b:all'
+# TODO(sckoo): clean up use_rest hack when REST API migration complete
 def group_permissions_str(group_permissions, use_rest=False):
+    """
+    Reads group ID from ['group']['id'] on each permission
+    if |use_rest| is True, or ['group_uuid'] otherwise.
+    """
     if len(group_permissions) == 0:
         return '-'
     return ','.join(

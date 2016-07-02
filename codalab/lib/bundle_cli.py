@@ -544,6 +544,7 @@ class BundleCLI(object):
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
         Example: https://worksheets.codalab.org/bundleservice::wine
         Return (client, spec)
+        where client is JsonApiClient when |use_rest| is True.
         """
         tokens = spec.split('::')
         if len(tokens) == 1:
@@ -557,7 +558,8 @@ class BundleCLI(object):
     # TODO(sckoo): clean up backward compatibility hacks when REST API complete
     def parse_client_worksheet_uuid(self, spec, use_rest=False):
         """
-        Return the worksheet referred to by |spec|.
+        Return the worksheet referred to by |spec|, and a client for its host.
+        Returns a JsonApiClient when |use_rest| is True.
         """
         if not spec or spec == worksheet_util.CURRENT_WORKSHEET:
             # Empty spec, just return current worksheet.
@@ -732,6 +734,7 @@ class BundleCLI(object):
         self._fail_if_headless('logout')
         client = self.manager.current_client()
         self.manager.logout(client.address)
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
         self.manager.logout(client.address)
 
@@ -1026,6 +1029,7 @@ class BundleCLI(object):
         ) + Commands.metadata_arguments([MakeBundle]) + EDIT_ARGUMENTS,
     )
     def do_make_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = self.get_missing_metadata(MakeBundle, args)
@@ -1080,6 +1084,7 @@ class BundleCLI(object):
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         bundle_client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
@@ -1110,12 +1115,13 @@ class BundleCLI(object):
         ),
     )
     def do_edit_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
 
-        info = client.fetch('bundles', params={
+        info = client.fetch_one('bundles', params={
             'specs': args.bundle_spec,
             'worksheet': worksheet_uuid,
-        })[0]
+        })
 
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
 
@@ -1213,7 +1219,7 @@ class BundleCLI(object):
     )
     def do_rm_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
-
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         # Resolve all the bundles first, then delete.
         # This is important since some of the bundle specs (^1 ^2) are relative.
@@ -1228,9 +1234,9 @@ class BundleCLI(object):
         if args.dry_run:
             bundles = client.fetch('bundles', params={
                 'specs': deleted_uuids,
-                'include': 'users',
             })
             print >>self.stdout, 'This command would permanently remove the following bundles (not doing so yet):'
+            # TODO(sckoo): clean up use_rest hack when REST API migration complete
             self.print_bundle_info_list(bundles, uuid_only=False, print_ref=False, use_rest=True)
         else:
             for uuid in deleted_uuids:
@@ -1259,13 +1265,13 @@ class BundleCLI(object):
         ),
     )
     def do_search_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
 
         bundles = rest_client.fetch('bundles', params={
             'worksheet': worksheet_uuid,
             'keywords': args.keywords,
-            'include': ['users', 'bundle-permissions', 'bundles'],
         })
 
         # Print direct numeric result
@@ -1281,7 +1287,7 @@ class BundleCLI(object):
 
         # Add the bundles to the current worksheet
         if args.append:
-            # Consider batching this
+            # TODO: Consider batching this
             for bundle in bundles:
                 client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle['uuid']))
             worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
@@ -1344,9 +1350,14 @@ class BundleCLI(object):
         ]
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
+    # TODO(sckoo): clean up use_rest hack when REST API migration complete
     def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref, use_rest=False):
         """
         Helper function: print >>self.stdout, a nice table showing all provided bundles.
+
+        Assumes that each bundle info has an 'owner' field containing a
+        dictionary with a string 'user_name' field when |use_rest| is True,
+        or a plain string 'owner' field otherwise.
         """
         if uuid_only:
             for bundle_info in bundle_info_list:
@@ -1385,13 +1396,13 @@ class BundleCLI(object):
     )
     def do_info_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         bundle_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch('bundles', params={
             'specs': args.bundle_spec,
             'worksheet': worksheet_uuid,
-            'include': ['users', 'bundle-permissions', 'bundles'],
         })
 
         for i, info in enumerate(bundles):
@@ -1413,6 +1424,7 @@ class BundleCLI(object):
                 if args.verbose:
                     self.print_children(info)
                     self.print_host_worksheets(info)
+                    # TODO(sckoo): clean up use_rest hack when REST API migration complete
                     self.print_permissions(info, use_rest=True)
                     self.print_contents(bundle_client, info)
 
@@ -1479,6 +1491,7 @@ class BundleCLI(object):
         for host_worksheet_info in info['host_worksheets']:
             print >>self.stdout, "  %s" % self.simple_worksheet_str(host_worksheet_info)
 
+    # TODO(sckoo): clean up use_rest hack when REST API migration complete
     def print_permissions(self, info, use_rest=False):
         print >>self.stdout, 'permission: %s' % permission_str(info['permission'])
         print >>self.stdout, 'group_permissions:'
@@ -1708,6 +1721,11 @@ class BundleCLI(object):
         worksheet_uuid: add newly created bundles to this worksheet
         depth: how far to do a BFS up from old_output.
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
+
+        TODO(sckoo): Currently raises a NotImplementedError when |shadow| is
+        False, but when the worksheets API is ready, come back and implement
+        the non-shadow version. Also remove the duplicate clients and use
+        only the REST client.
         """
 
         # Build the graph (get all the infos).
@@ -1720,7 +1738,7 @@ class BundleCLI(object):
         else:
             bundle_uuids = rest_client.fetch('bundles', params={
                 'specs': old_inputs,
-                'list-descendants': depth
+                'depth': depth
             })['meta']['descendant-ids']
         all_bundle_uuids = list(bundle_uuids)  # should be infos.keys() in order
         for _ in range(depth):
@@ -1800,7 +1818,7 @@ class BundleCLI(object):
                             old_bundle_uuid)
                     new_info = rest_client.create('bundles', new_info, params={
                         'worksheet': worksheet_uuid,
-                        'shadows': old_info['uuid'],
+                        'shadow': old_info['uuid'],
                     })
 
                 new_bundle_uuid = new_info['uuid']
@@ -1899,6 +1917,7 @@ class BundleCLI(object):
         """
         Use args.bundles to generate a mimic call to the BundleClient.
         """
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         rest_client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
 
@@ -2343,6 +2362,7 @@ class BundleCLI(object):
         ),
     )
     def do_gls_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         user_id = client.fetch('user')['id']
         groups = client.fetch('groups')
@@ -2373,6 +2393,7 @@ class BundleCLI(object):
         ),
     )
     def do_gnew_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
         group = client.create('groups', {'name': args.name})
         print >>self.stdout, 'Created new group %s(%s).' % (group['name'], group['id'])
@@ -2385,6 +2406,7 @@ class BundleCLI(object):
         ),
     )
     def do_grm_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
         group = client.fetch('groups', args.group_spec)
         client.delete('groups', group['id'])
@@ -2398,6 +2420,7 @@ class BundleCLI(object):
         ),
     )
     def do_ginfo_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
         group = client.fetch('groups', args.group_spec)
 
@@ -2432,6 +2455,7 @@ class BundleCLI(object):
         ),
     )
     def do_uadd_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
 
         user = client.fetch('users', args.user_spec)
@@ -2455,6 +2479,7 @@ class BundleCLI(object):
         ),
     )
     def do_urm_command(self, args):
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
         user = client.fetch('users', args.user_spec)
         group = client.fetch('groups', args.group_spec)
@@ -2486,6 +2511,7 @@ class BundleCLI(object):
     def do_perm_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         group = client.fetch('groups', args.group_spec)
 
@@ -2532,6 +2558,7 @@ class BundleCLI(object):
         Change the owner of bundles.
         """
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
 
         bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
@@ -2606,6 +2633,7 @@ class BundleCLI(object):
         """
         Edit properties of users.
         """
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
 
         # Build user info
@@ -2649,6 +2677,7 @@ class BundleCLI(object):
         """
         Edit properties of users.
         """
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
         client = self.manager.current_client(use_rest=True)
         if args.user_spec is None:
             user = client.fetch('user')

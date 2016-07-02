@@ -2,19 +2,24 @@
 Utility functions used by the server applications.
 Don't import from non-REST API code, since this file imports bottle.
 """
-
 import base64
 import httplib
 import sys
 import urllib
 
-from bottle import abort, request, HTTPResponse, redirect, app, local
+from bottle import abort, request, HTTPResponse, redirect, app
 from oauthlib.common import to_unicode, bytes_type
 
 from codalab.common import precondition
 
 
 def query_get_list(key):
+    """
+    Get comma-separated query parameter as a list of strings.
+    Assumes that the strings themselves do not contain commas.
+    See JsonApiClient._pack_params for how such a parameter value is assumed
+    to be a constructed.
+    """
     value = request.query.get(key)
     if not value:
         return []
