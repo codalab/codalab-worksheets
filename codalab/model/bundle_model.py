@@ -811,6 +811,69 @@ class BundleModel(object):
     # Worksheet-related model methods follow!
     #############################################################################
 
+    def get_worksheet_rest(self, uuid, fetch_items):
+        '''
+        Get a worksheet given its uuid.
+        '''
+        worksheets = self.batch_get_worksheets_rest(fetch_items=fetch_items, uuid=uuid)
+        if not worksheets:
+            raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
+        elif len(worksheets) > 1:
+            raise IntegrityError('Found multiple workseets with uuid %s' % (uuid,))
+        return worksheets[0]
+
+    def batch_get_worksheets_rest(self, fetch_items, **kwargs):
+        '''
+        Get a list of worksheets, all of which satisfy the clause given by kwargs.
+        '''
+        base_worksheet_uuid = kwargs.pop('base_worksheet_uuid', None)
+        clause = self.make_kwargs_clause(cl_worksheet, kwargs)
+        # Handle base_worksheet_uuid specially
+        if base_worksheet_uuid:
+            clause = and_(clause,
+                          cl_worksheet_item.c.subworksheet_uuid == cl_worksheet.c.uuid,
+                          cl_worksheet_item.c.worksheet_uuid == base_worksheet_uuid)
+
+        with self.engine.begin() as connection:
+            worksheet_rows = connection.execute(
+                cl_worksheet.select().distinct().where(clause)
+            ).fetchall()
+            if not worksheet_rows:
+                if base_worksheet_uuid != None:
+                    # We didn't find any results restricting to base_worksheet_uuid,
+                    # so do a global search
+                    return self.batch_get_worksheets(fetch_items, **kwargs)
+                return []
+            # Get the tags
+            uuids = set(row.uuid for row in worksheet_rows)
+            tag_rows = connection.execute(cl_worksheet_tag.select().where(
+                cl_worksheet_tag.c.worksheet_uuid.in_(uuids)
+            )).fetchall()
+            # Fetch the items of all the worksheets
+            if fetch_items:
+                item_rows = connection.execute(cl_worksheet_item.select().where(
+                    cl_worksheet_item.c.worksheet_uuid.in_(uuids)
+                )).fetchall()
+
+
+        # Make a dictionary for each worksheet with both its main row and its items.
+        worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
+        # Set tags
+        for value in worksheet_values.itervalues():
+            value['tags'] = []
+        for row in tag_rows:
+            worksheet_values[row.worksheet_uuid]['tags'].append(row.tag)
+        if fetch_items:
+            for value in worksheet_values.itervalues():
+                value['items'] = []
+            for item_row in sorted(item_rows, key=item_sort_key):
+                if item_row.worksheet_uuid not in worksheet_values:
+                    raise IntegrityError('Got item %s without worksheet' % (item_row,))
+                item_row = {key: item_row[key] for key in item_row.keys()}
+                item_row['value'] = self.decode_str(item_row['value'])
+                worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
+        return worksheet_values.values()
+
     def get_worksheet(self, uuid, fetch_items):
         '''
         Get a worksheet given its uuid.

@@ -48,6 +48,7 @@ TYPE_MARKUP = 'markup'
 TYPE_DIRECTIVE = 'directive'
 TYPE_BUNDLE = 'bundle'
 TYPE_WORKSHEET = 'worksheet'
+WORKSHEET_ITEM_TYPES = [TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET]
 
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
