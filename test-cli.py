@@ -633,7 +633,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str(['kill']), get_info(uuid, 'actions'))
+    check_equals(str([u'kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
@@ -644,7 +644,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
-    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
+    check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 @TestModule.register('mimic')
 def test(ctx):
@@ -749,16 +749,19 @@ def test(ctx):
         print 'Not a remote instance, skipping test.'
         return
     remote_worksheet = m.group(1)
+    local_worksheet = 'local::'
 
     # Create another local CodaLab instance.
+    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
     home = temp_path('-home')
-    #home = 'temp-home'  # For consistency
     os.environ['CODALAB_HOME'] = home
-    local_worksheet = 'local::'
-    
+
+    # Copy credentials (stored in state) to avoid logging in again
+    os.mkdir(home)
+    shutil.copyfile(os.path.join(old_home, 'state.json'), os.path.join(home, 'state.json'))
+
     # Initialize.
-    subprocess.call('printf "n\nn\n" | cl status', shell=True)
-    subprocess.call(['scripts/create-root-user.py', '1234'])
+    subprocess.call('printf "n\nn\n" | scripts/create-root-user.py 1234', shell=True)
     subprocess.call([cl, 'work', remote_worksheet])
 
     def check_agree(command):
