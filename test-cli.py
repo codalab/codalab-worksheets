@@ -628,12 +628,12 @@ def test(ctx):
 
 @TestModule.register('kill')
 def test(ctx):
-    uuid = run_command([cl, 'run', 'sleep 1000'])
-    wait_until_running(uuid)
+    uuid = run_command([cl, 'run', 'sleep 100'])
+    time.sleep(2)  # (hacky) wait for bundle to starting running before killing it
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str(['kill']), get_info(uuid, 'actions'))
+    check_equals(['kill'], eval(get_info(uuid, 'actions')))
 
 @TestModule.register('write')
 def test(ctx):
