@@ -453,12 +453,22 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
-        target_info = client.get_target_info(target, 0)
+        # TODO(sckoo): Remove path for BundleClient when REST API complete
+        if isinstance(client, JsonApiClient):
+            target_info = client.fetch_contents_info(*target, depth=0)
+        else:
+            target_info = client.get_target_info(target, 0)
+
         # Try to interpret the structure of the file by looking inside it.
         if target_info is not None and target_info['type'] == 'file':
-            contents = client.head_target(target, MAX_LINES)
-            import base64
-            contents = map(base64.b64decode, contents)
+            # TODO(sckoo): Remove path for BundleClient when REST API complete
+            if isinstance(client, JsonApiClient):
+                contents = client.fetch_contents_blob(*target, head=MAX_LINES).read().splitlines(True)
+            else:
+                import base64
+                contents = client.head_target(target, MAX_LINES)
+                contents = map(base64.b64decode, contents)
+
             if all('\t' in x for x in contents):
                 # Tab-separated file (key\tvalue\nkey\tvalue...)
                 info = {}
