@@ -733,15 +733,24 @@ class BundleCLI(object):
 
     @Commands.command(
         'logout',
-        help='Logout of the current session.',
+        help='Logout of the current session, or a specific instance.',
+        arguments=(
+            Commands.Argument('alias', help='Alias or URL of instance from which to logout. Default is the current session.', nargs='?'),
+        )
     )
     def do_logout_command(self, args):
         self._fail_if_headless('logout')
-        client = self.manager.current_client()
-        self.manager.logout(client.address)
-        # TODO(sckoo): clean up use_rest hack when REST API migration complete
-        client = self.manager.current_client(use_rest=True)
-        self.manager.logout(client.address)
+        if args.alias:
+            address = self.manager.apply_alias(args.alias)
+            self.manager.logout(address)
+            # TODO(sckoo): clean up use_rest hack when REST API migration complete
+            self.manager.logout(self.manager.derive_rest_address(address))
+        else:
+            client = self.manager.current_client()
+            self.manager.logout(client.address)
+            # TODO(sckoo): clean up use_rest hack when REST API migration complete
+            client = self.manager.current_client(use_rest=True)
+            self.manager.logout(client.address)
 
     @Commands.command(
         'alias',

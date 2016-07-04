@@ -400,6 +400,7 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
+    # TODO(sckoo): remove when REST migration complete
     def derive_rest_address(self, address):
         """
         Given bundle service address, return corresponding REST address
@@ -426,6 +427,9 @@ class CodaLabManager(object):
             # CodaLab instance behind an SSH tunnel
             address = address.replace(str(self.config['server']['port']),
                                       str(self.config['server']['rest_port']))
+        elif o.hostname == 'localhost' and o.port == 3800:
+            # Hard-coded for test-cli, which uses these ports for aux servers
+            address = address.replace('3800', '3900')
         elif (o.netloc == 'worksheets.codalab.org' or
                       o.netloc == 'worksheets-test.codalab.org'):
             # http://worksheets.codalab.org/bundleservice => http://worksheets.codalab.org
