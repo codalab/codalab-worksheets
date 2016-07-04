@@ -796,7 +796,7 @@ class BundleCLI(object):
         path = args.key.split('/')
         for x in path[:-1]:
             if x not in config:
-                raise UsageError('Non-existent key: %s' % args.key)
+                config[x] = {}
             config = config[x]
 
         def auto_convert_type(value):
