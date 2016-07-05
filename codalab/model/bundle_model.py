@@ -923,7 +923,7 @@ class BundleModel(object):
                 if ',' in value:  # value is value1,value2
                     value = value.split(',')
             else:
-                key, value = 'uuid_name', keyword
+                key, value = 'uuid_name_title', keyword
 
             clause = None
             # Special functions
@@ -938,6 +938,8 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.uuid, value)
             elif key == 'name':
                 clause = make_condition(cl_worksheet.c.name, value)
+            elif key == 'title':
+                clause = make_condition(cl_worksheet.c.title, value)
             elif key == 'owner_id':
                 clause = make_condition(cl_worksheet.c.owner_id, value)
             elif key == 'bundle':  # contains bundle?
@@ -958,14 +960,17 @@ class BundleModel(object):
                     clause = cl_worksheet_tag.c.worksheet_uuid == cl_worksheet.c.uuid  # Join constraint
                 else:
                     clause = cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_tag.c.worksheet_uuid]).where(condition)))
-            elif key == 'uuid_name': # Search uuid and name by default
+            elif key == 'uuid_name_title': # Search uuid and name by default
                 clause = or_(
                     cl_worksheet.c.uuid.like('%' + value + '%'),
                     cl_worksheet.c.name.like('%' + value + '%'),
+                    cl_worksheet.c.title.like('%' + value + '%'),
                 )
             elif key == '':  # Match any field
                 clause = []
                 clause.append(cl_worksheet.c.uuid.like('%' + value + '%'))
+                clause.append(cl_worksheet.c.name.like('%' + value + '%'))
+                clause.append(cl_worksheet.c.title.like('%' + value + '%'))
                 clause.append(cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_item.c.worksheet_uuid]).where(
                     cl_worksheet_item.c.value.like('%' + value + '%'),
                 ))))
