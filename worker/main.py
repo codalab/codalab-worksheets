@@ -24,8 +24,8 @@ if __name__ == '__main__':
                              'workers.')
     parser.add_argument('--server', required=True,
                         help='URL of the CodaLab server, in the format '
-                             '<http|https>://<hostname>[:<port>]')
-    parser.add_argument('--work-dir', default='scratch',
+                             '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)')
+    parser.add_argument('--work-dir', default='codalab-worker-scratch',
                         help='Directory where to store temporary bundle data, '
                              'including dependencies and the data from run '
                              'bundles.')
