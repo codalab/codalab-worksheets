@@ -147,7 +147,7 @@ class LocalBundleClient(BundleClient):
         if worksheet_uuid != None:
             return worksheet_uuid
         else:
-            if spec_util.is_home_worksheet(worksheet_spec) or spec_util.is_dashboard(worksheet_spec):
+            if spec_util.is_home_worksheet(worksheet_spec) or spec_util.is_dashboard(worksheet_spec) or spec_util.is_public_home(worksheet_spec):
                 return self.new_worksheet(worksheet_spec)
             else:
                 # let it throw the correct error message
@@ -823,7 +823,6 @@ class LocalBundleClient(BundleClient):
         """
         Create a new worksheet with the given |name|.
         """
-
         self.ensure_unused_worksheet_name(name)
 
         # Don't need any permissions to do this.
@@ -838,17 +837,22 @@ class LocalBundleClient(BundleClient):
 
         # Make worksheet publicly readable by default
         self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
+
+        # If we're creating a special worksheet, then populate it by default.
         if spec_util.is_dashboard(name):
-            self.populate_dashboard(worksheet)
+            self.populate_worksheet(worksheet, 'dashboard', 'CodaLab Dashboard')
+        if spec_util.is_public_home(name):
+            self.populate_worksheet(worksheet, 'home', 'Public Home')
+
         return worksheet.uuid
 
-    def populate_dashboard(self, worksheet):
-        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/dashboard.ws')
+    def populate_worksheet(self, worksheet, name, title):
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
         lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
         items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)
         info = self.get_worksheet_info(worksheet.uuid, True)
         self.update_worksheet_items(info, items)
-        self.update_worksheet_metadata(worksheet.uuid, {'title': 'Codalab Dashboard'})
+        self.update_worksheet_metadata(worksheet.uuid, {'title': title})
 
     def list_worksheets(self):
         return self.search_worksheets([])

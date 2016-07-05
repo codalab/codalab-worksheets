@@ -11,7 +11,6 @@ from codalab.common import (
   UsageError,
 )
 
-DASHBOARD_WORKSHEET = 'dashboard'
 UUID_STR = '0x[0-9a-f]{32}'
 UUID_REGEX = re.compile('^' + UUID_STR + '$')
 UUID_PREFIX_REGEX = re.compile('^0x[0-9a-f]{1,31}$')
@@ -115,4 +114,7 @@ def is_home_worksheet(name):
     return name.startswith('home-')
 
 def is_dashboard(name):
-    return name == DASHBOARD_WORKSHEET
+    return name == 'dashboard'
+
+def is_public_home(name):
+    return name == 'home'
