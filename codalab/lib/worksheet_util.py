@@ -580,7 +580,7 @@ def apply_func(func, arg):
 
 def get_default_schemas():
     # Single fields
-    uuid = ['uuid', 'uuid', '[0:8]']
+    uuid = ['uuid[0:8]', 'uuid', '[0:8]']
     name = ['name']
     summary = ['summary']
     data_size = ['data_size', 'data_size', 'size']
@@ -602,7 +602,7 @@ def get_default_schemas():
     schemas['created'] = [created]
 
     # Schemas involving multiple fields
-    schemas['default'] = [uuid, name, summary, state, description]
+    schemas['default'] = [uuid, name, summary, data_size, state, description]
     schemas['program'] = [uuid, name, data_size, description]
     schemas['dataset'] = [uuid, name, data_size, description]
     schemas['make'] = [uuid, name, summary, data_size, state, description]

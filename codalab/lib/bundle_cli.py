@@ -1421,7 +1421,7 @@ class BundleCLI(object):
 
     @staticmethod
     def key_value_str(key, value):
-        return '%-21s: %s' % (key, formatting.verbose_contents_str(unicode(value) if value is not None else None))
+        return '%-26s: %s' % (key, formatting.verbose_contents_str(unicode(value) if value is not None else None))
 
     def print_basic_info(self, client, info, raw):
         """
