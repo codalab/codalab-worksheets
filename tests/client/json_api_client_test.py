@@ -5,9 +5,9 @@ import unittest
 
 from codalab.client.json_api_client import (
     JsonApiClient,
-    JsonApiException,
     JsonApiRelationship
 )
+from codalab.common import PreconditionViolation
 
 
 class JsonApiClientTest(unittest.TestCase):
@@ -27,6 +27,17 @@ class JsonApiClientTest(unittest.TestCase):
             'false': 0,
             'list': '1,2,3.3,True'
         })
+
+        with self.assertRaises(NotImplementedError):
+            JsonApiClient._pack_params({
+                'listwithcomma': ['this is fine', 'this, is, not']
+            })
+
+        with self.assertRaises(NotImplementedError):
+            JsonApiClient._pack_params({
+                'listinlist': [['nested', 'lists', 'also', 'bad']]
+            })
+
 
     def test_resource_path(self):
         self.assertEqual(JsonApiClient._get_resource_path('bundles'),
@@ -108,4 +119,25 @@ class JsonApiClientTest(unittest.TestCase):
             'name': 'hello'
         })
 
+    def test_fetch_one(self):
+        class MockJsonApiClient(JsonApiClient):
+            def __init__(self):
+                pass
 
+            def fetch(self, count, **kwargs):
+                """
+                Returns list with as many dicts as specified by |count|,
+                or return a dict directly if |count| is None.
+                """
+                if count is None:
+                    return {}
+                else:
+                    return [{}] * count
+
+        client = MockJsonApiClient()
+        self.assertEqual(client.fetch_one(None), {}, "fetch_one doesn't return dict directly")
+        self.assertEqual(client.fetch_one(1), {}, "fetch_one doesn't extract single dict from list")
+        with self.assertRaises(PreconditionViolation):
+            client.fetch_one(2)
+        with self.assertRaises(PreconditionViolation):
+            client.fetch_one(10)

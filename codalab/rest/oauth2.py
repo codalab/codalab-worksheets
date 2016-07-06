@@ -96,9 +96,13 @@ def get_user(username, password, *args, **kwargs):
     return None
 
 
+# Not currently used by CodaLab website nor by the CLI client.
 @route('/oauth2/authorize', ['GET', 'POST'], apply=AuthenticatedPlugin())
 @oauth2_provider.authorize_handler
 def authorize(*args, **kwargs):
+    """
+    'authorize' endpoint for OAuth2 authorization code flow.
+    """
     if request.method == 'GET':
         client_id = kwargs.get('client_id')
         redirect_uri = kwargs.get('redirect_uri')
@@ -122,6 +126,10 @@ def revoke_token(): pass
 
 @get('/oauth2/validate', apply=AuthenticatedPlugin())
 def validate():
+    """
+    Used by RemoteBundleService to validate tokens.
+    TODO(sckoo): remove when REST API migration complete
+    """
     return {'user_name': request.user.user_name,
             'user_id': request.user.user_id}
 

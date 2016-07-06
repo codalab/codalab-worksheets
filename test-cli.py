@@ -642,7 +642,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str(['kill']), get_info(uuid, 'actions'))
+    check_equals(str([u'kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
@@ -653,7 +653,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
-    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
+    check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 @TestModule.register('mimic')
 def test(ctx):
@@ -758,26 +758,25 @@ def test(ctx):
         print 'Not a remote instance, skipping test.'
         return
     remote_worksheet = m.group(1)
+    local_worksheet = 'local::'
 
-    old_home = run_command([cl, 'status']).split('\n')[0].split(' ')[1]
-    print 'codalab_home:', old_home
-
-    # Create another local CodaLab instance.
+    # Create another local CodaLab instance
+    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
     home = temp_path('-home')
     os.environ['CODALAB_HOME'] = home
+    print 'Switching to new CODALAB_HOME =', home
     local_worksheet = 'local::'
     
-    # Initialize instance.
     # Use simple local database
     run_command([cl, 'config', 'server/class', 'SQLiteModel'])
     run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + home + '/bundle.db'])
-    # Copy the credentials over
-    run_command(['cp', os.path.join(old_home, 'state.json'), home])
+
+    # Copy credentials (stored in state) to avoid logging in again
+    shutil.copyfile(os.path.join(old_home, 'state.json'), os.path.join(home, 'state.json'))
+
     # Create root user
     run_command(['scripts/create-root-user.py', '1234'])
-    run_command([cl, 'work', local_worksheet])
-
-    # Shouldn't need a password now.
+    # Check that we shouldn't need a password now
     check_equals(0, subprocess.call([cl, 'work', remote_worksheet]))
 
     def check_agree(command):

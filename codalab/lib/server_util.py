@@ -2,14 +2,39 @@
 Utility functions used by the server applications.
 Don't import from non-REST API code, since this file imports bottle.
 """
-
 import base64
 import httplib
 import sys
 import urllib
 
-from bottle import abort, request, HTTPResponse, redirect, app, local
+from bottle import abort, request, HTTPResponse, redirect, app
 from oauthlib.common import to_unicode, bytes_type
+
+from codalab.common import precondition
+
+
+def query_get_list(key):
+    """
+    Get comma-separated query parameter as a list of strings.
+    Assumes that the strings themselves do not contain commas.
+    See JsonApiClient._pack_params for how such a parameter value is assumed
+    to be a constructed.
+    """
+    value = request.query.get(key)
+    if not value:
+        return []
+    else:
+        return value.split(',')
+
+
+def query_get_type(type_, key, default=None):
+    value = request.query.get(key, None)
+    if value is None:
+        return default
+    try:
+        return type_(value)
+    except ValueError:
+        abort(httplib.BAD_REQUEST, "Invalid %s %r" % (type_.__name__, value))
 
 
 def query_get_bool(key, default=False):
@@ -20,6 +45,12 @@ def query_get_bool(key, default=False):
         return bool(int(value))
     except ValueError:
         abort(httplib.BAD_REQUEST, '%r parameter must be integer boolean' % key)
+
+
+def json_api_meta(doc, meta):
+    precondition(isinstance(meta, dict), "Meta data must be dict")
+    doc['meta'] = meta
+    return doc
 
 
 def json_api_include(doc, schema, resources):

@@ -5,6 +5,8 @@ import urllib2
 
 from codalab.common import (
     http_error_to_exception,
+    precondition,
+    PreconditionViolation,
     UsageError,
 )
 from worker.rest_client import RestClient, RestClientException
@@ -101,6 +103,7 @@ class JsonApiClient(RestClient):
     def _pack_params(params):
         """
         Process lists into comma-separated strings, and booleans into 1/0.
+        Does not currently support lists with strings that contain commas.
         """
         if params is None:
             return None
@@ -108,7 +111,11 @@ class JsonApiClient(RestClient):
         result = {}
         for k, v in (params.iteritems() if isinstance(params, dict) else params):
             if isinstance(v, list):
-                result[k] = ','.join(map(unicode, v))
+                v = map(unicode, v)
+                if any(',' in e for e in v):
+                    raise NotImplementedError(
+                        "Commas in list elements not currently supported.")
+                result[k] = ','.join(v)
             elif isinstance(v, bool):
                 result[k] = int(v)
             else:
@@ -223,8 +230,6 @@ class JsonApiClient(RestClient):
             else:
                 result = {}
         except KeyError:
-            from codalab.lib.print_util import pretty_print
-            pretty_print(document)
             raise JsonApiException('Invalid or unsupported JSON API '
                                    'document format', True)
 
@@ -320,6 +325,22 @@ class JsonApiClient(RestClient):
                 method='GET',
                 path=self._get_resource_path(resource_type, resource_id),
                 query_params=self._pack_params(params)))
+
+    def fetch_one(self, resource_type, resource_id=None, params=None):
+        """
+        Same as JsonApiClient.fetch, but always returns exactly one resource
+        dictionary, or throws a NotFoundError if the results contain any more
+        or less than exactly one.
+        """
+        results = self.fetch(resource_type,
+                             resource_id=resource_id, params=params)
+        precondition(not isinstance(results, list) or len(results) == 1,
+                     "Got %d %s when expecting exactly 1." %
+                     (len(results), resource_type))
+        if not isinstance(results, list):
+            return results
+        else:
+            return results[0]
 
     @wrap_exception('Unable to create {1}')
     def create(self, resource_type, data, params=None):

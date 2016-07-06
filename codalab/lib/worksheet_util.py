@@ -34,7 +34,8 @@ import types
 import yaml
 import json
 from itertools import izip
-from codalab.common import UsageError
+from codalab.client.json_api_client import JsonApiClient
+from codalab.common import PermissionError, UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
 from codalab.objects.permission import permission_str, group_permissions_str
 
@@ -168,7 +169,8 @@ def get_formatted_metadata(cls, metadata, raw=False):
     return result
 
 
-def get_editable_metadata_fields(cls, metadata):
+# TODO(sckoo): remove metadata argument when legacy code removed
+def get_editable_metadata_fields(cls, metadata=None):
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
@@ -217,7 +219,15 @@ def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
             unresolved.append(spec)
 
     # Resolve uuids with a batch call to the client and update dict
-    bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
+    if unresolved:
+        if isinstance(client, JsonApiClient):
+            bundles = client.fetch('bundles', params={
+                'worksheet': worksheet_uuid,
+                'specs': unresolved
+            })
+            bundle_uuids.update(zip(unresolved, [b['id'] for b in bundles]))
+        else:
+            bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
 
     # Return uuids for the bundle_specs in the original order provided
     return [bundle_uuids[spec] for spec in bundle_specs]
@@ -1038,3 +1048,9 @@ def interpret_wsearch(client, data):
 
     # Finally, interpret the items
     return interpret_items([], items)
+
+
+def check_worksheet_not_frozen(worksheet):
+    if worksheet.frozen:
+        raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
+
