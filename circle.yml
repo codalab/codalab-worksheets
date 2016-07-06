@@ -16,13 +16,13 @@ dependencies:
 
 test:
   override:
+    - ls -l /home/ubuntu/.codalab
     - mysql -e "CREATE DATABASE codalab_bundles;"
-    - rm /home/ubuntu/.codalab/state.json
+    - rm -f /home/ubuntu/.codalab/state.json
     - ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles
     - ./codalab/bin/cl config cli/default_address http://localhost:2800
     - ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04
     - ./scripts/create-root-user.py $CODALAB_PASSWORD
-    - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
     - './codalab/bin/cl server':
         background: true
     - './codalab/bin/cl rest-server':
@@ -33,4 +33,5 @@ test:
     - chmod 600 /home/ubuntu/.codalab/root.password
     - './worker/worker.sh --bundle-service-url http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/root.password --verbose':
         background: true
+    - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
     - ./venv/bin/python test-cli.py all
