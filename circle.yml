@@ -9,7 +9,7 @@ machine:
 
 dependencies:
   override:
-    - sudo apt-get install -y jq sshpass
+    - sudo apt-get install -y sshpass
     - ./setup.sh server
     - ./venv/bin/pip install --upgrade pip
     - ./venv/bin/pip install -r requirements-tests.txt
@@ -17,22 +17,20 @@ dependencies:
 test:
   override:
     - mysql -e "CREATE DATABASE codalab_bundles;"
-    - (printf 'n\ny\nlocalhost\n\nroot\n' | sshpass -p "" ./codalab/bin/cl) || true
-    - ./codalab/bin/cl bs-health-check
-    - ./codalab/bin/cl config server/class SQLiteModel
-    - ./codalab/bin/cl config server/engine_url sqlite:////home/ubuntu/.codalab/bundle.db
+    - rm /home/ubuntu/.codalab/state.json
+    - ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles
     - ./codalab/bin/cl config cli/default_address http://localhost:2800
     - ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04
-    - rm /home/ubuntu/.codalab/state.json
     - ./scripts/create-root-user.py $CODALAB_PASSWORD
+    - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
     - './codalab/bin/cl server':
         background: true
     - './codalab/bin/cl rest-server':
         background: true
     - './codalab/bin/cl bundle-manager':
         background: true
-    - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/ubuntu/.codalab/password
-    - chmod 600 /home/ubuntu/.codalab/password
-    - './worker/worker.sh --bundle-service-url http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/password --verbose':
+    - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/ubuntu/.codalab/root.password
+    - chmod 600 /home/ubuntu/.codalab/root.password
+    - './worker/worker.sh --bundle-service-url http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/root.password --verbose':
         background: true
     - ./venv/bin/python test-cli.py all
