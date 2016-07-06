@@ -33,4 +33,4 @@ test:
     - chmod 600 /home/ubuntu/.codalab/password
     - './worker/worker.sh --bundle-service-url http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/password --verbose':
         background: true
-    - ./scripts/ci-tests.sh
+    - ./venv/bin/python test-cli.py all

@@ -25,7 +25,7 @@ import time
 import traceback
 from collections import OrderedDict
 
-cl = 'cl'
+cl = 'codalab/bin/cl'
 base_path = os.path.dirname(os.path.abspath(__file__))  # Directory where this script lives.
 
 crazy_name = 'crazy ("ain\'t it?")'
@@ -121,6 +121,7 @@ class ModuleContext(object):
         print 'SWITCHING TO TEMPORARY WORKSHEET'
         print
 
+        self.original_codalab_home = os.environ.get('CODALAB_HOME')
         self.original_worksheet = run_command([cl, 'work', '-u'])
         temp_worksheet = run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
@@ -150,6 +151,11 @@ class ModuleContext(object):
         # Clean up and restore original worksheet
         print 'CLEANING UP'
         print
+        if self.original_codalab_home:
+            os.environ['CODALAB_HOME'] = self.original_codalab_home
+        else:
+            del os.environ['CODALAB_HOME']
+
         run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
             self.bundles.extend(run_command([cl, 'ls', '-w', worksheet, '-u']).split())
@@ -205,6 +211,9 @@ class TestModule(object):
         query should be a list of strings, each of which is either 'all'
         or the name of an existing test module.
         '''
+        # Might prompt user for password
+        subprocess.call([cl, 'work'])
+
         # Build list of modules to run based on query
         modules_to_run = []
         for name in query:
@@ -750,16 +759,26 @@ def test(ctx):
         return
     remote_worksheet = m.group(1)
 
+    old_home = run_command([cl, 'status']).split('\n')[0].split(' ')[1]
+    print 'codalab_home:', old_home
+
     # Create another local CodaLab instance.
     home = temp_path('-home')
-    #home = 'temp-home'  # For consistency
     os.environ['CODALAB_HOME'] = home
     local_worksheet = 'local::'
     
-    # Initialize.
-    subprocess.call('printf "n\nn\n" | cl status', shell=True)
-    subprocess.call(['scripts/create-root-user.py', '1234'])
-    subprocess.call([cl, 'work', remote_worksheet])
+    # Initialize instance.
+    # Use simple local database
+    run_command([cl, 'config', 'server/class', 'SQLiteModel'])
+    run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + home + '/bundle.db'])
+    # Copy the credentials over
+    run_command(['cp', os.path.join(old_home, 'state.json'), home])
+    # Create root user
+    run_command(['scripts/create-root-user.py', '1234'])
+    run_command([cl, 'work', local_worksheet])
+
+    # Shouldn't need a password now.
+    check_equals(0, subprocess.call([cl, 'work', remote_worksheet]))
 
     def check_agree(command):
         check_equals(run_command(command + ['-w', local_worksheet]), run_command(command + ['-w', remote_worksheet]))
@@ -795,15 +814,12 @@ def test(ctx):
     run_command([cl, 'wadd', remote_worksheet, local_worksheet])
 
     # Cleanup
-    del os.environ['CODALAB_HOME']
-    run_command([cl, 'work', remote_worksheet])
     shutil.rmtree(home)
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         print 'Usage: python %s <module> ... <module>' % sys.argv[0]
         print 'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
-        print 'Remember to run this both in local and remote modes.',
         print 'Modules: all ' + ' '.join(TestModule.modules.keys())
     else:
         success = TestModule.run(sys.argv[1:])
