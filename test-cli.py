@@ -153,7 +153,7 @@ class ModuleContext(object):
         print
         if self.original_codalab_home:
             os.environ['CODALAB_HOME'] = self.original_codalab_home
-        else:
+        elif 'CODALAB_HOME' in os.environ:
             del os.environ['CODALAB_HOME']
 
         run_command([cl, 'work', self.original_worksheet])
