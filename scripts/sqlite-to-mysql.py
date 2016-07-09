@@ -2,7 +2,18 @@
 
 import fileinput
 
-# Used to migrate sqlite to mysql.
+'''
+If you already have data in SQLite, you can load it into MySQL using this script.
+
+    sqlite3 ~/.codalab/bundle.db .dump > bundles.sqlite
+    python scripts/sqlite_to_mysql.py < bundles.sqlite > bundles.mysql
+    mysql -u codalab -p codalab_bundles < bundles.mysql
+
+Once you set up your database, run the following so that future migrations
+start from the right place (this is important!):
+
+    venv/bin/alembic stamp head
+'''
 
 # Adapted from http://paulasmuth.com/blog/migrate_sqlite_to_mysql/
 # Reads from stdin (output of sqlite3 <db> .dump), writes to stdout.

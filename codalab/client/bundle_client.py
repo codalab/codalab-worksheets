@@ -10,6 +10,8 @@ There are three categories of BundleClient commands:
 There are a couple of implementations of this class:
   - LocalBundleClient - interacts directly with a BundleStore and BundleModel.
   - RemoteBundleClient - shells out to a BundleRPCServer to implement its API.
+
+TODO(sckoo): Remove when REST API migration complete
 '''
 # TODO: We should probably implement grep at some point. grep will take a
 # target (like the target passed to ls or cat) and a list of command-line args.

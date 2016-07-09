@@ -66,28 +66,19 @@ On Mac, DOCKER_HOST and optionally DOCKER_CERT_PATH should be defined. You need
 to run the worker from the Docker shell.
 """
             raise
-        
-        # Find libcuda. We use ldconfig to find directories where libcuda is
-        # stored and then pick up all libcuda.* files. If we use just ldconfig
-        # we miss files like libcuda.so.352.63.
+
+        # Find the libcuda library.
         try:
-            libcuda_dirs = set()
+            self._libcuda = None
             for lib in subprocess.check_output(['/sbin/ldconfig', '-p']).split('\n'):
-                if 'libcuda.' in lib and 'x86-64' in lib:
-                    libcuda_dirs.add(os.path.dirname(lib.split(' => ')[-1]))
+                if 'x86-64' in lib and lib.endswith('libcuda.so'):
+                    self._libcuda = os.path.realpath(lib.split(' => ')[-1])
         except OSError:
             # ldconfig isn't available on Mac OS X. Let's just say that we
             # don't support libcuda on Mac.
             print >> sys.stderr, """
 No ldconfig found. Not loading libcuda libraries.
 """
-        self._libcuda_files = []
-        libcuda_file_set = set()
-        for dir_path in libcuda_dirs:
-            for filename in os.listdir(dir_path):
-                if filename.startswith('libcuda.') and filename not in libcuda_file_set:
-                    self._libcuda_files.append(os.path.join(dir_path, filename))
-                    libcuda_file_set.add(filename)
 
         # Find all the NVIDIA device files.
         self._nvidia_device_files = []
@@ -166,9 +157,22 @@ No ldconfig found. Not loading libcuda libraries.
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
+        LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
+
         # Set up the command.
         docker_bundle_path = '/' + uuid
-        docker_commands = [
+        libcuda_commands = []
+        if self._libcuda is not None:
+            # Set up the libcuda.so symlinks.
+            libcuda_commands = [
+                'rm -f %s %s' % (os.path.join(LIBCUDA_DIR, 'libcuda.so.1'),
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+                'ln -s %s %s' % (os.path.basename(self._libcuda),
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so.1')),
+                'ln -s %s %s' % ('libcuda.so.1',
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+            ]
+        docker_commands = libcuda_commands + [
             'ldconfig',
             'BASHRC=$(pwd)/.bashrc',
             # Run as the user that owns the bundle directory. That way
@@ -191,9 +195,10 @@ No ldconfig found. Not loading libcuda libraries.
 
         # Set up the volumes.
         volume_bindings = []
-        for libcuda_file in self._libcuda_files:
-            volume_bindings.append('%s:/usr/lib/x86_64-linux-gnu/%s:ro' % (
-                libcuda_file, os.path.basename(libcuda_file)))
+        if self._libcuda is not None:
+            volume_bindings.append('%s:%s:ro' % (
+                self._libcuda,
+                os.path.join(LIBCUDA_DIR, os.path.basename(self._libcuda))))
         volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
         for dependency_path, docker_dependency_path in dependencies:
             volume_bindings.append('%s:%s:ro' % (
