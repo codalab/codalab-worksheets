@@ -743,13 +743,8 @@ class BundleCLI(object):
         if args.alias:
             address = self.manager.apply_alias(args.alias)
             self.manager.logout(address)
-            # TODO(sckoo): clean up use_rest hack when REST API migration complete
-            self.manager.logout(self.manager.derive_rest_address(address))
         else:
             client = self.manager.current_client()
-            self.manager.logout(client.address)
-            # TODO(sckoo): clean up use_rest hack when REST API migration complete
-            client = self.manager.current_client(use_rest=True)
             self.manager.logout(client.address)
 
     @Commands.command(
