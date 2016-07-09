@@ -93,17 +93,22 @@ def unpack(ext, source, dest_path):
                 path_util.remove(source)
 
 
-def pack_files_for_upload(sources, should_unpack, follow_symlinks, exclude_patterns=None):
+def pack_files_for_upload(sources, should_unpack, follow_symlinks,
+                          exclude_patterns=None, force_compression=False):
     """
     Create a single flat tarfile containing all the sources.
-
     Caller is responsible for closing the returned fileobj.
+
+    Note: It may be possible to achieve additional speed gains on certain
+    cases if we disable compression when tar-ing directories. But for now,
+    force_compression only affects the case of single, uncompressed files.
 
     :param sources: list of paths to files to pack
     :param should_unpack: will unpack archives iff True
     :param follow_symlinks: will follow symlinks if True else behavior undefined
     :param exclude_patterns: list of glob patterns for files to ignore, or
                              None to include all files
+    :param force_compression: True to always use compression
     :return: 4-tuple with fileobj, filename, filesize (or None if unknown),
              should_unpack_at_server
     """
@@ -133,8 +138,10 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks, exclude_patte
             return archived, filename + '.tar.gz', None, True
         elif path_is_archive(source):
             return open(source), filename, os.path.getsize(source), should_unpack
-        else:
+        elif force_compression:
             return gzip_file(source), filename + '.gz', None, True
+        else:
+            return open(source), filename, os.path.getsize(source), False
 
     # Build archive file incrementally from all sources
     # TODO: For further optimization, could either uses a temporary named pipe

@@ -856,6 +856,7 @@ class BundleCLI(object):
             Commands.Argument('-x', '--exclude-patterns', help='Exclude these file patterns.', nargs='*'),
             Commands.Argument('-g', '--git', help='Path is a git repository, git clone it.', action='store_true'),
             Commands.Argument('-p', '--pack', help='If path is an archive file (e.g., zip, tar.gz), keep it packed.', action='store_true', default=False),
+            Commands.Argument('-z', '--force-compression', help='Always use compression (this may speed up single-file uploads over a slow network).', action='store_true', default=False),
             Commands.Argument('-w', '--worksheet-spec', help='Upload to this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ) + Commands.metadata_arguments([UploadedBundle] + [get_bundle_subclass(bundle_type) for bundle_type in UPLOADED_TYPES])
         + EDIT_ARGUMENTS,
@@ -865,11 +866,14 @@ class BundleCLI(object):
         if self.headless and not args.path and args.contents is None:
             return ui_actions.serialize([ui_actions.Upload()])
 
-        # TODO(sckoo): clean up use_rest hack when REST API migration complete
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
+        if args.contents is None and not args.path:
+            raise UsageError("Nothing to upload.")
 
         if args.contents is not None and args.path:
-            raise UsageError("Upload does not support mixing content strings and local files")
+            raise UsageError("Upload does not support mixing content strings and local files.")
+
+        # TODO(sckoo): clean up use_rest hack when REST API migration complete
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
 
         # Build bundle info
         metadata = self.get_missing_metadata(UploadedBundle, args, initial_metadata={})
@@ -922,7 +926,8 @@ class BundleCLI(object):
                 zip_util.pack_files_for_upload(
                     sources, should_unpack=(not args.pack),
                     follow_symlinks=args.follow_symlinks,
-                    exclude_patterns=args.exclude_patterns)
+                    exclude_patterns=args.exclude_patterns,
+                    force_compression=args.force_compression)
 
             print >>self.stderr, 'Uploading %s (%s) to %s' %\
                                  (filename, new_bundle['id'], client.address)

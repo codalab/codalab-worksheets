@@ -365,6 +365,11 @@ def test(ctx):
         check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
         check_equals(test_path_contents(archive_path), run_command([cl, 'cat', uuid]))
 
+        # Force compression
+        uuid = run_command([cl, 'upload', test_path('echo'), '--force-compression'])
+        check_equals('echo', get_info(uuid, 'name'))
+        check_equals(test_path_contents('echo'), run_command([cl, 'cat', uuid]))
+
         os.unlink(archive_path)
 
 @TestModule.register('upload3')
