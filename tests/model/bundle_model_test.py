@@ -81,7 +81,7 @@ class MockBundle(object):
   def validate(self):
     self._validate_called = True
 
-  def to_dict(self):
+  def to_dict(self, strict=None):
     result = dict(self._fields)
     result['metadata'] = metadata_to_dicts(result['uuid'], result['metadata'])
     return result

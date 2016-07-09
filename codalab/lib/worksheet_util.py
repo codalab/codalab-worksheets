@@ -34,7 +34,8 @@ import types
 import yaml
 import json
 from itertools import izip
-from codalab.common import UsageError
+from codalab.client.json_api_client import JsonApiClient
+from codalab.common import PermissionError, UsageError
 from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
 from codalab.objects.permission import permission_str, group_permissions_str
 
@@ -168,7 +169,8 @@ def get_formatted_metadata(cls, metadata, raw=False):
     return result
 
 
-def get_editable_metadata_fields(cls, metadata):
+# TODO(sckoo): remove metadata argument when legacy code removed
+def get_editable_metadata_fields(cls, metadata=None):
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
@@ -217,7 +219,15 @@ def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
             unresolved.append(spec)
 
     # Resolve uuids with a batch call to the client and update dict
-    bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
+    if unresolved:
+        if isinstance(client, JsonApiClient):
+            bundles = client.fetch('bundles', params={
+                'worksheet': worksheet_uuid,
+                'specs': unresolved
+            })
+            bundle_uuids.update(zip(unresolved, [b['id'] for b in bundles]))
+        else:
+            bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
 
     # Return uuids for the bundle_specs in the original order provided
     return [bundle_uuids[spec] for spec in bundle_specs]
@@ -396,7 +406,11 @@ def interpret_genpath(bundle_info, genpath):
             command = bundle_info['command']
             for dep in deps:
                 key, value = friendly_render_dep(dep)
-                command = command.replace(key, value)
+                # Replace full-word occurrences of key in the command with an indicator of the dependency.
+                # Of course, a string match in the command isn't necessary a semantic reference to the dependency,
+                # and there are some dependencies which are not explicit in the command.
+                # But this can be seen as a best-effort attempt.
+                command = re.sub(r'\b%s\b' % key, value, command)
             return '! ' + command
     elif genpath == 'host_worksheets':
         if 'host_worksheets' in bundle_info:
@@ -580,7 +594,7 @@ def apply_func(func, arg):
 
 def get_default_schemas():
     # Single fields
-    uuid = ['uuid', 'uuid', '[0:8]']
+    uuid = ['uuid[0:8]', 'uuid', '[0:8]']
     name = ['name']
     summary = ['summary']
     data_size = ['data_size', 'data_size', 'size']
@@ -602,7 +616,7 @@ def get_default_schemas():
     schemas['created'] = [created]
 
     # Schemas involving multiple fields
-    schemas['default'] = [uuid, name, summary, state, description]
+    schemas['default'] = [uuid, name, summary, data_size, state, description]
     schemas['program'] = [uuid, name, data_size, description]
     schemas['dataset'] = [uuid, name, data_size, description]
     schemas['make'] = [uuid, name, summary, data_size, state, description]
@@ -1034,3 +1048,9 @@ def interpret_wsearch(client, data):
 
     # Finally, interpret the items
     return interpret_items([], items)
+
+
+def check_worksheet_not_frozen(worksheet):
+    if worksheet.frozen:
+        raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
+

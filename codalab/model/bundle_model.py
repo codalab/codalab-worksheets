@@ -711,7 +711,7 @@ class BundleModel(object):
         Save a bundle. On success, sets the Bundle object's id from the result.
         '''
         bundle.validate()
-        bundle_value = bundle.to_dict()
+        bundle_value = bundle.to_dict(strict=False)
         dependency_values = bundle_value.pop('dependencies')
         metadata_values = bundle_value.pop('metadata')
 
@@ -923,7 +923,7 @@ class BundleModel(object):
                 if ',' in value:  # value is value1,value2
                     value = value.split(',')
             else:
-                key, value = 'uuid_name', keyword
+                key, value = 'uuid_name_title', keyword
 
             clause = None
             # Special functions
@@ -938,6 +938,8 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.uuid, value)
             elif key == 'name':
                 clause = make_condition(cl_worksheet.c.name, value)
+            elif key == 'title':
+                clause = make_condition(cl_worksheet.c.title, value)
             elif key == 'owner_id':
                 clause = make_condition(cl_worksheet.c.owner_id, value)
             elif key == 'bundle':  # contains bundle?
@@ -958,14 +960,17 @@ class BundleModel(object):
                     clause = cl_worksheet_tag.c.worksheet_uuid == cl_worksheet.c.uuid  # Join constraint
                 else:
                     clause = cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_tag.c.worksheet_uuid]).where(condition)))
-            elif key == 'uuid_name': # Search uuid and name by default
+            elif key == 'uuid_name_title': # Search uuid and name by default
                 clause = or_(
                     cl_worksheet.c.uuid.like('%' + value + '%'),
                     cl_worksheet.c.name.like('%' + value + '%'),
+                    cl_worksheet.c.title.like('%' + value + '%'),
                 )
             elif key == '':  # Match any field
                 clause = []
                 clause.append(cl_worksheet.c.uuid.like('%' + value + '%'))
+                clause.append(cl_worksheet.c.name.like('%' + value + '%'))
+                clause.append(cl_worksheet.c.title.like('%' + value + '%'))
                 clause.append(cl_worksheet.c.uuid.in_(alias(select([cl_worksheet_item.c.worksheet_uuid]).where(
                     cl_worksheet_item.c.value.like('%' + value + '%'),
                 ))))
@@ -1183,21 +1188,12 @@ class BundleModel(object):
             group_dict = groups[0]
         self.public_group_uuid = group_dict['uuid']
 
-    def list_groups(self, owner_id):
-        '''
-        Return a list of row dicts --one per group-- for the given owner.
-        '''
-        with self.engine.begin() as connection:
-            rows = connection.execute(cl_group.select().where(
-                cl_group.c.owner_id == owner_id
-            )).fetchall()
-        return [str_key_dict(row) for row in sorted(rows, key=lambda row: row.id)]
-
     def create_group(self, group_dict):
         '''
         Create the group specified by the given row dict.
         '''
         with self.engine.begin() as connection:
+            group_dict['uuid'] = spec_util.generate_uuid()
             result = connection.execute(cl_group.insert().values(group_dict))
             group_dict['id'] = result.lastrowid
         return group_dict
@@ -1310,7 +1306,7 @@ class BundleModel(object):
 
     def update_user_in_group(self, user_id, group_uuid, is_admin):
         '''
-        Add user as a member of a group.
+        Update user role in group.
         '''
         with self.engine.begin() as connection:
             connection.execute(cl_user_group.update().\
@@ -1340,48 +1336,51 @@ class BundleModel(object):
             groups += [row['group_uuid'] for row in self.batch_get_user_in_group(user_id=user_id)]
         return groups
 
-    def add_permission(self, table, group_uuid, object_uuid, permission):
-        '''
-        Add specified permission for the given (group, object) pair.
-        '''
-        row = {'group_uuid': group_uuid, 'object_uuid': object_uuid, 'permission': permission}
-        with self.engine.begin() as connection:
-            result = connection.execute(table.insert().values(row))
-            row['id'] = result.lastrowid
-        return row
-    def add_bundle_permission(self, group_uuid, bundle_uuid, permission):
-        self.add_permission(cl_group_bundle_permission, group_uuid, bundle_uuid, permission)
-    def add_worksheet_permission(self, group_uuid, worksheet_uuid, permission):
-        self.add_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid, permission)
+    def set_group_permission(self, table, group_uuid, object_uuid, new_permission):
+        """
+        Atomically set group permission on object. Does NOT check for user
+        permissions on the bundle or the group.
 
-    def delete_permission(self, table, group_uuid, object_uuid):
-        '''
-        Delete permissions for the given (group, object) pair.
-        '''
+        :param table: cl_group_bundle_permission or cl_group_worksheet_permission
+        :param group_uuid: uuid of group for which to set permission
+        :param object_uuid: uuid of object (bundle or worksheet) on which to set permission
+        :param new_permission: new permission integer
+        """
         with self.engine.begin() as connection:
-            connection.execute(table.delete(). \
-                where(table.c.group_uuid == group_uuid). \
-                where(table.c.object_uuid == object_uuid)
-            )
-    def delete_bundle_permission(self, group_uuid, bundle_uuid):
-        self.delete_permission(cl_group_bundle_permission, group_uuid, bundle_uuid)
-    def delete_worksheet_permission(self, group_uuid, worksheet_uuid):
-        self.delete_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid)
+            row = connection.execute(table.select().where(and_(
+                table.c.object_uuid == object_uuid,
+                table.c.group_uuid == group_uuid,
+            )).limit(1)).fetchone()
+            old_permission = row.permission if row else GROUP_OBJECT_PERMISSION_NONE
 
-    def update_permission(self, table, group_uuid, object_uuid, permission):
-        '''
-        Update permission for the given (group, object) pair.
-        There should be one.
-        '''
-        with self.engine.begin() as connection:
-            connection.execute(table.update(). \
-                where(table.c.group_uuid == group_uuid). \
-                where(table.c.object_uuid == object_uuid). \
-                values({'permission': permission}))
-    def update_bundle_permission(self, group_uuid, bundle_uuid, permission):
-        self.update_permission(cl_group_bundle_permission, group_uuid, bundle_uuid, permission)
-    def update_worksheet_permission(self, group_uuid, worksheet_uuid, permission):
-        self.update_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid, permission)
+            if new_permission > 0:
+                if old_permission > 0:
+                    # Update existing permission
+                    connection.execute(table.update().
+                                       where(table.c.group_uuid == group_uuid).
+                                       where(table.c.object_uuid == object_uuid).
+                                       values({'permission': new_permission}))
+                else:
+                    # Create permission
+                    connection.execute(table.insert().values({
+                        'group_uuid': group_uuid,
+                        'object_uuid': object_uuid,
+                        'permission': new_permission
+                    }))
+            else:
+                if old_permission > 0:
+                    # Delete permission
+                    connection.execute(table.delete().
+                                       where(table.c.group_uuid == group_uuid).
+                                       where(table.c.object_uuid == object_uuid))
+
+    def set_group_bundle_permission(self, group_uuid, bundle_uuid, new_permission):
+        return self.set_group_permission(
+            cl_group_bundle_permission, group_uuid, bundle_uuid, new_permission)
+
+    def set_group_worksheet_permission(self, group_uuid, worksheet_uuid, new_permission):
+        return self.set_group_permission(
+            cl_group_worksheet_permission, group_uuid, worksheet_uuid, new_permission)
 
     def batch_get_group_permissions(self, table, user_id, object_uuids):
         '''
@@ -1410,7 +1409,7 @@ class BundleModel(object):
             ).fetchall()
             result = collections.defaultdict(list)  # object_uuid => list of rows
             for row in rows:
-                result[row.object_uuid].append({'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
+                result[row.object_uuid].append({'id': row.id, 'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})
             return result
     def batch_get_group_bundle_permissions(self, user_id, bundle_uuids):
         return self.batch_get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuids)
@@ -1427,19 +1426,6 @@ class BundleModel(object):
         return self.get_group_permissions(cl_group_bundle_permission, user_id, bundle_uuid)
     def get_group_worksheet_permissions(self, user_id, worksheet_uuid):
         return self.get_group_permissions(cl_group_worksheet_permission, user_id, worksheet_uuid)
-
-    def get_group_permission(self, table, group_uuid, object_uuid):
-        '''
-        Get permission for the given (group, object) pair.
-        '''
-        for row in self.get_group_permissions(table, None, object_uuid):
-            if row['group_uuid'] == group_uuid:
-                return row['permission']
-        return GROUP_OBJECT_PERMISSION_NONE
-    def get_group_bundle_permission(self, group_uuid, bundle_uuid):
-        return self.get_group_permission(cl_group_bundle_permission, group_uuid, bundle_uuid)
-    def get_group_worksheet_permission(self, group_uuid, worksheet_uuid):
-        return self.get_group_permission(cl_group_worksheet_permission, group_uuid, worksheet_uuid)
 
     def get_user_permissions(self, table, user_id, object_uuids, owner_ids):
         '''

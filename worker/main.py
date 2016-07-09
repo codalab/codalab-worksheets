@@ -1,7 +1,7 @@
 #!/usr/bin/env python2.7
-# TODO(klopyrev): This worker in general needs client level documentation. I
-#                 need to figure out where it is most appropriate and put it
-#                 there. Thus, I'm omitting any documentation here for now.
+# For information about the design of the worker, see design.pdf in the same
+# directory as this file. For information about running a worker, see the
+# tutorial on the CodaLab Wiki.
 
 import argparse
 import getpass
@@ -22,10 +22,10 @@ if __name__ == '__main__':
     parser.add_argument('--tag',
                         help='Tag that allows for scheduling runs on specific '
                              'workers.')
-    parser.add_argument('--bundle-service-url', required=True,
-                        help='URL of the bundle service, in the format '
-                             '<http|https>://<hostname>[:<port>]')
-    parser.add_argument('--work-dir', default='scratch',
+    parser.add_argument('--server', required=True,
+                        help='URL of the CodaLab server, in the format '
+                             '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)')
+    parser.add_argument('--work-dir', default='codalab-worker-scratch',
                         help='Directory where to store temporary bundle data, '
                              'including dependencies and the data from run '
                              'bundles.')
@@ -51,6 +51,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Get the username and password.
+    print 'Connecting to %s' % args.server
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
             print >> sys.stderr, """
@@ -74,12 +75,12 @@ chmod 600 %s""" % args.password_file
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     args.shared_file_system, args.slots,
-                    BundleServiceClient(args.bundle_service_url,
-                                        username, password),
+                    BundleServiceClient(args.server, username, password),
                     DockerClient())
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: worker.signal())
 
+    print 'Worker started.'
     worker.run()

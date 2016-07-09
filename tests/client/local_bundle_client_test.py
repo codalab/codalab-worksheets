@@ -21,10 +21,14 @@ class GroupsAndPermsTest(unittest.TestCase):
         cls.test_root = path_util.normalize("~/.codalab_tests")
         path_util.make_directory(cls.test_root)
         cls.bundle_store = MultiDiskBundleStore(cls.test_root)
-        cls.model = SQLiteModel("sqlite:///{}".format(os.path.join(cls.test_root, 'bundle.db')), {})
+        cls.model = SQLiteModel("sqlite:///{}".format(os.path.join(cls.test_root, 'bundle.db')),
+                                {'time_quota': 1e12, 'disk_quota': 1e12})
         cls.model.root_user_id = '0'
         users = [User('root', '0'), User('user1', '1'), User('user2', '2'), User('user4', '4')]
         cls.auth_handler = MockAuthHandler(users)
+        for user in users:
+            cls.model.add_user(user.name, user.name + '@codalab.org', '',
+                               user_id=user.unique_id, is_verified=True)
         cls.client = LocalBundleClient('local', cls.bundle_store, cls.model, None, None, None, cls.auth_handler, verbose=1)
 
     @classmethod

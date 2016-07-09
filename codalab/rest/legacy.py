@@ -24,6 +24,7 @@ from bottle import (
 )
 
 from codalab.bundles import get_bundle_subclass, PrivateBundle
+from codalab.client.json_api_client import JsonApiClient
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.common import State, UsageError
@@ -40,9 +41,42 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.oauth2 import OAuth2Token
 from codalab.objects.permission import permission_str
-from codalab.server.auth import LocalUserAuthHandler
+from codalab.server.auth import LocalUserAuthHandler, RestOAuthHandler
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.server.rpc_file_handle import RPCFileHandle
+
+
+def get_user_token():
+    """
+    Returns an access token for the authenticated user.
+    This function facilitates interactions with the bundle service.
+    """
+    CLIENT_ID = 'codalab_cli_client'
+
+    if request.user is None:
+        return None
+
+    # Try to find an existing token that will work.
+    token = local.model.find_oauth2_token(
+        CLIENT_ID,
+        request.user.user_id,
+        datetime.utcnow() + timedelta(minutes=5))
+    if token is not None:
+        return token.access_token
+
+    # Otherwise, generate a new one.
+    token = OAuth2Token(
+        local.model,
+        access_token=generate_token(),
+        refresh_token=None,
+        scopes='',
+        expires=datetime.utcnow() + timedelta(hours=10),
+        client_id=CLIENT_ID,
+        user_id=request.user.user_id,
+    )
+    local.model.save_oauth2_token(token)
+
+    return token.access_token
 
 
 class BundleService(object):
@@ -55,6 +89,9 @@ class BundleService(object):
             'local', local.bundle_store, local.model, local.worker_model,
             local.upload_manager, local.download_manager,
             LocalUserAuthHandler(request.user, local.model), verbose=0)
+
+    def _rest_url(self):
+        return 'http://{rest_host}:{rest_port}'.format(**local.config['server'])
 
     def get_bundle_info(self, uuid):
         bundle_info = self.client.get_bundle_info(uuid, True, True, True)
@@ -224,11 +261,26 @@ class BundleService(object):
                 item['size_str'] = formatting.size_str(item['size'])
         return info
 
-    # Create an instance of a CLI.
     def _create_cli(self, worksheet_uuid):
+        """
+        Create an instance of the CLI.
+
+        The CLI uses JsonApiClient to communicate back to the REST API.
+        This is admittedly not ideal since now the REST API is essentially
+        making HTTP requests back to itself. Future potential solutions might
+        include creating a subclass of JsonApiClient that can reroute HTTP
+        requests directly to the appropriate Bottle view functions.
+        """
         output_buffer = StringIO()
-        manager = CodaLabManager(temporary=True, clients={'local': self.client})
-        manager.set_current_worksheet_uuid(self.client, worksheet_uuid)
+        rest_client = JsonApiClient(self._rest_url(), lambda: get_user_token())
+        manager = CodaLabManager(
+            temporary=True,
+            config=local.config,
+            clients={
+                'local': self.client,
+                self._rest_url(): rest_client
+            })
+        manager.set_current_worksheet_uuid('local', worksheet_uuid)
         cli = bundle_cli.BundleCLI(manager, headless=True, stdout=output_buffer, stderr=output_buffer)
         return cli, output_buffer
 
@@ -304,6 +356,7 @@ class BundleService(object):
     def get_faq(self):
         return self.client.get_faq()
 
+
 class RemoteBundleService(object):
     '''
     Adapts the RemoteBundleClient for REST calls.
@@ -312,42 +365,10 @@ class RemoteBundleService(object):
     '''
     def __init__(self):
         self.client = RemoteBundleClient(self._cli_url(),
-                                         lambda command: self._get_user_token(), verbose=0)
+                                         lambda command: get_user_token(), verbose=0)
 
     def _cli_url(self):
         return 'http://' + local.config['server']['host'] + ':' + str(local.config['server']['port'])
-
-    def _get_user_token(self):
-        """
-        Returns an access token for the user. This function facilitates interactions
-        with the bundle service.
-        """
-        CLIENT_ID = 'codalab_cli_client'
-    
-        if request.user is None:
-            return None
-    
-        # Try to find an existing token that will work.
-        token = local.model.find_oauth2_token(
-            CLIENT_ID,
-            request.user.user_id,
-            datetime.utcnow() + timedelta(minutes=5))
-        if token is not None:
-            return token.access_token
-    
-        # Otherwise, generate a new one.
-        token = OAuth2Token(
-            local.model,
-            access_token=generate_token(),
-            refresh_token=None,
-            scopes='',
-            expires=datetime.utcnow() + timedelta(hours=10),
-            client_id=CLIENT_ID,
-            user_id=request.user.user_id,
-        )
-        local.model.save_oauth2_token(token)
-    
-        return token.access_token
 
     def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
         """

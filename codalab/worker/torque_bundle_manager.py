@@ -137,7 +137,7 @@ class TorqueBundleManager(BundleManager):
                 resource_args.extend(['-p', str(request_priority)])
             
             script_args = [
-                '--bundle-service-url',  self._torque_bundle_service_url,
+                '--server',  self._torque_bundle_service_url,
                 '--password-file', self._torque_password_file,
                 '--shared-file-system',
             ]

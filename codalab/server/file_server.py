@@ -11,6 +11,8 @@ The other methods, such as read_file, write_file, and close_file, are exposed
 as RPC methods. These methods take a file uuid in addition to their regular
 arguments, and they perform the requested operation on the file handle
 corresponding to that uuid.
+
+TODO(sckoo): Remove when REST API migration complete
 '''
 import os
 import tempfile

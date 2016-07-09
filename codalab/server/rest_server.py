@@ -23,6 +23,7 @@ from bottle import (
 from codalab.common import exception_to_http_error
 import codalab.rest.account
 import codalab.rest.bundle
+import codalab.rest.groups
 import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
@@ -30,6 +31,7 @@ import codalab.rest.users
 import codalab.rest.worker
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
+from codalab.server.json_api_plugin import JsonApiPlugin
 from codalab.server.oauth2_provider import oauth2_provider
 
 
@@ -163,6 +165,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
     install(ErrorAdapter())
+    install(JsonApiPlugin())
 
     for code in xrange(100, 600):
         default_app().error(code)(error_handler)
