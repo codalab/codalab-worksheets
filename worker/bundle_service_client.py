@@ -96,7 +96,7 @@ class BundleServiceClient(RestClient):
         self._token_expiration_time = time.time() + token['expires_in']
 
     def _worker_url_prefix(self, worker_id):
-        return '/worker/' + urllib.quote(worker_id)
+        return '/workers/' + urllib.quote(worker_id)
 
     @wrap_exception('Unable to check in with bundle service')
     def checkin(self, worker_id, request_data):
@@ -158,7 +158,7 @@ class BundleServiceClient(RestClient):
     @wrap_exception('Unable to get worker code')
     def get_code(self):
         return self._make_request(
-            'GET', '/worker/code.tar.gz', return_response=True, authorized=False)
+            'GET', '/workers/code.tar.gz', return_response=True, authorized=False)
 
     @wrap_exception('Unable to get bundle contents from bundle service')
     def get_bundle_contents(self, uuid, path):

@@ -13,8 +13,12 @@ from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from worker.worker import VERSION
 
+# TODO(sckoo): Remove singular /worker/ paths once workers are done self-updating
+
 
 @post('/worker/<worker_id>/checkin',
+      apply=AuthenticatedPlugin())
+@post('/workers/<worker_id>/checkin',
       apply=AuthenticatedPlugin())
 def checkin(worker_id):
     """
@@ -41,6 +45,8 @@ def checkin(worker_id):
 
 @post('/worker/<worker_id>/checkout',
       apply=AuthenticatedPlugin())
+@post('/workers/<worker_id>/checkout',
+      apply=AuthenticatedPlugin())
 def checkout(worker_id):
     """
     Checks out from the bundle service, cleaning up any state related to the
@@ -60,6 +66,8 @@ def check_reply_permission(worker_id, socket_id):
 
 @post('/worker/<worker_id>/reply/<socket_id:int>',
       apply=AuthenticatedPlugin())
+@post('/workers/<worker_id>/reply/<socket_id:int>',
+      apply=AuthenticatedPlugin())
 def reply(worker_id, socket_id):
     """
     Replies with a single JSON message to the given socket ID.
@@ -69,6 +77,8 @@ def reply(worker_id, socket_id):
 
 
 @post('/worker/<worker_id>/reply_data/<socket_id:int>',
+      apply=AuthenticatedPlugin())
+@post('/workers/<worker_id>/reply_data/<socket_id:int>',
       apply=AuthenticatedPlugin())
 def reply_data(worker_id, socket_id):
     """
@@ -104,6 +114,8 @@ def check_run_permission(bundle):
 
 @post('/worker/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
+@post('/workers/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
+      apply=AuthenticatedPlugin())
 def start_bundle(worker_id, uuid):
     """
     Checks whether the bundle is still assigned to run on the worker with the
@@ -122,6 +134,8 @@ def start_bundle(worker_id, uuid):
 
 
 @put('/worker/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
+     apply=AuthenticatedPlugin())
+@put('/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def update_bundle_metadata(worker_id, uuid):
     """
@@ -138,6 +152,8 @@ def update_bundle_metadata(worker_id, uuid):
 
 
 @post('/worker/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
+      apply=AuthenticatedPlugin())
+@post('/workers/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def finalize_bundle(worker_id, uuid):
     """
@@ -176,6 +192,7 @@ def finalize_bundle(worker_id, uuid):
 
 
 @get('/worker/code.tar.gz')
+@get('/workers/code.tar.gz')
 def code():
     """
     Returns .tar.gz archive containing the code of the worker.
