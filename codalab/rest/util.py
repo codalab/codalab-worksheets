@@ -8,7 +8,7 @@ import threading
 
 from bottle import abort, HTTPError, local, request
 
-from codalab.common import http_error_to_exception
+from codalab.common import http_error_to_exception, precondition
 from codalab.objects.permission import (
     unique_group,
 )
@@ -47,20 +47,43 @@ def local_bundle_client_compatible(f):
         - Remove |local| and |request| arguments
     """
     def wrapper(*args, **kwargs):
-        # Shim in local and request
-        if 'client' in kwargs:
-            client = kwargs.pop('client')
-            user = client.model.get_user(user_id=client._current_user_id())
-            local_bundle_client_context.local = client
-            local_bundle_client_context.request = DummyRequest(user)
-        request_ = getattr(local_bundle_client_context, 'request', request)
-        local_ = getattr(local_bundle_client_context, 'local', local)
-
-        # Translate HTTP errors back to CodaLab exceptions
+        # Always pop out the 'client' kwarg
+        client = kwargs.pop('client', None)
         try:
-            return f(local_, request_, *args, **kwargs)
-        except HTTPError as e:
-            raise http_error_to_exception(e.status_code, e.message)
+            # Test to see if request context is initialized
+            _ = request.user
+        except RuntimeError:
+            # Request context not initialized: we are NOT in a Bottle app
+            # Fabricate a thread-local context for LocalBundleClient
+            if client is not None:
+                user = client.model.get_user(user_id=client._current_user_id())
+                local_bundle_client_context.local = client
+                local_bundle_client_context.request = DummyRequest(user)
+
+            precondition((hasattr(local_bundle_client_context, 'local') and
+                          hasattr(local_bundle_client_context, 'request')),
+                         'LocalBundleClient environment failed to initialize')
+
+            try:
+                # Shim in local and request
+                return f(local_bundle_client_context.local,
+                         local_bundle_client_context.request,
+                         *args, **kwargs)
+            except HTTPError as e:
+                # Translate HTTP errors back to CodaLab exceptions
+                raise http_error_to_exception(e.status_code, e.message)
+            finally:
+                # Clean up when this request is done, thread may be recycled
+                # But should only do this on the root call, where 'client'
+                # was passed as a kwarg: all recursive calls of REST methods
+                # that derive from the original call need to use the same
+                # context.
+                if client is not None:
+                    delattr(local_bundle_client_context, 'local')
+                    delattr(local_bundle_client_context, 'request')
+        else:
+            # We are in the Bottle app, all is good
+            return f(local, request, *args, **kwargs)
 
     return wrapper
 
