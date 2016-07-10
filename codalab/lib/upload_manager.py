@@ -44,7 +44,6 @@ class UploadManager(object):
             for source in sources:
                 is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
                 source_output_path = os.path.join(bundle_path, filename)
-    
                 if is_url:
                     if git:
                         source_output_path = file_util.strip_git_ext(source_output_path)

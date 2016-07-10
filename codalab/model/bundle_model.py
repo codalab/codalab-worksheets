@@ -673,7 +673,7 @@ class BundleModel(object):
 
         return True
 
-    def finalize_bundle(self, bundle, user_id, exitcode, failure_message):
+    def finalize_bundle(self, bundle, user_id, exitcode=None, failure_message=None):
         '''
         Marks the bundle as READY / FAILED, updating a few metadata fields, the
         events log and removing the worker_run row. Additionally, if the user
@@ -683,13 +683,18 @@ class BundleModel(object):
         state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
+
+        # Build metadata
+        metadata = {}
+        if failure_message is not None:
+            metadata['failure_message'] = failure_message
+        if exitcode is not None:
+            metadata['exitcode'] = exitcode
+
         with self.engine.begin() as connection:
             bundle_update = {
                 'state': state,
-                'metadata': {
-                    'exitcode': exitcode,
-                    'failure_message': failure_message,
-                },
+                'metadata': metadata,
             }
             self.update_bundle(bundle, bundle_update, connection)
             connection.execute(

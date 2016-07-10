@@ -1,6 +1,7 @@
 import httplib
 import socket
 import sys
+import urllib
 import urllib2
 
 from codalab.common import (
@@ -10,6 +11,7 @@ from codalab.common import (
     UsageError,
 )
 from worker.rest_client import RestClient, RestClientException
+from worker.file_util import un_gzip_stream
 
 
 def wrap_exception(message):
@@ -468,3 +470,72 @@ class JsonApiClient(RestClient):
                 path=self._get_resource_path('user'),
                 query_params=self._pack_params(params),
                 data=self._pack_document(data, 'users')))
+
+    @wrap_exception('Unable to fetch contents info of bundle {1}')
+    def fetch_contents_info(self, bundle_id, target_path='', depth=0):
+        request_path = '/bundles/%s/contents/info/%s' % \
+                       (bundle_id, urllib.quote(target_path))
+        response = self._make_request('GET', request_path,
+                                      query_params={'depth': depth})
+        return response['data']
+
+    @wrap_exception('Unable to fetch contents blob of bundle {1}')
+    def fetch_contents_blob(self, bundle_id, target_path='', range_=None,
+                            head=None, tail=None):
+        """
+        Returns a file-like object for the target on the given bundle.
+
+        :param bundle_id: id of target bundle
+        :param target_path: path to target in bundle
+        :param range_: range of bytes to fetch
+        :param head: number of lines to summarize from beginning of file
+        :param tail: number of lines to summarize from end of file
+        :return: file-like object containing requested data blob
+        """
+        request_path = '/bundles/%s/contents/blob/%s' % \
+                       (bundle_id, urllib.quote(target_path))
+        headers = {'Accept-Encoding': 'gzip'}
+        if range_ is not None:
+            headers['Range'] = 'bytes=%d-%d' % range_
+        params = {}
+        if head is not None:
+            params['head'] = head
+        if tail is not None:
+            params['tail'] = tail
+        response = self._make_request('GET', request_path, headers=headers,
+                                      query_params=params, return_response=True)
+
+        if response.headers.get('Content-Encoding') == 'gzip':
+            return un_gzip_stream(response)
+        return response
+
+    @wrap_exception('Unable to upload contents of bundle {1}')
+    def upload_contents_blob(self, bundle_id, fileobj=None, params=None,
+                             progress_callback=None):
+        """
+        Uploads the contents of the given fileobj as the contents of specified
+        bundle.
+
+        :param bundle_id: the id of the target bundle
+        :param fileobj: file-like object containing the data to upload
+        :param params: dict of query parameters
+        :param progress_callback: function that will be called periodically
+                                  with the number of bytes uploaded so far
+        :return: None
+        """
+        request_path = '/bundles/%s/contents/blob/' % bundle_id
+        params = params or {}
+        params['finalize'] = True
+        params = self._pack_params(params)
+        if fileobj is None:
+            self._make_request(
+                method='PUT',
+                path=request_path,
+                query_params=params)
+        else:
+            self._upload_with_chunked_encoding(
+                method='PUT',
+                url=request_path,
+                query_params=params,
+                fileobj=fileobj,
+                progress_callback=progress_callback)

@@ -92,6 +92,7 @@ class State(object):
     """
     An enumeration of states that a bundle can be in.
     """
+    UPLOADING = 'uploading'  # Waiting for contents to be uploaded
     CREATED = 'created'   # Just created
     STAGED = 'staged'     # All the dependencies are met
     MAKING = 'making'  # Creating a make bundle.
