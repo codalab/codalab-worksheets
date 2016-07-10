@@ -52,7 +52,7 @@ def local_bundle_client_compatible(f):
         try:
             # Test to see if request context is initialized
             _ = request.user
-        except RuntimeError:
+        except (AttributeError, RuntimeError):
             # Request context not initialized: we are NOT in a Bottle app
             # Fabricate a thread-local context for LocalBundleClient
             if client is not None:
