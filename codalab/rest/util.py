@@ -4,11 +4,14 @@ Most of these are adapted from the LocalBundleClient methods,
 Placed in this central location to prevent circular imports.
 """
 import httplib
+import threading
 
 from bottle import abort, HTTPError, local, request
 
-from codalab.common import http_error_to_exception
-from codalab.objects.permission import unique_group
+from codalab.common import http_error_to_exception, precondition
+from codalab.objects.permission import (
+    unique_group,
+)
 
 
 def get_resource_ids(document, type_):
@@ -21,16 +24,15 @@ def get_resource_ids(document, type_):
 
 
 class DummyRequest(object):
-    """Dummy classes for local_bundle_client_compatible shim."""
-    class DummyUser(object):
-        def __init__(self, user_id):
-            self.user_id = user_id
+    """
+    Dummy class for local_bundle_client_compatible shim.
+    Delete along with the decorator when cleaning up.
+    """
+    def __init__(self, user):
+        self.user = user
 
-    def __init__(self, user=None, user_id=None):
-        if user is not None:
-            self.user = user
-        elif user_id is not None:
-            self.user = DummyRequest.DummyUser(user_id)
+
+local_bundle_client_context = threading.local()
 
 
 def local_bundle_client_compatible(f):
@@ -38,27 +40,51 @@ def local_bundle_client_compatible(f):
     Temporary hack to make decorated functions callable from LocalBundleClient.
     This allows us to share code between LocalBundleClient and the REST server.
     To call a decorated function from LocalBundleClient, pass in self as the
-    |client| kwarg and optionally the authenticated User as |user| or the
-    ID of the authenticated user as |user_id|.
+    |client| kwarg.
 
     TODO(sckoo): To clean up, for each decorated function:
         - Un-decorate function
         - Remove |local| and |request| arguments
     """
     def wrapper(*args, **kwargs):
-        # Shim in local and request
-        local_ = kwargs.pop('client', local)
-        if 'user' in kwargs:
-            request_ = DummyRequest(user=kwargs.pop('user'))
-        elif 'user_id' in kwargs:
-            request_ = DummyRequest(user_id=kwargs.pop('user_id'))
-        else:
-            request_ = request
-        # Translate HTTP errors back to CodaLab exceptions
+        # Always pop out the 'client' kwarg
+        client = kwargs.pop('client', None)
         try:
-            return f(local_, request_, *args, **kwargs)
-        except HTTPError as e:
-            raise http_error_to_exception(e.status_code, e.message)
+            # Test to see if request context is initialized
+            _ = request.user
+        except (AttributeError, RuntimeError):
+            # Request context not initialized: we are NOT in a Bottle app
+            # Fabricate a thread-local context for LocalBundleClient
+            if client is not None:
+                user = client.model.get_user(user_id=client._current_user_id())
+                local_bundle_client_context.local = client
+                local_bundle_client_context.request = DummyRequest(user)
+
+            precondition((hasattr(local_bundle_client_context, 'local') and
+                          hasattr(local_bundle_client_context, 'request')),
+                         'LocalBundleClient environment failed to initialize')
+
+            try:
+                # Shim in local and request
+                return f(local_bundle_client_context.local,
+                         local_bundle_client_context.request,
+                         *args, **kwargs)
+            except HTTPError as e:
+                # Translate HTTP errors back to CodaLab exceptions
+                raise http_error_to_exception(e.status_code, e.message)
+            finally:
+                # Clean up when this request is done, thread may be recycled
+                # But should only do this on the root call, where 'client'
+                # was passed as a kwarg: all recursive calls of REST methods
+                # that derive from the original call need to use the same
+                # context.
+                if client is not None:
+                    delattr(local_bundle_client_context, 'local')
+                    delattr(local_bundle_client_context, 'request')
+        else:
+            # We are in the Bottle app, all is good
+            return f(local, request, *args, **kwargs)
+
     return wrapper
 
 

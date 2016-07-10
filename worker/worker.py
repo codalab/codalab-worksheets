@@ -13,12 +13,9 @@ from dependency_manager import DependencyManager
 from file_util import remove_path, un_gzip_stream, un_tar_directory
 from run import Run
 
-
-VERSION = 4
-
+VERSION = 5
 
 logger = logging.getLogger(__name__)
-
 
 class Worker(object):
     """

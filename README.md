@@ -3,8 +3,7 @@
 The goal of CodaLab is to faciliate transparent, reproducible, and
 collaborative research in computation- and data-intensive areas such as machine
 learning.  This repository contains the code for the CodaLab Bundle Service,
-which provides the backend for [CodaLab Worksheets](
-https://github.com/codalab/codalab/wiki/CodaLab-Worksheets).
+which provides the backend for [CodaLab Worksheets](https://github.com/codalab/codalab-worksheets/wiki).
 
 The CodaLab Bundle Service allows users to create *bundles*, which are
 immutable directories containing code or data.  Bundles are either
@@ -16,10 +15,10 @@ workflow.
 
 This package also contains a command-line interface (CLI) `cl` that provides
 flexible access to the CodaLab Bundle Service.  The [Git repository for the
-CodaLab website](https://github.com/codalab/codalab) is provides a graphical
+CodaLab website](https://github.com/codalab/codalab-worksheets) is provides a graphical
 interface to the service.
 
 ## Links
 
 * [Official CodaLab Worksheets Instance](https://worksheets.codalab.org/): live instance of CodaLab Worksheets
-* [CodaLab Worksheets Wiki](https://github.com/codalab/codalab/wiki/CodaLab-Worksheets): all documentation
+* [CodaLab Worksheets Wiki](https://github.com/codalab/codalab-worksheets/wiki): all documentation

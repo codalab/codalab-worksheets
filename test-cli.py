@@ -14,7 +14,8 @@ Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
 '''
-
+from contextlib import contextmanager
+import json
 import subprocess
 import sys
 import re
@@ -25,7 +26,7 @@ import time
 import traceback
 from collections import OrderedDict
 
-cl = 'cl'
+cl = 'codalab/bin/cl'
 base_path = os.path.dirname(os.path.abspath(__file__))  # Directory where this script lives.
 
 crazy_name = 'crazy ("ain\'t it?")'
@@ -62,13 +63,16 @@ def sanitize(string):
         return '<binary>\n'
 
 def run_command(args, expected_exit_code=0):
+    sys.stdout.write('>> %s' % ' '.join(args))
+
     try:
         output = subprocess.check_output(args)
         exitcode = 0
     except subprocess.CalledProcessError, e:
         output = e.output
         exitcode = e.returncode
-    print '>> %s (exit code %s, expected %s)\n%s' % (args, exitcode, expected_exit_code, sanitize(output))
+    print ' (exit code %s, expected %s)' % (exitcode, expected_exit_code)
+    print sanitize(output)
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
@@ -100,6 +104,15 @@ def check_num_lines(true_value, pred_value):
     assert num_lines == true_value, "expected %d lines, but got %s" % (true_value, num_lines)
     return pred_value
 
+def wait_until_substring(fp, substr):
+    """
+    Block until we see substr appear in the given file fp.
+    """
+    while True:
+        line = fp.readline()
+        if substr in line:
+            return
+
 class ModuleContext(object):
     '''ModuleContext objects manage the context of a test module.
 
@@ -121,6 +134,7 @@ class ModuleContext(object):
         print 'SWITCHING TO TEMPORARY WORKSHEET'
         print
 
+        self.original_environ = os.environ.copy()
         self.original_worksheet = run_command([cl, 'work', '-u'])
         temp_worksheet = run_command([cl, 'new', random_name()])
         self.worksheets.append(temp_worksheet)
@@ -150,6 +164,9 @@ class ModuleContext(object):
         # Clean up and restore original worksheet
         print 'CLEANING UP'
         print
+        os.environ.clear()
+        os.environ.update(self.original_environ)
+
         run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
             self.bundles.extend(run_command([cl, 'ls', '-w', worksheet, '-u']).split())
@@ -205,6 +222,9 @@ class TestModule(object):
         query should be a list of strings, each of which is either 'all'
         or the name of an existing test module.
         '''
+        # Might prompt user for password
+        subprocess.call([cl, 'work'])
+
         # Build list of modules to run based on query
         modules_to_run = []
         for name in query:
@@ -269,6 +289,8 @@ def test(ctx):
     check_contains(['bundle_type', 'uuid', 'owner', 'created'], run_command([cl, 'info', uuid]))
     check_contains('license', run_command([cl, 'info', '--raw', uuid]))
     check_contains(['host_worksheets', 'contents'], run_command([cl, 'info', '--verbose', uuid]))
+    # test interpret_file_genpath
+    check_equals(' '.join(test_path_contents('a.txt').splitlines(False)), get_info(uuid, '/'))
 
     # rm
     run_command([cl, 'rm', '--dry-run', uuid])
@@ -315,6 +337,12 @@ def test(ctx):
     uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
     check_num_lines(2 + 2, run_command([cl, 'cat', uuid]))  # 2 header lines, Only two files left after excluding and extracting.
 
+    # Upload multiple files with excluded files
+    uuid = run_command([cl, 'upload', test_path('dir1'), test_path('echo'), test_path(crazy_name), '--exclude-patterns', 'f*'])
+    check_num_lines(2 + 3, run_command([cl, 'cat', uuid]))  # 2 header lines, 3 items at bundle target root
+    check_num_lines(2 + 2, run_command([cl, 'cat', uuid + '/dir1']))  # 2 header lines, Only two files left after excluding and extracting.
+
+
 @TestModule.register('upload2')
 def test(ctx):
     # Upload tar.gz and zip.
@@ -336,6 +364,11 @@ def test(ctx):
         uuid = run_command([cl, 'upload', archive_path, '--pack'])
         check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
         check_equals(test_path_contents(archive_path), run_command([cl, 'cat', uuid]))
+
+        # Force compression
+        uuid = run_command([cl, 'upload', test_path('echo'), '--force-compression'])
+        check_equals('echo', get_info(uuid, 'name'))
+        check_equals(test_path_contents('echo'), run_command([cl, 'cat', uuid]))
 
         os.unlink(archive_path)
 
@@ -633,7 +666,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
-    check_equals(str(['kill']), get_info(uuid, 'actions'))
+    check_equals(str([u'kill']), get_info(uuid, 'actions'))
 
 @TestModule.register('write')
 def test(ctx):
@@ -644,7 +677,7 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
-    check_equals(str(['write\tmessage\thello world']), get_info(uuid, 'actions'))
+    check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
 
 @TestModule.register('mimic')
 def test(ctx):
@@ -742,68 +775,103 @@ def test(ctx):
 @TestModule.register('copy')
 def test(ctx):
     '''Test copying between instances.'''
-    # Figure out the current instance
+    # Figure out the current instance and use it as the 'remote' instance
     # Switched to worksheet http://localhost:2800::home-pliang(0x87a7a7ffe29d4d72be9b23c745adc120).
     m = re.search('(http[^\(]+)', run_command([cl, 'work']))
     if not m:
         print 'Not a remote instance, skipping test.'
         return
-    remote_worksheet = m.group(1)
+    source_worksheet = m.group(1)
 
-    # Create another local CodaLab instance.
-    home = temp_path('-home')
-    #home = 'temp-home'  # For consistency
-    os.environ['CODALAB_HOME'] = home
-    local_worksheet = 'local::'
-    
-    # Initialize.
-    subprocess.call('printf "n\nn\n" | cl status', shell=True)
-    subprocess.call(['scripts/create-root-user.py', '1234'])
-    subprocess.call([cl, 'work', remote_worksheet])
+    # Create another CodaLab instance.
+    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
+    remote_home = temp_path('-home')
+    os.environ['CODALAB_HOME'] = remote_home
+    os.mkdir(remote_home)
 
-    def check_agree(command):
-        check_equals(run_command(command + ['-w', local_worksheet]), run_command(command + ['-w', remote_worksheet]))
+    test_username = os.environ.get('CODALAB_USERNAME', 'codalab')
+    test_password = os.environ.get('CODALAB_PASSWORD', '1234')
 
-    # Upload to local, transfer to remote
-    run_command([cl, 'work', local_worksheet])
-    uuid = run_command([cl, 'upload', test_path('')])
-    run_command([cl, 'add', 'bundle', uuid, remote_worksheet])
-    check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
-    check_agree([cl, 'cat', uuid])
+    # Use simple local database
+    run_command([cl, 'config', 'server/class', 'SQLiteModel'])
+    run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + remote_home + '/bundle.db'])
 
-    # Upload to remote, transfer to local
-    run_command([cl, 'work', remote_worksheet])
-    uuid = run_command([cl, 'upload', test_path('')])
-    run_command([cl, 'add', 'bundle', uuid, local_worksheet])
-    check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
-    check_agree([cl, 'cat', uuid])
+    # Configure aux servers with alternate ports
+    run_command([cl, 'config', 'server/port', '3800'])
+    run_command([cl, 'config', 'server/rest_port', '3900'])
+    remote_worksheet = 'http://localhost:3800::'
 
-    # Upload to remote, transfer to local (metadata only)
-    run_command([cl, 'work', remote_worksheet])
-    uuid = run_command([cl, 'upload', '-c', 'hello'])
-    run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
-    run_command([cl, 'add', 'bundle', uuid, local_worksheet])
+    # Create root user
+    run_command(['scripts/create-root-user.py', test_password])
 
-    # Upload to local, transfer to remote (metadata only)
-    run_command([cl, 'work', local_worksheet])
-    uuid = run_command([cl, 'upload', '-c', 'hello'])
-    run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
-    run_command([cl, 'add', 'bundle', uuid, remote_worksheet])
+    # Start auxiliary servers for the new auxiliary host
+    os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
+    server_proc = subprocess.Popen([cl, 'server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    rest_server_proc = subprocess.Popen([cl, 'rest-server'], stderr=subprocess.PIPE)
 
-    # Test adding worksheet items
-    run_command([cl, 'wadd', local_worksheet, remote_worksheet])
-    run_command([cl, 'wadd', remote_worksheet, local_worksheet])
+    # TODO(sckoo): Refactor test-cli to allow each module to define cleanup method
+    try:
+        # TODO(sckoo): Remove BundleRPCServer when REST migration complete
+        wait_until_substring(server_proc.stdout, 'BundleRPCServer serving')
+        wait_until_substring(rest_server_proc.stderr, 'Booting worker')
 
-    # Cleanup
-    del os.environ['CODALAB_HOME']
-    run_command([cl, 'work', remote_worksheet])
-    shutil.rmtree(home)
+        # Restore original config
+        os.environ['CODALAB_HOME'] = old_home
+
+        # Switch to new host and log in to cache auth token
+        run_command([cl, 'logout', remote_worksheet[:-2]])
+        os.environ['CODALAB_USERNAME'] = test_username
+        os.environ['CODALAB_PASSWORD'] = test_password
+        run_command([cl, 'work', remote_worksheet])
+
+        def check_agree(command):
+            check_equals(run_command(command + ['-w', remote_worksheet]), run_command(command + ['-w', source_worksheet]))
+
+        # Upload to original worksheet, transfer to remote
+        run_command([cl, 'work', source_worksheet])
+        uuid = run_command([cl, 'upload', test_path('')])
+        run_command([cl, 'add', 'bundle', uuid, remote_worksheet])
+        check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
+        check_agree([cl, 'cat', uuid])
+
+        # Upload to remote, transfer to local
+        run_command([cl, 'work', remote_worksheet])
+        uuid = run_command([cl, 'upload', test_path('')])
+        run_command([cl, 'add', 'bundle', uuid, source_worksheet])
+        check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
+        check_agree([cl, 'cat', uuid])
+
+        # Upload to remote, transfer to local (metadata only)
+        run_command([cl, 'work', remote_worksheet])
+        uuid = run_command([cl, 'upload', '-c', 'hello'])
+        run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
+        run_command([cl, 'add', 'bundle', uuid, source_worksheet])
+
+        # Upload to local, transfer to remote (metadata only)
+        run_command([cl, 'work', source_worksheet])
+        uuid = run_command([cl, 'upload', '-c', 'hello'])
+        run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
+        run_command([cl, 'add', 'bundle', uuid, remote_worksheet])
+
+        # Test adding worksheet items
+        run_command([cl, 'wadd', source_worksheet, remote_worksheet])
+        run_command([cl, 'wadd', remote_worksheet, source_worksheet])
+
+    finally:
+        # Cleanup
+        server_proc.kill()
+        rest_server_proc.kill()
+        # del os.environ['CODALAB_HOME']
+        # del os.environ['PYTHONUNBUFFERED']
+        # del os.environ['CODALAB_USERNAME']
+        # del os.environ['CODALAB_PASSWORD']
+        # run_command([cl, 'work', source_worksheet])
+        shutil.rmtree(remote_home)
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         print 'Usage: python %s <module> ... <module>' % sys.argv[0]
         print 'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
-        print 'Remember to run this both in local and remote modes.',
         print 'Modules: all ' + ' '.join(TestModule.modules.keys())
     else:
         success = TestModule.run(sys.argv[1:])

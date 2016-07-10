@@ -1,12 +1,15 @@
 '''
 Defines ORM classes for groups and permissions.
 '''
+from marshmallow import fields, ValidationError
+
 from codalab.model.orm_object import ORMObject
 from codalab.common import (
     NotFoundError,
     precondition,
     UsageError,
     PermissionError,
+    IntegrityError,
 )
 from codalab.lib import (
     spec_util,
@@ -19,6 +22,20 @@ from codalab.model.tables import (
     group_object_permission as cl_group_worksheet_permission,
 )
 from codalab.model.util import LikeQuery
+
+
+class PermissionSpec(fields.Field):
+    def _serialize(self, value, attr, obj):
+        try:
+            return permission_str(value)
+        except UsageError as e:
+            raise ValidationError(e.message)
+
+    def _deserialize(self, value, attr, data):
+        try:
+            return parse_permission(value)
+        except UsageError as e:
+            raise ValidationError(e.message)
 
 
 # TODO(sckoo): delete when REST API is complete
@@ -154,9 +171,16 @@ def permission_str(permission):
     raise UsageError("Invalid permission: %s" % permission)
 
 # [{'group_name':'a', 'permission:1}, {'group_name':'b', 'permission':2}] => 'a:read,b:all'
-def group_permissions_str(group_permissions):
+# TODO(sckoo): clean up use_rest hack when REST API migration complete
+def group_permissions_str(group_permissions, use_rest=False):
+    """
+    Reads group ID from ['group']['id'] on each permission
+    if |use_rest| is True, or ['group_uuid'] otherwise.
+    """
     if len(group_permissions) == 0:
         return '-'
     return ','.join(
-            '%s(%s):%s' % (row['group_name'], row['group_uuid'][0:8], permission_str(row['permission']))
-    for row in group_permissions)
+        '%s(%s):%s' % (row['group_name'],
+                       row['group']['id'][0:8] if use_rest else row['group_uuid'][0:8],
+                       permission_str(row['permission']))
+        for row in group_permissions)

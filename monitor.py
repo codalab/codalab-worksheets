@@ -30,7 +30,7 @@ parser.add_argument('--codalab-home', help='where the CodaLab instance lives',
 
 # Where to write out information
 parser.add_argument('--log-path', help='file to write the log', default='monitor.log')
-parser.add_argument('--backup-path', help='directory to backup database', default='backup')
+parser.add_argument('--backup-path', help='directory to backup database', default='monitor.backup')
 
 # How often to do things
 parser.add_argument('--ping-interval', help='ping the server every this many seconds', type=int, default=30)
@@ -54,8 +54,8 @@ bundles_password = m.group(2)
 print 'bundles DB: %s; user: %s' % (bundles_db, bundles_user)
 
 # Email
-recipient = config['admin-email']
-sender_info = config['email']
+recipient = config.get('admin-email')
+sender_info = config.get('email')
 
 # Create backup directory
 if not os.path.exists(args.backup_path):
@@ -65,6 +65,11 @@ report = []  # Build up the current report to send in an email
 
 # message is a list
 def send_email(subject, message):
+    # Not enough information to send email
+    if not recipient or not sender_info:
+        print 'send_email; subject: %s; message contains %d lines' % (subject, len(message))
+        return
+
     sender_host = sender_info['host']
     sender_user = sender_info['user']
     sender_password = sender_info['password']
@@ -83,7 +88,9 @@ def send_email(subject, message):
     s.quit()
 
 def get_date():
-    return datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+    # Only save a backup for every month
+    return datetime.datetime.now().strftime('%Y-%m')
+    #return datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
 
 def log(line, newline=True):
     line = '[%s] %s' % (get_date(), line)
@@ -100,18 +107,21 @@ def logs(s):
     for line in s.split('\n'):
         log(line)
 
-def is_power_of_two(n):
-    while n % 2 == 0:
-        n /= 2
-    return n == 1
-
 num_errors = defaultdict(int)
+last_sent = defaultdict(int)
 def error_logs(error_type, s):
     logs(s)
+
     num_errors[error_type] += 1
     n = num_errors[error_type]
-    if is_power_of_two(n):  # Send email only on powers of two to prevent sending too many emails
+
+    last_t = last_sent[error_type]
+    t = time.time()
+
+    # Send email only every 4 hours
+    if t > last_t + 60*60*4:
         send_email('%s [%d times]' % (error_type, n), s.split('\n'))
+        last_sent[error_type] = t
 
 durations = defaultdict(list)  # Command => durations for that command
 def run_command(args, soft_time_limit=5, hard_time_limit=60, include_output=True):
@@ -135,16 +145,19 @@ def run_command(args, soft_time_limit=5, hard_time_limit=60, include_output=True
     average_duration = sum(l) / len(l)
     max_duration = max(l)
 
+    # Abstract away the concrete uuids
+    simple_args = ['0x*' if arg.startswith('0x') else arg for arg in args]
+
     message = '>> %s (exit code %s, time %.2fs [limit: %ds,%ds]; avg %.2fs; max %.2fs)\n%s' % \
         (' '.join(args), exitcode, duration, soft_time_limit, hard_time_limit,
         average_duration, max_duration, output if include_output else '')
     if exitcode == 0:
         logs(message)
     else:
-        error_logs('command failed: ' + ' '.join(args), message)
+        error_logs('command failed: ' + ' '.join(simple_args), message)
 
     if duration > soft_time_limit:
-        error_logs('command too slow: ' + ' '.join(args), message)
+        error_logs('command too slow: ' + ' '.join(simple_args), message)
 
     return output.rstrip()
 
@@ -166,13 +179,22 @@ def backup_db(db, user, password):
         print >>f, '[client]'
         print >>f, 'user="%s"' % user
         print >>f, 'password="%s"' % password
-    run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s > %s/%s-%s.mysqldump' % \
+    run_command(['bash', '-c', 'mysqldump --defaults-file=%s %s | gzip > %s/%s-%s.mysqldump.gz' % \
         (mysql_conf_path, db, args.backup_path, db, date)],
-        600, 600)  # Back-up might take a while.
+        600, 600)  # Backup might take a while.
     os.unlink(mysql_conf_path)
 
+def check_disk_space(path):
+    result = int(run_command(['df', path]).split('\n')[1].split()[3])
+    # Flag an error if disk space running low
+    if result < 1000 * 1024:
+        error_logs('low disk space', 'Only %s MB of disk space left!' % (result / 1024))
+
+# Make sure we can connect (might prompt for username/password)
+if subprocess.call(['cl', 'work', 'localhost::']) != 0:
+    sys.exit(1)
+
 # Begin monitoring loop
-run_command(['cl', 'work', 'local::'])
 while True:
     del report[:]
     if ping_time():
@@ -186,9 +208,8 @@ while True:
 
         # Check remaining disk space
         if ping_time():
-            result = int(run_command(['df', os.path.join(args.codalab_home, 'bundles')]).split('\n')[1].split()[3])
-            if result < 500 * 1024:  # Less than 500 MB, start to worry
-                error_logs('low disk space', 'Only %s MB of disk space left!' % (result / 1024))
+            check_disk_space('/')
+            check_disk_space(os.path.join(args.codalab_home, 'bundles'))
 
         # Get statistics on bundles
         if ping_time():
@@ -210,6 +231,7 @@ while True:
             uuid = run_command(['cl', 'run', 'stress-test.pl:' + upload_uuid, 'perl stress-test.pl 5 10 10'])
             run_command(['cl', 'wait', uuid], 30, 300)  # Running might take a while
             run_command(['cl', 'rm', upload_uuid, uuid])
+
     except Exception, e:
         error_logs('exception', 'Exception: %s' % e)
 

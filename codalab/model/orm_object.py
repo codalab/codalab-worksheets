@@ -12,8 +12,8 @@ import datetime
 class ORMObject(object):
     COLUMNS = None
 
-    def __init__(self, row):
-        self.update_in_memory(dict(row), strict=True)
+    def __init__(self, row, strict=True):
+        self.update_in_memory(dict(row), strict=strict)
 
     def update_in_memory(self, row, strict=False):
         '''
@@ -30,13 +30,16 @@ class ORMObject(object):
             precondition(key in self.COLUMNS or key == 'id', message)
             setattr(self, key, value)
 
-    def to_dict(self):
+    def to_dict(self, strict=True):
         '''
         Return a JSON-serializable and database-uploadable dictionary that
         represents this object.
+
+        If strict is True, checks that all columns are set in this object.
         '''
         result = {}
         for column in self.COLUMNS:
+            if not strict and not hasattr(self, column): continue
             value = getattr(self, column)
             # Note: DateTime doesn't serialize, so replace it with string.
             if isinstance(value, datetime.datetime):

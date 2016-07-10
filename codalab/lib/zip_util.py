@@ -2,6 +2,7 @@
 zip_util provides helpers for unzipping a few standard archive types when
 the user uploads an archive of a known type.
 """
+from fnmatch import fnmatch
 import os
 import shutil
 import subprocess
@@ -9,8 +10,13 @@ import tarfile
 import tempfile
 
 from codalab.common import UsageError
-from codalab.lib import path_util, file_util
-from worker.file_util import un_tar_directory, un_gzip_stream
+from codalab.lib import path_util
+from worker.file_util import (
+    gzip_file,
+    tar_gzip_directory,
+    un_gzip_stream,
+    un_tar_directory,
+)
 
 
 # Files with these extensions are considered archive.
@@ -85,3 +91,89 @@ def unpack(ext, source, dest_path):
         finally:
             if delete_source:
                 path_util.remove(source)
+
+
+def pack_files_for_upload(sources, should_unpack, follow_symlinks,
+                          exclude_patterns=None, force_compression=False):
+    """
+    Create a single flat tarfile containing all the sources.
+    Caller is responsible for closing the returned fileobj.
+
+    Note: It may be possible to achieve additional speed gains on certain
+    cases if we disable compression when tar-ing directories. But for now,
+    force_compression only affects the case of single, uncompressed files.
+
+    :param sources: list of paths to files to pack
+    :param should_unpack: will unpack archives iff True
+    :param follow_symlinks: will follow symlinks if True else behavior undefined
+    :param exclude_patterns: list of glob patterns for files to ignore, or
+                             None to include all files
+    :param force_compression: True to always use compression
+    :return: 4-tuple with fileobj, filename, filesize (or None if unknown),
+             should_unpack_at_server
+    """
+    exclude_patterns = exclude_patterns or []
+
+    def resolve_source(source):
+        # Resolve symlink if desired
+        resolved_source = source
+        if follow_symlinks:
+            resolved_source = os.path.realpath(source)
+            if not os.path.exists(resolved_source):
+                raise UsageError('Broken symlink')
+        elif os.path.islink(source):
+            raise UsageError('Not following symlinks.')
+        return resolved_source
+
+    sources = map(resolve_source, sources)
+
+    # For efficiency, return single files and directories directly
+    if len(sources) == 1:
+        source = sources[0]
+        filename = os.path.basename(source)
+        if os.path.isdir(sources[0]):
+            archived = tar_gzip_directory(
+                source, follow_symlinks=follow_symlinks,
+                exclude_patterns=exclude_patterns)
+            return archived, filename + '.tar.gz', None, True
+        elif path_is_archive(source):
+            return open(source), filename, os.path.getsize(source), should_unpack
+        elif force_compression:
+            return gzip_file(source), filename + '.gz', None, True
+        else:
+            return open(source), filename, os.path.getsize(source), False
+
+    # Build archive file incrementally from all sources
+    # TODO: For further optimization, could either uses a temporary named pipe
+    # or a wrapper around a TemporaryFile to concurrently write to the tarfile
+    # while the REST client reads and sends it to the server. At the moment,
+    # we wait for the tarfile to be created until we rewind and pass the file
+    # to the client to be sent to the server.
+    scratch_dir = tempfile.mkdtemp()
+    archive_fileobj = tempfile.SpooledTemporaryFile()
+    archive = tarfile.open(name='we', mode='w:gz', fileobj=archive_fileobj)
+
+    def should_exclude(fn):
+        basefn = os.path.basename(fn)
+        return any(fnmatch(basefn, p) for p in exclude_patterns)
+
+    for source in sources:
+        if should_unpack and path_is_archive(source):
+            # Unpack archive into scratch space
+            dest_basename = strip_archive_ext(os.path.basename(source))
+            dest_path = os.path.join(scratch_dir, dest_basename)
+            unpack(get_archive_ext(source), source, dest_path)
+
+            # Add file or directory to archive
+            archive.add(dest_path, arcname=dest_basename, recursive=True)
+        else:
+            # Add file to archive, or add files recursively if directory
+            archive.add(source, arcname=os.path.basename(source),
+                        recursive=True, exclude=should_exclude)
+
+    # Clean up, rewind archive file, and return it
+    archive.close()
+    shutil.rmtree(scratch_dir)
+    filesize = archive_fileobj.tell()
+    archive_fileobj.seek(0)
+    return archive_fileobj, 'contents.tar.gz', filesize, True

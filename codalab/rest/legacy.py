@@ -211,15 +211,13 @@ class BundleService(object):
                 for bundle_info in infos:
                     if bundle_info is None:
                         continue
+                    if 'bundle_type' not in bundle_info:
+                        continue  # empty info: invalid bundle reference
                     if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
                         target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
                         bundle_info['target_info'] = target_info
-                    try:
-                        if isinstance(bundle_info, dict):
-                            worksheet_util.format_metadata(bundle_info.get('metadata'))
-                    except Exception, e:
-                        print e
-                        import ipdb; ipdb.set_trace()
+                    if isinstance(bundle_info, dict):
+                        worksheet_util.format_metadata(bundle_info.get('metadata'))
         if bundle_uuids:
             return {'items': worksheet_info['items']}
         return worksheet_info

@@ -9,6 +9,24 @@ import formatting
 import urllib2
 import subprocess
 
+
+def tracked(fileobj, progress_callback):
+    class WrappedFile(object):
+        def __init__(self):
+            self.bytes_read = 0
+
+        def read(self, num_bytes=None):
+            buf = fileobj.read(num_bytes)
+            self.bytes_read += len(buf)
+            progress_callback(self.bytes_read)
+            return buf
+
+        def close(self):
+            return fileobj.close()
+
+    return WrappedFile()
+
+
 def copy(source, dest, autoflush=True, print_status=None):
     """
     Read from the source file handle and write the data to the dest file handle.
