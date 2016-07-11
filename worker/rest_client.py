@@ -39,7 +39,8 @@ class RestClient(object):
         if headers is None:
             headers = {}
 
-        if authorized:
+        access_token = self._get_access_token()
+        if authorized and access_token:
             headers['Authorization'] = 'Bearer ' + self._get_access_token()
 
         if data is not None and isinstance(data, dict):
