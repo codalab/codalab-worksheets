@@ -12,6 +12,7 @@ from codalab.common import http_error_to_exception, precondition
 from codalab.objects.permission import (
     unique_group,
 )
+from codalab.objects.user import User
 
 
 def get_resource_ids(document, type_):
@@ -51,12 +52,18 @@ def local_bundle_client_compatible(f):
         client = kwargs.pop('client', None)
         try:
             # Test to see if request context is initialized
-            _ = request.user
+            _ = request.user.user_id
         except (AttributeError, RuntimeError):
             # Request context not initialized: we are NOT in a Bottle app
             # Fabricate a thread-local context for LocalBundleClient
             if client is not None:
-                user = client.model.get_user(user_id=client._current_user_id())
+                user_id = client._current_user_id()
+                # User will be None if not logged in (a 'public' user)
+                from codalab.objects.user import PUBLIC_USER
+                if user_id is None:
+                    user = PUBLIC_USER
+                else:
+                    user = client.model.get_user(user_id=user_id)
                 local_bundle_client_context.local = client
                 local_bundle_client_context.request = DummyRequest(user)
 
