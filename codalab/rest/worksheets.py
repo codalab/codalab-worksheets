@@ -1,6 +1,6 @@
 import os
 
-from codalab.common import UsageError
+from codalab.common import PermissionError, UsageError
 from codalab.lib import (
     canonicalize,
     spec_util,
@@ -10,6 +10,7 @@ from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import (
     check_worksheet_has_all_permission,
 )
+from codalab.objects.user import PUBLIC_USER
 from codalab.objects.worksheet import Worksheet
 from codalab.rest.util import (
     local_bundle_client_compatible,
@@ -68,6 +69,8 @@ def new_worksheet(local, request, name):
     """
     Create a new worksheet with the given |name|.
     """
+    if request.user is PUBLIC_USER:
+        raise PermissionError("You must be logged in to create a worksheet.")
     ensure_unused_worksheet_name(name)
 
     # Don't need any permissions to do this.
