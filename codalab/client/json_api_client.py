@@ -108,16 +108,21 @@ class JsonApiClient(RestClient):
         if params is None:
             return None
 
+        def _escape_param(param):
+            if isinstance(param, bool):
+                return int(param)
+            if isinstance(param, (int, long, float)):
+                return param
+            if isinstance(param, (str, unicode)):
+                return unicode(param).replace('\\', '\\B').replace(',', '\\C')
+            raise NotImplementedError("Data type {} is not supported.".format(type(param)))
+
         result = {}
         for k, v in (params.iteritems() if isinstance(params, dict) else params):
             if isinstance(v, list):
-                result[k] = ','.join(
-                        unicode(x).replace('\\', '\\B').replace(',', '\\C')
-                        for x in v)
-            elif isinstance(v, bool):
-                result[k] = int(v)
+                result[k] = ','.join(unicode(_escape_param(x)) for x in v)
             else:
-                result[k] = v
+                result[k] = _escape_param(v)
         return result
 
     @staticmethod

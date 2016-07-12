@@ -25,17 +25,26 @@ class JsonApiClientTest(unittest.TestCase):
             'str': 'stringy',
             'true': 1,
             'false': 0,
-            'list': '1,2,3.3,True'
+            'list': '1,2,3.3,1'
+        })
+
+        self.assertDictEqual(JsonApiClient._pack_params({
+            'trickystring': r'this has , commas ,,\\\,\, and backslashes',
+            'trickylist': [1, 3, False, ',', r',\C\B', r'\\,\,']
+        }), {
+            'trickystring': r'this has \C commas \C\C\B\B\B\C\B\C and backslashes',
+            'trickylist': r'1,3,0,\C,\C\BC\BB,\B\B\C\B\C'
         })
 
         with self.assertRaises(NotImplementedError):
             JsonApiClient._pack_params({
-                'listwithcomma': ['this is fine', 'this, is, not']
+                'listinlist': [['nested', 'lists', 'is'], 'bad']
             })
 
         with self.assertRaises(NotImplementedError):
             JsonApiClient._pack_params({
-                'listinlist': [['nested', 'lists', 'also', 'bad']]
+                # Should raise an exception even when a comma is not present
+                'listinlist': [['bad']]
             })
 
 
