@@ -2113,7 +2113,7 @@ class BundleCLI(object):
         elif args.item_type == 'worksheet':
             for worksheet_spec in args.item_spec:
                 source_client, worksheet_spec = self.parse_spec(worksheet_spec)
-                if source_client is not dest_client:
+                if source_client.address != dest_client.address:
                     raise UsageError("You cannot add worksheet links across instances.")
 
                 # a base_worksheet_uuid is only applicable if we're on the source client
