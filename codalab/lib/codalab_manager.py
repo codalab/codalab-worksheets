@@ -400,6 +400,7 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
+    # TODO(sckoo): remove when REST migration complete
     def derive_rest_address(self, address):
         """
         Given bundle service address, return corresponding REST address
@@ -426,6 +427,9 @@ class CodaLabManager(object):
             # CodaLab instance behind an SSH tunnel
             address = address.replace(str(self.config['server']['port']),
                                       str(self.config['server']['rest_port']))
+        elif o.hostname == 'localhost' and o.port == 3800:
+            # Hard-coded for test-cli, which uses these ports for aux servers
+            address = address.replace('3800', '3900')
         elif (o.netloc == 'worksheets.codalab.org' or
                       o.netloc == 'worksheets-test.codalab.org'):
             # http://worksheets.codalab.org/bundleservice => http://worksheets.codalab.org
@@ -454,6 +458,8 @@ class CodaLabManager(object):
         # JsonApiClient, and remove all use_rest kwargs.
         # Users should also then update their aliases to point at the
         # correct addresses of the REST servers.
+        # Use non-rest address as key in credential cache to prevent duplicates
+        auth_cache_key = address
         if use_rest:
             address = self.derive_rest_address(address)
 
@@ -472,7 +478,7 @@ class CodaLabManager(object):
             # Create JsonApiClient with a callback to get access tokens
             from codalab.client.json_api_client import JsonApiClient
             client = JsonApiClient(
-                address, lambda: self._authenticate(address, auth_handler))
+                address, lambda: self._authenticate(auth_cache_key, auth_handler))
         elif is_local_address(address):
             # if local force mockauth or if local server use correct auth
             bundle_store = self.bundle_store()
@@ -486,13 +492,13 @@ class CodaLabManager(object):
             client = LocalBundleClient(address, bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
             if is_cli:
                 # Set current user
-                access_token = self._authenticate(client.address, client.auth_handler)
+                access_token = self._authenticate(auth_cache_key, client.auth_handler)
                 auth_handler.validate_token(access_token)
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
 
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(a_client.address, a_client), self.cli_verbose)
-            self._authenticate(client.address, client)
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(auth_cache_key, a_client), self.cli_verbose)
+            self._authenticate(auth_cache_key, client)
 
         # Cache and return client
         self.clients[address] = client
@@ -502,17 +508,18 @@ class CodaLabManager(object):
     def cli_verbose(self):
         return self.config.get('cli', {}).get('verbose')
 
-    def _authenticate(self, address, auth_handler):
-        '''
+    def _authenticate(self, cache_key, auth_handler):
+        """
         Authenticate with the given client. This will prompt user for password
         unless valid credentials are already available. Client state will be
         updated if new tokens are generated.
 
-        client: The client pointing to the bundle service to authenticate with.
-
-        Returns an access token.
-        '''
-        auth = self.state['auth'].get(address, {})
+        :param cache_key: key by which to cache the access token, typically
+                          the address of the CodaLab instance
+        :param auth_handler: AuthHandler through which to authenticate
+        :return: access token
+        """
+        auth = self.state['auth'].get(cache_key, {})
         def _cache_token(token_info, username=None):
             '''
             Helper to update state with new token info and optional username.
@@ -544,17 +551,17 @@ class CodaLabManager(object):
                 return _cache_token(token_info)
 
         # If we get here, a valid token is not already available.
-        auth = self.state['auth'][address] = {}
+        auth = self.state['auth'][cache_key] = {}
 
         # For a local client with mock credentials, use the default username.
-        if is_local_address(address):
+        if is_local_address(cache_key):
             username = self.root_user_name()
             password = ''
         else:
             username = os.environ.get('CODALAB_USERNAME')
             password = os.environ.get('CODALAB_PASSWORD')
             if username is None or password is None:
-                print 'Requesting access at %s' % address
+                print 'Requesting access at %s' % cache_key
             if username is None:
                 sys.stdout.write('Username: ')  # Use write to avoid extra space
                 username = sys.stdin.readline().rstrip()

@@ -7,6 +7,7 @@ import threading
 import time
 import traceback
 
+from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.common import State
 from codalab.lib import bundle_util, formatting, path_util
 from worker.file_util import remove_path
