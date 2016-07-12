@@ -103,23 +103,26 @@ class JsonApiClient(RestClient):
     def _pack_params(params):
         """
         Process lists into comma-separated strings, and booleans into 1/0.
-        Does not currently support lists with strings that contain commas.
+        Escape comma as backslash-C and backslash as backslash-B.
         """
         if params is None:
             return None
 
+        def _escape_param(param):
+            if isinstance(param, bool):
+                return int(param)
+            if isinstance(param, (int, long, float)):
+                return param
+            if isinstance(param, (str, unicode)):
+                return unicode(param).replace('\\', '\\B').replace(',', '\\C')
+            raise NotImplementedError("Data type {} is not supported.".format(type(param)))
+
         result = {}
         for k, v in (params.iteritems() if isinstance(params, dict) else params):
             if isinstance(v, list):
-                v = map(unicode, v)
-                if any(',' in e for e in v):
-                    raise NotImplementedError(
-                        "Commas in list elements not currently supported.")
-                result[k] = ','.join(v)
-            elif isinstance(v, bool):
-                result[k] = int(v)
+                result[k] = ','.join(unicode(_escape_param(x)) for x in v)
             else:
-                result[k] = v
+                result[k] = _escape_param(v)
         return result
 
     @staticmethod
