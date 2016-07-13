@@ -71,7 +71,7 @@ def run_command(args, expected_exit_code=0):
     except subprocess.CalledProcessError, e:
         output = e.output
         exitcode = e.returncode
-    print ' (exit code %s, expected %s)' % (exitcode, expected_exit_code)
+    print Colorizer.cyan(' (exit code %s, expected %s)' % (exitcode, expected_exit_code))
     print sanitize(output)
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
@@ -113,6 +113,32 @@ def wait_until_substring(fp, substr):
         if substr in line:
             return
 
+
+class Colorizer:
+    RED = "\033[31;1m"
+    GREEN = "\033[32;1m"
+    YELLOW = "\033[33;1m"
+    CYAN = "\033[36;1m"
+    RESET = "\033[0m"
+    NEWLINE = "\n"
+
+    @classmethod
+    def _colorize(cls, string, color):
+        return getattr(cls, color) + string + cls.RESET + cls.NEWLINE
+
+    @classmethod
+    def red(cls, string): return cls._colorize(string, "RED")
+
+    @classmethod
+    def green(cls, string): return cls._colorize(string, "GREEN")
+
+    @classmethod
+    def yellow(cls, string): return cls._colorize(string, "YELLOW")
+
+    @classmethod
+    def cyan(cls, string): return cls._colorize(string, "CYAN")
+
+
 class ModuleContext(object):
     '''ModuleContext objects manage the context of a test module.
 
@@ -131,8 +157,7 @@ class ModuleContext(object):
 
     def __enter__(self):
         '''Prepares clean environment for test module.'''
-        print 'SWITCHING TO TEMPORARY WORKSHEET'
-        print
+        print Colorizer.yellow("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
 
         self.original_environ = os.environ.copy()
         self.original_worksheet = run_command([cl, 'work', '-u'])
@@ -140,8 +165,7 @@ class ModuleContext(object):
         self.worksheets.append(temp_worksheet)
         run_command([cl, 'work', temp_worksheet])
 
-        print 'BEGIN TEST'
-        print
+        print Colorizer.yellow("[*][*] BEGIN TEST")
 
         return self
 
@@ -151,19 +175,17 @@ class ModuleContext(object):
         if exc_type is not None:
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
-                print 'ERROR: %s' % exc_value.message
+                print Colorizer.red("[!] ERROR: %s" % exc_value.message)
             elif exc_type is KeyboardInterrupt:
-                print 'Caught interrupt! Quitting after cleanup...'
+                print Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup.")
             else:
-                print 'ERROR: Test raised an exception!'
+                print Colorizer.red("[!] ERROR: Test raised an exception!")
                 traceback.print_exception(exc_type, exc_value, tb)
         else:
-            print 'TEST PASSED'
-        print
+            print Colorizer.green("[*] TEST PASSED")
 
         # Clean up and restore original worksheet
-        print 'CLEANING UP'
-        print
+        print Colorizer.yellow("[*][*] CLEANING UP")
         os.environ.clear()
         os.environ.update(self.original_environ)
 
@@ -233,20 +255,21 @@ class TestModule(object):
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
-                print 'Could not find module %s' % name
-                print 'Modules: all ' + ' '.join(cls.modules.keys())
+                print Colorizer.yellow("[!] Could not find module %s" % name)
+                print Colorizer.yellow("[*] Modules: all %s" % " ".join(
+                                     cls.modules.keys()))
                 sys.exit(1)
 
-        print 'Running modules ' + ' '.join([m.name for m in modules_to_run])
-        print
+        print Colorizer.yellow("[*][*] Running modules %s" % " ".join(
+                             [m.name for m in modules_to_run]))
 
         # Run modules, continuing onto the next test module regardless of failure
         failed = []
         for module in modules_to_run:
-            print '============= BEGIN MODULE: ' + module.name
+            print Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name)
             if module.description is not None:
-                print 'DESCRIPTION: ' + module.description
-            print
+                print Colorizer.yellow("[*][*] DESCRIPTION: %s" %
+                                       module.description)
 
             with ModuleContext() as ctx:
                 module.func(ctx)
@@ -255,12 +278,12 @@ class TestModule(object):
                 failed.append(module.name)
 
         # Provide a (currently very rudimentary) summary
-        print '============= SUMMARY'
+        print Colorizer.yellow("[*][*][*] SUMMARY")
         if failed:
-            print 'Tests failed: %s' % ', '.join(failed)
+            print Colorizer.red("[!][!] Tests failed: %s" % ", ".join(failed))
             return False
         else:
-            print 'All tests passed.'
+            print Colorizer.green("[*][*] All tests passed!")
             return True
 
 ############################################################
@@ -779,7 +802,7 @@ def test(ctx):
     # Switched to worksheet http://localhost:2800::home-pliang(0x87a7a7ffe29d4d72be9b23c745adc120).
     m = re.search('(http[^\(]+)', run_command([cl, 'work']))
     if not m:
-        print 'Not a remote instance, skipping test.'
+        print Colorizer.yellow("[!] Not a remote instance, skipping test.")
         return
     source_worksheet = m.group(1)
 
