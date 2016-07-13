@@ -1,56 +1,63 @@
 #!/usr/bin/env python
-'''
+"""
 Tests all the CLI functionality end-to-end.
 
-Tests will operate on temporary worksheets created during testing.  In theory, it
-shouldn't mutate preexisting data on your instance, but this is not guaranteed,
-and you should run this command in an unimportant CodaLab account.
+Tests will operate on temporary worksheets created during testing.  In theory,
+it should not mutate preexisting data on your instance, but this is not
+guaranteed, and you should run this command in an unimportant CodaLab account.
 
-For full coverage of testing, be sure to run this over a remote connection (i.e. while
-connected to localhost::) in addition to local testing, in order to test the full RPC
-pipeline, and also as a non-root user, to hammer out unanticipated permission issues.
+For full coverage of testing, be sure to run this over a remote connection (i.e.
+while connected to localhost::) in addition to local testing, in order to test
+the full RPC pipeline, and also as a non-root user, to hammer out unanticipated
+permission issues.
 
 Things not tested:
 - Interactive modes (cl edit, cl wedit)
 - Permissions
-'''
-from contextlib import contextmanager
-import json
-import subprocess
-import sys
-import re
-import os
-import shutil
-import random
-import time
-import traceback
+"""
+from __future__ import print_function
 from collections import OrderedDict
 
-cl = 'codalab/bin/cl'
-base_path = os.path.dirname(os.path.abspath(__file__))  # Directory where this script lives.
+import os
+import random
+import re
+import shutil
+import subprocess
+import sys
+import time
+import traceback
 
+
+cl = 'codalab/bin/cl'
+# Directory where this script lives.
+base_path = os.path.dirname(os.path.abspath(__file__))
 crazy_name = 'crazy ("ain\'t it?")'
 
+
 def test_path(name):
-    """
-    Return the path to the test file |name|.
-    """
+    """Return the path to the test file ``name``."""
     return os.path.join(base_path, 'tests', 'files', name)
 
 # Note: when we talk about contents, we always apply rstrip() even if it's a
 # binary file.  This is fine as long as we're consistent about doing rstrip()
 # everywhere to test for equality.
+
+
 def test_path_contents(name):
     return path_contents(test_path(name))
+
 
 def path_contents(path):
     return open(path).read().rstrip()
 
+
 def temp_path(suffix):
     return os.path.join(base_path, random_name() + suffix)
 
+
 def random_name():
     return 'temp-test-cli-' + str(random.randint(0, 1000000))
+
 
 def sanitize(string):
     try:
@@ -62,6 +69,7 @@ def sanitize(string):
     except UnicodeDecodeError:
         return '<binary>\n'
 
+
 def run_command(args, expected_exit_code=0):
     sys.stdout.write('>> %s' % ' '.join(args))
 
@@ -71,24 +79,29 @@ def run_command(args, expected_exit_code=0):
     except subprocess.CalledProcessError, e:
         output = e.output
         exitcode = e.returncode
-    print Colorizer.cyan(' (exit code %s, expected %s)' % (exitcode, expected_exit_code))
-    print sanitize(output)
+    print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+    print(sanitize(output))
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
+
 def get_info(uuid, key):
     return run_command([cl, 'info', '-f', key, uuid])
+
 
 def wait_until_running(uuid):
     while get_info(uuid, 'state') != 'running':
         time.sleep(0.5)
 
+
 def wait(uuid, expected_exit_code=0):
     run_command([cl, 'wait', uuid], expected_exit_code)
+
 
 def check_equals(true_value, pred_value):
     assert true_value == pred_value, "expected '%s', but got '%s'" % (true_value, pred_value)
     return pred_value
+
 
 def check_contains(true_value, pred_value):
     if isinstance(true_value, list):
@@ -99,10 +112,12 @@ def check_contains(true_value, pred_value):
             "expected something that contains '%s', but got '%s'" % (true_value, pred_value)
     return pred_value
 
+
 def check_num_lines(true_value, pred_value):
     num_lines = len(pred_value.split('\n'))
     assert num_lines == true_value, "expected %d lines, but got %s" % (true_value, num_lines)
     return pred_value
+
 
 def wait_until_substring(fp, substr):
     """
@@ -140,14 +155,15 @@ class Colorizer:
 
 
 class ModuleContext(object):
-    '''ModuleContext objects manage the context of a test module.
+    """ModuleContext objects manage the context of a test module.
 
     Instances of ModuleContext are meant to be used with the Python
     'with' statement (PEP 343).
 
     For documentation on with statement context managers:
     https://docs.python.org/2/reference/datamodel.html#with-statement-context-managers
-    '''
+    """
+
     def __init__(self):
         # These are the temporary worksheets and bundles that need to be
         # cleaned up at the end of the test.
@@ -156,8 +172,8 @@ class ModuleContext(object):
         self.error = None
 
     def __enter__(self):
-        '''Prepares clean environment for test module.'''
-        print Colorizer.yellow("[*][*] SWITCHING TO TEMPORARY WORKSHEET")
+        """Prepares clean environment for test module."""
+        print(Colorizer.yellow("[*][*] SWITCHING TO TEMPORARY WORKSHEET"))
 
         self.original_environ = os.environ.copy()
         self.original_worksheet = run_command([cl, 'work', '-u'])
@@ -165,27 +181,27 @@ class ModuleContext(object):
         self.worksheets.append(temp_worksheet)
         run_command([cl, 'work', temp_worksheet])
 
-        print Colorizer.yellow("[*][*] BEGIN TEST")
+        print(Colorizer.yellow("[*][*] BEGIN TEST"))
 
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
-        '''Tears down temporary environment for test module.'''
+        """Tears down temporary environment for test module."""
         # Check for and handle exceptions if any
         if exc_type is not None:
             self.error = (exc_type, exc_value, tb)
             if exc_type is AssertionError:
-                print Colorizer.red("[!] ERROR: %s" % exc_value.message)
+                print(Colorizer.red("[!] ERROR: %s" % exc_value.message))
             elif exc_type is KeyboardInterrupt:
-                print Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup.")
+                print(Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup."))
             else:
-                print Colorizer.red("[!] ERROR: Test raised an exception!")
+                print(Colorizer.red("[!] ERROR: Test raised an exception!"))
                 traceback.print_exception(exc_type, exc_value, tb)
         else:
-            print Colorizer.green("[*] TEST PASSED")
+            print(Colorizer.green("[*] TEST PASSED"))
 
         # Clean up and restore original worksheet
-        print Colorizer.yellow("[*][*] CLEANING UP")
+        print(Colorizer.yellow("[*][*] CLEANING UP"))
         os.environ.clear()
         os.environ.update(self.original_environ)
 
@@ -205,19 +221,20 @@ class ModuleContext(object):
             return True
 
     def collect_worksheet(self, uuid):
-        '''Mark a worksheet for cleanup on exit.'''
+        """Mark a worksheet for cleanup on exit."""
         self.worksheets.append(uuid)
 
     def collect_bundle(self, uuid):
-        '''Mark a bundle for cleanup on exit.'''
+        """Mark a bundle for cleanup on exit."""
         self.bundles.append(uuid)
 
+
 class TestModule(object):
-    '''Instances of TestModule each encapsulate a test module and its metadata.
+    """Instances of TestModule each encapsulate a test module and its metadata.
 
     The class itself also maintains a registry of the existing modules, providing
     a decorator to register new modules and a class method to run modules by name.
-    '''
+    """
     modules = OrderedDict()
 
     def __init__(self, name, func, description):
@@ -227,23 +244,23 @@ class TestModule(object):
 
     @classmethod
     def register(cls, name):
-        '''Returns a decorator to register new test modules.
+        """Returns a decorator to register new test modules.
 
         The decorator will add a given function as test modules to the registry
         under the name provided here. The function's docstring (PEP 257) will
         be used as the prose description of the test module.
-        '''
+        """
         def add_module(func):
             cls.modules[name] = TestModule(name, func, func.__doc__)
         return add_module
 
     @classmethod
     def run(cls, query):
-        '''Run the modules named in query.
+        """Run the modules named in query.
 
         query should be a list of strings, each of which is either 'all'
         or the name of an existing test module.
-        '''
+        """
         # Might prompt user for password
         subprocess.call([cl, 'work'])
 
@@ -255,21 +272,22 @@ class TestModule(object):
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
-                print Colorizer.yellow("[!] Could not find module %s" % name)
-                print Colorizer.yellow("[*] Modules: all %s" % " ".join(
-                                     cls.modules.keys()))
+                print(Colorizer.yellow("[!] Could not find module %s" % name))
+                print(Colorizer.yellow("[*] Modules: all %s" % " ".join(
+                                     cls.modules.keys())))
                 sys.exit(1)
 
-        print Colorizer.yellow("[*][*] Running modules %s" % " ".join(
-                             [m.name for m in modules_to_run]))
+        print(Colorizer.yellow("[*][*] Running modules %s" % " ".join(
+                             [m.name for m in modules_to_run])))
 
-        # Run modules, continuing onto the next test module regardless of failure
+        # Run modules, continuing onto the next test module regardless of
+        # failure
         failed = []
         for module in modules_to_run:
-            print Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name)
+            print(Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name))
             if module.description is not None:
-                print Colorizer.yellow("[*][*] DESCRIPTION: %s" %
-                                       module.description)
+                print(Colorizer.yellow("[*][*] DESCRIPTION: %s" %
+                                       module.description))
 
             with ModuleContext() as ctx:
                 module.func(ctx)
@@ -278,20 +296,22 @@ class TestModule(object):
                 failed.append(module.name)
 
         # Provide a (currently very rudimentary) summary
-        print Colorizer.yellow("[*][*][*] SUMMARY")
+        print(Colorizer.yellow("[*][*][*] SUMMARY"))
         if failed:
-            print Colorizer.red("[!][!] Tests failed: %s" % ", ".join(failed))
+            print(Colorizer.red("[!][!] Tests failed: %s" % ", ".join(failed)))
             return False
         else:
-            print Colorizer.green("[*][*] All tests passed!")
+            print(Colorizer.green("[*][*] All tests passed!"))
             return True
 
 ############################################################
 
+
 @TestModule.register('unittest')
 def test(ctx):
-    '''Run nose unit tests'''
+    """Run nose unit tests"""
     run_command(['venv/bin/nosetests'])
+
 
 @TestModule.register('basic')
 def test(ctx):
@@ -326,6 +346,7 @@ def test(ctx):
     uuid = run_command([cl, 'run', 'echo hello'])
     run_command([cl, 'wait', uuid])
     check_contains('0x', get_info(uuid, 'data_hash'))
+
 
 @TestModule.register('upload1')
 def test(ctx):
@@ -376,7 +397,8 @@ def test(ctx):
         if suffix == '.tar.gz':
             run_command(['tar', 'cfz', archive_path, '-C', os.path.dirname(contents_path), os.path.basename(contents_path)])
         else:
-            run_command(['bash', '-c', 'cd %s && zip -r %s %s' % (os.path.dirname(contents_path), archive_path, os.path.basename(contents_path))])
+            run_command(['bash', '-c', 'cd %s && zip -r %s %s' % (os.path.dirname(
+                contents_path), archive_path, os.path.basename(contents_path))])
 
         # Upload it and unpack
         uuid = run_command([cl, 'upload', archive_path])
@@ -395,6 +417,7 @@ def test(ctx):
 
         os.unlink(archive_path)
 
+
 @TestModule.register('upload3')
 def test(ctx):
     # Upload URL
@@ -408,6 +431,7 @@ def test(ctx):
     # Upload URL from Git
     uuid = run_command([cl, 'upload', 'https://github.com/codalab/codalab-cli', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], run_command([cl, 'cat', uuid]))
+
 
 @TestModule.register('upload4')
 def test(ctx):
@@ -425,6 +449,7 @@ def test(ctx):
     # Cleanup
     for archive in archive_exts:
         os.unlink(archive)
+
 
 @TestModule.register('download')
 def test(ctx):
@@ -458,6 +483,7 @@ def test(ctx):
     run_command([cl, 'download', 'not-exists'], 1)
     run_command([cl, 'download', uuid + '/not-exists'], 1)
 
+
 @TestModule.register('refs')
 def test(ctx):
     # Test references
@@ -470,11 +496,13 @@ def test(ctx):
     # / is home worksheet
     check_contains('::home-', run_command([cl, 'ls', '-w', '/']))
 
+
 @TestModule.register('rm')
 def test(ctx):
     uuid = run_command([cl, 'upload', test_path('a.txt')])
     run_command([cl, 'add', 'bundle', uuid, '.'])  # Duplicate
     run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
+
 
 @TestModule.register('make')
 def test(ctx):
@@ -494,6 +522,7 @@ def test(ctx):
     run_command([cl, 'rm', uuid1], 1)  # should fail
     run_command([cl, 'rm', '--force', uuid2])  # force the deletion
     run_command([cl, 'rm', '-r', uuid1])  # delete things downstream
+
 
 @TestModule.register('worksheet')
 def test(ctx):
@@ -526,6 +555,7 @@ def test(ctx):
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
 
+
 @TestModule.register('worksheet_search')
 def test(ctx):
     wname = random_name()
@@ -537,6 +567,7 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% search ' + uuid, '.'])
     run_command([cl, 'add', 'text', '% wsearch ' + wuuid, '.'])
     check_contains([uuid[0:8], wuuid[0:8]], run_command([cl, 'print']))
+
 
 @TestModule.register('worksheet_tags')
 def test(ctx):
@@ -554,6 +585,7 @@ def test(ctx):
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
+
 
 @TestModule.register('freeze')
 def test(ctx):
@@ -575,6 +607,7 @@ def test(ctx):
     run_command([cl, 'wedit', '-t', 'new_title']) # can edit
     run_command([cl, 'wperm', wuuid, 'public', 'a']) # can edit
 
+
 @TestModule.register('detach')
 def test(ctx):
     uuid1 = run_command([cl, 'upload', test_path('a.txt')])
@@ -591,6 +624,7 @@ def test(ctx):
     run_command([cl, 'detach', uuid2]) # State: 1 1
     check_equals(get_info('^', 'uuid'), uuid1)
 
+
 @TestModule.register('perm')
 def test(ctx):
     uuid = run_command([cl, 'upload', test_path('a.txt')])
@@ -598,6 +632,7 @@ def test(ctx):
     check_contains('none', run_command([cl, 'perm', uuid, 'public', 'n']))
     check_contains('read', run_command([cl, 'perm', uuid, 'public', 'r']))
     check_contains('all', run_command([cl, 'perm', uuid, 'public', 'a']))
+
 
 @TestModule.register('search')
 def test(ctx):
@@ -617,6 +652,7 @@ def test(ctx):
     size2 = float(run_command([cl, 'info', '-f', 'data_size', uuid2]))
     check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
 
+
 @TestModule.register('run')
 def test(ctx):
     name = random_name()
@@ -632,6 +668,7 @@ def test(ctx):
     check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
     # block
     check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
+
 
 @TestModule.register('read')
 def test(ctx):
@@ -651,7 +688,7 @@ def test(ctx):
 
         # Info has only the first 10 lines.
         info_output = run_command([cl, 'info', uuid, '--verbose'])
-        print info_output
+        print(info_output)
         check_contains('passwd', info_output)
         check_contains('This is a simple text file for CodaLab.', info_output)
         assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
@@ -682,6 +719,7 @@ def test(ctx):
             run_command([cl, 'kill', uuid])
             wait(uuid, 1)
 
+
 @TestModule.register('kill')
 def test(ctx):
     uuid = run_command([cl, 'run', 'sleep 1000'])
@@ -690,6 +728,7 @@ def test(ctx):
     run_command([cl, 'wait', uuid], 1)
     run_command([cl, 'wait', uuid], 1)
     check_equals(str([u'kill']), get_info(uuid, 'actions'))
+
 
 @TestModule.register('write')
 def test(ctx):
@@ -702,9 +741,11 @@ def test(ctx):
     check_equals('hello world', run_command([cl, 'cat', target]))
     check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
 
+
 @TestModule.register('mimic')
 def test(ctx):
     name = random_name()
+
     def data_hash(uuid):
         run_command([cl, 'wait', uuid])
         return get_info(uuid, 'data_hash')
@@ -719,11 +760,13 @@ def test(ctx):
     uuid6 = run_command([cl, 'macro', name, uuid3, '-n', 'new'])
     check_equals(data_hash(uuid2), data_hash(uuid6))
 
+
 @TestModule.register('status')
 def test(ctx):
     run_command([cl, 'status'])
     run_command([cl, 'alias'])
     run_command([cl, 'help'])
+
 
 @TestModule.register('events')
 def test(ctx):
@@ -740,9 +783,10 @@ def test(ctx):
         # Shouldn't be allowed to run unless in local mode.
         run_command([cl, 'events'], 1)
 
+
 @TestModule.register('batch')
 def test(ctx):
-    '''Test batch resolution of bundle uuids'''
+    """Test batch resolution of bundle uuids"""
     wother = random_name()
     bnames = [random_name() for _ in range(2)]
 
@@ -765,10 +809,12 @@ def test(ctx):
     output = run_command([cl, 'info', '-f', 'uuid', buuids[0], bnames[0], bnames[0], buuids[0]])
     check_equals('\n'.join([buuids[0]] * 4), output)
 
+
 @TestModule.register('resources')
 def test(ctx):
-    '''Test whether resource constraints are respected'''
+    """Test whether resource constraints are respected"""
     uuid = run_command([cl, 'upload', 'scripts/stress-test.pl'])
+
     def stress(use_time, request_time, use_memory, request_memory, use_disk, request_disk, expected_exit_code, expected_failure_message):
         run_uuid = run_command([
             cl, 'run', 'main.pl:' + uuid, 'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
@@ -795,14 +841,15 @@ def test(ctx):
     wait(run_command([cl, 'run', 'ping -c 1 google.com']), 1)
     wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
 
+
 @TestModule.register('copy')
 def test(ctx):
-    '''Test copying between instances.'''
+    """Test copying between instances."""
     # Figure out the current instance and use it as the 'remote' instance
     # Switched to worksheet http://localhost:2800::home-pliang(0x87a7a7ffe29d4d72be9b23c745adc120).
     m = re.search('(http[^\(]+)', run_command([cl, 'work']))
     if not m:
-        print Colorizer.yellow("[!] Not a remote instance, skipping test.")
+        print(Colorizer.yellow("[!] Not a remote instance, skipping test."))
         return
     source_worksheet = m.group(1)
 
@@ -893,9 +940,9 @@ def test(ctx):
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        print 'Usage: python %s <module> ... <module>' % sys.argv[0]
-        print 'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
-        print 'Modules: all ' + ' '.join(TestModule.modules.keys())
+        print('Usage: python %s <module> ... <module>' % sys.argv[0])
+        print('This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.')
+        print('Modules: all ' + ' '.join(TestModule.modules.keys()))
     else:
         success = TestModule.run(sys.argv[1:])
         if not success:
