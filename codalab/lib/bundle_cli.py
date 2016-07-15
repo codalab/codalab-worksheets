@@ -2429,14 +2429,17 @@ class BundleCLI(object):
         dest_worksheet_info = dest_client.get_worksheet_info(dest_worksheet_uuid, True)
         dest_items = [] if args.replace else dest_worksheet_info['items']
 
-        # Save all items.
-        dest_client.update_worksheet_items(dest_worksheet_info, dest_items + source_items)
-
-        # Copy over the bundles
-        for item in source_items:
-            (source_bundle_info, source_worksheet_info, value_obj, item_type) = item
-            if item_type == worksheet_util.TYPE_BUNDLE:
-                self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid, copy_dependencies=False, add_to_worksheet=False)
+        copied_items = []
+        try:
+            # Copy over the bundles
+            for item in source_items:
+                (source_bundle_info, source_worksheet_info, value_obj, item_type) = item
+                if item_type == worksheet_util.TYPE_BUNDLE:
+                    self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid, copy_dependencies=False, add_to_worksheet=False)
+                    copied_items.append(item)
+        finally:
+            # Add only and all successfully copied items
+            dest_client.update_worksheet_items(dest_worksheet_info, dest_items + copied_items)
 
         print >>self.stdout, 'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid)
 
