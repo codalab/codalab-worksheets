@@ -35,6 +35,3 @@ ENV PATH=/user/torch/install/bin:$PATH
 ENV LD_LIBRARY_PATH=/user/torch/install/lib:$LD_LIBRARY_PATH
 ENV DYLD_LIBRARY_PATH=/user/torch/install/lib:$DYLD_LIBRARY_PATH
 ENV LUA_CPATH='/user/torch/install/lib/?.so;'$LUA_CPATH
-Source Repository
-  Kaixhin/dockerfiles
-
