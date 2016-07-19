@@ -25,13 +25,10 @@ RUN git clone https://github.com/torch/distro.git /user/torch --recursive && cd 
   bash install-deps && \
   ./install.sh
 
-# Set ~/torch as working directory
-WORKDIR /user/torch
+RUN /user/torch/install/bin/luarocks install nn
 
-# Export environment variables manually
-ENV LUA_PATH='/user/.luarocks/share/lua/5.1/?.lua;/user/.luarocks/share/lua/5.1/?/init.lua;/user/torch/install/share/lua/5.1/?.lua;/user/torch/install/share/lua/5.1/?/init.lua;./?.lua;/user/torch/install/share/luajit-2.1.0-beta1/?.lua;/usr/local/share/lua/5.1/?.lua;/usr/local/share/lua/5.1/?/init.lua'
-ENV LUA_CPATH='/user/.luarocks/lib/lua/5.1/?.so;/user/torch/install/lib/lua/5.1/?.so;./?.so;/usr/local/lib/lua/5.1/?.so;/usr/local/lib/lua/5.1/loadall.so'
-ENV PATH=/user/torch/install/bin:$PATH
-ENV LD_LIBRARY_PATH=/user/torch/install/lib:$LD_LIBRARY_PATH
-ENV DYLD_LIBRARY_PATH=/user/torch/install/lib:$DYLD_LIBRARY_PATH
-ENV LUA_CPATH='/user/torch/install/lib/?.so;'$LUA_CPATH
+# Set ~/torch as working directory
+WORKDIR /user
+
+# These are moved out of the Dockerfile, otherwise CodaLab doesn't load them currently.
+COPY .bashrc /user/.bashrc
