@@ -324,8 +324,9 @@ def test(ctx):
     check_equals('ready\thello', get_info(uuid, 'state,description'))
 
     # edit
-    run_command([cl, 'edit', uuid, '--name', 'a2.txt'])
+    run_command([cl, 'edit', uuid, '--name', 'a2.txt', '--tags', 'c', 'd', 'e'])
     check_equals('a2.txt', get_info(uuid, 'name'))
+    check_contains(['c', 'd', 'e'], get_info(uuid, 'tags'))
 
     # cat, info
     check_equals(test_path_contents('a.txt'), run_command([cl, 'cat', uuid]))
