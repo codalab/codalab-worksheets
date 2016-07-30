@@ -1195,10 +1195,12 @@ class BundleCLI(object):
             'Edit an existing bundle\'s metadata.',
             '  edit           : Popup an editor.',
             '  edit -n <name> : Edit the name metadata field (same for other fields).',
+            '  edit -T <tag> ... <tag> : Set the tags of the bundle (e.g., training-dataset).',
         ],
         arguments=(
             Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, completer=BundlesCompleter),
             Commands.Argument('-n', '--name', help='Change the bundle name (format: %s).' % spec_util.NAME_REGEX.pattern),
+            Commands.Argument('-T', '--tags', help='Change tags (must appear after worksheet_spec).', nargs='*'),
             Commands.Argument('-d', '--description', help='New bundle description.'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
@@ -1222,6 +1224,9 @@ class BundleCLI(object):
             is_new_metadata_updated = True
         if args.description:
             new_metadata['description'] = args.description
+            is_new_metadata_updated = True
+        if args.tags:
+            new_metadata['tags'] = args.tags
             is_new_metadata_updated = True
 
         # Prompt user for all information
