@@ -1708,7 +1708,7 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
-            user_id = user_id or uuid.uuid4().hex
+            user_id = user_id or '0x%s' % uuid.uuid4().hex
 
             connection.execute(cl_user.insert().values({
                 "user_id": user_id,
