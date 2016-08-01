@@ -647,6 +647,7 @@ def test(ctx):
     check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1[0:8]+'%', '-u']))
     check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, 'name='+name, '-u']))
     check_equals(uuid1 + '\n' + uuid2, run_command([cl, 'search', 'name='+name, 'id=.sort', '-u']))
+    check_equals(uuid1 + '\n' + uuid2, run_command([cl, 'search', 'uuid='+uuid1+','+uuid2, 'id=.sort', '-u']))
     check_equals(uuid2 + '\n' + uuid1, run_command([cl, 'search', 'name='+name, 'id=.sort-', '-u']))
     check_equals('2', run_command([cl, 'search', 'name='+name, '.count']))
     size1 = float(run_command([cl, 'info', '-f', 'data_size', uuid1]))
