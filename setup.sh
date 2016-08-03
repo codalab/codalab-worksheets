@@ -4,18 +4,31 @@
 # Exit immediately if any command fails
 set -e
 
+
+# ======================================
+#  COLORS
+# ======================================
+bold="\033[1m"
+reset="\033[0m"
+
+warning="${bold}\033[33m"  # yellow
+info="${bold}\033[36m"     # cyan
+success="${bold}\033[32m"  # green
+# =======================================
+
+
 if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] ); then
   echo "Usage:"
   echo "  $0 [client | server]"
   exit 1
 fi
 
-echo "=== Checking for virtualenv..."
+echo -e "${info}[*] Checking for virtualenv...${reset}"
 if ! which virtualenv; then
-  echo "Python virtualenv is not installed."
-  echo "If you are using Ubuntu, run the following to install:"
+  echo -e "${warning}[!] Python virtualenv is not installed.${reset}"
+  echo -e "${warning}[!] If you are using Ubuntu, run the following to install:${reset}"
   echo
-  echo "  sudo apt-get install python-virtualenv"
+  echo -e "${warning}  sudo apt-get install python-virtualenv${reset}"
   exit 1
 fi
 echo
@@ -24,12 +37,12 @@ codalabdir=`dirname $0`
 env=$codalabdir/venv
 
 if [ ! -e $env ]; then
-  echo "=== Setup a Python virtual environment (in $env)..."
+  echo -e "${info}[*] Setting up a Python virtual environment (in $env)...${reset}"
   virtualenv -p /usr/bin/python2.7 $env
   echo
 fi
 
-echo "=== Install Python packages into $env..."
+echo -e "${info}[*] Installing Python packages into $env...${reset}"
 $env/bin/pip install -r $codalabdir/requirements.txt
 if [ "$1" == "server" ]; then
   $env/bin/pip install -r $codalabdir/requirements-server.txt
@@ -39,11 +52,11 @@ fi
     $env/bin/pip install psutil || exit 1
 ) || ( # catch
     echo
-    echo "  psutil failed to install"
-    echo "This is most likely happening because of missing python-dev"
-    echo "If you are using Ubuntu, run the following to install:"
+    echo -e "${warning}[!] psutil failed to install.${reset}"
+    echo -e "${warning}[!] This is most likely happening because of missing python-dev.${reset}"
+    echo -e "${warning}[!] If you are using Ubuntu, run the following to install:${reset}"
     echo
-    echo "  sudo apt-get install python-dev"
+    echo -e "${info}  sudo apt-get install python-dev${reset}"
     echo
     exit 3
 )
@@ -55,10 +68,10 @@ fi
 #$env/bin/alembic stamp head
 
 echo
-echo "=== Add the following line to your .bashrc to put CodaLab in your path:"
+echo -e "${warning}[!] Add the following line to your .bashrc to put CodaLab in your path:${reset}"
+echo -e "${warning}  export PATH=\$PATH:$PWD/codalab/bin${reset}"
 echo
-echo "  export PATH=\$PATH:$PWD/codalab/bin"
+echo -e "${info}[*] Then you can use Codalab with the single command:${reset}"
+echo -e "${info}  cl${reset}"
 echo
-echo "Then you can use Codalab with the single command:"
-echo
-echo "  cl"
+echo -e "${success}[!] Successfully installed Codalab in $1 mode!${reset}"

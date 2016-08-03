@@ -22,13 +22,13 @@ from bottle import (
 
 from codalab.common import exception_to_http_error
 import codalab.rest.account
-import codalab.rest.bundle
+import codalab.rest.bundles
 import codalab.rest.groups
 import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
-import codalab.rest.worker
+import codalab.rest.workers
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
