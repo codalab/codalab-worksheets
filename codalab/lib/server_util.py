@@ -15,17 +15,11 @@ from codalab.common import precondition
 
 def query_get_list(key):
     """
-    Get comma-separated query parameter as a list of strings.
-    Assumes that the strings themselves do not contain commas.
+    Get query parameters as a list of strings.
     See JsonApiClient._pack_params for how such a parameter value is assumed
     to be a constructed.
     """
-    value = request.query.get(key)
-    if not value:
-        return []
-    else:
-        return value.split(',')
-
+    return request.query.getall(key)
 
 def query_get_type(type_, key, default=None):
     value = request.query.get(key, None)
