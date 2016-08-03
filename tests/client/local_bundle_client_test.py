@@ -27,8 +27,8 @@ class GroupsAndPermsTest(unittest.TestCase):
         users = [User('root', '0'), User('user1', '1'), User('user2', '2'), User('user4', '4')]
         cls.auth_handler = MockAuthHandler(users)
         for user in users:
-            cls.model.add_user(user.name, user.name + '@codalab.org', '',
-                               user_id=user.unique_id, is_verified=True)
+            cls.model.add_user(user.name, user.name + '@codalab.org', '', '',
+                               '', '', user_id=user.unique_id, is_verified=True)
         cls.client = LocalBundleClient('local', cls.bundle_store, cls.model, None, None, None, cls.auth_handler, verbose=1)
 
     @classmethod

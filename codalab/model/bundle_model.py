@@ -1694,12 +1694,16 @@ class BundleModel(object):
 
         return row is not None and row.is_active
 
-    def add_user(self, username, email, password, user_id=None, is_verified=False):
+    def add_user(self, username, email, first_name, last_name, password,
+                 affiliation, user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
         :param username:
         :param email:
+        :param first_name:
+        :param last_name:
         :param password:
+        :param affiliation:
         :return: (new integer user ID, verification key to send)
         """
         with self.engine.begin() as connection:
@@ -1712,8 +1716,8 @@ class BundleModel(object):
                 "email": email,
                 "last_login": None,
                 "is_active": True,
-                "first_name": None,
-                "last_name": None,
+                "first_name": first_name,
+                "last_name": last_name,
                 "date_joined": now,
                 "is_verified": is_verified,
                 "is_superuser": False,
@@ -1722,7 +1726,7 @@ class BundleModel(object):
                 "time_used": 0,
                 "disk_quota": self.default_user_info['disk_quota'],
                 "disk_used": 0,
-                "affiliation": None,
+                "affiliation": affiliation,
                 "url": None,
             }))
 

@@ -94,3 +94,24 @@ class User(ORMObject):
             if self.disk_used >= self.disk_quota:
                 raise UsageError('Out of disk quota: %s' %
                                  formatting.ratio_str(formatting.size_str, self.disk_used, self.disk_quota))
+
+
+PUBLIC_USER = User({
+    "user_id": None,  # sentinel for BundleModel methods indicating public user
+    "user_name": 'public',
+    "email": None,
+    "last_login": None,
+    "is_active": True,
+    "first_name": None,
+    "last_name": None,
+    "date_joined": None,
+    "is_verified": True,
+    "is_superuser": False,
+    "password": None,
+    "time_quota": 0,
+    "time_used": 0,
+    "disk_quota": 0,
+    "disk_used": 0,
+    "affiliation": None,
+    "url": None,
+})

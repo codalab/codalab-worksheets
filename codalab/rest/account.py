@@ -66,8 +66,11 @@ def do_signup():
     success_uri = request.forms.get('success_uri')
     error_uri = request.forms.get('error_uri')
     username = request.forms.get('username')
-    password = request.forms.get('password')
     email = request.forms.get('email')
+    first_name = request.forms.get('first_name')
+    last_name = request.forms.get('last_name')
+    password = request.forms.get('password')
+    affiliation = request.forms.get('affiliation')
 
     errors = []
     if request.forms.get('confirm_password') != password:
@@ -98,10 +101,19 @@ def do_signup():
             'next': success_uri,
             'email': email,
             'username': username,
+            'first_name': first_name,
+            'last_name': last_name,
+            'affiliation': affiliation
         })
 
+    # If user leaves it blank, empty string is obtained - make it of NoneType.
+    if not affiliation:
+        affiliation = None
+
     # Create unverified user
-    _, verification_key = local.model.add_user(username, email, password)
+    _, verification_key = local.model.add_user(
+        username, email, first_name, last_name, password, affiliation
+    )
 
     # Send key
     send_verification_key(username, email, verification_key)

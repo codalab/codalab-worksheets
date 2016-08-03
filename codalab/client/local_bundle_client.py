@@ -48,7 +48,7 @@ from codalab.objects.permission import (
     Group
 )
 from codalab.rest import util as rest_util
-from codalab.rest import bundle as bundle_rest
+from codalab.rest import bundles as bundle_rest
 from codalab.rest import worksheets as worksheet_rest
 
 from worker.file_util import un_tar_directory
