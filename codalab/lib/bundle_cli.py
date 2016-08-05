@@ -1227,6 +1227,11 @@ class BundleCLI(object):
             is_new_metadata_updated = True
         if args.tags:
             new_metadata['tags'] = args.tags
+            for index, tag in enumerate(args.tags):
+                args.tags[index] = u'-'.join(
+                    word for word in tag.strip().split() if word != u''
+                )
+            new_metadata['tags'] = args.tags
             is_new_metadata_updated = True
 
         # Prompt user for all information
@@ -2242,6 +2247,10 @@ class BundleCLI(object):
             if args.title != None:
                 info['title'] = args.title
             if args.tags != None:
+                for index, tag in enumerate(args.tags):
+                    args.tags[index] = u'-'.join(
+                        word for word in tag.strip().split() if word != u''
+                    )
                 info['tags'] = args.tags
             if args.owner_spec != None:
                 info['owner_spec'] = args.owner_spec

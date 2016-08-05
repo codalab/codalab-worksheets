@@ -847,7 +847,10 @@ class LocalBundleClient(BundleClient):
             elif key == 'title':
                 metadata[key] = value
             elif key == 'tags':
-                metadata[key] = value
+                if isinstance(value, str):
+                    metadata[key] = value.split()
+                else:
+                    metadata[key] = value
             elif key == 'freeze':
                 metadata['frozen'] = datetime.datetime.now()
             else:

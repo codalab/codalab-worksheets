@@ -742,6 +742,14 @@ class BundleModel(object):
         # Apply the column and metadata updates in memory and validate the result.
         metadata_update = update.pop('metadata', {})
         bundle.update_in_memory(update)
+
+        # Make individual tags out of space separated words
+        if 'tags' in metadata_update:
+            for index, tag in enumerate(metadata_update['tags']):
+                metadata_update['tags'][index] = u'-'.join(
+                    word for word in tag.strip().split() if word != u''
+                )
+
         for (key, value) in metadata_update.iteritems():
             bundle.metadata.set_metadata_key(key, value)
         bundle.validate()
