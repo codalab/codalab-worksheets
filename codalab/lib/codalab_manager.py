@@ -39,6 +39,7 @@ from distutils.util import strtobool
 from urlparse import urlparse
 
 from codalab.client import is_local_address
+from codalab.client.json_api_client import JsonApiClient
 from codalab.common import UsageError, PermissionError, precondition
 from codalab.server.auth import User
 from codalab.lib.bundle_store import (
@@ -465,8 +466,12 @@ class CodaLabManager(object):
             address = self.derive_rest_address(address)
 
         # Return cached client
-        # TODO(sckoo): Remove is_cli check when REST migration complete
-        if not is_cli and address in self.clients:
+        # Additionally requires that the client in the cache is the correct class.
+        # This is necessary to prevent key collisions for the case where the
+        # REST client and the old BundleClient both have the same address.
+        # TODO(sckoo): Remove second condition when REST API complete
+        if address in self.clients and \
+                (use_rest == isinstance(self.clients[address], JsonApiClient)):
             return self.clients[address]
 
         # Create new client
@@ -477,7 +482,6 @@ class CodaLabManager(object):
             auth_handler = RestOAuthHandler(address, None)
 
             # Create JsonApiClient with a callback to get access tokens
-            from codalab.client.json_api_client import JsonApiClient
             client = JsonApiClient(
                 address, lambda: self._authenticate(auth_cache_key, auth_handler))
         elif is_local_address(address):
