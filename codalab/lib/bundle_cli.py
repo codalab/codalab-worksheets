@@ -2746,7 +2746,7 @@ class BundleCLI(object):
         if args.time_quota is not None:
             user_info['time_quota'] = formatting.parse_duration(args.time_quota)
         if args.disk_quota is not None:
-            user_info['disk_quota'] = formatting.parse_size(args.disK_quota)
+            user_info['disk_quota'] = formatting.parse_size(args.disk_quota)
         if not user_info:
             raise UsageError("No fields to update.")
 

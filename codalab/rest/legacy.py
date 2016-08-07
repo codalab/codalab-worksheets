@@ -328,7 +328,12 @@ class BundleService(object):
         except SystemExit:  # as exitcode:
             # this should not happen under normal circumstances
             pass
+        except UsageError as e:
+            exception = str(e)
         except BaseException as e:
+            import sys
+            import traceback
+            print traceback.print_exc(file=sys.stderr)
             exception = str(e)
 
         output_str = output_buffer.getvalue()
