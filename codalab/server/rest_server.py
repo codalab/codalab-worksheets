@@ -136,10 +136,10 @@ class ErrorAdapter(object):
                     raise
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
-                    pretty_json = formatting.pretty_json(request.json) if request.json is not None else "<EMPTY>"
+                    pretty_json = formatting.verbose_pretty_json(request.json)
                     notify_admin("Error on request by {0.user}:\n\n{0.method} {0.path}\n\n{1}\n\n{2}"
                                  .format(request, pretty_json, traceback.format_exc()))
-                    message = "Unexpected Internal Error [%s]. The administrators have been notified." % message
+                    message = "Unexpected Internal Error (%s). The administrators have been notified." % message
                 raise HTTPError(code, message)
 
         return wrapper

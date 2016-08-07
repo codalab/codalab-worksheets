@@ -1,8 +1,7 @@
-import json
 import sys
 import time
 
-from codalab.lib.formatting import ratio_str
+from codalab.lib.formatting import pretty_json, ratio_str
 
 
 def open_line(s, f=sys.stderr):
@@ -14,7 +13,9 @@ def clear_line(f=sys.stderr):
 
 
 def pretty_print(obj, f=sys.stdout):
-    json.dump(obj, f, sort_keys=True, indent=4, separators=(',', ': '))
+    f.write(pretty_json(obj))
+    f.write('\n')
+    f.flush()
 
 
 class FileTransferProgress(object):

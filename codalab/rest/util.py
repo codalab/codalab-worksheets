@@ -5,6 +5,7 @@ Placed in this central location to prevent circular imports.
 """
 import httplib
 import threading
+from functools import wraps
 
 from bottle import abort, HTTPError, local, request
 
@@ -48,6 +49,7 @@ def local_bundle_client_compatible(f):
         - Un-decorate function
         - Remove |local| and |request| arguments
     """
+    @wraps(f)
     def wrapper(*args, **kwargs):
         # Always pop out the 'client' kwarg
         client = kwargs.pop('client', None)
@@ -58,6 +60,9 @@ def local_bundle_client_compatible(f):
             # Request context not initialized: we are NOT in a Bottle app
             # Fabricate a thread-local context for LocalBundleClient
             if client is not None:
+                # notify_admin() actually expects client=CodaLabManager rather
+                # than LocalBundleClient, so this is a hack to avoid an
+                # AttributeError for this special case
                 user_id = (client._current_user_id()
                            if hasattr(client, '_current_user_id')
                            else None)
@@ -105,9 +110,10 @@ def notify_admin(local, request, message):
         admin_email = local.config['server']['admin_email']
         emailer = local.emailer
     else:
+        import sys
         # Print intended email in console if no recipient available
         admin_email = "ADMIN"
-        emailer = ConsoleEmailer()
+        emailer = ConsoleEmailer(sys.stderr)
 
     subject = "CodaLab Admin Notification"
     if 'instance_name' in local.config['server']:

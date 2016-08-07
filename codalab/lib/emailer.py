@@ -46,32 +46,36 @@ class SMTPEmailer(Emailer):
         :param sender: optional alternative 'From' header
         :return:
         """
-        mail_server = smtplib.SMTP(self.host, self.port)
-        mail_server.ehlo()
-
-        if self.use_tls:
-            # All following commands will be encrypted
-            mail_server.starttls()
+        try:
+            mail_server = smtplib.SMTP(self.host, self.port)
             mail_server.ehlo()
 
-        mail_server.login(self.user, self.password)
+            if self.use_tls:
+                # All following commands will be encrypted
+                mail_server.starttls()
+                mail_server.ehlo()
 
-        message = MIMEText(body)
-        message["From"] = sender or self.default_sender
-        message["To"] = recipient
-        message["Subject"] = subject
+            mail_server.login(self.user, self.password)
 
-        mail_server.sendmail(self.server_email, recipient, message.as_string())
-        mail_server.close()
+            message = MIMEText(body)
+            message["From"] = sender or self.default_sender
+            message["To"] = recipient
+            message["Subject"] = subject
 
-        log.info("Email sent to %s." % recipient)
-        log.debug(message.as_string())
+            mail_server.sendmail(self.server_email, recipient, message.as_string())
+            mail_server.quit()
+
+            log.info("Email sent to %s." % recipient)
+            log.debug(message.as_string())
+
+        except smtplib.SMTPException:
+            log.error("Failed to send email, defaulting to console.")
+            ConsoleEmailer(sys.stderr).send_email(subject, body, recipient, sender)
 
 
 class ConsoleEmailer(Emailer):
     def __init__(self, out=sys.stdout):
         """
-
         :param out: File object to write to
         :return:
         """
