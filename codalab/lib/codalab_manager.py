@@ -305,7 +305,6 @@ class CodaLabManager(object):
             sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
         return sessions[name]
 
-
     @cached
     def default_user_info(self):
         info = self.config['server'].get('default_user_info', {'time_quota': '1y', 'disk_quota': '1t'})
@@ -379,6 +378,7 @@ class CodaLabManager(object):
                                     self.config['server']['rest_port'])
         return RestOAuthHandler(address, self.model())
 
+    @property
     @cached
     def emailer(self):
         if 'email' in self.config:

@@ -21,7 +21,8 @@ def wrap_exception(message):
                 return f(*args, **kwargs)
             except urllib2.HTTPError as e:
                 # Translate known errors to the standard CodaLab errors
-                exc = http_error_to_exception(e.code, e.read())
+                error_body = e.read()
+                exc = http_error_to_exception(e.code, error_body)
                 # All standard CodaLab errors are subclasses of UsageError
                 if isinstance(exc, UsageError):
                     raise exc.__class__, exc, sys.exc_info()[2]
@@ -30,7 +31,7 @@ def wrap_exception(message):
                     raise JsonApiException, \
                         JsonApiException(message.format(*args, **kwargs) +
                                          ': ' + httplib.responses[e.code] +
-                                         ' - ' + e.read(),
+                                         ' - ' + error_body,
                                          400 <= e.code < 500), \
                         sys.exc_info()[2]
             except RestClientException as e:

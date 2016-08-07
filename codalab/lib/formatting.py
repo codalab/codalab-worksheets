@@ -3,7 +3,7 @@ Provides basic formatting utilities.
 """
 
 import datetime
-import sys
+import json
 import shlex
 
 from worker import formatting as worker_formatting
@@ -119,3 +119,7 @@ def string_to_tokens(s):
     :return: list ["a", "b", "c d", "e"]
     """
     return shlex.split(s, comments=False, posix=True)
+
+
+def pretty_json(obj):
+    return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
