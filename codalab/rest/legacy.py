@@ -329,12 +329,14 @@ class BundleService(object):
             # this should not happen under normal circumstances
             pass
         except UsageError as e:
+            # All expected CodaLab errors are instances of UsageError
+            # No need to print stacktrace, just show user the error message
             exception = str(e)
-        except BaseException as e:
+        except BaseException:
             import sys
             import traceback
-            print traceback.print_exc(file=sys.stderr)
-            exception = str(e)
+            traceback.print_exc(file=sys.stderr)
+            exception = "Internal Error. If the problem persists, please contact the administrators."
 
         output_str = output_buffer.getvalue()
         output_buffer.close()

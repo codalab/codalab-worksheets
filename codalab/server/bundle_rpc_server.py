@@ -131,7 +131,8 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
 
                     return result
                 except Exception, e:
-                    if not (isinstance(e, UsageError) or isinstance(e, PermissionError)):
+                    if not isinstance(e, UsageError):
+                        # All expected CodaLab errors are instances of UsageError
                         # This is really bad and shouldn't happen.
                         # If it does, someone should get paged.
                         print '=== INTERNAL ERROR:', e
