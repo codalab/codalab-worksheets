@@ -459,8 +459,7 @@ class CodaLabManager(object):
             address = self.derive_rest_address(address)
 
         # Return cached client
-        # TODO(sckoo): Remove is_cli check when REST migration complete
-        if not is_cli and address in self.clients:
+        if address in self.clients:
             return self.clients[address]
 
         # Create new client
