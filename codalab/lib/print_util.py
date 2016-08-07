@@ -12,7 +12,7 @@ def clear_line(f=sys.stderr):
     print >>f, '\r\033[K',
 
 
-def pretty_print(obj, f=sys.stdout):
+def pretty_print_json(obj, f=sys.stdout):
     f.write(pretty_json(obj))
     f.write('\n')
     f.flush()

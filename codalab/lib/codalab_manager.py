@@ -48,7 +48,7 @@ from codalab.lib.bundle_store import (
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
-from codalab.lib.print_util import pretty_print
+from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
@@ -63,7 +63,7 @@ def cached(fn):
 
 def write_pretty_json(data, path):
     with open(path, 'w') as f:
-        pretty_print(data, f)
+        pretty_print_json(data, f)
 
 def read_json_or_die(path):
     try:
