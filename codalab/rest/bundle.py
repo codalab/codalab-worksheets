@@ -469,10 +469,9 @@ def mask_bundle(bundle_info):
         'command': None,
         'data_hash': None,
         'state': None,
-        'metadata': [{
-            'metadata_key': 'name',
-            'metadata_value': '<private>',
-        }],
+        'metadata': {
+            'name': '<private>',
+        },
         'dependencies': [],
     }
 
