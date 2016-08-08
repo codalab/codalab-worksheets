@@ -57,4 +57,4 @@ dist/
 build/
 codalab_env/
 
-/venv/
+/venv
