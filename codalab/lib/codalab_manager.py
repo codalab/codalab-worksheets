@@ -48,6 +48,7 @@ from codalab.lib.bundle_store import (
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
+from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
@@ -62,8 +63,7 @@ def cached(fn):
 
 def write_pretty_json(data, path):
     with open(path, 'w') as f:
-        json.dump(data, f, sort_keys=True, indent=4, separators=(',', ': '))
-        f.write('\n')
+        pretty_print_json(data, f)
 
 def read_json_or_die(path):
     try:
@@ -305,7 +305,6 @@ class CodaLabManager(object):
             sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
         return sessions[name]
 
-
     @cached
     def default_user_info(self):
         info = self.config['server'].get('default_user_info', {'time_quota': '1y', 'disk_quota': '1t'})
@@ -379,6 +378,7 @@ class CodaLabManager(object):
                                     self.config['server']['rest_port'])
         return RestOAuthHandler(address, self.model())
 
+    @property
     @cached
     def emailer(self):
         if 'email' in self.config:
