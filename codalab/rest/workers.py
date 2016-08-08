@@ -13,11 +13,7 @@ from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from worker.worker import VERSION
 
-# TODO(sckoo): Remove singular /worker/ paths once workers are done self-updating
 
-
-@post('/worker/<worker_id>/checkin',
-      apply=AuthenticatedPlugin())
 @post('/workers/<worker_id>/checkin',
       apply=AuthenticatedPlugin())
 def checkin(worker_id):
@@ -43,8 +39,6 @@ def checkin(worker_id):
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 
 
-@post('/worker/<worker_id>/checkout',
-      apply=AuthenticatedPlugin())
 @post('/workers/<worker_id>/checkout',
       apply=AuthenticatedPlugin())
 def checkout(worker_id):
@@ -64,8 +58,6 @@ def check_reply_permission(worker_id, socket_id):
         abort(httplib.FORBIDDEN, 'Not your socket ID!')
 
 
-@post('/worker/<worker_id>/reply/<socket_id:int>',
-      apply=AuthenticatedPlugin())
 @post('/workers/<worker_id>/reply/<socket_id:int>',
       apply=AuthenticatedPlugin())
 def reply(worker_id, socket_id):
@@ -76,8 +68,6 @@ def reply(worker_id, socket_id):
     local.worker_model.send_json_message(socket_id, request.json, 60, autoretry=False)
 
 
-@post('/worker/<worker_id>/reply_data/<socket_id:int>',
-      apply=AuthenticatedPlugin())
 @post('/workers/<worker_id>/reply_data/<socket_id:int>',
       apply=AuthenticatedPlugin())
 def reply_data(worker_id, socket_id):
@@ -112,8 +102,6 @@ def check_run_permission(bundle):
         abort(httplib.FORBIDDEN, 'User does not have permission to run bundle.')
 
 
-@post('/worker/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      apply=AuthenticatedPlugin())
 @post('/workers/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def start_bundle(worker_id, uuid):
@@ -133,8 +121,6 @@ def start_bundle(worker_id, uuid):
     return json.dumps(False)
 
 
-@put('/worker/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
-     apply=AuthenticatedPlugin())
 @put('/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def update_bundle_metadata(worker_id, uuid):
@@ -151,8 +137,6 @@ def update_bundle_metadata(worker_id, uuid):
     local.model.update_bundle(bundle, {'metadata': metadata_update})
 
 
-@post('/worker/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      apply=AuthenticatedPlugin())
 @post('/workers/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def finalize_bundle(worker_id, uuid):
@@ -191,7 +175,6 @@ def finalize_bundle(worker_id, uuid):
                                 request.json['failure_message'])
 
 
-@get('/worker/code.tar.gz')
 @get('/workers/code.tar.gz')
 def code():
     """
