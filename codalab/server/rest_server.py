@@ -137,17 +137,19 @@ class ErrorAdapter(object):
                     raise
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
-                    query = request.query.allitems()
-                    forms = request.forms.allitems()
+                    query = formatting.key_value_list(request.query.allitems())
+                    forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
                     body = formatting.verbose_pretty_json(request.json)
                     notify_admin(textwrap.dedent("""\
                         Error on request by {0.user}:
 
                         {0.method} {0.path}
 
-                        Query params: {1}
+                        Query params:
+                        {1}
 
-                        Form params: {2}
+                        Form params:
+                        {2}
 
                         JSON body:
                         {3}
