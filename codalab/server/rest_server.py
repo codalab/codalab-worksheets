@@ -128,6 +128,8 @@ class ErrorAdapter(object):
     """Converts known exceptions to HTTP errors."""
     api = 2
 
+    MAX_AUX_INFO_LENGTH = 5000
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             try:
@@ -140,21 +142,29 @@ class ErrorAdapter(object):
                     query = formatting.key_value_list(request.query.allitems())
                     forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
                     body = formatting.verbose_pretty_json(request.json)
+                    aux_info = textwrap.dedent("""\
+                        Query params:
+                        {0}
+
+                        Form params:
+                        {1}
+
+                        JSON body:
+                        {2}""").format(query, forms, body)
+
+                    if len(aux_info) > self.MAX_AUX_INFO_LENGTH:
+                        aux_info = aux_info[:(self.MAX_AUX_INFO_LENGTH / 2)] + \
+                                   "(...truncated...)" + \
+                                   aux_info[-(self.MAX_AUX_INFO_LENGTH / 2):]
+
                     notify_admin(textwrap.dedent("""\
                         Error on request by {0.user}:
 
                         {0.method} {0.path}
 
-                        Query params:
                         {1}
 
-                        Form params:
-                        {2}
-
-                        JSON body:
-                        {3}
-
-                        {4}""").format(request, query, forms, body, traceback.format_exc()))
+                        {2}""").format(request, aux_info, traceback.format_exc()))
                     message = "Unexpected Internal Error (%s). The administrators have been notified." % message
                 raise HTTPError(code, message)
 
