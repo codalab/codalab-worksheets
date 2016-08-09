@@ -43,12 +43,20 @@ class DownloadManager(object):
     def get_target_info(self, uuid, path, depth):
         """
         Returns information about an individual target inside the bundle, or
-        None if the target doesn't exist.
+        None if the target or bundle doesn't exist.
 
         For information about the format of the return value, see
         worker.download_util.get_target_info.
         """
-        if self._bundle_model.get_bundle_state(uuid) != State.RUNNING:
+        try:
+            bundle_state = self._bundle_model.get_bundle_state(uuid)
+        except UsageError:
+            bundle_state = None
+
+        # Return None if invalid bundle reference
+        if bundle_state is None:
+            return None
+        elif bundle_state != State.RUNNING:
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
