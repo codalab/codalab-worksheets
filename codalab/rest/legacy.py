@@ -1,7 +1,6 @@
 """
 Legacy REST APIs moved from the codalab-worksheets Django REST server. 
 """
-from argparse import ArgumentError
 import base64
 from contextlib import closing
 from cStringIO import StringIO
@@ -331,7 +330,7 @@ class BundleService(object):
         except SystemExit:  # as exitcode:
             # this should not happen under normal circumstances
             pass
-        except (UsageError, ArgumentError) as e:
+        except UsageError as e:
             # All expected CodaLab errors are instances of UsageError
             # Nothing bad happened, just show user the error message
             exception = str(e)
