@@ -1,6 +1,7 @@
 """
 Legacy REST APIs moved from the codalab-worksheets Django REST server. 
 """
+from argparse import ArgumentError
 import base64
 from contextlib import closing
 from cStringIO import StringIO
