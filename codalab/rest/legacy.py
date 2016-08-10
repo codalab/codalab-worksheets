@@ -330,7 +330,7 @@ class BundleService(object):
         except SystemExit:  # as exitcode:
             # this should not happen under normal circumstances
             pass
-        except UsageError as e:
+        except (UsageError, ArgumentError) as e:
             # All expected CodaLab errors are instances of UsageError
             # Nothing bad happened, just show user the error message
             exception = str(e)
