@@ -1,6 +1,6 @@
 from contextlib import closing
 
-from codalab.common import http_error_to_exception, precondition, State, UsageError
+from codalab.common import http_error_to_exception, precondition, State, UsageError, NotFoundError
 from worker import download_util
 from worker import file_util
 
@@ -50,7 +50,7 @@ class DownloadManager(object):
         """
         try:
             bundle_state = self._bundle_model.get_bundle_state(uuid)
-        except UsageError:
+        except NotFoundError:
             bundle_state = None
 
         # Return None if invalid bundle reference
