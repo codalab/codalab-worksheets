@@ -774,7 +774,7 @@ class BundleModel(object):
     def get_bundle_state(self, uuid):
         result_dict = self.get_bundle_states([uuid])
         if uuid not in result_dict:
-            raise UsageError('Could not find bundle with uuid %s' % uuid)
+            raise NotFoundError('Could not find bundle with uuid %s' % uuid)
         return result_dict[uuid]
 
     def get_bundle_states(self, uuids):
