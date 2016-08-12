@@ -39,6 +39,7 @@ from distutils.util import strtobool
 from urlparse import urlparse
 
 from codalab.client import is_local_address
+from codalab.client.json_api_client import JsonApiClient
 from codalab.common import UsageError, PermissionError, precondition
 from codalab.server.auth import User
 from codalab.lib.bundle_store import (
@@ -47,6 +48,7 @@ from codalab.lib.bundle_store import (
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
 from codalab.lib.emailer import SMTPEmailer, ConsoleEmailer
+from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
@@ -61,8 +63,7 @@ def cached(fn):
 
 def write_pretty_json(data, path):
     with open(path, 'w') as f:
-        json.dump(data, f, sort_keys=True, indent=4, separators=(',', ': '))
-        f.write('\n')
+        pretty_print_json(data, f)
 
 def read_json_or_die(path):
     try:
@@ -304,13 +305,13 @@ class CodaLabManager(object):
             sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
         return sessions[name]
 
-
     @cached
     def default_user_info(self):
         info = self.config['server'].get('default_user_info', {'time_quota': '1y', 'disk_quota': '1t'})
-        info['time_quota'] = formatting.parse_duration(info['time_quota'])
-        info['disk_quota'] = formatting.parse_size(info['disk_quota'])
-        return info
+        return {
+            'time_quota': formatting.parse_duration(info['time_quota']),
+            'disk_quota': formatting.parse_size(info['disk_quota'])
+        }
 
     @cached
     def model(self):
@@ -377,6 +378,7 @@ class CodaLabManager(object):
                                     self.config['server']['rest_port'])
         return RestOAuthHandler(address, self.model())
 
+    @property
     @cached
     def emailer(self):
         if 'email' in self.config:
@@ -464,8 +466,12 @@ class CodaLabManager(object):
             address = self.derive_rest_address(address)
 
         # Return cached client
-        # TODO(sckoo): Remove is_cli check when REST migration complete
-        if not is_cli and address in self.clients:
+        # Additionally requires that the client in the cache is the correct class.
+        # This is necessary to prevent key collisions for the case where the
+        # REST client and the old BundleClient both have the same address.
+        # TODO(sckoo): Remove second condition when REST API complete
+        if address in self.clients and \
+                (use_rest == isinstance(self.clients[address], JsonApiClient)):
             return self.clients[address]
 
         # Create new client
@@ -476,7 +482,6 @@ class CodaLabManager(object):
             auth_handler = RestOAuthHandler(address, None)
 
             # Create JsonApiClient with a callback to get access tokens
-            from codalab.client.json_api_client import JsonApiClient
             client = JsonApiClient(
                 address, lambda: self._authenticate(auth_cache_key, auth_handler))
         elif is_local_address(address):

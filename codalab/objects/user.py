@@ -95,6 +95,9 @@ class User(ORMObject):
                 raise UsageError('Out of disk quota: %s' %
                                  formatting.ratio_str(formatting.size_str, self.disk_used, self.disk_quota))
 
+    def __str__(self):
+        return "%s(%s)" % (self.user_name, self.user_id)
+
 
 PUBLIC_USER = User({
     "user_id": None,  # sentinel for BundleModel methods indicating public user

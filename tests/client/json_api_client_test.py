@@ -12,32 +12,29 @@ from codalab.common import PreconditionViolation
 
 class JsonApiClientTest(unittest.TestCase):
     def test_pack_params(self):
-        self.assertDictEqual(JsonApiClient._pack_params({
+        self.assertItemsEqual(JsonApiClient._pack_params({
             'int': 2,
             'float': 2.2,
             'str': 'stringy',
             'true': True,
             'false': False,
-            'list': [1, '2', 3.3, True]
-        }), {
-            'int': 2,
-            'float': 2.2,
-            'str': 'stringy',
-            'true': 1,
-            'false': 0,
-            'list': '1,2,3.3,True'
-        })
-
-        with self.assertRaises(NotImplementedError):
-            JsonApiClient._pack_params({
-                'listwithcomma': ['this is fine', 'this, is, not']
-            })
-
-        with self.assertRaises(NotImplementedError):
-            JsonApiClient._pack_params({
-                'listinlist': [['nested', 'lists', 'also', 'bad']]
-            })
-
+            'list': [1, '2', 3.3, True],
+            'comma': 'I,have,commas',
+            'commalist': ['I,also', 'have,commas'],
+        }), [
+            ('int', 2),
+            ('float', 2.2),
+            ('str', 'stringy'),
+            ('true', 1),
+            ('false', 0),
+            ('list', '1'),
+            ('list', '2'),
+            ('list', '3.3'),
+            ('list', 'True'),
+            ('comma', 'I,have,commas'),
+            ('commalist', 'I,also'),
+            ('commalist', 'have,commas'),
+        ])
 
     def test_resource_path(self):
         self.assertEqual(JsonApiClient._get_resource_path('bundles'),

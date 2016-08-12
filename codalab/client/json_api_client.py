@@ -21,7 +21,8 @@ def wrap_exception(message):
                 return f(*args, **kwargs)
             except urllib2.HTTPError as e:
                 # Translate known errors to the standard CodaLab errors
-                exc = http_error_to_exception(e.code, e.read())
+                error_body = e.read()
+                exc = http_error_to_exception(e.code, error_body)
                 # All standard CodaLab errors are subclasses of UsageError
                 if isinstance(exc, UsageError):
                     raise exc.__class__, exc, sys.exc_info()[2]
@@ -30,7 +31,7 @@ def wrap_exception(message):
                     raise JsonApiException, \
                         JsonApiException(message.format(*args, **kwargs) +
                                          ': ' + httplib.responses[e.code] +
-                                         ' - ' + e.read(),
+                                         ' - ' + error_body,
                                          400 <= e.code < 500), \
                         sys.exc_info()[2]
             except RestClientException as e:
@@ -105,23 +106,19 @@ class JsonApiClient(RestClient):
     def _pack_params(params):
         """
         Process lists into comma-separated strings, and booleans into 1/0.
-        Does not currently support lists with strings that contain commas.
         """
         if params is None:
             return None
 
-        result = {}
+        result = []
         for k, v in (params.iteritems() if isinstance(params, dict) else params):
             if isinstance(v, list):
-                v = map(unicode, v)
-                if any(',' in e for e in v):
-                    raise NotImplementedError(
-                        "Commas in list elements not currently supported.")
-                result[k] = ','.join(v)
+                for item in map(unicode, v):
+                    result.append((k, item))
             elif isinstance(v, bool):
-                result[k] = int(v)
+                result.append((k, int(v)))
             else:
-                result[k] = v
+                result.append((k, v))
         return result
 
     @staticmethod

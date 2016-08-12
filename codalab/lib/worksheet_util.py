@@ -132,6 +132,7 @@ def get_worksheet_lines(worksheet_info):
                 description = formatting.contents_str(None)
             else:
                 metadata = bundle_info['metadata']
+                # raise Exception(metadata)
                 description = bundle_info['bundle_type']
                 description += ' ' + metadata['name']
                 deps = interpret_genpath(bundle_info, 'dependencies')

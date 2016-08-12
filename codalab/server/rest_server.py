@@ -21,6 +21,7 @@ from bottle import (
 )
 
 from codalab.common import exception_to_http_error
+from codalab.lib import formatting
 import codalab.rest.account
 import codalab.rest.bundles
 import codalab.rest.groups
@@ -29,6 +30,7 @@ import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
+from codalab.rest.util import notify_admin
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
@@ -60,7 +62,7 @@ class SaveEnvironmentPlugin(object):
             local.download_manager = self.manager.download_manager()
             local.bundle_store = self.manager.bundle_store()
             local.config = self.manager.config
-            local.emailer = self.manager.emailer()
+            local.emailer = self.manager.emailer
             return callback(*args, **kwargs)
 
         return wrapper
@@ -134,7 +136,10 @@ class ErrorAdapter(object):
                     raise
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
-                    traceback.print_exc()
+                    pretty_json = formatting.verbose_pretty_json(request.json)
+                    notify_admin("Error on request by {0.user}:\n\n{0.method} {0.path}\n\n{1}\n\n{2}"
+                                 .format(request, pretty_json, traceback.format_exc()))
+                    message = "Unexpected Internal Error (%s). The administrators have been notified." % message
                 raise HTTPError(code, message)
 
         return wrapper
