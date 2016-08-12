@@ -163,7 +163,7 @@ class BundleService(object):
 
         # bundle_uuids is an optional argument that, if exists, contain the uuids of all the unfinished run bundles that need updating
         # In this case, full_worksheet will return a list of item parallel to ws.info.items that contain only items that need updating.
-        # More spefically, all items that don't contain run bundles that need updating are None.
+        # More specifically, all items that don't contain run bundles that need updating are None.
         # Also, a non-None item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
         # The bundle_infos for bundles that don't need updating are also None.
         if bundle_uuids:
