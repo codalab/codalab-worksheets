@@ -10,6 +10,7 @@ from oauthlib.common import generate_token
 import random
 import shlex
 import threading
+import traceback
 
 from bottle import (
   abort,
@@ -42,6 +43,7 @@ from codalab.lib.codalab_manager import CodaLabManager
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.oauth2 import OAuth2Token
 from codalab.objects.permission import permission_str
+from codalab.rest.util import notify_admin
 from codalab.server.auth import LocalUserAuthHandler, RestOAuthHandler
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.server.rpc_file_handle import RPCFileHandle
@@ -355,7 +357,9 @@ class BundleService(object):
         except SystemExit:  # as exitcode:
             # this should not happen under normal circumstances
             pass
-        except BaseException as e:
+        except UsageError as e:
+            # All expected CodaLab errors are instances of UsageError
+            # Nothing bad happened, just show user the error message
             exception = str(e)
 
         output_str = output_buffer.getvalue()

@@ -54,7 +54,7 @@ bundles_password = m.group(2)
 print 'bundles DB: %s; user: %s' % (bundles_db, bundles_user)
 
 # Email
-recipient = config.get('admin-email')
+recipient = config['server'].get('admin_email')
 sender_info = config.get('email')
 
 # Create backup directory

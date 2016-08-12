@@ -131,11 +131,15 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
 
                     return result
                 except Exception, e:
-                    if not (isinstance(e, UsageError) or isinstance(e, PermissionError)):
+                    if not isinstance(e, UsageError):
+                        # All expected CodaLab errors are instances of UsageError
                         # This is really bad and shouldn't happen.
-                        # If it does, someone should get paged.
-                        print '=== INTERNAL ERROR:', e
-                        traceback.print_exc()
+                        from codalab.rest.util import notify_admin
+                        notify_admin("Error on RPC request by %s(%s):\n\n%s %s\n\n%s" %
+                                     (self.client._current_user_name(),
+                                      self.client._current_user_id(),
+                                      command, log_args, traceback.format_exc()),
+                                     client=manager)
                     raise e
 
             return function_to_register

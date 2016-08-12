@@ -3,10 +3,14 @@ Provides basic formatting utilities.
 """
 
 import datetime
-import sys
+import json
 import shlex
 
 from worker import formatting as worker_formatting
+
+
+NONE_PLACEHOLDER = '<none>'
+BINARY_PLACEHOLDER = '<binary>'
 
 
 def contents_str(input_string):
@@ -31,12 +35,12 @@ def verbose_contents_str(input_string):
     Return a friendly string (which is more verbose than contents_str).
     """
     if input_string is None:
-        return '<none>'
+        return NONE_PLACEHOLDER
 
     try:
         input_string.decode('utf-8')
     except UnicodeDecodeError:
-        return '<binary>'
+        return BINARY_PLACEHOLDER
 
     return input_string
 
@@ -119,3 +123,13 @@ def string_to_tokens(s):
     :return: list ["a", "b", "c d", "e"]
     """
     return shlex.split(s, comments=False, posix=True)
+
+
+def pretty_json(obj):
+    return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
+
+
+def verbose_pretty_json(obj):
+    if obj is None:
+        return NONE_PLACEHOLDER
+    return pretty_json(obj)
