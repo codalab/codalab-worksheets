@@ -211,7 +211,7 @@ class LocalBundleClient(BundleClient):
         if not existing:
             self.validate_user_metadata(bundle_subclass, metadata)
 
-        
+
         construct_args['owner_id'] = self._current_user_id()
 
         bundle = bundle_subclass.construct(**construct_args)
@@ -296,7 +296,6 @@ class LocalBundleClient(BundleClient):
         for bundle_uuid, subpath in targets:
             if not re.match('^\w+$', subpath):
                 raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
-            
             worker_message = {
                 'type': 'write',
                 'uuid': bundle_uuid,
@@ -892,6 +891,8 @@ class LocalBundleClient(BundleClient):
         The result can be serialized via JSON.
         """
         for item in interpreted_items:
+            if item == None:
+                continue
             mode = item['mode']
             data = item['interpreted']
             properties = item['properties']
@@ -1240,4 +1241,3 @@ class LocalBundleClient(BundleClient):
         with open(file_path, 'r') as stream:
             content = yaml.load(stream)
             return content
-        

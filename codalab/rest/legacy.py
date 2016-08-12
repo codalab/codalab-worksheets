@@ -1,5 +1,5 @@
 """
-Legacy REST APIs moved from the codalab-worksheets Django REST server. 
+Legacy REST APIs moved from the codalab-worksheets Django REST server.
 """
 import base64
 from contextlib import closing
@@ -31,6 +31,7 @@ from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.common import State, UsageError
 from codalab.lib import (
   bundle_cli,
+  bundle_util,
   file_util,
   formatting,
   metadata_util,
@@ -128,7 +129,7 @@ class BundleService(object):
         else:
             return worksheet_util.get_worksheet_uuid(self.client, None, spec)
 
-    def full_worksheet(self, uuid):
+    def full_worksheet(self, uuid, bundle_uuids=None):
         """
         Return information about a worksheet. Calls
         - get_worksheet_info: get basic info
@@ -160,6 +161,27 @@ class BundleService(object):
             interpreted_items = {'items': []}
             worksheet_info['error'] = str(e)
 
+        # bundle_uuids is an optional argument that, if exists, contain the uuids of all the unfinished run bundles that need updating
+        # In this case, full_worksheet will return a list of item parallel to ws.info.items that contain only items that need updating.
+        # More specifically, all items that don't contain run bundles that need updating are None.
+        # Also, a non-None item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
+        # The bundle_infos for bundles that don't need updating are also None.
+        if bundle_uuids:
+            for i, item in enumerate(interpreted_items['items']):
+                if 'bundle_info' not in item:
+                    interpreted_items['items'][i] = None
+                else:
+                    if isinstance(item['bundle_info'], dict):
+                        item['bundle_info'] = [item['bundle_info']]
+                    is_relevant_item = False
+                    for j, bundle in enumerate(item['bundle_info']):
+                        if bundle['uuid'] in bundle_uuids:
+                            is_relevant_item = True
+                        else:
+                            item['bundle_info'][j] = None
+                    if not is_relevant_item:
+                        interpreted_items['items'][i] = None
+
         worksheet_info['items'] = self.client.resolve_interpreted_items(interpreted_items['items'])
         worksheet_info['raw_to_interpreted'] = interpreted_items['raw_to_interpreted']
         worksheet_info['interpreted_to_raw'] = interpreted_items['interpreted_to_raw']
@@ -173,6 +195,8 @@ class BundleService(object):
 
         # Currently, only certain fields are base64 encoded.
         for item in worksheet_info['items']:
+            if item is None:
+                continue
             if item['mode'] in ['html', 'contents']:
                 item['interpreted'] = decode_lines(item['interpreted'])
             elif item['mode'] == 'table':
@@ -187,6 +211,8 @@ class BundleService(object):
                 elif isinstance(item['bundle_info'], dict):
                     infos = [item['bundle_info']]
                 for bundle_info in infos:
+                    if bundle_info is None:
+                        continue
                     if 'bundle_type' not in bundle_info:
                         continue  # empty info: invalid bundle reference
                     if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
@@ -194,7 +220,8 @@ class BundleService(object):
                         bundle_info['target_info'] = target_info
                     if isinstance(bundle_info, dict):
                         worksheet_util.format_metadata(bundle_info.get('metadata'))
-
+        if bundle_uuids:
+            return {'items': worksheet_info['items']}
         return worksheet_info
 
     def parse_and_update_worksheet(self, uuid, lines):
@@ -244,7 +271,7 @@ class BundleService(object):
                 with info_lock:
                     info[name] = result
 
-            read_threads = []            
+            read_threads = []
             for item in info['contents']:
                 name = item['name']
                 if name in ['stdout', 'stderr'] and (item['type'] == 'file' or item['type'] == 'link'):
@@ -349,7 +376,7 @@ class BundleService(object):
         return
 
     def add_chat_log_info(self, query_info):
-        return self.client.add_chat_log_info(query_info)    
+        return self.client.add_chat_log_info(query_info)
 
     def get_chat_log_info(self, query_info):
         return self.client.get_chat_log_info(query_info)
@@ -388,11 +415,11 @@ class RemoteBundleService(object):
         try:
             with closing(RPCFileHandle(remote_file_uuid, self.client.proxy)) as dest:
                 file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
-           
+
             pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
             if not pack and zip_util.path_is_archive(metadata['name']):
                 metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
-           
+
             # Then tell the client that the uploaded file handle is there.
             new_bundle_uuid = self.client.finish_upload_bundle(
                 [remote_file_uuid],
@@ -467,8 +494,8 @@ def post_worksheets_command():
 @get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_worksheet_content(uuid):
     service = BundleService()
-    return service.full_worksheet(uuid)
-
+    bundle_uuids = request.query.getall('bundle_uuid')
+    return service.full_worksheet(uuid, bundle_uuids)
 
 @post('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
