@@ -159,10 +159,6 @@ OTHER_COMMANDS = (
 )
 
 
-class ArgumentError(Exception):
-    pass
-
-
 class CodaLabArgumentParser(argparse.ArgumentParser):
     def __init__(self, *args, **kwargs):
         # Get a reference to the CLI
@@ -181,7 +177,7 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
         self.print_usage(self.cli.stderr)
         if self.cli.headless:
-            raise ArgumentError(message)
+            raise UsageError(message)
         else:
             self.exit(2, '%s: error: %s\n' % (self.prog, message))
 

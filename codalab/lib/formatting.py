@@ -133,3 +133,7 @@ def verbose_pretty_json(obj):
     if obj is None:
         return NONE_PLACEHOLDER
     return pretty_json(obj)
+
+
+def key_value_list(pairs):
+    return "\n".join([("%s=%s" % tuple(p)) for p in pairs])

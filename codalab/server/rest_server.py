@@ -2,6 +2,7 @@ from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST
 import os
 import re
 import sys
+import textwrap
 import time
 import traceback
 
@@ -127,6 +128,8 @@ class ErrorAdapter(object):
     """Converts known exceptions to HTTP errors."""
     api = 2
 
+    MAX_AUX_INFO_LENGTH = 5000
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             try:
@@ -136,13 +139,39 @@ class ErrorAdapter(object):
                     raise
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
-                    pretty_json = formatting.verbose_pretty_json(request.json)
-                    notify_admin("Error on request by {0.user}:\n\n{0.method} {0.path}\n\n{1}\n\n{2}"
-                                 .format(request, pretty_json, traceback.format_exc()))
+                    self.report_exception()
                     message = "Unexpected Internal Error (%s). The administrators have been notified." % message
                 raise HTTPError(code, message)
 
         return wrapper
+
+    def report_exception(self):
+        query = formatting.key_value_list(request.query.allitems())
+        forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
+        body = formatting.verbose_pretty_json(request.json)
+        aux_info = textwrap.dedent("""\
+                    Query params:
+                    {0}
+
+                    Form params:
+                    {1}
+
+                    JSON body:
+                    {2}""").format(query, forms, body)
+
+        if len(aux_info) > self.MAX_AUX_INFO_LENGTH:
+            aux_info = aux_info[:(self.MAX_AUX_INFO_LENGTH / 2)] + \
+                       "(...truncated...)" + \
+                       aux_info[-(self.MAX_AUX_INFO_LENGTH / 2):]
+
+        notify_admin(textwrap.dedent("""\
+                    Error on request by {0.user}:
+
+                    {0.method} {0.path}
+
+                    {1}
+
+                    {2}""").format(request, aux_info, traceback.format_exc()))
 
 
 def error_handler(response):
