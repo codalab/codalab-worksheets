@@ -314,7 +314,11 @@ class BundleService(object):
         """
         # Tokenize
         if isinstance(command, basestring):
-            args = shlex.split(command)
+            # shlex throws ValueError on incorrectly formatted commands
+            try:
+                args = shlex.split(command)
+            except ValueError as e:
+                raise UsageError(e.message)
         else:
             args = list(command)
 
@@ -328,12 +332,8 @@ class BundleService(object):
         try:
             structured_result = cli.do_command(args)
         except SystemExit:  # as exitcode:
-            # this should not happen under normal circumstances
+            # argparse sometimes throws SystemExit, we don't want to exit
             pass
-        except UsageError as e:
-            # All expected CodaLab errors are instances of UsageError
-            # Nothing bad happened, just show user the error message
-            exception = str(e)
 
         output_str = output_buffer.getvalue()
         output_buffer.close()
