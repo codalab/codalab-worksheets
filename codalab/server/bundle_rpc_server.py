@@ -20,6 +20,7 @@ have a matching call to finalize_file.
 '''
 from SimpleXMLRPCServer import  SimpleXMLRPCServer, SimpleXMLRPCRequestHandler
 import SocketServer
+import sys
 import time
 import traceback
 import xmlrpclib
@@ -135,11 +136,12 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
                         # All expected CodaLab errors are instances of UsageError
                         # This is really bad and shouldn't happen.
                         from codalab.rest.util import notify_admin
-                        notify_admin("Error on RPC request by %s(%s):\n\n%s %s\n\n%s" %
-                                     (self.client._current_user_name(),
-                                      self.client._current_user_id(),
-                                      command, log_args, traceback.format_exc()),
-                                     client=manager)
+                        message = ("Error on RPC request by %s(%s):\n\n%s %s\n\n%s" %
+                                   (self.client._current_user_name(),
+                                    self.client._current_user_id(),
+                                    command, log_args, traceback.format_exc()))
+                        print >>sys.stderr, message
+                        notify_admin(message, client=manager)
                     raise e
 
             return function_to_register

@@ -2,15 +2,49 @@
 Utility functions used by the server applications.
 Don't import from non-REST API code, since this file imports bottle.
 """
+from functools import wraps
 import base64
 import httplib
 import sys
+import threading
+import time
 import urllib
 
 from bottle import abort, request, HTTPResponse, redirect, app
 from oauthlib.common import to_unicode, bytes_type
 
 from codalab.common import precondition
+
+
+class RateLimitExceededError(Exception):
+    pass
+
+
+def rate_limited(max_calls, per_seconds):
+    def decorate(func):
+        lock = threading.Lock()
+        state = {
+            'calls_left': max_calls,
+            'last_time': time.time(),
+        }
+
+        @wraps(func)
+        def rate_limited_function(*args, **kwargs):
+            with lock:
+                current = time.time()
+                elapsed = current - state['last_time']
+                state['last_time'] = current
+                state['calls_left'] += elapsed * (max_calls / per_seconds)
+                state['calls_left'] = min(state['calls_left'], max_calls)
+                if state['calls_left'] < 1.0:
+                    raise RateLimitExceededError
+                state['calls_left'] -= 1
+
+            return func(*args, **kwargs)
+
+        return rate_limited_function
+
+    return decorate
 
 
 def query_get_list(key):
