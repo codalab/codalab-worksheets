@@ -27,3 +27,29 @@ class ServerUtilTest(unittest.TestCase):
 
         self.assertRaises(RateLimitExceededError,
                           lambda: [limited_function() for _ in xrange(11)])
+
+    def test_exc_frame_locals(self):
+        def baz():
+            a = 1
+            b = 2
+            raise NotImplementedError
+
+        def bar():
+            c = 3
+            d = 4
+            baz()
+
+        def foo():
+            e = 5
+            f = 6
+            bar()
+
+        try:
+            baz()
+        except NotImplementedError:
+            self.assertEqual(exc_frame_locals(), {'a': 1, 'b': 2})
+
+        try:
+            foo()
+        except NotImplementedError:
+            self.assertEqual(exc_frame_locals(), {'a': 1, 'b': 2})
