@@ -20,24 +20,41 @@ class RateLimitExceededError(Exception):
     pass
 
 
-def rate_limited(max_calls, per_seconds):
+def rate_limited(max_calls_per_hour):
+    """
+    Parameterized decorator for rate-limiting a function.
+
+    A running count of remaining calls allowed is kept for the last hour.
+    Every call beyond this limit will raise a RateLimitExceededError.
+    """
     def decorate(func):
         lock = threading.Lock()
         state = {
-            'calls_left': max_calls,
-            'last_time': time.time(),
+            'calls_left': max_calls_per_hour,
+            'time_of_last_call': time.time(),
         }
 
         @wraps(func)
         def rate_limited_function(*args, **kwargs):
             with lock:
-                current = time.time()
-                elapsed = current - state['last_time']
-                state['last_time'] = current
-                state['calls_left'] += elapsed * (max_calls / per_seconds)
-                state['calls_left'] = min(state['calls_left'], max_calls)
+                # Measure elapsed time since last call
+                now = time.time()
+                seconds_since_last_call = now - state['time_of_last_call']
+                state['time_of_last_call'] = now
+                
+                # Increment the running count of allowed calls for the last
+                # hour at a steady rate
+                state['calls_left'] += seconds_since_last_call * (max_calls_per_hour / 3600)
+
+                # Cap the count at the defined max
+                if state['calls_left'] > max_calls_per_hour:
+                    state['calls_left'] = max_calls_per_hour
+
+                # No credit left - abort
                 if state['calls_left'] < 1.0:
                     raise RateLimitExceededError
+
+                # Debit the running count for this call
                 state['calls_left'] -= 1
 
             return func(*args, **kwargs)
@@ -54,6 +71,7 @@ def query_get_list(key):
     to be a constructed.
     """
     return request.query.getall(key)
+
 
 def query_get_type(type_, key, default=None):
     value = request.query.get(key, None)

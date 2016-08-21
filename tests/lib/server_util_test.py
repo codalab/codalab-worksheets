@@ -7,25 +7,23 @@ import time
 
 class ServerUtilTest(unittest.TestCase):
     def test_rate_limit_not_exceeded(self):
-        @rate_limited(10, 1)
+        sentinel = 23948
+
+        @rate_limited(3600)
         def limited_function(arg):
             return arg
 
-        for _ in xrange(10):
-            self.assertEqual(limited_function("same"), "same")
+        for _ in xrange(3600):
+            self.assertEqual(limited_function(sentinel), sentinel)
 
+        # After one second, should recover credit for at least another call
         time.sleep(1)
-
-        for _ in xrange(10):
-            self.assertEqual(limited_function("same"), "same")
+        self.assertEqual(limited_function(sentinel), sentinel)
 
     def test_rate_limit_exceeded(self):
-        @rate_limited(10, 3600)
+        @rate_limited(10)
         def limited_function():
             pass
 
-        def make_n_calls(n):
-            for _ in xrange(n):
-                limited_function()
-
-        self.assertRaises(RateLimitExceededError, lambda: make_n_calls(11))
+        self.assertRaises(RateLimitExceededError,
+                          lambda: [limited_function() for _ in xrange(11)])

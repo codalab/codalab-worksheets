@@ -104,7 +104,7 @@ def local_bundle_client_compatible(f):
 
 
 # For non-REST services, should call with client=CodaLabManager
-@rate_limited(6, per_seconds=(60 * 60))
+@rate_limited(max_calls_per_hour=6)
 @local_bundle_client_compatible
 def notify_admin(local, request, message):
     # Caller is responsible for logging message anyway if desired
