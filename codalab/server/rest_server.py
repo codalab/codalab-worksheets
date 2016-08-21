@@ -21,8 +21,8 @@ from bottle import (
     static_file,
 )
 
-from codalab.common import exception_to_http_error
-from codalab.lib import formatting
+from codalab.common import exception_to_http_error, PreconditionViolation
+from codalab.lib import formatting, server_util
 import codalab.rest.account
 import codalab.rest.bundles
 import codalab.rest.groups
@@ -164,14 +164,17 @@ class ErrorAdapter(object):
                        "(...truncated...)" + \
                        aux_info[-(self.MAX_AUX_INFO_LENGTH / 2):]
 
-        notify_admin(textwrap.dedent("""\
-                    Error on request by {0.user}:
+        message = textwrap.dedent("""\
+             Error on request by {0.user}:
 
-                    {0.method} {0.path}
+             {0.method} {0.path}
 
-                    {1}
+             {1}
 
-                    {2}""").format(request, aux_info, traceback.format_exc()))
+             {2}""").format(request, aux_info, traceback.format_exc())
+
+        print >>sys.stderr, message
+        notify_admin(message)
 
 
 def error_handler(response):

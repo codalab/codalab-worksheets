@@ -4,17 +4,17 @@ Most of these are adapted from the LocalBundleClient methods,
 Placed in this central location to prevent circular imports.
 """
 import httplib
+import sys
 import threading
 from functools import wraps
 
 from bottle import abort, HTTPError, local, request
 
 from codalab.common import http_error_to_exception, precondition
-from codalab.lib.emailer import ConsoleEmailer
+from codalab.lib.server_util import rate_limited
 from codalab.objects.permission import (
     unique_group,
 )
-
 
 
 def get_resource_ids(document, type_):
@@ -104,24 +104,21 @@ def local_bundle_client_compatible(f):
 
 
 # For non-REST services, should call with client=CodaLabManager
+@rate_limited(max_calls_per_hour=6)
 @local_bundle_client_compatible
 def notify_admin(local, request, message):
-    if 'admin_email' in local.config['server']:
-        admin_email = local.config['server']['admin_email']
-        emailer = local.emailer
-    else:
-        import sys
-        # Print intended email in console if no recipient available
-        admin_email = "ADMIN"
-        emailer = ConsoleEmailer(sys.stderr)
+    # Caller is responsible for logging message anyway if desired
+    if 'admin_email' not in local.config['server']:
+        print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
+        return
 
     subject = "CodaLab Admin Notification"
     if 'instance_name' in local.config['server']:
         subject += " (%s)" % local.config['server']['instance_name']
 
-    emailer.send_email(subject=subject,
-                       body=message,
-                       recipient=admin_email)
+    local.emailer.send_email(subject=subject,
+                             body=message,
+                             recipient=local.config['server']['admin_email'])
 
 #############################################################
 # GROUPS
