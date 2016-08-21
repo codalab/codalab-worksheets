@@ -16,6 +16,27 @@ from oauthlib.common import to_unicode, bytes_type
 from codalab.common import precondition
 
 
+def exc_frame_locals():
+    """
+    Returns dict of local variables in the frame where exception was raised.
+    Returns empty dict if no traceback available.
+
+    Based on http://stackoverflow.com/a/5328139
+    """
+    _, _, tb = sys.exc_info()
+
+    if tb is None:
+        return {}
+
+    # Traverse traceback (a linked-list) to get the last frame
+    next_tb = tb.tb_next
+    while next_tb is not None:
+        tb = next_tb
+        next_tb = tb.tb_next
+
+    return tb.tb_frame.f_locals
+
+
 class RateLimitExceededError(Exception):
     pass
 

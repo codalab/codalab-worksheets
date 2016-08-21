@@ -149,6 +149,7 @@ class ErrorAdapter(object):
         query = formatting.key_value_list(request.query.allitems())
         forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
         body = formatting.verbose_pretty_json(request.json)
+        local_vars = formatting.key_value_list(server_util.exc_frame_locals().items())
         aux_info = textwrap.dedent("""\
                     Query params:
                     {0}
@@ -157,7 +158,10 @@ class ErrorAdapter(object):
                     {1}
 
                     JSON body:
-                    {2}""").format(query, forms, body)
+                    {2}
+
+                    Local variables:
+                    {3}""").format(query, forms, body, local_vars)
 
         if len(aux_info) > self.MAX_AUX_INFO_LENGTH:
             aux_info = aux_info[:(self.MAX_AUX_INFO_LENGTH / 2)] + \
