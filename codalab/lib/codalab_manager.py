@@ -432,8 +432,7 @@ class CodaLabManager(object):
         elif o.hostname == 'localhost' and o.port == 3800:
             # Hard-coded for test-cli, which uses these ports for aux servers
             address = address.replace('3800', '3900')
-        elif (o.netloc == 'worksheets.codalab.org' or
-                      o.netloc == 'worksheets-test.codalab.org'):
+        else:
             # http://worksheets.codalab.org/bundleservice => http://worksheets.codalab.org
             address = address.replace('/bundleservice', '')
         return address
