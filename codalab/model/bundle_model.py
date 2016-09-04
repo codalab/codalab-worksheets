@@ -286,6 +286,7 @@ class BundleModel(object):
         count = False
         sort_key = [None]
         sum_key = [None]
+        aux_fields = []  # Fields (e.g., sorting) that we need to include in the query
 
         # Number nested subqueries
         subquery_index = [0]
@@ -299,9 +300,11 @@ class BundleModel(object):
         def make_condition(key, field, value):
             # Special
             if value == '.sort':
+                aux_fields.append(field)
                 if is_numeric(key): field = field * 1
                 sort_key[0] = field
             elif value == '.sort-':
+                aux_fields.append(field)
                 if is_numeric(key): field = field * 1
                 sort_key[0] = desc(field)
             elif value == '.sum':
@@ -453,7 +456,7 @@ class BundleModel(object):
             # Sum the numbers
             query = select([func.sum(query.c.num)])
         else:
-            query = select([cl_bundle.c.uuid]).distinct().where(clause).offset(offset).limit(limit)
+            query = select([cl_bundle.c.uuid] + aux_fields).distinct().where(clause).offset(offset).limit(limit)
 
         # Sort
         if sort_key[0] is not None:
