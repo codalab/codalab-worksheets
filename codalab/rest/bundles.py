@@ -131,7 +131,7 @@ UPDATE_RESTRICTED_FIELDS = ('command', 'data_hash', 'state', 'dependencies',
 #############################################################
 
 
-@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+@get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR)
 def _fetch_bundle(uuid):
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
@@ -139,7 +139,7 @@ def _fetch_bundle(uuid):
     return document
 
 
-@get('/bundles', apply=AuthenticatedPlugin())
+@get('/bundles')
 def _fetch_bundles():
     """
     Fetch bundles by bundle specs OR search keywords.
@@ -347,8 +347,8 @@ def _set_bundle_permissions():
     return BundlePermissionSchema(many=True).dump(new_permissions).data
 
 
-@get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
-@get('/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+@get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR)
 def _fetch_bundle_contents_info(uuid, path=''):
     depth = query_get_type(int, 'depth', default=0)
     if depth < 0:
@@ -360,8 +360,8 @@ def _fetch_bundle_contents_info(uuid, path=''):
     }
 
 
-@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
-@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
 def _fetch_bundle_contents_blob(uuid, path=''):
     """
     API to download the contents of a bundle or a subpath within a bundle.
@@ -431,8 +431,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     return fileobj
 
 
-@put('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
-     apply=AuthenticatedPlugin())
+@put('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
 def _update_bundle_contents_blob(uuid):
     """
     Update the contents of the given running or uploading bundle.
