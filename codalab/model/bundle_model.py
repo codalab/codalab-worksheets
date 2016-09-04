@@ -1562,7 +1562,7 @@ class BundleModel(object):
                 'duration': end_time - start_time,
                 'user_id': user_id,
                 'user_name': user_name,
-                'command': command,
+                'command': command[:63],  # Truncate
                 'args': json.dumps(args),
                 'uuid': uuid,
             }
