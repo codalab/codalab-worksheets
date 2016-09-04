@@ -561,7 +561,9 @@ def apply_func(func, arg):
             return arg
         # String encoding of a function: size s/a/b
         for f in func.split(FUNC_DELIM):
-            if f == 'date':
+            if f == 'str':
+                arg = str(arg)
+            elif f == 'date':
                 arg = formatting.date_str(float(arg)) if arg is not None else None
             elif f == 'duration':
                 arg = formatting.duration_str(float(arg)) if arg is not None else None
