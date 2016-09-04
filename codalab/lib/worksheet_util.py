@@ -480,16 +480,17 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
                 for x in contents:
                     kv = x.strip().split("\t", 1)
                     if len(kv) == 2: info[kv[0]] = kv[1]
-            elif contents[0][0] == '{':
-                # JSON file (hack)
-                info = json.loads(''.join(contents))
             else:
                 try:
-                    # YAML file
-                    info = yaml.load(''.join(contents))
+                    # JSON file
+                    info = json.loads(''.join(contents))
                 except:
-                    # Plain text file
-                    info = ''.join(contents)
+                    try:
+                        # YAML file
+                        info = yaml.load(''.join(contents))
+                    except:
+                        # Plain text file
+                        info = ''.join(contents)
         else:
             info = None
         target_cache[target] = info
