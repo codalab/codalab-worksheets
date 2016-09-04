@@ -890,6 +890,12 @@ class LocalBundleClient(BundleClient):
         appropriate information, replacing the 'interpreted' field in each item.
         The result can be serialized via JSON.
         """
+        def error_data(mode, message):
+            if mode == 'record' or mode == 'table':
+                return (('ERROR',), [{'ERROR': message}])
+            else:
+                return [message]
+
         for item in interpreted_items:
             if item == None:
                 continue
@@ -963,12 +969,12 @@ class LocalBundleClient(BundleClient):
                     raise UsageError('Invalid display mode: %s' % mode)
 
             except UsageError as e:
-                data = [base64.b64encode("Error: %s" % e.message)]
+                data = error_data(mode, e.message)
 
             except StandardError:
                 import traceback
                 traceback.print_exc()
-                data = [base64.b64encode("Unexpected error interpreting item")]
+                data = error_data(mode, "Unexpected error interpreting item")
 
             # Assign the interpreted from the processed data
             item['interpreted'] = data
