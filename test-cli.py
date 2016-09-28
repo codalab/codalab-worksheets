@@ -679,6 +679,8 @@ def test(ctx):
     check_equals('hello', run_command([cl, 'cat', uuid+'/stdout']))
     # block
     check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
+    # invalid child path
+    run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
 
 
 @TestModule.register('read')

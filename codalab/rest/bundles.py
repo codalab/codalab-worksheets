@@ -65,7 +65,7 @@ class BundleDependencySchema(PlainSchema):
     create a set of dependencies once at bundle creation.
     """
     child_uuid = fields.String(validate=validate_uuid, dump_only=True)
-    child_path = fields.String(validate=validate_child_path)
+    child_path = fields.String()  # Validated in Bundle ORMObject
     parent_uuid = fields.String(validate=validate_uuid)
     parent_path = fields.String()
     parent_name = fields.Method('get_parent_name', dump_only=True)  # for convenience
