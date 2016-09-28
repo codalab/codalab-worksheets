@@ -1,0 +1,2 @@
+This file starts with a hyphen, which can cause problems if filenames are passed
+directly to command line utilities without escaping (i.e. with a lone '--').

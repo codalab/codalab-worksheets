@@ -28,6 +28,7 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
             args.append('--exclude=' + pattern)
     names = [name for name in os.listdir(directory_path) if name not in exclude_names]
     if names:
+        args.append('--')  # Ensure no filename gets misinterpreted as an option
         args.extend(names)
     else:
         args.extend(['--files-from', '/dev/null'])
