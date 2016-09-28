@@ -454,7 +454,11 @@ def test(ctx):
 
 @TestModule.register('download')
 def test(ctx):
-    uuid = run_command([cl, 'upload', test_path('')])
+    # Upload test files directory as archive to preserve everything invariant of the upload implementation
+    archive_path = temp_path('.tar.gz')
+    contents_path = test_path('')
+    run_command(['tar', 'cfz', archive_path, '-C', os.path.dirname(contents_path), '--'] + os.listdir(contents_path))
+    uuid = run_command([cl, 'upload', archive_path])
 
     # Download whole bundle
     path = temp_path('')
@@ -470,6 +474,11 @@ def test(ctx):
     # Download a target inside (crazy name)
     run_command([cl, 'download', uuid + '/' + crazy_name, '-o', path])
     check_equals(test_path_contents(crazy_name), path_contents(path))
+    os.unlink(path)
+
+    # Download a target inside (name starting with hyphen)
+    run_command([cl, 'download', uuid + '/' + '-AmMDnVl4s8', '-o', path])
+    check_equals(test_path_contents('-AmMDnVl4s8'), path_contents(path))
     os.unlink(path)
 
     # Download a target inside (symlink)
