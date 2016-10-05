@@ -274,54 +274,11 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def kill_bundles(self, bundle_uuids):
-        """
-        Send a kill command to all the given bundles.
-        """
-        check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
-        for bundle_uuid in bundle_uuids:
-            worker_message = {
-                'type': 'kill',
-                'uuid': bundle_uuid,
-            }
-            action_string = BundleAction.kill()
-            self._do_bundle_action(bundle_uuid, worker_message, action_string)
+        raise UsageError("API Updated: Please upgrade to the latest version of the CLI.")
 
     @authentication_required
     def write_targets(self, targets, string):
-        """
-        Write targets by sending a command to all the given bundles in the targets.
-        """
-        bundle_uuids = [bundle_uuid for (bundle_uuid, subpath) in targets]
-        check_bundles_have_all_permission(self.model, self._current_user(), bundle_uuids)
-        for bundle_uuid, subpath in targets:
-            if not re.match('^\w+$', subpath):
-                raise UsageError('Can\'t write to subpath with funny characters: %s' % subpath)
-            worker_message = {
-                'type': 'write',
-                'uuid': bundle_uuid,
-                'subpath': subpath,
-                'string': string,
-            }
-            action_string = BundleAction.write(subpath, string)
-            self._do_bundle_action(bundle_uuid, worker_message, action_string)
-
-    def _do_bundle_action(self, bundle_uuid, worker_message, action_string):
-        """
-        Sends the message to the worker to do the bundle action, and adds the
-        action string to the bundle metadata.
-        """
-        bundle = self.model.get_bundle(bundle_uuid)
-        if bundle.state != State.RUNNING:
-            raise UsageError('Cannot execute this action on a bundle that is not running.')
-
-        worker = self.worker_model.get_bundle_worker(bundle_uuid)
-        precondition(
-            self.worker_model.send_json_message(worker['socket_id'],  worker_message, 60),
-            'Unable to reach worker.')
-
-        new_actions = getattr(bundle.metadata, 'actions', []) + [action_string]
-        db_update = {'metadata': {'actions': new_actions}}
-        self.model.update_bundle(bundle, db_update)
+        raise UsageError("API Updated: Please upgrade to the latest version of the CLI.")
 
     @authentication_required
     def chown_bundles(self, bundle_uuids, user_spec):

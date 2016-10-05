@@ -1,3 +1,6 @@
+from codalab.common import PreconditionViolation
+
+
 class BundleAction(object):
     """
     A bundle action is something that a client sends to a bundle, which gets
@@ -10,10 +13,11 @@ class BundleAction(object):
     SEPARATOR = '\t'
 
     @staticmethod
-    def kill():
-        return BundleAction.KILL
-
-    @staticmethod
-    def write(subpath, string):
-        # Note: assume subpath must not have the separator in it.
-        return BundleAction.SEPARATOR.join([BundleAction.WRITE, subpath, string])
+    def as_string(action):
+        if action['type'] == BundleAction.KILL:
+            return BundleAction.KILL
+        elif action['type'] == BundleAction.WRITE:
+            # Note: assume subpath must not have the separator in it.
+            return BundleAction.SEPARATOR.join([BundleAction.WRITE, action['subpath'], action['string']])
+        else:
+            raise PreconditionViolation("Unsupported bundle action %r" % action['type'])
