@@ -32,6 +32,7 @@ import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
+import codalab.rest.worksheets
 from codalab.rest.util import notify_admin
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin

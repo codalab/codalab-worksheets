@@ -877,7 +877,7 @@ class BundleModel(object):
             for item_row in sorted(item_rows, key=item_sort_key):
                 if item_row.worksheet_uuid not in worksheet_values:
                     raise IntegrityError('Got item %s without worksheet' % (item_row,))
-                item_row = {key: item_row[key] for key in item_row.keys()}
+                item_row = dict(item_row)
                 item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.itervalues()]
@@ -1636,6 +1636,12 @@ class BundleModel(object):
     #############################################################################
     # User-related methods follow!
     #############################################################################
+
+    def find_user(self, user_spec, check_active=True):
+        user = self.get_user(user_id=user_spec, username=user_spec, check_active=check_active)
+        if user is None:
+            raise NotFoundError("User matching %r not found" % user_spec)
+        return user
 
     def get_user(self, user_id=None, username=None, check_active=True):
         """

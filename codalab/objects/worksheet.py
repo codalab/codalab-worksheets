@@ -20,6 +20,7 @@ from codalab.model.orm_object import ORMObject
 def item_sort_key(item):
     return item['id'] if item['sort_key'] is None else item['sort_key']
 
+
 class Worksheet(ORMObject):
     COLUMNS = ('uuid', 'name', 'owner_id', 'title', 'frozen')
 
@@ -45,15 +46,25 @@ class Worksheet(ORMObject):
             row['uuid'] = spec_util.generate_uuid()
         super(Worksheet, self).update_in_memory(row)
         if items is not None:
-            self.items = [(item['bundle_uuid'], item['subworksheet_uuid'], item['value'], item['type']) for item in items]
+            self.items = [
+                {str(k): v for k, v in item.iteritems()}  # Ensure key is string
+                for item in items
+            ]
             self.last_item_id = max(item['id'] for item in items) if items else -1
         else:
             self.items = None
             self.last_item_id = None
 
-    def to_dict(self):
+    def legacy_formatted_items(self):
+        return [(item['bundle_uuid'], item['subworksheet_uuid'], item['value'], item['type']) for item in self.items]
+
+    def to_dict(self, use_rest=False):
         result = super(Worksheet, self).to_dict()
         result['tags'] = self.tags
-        result['items'] = self.items
         result['last_item_id'] = self.last_item_id
+        if use_rest:
+            result['items'] = self.items
+        else:
+            # TODO: legacy format, replace with untampered self.items when BundleClient is gone
+            result['items'] = self.legacy_formatted_items() if self.items is not None else None
         return result

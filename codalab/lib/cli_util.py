@@ -1,6 +1,49 @@
 import re
 
-from codalab.common import UsageError
+from codalab.common import precondition, UsageError
+from codalab.lib import spec_util
+
+
+def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
+    """
+    Avoid making REST call if worksheet_spec is already a uuid.
+    """
+    worksheet_spec = worksheet_spec.strip()
+    if spec_util.UUID_REGEX.match(worksheet_spec):
+        worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
+    else:
+        worksheet_uuid = client.fetch_one('worksheets', params={
+            'base': base_worksheet_uuid,
+            'specs': [worksheet_spec],
+        })['uuid']
+    return worksheet_uuid
+
+
+def safe_get(o, *args, **kwargs):
+    """
+    Get a value from a nested dictionary.
+
+    Cleans up calls that look lke this:
+        bundle_info.get('owner', {}).get('user_name', None)
+
+    And turns them into:
+        deep_get(bundle_info, 'owner', 'user_name')
+
+    :param o: dict-like object to 'get' value from
+    :param args: variable list of nested keys
+    :param kwargs: supports the kwarg 'default' to specify the default value to
+                   return if any of the keys don't exist. (default is None)
+                   Any other kwarg will raise an exception.
+    :return: retrieved value or default if it doesn't exist
+    """
+    default = kwargs.pop('default', None)
+    precondition(not kwargs, 'unsupported kwargs %s' % kwargs.keys())
+    try:
+        for arg in args:
+            o = o[arg]
+        return o
+    except (KeyError, TypeError):
+        return default
 
 
 def desugar_command(orig_target_spec, command):

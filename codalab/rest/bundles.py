@@ -6,23 +6,13 @@ import sys
 import time
 
 from bottle import abort, get, post, put, delete, local, request, response
-from marshmallow import (
-    ValidationError,
-    Schema as PlainSchema,
-    validate,
-    validates_schema,
-)
-from marshmallow_jsonapi import Schema, fields
 
 from codalab.bundles import (
-    BUNDLE_SUBCLASSES,
     get_bundle_subclass,
-    PrivateBundle,
     UploadedBundle,
 )
 from codalab.common import precondition, State, UsageError
 from codalab.lib import (
-    bundle_util,
     canonicalize,
     spec_util,
     zip_util,
@@ -36,99 +26,25 @@ from codalab.lib.server_util import (
     query_get_list,
     query_get_type,
 )
-from codalab.lib.spec_util import validate_uuid, validate_child_path
-from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import (
     check_bundles_have_all_permission,
     check_bundles_have_read_permission,
     check_worksheet_has_all_permission,
-    PermissionSpec,
+)
+from codalab.rest.schemas import (
+    BundleSchema,
+    BundlePermissionSchema,
+    BUNDLE_CREATE_RESTRICTED_FIELDS,
+    BUNDLE_UPDATE_RESTRICTED_FIELDS,
 )
 from codalab.rest.users import UserSchema
-from codalab.rest.worksheets import get_worksheet_uuid
 from codalab.rest.util import (
-    local_bundle_client_compatible,
+    get_bundle_infos,
     get_resource_ids,
+    local_bundle_client_compatible,
 )
+from codalab.rest.worksheets import get_worksheet_uuid
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-
-
-#############################################################
-#  BUNDLE DE/SERIALIZATION AND VALIDATION SCHEMAS
-#############################################################
-
-
-class BundleDependencySchema(PlainSchema):
-    """
-    Plain (non-JSONAPI) Marshmallow schema for a single bundle dependency.
-    Not defining this as a separate resource with Relationships because we only
-    create a set of dependencies once at bundle creation.
-    """
-    child_uuid = fields.String(validate=validate_uuid, dump_only=True)
-    child_path = fields.String()  # Validated in Bundle ORMObject
-    parent_uuid = fields.String(validate=validate_uuid)
-    parent_path = fields.String()
-    parent_name = fields.Method('get_parent_name', dump_only=True)  # for convenience
-
-    def get_parent_name(self, dep):
-        uuid = dep['parent_uuid']
-        return local.model.get_bundle_names([uuid]).get(uuid)
-
-
-class BundlePermissionSchema(Schema):
-    id = fields.Integer(as_string=True, dump_only=True)
-    bundle = fields.Relationship(include_data=True, attribute='object_uuid', type_='bundles', load_only=True, required=True)
-    group = fields.Relationship(include_data=True, attribute='group_uuid', type_='groups', required=True)
-    group_name = fields.String(dump_only=True)  # for convenience
-    permission = fields.Integer(validate=lambda p: 0 <= p <= 2)
-    permission_spec = PermissionSpec(attribute='permission')  # for convenience
-
-    @validates_schema
-    def check_permission_exists(self, data):
-        if 'permission' not in data:
-            raise ValidationError("One of either permission or permission_spec must be provided.")
-
-    class Meta:
-        type_ = 'bundle-permissions'
-
-
-class BundleSchema(Schema):
-    id = fields.String(validate=validate_uuid, attribute='uuid')
-    uuid = fields.String(attribute='uuid')  # for backwards compatibility
-    bundle_type = fields.String(validate=validate.OneOf({bsc.BUNDLE_TYPE for bsc in BUNDLE_SUBCLASSES}))
-    command = fields.String(allow_none=True)
-    data_hash = fields.String()
-    state = fields.String()
-    owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
-    metadata = fields.Dict()
-    dependencies = fields.Nested(BundleDependencySchema, many=True)
-    children = fields.Relationship(include_data=True, type_='bundles', id_field='uuid', many=True)
-    group_permissions = fields.Relationship(include_data=True, type_='bundle-permissions', id_field='id', many=True)
-    host_worksheets = fields.List(fields.Dict)
-    args = fields.String()
-
-    # Bundle permission of the authenticated user for convenience, read-only
-    permission = fields.Integer()
-    permission_spec = PermissionSpec(attribute='permission')
-
-    class Meta:
-        type_ = 'bundles'
-
-
-CREATE_RESTRICTED_FIELDS = ('id', 'uuid', 'data_hash', 'state', 'owner',
-                            'children', 'group_permissions', 'host_worksheets',
-                            'args', 'permission', 'permission_spec')
-
-
-UPDATE_RESTRICTED_FIELDS = ('command', 'data_hash', 'state', 'dependencies',
-                            'children', 'group_permissions', 'host_worksheets',
-                            'args', 'permission', 'permission_spec',
-                            'bundle_type')
-
-
-#############################################################
-#  BUNDLE REST API ENDPOINTS
-#############################################################
 
 
 @get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR)
@@ -228,7 +144,7 @@ def _create_bundles():
     # Deserialize bundle fields
     bundles = BundleSchema(
         strict=True, many=True,
-        dump_only=CREATE_RESTRICTED_FIELDS,
+        dump_only=BUNDLE_CREATE_RESTRICTED_FIELDS,
     ).load(request.json).data
 
     # Check for all necessary permissions
@@ -293,7 +209,7 @@ def _update_bundles():
     """
     bundle_updates = BundleSchema(
         strict=True, many=True,
-        dump_only=UPDATE_RESTRICTED_FIELDS,
+        dump_only=BUNDLE_UPDATE_RESTRICTED_FIELDS,
     ).load(request.json, partial=True).data
 
     # Check permissions
@@ -544,24 +460,6 @@ def resolve_bundle_spec(worksheet_uuid, bundle_spec):
                                         worksheet_uuid, bundle_spec)
 
 
-def mask_bundle(bundle_info):
-    """
-    Return a copy of the bundle_info dict that hides all fields except 'uuid'.
-    """
-    return {
-        'uuid': bundle_info['uuid'],
-        'bundle_type': PrivateBundle.BUNDLE_TYPE,
-        'owner_id': None,
-        'command': None,
-        'data_hash': None,
-        'state': None,
-        'metadata': {
-            'name': '<private>',
-        },
-        'dependencies': [],
-    }
-
-
 @local_bundle_client_compatible
 def delete_bundles(local, request, uuids, force, recursive, data_only, dry_run):
     """
@@ -626,93 +524,6 @@ def delete_bundles(local, request, uuids, force, recursive, data_only, dry_run):
             local.bundle_store.cleanup(uuid, dry_run)
 
     return relevant_uuids
-
-
-@local_bundle_client_compatible
-def get_bundle_infos(local, request, uuids, get_children=False,
-                     get_host_worksheets=False, get_permissions=False):
-    """
-    get_children, get_host_worksheets, get_permissions:
-        whether we want to return more detailed information.
-    Return map from bundle uuid to info.
-    """
-    if len(uuids) == 0:
-        return {}
-    bundles = local.model.batch_get_bundles(uuid=uuids)
-    bundle_dict = {bundle.uuid: bundle_util.bundle_to_bundle_info(local.model, bundle) for bundle in bundles}
-
-    # Filter out bundles that we don't have read permission on
-    def select_unreadable_bundles(uuids):
-        permissions = local.model.get_user_bundle_permissions(request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
-        return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
-
-    def select_unreadable_worksheets(uuids):
-        permissions = local.model.get_user_worksheet_permissions(request.user.user_id, uuids, local.model.get_worksheet_owner_ids(uuids))
-        return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
-
-    # Lookup the user names of all the owners
-    user_ids = [info['owner_id'] for info in bundle_dict.values()]
-    users = local.model.get_users(user_ids=user_ids) if len(user_ids) > 0 else []
-    users = {u.user_id: u for u in users}
-    if users:
-        for info in bundle_dict.values():
-            user = users[info['owner_id']]
-            info['owner_name'] = user.user_name if user else None
-            info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
-
-    # Mask bundles that we can't access
-    for uuid in select_unreadable_bundles(uuids):
-        if uuid in bundle_dict:
-            bundle_dict[uuid] = mask_bundle(bundle_dict[uuid])
-
-    if get_children:
-        result = local.model.get_children_uuids(uuids)
-        # Gather all children bundle uuids
-        children_uuids = [uuid for l in result.values() for uuid in l]
-        unreadable = set(select_unreadable_bundles(children_uuids))
-        # Lookup bundle names
-        names = local.model.get_bundle_names(children_uuids)
-        # Fill in info
-        for uuid, info in bundle_dict.items():
-            info['children'] = [
-                {
-                    'uuid': child_uuid,
-                    'metadata': {'name': names[child_uuid]}
-                }
-                for child_uuid in result[uuid] if child_uuid not in unreadable]
-
-    if get_host_worksheets:
-        # bundle_uuids -> list of worksheet_uuids
-        result = local.model.get_host_worksheet_uuids(uuids)
-        # Gather all worksheet uuids
-        worksheet_uuids = [uuid for l in result.values() for uuid in l]
-        unreadable = set(select_unreadable_worksheets(worksheet_uuids))
-        worksheet_uuids = [uuid for uuid in worksheet_uuids if uuid not in unreadable]
-        # Lookup names
-        worksheets = dict(
-            (worksheet.uuid, worksheet)
-            for worksheet in local.model.batch_get_worksheets(
-                fetch_items=False,
-                uuid=worksheet_uuids))
-        # Fill the info
-        for uuid, info in bundle_dict.items():
-            info['host_worksheets'] = [
-                {
-                    'uuid': worksheet_uuid,
-                    'name': worksheets[worksheet_uuid].name
-                }
-                for worksheet_uuid in result[uuid]
-                if worksheet_uuid not in unreadable]
-
-    if get_permissions:
-        # Fill the info
-        group_result = local.model.batch_get_group_bundle_permissions(request.user.user_id, uuids)
-        result = local.model.get_user_bundle_permissions(request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
-        for uuid, info in bundle_dict.items():
-            info['group_permissions'] = group_result[uuid]
-            info['permission'] = result[uuid]
-
-    return bundle_dict
 
 
 @local_bundle_client_compatible

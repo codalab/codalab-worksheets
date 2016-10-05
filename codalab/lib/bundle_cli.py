@@ -57,6 +57,7 @@ from codalab.lib import (
     formatting,
     ui_actions,
 )
+from codalab.lib.cli_util import safe_get
 from codalab.objects.permission import (
     parse_permission,
     permission_str,
@@ -568,7 +569,6 @@ class BundleCLI(object):
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid(use_rest=use_rest)
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
-            bundle_client, _ = self.parse_spec(spec)
             client, spec = self.parse_spec(spec, use_rest=use_rest)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
@@ -576,7 +576,7 @@ class BundleCLI(object):
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            worksheet_uuid = worksheet_util.get_worksheet_uuid(bundle_client, base_worksheet_uuid, spec)
+            worksheet_uuid = cli_util.get_worksheet_uuid(client, base_worksheet_uuid, spec)
         return (client, worksheet_uuid)
 
     @staticmethod
@@ -1371,10 +1371,8 @@ class BundleCLI(object):
             return
 
         # Print table
-        for bundle in bundles:
-            bundle['owner'] = bundle['owner']['user_name']
         if len(bundles) > 0:
-            self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False)
+            self.print_bundle_info_list(bundles, uuid_only=args.uuid_only, print_ref=False, use_rest=True)
 
         # Add the bundles to the current worksheet
         if args.append:
@@ -1386,17 +1384,7 @@ class BundleCLI(object):
 
         return {
             'refs': self.create_reference_map('bundle', bundles)
-
         }
-
-    def create_structured_info_map(self, structured_info_list):
-        """
-        Return dict of info dicts (eg. bundle/worksheet reference_map) containing
-        information associated to bundles/worksheets. cl wls, ls, etc. show uuids
-        which are too short. This dict contains additional information that is
-        needed to recover URL on the client side.
-        """
-        return dict(structured_info_list)
 
     def create_reference_map(self, info_type, info_list):
         """
@@ -1409,7 +1397,7 @@ class BundleCLI(object):
                 'type': info_type,
                 'uuid': info['uuid'],
                 'name': info.get('metadata', info).get('name', None)
-            } for info in info_list
+            } for info in info_list if 'uuid' in info
         }
 
     @Commands.command(
@@ -1421,23 +1409,24 @@ class BundleCLI(object):
         ),
     )
     def do_ls_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, True, True)
-        bundle_info_list = self.get_worksheet_bundles(worksheet_info)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
         if not args.uuid_only:
-            print >>self.stdout, self._worksheet_description(worksheet_info)
-        if len(bundle_info_list) > 0:
-            self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True)
-        reference_map = self.create_reference_map('bundle', bundle_info_list)
-        return self.create_structured_info_map([('refs', reference_map)])
+            print >>self.stdout, self._worksheet_description(worksheet_info, use_rest=True)
+        bundle_info_list = [item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle']
+        self.print_bundle_info_list(bundle_info_list, args.uuid_only, print_ref=True, use_rest=True)
+        return {
+            'refs': self.create_reference_map('bundle', bundle_info_list)
+        }
 
-    def _worksheet_description(self, worksheet_info):
+    def _worksheet_description(self, worksheet_info, use_rest=False):
         fields = [
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
-            ('Owner', '%s(%s)' % (worksheet_info['owner_name'], worksheet_info['owner_id'])),
-            ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions']),
+            ('Owner', '%s(%s)' % ((worksheet_info['owner']['user_name'], worksheet_info['owner']['id'])
+                                  if use_rest else (worksheet_info['owner_name'], worksheet_info['owner_id']))),
+            ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions'], use_rest=True),
                                       ' [frozen]' if worksheet_info['frozen'] else ''))
         ]
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
@@ -1459,11 +1448,11 @@ class BundleCLI(object):
                 if col == 'ref':
                     return '^' + str(len(bundle_info_list) - i)
                 else:
-                    return info.get(col, info.get('metadata', {}).get(col))
+                    return info.get(col, safe_get(info, 'metadata', col))
 
             if use_rest:
                 for bundle_info in bundle_info_list:
-                    bundle_info['owner'] = bundle_info['owner']['user_name']
+                    bundle_info['owner'] = safe_get(bundle_info, 'owner', 'username')
 
             columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'summary', 'owner', 'created', 'data_size', 'state')
             post_funcs = {'uuid': UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}
@@ -2162,6 +2151,7 @@ class BundleCLI(object):
 
                 # a base_worksheet_uuid is only applicable if we're on the source client
                 base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
+                # TODO: change to cli_util
                 subworksheet_uuid = worksheet_util.get_worksheet_uuid(source_client, base_worksheet_uuid, worksheet_spec)
 
                 # add worksheet
@@ -2182,8 +2172,8 @@ class BundleCLI(object):
         ),
     )
     def do_work_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
         if args.worksheet_spec:
             if args.uuid_only:
                 print >>self.stdout, worksheet_info['uuid']
@@ -2213,7 +2203,7 @@ class BundleCLI(object):
         self.manager.set_current_worksheet_uuid(client.address, worksheet_uuid)
 
         if verbose:
-            worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
+            worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
     @Commands.command(
@@ -2310,9 +2300,9 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
+        worksheet_info = rest_client.fetch('worksheets', worksheet_uuid)
         if args.raw:
-            lines = worksheet_util.get_worksheet_lines(worksheet_info)
+            lines = worksheet_util.get_worksheet_lines(worksheet_info, use_rest=True)
             for line in lines:
                 print >>self.stdout, line
         else:
@@ -2389,8 +2379,9 @@ class BundleCLI(object):
                     row['permissions'] = group_permissions_str(row['group_permissions'])
                 post_funcs = {'uuid': UUID_POST_FUNC}
                 self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
-        reference_map = self.create_reference_map('worksheet', worksheet_dicts)
-        return self.create_structured_info_map([('refs', reference_map)])
+        return {
+            'refs': self.create_reference_map('worksheet', worksheet_dicts)
+        }
 
     @Commands.command(
         'wrm',

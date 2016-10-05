@@ -31,6 +31,7 @@ import os
 import re
 import sys
 import types
+
 import yaml
 import json
 from itertools import izip
@@ -48,6 +49,8 @@ TYPE_MARKUP = 'markup'
 TYPE_DIRECTIVE = 'directive'
 TYPE_BUNDLE = 'bundle'
 TYPE_WORKSHEET = 'worksheet'
+
+WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
@@ -108,12 +111,20 @@ def convert_item_to_db(item):
     )
 
 
-def get_worksheet_lines(worksheet_info):
+def get_worksheet_lines(worksheet_info, use_rest=False):
     """
     Generator that returns pretty-printed lines of text for the given worksheet.
     """
     lines = []
-    for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
+    for item in worksheet_info['items']:
+        if use_rest:
+            bundle_info = item['bundle']
+            subworksheet_info = item['subworksheet']
+            value_obj = item['value']
+            item_type = item['type']
+        else:
+            (bundle_info, subworksheet_info, value_obj, item_type) = item
+
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
