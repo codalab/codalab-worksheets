@@ -38,6 +38,7 @@ from codalab.bundles import (
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
+from codalab.client import is_local_address
 from codalab.common import (
     precondition,
     State,
@@ -735,7 +736,7 @@ class BundleCLI(object):
         )
     )
     def do_logout_command(self, args):
-        self._fail_if_headless('logout')
+        self._fail_if_headless(args)
         if args.alias:
             address = self.manager.apply_alias(args.alias)
             self.manager.logout(address)
@@ -762,7 +763,7 @@ class BundleCLI(object):
         Show, add, modify, delete aliases (mappings from names to instances).
         Only modifies the CLI configuration, doesn't need a BundleClient.
         """
-        self._fail_if_headless('alias')
+        self._fail_if_headless(args)
         aliases = self.manager.config['aliases']
         if args.name:
             instance = aliases.get(args.name)
@@ -795,7 +796,7 @@ class BundleCLI(object):
         """
         Only modifies the CLI configuration, doesn't need a BundleClient.
         """
-        self._fail_if_headless('config')
+        self._fail_if_headless(args)
         config = self.manager.config
 
         # Suppose key = "a/b/c".
@@ -948,7 +949,7 @@ class BundleCLI(object):
         ),
     )
     def do_download_command(self, args):
-        self._fail_if_headless('download')
+        self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
@@ -2305,7 +2306,7 @@ class BundleCLI(object):
         ),
     )
     def do_print_command(self, args):
-        self._fail_if_headless('print')
+        self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
@@ -2672,46 +2673,8 @@ class BundleCLI(object):
             print >>self.stdout, uuid
 
     #############################################################################
-    # LocalBundleClient-only commands follow!
+    # CLI methods for commands related to users follow!
     #############################################################################
-
-    @Commands.command(
-        'events',
-        help='Print the history of commands on this CodaLab instance (local only).',
-        arguments=(
-            Commands.Argument('-u', '--user', help='Filter by user id or username.'),
-            Commands.Argument('-c', '--command', dest='match_command', help='Filter by command.'),
-            Commands.Argument('-a', '--args', help='Filter by arguments.'),
-            Commands.Argument('--uuid', help='Filter by bundle or worksheet uuid.'),
-            Commands.Argument('-o', '--offset', help='Offset in the result list.', type=int, default=0),
-            Commands.Argument('-l', '--limit', help='Limit in the result list.', type=int, default=20),
-            Commands.Argument('-n', '--count', help='Just count.', action='store_true'),
-            Commands.Argument('-g', '--group-by', help='Group by this field (e.g., date).'),
-        ),
-    )
-    def do_events_command(self, args):
-        self._fail_if_headless('events')
-        self._fail_if_not_local('events')
-        # This command only works if client is a LocalBundleClient.
-        client = self.manager.current_client()
-
-        # Build query
-        query_info = {
-            'user': args.user, 'command': args.match_command, 'args': args.args, 'uuid': args.uuid,
-            'count': args.count, 'group_by': args.group_by
-        }
-        info = client.get_events_log_info(query_info, args.offset, args.limit)
-        if 'counts' in info:
-            for row in info['counts']:
-                print >>self.stdout, '\t'.join(map(str, list(row)))
-        if 'events' in info:
-            for event in info['events']:
-                row = [
-                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time != None else '',
-                    '%.3f' % event.duration if event.duration != None else '',
-                    '%s(%s)' % (event.user_name, event.user_id),
-                    event.command, event.args]
-                print >>self.stdout, '\t'.join(row)
 
     @Commands.command(
         'uedit',
@@ -2812,6 +2775,46 @@ class BundleCLI(object):
         except KeyError:
             pass
 
+    #############################################################################
+    # LocalBundleClient-only commands follow!
+    #############################################################################
+
+    @Commands.command(
+        'events',
+        help='Print the history of commands on this CodaLab instance (local only).',
+        arguments=(
+            Commands.Argument('-u', '--user', help='Filter by user id or username.'),
+            Commands.Argument('-c', '--command', dest='match_command', help='Filter by command.'),
+            Commands.Argument('-a', '--args', help='Filter by arguments.'),
+            Commands.Argument('--uuid', help='Filter by bundle or worksheet uuid.'),
+            Commands.Argument('-o', '--offset', help='Offset in the result list.', type=int, default=0),
+            Commands.Argument('-l', '--limit', help='Limit in the result list.', type=int, default=20),
+            Commands.Argument('-n', '--count', help='Just count.', action='store_true'),
+            Commands.Argument('-g', '--group-by', help='Group by this field (e.g., date).'),
+        ),
+    )
+    def do_events_command(self, args):
+        self._fail_if_headless(args)
+        self._fail_if_not_local(args)
+
+        # Build query
+        query_info = {
+            'user': args.user, 'command': args.match_command, 'args': args.args, 'uuid': args.uuid,
+            'count': args.count, 'group_by': args.group_by
+        }
+        info = self.manager.model().get_events_log_info(query_info, args.offset, args.limit)
+        if 'counts' in info:
+            for row in info['counts']:
+                print >>self.stdout, '\t'.join(map(str, list(row)))
+        if 'events' in info:
+            for event in info['events']:
+                row = [
+                    event.end_time.strftime('%Y-%m-%d %X') if event.end_time != None else '',
+                    '%.3f' % event.duration if event.duration != None else '',
+                    '%s(%s)' % (event.user_name, event.user_id),
+                    event.command, event.args]
+                print >>self.stdout, '\t'.join(row)
+
     @Commands.command(
         'reset',
         help='Delete the CodaLab bundle store and reset the database (local only).',
@@ -2823,15 +2826,14 @@ class BundleCLI(object):
         """
         Delete everything - be careful!
         """
-        self._fail_if_headless('reset')
-        self._fail_if_not_local('reset')
+        self._fail_if_headless(args)
+        self._fail_if_not_local(args)
         if not args.commit:
             raise UsageError('If you really want to delete EVERYTHING, use --commit')
-        client = self.manager.current_client()
         print >>self.stdout, 'Deleting entire bundle store...'
-        client.bundle_store.reset()
+        self.manager.bundle_store().reset()
         print >>self.stdout, 'Deleting entire database...'
-        client.model._reset()
+        self.manager.model()._reset()
 
     # Note: this is not actually handled in BundleCLI, but here just to show the help
     @Commands.command(
@@ -2839,6 +2841,8 @@ class BundleCLI(object):
         help='Start an instance of the CodaLab bundle service.',
     )
     def do_server_command(self, args):
+        self._fail_if_headless(args)
+        self._fail_if_not_local(args)
         raise UsageError('Cannot execute CLI command: server')
 
     @Commands.command(
@@ -2858,6 +2862,8 @@ class BundleCLI(object):
         """
         Add the specified target location as a new partition available for use by the filesystem.
         """
+        self._fail_if_headless(args)
+        self._fail_if_not_local(args)
         # This operation only allowed if we're using MultiDiskBundleStore
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
@@ -2872,6 +2878,8 @@ class BundleCLI(object):
         ),
     )
     def do_rm_partition_command(self, args):
+        self._fail_if_headless(args)
+        self._fail_if_not_local(args)
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
@@ -2882,7 +2890,9 @@ class BundleCLI(object):
         help='List available partitions (MultiDiskBundleStore only)',
         arguments=(),
     )
-    def do_ls_partitions_command(self, _):
+    def do_ls_partitions_command(self, args):
+        self._fail_if_headless(args)
+        self._fail_if_not_local(args)
         if not isinstance(self.manager.bundle_store(), MultiDiskBundleStore):
             print >> sys.stderr, "This command can only be run when MultiDiskBundleStore is in use."
             sys.exit(1)
@@ -2898,14 +2908,15 @@ class BundleCLI(object):
         ),
     )
     def do_bs_health_check(self, args):
+        self._fail_if_headless(args)
+        self._fail_if_not_local(args)
         print >> sys.stderr, 'Performing Health Check...'
         self.manager.bundle_store().health_check(self.manager.current_client().model, args.force, args.data_hash, args.repair)
 
-    def _fail_if_headless(self, message):
+    def _fail_if_headless(self, args):
         if self.headless:
-            raise UsageError('Cannot execute CLI command: %s' % message)
+            raise UsageError('Cannot execute CLI command: %s' % args.command)
 
-    def _fail_if_not_local(self, message):
-        from codalab.client.local_bundle_client import LocalBundleClient
-        if not isinstance(self.manager.current_client(), LocalBundleClient):
-            raise UsageError('Cannot execute CLI command in non-local mode: %s' % message)
+    def _fail_if_not_local(self, args):
+        if not is_local_address(self.manager.current_client().address):
+            raise UsageError('Cannot execute CLI command in non-local mode: %s' % args.command)
