@@ -2056,11 +2056,14 @@ class BundleCLI(object):
     def do_kill_command(self, args):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         for bundle_uuid in bundle_uuids:
             print >>self.stdout, bundle_uuid
-        client.kill_bundles(bundle_uuids)
+        client.create('bundle-actions', [{
+            'type': 'kill',
+            'uuid': uuid
+        } for uuid in bundle_uuids])
 
     @Commands.command(
         'write',
@@ -2072,9 +2075,14 @@ class BundleCLI(object):
         ),
     )
     def do_write_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        client.write_targets([target], args.string)
+        client.create('bundle-actions', {
+            'type': 'write',
+            'uuid': target[0],
+            'subpath': target[1],
+            'string': args.string,
+        })
         print >>self.stdout, target[0]
 
     #############################################################################
