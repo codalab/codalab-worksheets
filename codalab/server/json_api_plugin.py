@@ -1,7 +1,8 @@
 from bottle import abort, httplib
 from marshmallow import ValidationError
 
-from codalab.lib.server_util import query_get_bool
+from codalab.common import CODALAB_VERSION
+from codalab.lib.server_util import query_get_bool, json_api_meta
 
 
 class JsonApiPlugin(object):
@@ -13,7 +14,11 @@ class JsonApiPlugin(object):
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             try:
-                return callback(*args, **kwargs)
+                result = callback(*args, **kwargs)
+                # If response is JSON, add server version to meta
+                if isinstance(result, dict):
+                    json_api_meta(result, {'version': CODALAB_VERSION})
+                return result
             except ValidationError as err:
                 format_errors = query_get_bool('format_errors', default=False)
                 if format_errors:

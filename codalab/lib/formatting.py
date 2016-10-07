@@ -49,7 +49,15 @@ size_str = worker_formatting.size_str
 
 
 def date_str(ts):
-    return datetime.datetime.fromtimestamp(ts).isoformat().replace('T', ' ')
+    return datetime.datetime.fromtimestamp(ts).isoformat(sep=' ')
+
+
+def datetime_str(dt):
+    return dt.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def parse_datetime(s):
+    return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
 
 
 duration_str = worker_formatting.duration_str
