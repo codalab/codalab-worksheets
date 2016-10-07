@@ -438,10 +438,6 @@ class CodaLabManager(object):
         return address
 
     # TODO(sckoo): clean up backward compatibility hacks when REST API complete
-    def local_client(self, use_rest=False):
-        return self.client('local', use_rest=use_rest)
-
-    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
     def current_client(self, use_rest=False):
         return self.client(self.session()['address'], use_rest=use_rest)
 
