@@ -29,7 +29,7 @@ from codalab.common import (
     precondition,
     UsageError,
     PermissionError,
-)
+    CODALAB_VERSION)
 from codalab.client.remote_bundle_client import RemoteBundleClient
 from codalab.server.file_server import FileServer
 
@@ -43,7 +43,6 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
     Simple XML-RPC request handler class which also reads authentication
     information included in HTTP headers.
     """
-
     def decode_request_content(self, data):
         '''
         Overrides in order to capture Authorization header.
@@ -68,6 +67,7 @@ class AuthenticatedXMLRPCRequestHandler(SimpleXMLRPCRequestHandler):
         # Clear current user
         self.server.auth_handler.validate_token(None)
         SimpleXMLRPCRequestHandler.send_response(self, code, message)
+        self.send_header("CodaLab-Version", CODALAB_VERSION)
 
 
 class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):

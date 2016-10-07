@@ -508,7 +508,7 @@ class CodaLabManager(object):
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
 
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(auth_cache_key, a_client), self.cli_verbose)
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(auth_cache_key, a_client), self.check_version, self.cli_verbose)
             self._authenticate(auth_cache_key, client)
 
         # Cache and return client
