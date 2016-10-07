@@ -7,7 +7,6 @@ import urllib2
 from codalab.common import (
     http_error_to_exception,
     precondition,
-    PreconditionViolation,
     UsageError,
 )
 from worker.rest_client import RestClient, RestClientException
@@ -84,8 +83,9 @@ class JsonApiClient(RestClient):
     """
     Simple JSON API client.
     """
-    def __init__(self, address, get_access_token):
+    def __init__(self, address, get_access_token, check_version=lambda: None):
         self._get_access_token = get_access_token
+        self._check_version = check_version
         self.address = address  # Used as key in client and token caches
         base_url = address + '/rest'
         super(JsonApiClient, self).__init__(base_url)
@@ -121,8 +121,7 @@ class JsonApiClient(RestClient):
                 result.append((k, v))
         return result
 
-    @staticmethod
-    def _unpack_document(document):
+    def _unpack_document(self, document):
         """
         Unpack a JSON API document into a plain dict, with the relationship keys
         wired up to the 'included' resources. Supports multiple levels of
@@ -232,15 +231,20 @@ class JsonApiClient(RestClient):
             raise JsonApiException('Invalid or unsupported JSON API '
                                    'document format', True)
 
-        # Include meta
-        # (Warning: this may overwrite meta present at the resource object level.)
         if 'meta' in document:
-            result['meta'] = document['meta']
+            meta = document['meta']
+            # Check version
+            if 'version' in meta:
+                self._check_version(meta['version'])
+
+            # Include document meta if there is only a single object
+            # (Warning: this will overwrite any meta present at the resource object level.)
+            if isinstance(result, dict):
+                result['meta'] = meta
 
         return result
 
-    @staticmethod
-    def _pack_document(objects, type_):
+    def _pack_document(self, objects, type_):
         """
         Pack resource object(s) into a JSON API request document.
         References to relationships should be indicated by a placeholder
