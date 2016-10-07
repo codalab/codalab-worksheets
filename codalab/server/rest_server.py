@@ -24,6 +24,7 @@ from bottle import (
 from codalab.common import exception_to_http_error, PreconditionViolation
 from codalab.lib import formatting, server_util
 import codalab.rest.account
+import codalab.rest.bundle_actions
 import codalab.rest.bundles
 import codalab.rest.groups
 import codalab.rest.legacy

@@ -286,7 +286,7 @@ class WorkerModel(object):
         If the message is not sent successfully after timeout_secs, return
         False. Otherwise, returns True.
 
-        Note, only the worker should call this method with autoretry sent to
+        Note, only the worker should call this method with autoretry set to
         False. See comments below.
         """
         start_time = time.time()
