@@ -21,7 +21,7 @@ from codalab.common import (
     PermissionError,
     UsageError,
     AuthorizationError,
-)
+    CODALAB_VERSION)
 from codalab.lib import (
   file_util,
   path_util,
@@ -39,7 +39,7 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
     Provides an implementation of xmlrpclib.Transport which injects an
     Authorization header into HTTP requests to the remove server.
     '''
-    def __init__(self, address, get_auth_token):
+    def __init__(self, address, get_auth_token, check_version):
         '''
         address: the address of the remote server
         get_auth_token: a function which yields the access token for
@@ -51,6 +51,7 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
             raise UsageError("Unsupported protocol: expected http://... or https://... but got %s" % address)
         self._url_type = url_type
         self._bearer_token = get_auth_token
+        self._check_version = check_version
 
     def send_content(self, connection, request_body):
         '''
@@ -61,6 +62,14 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
         if token is not None and len(token) > 0:
             connection.putheader("Authorization", "Bearer: {0}".format(token))
         xmlrpclib.SafeTransport.send_content(self, connection, request_body)
+
+    def parse_response(self, response):
+        if hasattr(response,'getheader'):
+            version = response.getheader("CodaLab-Version")
+            if version:
+                self._check_version(version)
+
+        return xmlrpclib.SafeTransport.parse_response(self, response)
 
     def make_connection(self, host):
         '''
@@ -146,11 +155,11 @@ class RemoteBundleClient(BundleClient):
     )
     COMMANDS = CLIENT_COMMANDS + SERVER_COMMANDS + FILE_COMMANDS
 
-    def __init__(self, address, get_auth_token, verbose):
+    def __init__(self, address, get_auth_token, check_version, verbose):
         self.address = address
         self.verbose = verbose
         host = get_address_host(address)
-        transport = AuthenticatedTransport(host, lambda cmd: None if cmd == 'login' else get_auth_token(self))
+        transport = AuthenticatedTransport(host, lambda cmd: None if cmd == 'login' else get_auth_token(self), check_version)
         self.proxy = xmlrpclib.ServerProxy(host, transport=transport, allow_none=True)
         def do_command(command):
             def inner(*args, **kwargs):

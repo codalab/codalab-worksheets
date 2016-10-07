@@ -32,6 +32,8 @@ import json
 import os
 import sys
 import time
+
+import datetime
 import psutil
 import tempfile
 import textwrap
@@ -40,7 +42,12 @@ from urlparse import urlparse
 
 from codalab.client import is_local_address
 from codalab.client.json_api_client import JsonApiClient
-from codalab.common import UsageError, PermissionError, precondition
+from codalab.common import (
+    CODALAB_VERSION,
+    UsageError,
+    PermissionError,
+    precondition,
+)
 from codalab.server.auth import User
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
@@ -478,7 +485,7 @@ class CodaLabManager(object):
 
             # Create JsonApiClient with a callback to get access tokens
             client = JsonApiClient(
-                address, lambda: self._authenticate(auth_cache_key, auth_handler))
+                address, lambda: self._authenticate(auth_cache_key, auth_handler), self.check_version)
         elif is_local_address(address):
             # if local force mockauth or if local server use correct auth
             bundle_store = self.bundle_store()
@@ -497,7 +504,7 @@ class CodaLabManager(object):
         else:
             from codalab.client.remote_bundle_client import RemoteBundleClient
 
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(auth_cache_key, a_client), self.cli_verbose)
+            client = RemoteBundleClient(address, lambda a_client: self._authenticate(auth_cache_key, a_client), self.check_version, self.cli_verbose)
             self._authenticate(auth_cache_key, client)
 
         # Cache and return client
@@ -600,6 +607,27 @@ class CodaLabManager(object):
         else:
             if 'worksheet_uuid' in session: del session['worksheet_uuid']
         self.save_state()
+
+    def check_version(self, server_version):
+        # Enforce checking version at most once every 24 hours
+        epoch_str = formatting.datetime_str(datetime.datetime.utcfromtimestamp(0))
+        last_check_str = self.state.get('last_check_version_datetime', epoch_str)
+        last_check_dt = formatting.parse_datetime(last_check_str)
+        now = datetime.datetime.now()
+        if (now - last_check_dt) < datetime.timedelta(days=1):
+            return
+        self.state['last_check_version_datetime'] = formatting.datetime_str(now)
+        self.save_state()
+
+        # Print notice if server version is newer
+        if map(int, server_version.split('.')) > map(int, CODALAB_VERSION.split('.')):
+            message = (
+                "NOTICE: "
+                "The instance you are connected to is running CodaLab v{}. "
+                "You are currently using an older v{} of the CLI. "
+                "You can pull the latest features from GitHub.\n"
+            ).format(server_version, CODALAB_VERSION)
+            sys.stderr.write(message)
 
     def logout(self, address):
         """Clear credentials associated with given address."""

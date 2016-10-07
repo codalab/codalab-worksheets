@@ -396,7 +396,8 @@ class RemoteBundleService(object):
     '''
     def __init__(self):
         self.client = RemoteBundleClient(self._cli_url(),
-                                         lambda command: get_user_token(), verbose=0)
+                                         lambda command: get_user_token(),
+                                         check_version=lambda: None, verbose=0)
 
     def _cli_url(self):
         return 'http://' + local.config['server']['host'] + ':' + str(local.config['server']['port'])

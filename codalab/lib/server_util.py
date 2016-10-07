@@ -114,9 +114,10 @@ def query_get_bool(key, default=False):
         abort(httplib.BAD_REQUEST, '%r parameter must be integer boolean' % key)
 
 
-def json_api_meta(doc, meta):
-    precondition(isinstance(meta, dict), "Meta data must be dict")
-    doc['meta'] = meta
+def json_api_meta(doc, meta_update):
+    precondition(isinstance(meta_update, dict), "Meta data must be dict")
+    meta = doc.setdefault('meta', {})
+    meta.update(meta_update)
     return doc
 
 

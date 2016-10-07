@@ -11,8 +11,11 @@ from codalab.common import PreconditionViolation
 
 
 class JsonApiClientTest(unittest.TestCase):
+    def setUp(self):
+        self.client = JsonApiClient('', lambda: None)
+
     def test_pack_params(self):
-        self.assertItemsEqual(JsonApiClient._pack_params({
+        self.assertItemsEqual(self.client._pack_params({
             'int': 2,
             'float': 2.2,
             'str': 'stringy',
@@ -37,13 +40,13 @@ class JsonApiClientTest(unittest.TestCase):
         ])
 
     def test_resource_path(self):
-        self.assertEqual(JsonApiClient._get_resource_path('bundles'),
+        self.assertEqual(self.client._get_resource_path('bundles'),
                          '/bundles')
-        self.assertEqual(JsonApiClient._get_resource_path('bundles', 'abc'),
+        self.assertEqual(self.client._get_resource_path('bundles', 'abc'),
                          '/bundles/abc')
 
     def test_pack_document(self):
-        doc = JsonApiClient._pack_document({
+        doc = self.client._pack_document({
             'owner': JsonApiRelationship('users', '345'),
             'id': '123',
             'name': 'hello'
@@ -68,7 +71,7 @@ class JsonApiClientTest(unittest.TestCase):
         })
 
     def test_unpack_document(self):
-        obj = JsonApiClient._unpack_document({
+        obj = self.client._unpack_document({
             'data': {
                 'id': '123',
                 'type': 'bundles',
