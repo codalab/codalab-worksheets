@@ -614,15 +614,17 @@ class CodaLabManager(object):
 
     def check_version(self, server_version):
         # Enforce checking version at most once every 24 hours
+        epoch_str = formatting.datetime_str(datetime.datetime.utcfromtimestamp(0))
+        last_check_str = self.state.get('last_check_version_datetime', epoch_str)
+        last_check_dt = formatting.parse_datetime(last_check_str)
         now = datetime.datetime.now()
-        last_check_dt = formatting.parse_datetime(self.state.get('last_check_version', formatting.datetime_str(datetime.datetime.utcfromtimestamp(0))))
         if (now - last_check_dt) < datetime.timedelta(days=1):
             return
-        self.state['last_check_version'] = formatting.datetime_str(now)
+        self.state['last_check_version_datetime'] = formatting.datetime_str(now)
         self.save_state()
 
         # Print notice if server version is newer
-        if server_version.split('.') > CODALAB_VERSION.split('.'):
+        if map(int, server_version.split('.')) > map(int, CODALAB_VERSION.split('.')):
             message = (
                 "NOTICE: "
                 "The instance you are connected to is running CodaLab v{}. "
