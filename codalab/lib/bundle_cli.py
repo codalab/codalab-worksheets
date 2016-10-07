@@ -569,6 +569,7 @@ class BundleCLI(object):
             client, worksheet_uuid = self.manager.get_current_worksheet_uuid(use_rest=use_rest)
         else:
             client_is_explicit = spec_util.client_is_explicit(spec)
+            old_client, _ = self.parse_spec(spec, use_rest=False)
             client, spec = self.parse_spec(spec, use_rest=use_rest)
             # If we're on the same client, then resolve spec with respect to
             # the current worksheet.
@@ -2173,11 +2174,12 @@ class BundleCLI(object):
     )
     def do_work_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=True)
+        old_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec, use_rest=False)
         worksheet_info = client.fetch('worksheets', worksheet_uuid)
         if args.worksheet_spec:
             if args.uuid_only:
                 print >>self.stdout, worksheet_info['uuid']
-            return self.change_current_worksheet(client, worksheet_uuid, verbose=(not args.uuid_only))
+            return self.change_current_worksheet(client, old_client, worksheet_uuid, verbose=(not args.uuid_only))
         else:
             if worksheet_info:
                 if args.uuid_only:
@@ -2187,20 +2189,22 @@ class BundleCLI(object):
             else:
                 print >>self.stdout, 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
 
-    def change_current_worksheet(self, client, worksheet_uuid, verbose=False):
+    def change_current_worksheet(self, client, old_client, worksheet_uuid, verbose=False):
         """
-        :param client: client of the target worksheet
+        :param client: REST client of the target worksheet
+        :param old_client: BundleClient of the target worksheet, used for legacy address
         :param worksheet_uuid: UUID of worksheet to change to, or None to indicate home worksheet
         :param verbose: print feedback to self.stdout if True
         :return: None, or a UI action to open the worksheet if self.headless
         """
         if worksheet_uuid is None:
-            worksheet_uuid = client.get_worksheet_uuid(None, '')
+            # Find home worksheet
+            worksheet_uuid = client.fetch_one('worksheets', params={'specs': '/'})['uuid']
 
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenWorksheet(worksheet_uuid)])
 
-        self.manager.set_current_worksheet_uuid(client.address, worksheet_uuid)
+        self.manager.set_current_worksheet_uuid(old_client.address, worksheet_uuid)
 
         if verbose:
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
@@ -2397,6 +2401,7 @@ class BundleCLI(object):
     def do_wrm_command(self, args):
         delete_current = False
         current_client, current_worksheet = self.manager.get_current_worksheet_uuid()
+        old_client, _ = self.manager.get_current_worksheet_uuid(use_rest=False)
         for worksheet_spec in args.worksheet_spec:
             client, worksheet_uuid = self.parse_client_worksheet_uuid(worksheet_spec)
             if (client, worksheet_uuid) == (current_client, current_worksheet):
@@ -2405,7 +2410,7 @@ class BundleCLI(object):
 
         if delete_current:
             # Go to home worksheet
-            return self.change_current_worksheet(current_client, None, verbose=True)
+            return self.change_current_worksheet(current_client, old_client, None, verbose=True)
 
     @Commands.command(
         'wadd',

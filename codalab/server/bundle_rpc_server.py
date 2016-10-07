@@ -79,7 +79,7 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
         self.auth_handler = manager.auth_handler()
 
         # This server is backed by a LocalBundleClient that processes client commands
-        self.client = manager.client('local', is_cli=False)
+        self.client = manager.local_client()
 
         # This server is backed by a file server that processes file commands.
         self.file_server = FileServer()
