@@ -60,8 +60,8 @@ def markup_item(x):
     return (None, None, x, TYPE_MARKUP)
 
 
-def directive_item(x):
-    return (None, None, x, TYPE_DIRECTIVE)
+def directive_item(x, text=None):
+    return (None, None, (x, text), TYPE_DIRECTIVE) if text else (None, None, x, TYPE_DIRECTIVE)
 
 
 def bundle_item(x):
@@ -103,7 +103,7 @@ def convert_item_to_db(item):
         bundle_info['uuid'] if bundle_info else None,
         subworksheet_info['uuid'] if subworksheet_info else None,
         # TODO: change tables.py so that None's are allowed
-        (formatting.tokens_to_string(value_obj) if item_type == TYPE_DIRECTIVE else value_obj) or '',
+        (value_obj[1] if type(value_obj) is tuple else (formatting.tokens_to_string(value_obj) if item_type == TYPE_DIRECTIVE else value_obj)) or '',
         item_type,
     )
 
@@ -113,7 +113,7 @@ def get_worksheet_lines(worksheet_info):
     Generator that returns pretty-printed lines of text for the given worksheet.
     """
     lines = []
-    for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
+    for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['directive_items']:
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
@@ -123,6 +123,7 @@ def get_worksheet_lines(worksheet_info):
             else:
                 # A normal directive
                 value = formatting.tokens_to_string(value_obj)
+                value = value_obj
                 value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
                 lines.append(value)
         elif item_type == TYPE_BUNDLE:
@@ -313,7 +314,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
                 items.append(markup_item(e.message + ': ' + line))
         elif line_type == TYPE_DIRECTIVE:
             directive = DIRECTIVE_REGEX.match(line).group(1)
-            items.append(directive_item(formatting.string_to_tokens(directive)))
+            items.append(directive_item(formatting.string_to_tokens(directive), directive))
         elif line_type == TYPE_MARKUP:
             items.append(markup_item(line))
         else:
@@ -662,11 +663,11 @@ def interpret_items(schemas, raw_items):
     Each interpreted item has a focusIndex, and possibly consists of a list of
     table rows (indexed by subFocusIndex).  Here is an example:
       --- Raw ---                   --- Interpreted ---
-      rawIndex                                         (focusIndex, subFocusIndex)  
+      rawIndex                                         (focusIndex, subFocusIndex)
       0        % display table
       1        [bundle]             [table - row 0     (0, 0)
       2        [bundle]                    - row 1]    (0, 1)
-      3        
+      3
       4        hello                [markup            (1, 0)
       5        world                       ]
       6        [worksheet]          [worksheet]        (2, 0)
