@@ -122,7 +122,6 @@ def get_worksheet_lines(worksheet_info):
                 lines.append('//' + ' '.join(value_obj[1:]))
             else:
                 # A normal directive
-                value = formatting.tokens_to_string(value_obj)
                 value = value_obj
                 value = DIRECTIVE_CHAR + ('' if len(value) == 0 or value.startswith(DIRECTIVE_CHAR) else ' ') + value
                 lines.append(value)
