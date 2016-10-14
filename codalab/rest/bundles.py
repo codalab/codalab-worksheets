@@ -13,7 +13,6 @@ from codalab.bundles import (
 )
 from codalab.common import precondition, State, UsageError
 from codalab.lib import (
-    canonicalize,
     spec_util,
     zip_util,
     worksheet_util,
@@ -26,6 +25,7 @@ from codalab.lib.server_util import (
     query_get_list,
     query_get_type,
 )
+from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.objects.permission import (
     check_bundles_have_all_permission,
     check_bundles_have_read_permission,
@@ -43,7 +43,6 @@ from codalab.rest.util import (
     get_resource_ids,
     local_bundle_client_compatible,
 )
-from codalab.rest.worksheets import get_worksheet_uuid
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
@@ -70,7 +69,8 @@ def _fetch_bundles():
         bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, worksheet_uuid, keywords)
     elif specs:
         # Resolve bundle specs
-        bundle_uuids = resolve_bundle_specs(worksheet_uuid, specs)
+        bundle_uuids = ServerWorksheetResolver(local.model, request.user)\
+            .resolve_bundle_uuids(worksheet_uuid, specs)
     else:
         abort(httplib.BAD_REQUEST,
               "Request must include either 'keywords' "
@@ -443,13 +443,6 @@ def request_accepts_gzip_encoding():
             else:
                 return True
     return False
-
-
-def resolve_bundle_specs(worksheet_uuid, bundle_specs):
-    return [resolve_bundle_spec(worksheet_uuid, bundle_spec)
-            for bundle_spec in bundle_specs]
-
-
 
 
 @local_bundle_client_compatible

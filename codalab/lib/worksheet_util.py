@@ -226,8 +226,8 @@ class WorksheetResolver(object):
     def resolve_bundle_uuids(self, worksheet_uuid, bundle_specs):
         """
         Return the bundle_uuids corresponding to bundle_specs.
-        Important difference from client.get_bundle_uuids: if all bundle_specs are already
-        uuids, then just return them directly.  This avoids an extra call to the client.
+        Avoids an extra call to the resolution implementation when possible,
+        since it may incur I/O.
         """
         bundle_uuids = {}
         unresolved = []
@@ -277,6 +277,7 @@ class ServerWorksheetResolver(WorksheetResolver):
         self.user = user
 
     def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        # There is no bulk method for resolving bundle specs on the server-side
         return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
 
     def _get_bundle_uuid(self, worksheet_uuid, bundle_spec):
@@ -291,6 +292,12 @@ class ServerWorksheetResolver(WorksheetResolver):
         """
         Return the uuid of the specified worksheet if it exists.
         Otherwise, throw an error.
+        This is a stripped down copy of the same method in rest.worksheets,
+        which additionally creates the dashboard/home if it doesn't exist yet.
+        That functionality is not useful here, since this method is only used
+        to resolve subworksheets in other worksheets.
+        If we moved that method here verbatim, we would have to reimplement
+        methods such as new_worksheet in this context as well.
         """
         if worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET:
             worksheet_spec = spec_util.home_worksheet(self.user.user_name)
