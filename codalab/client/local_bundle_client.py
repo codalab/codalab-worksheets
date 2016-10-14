@@ -86,17 +86,6 @@ class LocalBundleClient(BundleClient):
         user = self._current_user()
         return user.name if user else None
 
-    def get_bundle_uuids(self, worksheet_uuid, bundle_specs):
-        return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
-
-    def _get_bundle_uuid(self, worksheet_uuid, bundle_spec):
-        if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
-            # Shift to new worksheet
-            worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
-            worksheet_uuid = self.get_worksheet_uuid(worksheet_uuid, worksheet_spec)
-
-        return canonicalize.get_bundle_uuid(self.model, self._current_user_id(), worksheet_uuid, bundle_spec)
-
     def resolve_owner_in_keywords(self, keywords):
         return bundle_rest.resolve_owner_in_keywords(keywords, client=self)
 

@@ -217,7 +217,6 @@ def set_worksheet_permission(local, request, worksheet, group_uuid, permission):
     local.model.set_group_worksheet_permission(group_uuid, worksheet.uuid, permission)
 
 
-# FIXME(sckoo): fix when implementing worksheets API
 @local_bundle_client_compatible
 def populate_worksheet(local, request, worksheet, name, title):
     file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
