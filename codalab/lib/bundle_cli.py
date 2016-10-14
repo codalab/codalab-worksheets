@@ -1306,7 +1306,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         deleted_uuids = client.delete('bundles', bundle_uuids, params={
             'force': args.force,
             'recursive': args.recursive,
@@ -1347,8 +1347,6 @@ class BundleCLI(object):
         ),
     )
     def do_search_command(self, args):
-        # TODO(sckoo): FIX THIS
-        old_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         bundles = client.fetch('bundles', params={
@@ -1367,9 +1365,14 @@ class BundleCLI(object):
 
         # Add the bundles to the current worksheet
         if args.append:
-            # TODO: Consider batching this
-            for bundle in bundles:
-                old_client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle['uuid']))
+            client.create('worksheet-items', data=[
+                {
+                    'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
+                    'bundle': JsonApiRelationship('bundles', bundle['uuid']),
+                    'type': worksheet_util.TYPE_BUNDLE,
+                }
+                for bundle in bundles
+            ])
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print >>self.stdout, 'Added %d bundles to %s' % (len(bundles), self.worksheet_str(worksheet_info))
 

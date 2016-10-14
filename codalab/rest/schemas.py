@@ -10,6 +10,7 @@ from marshmallow import (
     validate,
     validates_schema,
 )
+from marshmallow import post_load
 from marshmallow_jsonapi import Schema, fields
 
 from codalab.bundles import BUNDLE_SUBCLASSES
@@ -22,12 +23,12 @@ from codalab.objects.permission import PermissionSpec
 
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
-    # worksheet = fields.Relationship(include_data=True, )
+    worksheet = fields.Relationship(include_data=True, attribute='worksheet_uuid', type_='worksheets', load_only=True, required=True)
     subworksheet = fields.Relationship(include_data=True, type_='worksheets', attribute='subworksheet_uuid')
     bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid')
     value = fields.String()
-    type = fields.String(validate=validate.OneOf(set(WORKSHEET_ITEM_TYPES)))
-    sort_key = fields.Integer(allow_none=True)
+    type = fields.String(validate=validate.OneOf(set(WORKSHEET_ITEM_TYPES)), required=True)
+    sort_key = fields.Integer(allow_none=True, dump_only=True)
 
     # TODO: add validation that only one of subworksheet, bundle, or value is set
 

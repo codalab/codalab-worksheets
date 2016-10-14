@@ -28,6 +28,7 @@ from codalab.rest.util import (
     get_bundle_infos,
     resolve_owner_in_keywords,
 )
+from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
 @get('/worksheets/<uuid:re:%s>' % spec_util.UUID_STR)
@@ -104,6 +105,23 @@ def fetch_worksheets():
             json_api_include(document, WorksheetPermissionSchema(), w['group_permissions'])
 
     return document
+
+
+@post('/worksheet-items', apply=AuthenticatedPlugin())
+def create_worksheet_items():
+    """
+    Bulk add worksheet items.
+    """
+    from codalab.lib.print_util import pretty_print_json
+    pretty_print_json(request.json)
+    new_items = WorksheetItemSchema(
+        strict=True, many=True,
+    ).load(request.json).data
+
+    for item in new_items:
+        add_worksheet_item(item['worksheet_uuid'], Worksheet.Item.as_tuple(item))
+
+    return WorksheetItemSchema(many=True).dump(new_items).data
 
 
 #############################################################
@@ -321,6 +339,11 @@ def get_worksheet_uuid(local, request, base_worksheet_uuid, worksheet_spec):
 
 
 @local_bundle_client_compatible
-def search_worksheets(local, request, keywords):
-    #self._set_owner_names(results)
-    return results
+def add_worksheet_item(local, request, worksheet_uuid, item):
+    """
+    Add the given item to the worksheet.
+    """
+    worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
+    check_worksheet_has_all_permission(local.model, request.user, worksheet)
+    worksheet_util.check_worksheet_not_frozen(worksheet)
+    local.model.add_worksheet_item(worksheet_uuid, item)

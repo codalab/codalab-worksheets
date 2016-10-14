@@ -97,9 +97,6 @@ class LocalBundleClient(BundleClient):
         return worksheet_rest.get_worksheet_uuid(base_worksheet_uuid, worksheet_spec, client=self)
 
     def get_worksheet_uuid_or_none(self, base_worksheet_uuid, worksheet_spec):
-        """
-        Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
-        """
         return worksheet_rest.get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec, client=self)
 
     @staticmethod
@@ -725,13 +722,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def add_worksheet_item(self, worksheet_uuid, item):
-        """
-        Add the given item to the worksheet.
-        """
-        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        worksheet_util.check_worksheet_not_frozen(worksheet)
-        self.model.add_worksheet_item(worksheet_uuid, item)
+        worksheet_rest.add_worksheet_item(worksheet_uuid, item, client=self)
 
     @authentication_required
     def update_worksheet_items(self, worksheet_info, new_items):
