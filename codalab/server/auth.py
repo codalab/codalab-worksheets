@@ -8,6 +8,7 @@ import urllib
 import urllib2
 
 
+# TODO(sckoo): Remove with LocalBundleClient
 class User(object):
     '''
     Defines a registered user with a unique name and a unique (int) identifier.
@@ -15,6 +16,7 @@ class User(object):
     def __init__(self, name, unique_id):
         self.name = name
         self.unique_id = unique_id
+        self.user_id = unique_id  # to match interface of other User object
 
 
 class MockAuthHandler(object):

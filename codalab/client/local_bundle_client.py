@@ -12,12 +12,10 @@ import datetime
 import os
 import re
 import shutil
-import sys
 import yaml
 
 from codalab.bundles import (
     get_bundle_subclass,
-    PrivateBundle,
     UPLOADED_TYPES,
 )
 from codalab.common import (
@@ -29,19 +27,18 @@ from codalab.common import (
   PermissionError
 )
 from codalab.client.bundle_client import BundleClient
-from codalab.lib.bundle_action import BundleAction
 from codalab.lib import (
     canonicalize,
     worksheet_util,
     spec_util,
     formatting,
 )
+from codalab.lib.bundle_action import BundleAction
+from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.objects.chat_box_qa import ChatBoxQA
-
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
     check_bundles_have_all_permission,
-    check_worksheet_has_read_permission,
     check_worksheet_has_all_permission,
     parse_permission,
     permission_str,
@@ -683,7 +680,8 @@ class LocalBundleClient(BundleClient):
     def populate_worksheet(self, worksheet, name, title):
         file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
         lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
-        items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)
+        items, commands = worksheet_util.parse_worksheet_form(
+            lines, ServerWorksheetResolver(self.model, self._current_user()), worksheet.uuid)
         info = self.get_worksheet_info(worksheet.uuid, True)
         self.update_worksheet_items(info, items)
         self.update_worksheet_metadata(worksheet.uuid, {'title': title})

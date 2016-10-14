@@ -214,7 +214,15 @@ def request_lines(worksheet_info):
     return form_result
 
 
-class UuidResolver(object):
+class WorksheetResolver(object):
+    """
+    Abstract class containing all of the functionality that is shared across
+    client/server boundaries, particular for worksheet interpretation. There are
+    separate implementations to be used on the client and server sides
+    respectively.
+    As the codebase stabilizes, we may want to slowly clarify the separation
+    between client and server code, and phase out the use of this class.
+    """
     def resolve_bundle_uuids(self, worksheet_uuid, bundle_specs):
         """
         Return the bundle_uuids corresponding to bundle_specs.
@@ -263,10 +271,10 @@ class UuidResolver(object):
         raise NotImplementedError
 
 
-class LocalUuidResolver(UuidResolver):
-    def __init__(self, bundle_model, user_id):
+class ServerWorksheetResolver(WorksheetResolver):
+    def __init__(self, bundle_model, user):
         self.model = bundle_model
-        self.user_id = user_id
+        self.user = user
 
     def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
         return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
@@ -277,10 +285,19 @@ class LocalUuidResolver(UuidResolver):
             worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
             worksheet_uuid = self.resolve_worksheet_uuid(worksheet_uuid, worksheet_spec)
 
-        return canonicalize.get_bundle_uuid(self.model, self.user_id, worksheet_uuid, bundle_spec)
+        return canonicalize.get_bundle_uuid(self.model, self.user.user_id, worksheet_uuid, bundle_spec)
+
+    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Return the uuid of the specified worksheet if it exists.
+        Otherwise, throw an error.
+        """
+        if worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET:
+            worksheet_spec = spec_util.home_worksheet(self.user.user_name)
+        return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
 
 
-class RemoteUuidResolver(UuidResolver):
+class ClientWorksheetResolver(WorksheetResolver):
     def __init__(self, rest_client):
         self.client = rest_client
 
@@ -291,8 +308,22 @@ class RemoteUuidResolver(UuidResolver):
         })
         return [b['id'] for b in bundles]
 
+    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Avoid making REST call if worksheet_spec is already a uuid.
+        """
+        worksheet_spec = worksheet_spec.strip()
+        if spec_util.UUID_REGEX.match(worksheet_spec):
+            worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
+        else:
+            worksheet_uuid = self.client.fetch_one('worksheets', params={
+                'base': base_worksheet_uuid,
+                'specs': [worksheet_spec],
+            })['uuid']
+        return worksheet_uuid
 
-def parse_worksheet_form(form_result, client, worksheet_uuid):
+
+def parse_worksheet_form(form_result, resolver, worksheet_uuid):
     """
     Input: form_result is a list of lines.
     Return (list of (bundle_info, subworksheet_info, value, type) tuples, commands to execute)
@@ -323,7 +354,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         ]
     bundle_specs = zip(*bundle_lines) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
-    bundle_uuids = dict(zip(bundle_specs[0], get_bundle_uuids(client, worksheet_uuid, bundle_specs[1])))
+    bundle_uuids = dict(zip(bundle_specs[0], resolver.resolve_bundle_uuids(worksheet_uuid, bundle_specs[1])))
 
     commands = []
     items = []
@@ -343,7 +374,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         elif line_type == TYPE_WORKSHEET:
             subworksheet_spec = SUBWORKSHEET_REGEX.match(line).group(3)
             try:
-                subworksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, subworksheet_spec)
+                subworksheet_uuid = resolver.resolve_worksheet_uuid(worksheet_uuid, subworksheet_spec)
                 subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
                 items.append(subworksheet_item(subworksheet_info))
             except UsageError, e:

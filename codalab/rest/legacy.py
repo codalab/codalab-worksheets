@@ -10,7 +10,6 @@ from oauthlib.common import generate_token
 import random
 import shlex
 import threading
-import traceback
 
 from bottle import (
   abort,
@@ -28,10 +27,9 @@ from codalab.bundles import get_bundle_subclass, PrivateBundle
 from codalab.client.json_api_client import JsonApiClient
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.common import State, UsageError
+from codalab.common import UsageError
 from codalab.lib import (
   bundle_cli,
-  bundle_util,
   file_util,
   formatting,
   metadata_util,
@@ -40,11 +38,11 @@ from codalab.lib import (
   zip_util,
 )
 from codalab.lib.codalab_manager import CodaLabManager
+from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.oauth2 import OAuth2Token
 from codalab.objects.permission import permission_str
-from codalab.rest.util import notify_admin
-from codalab.server.auth import LocalUserAuthHandler, RestOAuthHandler
+from codalab.server.auth import LocalUserAuthHandler
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalab.server.rpc_file_handle import RPCFileHandle
 
@@ -127,7 +125,7 @@ class BundleService(object):
         if spec_util.UUID_REGEX.match(spec):
             return spec
         else:
-            return worksheet_util.get_worksheet_uuid(self.client, None, spec)
+            return self.client.get_worksheet_uuid(None, spec)
 
     def full_worksheet(self, uuid, bundle_uuids=None):
         """
@@ -229,7 +227,8 @@ class BundleService(object):
         Replace worksheet |uuid| with the raw contents given by |lines|.
         """
         worksheet_info = self.client.get_worksheet_info(uuid, True)
-        new_items, commands = worksheet_util.parse_worksheet_form(lines, self.client, worksheet_info['uuid'])
+        new_items, commands = worksheet_util.parse_worksheet_form(
+            lines, ServerWorksheetResolver(self.client.model, self.client._current_user()), worksheet_info['uuid'])
         self.client.update_worksheet_items(worksheet_info, new_items)
         # Note: commands are ignored
 

@@ -82,6 +82,7 @@ from codalab.lib.bundle_store import (
     MultiDiskBundleStore
 )
 from codalab.lib.print_util import FileTransferProgress
+from codalab.lib.worksheet_util import ClientWorksheetResolver
 from worker.file_util import un_tar_directory
 
 # Formatting Constants
@@ -572,7 +573,7 @@ class BundleCLI(object):
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            worksheet_uuid = cli_util.get_worksheet_uuid(client, base_worksheet_uuid, spec)
+            worksheet_uuid = ClientWorksheetResolver(client).resolve_worksheet_uuid(base_worksheet_uuid, spec)
         return client, worksheet_uuid
 
     @staticmethod
@@ -2102,6 +2103,7 @@ class BundleCLI(object):
         ),
     )
     def do_add_command(self, args):
+        # TODO: change to JSON API client
         curr_client, curr_worksheet_uuid = self.manager.get_current_worksheet_uuid()
         dest_client, dest_worksheet_uuid = self.parse_client_worksheet_uuid(args.dest_worksheet)
 
@@ -2134,8 +2136,8 @@ class BundleCLI(object):
 
                 # a base_worksheet_uuid is only applicable if we're on the source client
                 base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
-                # TODO: change to cli_util
-                subworksheet_uuid = worksheet_util.get_worksheet_uuid(source_client, base_worksheet_uuid, worksheet_spec)
+                subworksheet_uuid = ClientWorksheetResolver(source_client)\
+                    .resolve_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
 
                 # add worksheet
                 dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
@@ -2179,7 +2181,7 @@ class BundleCLI(object):
         """
         if worksheet_uuid is None:
             # Find home worksheet
-            worksheet_uuid = cli_util.get_worksheet_uuid(client, '', '/')
+            worksheet_uuid = ClientWorksheetResolver(client).resolve_worksheet_uuid('', '/')
 
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenWorksheet(worksheet_uuid)])
@@ -2240,7 +2242,7 @@ class BundleCLI(object):
                 lines = worksheet_util.request_lines(worksheet_info)
 
             # Parse the lines.
-            new_items, commands = worksheet_util.parse_worksheet_form(lines, client, worksheet_info['uuid'])
+            new_items, commands = worksheet_util.parse_worksheet_form(lines, ClientWorksheetResolver(client), worksheet_info['uuid'])
 
             # Save the worksheet.
             client.update_worksheet_items(worksheet_info, new_items)

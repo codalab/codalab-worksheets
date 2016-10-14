@@ -1,22 +1,6 @@
 import re
 
 from codalab.common import precondition, UsageError
-from codalab.lib import spec_util
-
-
-def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
-    """
-    Avoid making REST call if worksheet_spec is already a uuid.
-    """
-    worksheet_spec = worksheet_spec.strip()
-    if spec_util.UUID_REGEX.match(worksheet_spec):
-        worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
-    else:
-        worksheet_uuid = client.fetch_one('worksheets', params={
-            'base': base_worksheet_uuid,
-            'specs': [worksheet_spec],
-        })['uuid']
-    return worksheet_uuid
 
 
 def safe_get(o, *args, **kwargs):

@@ -12,6 +12,7 @@ from codalab.lib import (
 )
 from codalab.lib import formatting
 from codalab.lib.server_util import json_api_include, query_get_list
+from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import (
     check_worksheet_has_all_permission,
@@ -221,8 +222,9 @@ def set_worksheet_permission(local, request, worksheet, group_uuid, permission):
 def populate_worksheet(local, request, worksheet, name, title):
     file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
     lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
-    items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)  # TODO: omg why does this need a client
-    info = get_worksheet_info(worksheet.uuid, True)
+    items, commands = worksheet_util.parse_worksheet_form(
+        lines, ServerWorksheetResolver(local.model, request.user), worksheet.uuid)
+    info = get_worksheet_info(worksheet.uuid, fetch_items=True)
     update_worksheet_items(info, items)
     update_worksheet_metadata(worksheet.uuid, {'title': title})
 
