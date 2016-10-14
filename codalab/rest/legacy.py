@@ -115,7 +115,7 @@ class BundleService(object):
             metadata[key] = value
 
         bundle_info['metadata'] = metadata
-        bundle_info['editable_metadata_fields'] = worksheet_util.get_editable_metadata_fields(cls, metadata)
+        bundle_info['editable_metadata_fields'] = worksheet_util.get_editable_metadata_fields(cls)
 
         return bundle_info
 

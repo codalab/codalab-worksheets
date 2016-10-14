@@ -181,8 +181,7 @@ def get_formatted_metadata(cls, metadata, raw=False):
     return result
 
 
-# TODO(sckoo): remove metadata argument when legacy code removed
-def get_editable_metadata_fields(cls, metadata=None):
+def get_editable_metadata_fields(cls):
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
