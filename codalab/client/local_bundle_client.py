@@ -734,9 +734,9 @@ class LocalBundleClient(BundleClient):
         result['owner_name'] = self._user_id_to_name(result['owner_id'])
 
         if fetch_items:
-            all_items, directive_items = self._convert_items_from_db(result['items'])
+            all_items, stringified_items = self._convert_items_from_db(result['items'])
             result['items'] = all_items
-            result['directive_items'] = directive_items
+            result['stringified_items'] = stringified_items
 
         # Note that these group_permissions is universal and permissions are relative to the current user.
         # Need to make another database query.
@@ -786,7 +786,7 @@ class LocalBundleClient(BundleClient):
 
         # Go through the items and substitute the components
         new_items = []
-        directive_items = []
+        stringified_items = []
         for (bundle_uuid, subworksheet_uuid, value, type) in items:
             bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
             if subworksheet_uuid:
@@ -801,8 +801,8 @@ class LocalBundleClient(BundleClient):
                 subworksheet_info = None
             value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
             new_items.append((bundle_info, subworksheet_info, value_obj, type))
-            directive_items.append((bundle_info, subworksheet_info, value, type))
-        return new_items, directive_items
+            stringified_items.append((bundle_info, subworksheet_info, value, type))
+        return new_items, stringified_items
 
     @authentication_required
     def add_worksheet_item(self, worksheet_uuid, item):
