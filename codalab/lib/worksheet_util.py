@@ -197,9 +197,9 @@ def get_editable_metadata_fields(cls, metadata=None):
     return result
 
 
-def request_lines(worksheet_info, client):
+def request_lines(worksheet_info):
     """
-    Input: worksheet_info, client (which is used to get bundle_infos)
+    Input: worksheet_info
     Popup an editor, populated with the current worksheet contents.
     Return a list of new items (bundle_uuid, value, type) that the user typed into the editor.
     """
@@ -215,55 +215,82 @@ def request_lines(worksheet_info, client):
     return form_result
 
 
-def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
-    """
-    Return the bundle_uuids corresponding to bundle_specs.
-    Important difference from client.get_bundle_uuids: if all bundle_specs are already
-    uuids, then just return them directly.  This avoids an extra call to the client.
-    """
-    bundle_uuids = {}
-    unresolved = []
-    for spec in bundle_specs:
-        spec = spec.strip()
-        if spec_util.UUID_REGEX.match(spec):
-            bundle_uuids[spec] = spec
+class UuidResolver(object):
+    def resolve_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        """
+        Return the bundle_uuids corresponding to bundle_specs.
+        Important difference from client.get_bundle_uuids: if all bundle_specs are already
+        uuids, then just return them directly.  This avoids an extra call to the client.
+        """
+        bundle_uuids = {}
+        unresolved = []
+        for spec in bundle_specs:
+            spec = spec.strip()
+            if spec_util.UUID_REGEX.match(spec):
+                bundle_uuids[spec] = spec
+            else:
+                unresolved.append(spec)
+
+        # Resolve uuids with a batch call to the client and update dict
+        if unresolved:
+            bundle_uuids.update(zip(unresolved, self._get_bundle_uuids(worksheet_uuid, unresolved)))
+
+        # Return uuids for the bundle_specs in the original order provided
+        return [bundle_uuids[spec] for spec in bundle_specs]
+
+    def resolve_bundle_uuid(self, worksheet_uuid, bundle_spec):
+        """
+        Return the bundle_uuid corresponding to a single bundle_spec.
+        If bundle_spec is already a uuid, then just return it directly.
+        This avoids an extra call to the client.
+        """
+        return self.resolve_bundle_uuids(worksheet_uuid, [bundle_spec])[0]
+
+    def resolve_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Same thing as get_bundle_uuid, but for worksheets.
+        """
+        worksheet_spec = worksheet_spec.strip()
+        if spec_util.UUID_REGEX.match(worksheet_spec):
+            worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
         else:
-            unresolved.append(spec)
+            worksheet_uuid = self._get_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
+        return worksheet_uuid
 
-    # Resolve uuids with a batch call to the client and update dict
-    if unresolved:
-        if isinstance(client, JsonApiClient):
-            bundles = client.fetch('bundles', params={
-                'worksheet': worksheet_uuid,
-                'specs': unresolved
-            })
-            bundle_uuids.update(zip(unresolved, [b['id'] for b in bundles]))
-        else:
-            bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
+    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        raise NotImplementedError
 
-    # Return uuids for the bundle_specs in the original order provided
-    return [bundle_uuids[spec] for spec in bundle_specs]
+    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        raise NotImplementedError
 
 
-def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
-    """
-    Return the bundle_uuid corresponding to a single bundle_spec.
-    If bundle_spec is already a uuid, then just return it directly.
-    This avoids an extra call to the client.
-    """
-    return get_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
+class LocalUuidResolver(UuidResolver):
+    def __init__(self, bundle_model, user_id):
+        self.model = bundle_model
+        self.user_id = user_id
+
+    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
+
+    def _get_bundle_uuid(self, worksheet_uuid, bundle_spec):
+        if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
+            # Shift to new worksheet
+            worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
+            worksheet_uuid = self.resolve_worksheet_uuid(worksheet_uuid, worksheet_spec)
+
+        return canonicalize.get_bundle_uuid(self.model, self.user_id, worksheet_uuid, bundle_spec)
 
 
-def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
-    """
-    Same thing as get_bundle_uuid, but for worksheets.
-    """
-    worksheet_spec = worksheet_spec.strip()
-    if spec_util.UUID_REGEX.match(worksheet_spec):
-        worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
-    else:
-        worksheet_uuid = client.get_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
-    return worksheet_uuid
+class RemoteUuidResolver(UuidResolver):
+    def __init__(self, rest_client):
+        self.client = rest_client
+
+    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        bundles = self.client.fetch('bundles', params={
+            'worksheet': worksheet_uuid,
+            'specs': bundle_specs,
+        })
+        return [b['id'] for b in bundles]
 
 
 def parse_worksheet_form(form_result, client, worksheet_uuid):
@@ -443,6 +470,20 @@ def interpret_genpath(bundle_info, genpath):
     if value is not None: return value
 
     return None
+
+
+def interpret_file_genpaths(client, requests):
+    """
+    Helper function.
+    requests: list of (bundle_uuid, genpath, post-processing-func)
+    Return responses: corresponding list of strings
+    """
+    target_cache = {}
+    responses = []
+    for (bundle_uuid, genpath, post) in requests:
+        value = interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post)
+        responses.append(value)
+    return responses
 
 
 def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
@@ -1023,7 +1064,7 @@ def interpret_genpath_table_contents(client, contents):
             # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
             if isinstance(value, need_gen_types):
                 requests.append(value)
-    responses = client.interpret_file_genpaths(requests)
+    responses = interpret_file_genpaths(client, requests)
 
     # Put it in a table
     new_contents = []

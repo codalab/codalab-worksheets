@@ -218,13 +218,13 @@ def set_worksheet_permission(local, request, worksheet, group_uuid, permission):
 
 # FIXME(sckoo): fix when implementing worksheets API
 @local_bundle_client_compatible
-def populate_dashboard(local, request, worksheet):
-    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/dashboard.ws')
+def populate_worksheet(local, request, worksheet, name, title):
+    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
     lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
-    items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)
-    info = local.model.get_worksheet_info(worksheet.uuid, True)
+    items, commands = worksheet_util.parse_worksheet_form(lines, self, worksheet.uuid)  # TODO: omg why does this need a client
+    info = get_worksheet_info(worksheet.uuid, True)
     update_worksheet_items(info, items)
-    update_worksheet_metadata(worksheet.uuid, {'title': 'Codalab Dashboard'})
+    update_worksheet_metadata(worksheet.uuid, {'title': title})
 
 
 @local_bundle_client_compatible
@@ -276,7 +276,9 @@ def new_worksheet(local, request, name):
     set_worksheet_permission(worksheet, local.model.public_group_uuid,
                              GROUP_OBJECT_PERMISSION_READ)
     if spec_util.is_dashboard(name):
-        populate_dashboard(worksheet)
+        populate_worksheet(worksheet, 'dashboard', 'CodaLab Dashboard')
+    if spec_util.is_public_home(name):
+        populate_worksheet(worksheet, 'home', 'Public Home')
     return worksheet.uuid
 
 

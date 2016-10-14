@@ -450,14 +450,6 @@ def resolve_bundle_specs(worksheet_uuid, bundle_specs):
             for bundle_spec in bundle_specs]
 
 
-def resolve_bundle_spec(worksheet_uuid, bundle_spec):
-    if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
-        # Shift to new worksheet
-        worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
-        worksheet_uuid = get_worksheet_uuid(worksheet_uuid, worksheet_spec)
-
-    return canonicalize.get_bundle_uuid(local.model, request.user.user_id,
-                                        worksheet_uuid, bundle_spec)
 
 
 @local_bundle_client_compatible

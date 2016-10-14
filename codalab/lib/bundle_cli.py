@@ -541,7 +541,6 @@ class BundleCLI(object):
             if i == 0:
                 print >>self.stdout, indent + (sum(lengths) + 2*(len(columns) - 1)) * '-'
 
-    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
     def parse_spec(self, spec):
         """
         Parse a global spec, which includes the instance and either a bundle or worksheet spec.
@@ -1319,7 +1318,6 @@ class BundleCLI(object):
                 'specs': deleted_uuids,
             })
             print >>self.stdout, 'This command would permanently remove the following bundles (not doing so yet):'
-            # TODO(sckoo): clean up use_rest hack when REST API migration complete
             self.print_bundle_info_list(bundles, uuid_only=False, print_ref=False)
         else:
             for uuid in deleted_uuids:
@@ -1349,10 +1347,10 @@ class BundleCLI(object):
     )
     def do_search_command(self, args):
         # TODO(sckoo): FIX THIS
+        old_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundles = rest_client.fetch('bundles', params={
+        bundles = client.fetch('bundles', params={
             'worksheet': worksheet_uuid,
             'keywords': args.keywords,
         })
@@ -1370,8 +1368,8 @@ class BundleCLI(object):
         if args.append:
             # TODO: Consider batching this
             for bundle in bundles:
-                client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle['uuid']))
-            worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
+                old_client.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(bundle['uuid']))
+            worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print >>self.stdout, 'Added %d bundles to %s' % (len(bundles), self.worksheet_str(worksheet_info))
 
         return {
@@ -2239,7 +2237,7 @@ class BundleCLI(object):
             if args.file:
                 lines = [line.rstrip() for line in open(args.file).readlines()]
             else:
-                lines = worksheet_util.request_lines(worksheet_info, client)
+                lines = worksheet_util.request_lines(worksheet_info)
 
             # Parse the lines.
             new_items, commands = worksheet_util.parse_worksheet_form(lines, client, worksheet_info['uuid'])
@@ -2289,7 +2287,7 @@ class BundleCLI(object):
         rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = rest_client.fetch('worksheets', worksheet_uuid)
         if args.raw:
-            lines = worksheet_util.get_worksheet_lines(worksheet_info, use_rest=True)  # TODO
+            lines = worksheet_util.get_worksheet_lines(worksheet_info, use_rest=True)
             for line in lines:
                 print >>self.stdout, line
         else:
