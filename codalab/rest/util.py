@@ -4,6 +4,7 @@ Most of these are adapted from the LocalBundleClient methods,
 Placed in this central location to prevent circular imports.
 """
 import httplib
+import re
 import sys
 import threading
 from functools import wraps
@@ -122,6 +123,18 @@ def notify_admin(local, request, message):
     local.emailer.send_email(subject=subject,
                              body=message,
                              recipient=local.config['server']['admin_email'])
+
+
+@local_bundle_client_compatible
+def resolve_owner_in_keywords(local, request, keywords):
+    # Resolve references to owner ids
+    def resolve(keyword):
+        # Example: owner=codalab => owner_id=0
+        m = re.match('owner=(.+)', keyword)
+        if not m:
+            return keyword
+        return 'owner_id=%s' % getattr(local.model.get_user(username=m.group(1)), 'user_id', 'x')
+    return map(resolve, keywords)
 
 
 #############################################################

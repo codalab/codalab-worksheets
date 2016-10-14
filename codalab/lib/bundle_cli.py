@@ -1415,7 +1415,7 @@ class BundleCLI(object):
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
-            ('Owner', '%s(%s)' % (worksheet_info['owner']['user_name'], worksheet_info['owner']['id'])),
+            ('Owner', formatting.user_str(worksheet_info['owner'])),
             ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions']),
                                       ' [frozen]' if worksheet_info['frozen'] else '')),
         ]
@@ -1515,11 +1515,7 @@ class BundleCLI(object):
             lines.append(self.key_value_str(key, info.get(key)))
 
         # Owner info
-        if info['owner']:
-            owner_str = '%s(%s)' % (info['owner']['user_name'], info['owner']['id'])
-        else:
-            owner_str = '<unknown>'
-        lines.append(self.key_value_str('owner', owner_str))
+        lines.append(self.key_value_str('owner', formatting.user_str(info['owner'])))
 
         # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
@@ -2355,14 +2351,14 @@ class BundleCLI(object):
         else:
             client = self.manager.current_client()
 
-        worksheet_dicts = client.search_worksheets(args.keywords)
+        worksheet_dicts = client.fetch('worksheets', params={'keywords': args.keywords})
         if args.uuid_only:
             for row in worksheet_dicts:
                 print >>self.stdout, row['uuid']
         else:
             if worksheet_dicts:
                 for row in worksheet_dicts:
-                    row['owner'] = '%s(%s)' % (row['owner_name'], row['owner_id'])
+                    row['owner'] = formatting.user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
                 post_funcs = {'uuid': UUID_POST_FUNC}
                 self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
@@ -2458,7 +2454,7 @@ class BundleCLI(object):
                 # Set owner string for print_table
                 # group['owner'] may be None (i.e. for the public group)
                 if group['owner']:
-                    group['owner'] = '%s(%s)' % (group['owner']['user_name'], group['owner']['id'])
+                    group['owner'] = formatting.user_str(group['owner'])
 
             self.print_table(('name', 'uuid', 'owner', 'role'), groups)
         else:

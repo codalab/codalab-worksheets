@@ -86,6 +86,125 @@ def worksheet_line(description, uuid):
 ############################################################
 
 
+class WorksheetResolver(object):
+    """
+    Abstract class containing all of the functionality that is shared across
+    client/server boundaries, particular for worksheet interpretation. There are
+    separate implementations to be used on the client and server sides
+    respectively.
+    As the codebase stabilizes, we may want to slowly clarify the separation
+    between client and server code, and phase out the use of this class.
+    """
+    def resolve_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        """
+        Return the bundle_uuids corresponding to bundle_specs.
+        Avoids an extra call to the resolution implementation when possible,
+        since it may incur I/O.
+        """
+        bundle_uuids = {}
+        unresolved = []
+        for spec in bundle_specs:
+            spec = spec.strip()
+            if spec_util.UUID_REGEX.match(spec):
+                bundle_uuids[spec] = spec
+            else:
+                unresolved.append(spec)
+
+        # Resolve uuids with a batch call to the client and update dict
+        if unresolved:
+            bundle_uuids.update(zip(unresolved, self._get_bundle_uuids(worksheet_uuid, unresolved)))
+
+        # Return uuids for the bundle_specs in the original order provided
+        return [bundle_uuids[spec] for spec in bundle_specs]
+
+    def resolve_bundle_uuid(self, worksheet_uuid, bundle_spec):
+        """
+        Return the bundle_uuid corresponding to a single bundle_spec.
+        If bundle_spec is already a uuid, then just return it directly.
+        This avoids an extra call to the client.
+        """
+        return self.resolve_bundle_uuids(worksheet_uuid, [bundle_spec])[0]
+
+    def resolve_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Same thing as get_bundle_uuid, but for worksheets.
+        """
+        worksheet_spec = worksheet_spec.strip()
+        if spec_util.UUID_REGEX.match(worksheet_spec):
+            worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
+        else:
+            worksheet_uuid = self._get_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
+        return worksheet_uuid
+
+    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        raise NotImplementedError
+
+    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        raise NotImplementedError
+
+
+class ServerWorksheetResolver(WorksheetResolver):
+    def __init__(self, bundle_model, user):
+        self.model = bundle_model
+        self.user = user
+
+    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        # There is no bulk method for resolving bundle specs on the server-side
+        return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
+
+    def _get_bundle_uuid(self, worksheet_uuid, bundle_spec):
+        if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
+            # Shift to new worksheet
+            worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
+            worksheet_uuid = self.resolve_worksheet_uuid(worksheet_uuid, worksheet_spec)
+
+        return canonicalize.get_bundle_uuid(self.model, self.user.user_id, worksheet_uuid, bundle_spec)
+
+    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Return the uuid of the specified worksheet if it exists.
+        Otherwise, throw an error.
+        This is a stripped down copy of the same method in rest.worksheets,
+        which additionally creates the dashboard/home if it doesn't exist yet.
+        That functionality is not useful here, since this method is only used
+        to resolve subworksheets in other worksheets.
+        If we moved that method here verbatim, we would have to reimplement
+        methods such as new_worksheet in this context as well.
+        """
+        if worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET:
+            worksheet_spec = spec_util.home_worksheet(self.user.user_name)
+        return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
+
+
+class ClientWorksheetResolver(WorksheetResolver):
+    def __init__(self, rest_client):
+        self.client = rest_client
+
+    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
+        bundles = self.client.fetch('bundles', params={
+            'worksheet': worksheet_uuid,
+            'specs': bundle_specs,
+        })
+        return [b['id'] for b in bundles]
+
+    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
+        """
+        Avoid making REST call if worksheet_spec is already a uuid.
+        """
+        worksheet_spec = worksheet_spec.strip()
+        if spec_util.UUID_REGEX.match(worksheet_spec):
+            worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
+        else:
+            worksheet_uuid = self.client.fetch_one('worksheets', params={
+                'base': base_worksheet_uuid,
+                'specs': [worksheet_spec],
+            })['uuid']
+        return worksheet_uuid
+
+
+############################################################
+
+
 def get_worksheet_info_edit_command(raw_command_map):
     """
     Return a cli-command for editing worksheet-info. Return None if raw_command_map contents are invalid.
@@ -212,122 +331,6 @@ def request_lines(worksheet_info):
     if form_result == template_lines:
         raise UsageError('No change made; aborting')
     return form_result
-
-
-class WorksheetResolver(object):
-    """
-    Abstract class containing all of the functionality that is shared across
-    client/server boundaries, particular for worksheet interpretation. There are
-    separate implementations to be used on the client and server sides
-    respectively.
-    As the codebase stabilizes, we may want to slowly clarify the separation
-    between client and server code, and phase out the use of this class.
-    """
-    def resolve_bundle_uuids(self, worksheet_uuid, bundle_specs):
-        """
-        Return the bundle_uuids corresponding to bundle_specs.
-        Avoids an extra call to the resolution implementation when possible,
-        since it may incur I/O.
-        """
-        bundle_uuids = {}
-        unresolved = []
-        for spec in bundle_specs:
-            spec = spec.strip()
-            if spec_util.UUID_REGEX.match(spec):
-                bundle_uuids[spec] = spec
-            else:
-                unresolved.append(spec)
-
-        # Resolve uuids with a batch call to the client and update dict
-        if unresolved:
-            bundle_uuids.update(zip(unresolved, self._get_bundle_uuids(worksheet_uuid, unresolved)))
-
-        # Return uuids for the bundle_specs in the original order provided
-        return [bundle_uuids[spec] for spec in bundle_specs]
-
-    def resolve_bundle_uuid(self, worksheet_uuid, bundle_spec):
-        """
-        Return the bundle_uuid corresponding to a single bundle_spec.
-        If bundle_spec is already a uuid, then just return it directly.
-        This avoids an extra call to the client.
-        """
-        return self.resolve_bundle_uuids(worksheet_uuid, [bundle_spec])[0]
-
-    def resolve_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        """
-        Same thing as get_bundle_uuid, but for worksheets.
-        """
-        worksheet_spec = worksheet_spec.strip()
-        if spec_util.UUID_REGEX.match(worksheet_spec):
-            worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
-        else:
-            worksheet_uuid = self._get_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
-        return worksheet_uuid
-
-    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
-        raise NotImplementedError
-
-    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        raise NotImplementedError
-
-
-class ServerWorksheetResolver(WorksheetResolver):
-    def __init__(self, bundle_model, user):
-        self.model = bundle_model
-        self.user = user
-
-    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
-        # There is no bulk method for resolving bundle specs on the server-side
-        return [self._get_bundle_uuid(worksheet_uuid, bundle_spec) for bundle_spec in bundle_specs]
-
-    def _get_bundle_uuid(self, worksheet_uuid, bundle_spec):
-        if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
-            # Shift to new worksheet
-            worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
-            worksheet_uuid = self.resolve_worksheet_uuid(worksheet_uuid, worksheet_spec)
-
-        return canonicalize.get_bundle_uuid(self.model, self.user.user_id, worksheet_uuid, bundle_spec)
-
-    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        """
-        Return the uuid of the specified worksheet if it exists.
-        Otherwise, throw an error.
-        This is a stripped down copy of the same method in rest.worksheets,
-        which additionally creates the dashboard/home if it doesn't exist yet.
-        That functionality is not useful here, since this method is only used
-        to resolve subworksheets in other worksheets.
-        If we moved that method here verbatim, we would have to reimplement
-        methods such as new_worksheet in this context as well.
-        """
-        if worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET:
-            worksheet_spec = spec_util.home_worksheet(self.user.user_name)
-        return canonicalize.get_worksheet_uuid(self.model, base_worksheet_uuid, worksheet_spec)
-
-
-class ClientWorksheetResolver(WorksheetResolver):
-    def __init__(self, rest_client):
-        self.client = rest_client
-
-    def _get_bundle_uuids(self, worksheet_uuid, bundle_specs):
-        bundles = self.client.fetch('bundles', params={
-            'worksheet': worksheet_uuid,
-            'specs': bundle_specs,
-        })
-        return [b['id'] for b in bundles]
-
-    def _get_worksheet_uuid(self, base_worksheet_uuid, worksheet_spec):
-        """
-        Avoid making REST call if worksheet_spec is already a uuid.
-        """
-        worksheet_spec = worksheet_spec.strip()
-        if spec_util.UUID_REGEX.match(worksheet_spec):
-            worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
-        else:
-            worksheet_uuid = self.client.fetch_one('worksheets', params={
-                'base': base_worksheet_uuid,
-                'specs': [worksheet_spec],
-            })['uuid']
-        return worksheet_uuid
 
 
 def parse_worksheet_form(form_result, resolver, worksheet_uuid):
@@ -496,6 +499,8 @@ def interpret_genpath(bundle_info, genpath):
             return permission_str(bundle_info['permission'])
     elif genpath == 'group_permissions':
         if 'group_permissions' in bundle_info:
+            # FIXME(sckoo): we will be passing the old permissions format into this
+            # which has been updated to accommodate the new formatting
             return group_permissions_str(bundle_info['group_permissions'])
 
     # Bundle field?

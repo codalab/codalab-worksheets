@@ -25,7 +25,8 @@ from codalab.rest.schemas import WorksheetSchema, WorksheetPermissionSchema, \
 from codalab.rest.users import UserSchema
 from codalab.rest.util import (
     local_bundle_client_compatible,
-    get_bundle_infos
+    get_bundle_infos,
+    resolve_owner_in_keywords,
 )
 
 
@@ -80,11 +81,27 @@ def fetch_worksheets():
     specs = query_get_list('specs')
     base_worksheet_uuid = request.query.get('base')
 
-    uuids = [get_worksheet_uuid(base_worksheet_uuid, spec) for spec in specs]
-    worksheets = [w.to_dict(use_rest=True) for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
+    if specs:
+        uuids = [get_worksheet_uuid(base_worksheet_uuid, spec) for spec in specs]
+        worksheets = [w.to_dict(use_rest=True)
+                      for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
+    else:
+        print keywords
+        keywords = resolve_owner_in_keywords(keywords)
+        worksheets = local.model.search_worksheets(request.user.user_id, keywords)
 
     # Build response document
     document = WorksheetSchema(many=True).dump(worksheets).data
+
+    # Include users
+    owner_ids = {w['owner_id'] for w in worksheets}
+    if owner_ids:
+        json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
+
+    # Include permissions
+    for w in worksheets:
+        if 'group_permissions' in w:
+            json_api_include(document, WorksheetPermissionSchema(), w['group_permissions'])
 
     return document
 
@@ -301,3 +318,9 @@ def get_worksheet_uuid(local, request, base_worksheet_uuid, worksheet_spec):
         else:
             # let it throw the correct error message
             return canonicalize.get_worksheet_uuid(local.model, base_worksheet_uuid, worksheet_spec)
+
+
+@local_bundle_client_compatible
+def search_worksheets(local, request, keywords):
+    #self._set_owner_names(results)
+    return results

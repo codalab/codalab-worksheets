@@ -42,6 +42,7 @@ from codalab.rest.util import (
     get_bundle_infos,
     get_resource_ids,
     local_bundle_client_compatible,
+    resolve_owner_in_keywords,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
@@ -509,18 +510,6 @@ def delete_bundles(local, request, uuids, force, recursive, data_only, dry_run):
             local.bundle_store.cleanup(uuid, dry_run)
 
     return relevant_uuids
-
-
-@local_bundle_client_compatible
-def resolve_owner_in_keywords(local, request, keywords):
-    # Resolve references to owner ids
-    def resolve(keyword):
-        # Example: owner=codalab => owner_id=0
-        m = re.match('owner=(.+)', keyword)
-        if not m:
-            return keyword
-        return 'owner_id=%s' % getattr(local.model.get_user(username=m.group(1)), 'user_id', 'x')
-    return map(resolve, keywords)
 
 
 @local_bundle_client_compatible

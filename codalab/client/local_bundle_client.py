@@ -87,7 +87,7 @@ class LocalBundleClient(BundleClient):
         return user.name if user else None
 
     def resolve_owner_in_keywords(self, keywords):
-        return bundle_rest.resolve_owner_in_keywords(keywords, client=self)
+        return rest_util.resolve_owner_in_keywords(keywords, client=self)
 
     def search_bundle_uuids(self, worksheet_uuid, keywords):
         keywords = self.resolve_owner_in_keywords(keywords)
@@ -675,9 +675,11 @@ class LocalBundleClient(BundleClient):
         self.update_worksheet_items(info, items)
         self.update_worksheet_metadata(worksheet.uuid, {'title': title})
 
+    # TODO(sckoo): migrate
     def list_worksheets(self):
         return self.search_worksheets([])
 
+    # TODO(sckoo): migrate
     def search_worksheets(self, keywords):
         keywords = self.resolve_owner_in_keywords(keywords)
         results = self.model.search_worksheets(self._current_user_id(), keywords)
