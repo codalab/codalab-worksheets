@@ -87,7 +87,6 @@ def fetch_worksheets():
         worksheets = [w.to_dict(use_rest=True)
                       for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
     else:
-        print keywords
         keywords = resolve_owner_in_keywords(keywords)
         worksheets = local.model.search_worksheets(request.user.user_id, keywords)
 

@@ -1905,9 +1905,12 @@ class BundleCLI(object):
         # TODO(sckoo): restify when worksheets API is ready
         # Add to worksheet
         if not dry_run and not shadow:
-            raise NotImplementedError("Non-shadow mimic not implemented yet.")
             def newline():
-                self.model.add_worksheet_item(worksheet_uuid, worksheet_util.markup_item(''))
+                rest_client.create('worksheet-items', data={
+                    'type': worksheet_util.TYPE_MARKUP,
+                    'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
+                    'value': '',
+                })
 
             # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup,
             # directives, etc.)
@@ -1918,7 +1921,10 @@ class BundleCLI(object):
                 anchor_uuid = old_output
             elif len(old_inputs) > 0:
                 anchor_uuid = old_inputs[0]
-            host_worksheet_uuids = self.model.get_host_worksheet_uuids([anchor_uuid])[anchor_uuid]
+            host_worksheets = rest_client.fetch('worksheets', params={
+                'keywords': 'bundle=' + anchor_uuid,
+            })
+            host_worksheet_uuids = [hw['id'] for hw in host_worksheets]
             new_bundle_uuids_added = set()
 
             # Whether there were items that we didn't include in the prelude (in which case we want to put '')
@@ -1934,7 +1940,9 @@ class BundleCLI(object):
                     host_worksheet_uuid = host_worksheet_uuids[0]
 
                 # Fetch the worksheet
-                worksheet_info = self.get_worksheet_info(host_worksheet_uuid, fetch_items=True)
+                worksheet_info = rest_client.fetch('worksheet', host_worksheet_uuid)
+
+                # TODO: restify thisHAHAHHAHAHA why did i decide to do this in the front end
 
                 prelude_items = []  # The prelude that we're building up
                 for item in worksheet_info['items']:

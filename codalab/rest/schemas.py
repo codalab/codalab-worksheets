@@ -28,7 +28,7 @@ class WorksheetItemSchema(Schema):
     bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid')
     value = fields.String()
     type = fields.String(validate=validate.OneOf(set(WORKSHEET_ITEM_TYPES)), required=True)
-    sort_key = fields.Integer(allow_none=True, dump_only=True)
+    sort_key = fields.Integer(allow_none=True)
 
     # TODO: add validation that only one of subworksheet, bundle, or value is set
 
