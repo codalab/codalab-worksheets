@@ -460,7 +460,7 @@ class BundleCLI(object):
 
     @staticmethod
     def simple_user_str(info):
-        return '%s(%s)' % (contents_str(info.get('name')), info['id'])
+        return '%s(%s)' % (contents_str(info.get('user_name', info.get('name'))), info['id'])
 
     @staticmethod
     def simple_group_str(info):
@@ -725,9 +725,9 @@ class BundleCLI(object):
                 print >>self.stdout, "username: %s" % state['username']
 
         client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, False)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
         print >>self.stdout, "current_worksheet: %s" % self.simple_worksheet_str(worksheet_info)
-        print >>self.stdout, "user: %s" % self.simple_user_str(client.user_info(None))
+        print >>self.stdout, "user: %s" % self.simple_user_str(client.fetch('user'))
 
     @Commands.command(
         'logout',
