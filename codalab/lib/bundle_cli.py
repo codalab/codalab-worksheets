@@ -2087,11 +2087,11 @@ class BundleCLI(object):
     )
     def do_new_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        uuid = client.new_worksheet(args.name)
-        print >>self.stdout, uuid
+        new_worksheet = client.create('worksheets', data={'name': args.name})
+        print >>self.stdout, new_worksheet['uuid']
         if self.headless:
             return ui_actions.serialize([
-                ui_actions.OpenWorksheet(uuid)
+                ui_actions.OpenWorksheet(new_worksheet['uuid'])
             ])
 
     ITEM_DESCRIPTION = textwrap.dedent("""
@@ -2394,17 +2394,16 @@ class BundleCLI(object):
     )
     def do_wrm_command(self, args):
         delete_current = False
-        current_client, current_worksheet = self.manager.get_current_worksheet_uuid()
-        old_client, _ = self.manager.get_current_worksheet_uuid(use_rest=False)
+        client, current_worksheet = self.manager.get_current_worksheet_uuid()
         for worksheet_spec in args.worksheet_spec:
             client, worksheet_uuid = self.parse_client_worksheet_uuid(worksheet_spec)
-            if (client, worksheet_uuid) == (current_client, current_worksheet):
+            if (client, worksheet_uuid) == (client, current_worksheet):
                 delete_current = True
-            client.delete_worksheet(worksheet_uuid, args.force)
+            client.delete('worksheets', worksheet_uuid, params={'force': args.force})
 
         if delete_current:
             # Go to home worksheet
-            return self.change_current_worksheet(current_client, old_client, None, verbose=True)
+            return self.change_current_worksheet(client, None, verbose=True)
 
     @Commands.command(
         'wadd',

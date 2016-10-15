@@ -11,7 +11,8 @@ from codalab.lib import (
     worksheet_util,
 )
 from codalab.lib import formatting
-from codalab.lib.server_util import json_api_include, query_get_list
+from codalab.lib.server_util import json_api_include, query_get_list, \
+    query_get_bool, json_api_meta
 from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import (
@@ -27,7 +28,7 @@ from codalab.rest.util import (
     local_bundle_client_compatible,
     get_bundle_infos,
     resolve_owner_in_keywords,
-)
+    get_resource_ids)
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
@@ -104,6 +105,34 @@ def fetch_worksheets():
             json_api_include(document, WorksheetPermissionSchema(), w['group_permissions'])
 
     return document
+
+
+@post('/worksheets', apply=AuthenticatedPlugin())
+def create_worksheets():
+    # TODO: support more attributes
+    worksheets = WorksheetSchema(
+        strict=True, many=True  # only allow name for now
+    ).load(request.json).data
+
+    for w in worksheets:
+        w['uuid'] = new_worksheet(w['name'])
+
+    return WorksheetSchema(many=True).dump(worksheets).data
+
+
+@delete('/worksheets', apply=AuthenticatedPlugin())
+def delete_worksheets():
+    """
+    Delete the bundles specified.
+    If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
+    If |recursive|, add all bundles downstream too.
+    If |data-only|, only remove from the bundle store, not the bundle metadata.
+    If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
+    """
+    uuids = get_resource_ids(request.json, 'worksheets')
+    force = query_get_bool('force', default=False)
+    for uuid in uuids:
+        delete_worksheet(uuid, force)
 
 
 @post('/worksheet-items', apply=AuthenticatedPlugin())
@@ -344,3 +373,17 @@ def add_worksheet_item(local, request, worksheet_uuid, item):
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     worksheet_util.check_worksheet_not_frozen(worksheet)
     local.model.add_worksheet_item(worksheet_uuid, item)
+
+
+@local_bundle_client_compatible
+def delete_worksheet(local, request, uuid, force):
+    worksheet = local.model.get_worksheet(uuid, fetch_items=True)
+    check_worksheet_has_all_permission(local.model, request.user, worksheet)
+    if not force:
+        if worksheet.frozen:
+            raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %
+                             worksheet.uuid)
+        if len(worksheet.items) > 0:
+            raise UsageError("Can't delete worksheet %s because it is not empty (--force to override)." %
+                             worksheet.uuid)
+    local.model.delete_worksheet(uuid)

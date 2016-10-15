@@ -755,16 +755,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def delete_worksheet(self, uuid, force):
-        worksheet = self.model.get_worksheet(uuid, fetch_items=True)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        if not force:
-            if worksheet.frozen:
-                raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %
-                                 worksheet.uuid)
-            if len(worksheet.items) > 0:
-                raise UsageError("Can't delete worksheet %s because it is not empty (--force to override)." %
-                                 worksheet.uuid)
-        self.model.delete_worksheet(uuid)
+        return worksheet_rest.delete_worksheet(uuid, force)
 
     # Default number of lines to pull for each display mode.
     DEFAULT_CONTENTS_MAX_LINES = 10
