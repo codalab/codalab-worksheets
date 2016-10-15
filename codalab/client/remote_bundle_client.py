@@ -83,67 +83,9 @@ class AuthenticatedTransport(xmlrpclib.SafeTransport):
 ############################################################
 
 class RemoteBundleClient(BundleClient):
-    # Implemented by a nested copy of a LocalBundleClient.
-    CLIENT_COMMANDS = (
-      'upload_bundle_url',
-      'derive_bundle',
-      'update_bundle_metadata',
-      'delete_bundles',
-      'kill_bundles',
-      'write_targets',
-      'chown_bundles',
-      'get_bundle_uuids',
-      'search_bundle_uuids',
-      'get_bundle_info',
-      'get_bundle_infos',
-      'get_target_info',
-      'head_target',
-      'mimic',
-      # Worksheet-related commands all have JSON-able inputs and outputs.
-      'new_worksheet',
-      'list_worksheets',
-      'search_worksheets',
-      'get_worksheet_uuid',
-      'get_worksheet_info',
-      'add_worksheet_item',
-      'update_worksheet_items',
-      'update_worksheet_metadata',
-      'delete_worksheet',
-      'interpret_file_genpaths',
-      'resolve_interpreted_items',
-      # Commands related to authentication (in BundleClient).
-      'login',
-      'get_user_info',
-      'update_user_info',
-      # Commands related to groups and permissions.
-      'list_groups',
-      'new_group',
-      'rm_group',
-      'group_info',
-      'user_info',
-      'add_user',
-      'rm_user',
-      'set_bundles_perm',
-      'set_worksheet_perm',
-      # Commands related to ChatBox.
-      'add_chat_log_info',
-      'get_chat_log_info',
-      # Commands related to FAQ.
-      'get_faq',
-    )
     # Implemented by the BundleRPCServer.
     SERVER_COMMANDS = (
       'finish_upload_bundle',
-      'open_tarred_gzipped_directory',
-      'open_gzipped_file',
-      'read_gzipped_file_section',
-
-      # Deprecated methods below.
-      'open_target',
-      'open_target_archive',
-      'readline_file',
-      'tell_file',
-      'seek_file',
     )
     # Implemented by the FileServer.
     FILE_COMMANDS = (
@@ -153,7 +95,7 @@ class RemoteBundleClient(BundleClient):
       'close_file',
       'finalize_file',
     )
-    COMMANDS = CLIENT_COMMANDS + SERVER_COMMANDS + FILE_COMMANDS
+    COMMANDS = SERVER_COMMANDS + FILE_COMMANDS
 
     def __init__(self, address, get_auth_token, check_version, verbose):
         self.address = address

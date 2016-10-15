@@ -146,9 +146,6 @@ class BundleRPCServer(SocketServer.ThreadingMixIn, SimpleXMLRPCServer):
 
             return function_to_register
 
-        for command in RemoteBundleClient.CLIENT_COMMANDS:
-            self.register_function(wrap(self.client, command), command)
-
         for command in RemoteBundleClient.SERVER_COMMANDS:
             self.register_function(wrap(self, command), command)
 
