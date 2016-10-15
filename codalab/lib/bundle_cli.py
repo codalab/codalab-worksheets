@@ -462,6 +462,10 @@ class BundleCLI(object):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
     @staticmethod
+    def simple_group_str(info):
+        return '%s(%s)' % (contents_str(info.get('name')), info['id'])
+
+    @staticmethod
     def get_worksheet_bundles(worksheet_info):
         """
         Return list of info dicts of distinct bundles in the worksheet.
@@ -989,7 +993,7 @@ class BundleCLI(object):
         But having two clients talk directly to each other is complicated...
         """
         if copy_dependencies:
-            source_info = source_client.get_bundle_info(source_bundle_uuid)
+            source_info = source_client.fetch('bundles', source_bundle_uuid)
             # Copy all the dependencies, but only for run dependencies.
             for dep in source_info['dependencies']:
                 self.copy_bundle(source_client, dep['parent_uuid'], dest_client, dest_worksheet_uuid, False, add_to_worksheet)
@@ -1011,7 +1015,7 @@ class BundleCLI(object):
                 dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(source_bundle_uuid))
             return
 
-        source_info = source_client.get_bundle_info(source_bundle_uuid)
+        source_info = source_client.fetch('bundles', source_bundle_uuid)
         if source_info is None:
             print >>self.stdout, 'Unable to read bundle %s' % source_bundle_uuid
             return
@@ -1023,81 +1027,34 @@ class BundleCLI(object):
 
         print >>self.stdout, "Copying %s..." % source_desc
         target = (source_bundle_uuid, '')
-        target_info = source_client.get_target_info(target, 0)
-        
-        source = None
-        dest_file_uuid = None
-        try:
-            # Open source (as archive)
-            if target_info is not None and target_info['type'] == 'directory':
-                filename_suffix = '.tar.gz'
-                if isinstance(source_client, LocalBundleClient):
-                    source = source_client.open_tarred_gzipped_directory(target)
-                else:
-                    source = RPCFileHandle(
-                        source_client.open_tarred_gzipped_directory(target),
-                        source_client.proxy, finalize_on_close=True)
-            elif target_info is not None and target_info['type'] == 'file':
-                filename_suffix = '.gz'
-                if isinstance(source_client, LocalBundleClient):
-                    source = source_client.open_gzipped_file(target)
-                else:
-                    source = RPCFileHandle(
-                        source_client.open_gzipped_file(target),
-                        source_client.proxy, finalize_on_close=True)
+        target_info = source_client.fetch_contents_info(*target)
 
-            if source is not None:
-                # Open target (temporary file)
-                if isinstance(dest_client, LocalBundleClient):
-                    dest_path = tempfile.mkstemp(filename_suffix)[1]
-                    dest = open(dest_path, 'wb')
-                else:
-                    dest_file_uuid = dest_client.open_temp_file('bundle' + filename_suffix)
-                    dest = RPCFileHandle(dest_file_uuid, dest_client.proxy)
-                with closing(dest):
-                    # Copy contents over from source to target.
-                    file_util.copy(
-                        source,
-                        dest,
-                        autoflush=False,
-                        print_status='Copying %s from %s to %s' % (source_bundle_uuid, source_client.address, dest_client.address))
+        # Create the bundle, copying over metadata from the source bundle
+        dest_bundle = dest_client.create('bundles', source_info, params={
+            'worksheet': dest_worksheet_uuid,
+            'detached': not add_to_worksheet,
+        })
 
-            # Set sources
-            if source is None:
-                sources = None
-            elif isinstance(dest_client, LocalBundleClient):
-                sources = [dest_path]
-            else:
-                sources = [dest_file_uuid]
+        if target_info is None:
+            return
 
-            # Finally, install the archive (this function will delete it).
-            if isinstance(dest_client, LocalBundleClient):
-                result = dest_client.upload_bundle(
-                    sources=sources,
-                    follow_symlinks=False,
-                    exclude_patterns=None,
-                    git=False,
-                    unpack=True,
-                    remove_sources=True,
-                    info=source_info,
-                    worksheet_uuid=dest_worksheet_uuid,
-                    add_to_worksheet=add_to_worksheet,
-                )
-            else:
-                result = dest_client.finish_upload_bundle(
-                    sources,
-                    True,
-                    source_info,
-                    dest_worksheet_uuid,
-                    add_to_worksheet)
-            
-            return result
-        except:
-            if source is not None:
-                source.close()
-            if dest_file_uuid is not None:
-                dest_client.finalize_file(dest_file_uuid)
-            raise
+        # Collect information about how server should unpack
+        unpack = False
+        filename = safe_get(source_info, 'metadata', 'name', default='copied')
+        if target_info['type'] == 'directory':
+            filename += '.tar.gz'
+            unpack = True
+
+        # Send file over
+        progress = FileTransferProgress('Copied ', f=self.stderr)
+        source = file_util.tracked(
+            source_client.fetch_contents_blob(*target), progress.update)
+        with closing(source), progress:
+            dest_client.upload_contents_blob(
+                dest_bundle['id'],
+                fileobj=source,
+                params={'filename': filename, 'unpack': unpack},
+                progress_callback=progress.update)
 
     @Commands.command(
         'make',
@@ -1284,7 +1241,7 @@ class BundleCLI(object):
             if not detach:
                 new_items.append(item)
 
-        client.rpc('update_worksheet_items', worksheet_info, new_items)
+        client.create('worksheet-items', data=new_items, params={'replace': True})
 
     @Commands.command(
         'rm',
@@ -2121,9 +2078,17 @@ class BundleCLI(object):
         if args.item_type == 'text':
             for item_spec in args.item_spec:
                 if item_spec.startswith('%'):
-                    dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.directive_item(item_spec[1:].strip()))
+                    dest_client.create('worksheet-items', data={
+                        'type': worksheet_util.TYPE_DIRECTIVE,
+                        'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
+                        'value': item_spec[1:].strip(),
+                    })
                 else:
-                    dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.markup_item(item_spec))
+                    dest_client.create('worksheet-items', data={
+                        'type': worksheet_util.TYPE_MARKUP,
+                        'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
+                        'value': item_spec,
+                    })
 
         elif args.item_type == 'bundle':
             for bundle_spec in args.item_spec:
@@ -2131,7 +2096,8 @@ class BundleCLI(object):
 
                 # a base_worksheet_uuid is only applicable if we're on the source client
                 base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
-                source_bundle_uuid = worksheet_util.get_bundle_uuid(source_client, base_worksheet_uuid, source_spec)
+                source_bundle_uuid = ClientWorksheetResolver(source_client)\
+                    .resolve_bundle_uuid(base_worksheet_uuid, source_spec)
 
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
@@ -2148,7 +2114,11 @@ class BundleCLI(object):
                     .resolve_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
 
                 # add worksheet
-                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.subworksheet_item(subworksheet_uuid))
+                dest_client.create('worksheet-items', data={
+                    'type': worksheet_util.TYPE_WORKSHEET,
+                    'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
+                    'subworksheet': JsonApiRelationship('worksheets', subworksheet_uuid),
+                })
 
     @Commands.command(
         'work',
@@ -2200,6 +2170,19 @@ class BundleCLI(object):
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
+    @staticmethod
+    def item_from_tuple(item):
+        # Convert from the canonical tuple form that the model methods currently use
+        bundle_uuid, subworksheet_info, value_obj, item_type = item
+        item = {}
+
+        return (
+            item.get('bundle_uuid', None),
+            item.get('subworksheet_uuid', None),
+            item.get('value', ''),
+            item['type']
+        )
+
     @Commands.command(
         'wedit',
         aliases=('we',),
@@ -2245,18 +2228,15 @@ class BundleCLI(object):
             if self.headless:
                 return ui_actions.serialize([ui_actions.SetEditMode(True)])
 
-            # Update the worksheet items.
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
                 lines = [line.rstrip() for line in open(args.file).readlines()]
             else:
+                worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
                 lines = worksheet_util.request_lines(worksheet_info)
 
-            # Parse the lines.
-            new_items, commands = worksheet_util.parse_worksheet_form(lines, ClientWorksheetResolver(client), worksheet_info['uuid'])
-
-            # Save the worksheet.
-            client.create('worksheet-items', new_items, params={'replace': True})
+            # Update worksheet
+            commands = client.update_worksheet_raw(worksheet_info['id'], lines)
             print >>self.stdout, 'Saved worksheet items for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
             # Batch the rm commands so that we can handle the recursive
@@ -2283,6 +2263,20 @@ class BundleCLI(object):
                 print >>self.stdout, '=== Executing: %s' % ' '.join(command)
                 self.do_command(command)
 
+    @staticmethod
+    def unpack_item(item):
+        """Unpack item serialized by WorksheetItemSchema, for our legacy interpretation code."""
+        bundle_info = item['bundle']
+        if bundle_info:
+            bundle_info['uuid'] = bundle_info['id']
+        subworksheet_info = item['subworksheet']
+        if subworksheet_info:
+            subworksheet_info['uuid'] = subworksheet_info['id']
+        item_type = item['type']
+        value = item['value']
+        value_obj = formatting.string_to_tokens(value) if item_type == worksheet_util.TYPE_DIRECTIVE else value
+        return bundle_info, subworksheet_info, value_obj, item_type
+
     @Commands.command(
         'print',
         aliases=('p',),
@@ -2295,10 +2289,10 @@ class BundleCLI(object):
     def do_print_command(self, args):
         self._fail_if_headless(args)
 
-        # TODO
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = rest_client.fetch('worksheets', worksheet_uuid)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+        worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
+
         if args.raw:
             lines = worksheet_util.get_worksheet_lines(worksheet_info)
             for line in lines:
@@ -2306,9 +2300,9 @@ class BundleCLI(object):
         else:
             print >>self.stdout, self._worksheet_description(worksheet_info)
             interpreted = worksheet_util.interpret_items(worksheet_util.get_default_schemas(), worksheet_info['items'])
-            self.display_interpreted(client, rest_client, worksheet_info, interpreted)
+            self.display_interpreted(client, worksheet_info, interpreted)
 
-    def display_interpreted(self, client, rest_client, worksheet_info, interpreted):
+    def display_interpreted(self, client, worksheet_info, interpreted):
         for item in interpreted['items']:
             mode = item['mode']
             data = item['interpreted']
@@ -2320,7 +2314,7 @@ class BundleCLI(object):
                     if maxlines:
                         maxlines = int(maxlines)
                     try:
-                        self.print_target_info(rest_client, data, decorate=True, maxlines=maxlines)
+                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
                     except UsageError, e:
                         print >>self.stdout, 'ERROR:', e
                 else:
@@ -2328,18 +2322,18 @@ class BundleCLI(object):
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
-                contents = worksheet_util.interpret_genpath_table_contents(client, contents)
+                contents = client.rpc('interpret_genpath_table_contents', contents)
                 # print >>self.stdout, the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image' or mode == 'graph':
                 # Placeholder
                 print >>self.stdout, '[' + mode + ']'
             elif mode == 'search':
-                search_interpreted = worksheet_util.interpret_search(client, worksheet_info['uuid'], data)
-                self.display_interpreted(client, rest_client, worksheet_info, search_interpreted)
+                search_interpreted = client.rpc('interpret_search', worksheet_info['uuid'], data)
+                self.display_interpreted(client, worksheet_info, search_interpreted)
             elif mode == 'wsearch':
-                wsearch_interpreted = worksheet_util.interpret_wsearch(client, data)
-                self.display_interpreted(client, rest_client, worksheet_info, wsearch_interpreted)
+                wsearch_interpreted = client.rpc('interpret_wsearch', data)
+                self.display_interpreted(client, worksheet_info, wsearch_interpreted)
             elif mode == 'worksheet':
                 print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(data) + ']'
             else:
@@ -2421,21 +2415,20 @@ class BundleCLI(object):
     def do_wadd_command(self, args):
         # Source worksheet
         (source_client, source_worksheet_uuid) = self.parse_client_worksheet_uuid(args.source_worksheet_spec)
-        source_items = source_client.get_worksheet_info(source_worksheet_uuid, True)['items']
+        source_items = source_client.fetch('worksheets', source_worksheet_uuid)['items']
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.dest_worksheet_spec)
-        dest_worksheet_info = dest_client.get_worksheet_info(dest_worksheet_uuid, True)
-        dest_items = [] if args.replace else dest_worksheet_info['items']
 
         # Save all items.
-        dest_client.update_worksheet_items(dest_worksheet_info, dest_items + source_items)
+        dest_client.create('worksheet-items', source_items, params={'replace': args.replace})
 
         # Copy over the bundles
         for item in source_items:
-            (source_bundle_info, source_worksheet_info, value_obj, item_type) = item
-            if item_type == worksheet_util.TYPE_BUNDLE:
-                self.copy_bundle(source_client, source_bundle_info['uuid'], dest_client, dest_worksheet_uuid, copy_dependencies=False, add_to_worksheet=False)
+            if item['type']:
+                self.copy_bundle(source_client, item['bundle']['uuid'],
+                                 dest_client, dest_worksheet_uuid,
+                                 copy_dependencies=False, add_to_worksheet=False)
 
         print >>self.stdout, 'Copied %s worksheet items to %s.' % (len(source_items), dest_worksheet_uuid)
 
@@ -2622,10 +2615,19 @@ class BundleCLI(object):
     def do_wperm_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        result = client.set_worksheet_perm(worksheet_uuid, args.group_spec, args.permission_spec)
-        print >>self.stdout, "Group %s(%s) has %s permission on worksheet %s(%s)." % \
-            (result['group_info']['name'], result['group_info']['uuid'],
-             permission_str(result['permission']), result['worksheet']['name'], result['worksheet']['uuid'])
+        worksheet = client.fetch('worksheets', worksheet_uuid)
+        group = client.fetch('groups', args.group_spec)
+        new_permission = parse_permission(args.permission_spec)
+
+        client.create('worksheet-permissions', {
+            'group': JsonApiRelationship('groups', group['id']),
+            'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
+            'permission': new_permission,
+        })
+
+        print >>self.stdout, "Group %s has %s permission on worksheet %s." % \
+            (self.simple_group_str(group), permission_str(new_permission),
+             self.simple_worksheet_str(worksheet))
 
     @Commands.command(
         'chown',

@@ -146,7 +146,7 @@ class BundleService(object):
         worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True)
 
         # Fetch items.
-        worksheet_info['raw'] = worksheet_util.get_worksheet_lines(worksheet_info, legacy=True)
+        worksheet_info['raw'] = worksheet_util.get_worksheet_lines(worksheet_info)
 
         # Set permissions
         worksheet_info['edit_permission'] = (worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
@@ -652,4 +652,6 @@ def execute_rpc_call():
     precondition(isinstance(args, list), "`args` must be list")
     precondition(isinstance(kwargs, dict), "`kwargs` must be dict")
     precondition(hasattr(service.client, method), "LocalBundleClient.%s not defined" % method)
-    return getattr(service.client, method)(*args, **kwargs)
+    return {
+        'data': getattr(service.client, method)(*args, **kwargs)
+    }

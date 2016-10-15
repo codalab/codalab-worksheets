@@ -56,18 +56,9 @@ class Worksheet(ORMObject):
             self.last_item_id = None
 
     class Item(object):
-        # class Type(object):
-        #     MARKUP = 'markup'
-        #     DIRECTIVE = 'directive'
-        #     BUNDLE = 'bundle'
-        #     WORKSHEET = 'worksheet'
-
         @staticmethod
         def as_tuple(item):
             # Convert to the canonical tuple form that the model methods currently use
-            # if isinstance(item, tuple):
-            #     return item
-            # else:
             return (
                 item.get('bundle_uuid', None),
                 item.get('subworksheet_uuid', None),

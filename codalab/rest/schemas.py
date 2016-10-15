@@ -133,7 +133,7 @@ class BundleSchema(Schema):
 # Field-update restrictions are specified as lists below because the
 # restrictions differ depending on the action
 
-BUNDLE_CREATE_RESTRICTED_FIELDS = ('id', 'uuid', 'data_hash', 'state', 'owner',
+BUNDLE_CREATE_RESTRICTED_FIELDS = ('data_hash', 'state', 'owner',
                                    'children', 'group_permissions',
                                    'host_worksheets', 'args', 'permission',
                                    'permission_spec')

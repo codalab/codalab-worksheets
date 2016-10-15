@@ -583,7 +583,14 @@ class JsonApiClient(RestClient):
             'args': args,
             'kwargs': kwargs,
         }
-        self._make_request(
+        return self._make_request(
             method='POST',
             path='/api/rpc',
-            data=request)
+            data=request)['data']
+
+    @wrap_exception('Unable to update worksheet')
+    def update_worksheet_raw(self, worksheet_id, lines):
+        return self._make_request(
+            method='POST',
+            path='/worksheets/%s/raw' % worksheet_id,
+            data='\n'.join(lines))['data']['commands']

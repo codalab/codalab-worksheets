@@ -443,15 +443,6 @@ class LocalBundleClient(BundleClient):
     def new_worksheet(self, name):
         return worksheet_rest.new_worksheet(name, client=self)
 
-    def populate_worksheet(self, worksheet, name, title):
-        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
-        lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
-        items, commands = worksheet_util.parse_worksheet_form(
-            lines, ServerWorksheetResolver(self.model, self._current_user()), worksheet.uuid)
-        info = self.get_worksheet_info(worksheet.uuid, True)
-        self.update_worksheet_items(info, items)
-        self.update_worksheet_metadata(worksheet.uuid, {'title': title})
-
     def get_worksheet_info(self, uuid, fetch_items=False, fetch_permission=True):
         """
         The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
@@ -477,9 +468,6 @@ class LocalBundleClient(BundleClient):
             return r.name if r else None
 
         return [get_name(results[user_id] if results else None) for user_id in user_ids]
-
-    def _convert_items_from_db(self, items):
-        return worksheet_rest.convert_items_from_db(items, client=self)
 
     @authentication_required
     def add_worksheet_item(self, worksheet_uuid, item):
@@ -721,20 +709,6 @@ class LocalBundleClient(BundleClient):
         } for uuid in bundle_uuids], client=self)
         return {'group_info': group_info, 'permission': new_permission}
 
-    @authentication_required
-    def set_worksheet_perm(self, worksheet_uuid, group_spec, permission_spec):
-        """
-        Give the given |group_spec| the desired |permission_spec| on |worksheet_uuid|.
-        """
-        worksheet = self.model.get_worksheet(worksheet_uuid, fetch_items=False)
-        group_info = self._get_group_info(group_spec, need_admin=False)
-        permission = parse_permission(permission_spec)
-        worksheet_rest.set_worksheet_permission(
-            worksheet, group_info['uuid'], permission, client=self)
-        return {'worksheet': {'uuid': worksheet.uuid, 'name': worksheet.name},
-                'group_info': group_info,
-                'permission': permission}
-
     def _get_group_info(self, group_spec, need_admin):
         """
         Resolve |group_spec| and return the associated group_info.
@@ -845,4 +819,12 @@ class LocalBundleClient(BundleClient):
             content = yaml.load(stream)
             return content
 
+    def interpret_genpath_table_contents(self, contents):
+        return worksheet_util.interpret_genpath_table_contents(self, contents)
+
+    def interpret_search(self, worksheet_uuid, data):
+        return worksheet_util.interpret_search(self, worksheet_uuid, data)
+
+    def interpret_wsearch(self, data):
+        return worksheet_util.interpret_wsearch(self, data)
 

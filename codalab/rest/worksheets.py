@@ -1,8 +1,7 @@
-import httplib
 import os
 
 import datetime
-from bottle import abort, get, post, put, delete, local, request, response
+from bottle import abort, get, post, put, delete, response, local, request
 
 from codalab.common import PermissionError, UsageError
 from codalab.lib import (
@@ -29,7 +28,6 @@ from codalab.rest.schemas import WorksheetSchema, WorksheetPermissionSchema, \
     BundleSchema, WorksheetItemSchema
 from codalab.rest.users import UserSchema
 from codalab.rest.util import (
-    local_bundle_client_compatible,
     get_bundle_infos,
     resolve_owner_in_keywords,
     get_resource_ids)
@@ -124,6 +122,20 @@ def create_worksheets():
     return WorksheetSchema(many=True).dump(worksheets).data
 
 
+@post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
+def update_worksheet_raw(uuid):
+    lines = request.body.read().split(os.linesep)
+    new_items, commands = worksheet_util.parse_worksheet_form(
+        lines, ServerWorksheetResolver(local.model, request.user), uuid)
+    worksheet_info = get_worksheet_info(uuid, fetch_items=True)
+    update_worksheet_items(worksheet_info, new_items)
+    return {
+        'data': {
+            'commands': commands
+        }
+    }
+
+
 @patch('/worksheets', apply=AuthenticatedPlugin())
 def update_worksheets():
     """
@@ -159,7 +171,7 @@ def create_worksheet_items():
     """
     Bulk add worksheet items.
 
-    |replace| - Replace existing items in worksheets. Default is False.
+    |replace| - Replace existing items in host worksheets. Default is False.
     """
     replace = query_get_bool('replace', False)
 
@@ -172,10 +184,12 @@ def create_worksheet_items():
         worksheet_to_items.setdefault(item['worksheet_uuid'], []).append(item)
 
     for worksheet_uuid, items in worksheet_to_items.iteritems():
-        worksheet_info = get_worksheet_info(worksheet_uuid)
+        worksheet_info = get_worksheet_info(worksheet_uuid, fetch_items=True)
         if replace:
             # Replace items in the worksheet
-            update_worksheet_items(worksheet_info, items)
+            update_worksheet_items(worksheet_info,
+                                   [Worksheet.Item.as_tuple(i) for i in items],
+                                   convert_items=False)
         else:
             # Append items to the worksheet
             for item in items:
@@ -184,13 +198,27 @@ def create_worksheet_items():
     return WorksheetItemSchema(many=True).dump(new_items).data
 
 
+@post('/worksheet-permissions', apply=AuthenticatedPlugin())
+def set_worksheet_permissions():
+    """
+    Bulk set worksheet permissions.
+    """
+    new_permissions = WorksheetPermissionSchema(
+        strict=True, many=True,
+    ).load(request.json).data
+
+    for p in new_permissions:
+        worksheet = local.model.get_worksheet(p['object_uuid'], fetch_items=False)
+        set_worksheet_permission(worksheet, p['group_uuid'], p['permission'])
+    return WorksheetPermissionSchema(many=True).dump(new_permissions).data
+
+
 #############################################################
 #  WORKSHEET HELPER FUNCTIONS
 #############################################################
 
 
-@local_bundle_client_compatible
-def get_worksheet_info(local, request, uuid, fetch_items=False, fetch_permission=True, use_rest=False):
+def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, use_rest=False):
     """
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
     """
@@ -222,8 +250,7 @@ def get_worksheet_info(local, request, uuid, fetch_items=False, fetch_permission
 
 
 # TODO(sckoo): Legacy requirement, remove when BundleClient is deprecated
-@local_bundle_client_compatible
-def convert_items_from_db(local, request, items):
+def convert_items_from_db(items):
     """
     Helper function.
     (bundle_uuid, subworksheet_uuid, value, type) -> (bundle_info, subworksheet_info, value_obj, type)
@@ -258,8 +285,7 @@ def convert_items_from_db(local, request, items):
     return new_items
 
 
-@local_bundle_client_compatible
-def update_worksheet_items(local, request, worksheet_info, new_items):
+def update_worksheet_items(worksheet_info, new_items, convert_items=True):
     """
     Set the worksheet to have items |new_items|.
     """
@@ -270,15 +296,15 @@ def update_worksheet_items(local, request, worksheet_info, new_items):
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     worksheet_util.check_worksheet_not_frozen(worksheet)
     try:
-        new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
+        if convert_items:
+            new_items = [worksheet_util.convert_item_to_db(item) for item in new_items]
         local.model.update_worksheet_items(worksheet_uuid, last_item_id, length, new_items)
     except UsageError:
         # Turn the model error into a more readable one using the object.
         raise UsageError('%s was updated concurrently!' % (worksheet,))
 
 
-@local_bundle_client_compatible
-def update_worksheet_metadata(local, request, uuid, info):
+def update_worksheet_metadata(uuid, info):
     """
     Change the metadata of the worksheet |uuid| to |info|,
     where |info| specifies name, title, owner, etc.
@@ -304,8 +330,7 @@ def update_worksheet_metadata(local, request, uuid, info):
     local.model.update_worksheet_metadata(worksheet, metadata)
 
 
-@local_bundle_client_compatible
-def set_worksheet_permission(local, request, worksheet, group_uuid, permission):
+def set_worksheet_permission(worksheet, group_uuid, permission):
     """
     Give the given |group_uuid| the desired |permission| on |worksheet_uuid|.
     """
@@ -313,8 +338,7 @@ def set_worksheet_permission(local, request, worksheet, group_uuid, permission):
     local.model.set_group_worksheet_permission(group_uuid, worksheet.uuid, permission)
 
 
-@local_bundle_client_compatible
-def populate_worksheet(local, request, worksheet, name, title):
+def populate_worksheet(worksheet, name, title):
     file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
     lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
     items, commands = worksheet_util.parse_worksheet_form(
@@ -324,8 +348,7 @@ def populate_worksheet(local, request, worksheet, name, title):
     update_worksheet_metadata(worksheet.uuid, {'title': title})
 
 
-@local_bundle_client_compatible
-def get_worksheet_uuid_or_none(local, request, base_worksheet_uuid, worksheet_spec):
+def get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec):
     """
     Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
     """
@@ -335,8 +358,7 @@ def get_worksheet_uuid_or_none(local, request, base_worksheet_uuid, worksheet_sp
         return None
 
 
-@local_bundle_client_compatible
-def ensure_unused_worksheet_name(local, request, name):
+def ensure_unused_worksheet_name(name):
     """
     Ensure worksheet names are unique.
     Note: for simplicity, we are ensuring uniqueness across the system, even on
@@ -350,8 +372,7 @@ def ensure_unused_worksheet_name(local, request, name):
         raise UsageError('Worksheet with name %s already exists' % name)
 
 
-@local_bundle_client_compatible
-def new_worksheet(local, request, name):
+def new_worksheet(name):
     """
     Create a new worksheet with the given |name|.
     """
@@ -379,8 +400,7 @@ def new_worksheet(local, request, name):
     return worksheet.uuid
 
 
-@local_bundle_client_compatible
-def get_worksheet_uuid(local, request, base_worksheet_uuid, worksheet_spec):
+def get_worksheet_uuid(base_worksheet_uuid, worksheet_spec):
     """
     Return the uuid of the specified worksheet if it exists.
     If not, create a new worksheet if the specified worksheet is home_worksheet
@@ -399,8 +419,7 @@ def get_worksheet_uuid(local, request, base_worksheet_uuid, worksheet_spec):
             return canonicalize.get_worksheet_uuid(local.model, base_worksheet_uuid, worksheet_spec)
 
 
-@local_bundle_client_compatible
-def add_worksheet_item(local, request, worksheet_uuid, item):
+def add_worksheet_item(worksheet_uuid, item):
     """
     Add the given item to the worksheet.
     """
@@ -410,8 +429,7 @@ def add_worksheet_item(local, request, worksheet_uuid, item):
     local.model.add_worksheet_item(worksheet_uuid, item)
 
 
-@local_bundle_client_compatible
-def delete_worksheet(local, request, uuid, force):
+def delete_worksheet(uuid, force):
     worksheet = local.model.get_worksheet(uuid, fetch_items=True)
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     if not force:

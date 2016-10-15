@@ -168,10 +168,9 @@ def _create_bundles():
         # Unfortunately cannot use the `construct` methods because they don't
         # provide a uniform interface for constructing bundles for all types
         # Hopefully this can all be unified after REST migration is complete
-        bundle_uuid = spec_util.generate_uuid()
+        bundle_uuid = bundle.setdefault('uuid', spec_util.generate_uuid())
         created_uuids.append(bundle_uuid)
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
-        bundle['uuid'] = bundle_uuid
         bundle['owner_id'] = request.user.user_id
         bundle['state'] = (State.UPLOADING
                            if issubclass(bundle_class, UploadedBundle)

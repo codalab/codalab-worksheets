@@ -83,6 +83,7 @@ def worksheet_line(description, uuid):
     return '[%s]{{%s}}' % (description, uuid)
 
 
+
 ############################################################
 
 
@@ -230,19 +231,13 @@ def convert_item_to_db(item):
     )
 
 
-def get_worksheet_lines(worksheet_info, legacy=False):
+def get_worksheet_lines(worksheet_info):
     """
     Generator that returns pretty-printed lines of text for the given worksheet.
     """
     lines = []
     for item in worksheet_info['items']:
-        if legacy:
-            (bundle_info, subworksheet_info, value_obj, item_type) = item
-        else:
-            bundle_info = item['bundle']
-            subworksheet_info = item['subworksheet']
-            value_obj = item['value']
-            item_type = item['type']
+        (bundle_info, subworksheet_info, value_obj, item_type) = item
 
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
@@ -269,8 +264,7 @@ def get_worksheet_lines(worksheet_info, legacy=False):
                 if deps: description += ' -- ' + deps
                 command = bundle_info.get('command')
                 if command: description += ' : ' + command
-            print bundle_info
-            lines.append(bundle_line(description, bundle_info['uuid' if legacy else 'id']))
+            lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')),
                                         subworksheet_info['uuid']))
@@ -934,9 +928,9 @@ def interpret_items(schemas, raw_items):
     # Go through all the raw items...
     last_was_empty_line = False
     for raw_index, item in enumerate(raw_items):
+        new_last_was_empty_line = True
         try:
             (bundle_info, subworksheet_info, value_obj, item_type) = item
-            new_last_was_empty_line = True
 
             is_bundle = (item_type == TYPE_BUNDLE)
             is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
