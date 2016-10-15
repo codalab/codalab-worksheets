@@ -487,7 +487,7 @@ class BundleCLI(object):
         else:
             bundle_spec, subpath = target_spec, ''
         # Resolve the bundle_spec to a particular bundle_uuid.
-        bundle_uuid = worksheet_util.get_bundle_uuid(client, worksheet_uuid, bundle_spec)
+        bundle_uuid = ClientWorksheetResolver(client).resolve_bundle_uuid(worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
     def parse_key_targets(self, client, worksheet_uuid, items):
