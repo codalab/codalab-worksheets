@@ -73,6 +73,7 @@ def _fetch_bundles():
         bundle_uuids = ServerWorksheetResolver(local.model, request.user)\
             .resolve_bundle_uuids(worksheet_uuid, specs)
     else:
+        raise Exception('ding')
         abort(httplib.BAD_REQUEST,
               "Request must include either 'keywords' "
               "or 'specs' query parameter")

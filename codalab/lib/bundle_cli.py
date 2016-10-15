@@ -44,7 +44,8 @@ from codalab.common import (
     State,
     PermissionError,
     UsageError,
-    CODALAB_VERSION
+    CODALAB_VERSION,
+    NotFoundError
 )
 from codalab.lib import (
     metadata_util,
@@ -1003,16 +1004,21 @@ class BundleCLI(object):
         # Check if the bundle already exists on the destination, then don't copy it
         # (although metadata could be different on source and destination).
         # TODO: sync the metadata.
-        bundle = None
         try:
-            bundle = dest_client.get_bundle_info(source_bundle_uuid)
-        except:
-            pass
+            dest_client.fetch('bundles', source_bundle_uuid)
+        except NotFoundError as e:
+            bundle_exists = False
+        else:
+            bundle_exists = True
 
         # Bundle already exists, just need to add to worksheet if desired.
-        if bundle:
+        if bundle_exists:
             if add_to_worksheet:
-                dest_client.add_worksheet_item(dest_worksheet_uuid, worksheet_util.bundle_item(source_bundle_uuid))
+                dest_client.create('worksheet-items', data={
+                    'type': worksheet_util.TYPE_BUNDLE,
+                    'worksheet': JsonApiRelationship('worksheets', dest_worksheet_uuid),
+                    'bundle': JsonApiRelationship('bundles', source_bundle_uuid)
+                })
             return
 
         source_info = source_client.fetch('bundles', source_bundle_uuid)
@@ -2068,7 +2074,6 @@ class BundleCLI(object):
         ),
     )
     def do_add_command(self, args):
-        # TODO: change to JSON API client
         curr_client, curr_worksheet_uuid = self.manager.get_current_worksheet_uuid()
         dest_client, dest_worksheet_uuid = self.parse_client_worksheet_uuid(args.dest_worksheet)
 
@@ -2420,13 +2425,15 @@ class BundleCLI(object):
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.dest_worksheet_spec)
 
-        # Save all items.
+        # Save all items to the destination worksheet
+        for item in source_items:
+            item['worksheet'] = JsonApiRelationship('worksheets', dest_worksheet_uuid)
         dest_client.create('worksheet-items', source_items, params={'replace': args.replace})
 
         # Copy over the bundles
         for item in source_items:
-            if item['type']:
-                self.copy_bundle(source_client, item['bundle']['uuid'],
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                self.copy_bundle(source_client, item['bundle']['id'],
                                  dest_client, dest_worksheet_uuid,
                                  copy_dependencies=False, add_to_worksheet=False)
 

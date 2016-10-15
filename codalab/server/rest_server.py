@@ -208,7 +208,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
     install(ErrorAdapter())
-    # install(JsonApiPlugin())
+    install(JsonApiPlugin())
 
     for code in xrange(100, 600):
         default_app().error(code)(error_handler)
