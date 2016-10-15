@@ -10,7 +10,9 @@ from marshmallow import (
     validate,
     validates_schema,
 )
+from marshmallow import post_dump
 from marshmallow import post_load
+from marshmallow import pre_load
 from marshmallow_jsonapi import Schema, fields
 
 from codalab.bundles import BUNDLE_SUBCLASSES
@@ -23,14 +25,12 @@ from codalab.objects.permission import PermissionSpec
 
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
-    worksheet = fields.Relationship(include_data=True, attribute='worksheet_uuid', type_='worksheets', load_only=True, required=True)
-    subworksheet = fields.Relationship(include_data=True, type_='worksheets', attribute='subworksheet_uuid')
-    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid')
+    worksheet = fields.Relationship(include_data=True, attribute='worksheet_uuid', type_='worksheets', required=True)
+    subworksheet = fields.Relationship(include_data=True, type_='worksheets', attribute='subworksheet_uuid', allow_none=True)
+    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True)
     value = fields.String()
     type = fields.String(validate=validate.OneOf(set(WORKSHEET_ITEM_TYPES)), required=True)
     sort_key = fields.Integer(allow_none=True)
-
-    # TODO: add validation that only one of subworksheet, bundle, or value is set
 
     class Meta:
         type_ = "worksheet-items"

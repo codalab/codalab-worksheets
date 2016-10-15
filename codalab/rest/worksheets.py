@@ -111,8 +111,6 @@ def create_worksheet_items():
     """
     Bulk add worksheet items.
     """
-    from codalab.lib.print_util import pretty_print_json
-    pretty_print_json(request.json)
     new_items = WorksheetItemSchema(
         strict=True, many=True,
     ).load(request.json).data

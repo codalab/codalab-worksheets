@@ -56,6 +56,12 @@ class Worksheet(ORMObject):
             self.last_item_id = None
 
     class Item(object):
+        # class Type(object):
+        #     MARKUP = 'markup'
+        #     DIRECTIVE = 'directive'
+        #     BUNDLE = 'bundle'
+        #     WORKSHEET = 'worksheet'
+
         @staticmethod
         def as_tuple(item):
             # Convert to the canonical tuple form that the model methods currently use
@@ -68,13 +74,6 @@ class Worksheet(ORMObject):
                 item.get('value', ''),
                 item['type']
             )
-        #
-        # @staticmethod
-        # def as_dict(item):
-        #     if isinstance(item, dict):
-        #         return item
-        #     else:
-        #
 
     def legacy_formatted_items(self):
         return [(item['bundle_uuid'], item['subworksheet_uuid'], item['value'], item['type']) for item in self.items]

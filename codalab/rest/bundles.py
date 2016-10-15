@@ -135,9 +135,17 @@ def build_bundles_document(bundle_uuids):
 def _create_bundles():
     """
     Bulk create bundles.
+
+    |worksheet_uuid| - The parent worksheet of the bundle, add to this worksheet
+                       if not detached or shadowing another bundle. Also used
+                       to inherit permissions.
+    |shadow| - the uuid of the bundle to shadow
+    |detached| - True ('1') if should not add new bundle to any worksheet,
+                 or False ('0') otherwise. Default is False.
     """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadow')
+    detached = query_get_bool('detached', default=False)
     if worksheet_uuid is None:
         abort(httplib.BAD_REQUEST, "Parent worksheet id must be specified as"
                                    "'worksheet' query parameter")
@@ -188,12 +196,13 @@ def _create_bundles():
         } for p in group_permissions])
 
         # Add as item to worksheet
-        if shadow_parent_uuid is None:
-            local.model.add_worksheet_item(
-                worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
-        else:
-            local.model.add_shadow_worksheet_items(
-                shadow_parent_uuid, bundle_uuid)
+        if not detached:
+            if shadow_parent_uuid is None:
+                local.model.add_worksheet_item(
+                    worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
+            else:
+                local.model.add_shadow_worksheet_items(
+                    shadow_parent_uuid, bundle_uuid)
 
     # Get created bundles
     bundles_dict = get_bundle_infos(created_uuids)

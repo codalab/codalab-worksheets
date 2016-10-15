@@ -305,10 +305,9 @@ class BundleService(object):
             temporary=True,
             config=local.config,
             clients={
-                'local': self.client,
                 self._rest_url(): rest_client
             })
-        manager.set_current_worksheet_uuid('local', worksheet_uuid)
+        manager.set_current_worksheet_uuid(self._rest_url(), worksheet_uuid)
         cli = bundle_cli.BundleCLI(manager, headless=True, stdout=output_buffer, stderr=output_buffer)
         return cli, output_buffer
 

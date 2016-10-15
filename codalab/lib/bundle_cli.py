@@ -1251,7 +1251,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
 
         # Number the bundles: c c a b c => 3 2 1 1 1
@@ -1773,7 +1773,7 @@ class BundleCLI(object):
     def add_mimic_args(self, parser):
         self.add_wait_args(parser)
 
-    def mimic_bundles(self, client, rest_client,
+    def mimic_bundles(self, client,
                       old_inputs, old_output, new_inputs, new_output_name,
                       worksheet_uuid, depth, shadow, dry_run):
         """
@@ -1784,11 +1784,6 @@ class BundleCLI(object):
         worksheet_uuid: add newly created bundles to this worksheet
         depth: how far to do a BFS up from old_output.
         shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
-
-        TODO(sckoo): Currently raises a NotImplementedError when |shadow| is
-        False, but when the worksheets API is ready, come back and implement
-        the non-shadow version. Also remove the duplicate clients and use
-        only the REST client.
         """
 
         # Build the graph (get all the infos).
@@ -1799,7 +1794,7 @@ class BundleCLI(object):
         if old_output:
             bundle_uuids = [old_output]
         else:
-            bundle_uuids = rest_client.fetch('bundles', params={
+            bundle_uuids = client.fetch('bundles', params={
                 'specs': old_inputs,
                 'depth': depth
             })['meta']['descendant-ids']
@@ -1809,7 +1804,7 @@ class BundleCLI(object):
             for bundle_uuid in bundle_uuids:
                 if bundle_uuid in infos:
                     continue  # Already visited
-                info = infos[bundle_uuid] = rest_client.fetch('bundles', bundle_uuid)
+                info = infos[bundle_uuid] = client.fetch('bundles', bundle_uuid)
                 for dep in info['dependencies']:
                     parent_uuid = dep['parent_uuid']
                     if parent_uuid not in infos:
@@ -1879,10 +1874,17 @@ class BundleCLI(object):
                         raise UsageError(
                             'Can\'t mimic %s since it is not make or run' %
                             old_bundle_uuid)
-                    new_info = rest_client.create('bundles', new_info, params={
-                        'worksheet': worksheet_uuid,
-                        'shadow': old_info['uuid'],
-                    })
+
+                    # Create the new bundle, requesting to shadow the old
+                    # bundle in its worksheet if shadow is specified, otherwise
+                    # leave the bundle detached, to be added later below.
+                    params = {}
+                    params['worksheet'] = worksheet_uuid
+                    if shadow:
+                        params['shadow'] = old_info['uuid']
+                    else:
+                        params['detached'] = True
+                    new_info = client.create('bundles', new_info, params=params)
 
                 new_bundle_uuid = new_info['uuid']
                 plan.append((old_info, new_info))
@@ -1902,11 +1904,10 @@ class BundleCLI(object):
             for uuid in all_bundle_uuids:
                 recurse(uuid)
 
-        # TODO(sckoo): restify when worksheets API is ready
         # Add to worksheet
         if not dry_run and not shadow:
             def newline():
-                rest_client.create('worksheet-items', data={
+                client.create('worksheet-items', data={
                     'type': worksheet_util.TYPE_MARKUP,
                     'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
                     'value': '',
@@ -1921,7 +1922,9 @@ class BundleCLI(object):
                 anchor_uuid = old_output
             elif len(old_inputs) > 0:
                 anchor_uuid = old_inputs[0]
-            host_worksheets = rest_client.fetch('worksheets', params={
+
+            # Find worksheets that contain the anchor bundle
+            host_worksheets = client.fetch('worksheets', params={
                 'keywords': 'bundle=' + anchor_uuid,
             })
             host_worksheet_uuids = [hw['id'] for hw in host_worksheets]
@@ -1940,17 +1943,15 @@ class BundleCLI(object):
                     host_worksheet_uuid = host_worksheet_uuids[0]
 
                 # Fetch the worksheet
-                worksheet_info = rest_client.fetch('worksheet', host_worksheet_uuid)
-
-                # TODO: restify thisHAHAHHAHAHA why did i decide to do this in the front end
+                worksheet_info = client.fetch('worksheets', host_worksheet_uuid)
 
                 prelude_items = []  # The prelude that we're building up
                 for item in worksheet_info['items']:
-                    (bundle_info, subworkheet_info, value_obj, item_type) = item
+                    # (bundle_info, subworkheet_info, value_obj, item_type) = item
                     just_added = False
 
-                    if item_type == worksheet_util.TYPE_BUNDLE:
-                        old_bundle_uuid = bundle_info['uuid']
+                    if item['type'] == worksheet_util.TYPE_BUNDLE:
+                        old_bundle_uuid = item['bundle']['id']
                         if old_bundle_uuid in old_to_new:
                             # Flush the prelude gathered so far.
                             new_bundle_uuid = old_to_new[old_bundle_uuid]
@@ -1959,14 +1960,20 @@ class BundleCLI(object):
                                 if skipped:
                                     newline()
 
-                                # Add prelude and items
+                                # Add prelude
                                 for item2 in prelude_items:
-                                    self.add_worksheet_item(worksheet_uuid, worksheet_util.convert_item_to_db(item2))
-                                self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
+                                    client.create('worksheet-items', data=item2)
+
+                                # Add the bundle item
+                                client.create('worksheet-items', data={
+                                    'type': worksheet_util.TYPE_BUNDLE,
+                                    'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
+                                    'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
+                                })
                                 new_bundle_uuids_added.add(new_bundle_uuid)
                                 just_added = True
 
-                    if (item_type == worksheet_util.TYPE_MARKUP and value_obj != '') or item_type == worksheet_util.TYPE_DIRECTIVE:
+                    if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item['type'] == worksheet_util.TYPE_DIRECTIVE:
                         prelude_items.append(item)  # Include in prelude
                         skipped = False
                     else:
@@ -1980,7 +1987,12 @@ class BundleCLI(object):
                     if skipped:
                         newline()
                         skipped = False
-                    self.add_worksheet_item(worksheet_uuid, worksheet_util.bundle_item(new_bundle_uuid))
+                    print 'adding: ' + new_bundle_uuid
+                    client.create('worksheet-items', data={
+                        'type': worksheet_util.TYPE_BUNDLE,
+                        'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
+                        'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
+                    })
 
         return plan
 
@@ -1988,12 +2000,9 @@ class BundleCLI(object):
         """
         Use args.bundles to generate a mimic call to the BundleClient.
         """
-        # TODO(sckoo): clean up use_rest hack when REST API migration complete
-        # FIXME
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         rest_client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = worksheet_util.get_bundle_uuids(rest_client, worksheet_uuid, args.bundles)
+        bundle_uuids = ClientWorksheetResolver(rest_client).resolve_bundle_uuids(worksheet_uuid, args.bundles)
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -2008,20 +2017,15 @@ class BundleCLI(object):
             old_output = bundle_uuids[n]
             new_inputs = bundle_uuids[n+1:]
 
-        if args.shadow:
-            plan = self.mimic_bundles(
-                client, rest_client,
-                old_inputs, old_output, new_inputs, args.name,
-                worksheet_uuid, args.depth, args.shadow, args.dry_run)
-        else:
-            plan = client.mimic(
-                old_inputs, old_output, new_inputs, args.name,
-                worksheet_uuid, args.depth, args.shadow, args.dry_run)
+        plan = self.mimic_bundles(
+            rest_client,
+            old_inputs, old_output, new_inputs, args.name,
+            worksheet_uuid, args.depth, args.shadow, args.dry_run)
         for (old, new) in plan:
             print >>self.stderr, '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new))
         if len(plan) > 0:
             new_uuid = plan[-1][1]['uuid']  # Last new uuid to be created
-            self.wait(client, args, new_uuid)
+            self.wait(rest_client, args, new_uuid)
             print >>self.stdout, new_uuid
         else:
             print >>self.stdout, 'Nothing to be done.'
@@ -2038,7 +2042,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         for bundle_uuid in bundle_uuids:
             print >>self.stdout, bundle_uuid
         client.create('bundle-actions', [{
@@ -2595,7 +2599,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         group = client.fetch('groups', args.group_spec)
 
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         new_permission = parse_permission(args.permission_spec)
 
         client.create('bundle-permissions', [{
@@ -2640,7 +2644,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = worksheet_util.get_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         owner_id = client.fetch('users', args.user_spec)['id']
 
         client.update('bundles', [{

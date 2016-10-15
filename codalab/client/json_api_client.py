@@ -55,7 +55,7 @@ class JsonApiException(RestClientException):
     """
 
 
-class JsonApiRelationship(object):
+class JsonApiRelationship(dict):
     """
     Placeholder for a relationship to another resource.
     Used to build requests to create or update a resource.
@@ -65,18 +65,44 @@ class JsonApiRelationship(object):
             'id': '0x7d67f3e0fda249e5b0531670f473c04f',
             'owner': JsonApiRelationship('users', owner_id)
         })
+
+    JsonApiRelationship is also a subclass of dict, to store and provide access
+    to the attributes of the referred object.
     """
-    def __init__(self, type_, id_):
+    def __init__(self, type_, id_, *args):
         self.type_ = type_
         self.id_ = id_
+        dict.__init__(self, *args)
+        # Allow attributes to override the type and id keys in the dict
+        self.setdefault('type', type_)
+        self.setdefault('id', id_)
 
-    def as_dict(self):
+    def as_linkage(self):
+        """Serialize into relationship linkage dict for JSON API requests."""
         return {
             'data': {
                 'type': self.type_,
                 'id': self.id_,
             }
         }
+
+    def __repr__(self):
+        return 'JsonApiRelationship(type_=%s, id_=%s, data=%s)' % \
+               (self.type_, self.id_, dict.__repr__(self))
+
+
+class EmptyJsonApiRelationship(JsonApiRelationship):
+    """
+    Represents an empty to-one relationship.
+    """
+    def __init__(self):
+        JsonApiRelationship.__init__(self, None, None)
+
+    def as_linkage(self):
+        return {'data': None}
+
+    def __repr__(self):
+        return 'EmptyJsonApiRelationship()'
 
 
 class JsonApiClient(RestClient):
@@ -187,10 +213,19 @@ class JsonApiClient(RestClient):
         def unpack_linkage(linkage):
             # Return recursively unpacked object if the data was included in the
             # document, otherwise just return the linkage object
-            if linkage is None or (linkage['type'], linkage['id']) not in included:
-                return linkage
+            if linkage is None:
+                return EmptyJsonApiRelationship()
+            elif (linkage['type'], linkage['id']) in included:
+                # Wrap in a JsonApiRelationship proxy
+                # This allows you to send an unpacked object back up through
+                # create or update requests.
+                return JsonApiRelationship(
+                    linkage['type'],
+                    linkage['id'],
+                    unpack_object(included[linkage['type'], linkage['id']])
+                )
             else:
-                return unpack_object(included[linkage['type'], linkage['id']])
+                return JsonApiRelationship(linkage['type'], linkage['id'])
 
         def unpack_object(obj_data):
             # Merge attributes, id, meta, and relationships into a single dict
@@ -287,7 +322,7 @@ class JsonApiClient(RestClient):
             relationships = {}
             for key, value in obj.iteritems():
                 if isinstance(value, JsonApiRelationship):
-                    relationships[key] = value.as_dict()
+                    relationships[key] = value.as_linkage()
                 elif key == 'id':
                     packed_obj['id'] = value
                 else:
@@ -432,7 +467,7 @@ class JsonApiClient(RestClient):
                 path=self._get_resource_path(
                     resource_type, resource_id, relationship_key),
                 query_params=self._pack_params(params),
-                data=(relationship and relationship.as_dict())))
+                data=(relationship and relationship.as_linkage())))
 
     @wrap_exception('Unable to delete {1}/{2}/relationships/{3}')
     def delete_relationship(self, resource_type, resource_id, relationship_key,
@@ -453,7 +488,7 @@ class JsonApiClient(RestClient):
                 path=self._get_resource_path(
                     resource_type, resource_id, relationship_key),
                 query_params=self._pack_params(params),
-                data=(relationship and relationship.as_dict())))
+                data=(relationship and relationship.as_linkage())))
 
     @wrap_exception('Unable to update authenticated user')
     def update_authenticated_user(self, data, params=None):
