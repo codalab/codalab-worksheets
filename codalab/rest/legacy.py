@@ -26,11 +26,9 @@ from bottle import (
 from codalab.bundles import get_bundle_subclass, PrivateBundle
 from codalab.client.json_api_client import JsonApiClient
 from codalab.client.local_bundle_client import LocalBundleClient
-from codalab.client.remote_bundle_client import RemoteBundleClient
-from codalab.common import UsageError
+from codalab.common import UsageError, precondition
 from codalab.lib import (
   bundle_cli,
-  file_util,
   formatting,
   metadata_util,
   spec_util,
@@ -42,9 +40,14 @@ from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.oauth2 import OAuth2Token
 from codalab.objects.permission import permission_str
+from codalab.rest.util import get_bundle_info, resolve_owner_in_keywords
+from codalab.rest.worksheets import (
+    update_worksheet_items,
+    get_worksheet_info,
+    get_worksheet_uuid,
+)
 from codalab.server.auth import LocalUserAuthHandler
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalab.server.rpc_file_handle import RPCFileHandle
 
 
 def get_user_token():
@@ -95,7 +98,7 @@ class BundleService(object):
         return 'http://{rest_host}:{rest_port}'.format(**local.config['server'])
 
     def get_bundle_info(self, uuid):
-        bundle_info = self.client.get_bundle_info(uuid, True, True, True)
+        bundle_info = get_bundle_info(uuid, True, True, True)
 
         if bundle_info is None:
             return None
@@ -118,14 +121,19 @@ class BundleService(object):
         return bundle_info
 
     def search_worksheets(self, keywords, worksheet_uuid=None):
-        return self.client.search_worksheets(keywords)
+        keywords = resolve_owner_in_keywords(keywords)
+        results = local.model.search_worksheets(request.user.user_id, keywords)
+        self._set_owner_names(results)
+        return results
 
-    def get_worksheet_uuid(self, spec):
-        # generic function sometimes get uuid already just return it.
-        if spec_util.UUID_REGEX.match(spec):
-            return spec
-        else:
-            return self.client.get_worksheet_uuid(None, spec)
+    @staticmethod
+    def _set_owner_names(results):
+        """
+        Helper function: Set owner_name given owner_id of each item in results.
+        """
+        owners = [local.model.get_user(r['owner_id']) for r in results]
+        for r, o in zip(results, owners):
+            r['owner_name'] = o.user_name
 
     def full_worksheet(self, uuid, bundle_uuids=None):
         """
@@ -135,10 +143,10 @@ class BundleService(object):
         In the future, for large worksheets, might want to break this up so
         that we can render something basic.
         """
-        worksheet_info = self.client.get_worksheet_info(uuid, True, True)
+        worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True)
 
         # Fetch items.
-        worksheet_info['raw'] = worksheet_util.get_worksheet_lines(worksheet_info)
+        worksheet_info['raw'] = worksheet_util.get_worksheet_lines(worksheet_info, legacy=True)
 
         # Set permissions
         worksheet_info['edit_permission'] = (worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
@@ -226,10 +234,10 @@ class BundleService(object):
         """
         Replace worksheet |uuid| with the raw contents given by |lines|.
         """
-        worksheet_info = self.client.get_worksheet_info(uuid, True)
+        worksheet_info = get_worksheet_info(uuid, fetch_items=True)
         new_items, commands = worksheet_util.parse_worksheet_form(
-            lines, ServerWorksheetResolver(self.client.model, self.client._current_user()), worksheet_info['uuid'])
-        self.client.update_worksheet_items(worksheet_info, new_items)
+            lines, ServerWorksheetResolver(local.model, request.user), worksheet_info['uuid'])
+        update_worksheet_items(worksheet_info, new_items)
         # Note: commands are ignored
 
     def get_bundle_file_contents(self, uuid):
@@ -288,6 +296,39 @@ class BundleService(object):
             for item in info['contents']:
                 item['size_str'] = formatting.size_str(item['size'])
         return info
+
+    def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
+        """
+        Upload |source_file| (a stream) to |worksheet_uuid|.
+        """
+        # Construct info for creating the bundle.
+        bundle_subclass = get_bundle_subclass(bundle_type)  # program or data
+        metadata = metadata_util.fill_missing_metadata(bundle_subclass, {}, initial_metadata={
+            'name': source_file.filename,
+            'description': 'Upload ' + source_file.filename
+        })
+        info = {
+            'bundle_type': bundle_type,
+            'metadata': metadata
+        }
+
+        # Upload it by creating a file handle and copying source_file to it
+        # (see RemoteBundleClient.upload_bundle in the CLI).
+        if zip_util.path_is_archive(metadata['name']):
+            metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
+
+        new_bundle_uuid = self.client.upload_bundle(
+            [(source_file.filename, source_file.file)],
+            follow_symlinks=False,
+            exclude_patterns=None,
+            git=False,
+            unpack=True,  # always unpack for now
+            remove_sources=True,
+            info=info,
+            worksheet_uuid=worksheet_uuid,
+            add_to_worksheet=True)
+
+        return new_bundle_uuid
 
     def _create_cli(self, worksheet_uuid):
         """
@@ -386,52 +427,6 @@ class BundleService(object):
         return self.client.get_faq()
 
 
-class RemoteBundleService(object):
-    '''
-    Adapts the RemoteBundleClient for REST calls.
-    TODO(klopyrev): This version should eventually go away once the file upload
-    logic is cleaned up. See below where this class is used for more information.
-    '''
-    def __init__(self):
-        self.client = RemoteBundleClient(self._cli_url(),
-                                         lambda command: get_user_token(),
-                                         check_version=lambda _: None, verbose=0)
-
-    def _cli_url(self):
-        return 'http://' + local.config['server']['host'] + ':' + str(local.config['server']['port'])
-
-    def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
-        """
-        Upload |source_file| (a stream) to |worksheet_uuid|.
-        """
-        # Construct info for creating the bundle.
-        bundle_subclass = get_bundle_subclass(bundle_type) # program or data
-        metadata = metadata_util.fill_missing_metadata(bundle_subclass, {}, initial_metadata={'name': source_file.filename, 'description': 'Upload ' + source_file.filename})
-        info = {'bundle_type': bundle_type, 'metadata': metadata}
-
-        # Upload it by creating a file handle and copying source_file to it (see RemoteBundleClient.upload_bundle in the CLI).
-        remote_file_uuid = self.client.open_temp_file(metadata['name'])
-        try:
-            with closing(RPCFileHandle(remote_file_uuid, self.client.proxy)) as dest:
-                file_util.copy(source_file.file, dest, autoflush=False, print_status='Uploading %s' % metadata['name'])
-
-            pack = False  # For now, always unpack (note: do this after set remote_file_uuid, which needs the extension)
-            if not pack and zip_util.path_is_archive(metadata['name']):
-                metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
-
-            # Then tell the client that the uploaded file handle is there.
-            new_bundle_uuid = self.client.finish_upload_bundle(
-                [remote_file_uuid],
-                not pack,  # unpack
-                info,
-                worksheet_uuid,
-                True)  # add_to_worksheet
-        except:
-            self.client.finalize_file(remote_file_uuid)
-            raise
-        return new_bundle_uuid
-
-
 @get('/worksheets/sample/')
 def get_sample_worksheets():
     '''
@@ -459,8 +454,7 @@ def get_sample_worksheets():
 @get('/worksheets/')
 def get_worksheets_landing():
     requested_ws = request.query.get('uuid', request.query.get('name', 'home'))
-    service = BundleService()
-    uuid = service.get_worksheet_uuid(requested_ws)
+    uuid = get_worksheet_uuid(None, requested_ws)
     redirect('/worksheets/%s/' % uuid)
 
 
@@ -526,16 +520,16 @@ def post_bundle_upload():
     # API was implemented in Django. Ideally, this REST server should just store
     # the upload to the bundle store directly. A bunch of logic needs to be
     # cleaned up in order for that to happen.
-    service = RemoteBundleService()
+    service = BundleService()
     source_file = request.files['file']
     bundle_type = request.POST['bundle_type']
     worksheet_uuid = request.POST['worksheet_uuid']
-    new_bundle_uuid =  service.upload_bundle(source_file, bundle_type, worksheet_uuid)
+    new_bundle_uuid = service.upload_bundle(source_file, bundle_type, worksheet_uuid)
     return {'uuid': new_bundle_uuid}
 
 
 @get('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
-def get_bundle_info(uuid):
+def get_bundle_info_(uuid):
     service = BundleService()
     bundle_info = service.get_bundle_info(uuid)
     if bundle_info is None:
@@ -634,3 +628,28 @@ def get_faq():
     """
     service = BundleService()
     return {'faq': service.get_faq()}
+
+
+@post('/api/rpc')
+def execute_rpc_call():
+    """
+    Temporary interface for making simple RPC calls to LocalBundleClient over
+    the REST API, to speed up deprecation of XMLRPC while we migrate to REST.
+
+    RPC calls should be POST requests with a JSON payload:
+    {
+        'method': <name of the LocalBundleClient method to call>,
+        'args': <array of args>,
+        'kwargs': <object of kwargs>
+    }
+    """
+    service = BundleService()
+    data = request.json
+    precondition('method' in data, "RPC call must include `method` key")
+    method = data['method']
+    args = data.get('args', [])
+    kwargs = data.get('kwargs', {})
+    precondition(isinstance(args, list), "`args` must be list")
+    precondition(isinstance(kwargs, dict), "`kwargs` must be dict")
+    precondition(hasattr(service.client, method), "LocalBundleClient.%s not defined" % method)
+    return getattr(service.client, method)(*args, **kwargs)

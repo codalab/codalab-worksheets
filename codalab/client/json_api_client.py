@@ -575,3 +575,15 @@ class JsonApiClient(RestClient):
                 query_params=params,
                 fileobj=fileobj,
                 progress_callback=progress_callback)
+
+    @wrap_exception('Unable to make RPC call')
+    def rpc(self, method, *args, **kwargs):
+        request = {
+            'method': method,
+            'args': args,
+            'kwargs': kwargs,
+        }
+        self._make_request(
+            method='POST',
+            path='/api/rpc',
+            data=request)

@@ -65,7 +65,6 @@ from codalab.objects.permission import (
 )
 from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.json_api_client import JsonApiRelationship
-from codalab.server.rpc_file_handle import RPCFileHandle
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
     CodaLabCompleter,
@@ -1252,25 +1251,23 @@ class BundleCLI(object):
         # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
         bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
 
         # Number the bundles: c c a b c => 3 2 1 1 1
         items = worksheet_info['items']
         indices = [None] * len(items)  # Parallel array to items that stores the index associated with that bundle uuid
         uuid2index = {}  # bundle uuid => index of the bundle (at the end, number of times it occurs on the worksheet)
         for i, item in reversed(list(enumerate(items))):
-            (bundle_info, subworksheet_info, value_obj, item_type) = item
-            if item_type == worksheet_util.TYPE_BUNDLE:
-                uuid = bundle_info['uuid']
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                uuid = item['bundle']['id']
                 indices[i] = uuid2index[uuid] = uuid2index.get(uuid, 0) + 1
 
         # Detach the items.
         new_items = []
         for i, item in enumerate(items):
-            (bundle_info, subworksheet_info, value_obj, item_type) = item
             detach = False
-            if item_type == worksheet_util.TYPE_BUNDLE:
-                uuid = bundle_info['uuid']
+            if item['type'] == worksheet_util.TYPE_BUNDLE:
+                uuid = item['bundle']['id']
                 # If want to detach uuid, then make sure we're detaching the
                 # right index or if the index is not specified, that it's
                 # unique.
@@ -1287,7 +1284,7 @@ class BundleCLI(object):
             if not detach:
                 new_items.append(item)
 
-        client.update_worksheet_items(worksheet_info, new_items)
+        client.rpc('update_worksheet_items', worksheet_info, new_items)
 
     @Commands.command(
         'rm',
@@ -2225,21 +2222,24 @@ class BundleCLI(object):
     )
     def do_wedit_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = client.get_worksheet_info(worksheet_uuid, True)
-        if args.name != None or args.title != None or args.tags != None or args.owner_spec != None or args.freeze:
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+        if args.freeze or any(arg is not None for arg in (args.name, args.title, args.tags, args.owner_spec)):
             # Update the worksheet metadata.
-            info = {}
-            if args.name != None:
+            info = {
+                'id': worksheet_info['id']
+            }
+            if args.name is not None:
                 info['name'] = args.name
-            if args.title != None:
+            if args.title is not None:
                 info['title'] = args.title
-            if args.tags != None:
+            if args.tags is not None:
                 info['tags'] = args.tags
-            if args.owner_spec != None:
+            if args.owner_spec is not None:
                 info['owner_spec'] = args.owner_spec
             if args.freeze:
                 info['freeze'] = True
-            client.update_worksheet_metadata(worksheet_uuid, info)
+
+            client.update('worksheets', info)
             print >>self.stdout, 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
         else:
             if self.headless:
@@ -2256,7 +2256,7 @@ class BundleCLI(object):
             new_items, commands = worksheet_util.parse_worksheet_form(lines, ClientWorksheetResolver(client), worksheet_info['uuid'])
 
             # Save the worksheet.
-            client.update_worksheet_items(worksheet_info, new_items)
+            client.create('worksheet-items', new_items, params={'replace': True})
             print >>self.stdout, 'Saved worksheet items for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
 
             # Batch the rm commands so that we can handle the recursive
@@ -2300,7 +2300,7 @@ class BundleCLI(object):
         rest_client, _ = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = rest_client.fetch('worksheets', worksheet_uuid)
         if args.raw:
-            lines = worksheet_util.get_worksheet_lines(worksheet_info, use_rest=True)
+            lines = worksheet_util.get_worksheet_lines(worksheet_info)
             for line in lines:
                 print >>self.stdout, line
         else:
@@ -2813,16 +2813,6 @@ class BundleCLI(object):
         self.manager.bundle_store().reset()
         print >>self.stdout, 'Deleting entire database...'
         self.manager.model()._reset()
-
-    # Note: this is not actually handled in BundleCLI, but here just to show the help
-    @Commands.command(
-        'server',
-        help='Start an instance of the CodaLab bundle service.',
-    )
-    def do_server_command(self, args):
-        self._fail_if_headless(args)
-        self._fail_if_not_local(args)
-        raise UsageError('Cannot execute CLI command: server')
 
     @Commands.command(
         'bs-add-partition',

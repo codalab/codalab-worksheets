@@ -141,6 +141,11 @@ def resolve_owner_in_keywords(local, request, keywords):
 # BUNDLES
 #############################################################
 
+
+def get_bundle_info(uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
+    return get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
+
+
 # Placed here to prevent cyclic imports between rest.bundles and rest.worksheets
 @local_bundle_client_compatible
 def get_bundle_infos(local, request, uuids, get_children=False,

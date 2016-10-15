@@ -11,8 +11,12 @@ from codalab.lib import (
     worksheet_util,
 )
 from codalab.lib import formatting
-from codalab.lib.server_util import json_api_include, query_get_list, \
-    query_get_bool, json_api_meta
+from codalab.lib.server_util import (
+    bottle_patch as patch,
+    json_api_include,
+    query_get_list,
+    query_get_bool,
+)
 from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import (
@@ -120,6 +124,21 @@ def create_worksheets():
     return WorksheetSchema(many=True).dump(worksheets).data
 
 
+@patch('/worksheets', apply=AuthenticatedPlugin())
+def update_worksheets():
+    """
+    Bulk update worksheets metadata.
+    """
+    worksheet_updates = WorksheetSchema(
+        strict=True, many=True,
+    ).load(request.json, partial=True).data
+
+    for w in worksheet_updates:
+        update_worksheet_metadata(w['uuid'], w)
+
+    return WorksheetSchema(many=True).dump(worksheet_updates).data
+
+
 @delete('/worksheets', apply=AuthenticatedPlugin())
 def delete_worksheets():
     """
@@ -139,13 +158,28 @@ def delete_worksheets():
 def create_worksheet_items():
     """
     Bulk add worksheet items.
+
+    |replace| - Replace existing items in worksheets. Default is False.
     """
+    replace = query_get_bool('replace', False)
+
     new_items = WorksheetItemSchema(
         strict=True, many=True,
     ).load(request.json).data
 
+    worksheet_to_items = {}
     for item in new_items:
-        add_worksheet_item(item['worksheet_uuid'], Worksheet.Item.as_tuple(item))
+        worksheet_to_items.setdefault(item['worksheet_uuid'], []).append(item)
+
+    for worksheet_uuid, items in worksheet_to_items.iteritems():
+        worksheet_info = get_worksheet_info(worksheet_uuid)
+        if replace:
+            # Replace items in the worksheet
+            update_worksheet_items(worksheet_info, items)
+        else:
+            # Append items to the worksheet
+            for item in items:
+                add_worksheet_item(worksheet_uuid, Worksheet.Item.as_tuple(item))
 
     return WorksheetItemSchema(many=True).dump(new_items).data
 
@@ -253,8 +287,11 @@ def update_worksheet_metadata(local, request, uuid, info):
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     metadata = {}
     for key, value in info.items():
-        if key == 'owner_spec':
-            metadata['owner_id'] = local.model.find_user(value)
+        if key == 'owner_id':
+            metadata['owner_id'] = value
+        elif key == 'owner_spec':
+            # TODO(sckoo): Legacy requirement, remove with LocalBundleClient
+            metadata['owner_id'] = local.model.find_user(value).user_id
         elif key == 'name':
             ensure_unused_worksheet_name(value)
             metadata[key] = value
@@ -264,8 +301,6 @@ def update_worksheet_metadata(local, request, uuid, info):
             metadata[key] = value
         elif key == 'freeze':
             metadata['frozen'] = datetime.datetime.now()
-        else:
-            raise UsageError('Unknown key: %s' % key)
     local.model.update_worksheet_metadata(worksheet, metadata)
 
 

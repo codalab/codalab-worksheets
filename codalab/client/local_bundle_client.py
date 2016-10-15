@@ -321,9 +321,6 @@ class LocalBundleClient(BundleClient):
             uuids, force=force, recursive=recursive, data_only=data_only,
             dry_run=dry_run, client=self)
 
-    def get_bundle_info(self, uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
-        return self.get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
-
     def get_bundle_infos(self, uuids, get_children=False, get_host_worksheets=False, get_permissions=False):
         """
         get_children, get_host_worksheets, get_permissions: whether we want to return more detailed information.
@@ -444,34 +441,7 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def new_worksheet(self, name):
-        """
-        Create a new worksheet with the given |name|.
-        """
-        self.ensure_unused_worksheet_name(name)
-
-        # Don't need any permissions to do this.
-        from codalab.objects.worksheet import Worksheet  # Temporary
-        worksheet = Worksheet({
-            'name': name,
-            'title': None,
-            'frozen': None,
-            'items': [],
-            'owner_id': self._current_user_id()
-        })
-        self.model.new_worksheet(worksheet)
-
-        # Make worksheet publicly readable by default
-        self.set_worksheet_perm(worksheet.uuid, self.model.public_group_uuid, 'read')
-
-        # If we're creating a special worksheet, then populate it by default.
-        if spec_util.is_dashboard(name):
-            self.populate_worksheet(worksheet, 'dashboard', 'CodaLab Dashboard')
-        if spec_util.is_public_home(name):
-            self.populate_worksheet(worksheet, 'home', 'Public Home')
-
-        return worksheet.uuid
-        # TODO(sckoo): switch over when ready (remember to include is_public_home)
-        #return worksheet_rest.new_worksheet(name, client=self)
+        return worksheet_rest.new_worksheet(name, client=self)
 
     def populate_worksheet(self, worksheet, name, title):
         file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
@@ -481,25 +451,6 @@ class LocalBundleClient(BundleClient):
         info = self.get_worksheet_info(worksheet.uuid, True)
         self.update_worksheet_items(info, items)
         self.update_worksheet_metadata(worksheet.uuid, {'title': title})
-
-    # TODO(sckoo): migrate
-    def list_worksheets(self):
-        return self.search_worksheets([])
-
-    # TODO(sckoo): migrate
-    def search_worksheets(self, keywords):
-        keywords = self.resolve_owner_in_keywords(keywords)
-        results = self.model.search_worksheets(self._current_user_id(), keywords)
-        self._set_owner_names(results)
-        return results
-
-    def _set_owner_names(self, results):
-        """
-        Helper function: Set owner_name given owner_id of each item in results.
-        """
-        owner_names = self._user_id_to_names([r['owner_id'] for r in results])
-        for r, owner_name in zip(results, owner_names):
-            r['owner_name'] = owner_name
 
     def get_worksheet_info(self, uuid, fetch_items=False, fetch_permission=True):
         """
@@ -540,32 +491,11 @@ class LocalBundleClient(BundleClient):
 
     @authentication_required
     def update_worksheet_metadata(self, uuid, info):
-        """
-        Change the metadata of the worksheet |uuid| to |info|,
-        where |info| specifies name, title, owner, etc.
-        """
-        worksheet = self.model.get_worksheet(uuid, fetch_items=False)
-        check_worksheet_has_all_permission(self.model, self._current_user(), worksheet)
-        metadata = {}
-        for key, value in info.items():
-            if key == 'owner_spec':
-                metadata['owner_id'] = self._user_spec_to_id(value)
-            elif key == 'name':
-                self.ensure_unused_worksheet_name(value)
-                metadata[key] = value
-            elif key == 'title':
-                metadata[key] = value
-            elif key == 'tags':
-                metadata[key] = value
-            elif key == 'freeze':
-                metadata['frozen'] = datetime.datetime.now()
-            else:
-                raise UsageError('Unknown key: %s' % key)
-        self.model.update_worksheet_metadata(worksheet, metadata)
+        return worksheet_rest.update_worksheet_metadata(uuid, info, client=self)
 
     @authentication_required
     def delete_worksheet(self, uuid, force):
-        return worksheet_rest.delete_worksheet(uuid, force)
+        return worksheet_rest.delete_worksheet(uuid, force, client=self)
 
     # Default number of lines to pull for each display mode.
     DEFAULT_CONTENTS_MAX_LINES = 10
@@ -672,27 +602,6 @@ class LocalBundleClient(BundleClient):
     #############################################################################
     # Commands related to groups and permissions follow!
     #############################################################################
-
-    @authentication_required
-    def list_groups(self):
-        # Only list groups that we're part of.
-        if self._current_user_id() == self.model.root_user_id:
-            group_dicts = self.model.batch_get_all_groups(None, {'user_defined': True}, None)
-        else:
-            group_dicts = self.model.batch_get_all_groups(
-                None,
-                {'owner_id': self._current_user_id(), 'user_defined': True},
-                {'user_id': self._current_user_id()})
-        for group_dict in group_dicts:
-            role = 'member'
-            if group_dict['is_admin']:
-                if group_dict['owner_id'] == group_dict['user_id']:
-                    role = 'owner'
-                else:
-                    role = 'admin'
-            group_dict['role'] = role
-        self._set_owner_names(group_dicts)
-        return group_dicts
 
     @authentication_required
     def new_group(self, name):
@@ -935,3 +844,5 @@ class LocalBundleClient(BundleClient):
         with open(file_path, 'r') as stream:
             content = yaml.load(stream)
             return content
+
+

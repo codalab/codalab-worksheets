@@ -230,19 +230,19 @@ def convert_item_to_db(item):
     )
 
 
-def get_worksheet_lines(worksheet_info, use_rest=False):
+def get_worksheet_lines(worksheet_info, legacy=False):
     """
     Generator that returns pretty-printed lines of text for the given worksheet.
     """
     lines = []
     for item in worksheet_info['items']:
-        if use_rest:
+        if legacy:
+            (bundle_info, subworksheet_info, value_obj, item_type) = item
+        else:
             bundle_info = item['bundle']
             subworksheet_info = item['subworksheet']
             value_obj = item['value']
             item_type = item['type']
-        else:
-            (bundle_info, subworksheet_info, value_obj, item_type) = item
 
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
@@ -269,7 +269,8 @@ def get_worksheet_lines(worksheet_info, use_rest=False):
                 if deps: description += ' -- ' + deps
                 command = bundle_info.get('command')
                 if command: description += ' : ' + command
-            lines.append(bundle_line(description, bundle_info['uuid']))
+            print bundle_info
+            lines.append(bundle_line(description, bundle_info['uuid' if legacy else 'id']))
         elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')),
                                         subworksheet_info['uuid']))
