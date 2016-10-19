@@ -11,7 +11,7 @@ def safe_get(o, *args, **kwargs):
         bundle_info.get('owner', {}).get('user_name', None)
 
     And turns them into:
-        deep_get(bundle_info, 'owner', 'user_name')
+        safe_get(bundle_info, 'owner', 'user_name')
 
     :param o: dict-like object to 'get' value from
     :param args: variable list of nested keys

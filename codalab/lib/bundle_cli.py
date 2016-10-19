@@ -64,7 +64,6 @@ from codalab.objects.permission import (
     permission_str,
     group_permissions_str,
 )
-from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.client.json_api_client import JsonApiRelationship
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
@@ -2175,19 +2174,6 @@ class BundleCLI(object):
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
             print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
 
-    @staticmethod
-    def item_from_tuple(item):
-        # Convert from the canonical tuple form that the model methods currently use
-        bundle_uuid, subworksheet_info, value_obj, item_type = item
-        item = {}
-
-        return (
-            item.get('bundle_uuid', None),
-            item.get('subworksheet_uuid', None),
-            item.get('value', ''),
-            item['type']
-        )
-
     @Commands.command(
         'wedit',
         aliases=('we',),
@@ -2764,7 +2750,7 @@ class BundleCLI(object):
             pass
 
     #############################################################################
-    # LocalBundleClient-only commands follow!
+    # Local-only commands follow!
     #############################################################################
 
     @Commands.command(

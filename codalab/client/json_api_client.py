@@ -86,6 +86,14 @@ class JsonApiRelationship(dict):
             }
         }
 
+    def __eq__(self, other):
+        return self.type_ == other.type_ and \
+               self.id_ == other.id_ and \
+               dict.__eq__(self, other)
+
+    def __neq__(self, other):
+        return not self.__eq__(other)
+
     def __repr__(self):
         return 'JsonApiRelationship(type_=%s, id_=%s, data=%s)' % \
                (self.type_, self.id_, dict.__repr__(self))
@@ -576,7 +584,7 @@ class JsonApiClient(RestClient):
                 fileobj=fileobj,
                 progress_callback=progress_callback)
 
-    @wrap_exception('Unable to make RPC call')
+    @wrap_exception('Unable to make RPC call \'{1}\'')
     def rpc(self, method, *args, **kwargs):
         request = {
             'method': method,

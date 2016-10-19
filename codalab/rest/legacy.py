@@ -2,14 +2,17 @@
 Legacy REST APIs moved from the codalab-worksheets Django REST server.
 """
 import base64
-from contextlib import closing
+import shutil
 from cStringIO import StringIO
+from contextlib import closing
 from datetime import datetime, timedelta
 import json
 from oauthlib.common import generate_token
+import os
 import random
 import shlex
 import threading
+import yaml
 
 from bottle import (
   abort,
@@ -25,28 +28,26 @@ from bottle import (
 
 from codalab.bundles import get_bundle_subclass, PrivateBundle
 from codalab.client.json_api_client import JsonApiClient
-from codalab.client.local_bundle_client import LocalBundleClient
 from codalab.common import UsageError, precondition
 from codalab.lib import (
   bundle_cli,
   formatting,
-  metadata_util,
   spec_util,
   worksheet_util,
-  zip_util,
 )
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
+from codalab.objects.chat_box_qa import ChatBoxQA
 from codalab.objects.oauth2 import OAuth2Token
-from codalab.objects.permission import permission_str
-from codalab.rest.util import get_bundle_info, resolve_owner_in_keywords
+from codalab.objects.permission import permission_str, \
+    check_bundles_have_all_permission, check_bundles_have_read_permission
+from codalab.rest.util import get_bundle_info, get_bundle_infos, resolve_owner_in_keywords
 from codalab.rest.worksheets import (
     update_worksheet_items,
     get_worksheet_info,
     get_worksheet_uuid,
 )
-from codalab.server.auth import LocalUserAuthHandler
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
@@ -84,20 +85,16 @@ def get_user_token():
 
 
 class BundleService(object):
-    '''
-    Adapts the LocalBundleClient for REST calls.
-    '''
+    """
+    Methods for legacy frontend API.
+    """
 
-    def __init__(self):
-        self.client = LocalBundleClient(
-            'local', local.bundle_store, local.model, local.worker_model,
-            local.upload_manager, local.download_manager,
-            LocalUserAuthHandler(request.user, local.model), verbose=0)
-
-    def _rest_url(self):
+    @staticmethod
+    def _rest_url():
         return 'http://{rest_host}:{rest_port}'.format(**local.config['server'])
 
-    def get_bundle_info(self, uuid):
+    @staticmethod
+    def get_bundle_info(uuid):
         bundle_info = get_bundle_info(uuid, True, True, True)
 
         if bundle_info is None:
@@ -119,6 +116,30 @@ class BundleService(object):
         bundle_info['editable_metadata_fields'] = worksheet_util.get_editable_metadata_fields(cls)
 
         return bundle_info
+
+    @staticmethod
+    def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_permissions=False):
+        """
+        get_children, get_host_worksheets, get_permissions: whether we want to return more detailed information.
+        Return map from bundle uuid to info.
+        """
+        return get_bundle_infos(
+            uuids,
+            get_children=get_children,
+            get_host_worksheets=get_host_worksheets,
+            get_permissions=get_permissions)
+
+    # Used by RPC
+    def interpret_genpath_table_contents(self, contents):
+        return worksheet_util.interpret_genpath_table_contents(self, contents)
+
+    # Used by RPC
+    def interpret_search(self, worksheet_uuid, data):
+        return worksheet_util.interpret_search(self, worksheet_uuid, data)
+
+    # Used by RPC
+    def interpret_wsearch(self, data):
+        return worksheet_util.interpret_wsearch(self, data)
 
     @staticmethod
     def search_worksheets(keywords, worksheet_uuid=None):
@@ -189,7 +210,7 @@ class BundleService(object):
                     if not is_relevant_item:
                         interpreted_items['items'][i] = None
 
-        worksheet_info['items'] = self.client.resolve_interpreted_items(interpreted_items['items'])
+        worksheet_info['items'] = self.resolve_interpreted_items(interpreted_items['items'])
         worksheet_info['raw_to_interpreted'] = interpreted_items['raw_to_interpreted']
         worksheet_info['interpreted_to_raw'] = interpreted_items['interpreted_to_raw']
 
@@ -231,7 +252,8 @@ class BundleService(object):
             return {'items': worksheet_info['items']}
         return worksheet_info
 
-    def parse_and_update_worksheet(self, uuid, lines):
+    @staticmethod
+    def parse_and_update_worksheet(uuid, lines):
         """
         Replace worksheet |uuid| with the raw contents given by |lines|.
         """
@@ -292,44 +314,187 @@ class BundleService(object):
         return info
 
     def get_top_level_contents(self, target):
-        info = self.client.get_target_info(target, 1)
+        info = self.get_target_info(target, 1)
         if info is not None and info['type'] == 'directory':
             for item in info['contents']:
                 item['size_str'] = formatting.size_str(item['size'])
         return info
 
-    def upload_bundle(self, source_file, bundle_type, worksheet_uuid):
+    @staticmethod
+    def search_bundle_uuids(worksheet_uuid, keywords):
+        keywords = resolve_owner_in_keywords(keywords)
+        return local.model.search_bundle_uuids(request.user.user_id, worksheet_uuid, keywords)
+
+    @staticmethod
+    def validate_user_metadata(bundle_subclass, metadata):
         """
-        Upload |source_file| (a stream) to |worksheet_uuid|.
+        Check that the user did not supply values for any auto-generated metadata.
+        Raise a UsageError with the offending keys if they are.
         """
-        # Construct info for creating the bundle.
-        bundle_subclass = get_bundle_subclass(bundle_type)  # program or data
-        metadata = metadata_util.fill_missing_metadata(bundle_subclass, {}, initial_metadata={
-            'name': source_file.filename,
-            'description': 'Upload ' + source_file.filename
-        })
-        info = {
-            'bundle_type': bundle_type,
-            'metadata': metadata
-        }
+        # Allow generated keys as well
+        legal_keys = set(spec.key for spec in bundle_subclass.METADATA_SPECS)
+        illegal_keys = [key for key in metadata if key not in legal_keys]
+        if illegal_keys:
+            raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
 
-        # Upload it by creating a file handle and copying source_file to it
-        # (see RemoteBundleClient.upload_bundle in the CLI).
-        if zip_util.path_is_archive(metadata['name']):
-            metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
+    @staticmethod
+    def check_target_has_read_permission(target):
+        check_bundles_have_read_permission(local.model, request.user, [target[0]])
 
-        new_bundle_uuid = self.client.upload_bundle(
-            [(source_file.filename, source_file.file)],
-            follow_symlinks=False,
-            exclude_patterns=None,
-            git=False,
-            unpack=True,  # always unpack for now
-            remove_sources=True,
-            info=info,
-            worksheet_uuid=worksheet_uuid,
-            add_to_worksheet=True)
+    def get_target_info(self, target, depth):
+        """
+        Returns information about an individual target inside the bundle, or
+        None if the target doesn't exist.
+        """
+        self.check_target_has_read_permission(target)
+        return local.download_manager.get_target_info(target[0], target[1], depth)
 
-        return new_bundle_uuid
+    def cat_target(self, target, out):
+        """
+        Prints the contents of the target file into the file-like object out.
+        The caller should ensure that the target is a file.
+        """
+        self._do_download_file(target, out_fileobj=out)
+
+    def _do_download_file(self, target, out_path=None, out_fileobj=None):
+        self.check_target_has_read_permission(target)
+        with closing(local.download_manager.stream_file(target[0], target[1], gzipped=False)) as fileobj:
+            if out_path is not None:
+                with open(out_path, 'wb') as out:
+                    shutil.copyfileobj(fileobj, out)
+            elif out_fileobj is not None:
+                shutil.copyfileobj(fileobj, out_fileobj)
+
+    # Maximum number of bytes to read per line requested
+    MAX_BYTES_PER_LINE = 128
+
+    def head_target(self, target, max_num_lines, replace_non_unicode=False, base64_encode=True):
+        """
+        Return base64 encoded version of the result.
+
+        The caller should ensure that the target is a file.
+        """
+        self.check_target_has_read_permission(target)
+        lines = local.download_manager.summarize_file(
+            target[0], target[1],
+            max_num_lines, 0, self.MAX_BYTES_PER_LINE, None,
+            gzipped=False).splitlines(True)
+
+        if replace_non_unicode:
+            lines = map(formatting.verbose_contents_str, lines)
+
+        if base64_encode:
+            lines = map(base64.b64encode, lines)
+
+        return lines
+
+    # Default number of lines to pull for each display mode.
+    DEFAULT_CONTENTS_MAX_LINES = 10
+    DEFAULT_GRAPH_MAX_LINES = 100
+
+    def resolve_interpreted_items(self, interpreted_items):
+        """
+        Called by the web interface.  Takes a list of interpreted worksheet
+        items (returned by worksheet_util.interpret_items) and fetches the
+        appropriate information, replacing the 'interpreted' field in each item.
+        The result can be serialized via JSON.
+        """
+        def error_data(mode, message):
+            if mode == 'record' or mode == 'table':
+                return (('ERROR',), [{'ERROR': message}])
+            else:
+                return [message]
+
+        for item in interpreted_items:
+            if item == None:
+                continue
+            mode = item['mode']
+            data = item['interpreted']
+            properties = item['properties']
+
+            try:
+                # Replace data with a resolved version.
+                if mode == 'markup':
+                    # no need to do anything
+                    pass
+                elif mode == 'record' or mode == 'table':
+                    # header_name_posts is a list of (name, post-processing) pairs.
+                    header, contents = data
+                    # Request information
+                    contents = worksheet_util.interpret_genpath_table_contents(self, contents)
+                    data = (header, contents)
+                elif mode == 'contents':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+
+                    target_info = self.get_target_info(data, 0)
+                    if target_info is not None and target_info['type'] == 'directory':
+                        data = [base64.b64encode('<directory>')]
+                    elif target_info is not None and target_info['type'] == 'file':
+                        data = self.head_target(data, max_lines, replace_non_unicode=True)
+                    else:
+                        data = None
+                elif mode == 'html':
+                    target_info = self.get_target_info(data, 0)
+                    if target_info is not None and target_info['type'] == 'file':
+                        data = self.head_target(data, None)
+                    else:
+                        data = None
+                elif mode == 'image':
+                    target_info = self.get_target_info(data, 0)
+                    if target_info is not None and target_info['type'] == 'file':
+                        result = StringIO()
+                        self.cat_target(data, result)
+                        data = base64.b64encode(result.getvalue())
+                    else:
+                        data = None
+                elif mode == 'graph':
+                    try:
+                        max_lines = int(properties.get('maxlines', self.DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+
+                    # data = list of {'target': ...}
+                    # Add a 'points' field that contains the contents of the target.
+                    for info in data:
+                        target = info['target']
+                        target_info = self.get_target_info(target, 0)
+                        if target_info is not None and target_info['type'] == 'file':
+                            contents = self.head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
+                            # Assume TSV file without header for now, just return each line as a row
+                            info['points'] = points = []
+                            for line in contents:
+                                row = line.split('\t')
+                                points.append(row)
+                elif mode == 'search':
+                    data = worksheet_util.interpret_search(self, None, data)
+                elif mode == 'wsearch':
+                    data = worksheet_util.interpret_wsearch(self, data)
+                elif mode == 'worksheet':
+                    pass
+                else:
+                    raise UsageError('Invalid display mode: %s' % mode)
+
+            except UsageError as e:
+                data = error_data(mode, e.message)
+
+            except StandardError:
+                import traceback
+                traceback.print_exc()
+                data = error_data(mode, "Unexpected error interpreting item")
+
+            # Assign the interpreted from the processed data
+            item['interpreted'] = data
+
+        return interpreted_items
+
+    def update_bundle_metadata(self, uuid, metadata):
+        check_bundles_have_all_permission(local.model, request.user, [uuid])
+        bundle = local.model.get_bundle(uuid)
+        self.validate_user_metadata(bundle, metadata)
+        local.model.update_bundle(bundle, {'metadata': metadata})
 
     def _create_cli(self, worksheet_uuid):
         """
@@ -365,7 +530,8 @@ class BundleService(object):
 
         return cli.complete_command(command)
 
-    def get_command(self, raw_command_map):
+    @staticmethod
+    def get_command(raw_command_map):
         """
         Return a cli-command corresponding to raw_command_map contents.
         Input:
@@ -411,21 +577,97 @@ class BundleService(object):
             'exception': exception
         }
 
-    def update_bundle_metadata(self, uuid, new_metadata):
-        self.client.update_bundle_metadata(uuid, new_metadata)
-        return
+    ###############################################
+    # methods related to chat box and chat portal #
+    ###############################################
 
     def add_chat_log_info(self, query_info):
-        return self.client.add_chat_log_info(query_info)
+        """
+        Add the given chat into the database.
+        |query_info| encapsulates all the information of one chat
+        Example: query_info = {
+            'sender_user_id': 1,
+            'recipient_user_id': 2,
+            'message': 'Hello this is my message',
+            'worksheet_uuid': 0x508cf51e546742beba97ed9a69329838,   // the worksheet the user is browsing when he/she sends this message
+            'bundle_uuid': 0x8e66b11ecbda42e2a1f544627acf1418,   // the bundle the user is browsing when he/she sends this message
+        }
+        Return an auto response, if the chat is directed to the system.
+        Otherwise, return an updated chat list of the sender.
+        """
+        updated_data = local.model.add_chat_log_info(query_info)
+        if query_info.get('recipient_user_id') != local.model.system_user_id:
+            return updated_data
+        else:
+            message = query_info.get('message')
+            worksheet_uuid = query_info.get('worksheet_uuid')
+            bundle_uuid = query_info.get('bundle_uuid')
+            bot_response = self.format_message_response(ChatBoxQA.answer(message, worksheet_uuid, bundle_uuid))
+            info = {
+                'sender_user_id': local.model.system_user_id,
+                'recipient_user_id': request.user.user_id,
+                'message': bot_response,
+                'worksheet_uuid': worksheet_uuid,
+                'bundle_uuid': bundle_uuid,
+            }
+            local.model.add_chat_log_info(info)
+            return bot_response
 
-    def get_chat_log_info(self, query_info):
-        return self.client.get_chat_log_info(query_info)
+    @staticmethod
+    def format_message_response(params):
+        """
+        Format automatic response
+        |params| is None if the system can't process the user's message
+        or is not confident enough to give a response.
+        Otherwise, |params| is a triple that consists of
+        the question that the system is trying to answer,
+        the response it has for that question, and the recommended command to run.
+        Return the automatic response that will be sent back to the user's chat box.
+        """
+        if params == None:
+            return 'Thank you for your question. Our staff will get back to you as soon as we can.'
+        else:
+            question, response, command = params
+            result = 'This is the question we are trying to answer: ' + question + '\n'
+            result += response + '\n'
+            result += 'You can try to run the following command: \n'
+            result += command
+            return result
 
-    def get_user_info(self, user_id):
-        return self.client.get_user_info(user_id, True)
+    @staticmethod
+    def get_chat_log_info(query_info):
+        '''
+        |query_info| specifies the user_id of the user that you are querying about.
+        Example: query_info = {
+            user_id: 2,   // get the chats sent by and received by the user with user_id 2
+            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
+        }
+        Return a list of chats that the user have had given the user_id
+        '''
+        return local.model.get_chat_log_info(query_info)
 
-    def get_faq(self):
-        return self.client.get_faq()
+    @staticmethod
+    def get_user_info(user_id):
+        if user_id is None:
+            user_id = request.user.user_id
+        return local.model.get_user_info(user_id, fetch_extra=False)
+
+    @staticmethod
+    def get_faq():
+        '''
+        Return a list of FAQ item, each of the following format:
+        '0': {
+            'question': 'how can I upload / add a bundle?'
+            'answer': {
+                'response': 'You can do cl upload or click Update Bundle.',
+                'command': 'cl upload <file_path>'
+            }
+        }
+        '''
+        file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
+        with open(file_path, 'r') as stream:
+            content = yaml.load(stream)
+            return content
 
 
 @get('/worksheets/sample/')
@@ -491,6 +733,7 @@ def get_worksheet_content(uuid):
     bundle_uuids = request.query.getall('bundle_uuid')
     return service.full_worksheet(uuid, bundle_uuids)
 
+
 @post('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR,
       apply=AuthenticatedPlugin())
 def post_worksheet_content(uuid):
@@ -512,21 +755,6 @@ def get_bundle_content(uuid, path=''):
     if bundle_info and bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
         info = service.get_top_level_contents((uuid, path))
     return info if info is not None else {}
-
-
-@post('/api/bundles/upload/')
-def post_bundle_upload():
-    # TODO(klopyrev): This file upload logic is not optimal. The upload goes
-    # to the remote XML RPC bundle service, just like it did before when this
-    # API was implemented in Django. Ideally, this REST server should just store
-    # the upload to the bundle store directly. A bunch of logic needs to be
-    # cleaned up in order for that to happen.
-    service = BundleService()
-    source_file = request.files['file']
-    bundle_type = request.POST['bundle_type']
-    worksheet_uuid = request.POST['worksheet_uuid']
-    new_bundle_uuid = service.upload_bundle(source_file, bundle_type, worksheet_uuid)
-    return {'uuid': new_bundle_uuid}
 
 
 @get('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
@@ -652,7 +880,7 @@ def execute_rpc_call():
     kwargs = data.get('kwargs', {})
     precondition(isinstance(args, list), "`args` must be list")
     precondition(isinstance(kwargs, dict), "`kwargs` must be dict")
-    precondition(hasattr(service.client, method), "LocalBundleClient.%s not defined" % method)
+    precondition(hasattr(service, method), "BundleService.%s not defined" % method)
     return {
-        'data': getattr(service.client, method)(*args, **kwargs)
+        'data': getattr(service, method)(*args, **kwargs)
     }
