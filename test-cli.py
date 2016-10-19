@@ -889,13 +889,10 @@ def test(ctx):
 
     # Start auxiliary servers for the new auxiliary host
     os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
-    server_proc = subprocess.Popen([cl, 'server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    rest_server_proc = subprocess.Popen([cl, 'rest-server'], stderr=subprocess.PIPE)
+    rest_server_proc = subprocess.Popen([cl, 'server'], stderr=subprocess.PIPE)
 
     # TODO(sckoo): Refactor test-cli to allow each module to define cleanup method
     try:
-        # TODO(sckoo): Remove BundleRPCServer when REST migration complete
-        wait_until_substring(server_proc.stdout, 'BundleRPCServer serving')
         wait_until_substring(rest_server_proc.stderr, 'Booting worker')
 
         # Restore original config
@@ -942,7 +939,6 @@ def test(ctx):
 
     finally:
         # Cleanup
-        server_proc.kill()
         rest_server_proc.kill()
         # del os.environ['CODALAB_HOME']
         # del os.environ['PYTHONUNBUFFERED']
