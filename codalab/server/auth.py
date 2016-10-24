@@ -8,6 +8,11 @@ import urllib
 import urllib2
 
 
+# TODO(sckoo): clean up auth logic across:
+#  - this class
+#  - CodaLabManager._authenticate
+#  - CodaLabManager.client
+#  - JsonApiClient._get_access_token
 class RestOAuthHandler(threading.local):
     '''
     Handles user authentication with the REST bundle service server. Fetches

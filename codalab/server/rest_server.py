@@ -21,7 +21,8 @@ from bottle import (
     static_file,
 )
 
-from codalab.common import exception_to_http_error, PreconditionViolation
+from codalab.common import exception_to_http_error, PreconditionViolation, \
+    UsageError
 from codalab.lib import formatting, server_util
 import codalab.rest.account
 import codalab.rest.bundle_actions
@@ -196,6 +197,11 @@ def send_static(filename):
     return static_file(filename, root='static/')
 
 
+def dummy_xmlrpc_app():
+    app = Bottle()
+    return app
+
+
 def run_rest_server(manager, debug, num_processes, num_threads):
     """Runs the REST server."""
     host = manager.config['server']['rest_host']
@@ -215,6 +221,13 @@ def run_rest_server(manager, debug, num_processes, num_threads):
 
     root_app = Bottle()
     root_app.mount('/rest', default_app())
+
+    # TODO: Remove when we are confident everyone has upgraded
+    @root_app.route('/bundleservice')
+    def bundleservice():
+        raise UsageError("Your CLI is attempting to connect to an old API, "
+                         "please upgrade it by running `git pull` from where "
+                         "you installed it.")
 
     bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
 
