@@ -47,7 +47,6 @@ from codalab.common import (
     PermissionError,
     precondition,
 )
-from codalab.server.auth import User
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
 )
