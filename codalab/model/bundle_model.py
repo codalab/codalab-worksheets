@@ -1877,13 +1877,17 @@ class BundleModel(object):
             if not user_info:
                 raise NotFoundError("User with ID %s not found" % user_id)
             # Convert datetimes to strings to prevent JSON serialization errors
-            user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
-            if 'last_login' in user_info and user_info['last_login'] is not None:
-                user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
             if fetch_extra:
+                if 'date_joined' in user_info and user_info['date_joined'] is not None:
+                    user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
+                if 'last_login' in user_info and user_info['last_login'] is not None:
+                    user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
                 user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
                 user_info['root_user_id'] = self.root_user_id
                 user_info['system_user_id'] = self.system_user_id
+            else:
+                del user_info['date_joined']
+                del user_info['last_login']
         return user_info
 
     def update_user_info(self, user_info):

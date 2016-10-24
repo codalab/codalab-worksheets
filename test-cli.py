@@ -890,7 +890,6 @@ def test(ctx):
     os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
     rest_server_proc = subprocess.Popen([cl, 'server'], stderr=subprocess.PIPE)
 
-    # TODO(sckoo): Refactor test-cli to allow each module to define cleanup method
     try:
         wait_until_substring(rest_server_proc.stderr, 'Booting worker')
 
@@ -905,6 +904,13 @@ def test(ctx):
 
         def check_agree(command):
             check_equals(run_command(command + ['-w', remote_worksheet]), run_command(command + ['-w', source_worksheet]))
+
+        # import pdb; pdb.set_trace()
+        #
+        # # TEST
+        # run_command([cl, 'work', remote_worksheet])
+        # uuid = run_command([cl, 'upload', test_path('')])
+        # run_command([cl, 'add', 'bundle', uuid, source_worksheet])
 
         # Upload to original worksheet, transfer to remote
         run_command([cl, 'work', source_worksheet])
@@ -938,12 +944,8 @@ def test(ctx):
 
     finally:
         # Cleanup
+        run_command([cl, 'work', source_worksheet])
         rest_server_proc.kill()
-        # del os.environ['CODALAB_HOME']
-        # del os.environ['PYTHONUNBUFFERED']
-        # del os.environ['CODALAB_USERNAME']
-        # del os.environ['CODALAB_PASSWORD']
-        # run_command([cl, 'work', source_worksheet])
         shutil.rmtree(remote_home)
 
 if __name__ == '__main__':
