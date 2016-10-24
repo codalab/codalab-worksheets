@@ -361,26 +361,6 @@ class CodaLabManager(object):
     def download_manager(self):
         return DownloadManager(self.model(), self.worker_model(), self.bundle_store())
 
-    def auth_handler(self, mock=False):
-        '''
-        Returns a class to authenticate users on the server-side.  Called by the server.
-        '''
-        auth_config = self.config['server']['auth']
-        handler_class = auth_config['class']
-
-        if mock or handler_class == 'MockAuthHandler':
-            return self.mock_auth_handler()
-        if handler_class == 'RestOAuthHandler':
-            return self.rest_oauth_handler()
-        raise UsageError('Unexpected auth handler class: %s, expected RestOAuthHandler or MockAuthHandler' % (handler_class,))
-
-    @cached
-    def mock_auth_handler(self):
-        from codalab.server.auth import MockAuthHandler
-        # Just create one user corresponding to the root
-        users = [User(self.root_user_name(), self.root_user_id())]
-        return MockAuthHandler(users)
-
     @cached
     def rest_oauth_handler(self):
         from codalab.server.auth import RestOAuthHandler

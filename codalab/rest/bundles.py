@@ -41,7 +41,6 @@ from codalab.rest.users import UserSchema
 from codalab.rest.util import (
     get_bundle_infos,
     get_resource_ids,
-    local_bundle_client_compatible,
     resolve_owner_in_keywords,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin

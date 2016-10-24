@@ -37,13 +37,12 @@ import json
 from itertools import izip
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import PermissionError, UsageError
-from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
+from codalab.lib import canonicalize, formatting, editor_util
 from codalab.objects.permission import permission_str, group_permissions_str
 
-# Special characters to point to worksheets
-from codalab.rest.legacy import BundleService
 
-CURRENT_WORKSHEET = '.'  # Note: this is part of the client's session, not server side.
+# Note: this is part of the client's session, not server side.
+CURRENT_WORKSHEET = '.'
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
@@ -427,21 +426,21 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
-        # TODO(sckoo): Remove path along with BundleService
-        if isinstance(client, BundleService):
-            target_info = client.get_target_info(target, 0)
-        else:
+        if isinstance(client, JsonApiClient):
             target_info = client.fetch_contents_info(*target, depth=0)
+        else:  # isinstance(client, legacy.BundleService)
+            # TODO(sckoo): Remove path along with BundleService
+            target_info = client.get_target_info(target, 0)
 
         # Try to interpret the structure of the file by looking inside it.
         if target_info is not None and target_info['type'] == 'file':
-            # TODO(sckoo): Remove path along with BundleService
-            if isinstance(client, BundleService):
+            if isinstance(client, JsonApiClient):
+                contents = client.fetch_contents_blob(*target, head=MAX_LINES).read().splitlines(True)
+            else:  # isinstance(client, legacy.BundleService)
+                # TODO(sckoo): Remove path along with BundleService
                 import base64
                 contents = client.head_target(target, MAX_LINES)
                 contents = map(base64.b64decode, contents)
-            else:
-                contents = client.fetch_contents_blob(*target, head=MAX_LINES).read().splitlines(True)
 
             if all('\t' in x for x in contents):
                 # Tab-separated file (key\tvalue\nkey\tvalue...)
