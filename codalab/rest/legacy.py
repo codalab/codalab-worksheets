@@ -165,7 +165,7 @@ class BundleService(object):
         In the future, for large worksheets, might want to break this up so
         that we can render something basic.
         """
-        worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True)
+        worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True, legacy=True)
 
         # Fetch items.
         worksheet_info['raw'] = worksheet_util.get_worksheet_lines(worksheet_info)
@@ -257,7 +257,7 @@ class BundleService(object):
         """
         Replace worksheet |uuid| with the raw contents given by |lines|.
         """
-        worksheet_info = get_worksheet_info(uuid, fetch_items=True)
+        worksheet_info = get_worksheet_info(uuid, fetch_items=True, legacy=True)
         new_items, commands = worksheet_util.parse_worksheet_form(
             lines, ServerWorksheetResolver(local.model, request.user), worksheet_info['uuid'])
         update_worksheet_items(worksheet_info, new_items)

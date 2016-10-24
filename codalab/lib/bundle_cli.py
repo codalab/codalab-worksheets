@@ -17,6 +17,7 @@ results in the following:
 import argparse
 from contextlib import closing
 import copy
+import datetime
 import inspect
 import itertools
 import os
@@ -25,7 +26,6 @@ import shutil
 from StringIO import StringIO
 import sys
 import time
-import tempfile
 import textwrap
 
 import argcomplete
@@ -1234,7 +1234,7 @@ class BundleCLI(object):
                 # right index or if the index is not specified, that it's
                 # unique.
                 if uuid in bundle_uuids:
-                    if args.index == None:
+                    if args.index is None:
                         if uuid2index[uuid] != 1:
                             raise UsageError('bundle %s shows up more than once, need to specify index' % uuid)
                         detach = True
@@ -2211,7 +2211,7 @@ class BundleCLI(object):
             if args.owner_spec is not None:
                 info['owner_spec'] = args.owner_spec
             if args.freeze:
-                info['freeze'] = True
+                info['frozen'] = datetime.datetime.utcnow().isoformat()
 
             client.update('worksheets', info)
             print >>self.stdout, 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])

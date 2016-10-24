@@ -40,7 +40,6 @@ def fetch_worksheet(uuid):
         uuid,
         fetch_items=True,
         fetch_permission=True,
-        use_rest=True,
     )
 
     # Build response document
@@ -87,8 +86,7 @@ def fetch_worksheets():
 
     if specs:
         uuids = [get_worksheet_uuid(base_worksheet_uuid, spec) for spec in specs]
-        worksheets = [w.to_dict(use_rest=True)
-                      for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
+        worksheets = [w.to_dict() for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
     else:
         keywords = resolve_owner_in_keywords(keywords)
         worksheets = local.model.search_worksheets(request.user.user_id, keywords)
@@ -218,7 +216,7 @@ def set_worksheet_permissions():
 #############################################################
 
 
-def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, use_rest=False):
+def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=False):
     """
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
     """
@@ -226,16 +224,14 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, use_rest=
     check_worksheet_has_read_permission(local.model, request.user, worksheet)
 
     # Create the info by starting out with the metadata.
-    result = worksheet.to_dict(use_rest=use_rest)
+    result = worksheet.to_dict()
 
     # TODO(sckoo): Legacy requirement, remove when BundleClient is deprecated
-    if not use_rest:
+    if legacy:
+        if fetch_items:
+            result['items'] = convert_items_from_db(result['items'])
         owner = local.model.get_user(user_id=result['owner_id'])
         result['owner_name'] = owner.user_name
-
-    # TODO(sckoo): Legacy requirement, remove when BundleClient is deprecated
-    if fetch_items and not use_rest:
-        result['items'] = convert_items_from_db(result['items'])
 
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
@@ -249,7 +245,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, use_rest=
     return result
 
 
-# TODO(sckoo): Legacy requirement, remove when BundleClient is deprecated
+# TODO(sckoo): Legacy requirement, remove when BundleService is deprecated
 def convert_items_from_db(items):
     """
     Helper function.
@@ -272,7 +268,7 @@ def convert_items_from_db(items):
         bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
         if subworksheet_uuid:
             try:
-                subworksheet_info = local.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict()
+                subworksheet_info = local.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict(legacy=True)
             except UsageError, e:
                 # If can't get the subworksheet, it's probably invalid, so just replace it with an error
                 # type = worksheet_util.TYPE_MARKUP
@@ -316,7 +312,7 @@ def update_worksheet_metadata(uuid, info):
         if key == 'owner_id':
             metadata['owner_id'] = value
         elif key == 'owner_spec':
-            # TODO(sckoo): Legacy requirement, remove with LocalBundleClient
+            # TODO(sckoo): Legacy requirement, remove with BundleService
             metadata['owner_id'] = local.model.find_user(value).user_id
         elif key == 'name':
             ensure_unused_worksheet_name(value)
@@ -326,6 +322,10 @@ def update_worksheet_metadata(uuid, info):
         elif key == 'tags':
             metadata[key] = value
         elif key == 'freeze':
+            # TODO(sckoo): Support for the 'freeze' key is a legacy requirement, remove with BundleService
+            metadata['frozen'] = datetime.datetime.now()
+        elif key == 'frozen' and value and not worksheet.frozen:
+            # ignore the value the client provided, just freeze as long as it's truthy
             metadata['frozen'] = datetime.datetime.now()
     local.model.update_worksheet_metadata(worksheet, metadata)
 
