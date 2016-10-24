@@ -132,12 +132,12 @@ def get_worksheet_uuid(model, user, base_worksheet_uuid, worksheet_spec):
     context of base_worksheet_uuid.
     """
     worksheet_spec = worksheet_spec.strip()
+    if (worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET) and user:
+        worksheet_spec = spec_util.home_worksheet(user.user_name)
     if not worksheet_spec:
         raise UsageError('Tried to expand empty worksheet_spec!')
     if spec_util.UUID_REGEX.match(worksheet_spec):
         return worksheet_spec
-    if (worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET) and user:
-        worksheet_spec = spec_util.home_worksheet(user.user_name)
 
     if spec_util.UUID_PREFIX_REGEX.match(worksheet_spec):
         worksheets = model.batch_get_worksheets(fetch_items=False, uuid=LikeQuery(worksheet_spec + '%'),

@@ -783,8 +783,7 @@ def test(ctx):
 
 @TestModule.register('events')
 def test(ctx):
-    local = 'local::' in run_command([cl, 'work'])
-    if local:
+    if 'localhost' in run_command([cl, 'work']):
         run_command([cl, 'events'])
         run_command([cl, 'events', '-n'])
         run_command([cl, 'events', '-g', 'user'])
