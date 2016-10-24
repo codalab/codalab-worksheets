@@ -40,7 +40,6 @@ import textwrap
 from distutils.util import strtobool
 from urlparse import urlparse
 
-from codalab.client import is_local_address
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import (
     CODALAB_VERSION,
@@ -421,20 +420,11 @@ class CodaLabManager(object):
         Temporary hack to ease transition to REST API.
         """
         o = urlparse(address)
-        if is_local_address(address):
-            # local => http://localhost:<rest_port>
-            precondition('server' in self.config and
-                         'rest_host' in self.config['server'] and
-                         'rest_port' in self.config['server'],
-                         'Working on local now requires running a local '
-                         'server, please configure "rest_host" and '
-                         '"rest_port" under "server" in your config.json.')
-            address = 'http://{rest_host}:{rest_port}'.format(**self.config['server'])
-        elif (o.hostname == 'localhost' and
-                      'server' in self.config and
-                      'port' in self.config['server'] and
-                      'rest_port' in self.config['server'] and
-                      o.port == self.config['server']['port']):
+        if (o.hostname == 'localhost' and
+                'server' in self.config and
+                'port' in self.config['server'] and
+                'rest_port' in self.config['server'] and
+                o.port == self.config['server']['port']):
             # http://localhost:<port> => http://localhost:<rest_port>
             # Note that this does not affect the address of the NLP
             # CodaLab instance behind an SSH tunnel
@@ -533,20 +523,15 @@ class CodaLabManager(object):
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][cache_key] = {}
 
-        # For a local client with mock credentials, use the default username.
-        if is_local_address(cache_key):
-            username = self.root_user_name()
-            password = ''
-        else:
-            username = os.environ.get('CODALAB_USERNAME')
-            password = os.environ.get('CODALAB_PASSWORD')
-            if username is None or password is None:
-                print 'Requesting access at %s' % cache_key
-            if username is None:
-                sys.stdout.write('Username: ')  # Use write to avoid extra space
-                username = sys.stdin.readline().rstrip()
-            if password is None:
-                password = getpass.getpass()
+        username = os.environ.get('CODALAB_USERNAME')
+        password = os.environ.get('CODALAB_PASSWORD')
+        if username is None or password is None:
+            print 'Requesting access at %s' % cache_key
+        if username is None:
+            sys.stdout.write('Username: ')  # Use write to avoid extra space
+            username = sys.stdin.readline().rstrip()
+        if password is None:
+            password = getpass.getpass()
 
         token_info = auth_handler.generate_token('credentials', username, password)
         if token_info is None:

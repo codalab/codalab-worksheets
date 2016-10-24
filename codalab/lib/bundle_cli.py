@@ -14,6 +14,7 @@ results in the following:
   BundleCLI.do_command(['upload', 'foo'])
   BundleCLI.do_upload_command(['foo'])
 """
+# TODO(sckoo): Move this into a separate CLI directory/package
 import argparse
 from contextlib import closing
 import copy
@@ -38,7 +39,6 @@ from codalab.bundles import (
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
-from codalab.client import is_local_address
 from codalab.common import (
     precondition,
     State,
@@ -789,6 +789,7 @@ class BundleCLI(object):
     def do_alias_command(self, args):
         """
         Show, add, modify, delete aliases (mappings from names to instances).
+        Only modifies the CLI configuration, doesn't need a REST client.
         """
         self._fail_if_headless(args)
         aliases = self.manager.config['aliases']
@@ -821,7 +822,7 @@ class BundleCLI(object):
     )
     def do_config_command(self, args):
         """
-        Only modifies the CLI configuration, doesn't need a BundleClient.
+        Only modifies the CLI configuration, doesn't need a REST client.
         """
         self._fail_if_headless(args)
         config = self.manager.config
@@ -2933,5 +2934,5 @@ class BundleCLI(object):
             raise UsageError('Cannot execute CLI command: %s' % args.command)
 
     def _fail_if_not_local(self, args):
-        if not is_local_address(self.manager.current_client().address):
-            raise UsageError('Cannot execute CLI command in non-local mode: %s' % args.command)
+        if 'localhost' not in self.manager.current_client().address:
+            raise UsageError('Sanity check! Point your CLI at an instance on localhost before executing admin commands: %s' % args.command)
