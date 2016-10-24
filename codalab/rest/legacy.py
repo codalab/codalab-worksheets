@@ -400,6 +400,8 @@ class BundleService(object):
         def error_data(mode, message):
             if mode == 'record' or mode == 'table':
                 return (('ERROR',), [{'ERROR': message}])
+            elif mode == 'html' or mode == 'contents':
+                return [base64.b64encode(message)]
             else:
                 return [message]
 
