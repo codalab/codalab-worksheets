@@ -2261,7 +2261,8 @@ class BundleCLI(object):
             if args.tags is not None:
                 info['tags'] = args.tags
             if args.owner_spec is not None:
-                info['owner_spec'] = args.owner_spec
+                owner = client.fetch('users', args.owner_spec)
+                info['owner'] = JsonApiRelationship('users', owner['id'])
             if args.freeze:
                 info['frozen'] = datetime.datetime.utcnow().isoformat()
 
