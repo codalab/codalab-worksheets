@@ -4,17 +4,13 @@ Some functions placed in this central location to prevent circular imports.
 """
 import httplib
 import re
-import sys
 
 from bottle import abort, local, request
 
 from codalab.bundles import PrivateBundle
 from codalab.lib import bundle_util
-from codalab.lib.server_util import rate_limited
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
-from codalab.objects.permission import (
-    unique_group,
-)
+from codalab.objects.permission import unique_group
 
 
 def get_resource_ids(document, type_):
@@ -24,22 +20,6 @@ def get_resource_ids(document, type_):
     if any(link['type'] != type_ for link in links):
         raise abort(httplib.BAD_REQUEST, 'type must be %r' % type_)
     return [link['id'] for link in links]
-
-
-@rate_limited(max_calls_per_hour=6)
-def notify_admin(message):
-    # Caller is responsible for logging message anyway if desired
-    if 'admin_email' not in local.config['server']:
-        print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
-        return
-
-    subject = "CodaLab Admin Notification"
-    if 'instance_name' in local.config['server']:
-        subject += " (%s)" % local.config['server']['instance_name']
-
-    local.emailer.send_email(subject=subject,
-                             body=message,
-                             recipient=local.config['server']['admin_email'])
 
 
 def resolve_owner_in_keywords(keywords):

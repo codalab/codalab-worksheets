@@ -144,4 +144,4 @@ def verbose_pretty_json(obj):
 
 
 def key_value_list(pairs):
-    return "\n".join([("%s=%s" % tuple(p)) for p in pairs])
+    return "\n".join([("%s=%r" % tuple(p)) for p in pairs])
