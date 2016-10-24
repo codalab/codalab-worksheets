@@ -58,7 +58,7 @@ from codalab.lib import (
     formatting,
     ui_actions,
 )
-from codalab.lib.cli_util import safe_get
+from codalab.lib.cli_util import nested_dict_get
 from codalab.objects.permission import (
     parse_permission,
     permission_str,
@@ -1045,7 +1045,7 @@ class BundleCLI(object):
 
         # Collect information about how server should unpack
         unpack = False
-        filename = safe_get(source_info, 'metadata', 'name', default='copied')
+        filename = nested_dict_get(source_info, 'metadata', 'name', default='copied')
         if target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
@@ -1396,10 +1396,10 @@ class BundleCLI(object):
                 if col == 'ref':
                     return '^' + str(len(bundle_info_list) - i)
                 else:
-                    return info.get(col, safe_get(info, 'metadata', col))
+                    return info.get(col, nested_dict_get(info, 'metadata', col))
 
             for bundle_info in bundle_info_list:
-                bundle_info['owner'] = safe_get(bundle_info, 'owner', 'user_name')
+                bundle_info['owner'] = nested_dict_get(bundle_info, 'owner', 'user_name')
 
             columns = (('ref',) if print_ref else ()) + ('uuid', 'name', 'summary', 'owner', 'created', 'data_size', 'state')
             post_funcs = {'uuid': UUID_POST_FUNC, 'created': 'date', 'data_size': 'size'}

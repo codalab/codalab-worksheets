@@ -3,7 +3,7 @@ import re
 from codalab.common import precondition, UsageError
 
 
-def safe_get(o, *args, **kwargs):
+def nested_dict_get(o, *args, **kwargs):
     """
     Get a value from a nested dictionary.
 
