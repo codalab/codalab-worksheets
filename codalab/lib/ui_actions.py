@@ -21,11 +21,6 @@ class OpenBundle(UIAction):
     KEY = 'openBundle'
 
 
-# Note: currently unsupported by the frontend
-class Upload(UIAction):
-    KEY = 'upload'
-
-
 def serialize(actions):
     return {
         'ui_actions': [[a.KEY, a.parameter] for a in actions]
