@@ -157,6 +157,10 @@ class CodaLabManager(object):
 
         self.clients = {}  # map from address => client
 
+        # TODO(sckoo): remove when we feel confident everyone has upgraded
+        # Automatically upgrade old XMLRPC aliases
+        self.upgrade_aliases()
+
     def init_config(self, dry_run=False):
         '''
         Initialize configuration for a simple client.
@@ -409,17 +413,53 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
-    def local_client(self):
-        """LocalBundleClient instance for legacy BundleRPCServer."""
-        bundle_store = self.bundle_store()
-        model = self.model()
-        worker_model = self.worker_model()
-        upload_manager = self.upload_manager()
-        download_manager = self.download_manager()
-        auth_handler = self.auth_handler(mock=False)
+    # TODO(sckoo): remove when we feel confident everyone has upgraded
+    def derive_rest_address(self, address):
+        """
+        Given bundle service address, return corresponding REST address
+        using manual translations (described in the comments below).
+        Temporary hack to ease transition to REST API.
+        """
+        o = urlparse(address)
+        if is_local_address(address):
+            # local => http://localhost:<rest_port>
+            precondition('server' in self.config and
+                         'rest_host' in self.config['server'] and
+                         'rest_port' in self.config['server'],
+                         'Working on local now requires running a local '
+                         'server, please configure "rest_host" and '
+                         '"rest_port" under "server" in your config.json.')
+            address = 'http://{rest_host}:{rest_port}'.format(**self.config['server'])
+        elif (o.hostname == 'localhost' and
+                      'server' in self.config and
+                      'port' in self.config['server'] and
+                      'rest_port' in self.config['server'] and
+                      o.port == self.config['server']['port']):
+            # http://localhost:<port> => http://localhost:<rest_port>
+            # Note that this does not affect the address of the NLP
+            # CodaLab instance behind an SSH tunnel
+            address = address.replace(str(self.config['server']['port']),
+                                      str(self.config['server']['rest_port']))
+        elif o.hostname == 'localhost' and o.port == 3800:
+            # Hard-coded for test-cli, which uses these ports for aux servers
+            address = address.replace('3800', '3900')
+        else:
+            # http://worksheets.codalab.org/bundleservice => http://worksheets.codalab.org
+            address = address.replace('/bundleservice', '')
+        return address
 
-        from codalab.client.local_bundle_client import LocalBundleClient
-        return LocalBundleClient('local', bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
+    # TODO(sckoo): remove when we feel confident everyone has upgraded
+    def upgrade_aliases(self):
+        """
+        Upgrade old aliases to connect to new REST API.
+        This operation should be idempotent.
+        """
+        for alias, address in self.config['aliases'].items():
+            rest_address = self.derive_rest_address(address)
+            if address != rest_address:
+                self.config['aliases'][alias] = rest_address
+                print >>sys.stderr, "Upgraded your alias from old address %s => %s" % (address, rest_address)
+        self.save_config()
 
     def current_client(self):
         return self.client(self.session()['address'])
