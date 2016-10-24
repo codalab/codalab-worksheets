@@ -860,7 +860,9 @@ class BundleCLI(object):
     def do_upload_command(self, args):
         # If headless and no args provided, request an Upload dialog on the front end.
         if self.headless and not args.path and args.contents is None:
-            return ui_actions.serialize([ui_actions.Upload()])
+            # Can't actually open file dialog from code on the frontend, so just tell the user
+            # to click the Upload button.
+            raise UsageError("Click the Upload button in the sidebar to select files for upload.")
 
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
