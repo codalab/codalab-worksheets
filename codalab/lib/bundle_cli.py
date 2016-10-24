@@ -2274,7 +2274,11 @@ class BundleCLI(object):
 
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
-                lines = [line.rstrip() for line in open(args.file).readlines()]
+                if args.file == '-':
+                    infile = sys.stdin
+                else:
+                    infile = open(args.file)
+                lines = [line.rstrip() for line in infile.readlines()]
             else:
                 worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
                 lines = worksheet_util.request_lines(worksheet_info)
