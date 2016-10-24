@@ -225,9 +225,9 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     # TODO: Remove when we are confident everyone has upgraded
     @root_app.route('/bundleservice', method=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
     def bundleservice():
-        raise UsageError("Your CLI is attempting to connect to an old API, "
-                         "please upgrade it by running `git pull` from where "
-                         "you installed it.")
+        abort(BAD_REQUEST, "Your CLI is attempting to connect to an old API, "
+                           "please upgrade it by running `git pull` from where "
+                           "you installed it.")
 
     bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
 
