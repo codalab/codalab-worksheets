@@ -1239,7 +1239,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         worksheet_info = client.fetch('worksheets', worksheet_uuid)
 
         # Number the bundles: c c a b c => 3 2 1 1 1
@@ -1292,7 +1292,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         deleted_uuids = client.delete('bundles', bundle_uuids, params={
             'force': args.force,
             'recursive': args.recursive,
@@ -2015,7 +2015,7 @@ class BundleCLI(object):
         """
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundles)
+        bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundles)
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -2055,7 +2055,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         for bundle_uuid in bundle_uuids:
             print >>self.stdout, bundle_uuid
         client.create('bundle-actions', [{
