@@ -88,7 +88,7 @@ def str_key_dict(row):
     '''
     row comes out of an element of a database query.
     For some versions of SqlAlchemy, the keys are of type sqlalchemy.sql.elements.quoted_name,
-    which can be serialized to JSON.
+    which cannot be serialized to JSON.
     This function converts the keys to strings.
     '''
     return dict((str(k), v) for k, v in row.items())
@@ -1876,10 +1876,11 @@ class BundleModel(object):
                 user_info = str_key_dict(row)
             if not user_info:
                 raise NotFoundError("User with ID %s not found" % user_id)
+            # Convert datetimes to strings to prevent JSON serialization errors
+            user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
+            if 'last_login' in user_info and user_info['last_login'] is not None:
+                user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
             if fetch_extra:
-                user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
-                if 'last_login' in user_info and user_info['last_login'] is not None:
-                    user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
                 user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
                 user_info['root_user_id'] = self.root_user_id
                 user_info['system_user_id'] = self.system_user_id

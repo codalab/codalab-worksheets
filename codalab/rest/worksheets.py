@@ -224,7 +224,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
     check_worksheet_has_read_permission(local.model, request.user, worksheet)
 
     # Create the info by starting out with the metadata.
-    result = worksheet.to_dict()
+    result = worksheet.to_dict(legacy=legacy)
 
     # TODO(sckoo): Legacy requirement, remove when BundleClient is deprecated
     if legacy:
