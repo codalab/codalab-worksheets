@@ -239,7 +239,7 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     # bundle_specs = (line_indices, bundle_specs)
     bundle_specs = zip(*bundle_lines) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
-    bundle_uuids = dict(zip(bundle_specs[0], canonicalize.get_bundle_uuids(model, user and user.user_id, worksheet_uuid, bundle_specs[1])))
+    bundle_uuids = dict(zip(bundle_specs[0], canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1])))
 
     commands = []
     items = []

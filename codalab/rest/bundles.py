@@ -70,7 +70,7 @@ def _fetch_bundles():
         bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, worksheet_uuid, keywords)
     elif specs:
         # Resolve bundle specs
-        bundle_uuids = canonicalize.get_bundle_uuids(local.model, request.user and request.user.user_id, worksheet_uuid, specs)
+        bundle_uuids = canonicalize.get_bundle_uuids(local.model, request.user, worksheet_uuid, specs)
     else:
         abort(httplib.BAD_REQUEST,
               "Request must include either 'keywords' "
