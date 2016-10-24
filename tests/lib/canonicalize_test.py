@@ -39,21 +39,21 @@ class CanonicalizeTest(unittest.TestCase):
           for i in range(count)
         ]
     model = MockBundleModel()
-    user_id = None
+    user = None
 
     # Test that get_bundle_uuid is idempotent on generated uuids.
     uuid = spec_util.generate_uuid()
-    self.assertEqual(uuid, canonicalize.get_bundle_uuid(model, user_id, worksheet_uuid, uuid))
+    self.assertEqual(uuid, canonicalize.get_bundle_uuid(model, user, worksheet_uuid, uuid))
     # Test that get_bundle_uuid returns the uuid of a uniquely named bundle.
-    self.assertEqual(test_uuid, canonicalize.get_bundle_uuid(model, user_id, worksheet_uuid, unique_name))
+    self.assertEqual(test_uuid, canonicalize.get_bundle_uuid(model, user, worksheet_uuid, unique_name))
     # Test that get_bundle_uuid raises UsageErrors on missing names.
     self.assertRaises(
       UsageError,
-      lambda: canonicalize.get_bundle_uuid(model, user_id, worksheet_uuid, missing_name),
+      lambda: canonicalize.get_bundle_uuid(model, user, worksheet_uuid, missing_name),
     )
     # Test that get_bundle_uuid raises UsageError on specs that can be neither a
     # name or a uuid.
     self.assertRaises(
       UsageError,
-      lambda: canonicalize.get_bundle_uuid(model, user_id, worksheet_uuid, 'names have no exclamations!'),
+      lambda: canonicalize.get_bundle_uuid(model, user, worksheet_uuid, 'names have no exclamations!'),
     )

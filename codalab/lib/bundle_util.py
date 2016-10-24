@@ -16,10 +16,11 @@ def bundle_to_bundle_info(model, bundle):
         'metadata': bundle.metadata.to_dict(),
         'dependencies': [dep.to_dict() for dep in bundle.dependencies],
     }
-    dep_names = model.get_bundle_names(
-        map(lambda dep: dep['parent_uuid'], result['dependencies']))
-    for dep in result['dependencies']:
-        dep['parent_name'] = dep_names.get(dep['parent_uuid'])
+    if result['dependencies']:
+        dep_names = model.get_bundle_names(
+            map(lambda dep: dep['parent_uuid'], result['dependencies']))
+        for dep in result['dependencies']:
+            dep['parent_name'] = dep_names.get(dep['parent_uuid'])
 
     # Shim in args
     result['args'] = worksheet_util.interpret_genpath(result, 'args')

@@ -56,23 +56,6 @@ def run_server_with_watch():
 
 @Commands.command(
     'server',
-    help='Start an instance of the CodaLab bundle service.',
-    arguments=(
-        Commands.Argument('--watch', help='Restart the server on code changes.',
-                          action='store_true'),
-    ),
-)
-def do_server_command(bundle_cli, args):
-    if args.watch:
-        run_server_with_watch()
-    else:
-        from codalab.server.bundle_rpc_server import BundleRPCServer
-        rpc_server = BundleRPCServer(bundle_cli.manager)
-        rpc_server.serve_forever()
-
-
-@Commands.command(
-    'rest-server',
     help='Start an instance of a CodaLab bundle service with a REST API.',
     arguments=(
         Commands.Argument(

@@ -27,27 +27,31 @@ A genpath (generalized path) is either:
 See get_worksheet_lines for documentation on the specification of the directives.
 """
 import copy
+import json
 import os
 import re
 import sys
 import types
-import yaml
-import json
 from itertools import izip
+
+import yaml
+
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import PermissionError, UsageError
-from codalab.lib import path_util, canonicalize, formatting, editor_util, spec_util
-from codalab.objects.permission import permission_str, group_permissions_str
+from codalab.lib import canonicalize, editor_util, formatting
+from codalab.objects.permission import group_permissions_str, permission_str
 
-# Special characters to point to worksheets
-HOME_WORKSHEET = '/'
-CURRENT_WORKSHEET = '.'  # Note: this is part of the client's session, not server side.
+
+# Note: this is part of the client's session, not server side.
+CURRENT_WORKSHEET = '.'
 
 # Types of worksheet items
 TYPE_MARKUP = 'markup'
 TYPE_DIRECTIVE = 'directive'
 TYPE_BUNDLE = 'bundle'
 TYPE_WORKSHEET = 'worksheet'
+
+WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
@@ -113,7 +117,9 @@ def get_worksheet_lines(worksheet_info):
     Generator that returns pretty-printed lines of text for the given worksheet.
     """
     lines = []
-    for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
+    for item in worksheet_info['items']:
+        (bundle_info, subworksheet_info, value_obj, item_type) = item
+
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
@@ -170,8 +176,7 @@ def get_formatted_metadata(cls, metadata, raw=False):
     return result
 
 
-# TODO(sckoo): remove metadata argument when legacy code removed
-def get_editable_metadata_fields(cls, metadata=None):
+def get_editable_metadata_fields(cls):
     """
     Input:
         cls: bundle subclass (e.g. DatasetBundle, RuunBundle, ProgramBundle)
@@ -186,9 +191,9 @@ def get_editable_metadata_fields(cls, metadata=None):
     return result
 
 
-def request_lines(worksheet_info, client):
+def request_lines(worksheet_info):
     """
-    Input: worksheet_info, client (which is used to get bundle_infos)
+    Input: worksheet_info
     Popup an editor, populated with the current worksheet contents.
     Return a list of new items (bundle_uuid, value, type) that the user typed into the editor.
     """
@@ -204,58 +209,7 @@ def request_lines(worksheet_info, client):
     return form_result
 
 
-def get_bundle_uuids(client, worksheet_uuid, bundle_specs):
-    """
-    Return the bundle_uuids corresponding to bundle_specs.
-    Important difference from client.get_bundle_uuids: if all bundle_specs are already
-    uuids, then just return them directly.  This avoids an extra call to the client.
-    """
-    bundle_uuids = {}
-    unresolved = []
-    for spec in bundle_specs:
-        spec = spec.strip()
-        if spec_util.UUID_REGEX.match(spec):
-            bundle_uuids[spec] = spec
-        else:
-            unresolved.append(spec)
-
-    # Resolve uuids with a batch call to the client and update dict
-    if unresolved:
-        if isinstance(client, JsonApiClient):
-            bundles = client.fetch('bundles', params={
-                'worksheet': worksheet_uuid,
-                'specs': unresolved
-            })
-            bundle_uuids.update(zip(unresolved, [b['id'] for b in bundles]))
-        else:
-            bundle_uuids.update(zip(unresolved, client.get_bundle_uuids(worksheet_uuid, unresolved)))
-
-    # Return uuids for the bundle_specs in the original order provided
-    return [bundle_uuids[spec] for spec in bundle_specs]
-
-
-def get_bundle_uuid(client, worksheet_uuid, bundle_spec):
-    """
-    Return the bundle_uuid corresponding to a single bundle_spec.
-    If bundle_spec is already a uuid, then just return it directly.
-    This avoids an extra call to the client.
-    """
-    return get_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
-
-
-def get_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
-    """
-    Same thing as get_bundle_uuid, but for worksheets.
-    """
-    worksheet_spec = worksheet_spec.strip()
-    if spec_util.UUID_REGEX.match(worksheet_spec):
-        worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
-    else:
-        worksheet_uuid = client.get_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
-    return worksheet_uuid
-
-
-def parse_worksheet_form(form_result, client, worksheet_uuid):
+def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     """
     Input: form_result is a list of lines.
     Return (list of (bundle_info, subworksheet_info, value, type) tuples, commands to execute)
@@ -278,15 +232,15 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
     line_types = [get_line_type(line) for line in form_result]
 
     # Extract bundle specs and resolve uuids in one batch
-    # bundle_specs = (line_indices, bundle_specs)
     bundle_lines = [
         (i, BUNDLE_REGEX.match(line).group(3))
         for i, line in enumerate(form_result)
         if line_types[i] == TYPE_BUNDLE
         ]
+    # bundle_specs = (line_indices, bundle_specs)
     bundle_specs = zip(*bundle_lines) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
-    bundle_uuids = dict(zip(bundle_specs[0], get_bundle_uuids(client, worksheet_uuid, bundle_specs[1])))
+    bundle_uuids = dict(zip(bundle_specs[0], canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1])))
 
     commands = []
     items = []
@@ -306,7 +260,7 @@ def parse_worksheet_form(form_result, client, worksheet_uuid):
         elif line_type == TYPE_WORKSHEET:
             subworksheet_spec = SUBWORKSHEET_REGEX.match(line).group(3)
             try:
-                subworksheet_uuid = get_worksheet_uuid(client, worksheet_uuid, subworksheet_spec)
+                subworksheet_uuid = canonicalize.get_worksheet_uuid(model, user, worksheet_uuid, subworksheet_spec)
                 subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
                 items.append(subworksheet_item(subworksheet_info))
             except UsageError, e:
@@ -329,8 +283,7 @@ def is_file_genpath(genpath):
 
 def interpret_genpath(bundle_info, genpath):
     """
-    This function is called in the first server call to a BundleClient to
-    quickly interpret the genpaths (generalized path) that only require looking
+    Quickly interpret the genpaths (generalized path) that only require looking
     bundle_info (e.g., 'time', 'command').  The interpretation of generalized
     paths that require reading files is done by interpret_file_genpath.
     """
@@ -421,6 +374,8 @@ def interpret_genpath(bundle_info, genpath):
             return permission_str(bundle_info['permission'])
     elif genpath == 'group_permissions':
         if 'group_permissions' in bundle_info:
+            # FIXME(sckoo): we will be passing the old permissions format into this
+            # which has been updated to accommodate the new formatting
             return group_permissions_str(bundle_info['group_permissions'])
 
     # Bundle field?
@@ -432,6 +387,20 @@ def interpret_genpath(bundle_info, genpath):
     if value is not None: return value
 
     return None
+
+
+def interpret_file_genpaths(client, requests):
+    """
+    Helper function.
+    requests: list of (bundle_uuid, genpath, post-processing-func)
+    Return responses: corresponding list of strings
+    """
+    target_cache = {}
+    responses = []
+    for (bundle_uuid, genpath, post) in requests:
+        value = interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post)
+        responses.append(value)
+    return responses
 
 
 def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
@@ -458,18 +427,18 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
-        # TODO(sckoo): Remove path for BundleClient when REST API complete
         if isinstance(client, JsonApiClient):
             target_info = client.fetch_contents_info(*target, depth=0)
-        else:
+        else:  # isinstance(client, legacy.BundleService)
+            # TODO(sckoo): Remove path along with BundleService
             target_info = client.get_target_info(target, 0)
 
         # Try to interpret the structure of the file by looking inside it.
         if target_info is not None and target_info['type'] == 'file':
-            # TODO(sckoo): Remove path for BundleClient when REST API complete
             if isinstance(client, JsonApiClient):
                 contents = client.fetch_contents_blob(*target, head=MAX_LINES).read().splitlines(True)
-            else:
+            else:  # isinstance(client, legacy.BundleService)
+                # TODO(sckoo): Remove path along with BundleService
                 import base64
                 contents = client.head_target(target, MAX_LINES)
                 contents = map(base64.b64decode, contents)
@@ -839,9 +808,9 @@ def interpret_items(schemas, raw_items):
     # Go through all the raw items...
     last_was_empty_line = False
     for raw_index, item in enumerate(raw_items):
+        new_last_was_empty_line = True
         try:
             (bundle_info, subworksheet_info, value_obj, item_type) = item
-            new_last_was_empty_line = True
 
             is_bundle = (item_type == TYPE_BUNDLE)
             is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
@@ -1012,7 +981,7 @@ def interpret_genpath_table_contents(client, contents):
             # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
             if isinstance(value, need_gen_types):
                 requests.append(value)
-    responses = client.interpret_file_genpaths(requests)
+    responses = interpret_file_genpaths(client, requests)
 
     # Put it in a table
     new_contents = []
