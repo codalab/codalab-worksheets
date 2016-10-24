@@ -120,7 +120,7 @@ def get_bundle_uuid(model, user, worksheet_uuid, bundle_spec):
 
 def get_bundle_uuids(model, user, worksheet_uuid, bundle_specs):
     """
-    Convenience function for resolving more than one bundle spec at a time.
+    Convenience function for resolving more than one bundle spec in one call.
     """
     return [get_bundle_uuid(model, user, worksheet_uuid, spec) for spec in bundle_specs]
 

@@ -16,7 +16,6 @@ results in the following:
 """
 # TODO(sckoo): Move this into a separate CLI directory/package
 import argparse
-from contextlib import closing
 import copy
 import datetime
 import inspect
@@ -24,10 +23,11 @@ import itertools
 import os
 import shlex
 import shutil
-from StringIO import StringIO
 import sys
 import time
 import textwrap
+from contextlib import closing
+from StringIO import StringIO
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -40,42 +40,42 @@ from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
 from codalab.common import (
+    CODALAB_VERSION,
+    NotFoundError,
+    PermissionError,
     precondition,
     State,
-    PermissionError,
     UsageError,
-    CODALAB_VERSION,
-    NotFoundError
 )
 from codalab.lib import (
-    metadata_util,
-    file_util,
-    path_util,
-    zip_util,
-    spec_util,
-    worksheet_util,
     cli_util,
+    file_util,
     formatting,
+    metadata_util,
+    path_util,
+    spec_util,
     ui_actions,
+    worksheet_util,
+    zip_util,
 )
 from codalab.lib.cli_util import nested_dict_get
 from codalab.objects.permission import (
+    group_permissions_str,
     parse_permission,
     permission_str,
-    group_permissions_str,
 )
 from codalab.client.json_api_client import JsonApiRelationship
 from codalab.lib.formatting import contents_str
 from codalab.lib.completers import (
-    CodaLabCompleter,
-    WorksheetsCompleter,
-    BundlesCompleter,
     AddressesCompleter,
+    BundlesCompleter,
+    CodaLabCompleter,
     GroupsCompleter,
-    UnionCompleter,
     NullCompleter,
-    TargetsCompleter,
     require_not_headless,
+    TargetsCompleter,
+    UnionCompleter,
+    WorksheetsCompleter,
 )
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore
@@ -450,15 +450,22 @@ class BundleCLI(object):
 
     @staticmethod
     def simple_bundle_str(info):
-        return '%s(%s)' % (contents_str(info.get('metadata', {}).get('name')), info['uuid'])
+        return '%s(%s)' % (contents_str(nested_dict_get(info, 'metadata', 'name')), info['uuid'])
 
     @staticmethod
     def simple_worksheet_str(info):
         return '%s(%s)' % (contents_str(info.get('name')), info['uuid'])
 
     @staticmethod
-    def simple_user_str(info):
-        return '%s(%s)' % (contents_str(info.get('user_name', info.get('name'))), info['id'])
+    def simple_user_str(user):
+        """
+        For a user matching output of UserSchema, return 'user_name(id)'
+        """
+        if not user:
+            return '<unknown>'
+        if 'user_name' not in user:
+            return '<unknown>(%s)' % user['id']
+        return '%s(%s)' % (user['user_name'], user['id'])
 
     @staticmethod
     def simple_group_str(info):
@@ -976,7 +983,7 @@ class BundleCLI(object):
         if args.output_path:
             local_path = args.output_path
         else:
-            local_path = info['metadata'].get('name', 'untitled') if subpath == '' else os.path.basename(subpath)
+            local_path = nested_dict_get(info, 'metadata', 'name', default='untitled') if subpath == '' else os.path.basename(subpath)
         final_path = os.path.join(os.getcwd(), local_path)
         if os.path.exists(final_path):
             print >>self.stdout, 'Local file/directory \'%s\' already exists.' % local_path
@@ -1048,8 +1055,6 @@ class BundleCLI(object):
             return
 
         print >>self.stdout, "Copying %s..." % source_desc
-        target = (source_bundle_uuid, '')
-        target_info = source_client.fetch_contents_info(*target)
 
         # Create the bundle, copying over metadata from the source bundle
         dest_bundle = dest_client.create('bundles', source_info, params={
@@ -1057,19 +1062,18 @@ class BundleCLI(object):
             'detached': not add_to_worksheet,
         })
 
-        if target_info is None:
-            return
-
         # Collect information about how server should unpack
-        unpack = False
-        filename = nested_dict_get(source_info, 'metadata', 'name', default='copied')
+        filename = nested_dict_get(source_info, 'metadata', 'name')
+        target_info = source_client.fetch_contents_info(source_bundle_uuid)
         if target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
+        else:
+            unpack = False
 
         # Send file over
         progress = FileTransferProgress('Copied ', f=self.stderr)
-        source = source_client.fetch_contents_blob(*target)
+        source = source_client.fetch_contents_blob(source_bundle_uuid)
         with closing(source), progress:
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
@@ -1393,7 +1397,7 @@ class BundleCLI(object):
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
-            ('Owner', formatting.user_str(worksheet_info['owner'])),
+            ('Owner', self.simple_user_str(worksheet_info['owner'])),
             ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions']),
                                       ' [frozen]' if worksheet_info['frozen'] else '')),
         ]
@@ -1493,7 +1497,7 @@ class BundleCLI(object):
             lines.append(self.key_value_str(key, info.get(key)))
 
         # Owner info
-        lines.append(self.key_value_str('owner', formatting.user_str(info['owner'])))
+        lines.append(self.key_value_str('owner', self.simple_user_str(info['owner'])))
 
         # Metadata fields (standard)
         cls = get_bundle_subclass(info['bundle_type'])
@@ -2146,7 +2150,10 @@ class BundleCLI(object):
                 source_bundle_uuid = self.resolve_bundle_uuid(source_client, base_worksheet_uuid, source_spec)
 
                 # copy (or add only if bundle already exists on destination)
-                self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
+                self.copy_bundle(source_client, source_bundle_uuid,
+                                 dest_client, dest_worksheet_uuid,
+                                 copy_dependencies=args.copy_dependencies,
+                                 add_to_worksheet=True)
 
         elif args.item_type == 'worksheet':
             for worksheet_spec in args.item_spec:
@@ -2399,7 +2406,7 @@ class BundleCLI(object):
         else:
             if worksheet_dicts:
                 for row in worksheet_dicts:
-                    row['owner'] = formatting.user_str(row['owner'])
+                    row['owner'] = self.simple_user_str(row['owner'])
                     row['permissions'] = group_permissions_str(row['group_permissions'])
                 post_funcs = {'uuid': UUID_POST_FUNC}
                 self.print_table(('uuid', 'name', 'owner', 'permissions'), worksheet_dicts, post_funcs)
@@ -2495,7 +2502,7 @@ class BundleCLI(object):
                 # Set owner string for print_table
                 # group['owner'] may be None (i.e. for the public group)
                 if group['owner']:
-                    group['owner'] = formatting.user_str(group['owner'])
+                    group['owner'] = self.simple_user_str(group['owner'])
 
             self.print_table(('name', 'uuid', 'owner', 'role'), groups)
         else:

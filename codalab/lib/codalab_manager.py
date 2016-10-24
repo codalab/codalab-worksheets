@@ -27,25 +27,23 @@ file that specifies enough information to construct some of these classes is
 still valid. For example, the config file for a remote client will not need to
 include any server configuration.
 '''
+import datetime
 import getpass
 import json
 import os
-import sys
-import time
-
-import datetime
 import psutil
+import sys
 import tempfile
 import textwrap
+import time
 from distutils.util import strtobool
 from urlparse import urlparse
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import (
     CODALAB_VERSION,
-    UsageError,
     PermissionError,
-    precondition,
+    UsageError,
 )
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,

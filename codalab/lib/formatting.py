@@ -145,17 +145,3 @@ def verbose_pretty_json(obj):
 
 def key_value_list(pairs):
     return "\n".join([("%s=%s" % tuple(p)) for p in pairs])
-
-
-############################################################
-
-
-def user_str(user):
-    """
-    For a user matching the UserSchema, return 'user_name(id)'
-    """
-    if not user:
-        return '<unknown>'
-    if 'user_name' not in user:
-        return '<unknown>(%s)' % user['id']
-    return '%s(%s)' % (user['user_name'], user['id'])
