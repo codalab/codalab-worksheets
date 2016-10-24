@@ -36,7 +36,6 @@ from codalab.lib import (
   worksheet_util,
 )
 from codalab.lib.codalab_manager import CodaLabManager
-from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.chat_box_qa import ChatBoxQA
 from codalab.objects.oauth2 import OAuth2Token
@@ -46,7 +45,7 @@ from codalab.rest.util import get_bundle_info, get_bundle_infos, resolve_owner_i
 from codalab.rest.worksheets import (
     update_worksheet_items,
     get_worksheet_info,
-    get_worksheet_uuid,
+    get_worksheet_uuid_or_create,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
@@ -258,8 +257,7 @@ class BundleService(object):
         Replace worksheet |uuid| with the raw contents given by |lines|.
         """
         worksheet_info = get_worksheet_info(uuid, fetch_items=True, legacy=True)
-        new_items, commands = worksheet_util.parse_worksheet_form(
-            lines, ServerWorksheetResolver(local.model, request.user), worksheet_info['uuid'])
+        new_items, commands = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet_info['uuid'])
         update_worksheet_items(worksheet_info, new_items)
         # Note: commands are ignored
 
@@ -697,7 +695,7 @@ def get_sample_worksheets():
 @get('/worksheets/')
 def get_worksheets_landing():
     requested_ws = request.query.get('uuid', request.query.get('name', 'home'))
-    uuid = get_worksheet_uuid(None, requested_ws)
+    uuid = get_worksheet_uuid_or_create(None, requested_ws)
     redirect('/worksheets/%s/' % uuid)
 
 

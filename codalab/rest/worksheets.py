@@ -3,7 +3,7 @@ import os
 import datetime
 from bottle import abort, get, post, put, delete, response, local, request
 
-from codalab.common import PermissionError, UsageError
+from codalab.common import PermissionError, UsageError, NotFoundError
 from codalab.lib import (
     canonicalize,
     spec_util,
@@ -16,7 +16,6 @@ from codalab.lib.server_util import (
     query_get_list,
     query_get_bool,
 )
-from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import (
     check_worksheet_has_all_permission,
@@ -85,7 +84,7 @@ def fetch_worksheets():
     base_worksheet_uuid = request.query.get('base')
 
     if specs:
-        uuids = [get_worksheet_uuid(base_worksheet_uuid, spec) for spec in specs]
+        uuids = [get_worksheet_uuid_or_create(base_worksheet_uuid, spec) for spec in specs]
         worksheets = [w.to_dict() for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
     else:
         keywords = resolve_owner_in_keywords(keywords)
@@ -123,8 +122,7 @@ def create_worksheets():
 @post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
 def update_worksheet_raw(uuid):
     lines = request.body.read().split(os.linesep)
-    new_items, commands = worksheet_util.parse_worksheet_form(
-        lines, ServerWorksheetResolver(local.model, request.user), uuid)
+    new_items, commands = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
     worksheet_info = get_worksheet_info(uuid, fetch_items=True)
     update_worksheet_items(worksheet_info, new_items)
     return {
@@ -341,21 +339,10 @@ def set_worksheet_permission(worksheet, group_uuid, permission):
 def populate_worksheet(worksheet, name, title):
     file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
     lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
-    items, commands = worksheet_util.parse_worksheet_form(
-        lines, ServerWorksheetResolver(local.model, request.user), worksheet.uuid)
+    items, commands = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet.uuid)
     info = get_worksheet_info(worksheet.uuid, fetch_items=True)
     update_worksheet_items(info, items)
     update_worksheet_metadata(worksheet.uuid, {'title': title})
-
-
-def get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec):
-    """
-    Helper: Return the uuid of the specified worksheet if it exists. Otherwise, return None.
-    """
-    try:
-        return canonicalize.get_worksheet_uuid(local.model, base_worksheet_uuid, worksheet_spec)
-    except UsageError:
-        return None
 
 
 def ensure_unused_worksheet_name(name):
@@ -368,7 +355,9 @@ def ensure_unused_worksheet_name(name):
     # user's home worksheet.
     if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(request.user.user_name) != name:
         raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
-    if get_worksheet_uuid_or_none(None, name) is not None:
+    try:
+        return canonicalize.get_worksheet_uuid(local.model, request.user, None, name)
+    except NotFoundError:
         raise UsageError('Worksheet with name %s already exists' % name)
 
 
@@ -400,23 +389,19 @@ def new_worksheet(name):
     return worksheet.uuid
 
 
-def get_worksheet_uuid(base_worksheet_uuid, worksheet_spec):
+def get_worksheet_uuid_or_create(base_worksheet_uuid, worksheet_spec):
     """
     Return the uuid of the specified worksheet if it exists.
     If not, create a new worksheet if the specified worksheet is home_worksheet
     or dashboard. Otherwise, throw an error.
     """
-    if worksheet_spec == '' or worksheet_spec == worksheet_util.HOME_WORKSHEET:
-        worksheet_spec = spec_util.home_worksheet(request.user.user_name)
-    worksheet_uuid = get_worksheet_uuid_or_none(base_worksheet_uuid, worksheet_spec)
-    if worksheet_uuid is not None:
-        return worksheet_uuid
-    else:
+    try:
+        return canonicalize.get_worksheet_uuid(local.model, request.user, base_worksheet_uuid, worksheet_spec)
+    except NotFoundError:
         if spec_util.is_home_worksheet(worksheet_spec) or spec_util.is_dashboard(worksheet_spec):
             return new_worksheet(worksheet_spec)
         else:
-            # let it throw the correct error message
-            return canonicalize.get_worksheet_uuid(local.model, base_worksheet_uuid, worksheet_spec)
+            raise
 
 
 def add_worksheet_item(worksheet_uuid, item):

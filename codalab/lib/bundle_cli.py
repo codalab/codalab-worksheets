@@ -81,7 +81,6 @@ from codalab.lib.bundle_store import (
     MultiDiskBundleStore
 )
 from codalab.lib.print_util import FileTransferProgress
-from codalab.lib.worksheet_util import ClientWorksheetResolver
 from worker.file_util import un_tar_directory
 
 # Formatting Constants
@@ -486,7 +485,7 @@ class BundleCLI(object):
         else:
             bundle_spec, subpath = target_spec, ''
         # Resolve the bundle_spec to a particular bundle_uuid.
-        bundle_uuid = ClientWorksheetResolver(client).resolve_bundle_uuid(worksheet_uuid, bundle_spec)
+        bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
     def parse_key_targets(self, client, worksheet_uuid, items):
@@ -510,6 +509,35 @@ class BundleCLI(object):
                     raise UsageError('Must specify keys when packaging multiple targets!')
             targets.append((key, self.parse_target(client, worksheet_uuid, target)))
         return targets
+
+    @staticmethod
+    def resolve_bundle_uuid(client, worksheet_uuid, bundle_spec):
+        # Minor optimization: return immediately if already a UUID
+        if spec_util.UUID_REGEX.match(bundle_spec):
+            return bundle_spec
+        return BundleCLI.resolve_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
+
+    @staticmethod
+    def resolve_bundle_uuids(client, worksheet_uuid, bundle_specs):
+        bundles = client.fetch('bundles', params={
+            'worksheet': worksheet_uuid,
+            'specs': bundle_specs,
+        })
+        return [b['id'] for b in bundles]
+
+    @staticmethod
+    def resolve_worksheet_uuid(client, base_worksheet_uuid, worksheet_spec):
+        """
+        Avoid making REST call if worksheet_spec is already a uuid.
+        """
+        if spec_util.UUID_REGEX.match(worksheet_spec):
+            worksheet_uuid = worksheet_spec  # Already uuid, don't need to look up specification
+        else:
+            worksheet_uuid = client.fetch_one('worksheets', params={
+                'base': base_worksheet_uuid,
+                'specs': [worksheet_spec],
+            })['uuid']
+        return worksheet_uuid
 
     def print_table(self, columns, row_dicts, post_funcs={}, justify={}, show_header=True, indent=''):
         """
@@ -576,7 +604,7 @@ class BundleCLI(object):
                 base_worksheet_uuid = None
             else:
                 _, base_worksheet_uuid = self.manager.get_current_worksheet_uuid()
-            worksheet_uuid = ClientWorksheetResolver(client).resolve_worksheet_uuid(base_worksheet_uuid, spec)
+            worksheet_uuid = self.resolve_worksheet_uuid(client, base_worksheet_uuid, spec)
         return client, worksheet_uuid
 
     @staticmethod
@@ -761,7 +789,6 @@ class BundleCLI(object):
     def do_alias_command(self, args):
         """
         Show, add, modify, delete aliases (mappings from names to instances).
-        Only modifies the CLI configuration, doesn't need a BundleClient.
         """
         self._fail_if_headless(args)
         aliases = self.manager.config['aliases']
@@ -1211,7 +1238,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         worksheet_info = client.fetch('worksheets', worksheet_uuid)
 
         # Number the bundles: c c a b c => 3 2 1 1 1
@@ -1264,7 +1291,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         deleted_uuids = client.delete('bundles', bundle_uuids, params={
             'force': args.force,
             'recursive': args.recursive,
@@ -1985,9 +2012,9 @@ class BundleCLI(object):
         """
         Use args.bundles to generate a mimic call to the BundleClient.
         """
-        rest_client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = ClientWorksheetResolver(rest_client).resolve_bundle_uuids(worksheet_uuid, args.bundles)
+        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundles)
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -2003,14 +2030,14 @@ class BundleCLI(object):
             new_inputs = bundle_uuids[n+1:]
 
         plan = self.mimic_bundles(
-            rest_client,
+            client,
             old_inputs, old_output, new_inputs, args.name,
             worksheet_uuid, args.depth, args.shadow, args.dry_run)
         for (old, new) in plan:
             print >>self.stderr, '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new))
         if len(plan) > 0:
             new_uuid = plan[-1][1]['uuid']  # Last new uuid to be created
-            self.wait(rest_client, args, new_uuid)
+            self.wait(client, args, new_uuid)
             print >>self.stdout, new_uuid
         else:
             print >>self.stdout, 'Nothing to be done.'
@@ -2027,7 +2054,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
         for bundle_uuid in bundle_uuids:
             print >>self.stdout, bundle_uuid
         client.create('bundle-actions', [{
@@ -2126,8 +2153,7 @@ class BundleCLI(object):
 
                 # a base_worksheet_uuid is only applicable if we're on the source client
                 base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
-                source_bundle_uuid = ClientWorksheetResolver(source_client)\
-                    .resolve_bundle_uuid(base_worksheet_uuid, source_spec)
+                source_bundle_uuid = self.resolve_bundle_uuid(source_client, base_worksheet_uuid, source_spec)
 
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(source_client, source_bundle_uuid, dest_client, dest_worksheet_uuid, copy_dependencies=args.copy_dependencies, add_to_worksheet=True)
@@ -2140,8 +2166,7 @@ class BundleCLI(object):
 
                 # a base_worksheet_uuid is only applicable if we're on the source client
                 base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
-                subworksheet_uuid = ClientWorksheetResolver(source_client)\
-                    .resolve_worksheet_uuid(base_worksheet_uuid, worksheet_spec)
+                subworksheet_uuid = self.resolve_worksheet_uuid(source_client, base_worksheet_uuid, worksheet_spec)
 
                 # add worksheet
                 dest_client.create('worksheet-items', data={
@@ -2189,7 +2214,7 @@ class BundleCLI(object):
         """
         if worksheet_uuid is None:
             # Find home worksheet
-            worksheet_uuid = ClientWorksheetResolver(client).resolve_worksheet_uuid('', '/')
+            worksheet_uuid = self.resolve_worksheet_uuid(client, '', '/')
 
         if self.headless:
             return ui_actions.serialize([ui_actions.OpenWorksheet(worksheet_uuid)])
@@ -2610,7 +2635,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         group = client.fetch('groups', args.group_spec)
 
-        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         new_permission = parse_permission(args.permission_spec)
 
         client.create('bundle-permissions', [{
@@ -2664,7 +2689,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = ClientWorksheetResolver(client).resolve_bundle_uuids(worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         owner_id = client.fetch('users', args.user_spec)['id']
 
         client.update('bundles', [{

@@ -12,6 +12,7 @@ from codalab.bundles import (
     UploadedBundle,
 )
 from codalab.common import precondition, State, UsageError
+from codalab.lib import canonicalize
 from codalab.lib import (
     spec_util,
     zip_util,
@@ -25,7 +26,6 @@ from codalab.lib.server_util import (
     query_get_list,
     query_get_type,
 )
-from codalab.lib.worksheet_util import ServerWorksheetResolver
 from codalab.objects.permission import (
     check_bundles_have_all_permission,
     check_bundles_have_read_permission,
@@ -71,8 +71,7 @@ def _fetch_bundles():
         bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, worksheet_uuid, keywords)
     elif specs:
         # Resolve bundle specs
-        bundle_uuids = ServerWorksheetResolver(local.model, request.user)\
-            .resolve_bundle_uuids(worksheet_uuid, specs)
+        bundle_uuids = canonicalize.get_bundle_uuids(local.model, request.user and request.user.user_id, worksheet_uuid, specs)
     else:
         abort(httplib.BAD_REQUEST,
               "Request must include either 'keywords' "
