@@ -880,9 +880,8 @@ def test(ctx):
     run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + remote_home + '/bundle.db'])
 
     # Configure aux servers with alternate ports
-    run_command([cl, 'config', 'server/port', '3800'])
     run_command([cl, 'config', 'server/rest_port', '3900'])
-    remote_worksheet = 'http://localhost:3800::'
+    remote_worksheet = 'http://localhost:3900::'
 
     # Create root user
     run_command(['scripts/create-root-user.py', test_password])

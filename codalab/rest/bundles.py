@@ -63,6 +63,7 @@ def _fetch_bundles():
     keywords = query_get_list('keywords')
     specs = query_get_list('specs')
     worksheet_uuid = request.query.get('worksheet')
+    descendant_depth = query_get_type(int, 'depth', None)
 
     if keywords:
         # Handle search keywords
@@ -73,12 +74,15 @@ def _fetch_bundles():
         bundle_uuids = ServerWorksheetResolver(local.model, request.user)\
             .resolve_bundle_uuids(worksheet_uuid, specs)
     else:
-        raise Exception('ding')
         abort(httplib.BAD_REQUEST,
               "Request must include either 'keywords' "
               "or 'specs' query parameter")
 
-    # Scalar result (e.g. .sum or .count queries)
+    # Find all descendants down to the provided depth
+    if descendant_depth is not None:
+        bundle_uuids = local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth)
+
+    # Return simple dict if scalar result (e.g. .sum or .count queries)
     if not isinstance(bundle_uuids, list):
         return json_api_meta({}, {'result': bundle_uuids})
 
@@ -86,8 +90,6 @@ def _fetch_bundles():
 
 
 def build_bundles_document(bundle_uuids):
-    descendant_depth = query_get_type(int, 'depth', None)
-
     bundles_dict = get_bundle_infos(
         bundle_uuids,
         get_children=True,
@@ -123,11 +125,6 @@ def build_bundles_document(bundle_uuids):
     # Include child bundles
     children_uuids = set(c['uuid'] for bundle in bundles for c in bundle['children'])
     json_api_include(document, BundleSchema(), get_bundle_infos(children_uuids).values())
-
-    # Include descendant ids
-    if descendant_depth is not None:
-        descendant_ids = local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth)
-        json_api_meta(document, {'descendant_ids': descendant_ids})
 
     return document
 

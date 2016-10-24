@@ -1749,27 +1749,54 @@ class BundleCLI(object):
         # If old_output is given, look at ancestors of old_output until we
         # reached some depth.  If it's not given, we first get all the
         # descendants first, and then get their ancestors.
-        infos = {}  # uuid -> bundle info
         if old_output:
-            bundle_uuids = [old_output]
+            infos = client.fetch('bundles', params={
+                'specs': old_output,
+            })
+            assert isinstance(infos, list)
         else:
-            bundle_uuids = client.fetch('bundles', params={
+            # Fetch bundles specified in `old_inputs` and their descendants
+            # down by `depth` levesl
+            infos = client.fetch('bundles', params={
                 'specs': old_inputs,
                 'depth': depth
-            })['meta']['descendant-ids']
-        all_bundle_uuids = list(bundle_uuids)  # should be infos.keys() in order
-        for _ in range(depth):
-            new_bundle_uuids = []
-            for bundle_uuid in bundle_uuids:
-                if bundle_uuid in infos:
-                    continue  # Already visited
-                info = infos[bundle_uuid] = client.fetch('bundles', bundle_uuid)
-                for dep in info['dependencies']:
-                    parent_uuid = dep['parent_uuid']
-                    if parent_uuid not in infos:
-                        new_bundle_uuids.append(parent_uuid)
-            all_bundle_uuids = new_bundle_uuids + all_bundle_uuids
-            bundle_uuids = new_bundle_uuids
+            })
+        infos = {b['uuid']: b for b in infos}  # uuid -> bundle info
+
+        def get_self_and_ancestors(bundle_uuids):
+            # Traverse up ancestors by at most `depth` levels and returns
+            # the set of all bundles visited, as well as updating the `info`
+            # dictionary along the way.
+            result = bundle_uuids
+            visited = set()
+            for _ in xrange(depth):
+                next_bundle_uuids = []
+                for bundle_uuid in bundle_uuids:
+                    if bundle_uuid in visited:
+                        continue
+
+                    # Add to infos if not there yet
+                    if bundle_uuid not in infos:
+                        infos[bundle_uuid] = client.fetch('bundles', bundle_uuid)
+
+                    # Append all of the parents to the next batch of bundles to look at
+                    info = infos[bundle_uuid]
+                    for dep in info['dependencies']:
+                        parent_uuid = dep['parent_uuid']
+                        if parent_uuid not in infos:
+                            next_bundle_uuids.append(parent_uuid)
+
+                    # Mark this bundle as visited
+                    visited.add(bundle_uuid)
+
+                # Prepend to the running list of all bundles
+                result = next_bundle_uuids + result
+
+                # Swap in the next batch of bundles for next iteration
+                bundle_uuids = next_bundle_uuids
+            return result
+
+        all_bundle_uuids = get_self_and_ancestors(infos.keys())
 
         # Now go recursively create the bundles.
         old_to_new = {}  # old_uuid -> new_uuid
