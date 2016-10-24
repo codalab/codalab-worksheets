@@ -23,8 +23,6 @@ test:
     - ./scripts/create-root-user.py $CODALAB_PASSWORD
     - './codalab/bin/cl server':
         background: true
-    - './codalab/bin/cl rest-server':
-        background: true
     - './codalab/bin/cl bundle-manager':
         background: true
     - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/ubuntu/.codalab/root.password

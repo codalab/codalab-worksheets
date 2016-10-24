@@ -1062,9 +1062,13 @@ class BundleCLI(object):
             'detached': not add_to_worksheet,
         })
 
+        # If bundle contents don't exist, finish after just copying metadata
+        target_info = source_client.fetch_contents_info(source_bundle_uuid)
+        if target_info is None:
+            return
+
         # Collect information about how server should unpack
         filename = nested_dict_get(source_info, 'metadata', 'name')
-        target_info = source_client.fetch_contents_info(source_bundle_uuid)
         if target_info['type'] == 'directory':
             filename += '.tar.gz'
             unpack = True
