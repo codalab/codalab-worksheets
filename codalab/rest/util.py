@@ -1,18 +1,14 @@
 """
 Helper functions for working with the BundleModel.
-Most of these are adapted from the LocalBundleClient methods,
-Placed in this central location to prevent circular imports.
+Some functions placed in this central location to prevent circular imports.
 """
 import httplib
 import re
 import sys
-import threading
-from functools import wraps
 
-from bottle import abort, HTTPError, local, request
+from bottle import abort, local, request
 
 from codalab.bundles import PrivateBundle
-from codalab.common import http_error_to_exception, precondition
 from codalab.lib import bundle_util
 from codalab.lib.server_util import rate_limited
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
@@ -30,87 +26,8 @@ def get_resource_ids(document, type_):
     return [link['id'] for link in links]
 
 
-class DummyRequest(object):
-    """
-    Dummy class for local_bundle_client_compatible shim.
-    Delete along with the decorator when cleaning up.
-    """
-    def __init__(self, user):
-        self.user = user
-
-
-local_bundle_client_context = threading.local()
-
-
-def local_bundle_client_compatible(f):
-    """
-    Temporary hack to make decorated functions callable from LocalBundleClient.
-    This allows us to share code between LocalBundleClient and the REST server.
-    To call a decorated function from LocalBundleClient, pass in self as the
-    |client| kwarg.
-
-    TODO(sckoo): To clean up, for each decorated function:
-        - Un-decorate function
-        - Remove |local| and |request| arguments
-    """
-    @wraps(f)
-    def wrapper(*args, **kwargs):
-        # Always pop out the 'client' kwarg
-        client = kwargs.pop('client', None)
-        try:
-            # Test to see if request context is initialized
-            _ = request.user.user_id
-        except (AttributeError, RuntimeError):
-            # Request context not initialized: we are NOT in a Bottle app
-            # Fabricate a thread-local context for LocalBundleClient
-            if client is not None:
-                # notify_admin() actually expects client=CodaLabManager rather
-                # than LocalBundleClient, so this is a hack to avoid an
-                # AttributeError for this special case
-                user_id = (client._current_user_id()
-                           if hasattr(client, '_current_user_id')
-                           else None)
-                # User will be None if not logged in (a 'public' user)
-                from codalab.objects.user import PUBLIC_USER
-                if user_id is None:
-                    user = PUBLIC_USER
-                else:
-                    user = client.model.get_user(user_id=user_id)
-                local_bundle_client_context.local = client
-                local_bundle_client_context.request = DummyRequest(user)
-
-            precondition((hasattr(local_bundle_client_context, 'local') and
-                          hasattr(local_bundle_client_context, 'request')),
-                         'LocalBundleClient environment failed to initialize')
-
-            try:
-                # Shim in local and request
-                return f(local_bundle_client_context.local,
-                         local_bundle_client_context.request,
-                         *args, **kwargs)
-            except HTTPError as e:
-                # Translate HTTP errors back to CodaLab exceptions
-                raise http_error_to_exception(e.status_code, e.message)
-            finally:
-                # Clean up when this request is done, thread may be recycled
-                # But should only do this on the root call, where 'client'
-                # was passed as a kwarg: all recursive calls of REST methods
-                # that derive from the original call need to use the same
-                # context.
-                if client is not None:
-                    delattr(local_bundle_client_context, 'local')
-                    delattr(local_bundle_client_context, 'request')
-        else:
-            # We are in the Bottle app, all is good
-            return f(local, request, *args, **kwargs)
-
-    return wrapper
-
-
-# For non-REST services, should call with client=CodaLabManager
 @rate_limited(max_calls_per_hour=6)
-@local_bundle_client_compatible
-def notify_admin(local, request, message):
+def notify_admin(message):
     # Caller is responsible for logging message anyway if desired
     if 'admin_email' not in local.config['server']:
         print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
@@ -125,8 +42,7 @@ def notify_admin(local, request, message):
                              recipient=local.config['server']['admin_email'])
 
 
-@local_bundle_client_compatible
-def resolve_owner_in_keywords(local, request, keywords):
+def resolve_owner_in_keywords(keywords):
     # Resolve references to owner ids
     def resolve(keyword):
         # Example: owner=codalab => owner_id=0
@@ -147,9 +63,7 @@ def get_bundle_info(uuid, get_children=False, get_host_worksheets=False, get_per
 
 
 # Placed here to prevent cyclic imports between rest.bundles and rest.worksheets
-@local_bundle_client_compatible
-def get_bundle_infos(local, request, uuids, get_children=False,
-                     get_host_worksheets=False, get_permissions=False):
+def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_permissions=False):
     """
     get_children, get_host_worksheets, get_permissions:
         whether we want to return more detailed information.
@@ -239,8 +153,7 @@ def get_bundle_infos(local, request, uuids, get_children=False,
 #############################################################
 
 
-@local_bundle_client_compatible
-def ensure_unused_group_name(local, request, name):
+def ensure_unused_group_name(name):
     """
     Ensure group names are unique.  Note: for simplicity, we are
     ensuring uniqueness across the system, even on group names that
@@ -251,8 +164,7 @@ def ensure_unused_group_name(local, request, name):
         abort(httplib.CONFLICT, 'Group with name %s already exists' % name)
 
 
-@local_bundle_client_compatible
-def get_group_info(local, request, group_spec, need_admin):
+def get_group_info(group_spec, need_admin):
     """
     Resolve |group_spec| and return the associated group_info.
     """

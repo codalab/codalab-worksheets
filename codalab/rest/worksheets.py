@@ -225,7 +225,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict(legacy=legacy)
 
-    # TODO(sckoo): Legacy requirement, remove when BundleClient is deprecated
+    # TODO(sckoo): Legacy requirement, remove when BundleService is deprecated
     if legacy:
         if fetch_items:
             result['items'] = convert_items_from_db(result['items'])

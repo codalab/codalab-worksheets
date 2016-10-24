@@ -15,7 +15,7 @@ classes based on the configuration in this file:
   codalab_home: returns the CodaLab home directory
   bundle_store: returns a BundleStore
   cli: returns a BundleCLI
-  client: returns a BundleClient
+  client: returns a JsonApiClient
   model: returns a BundleModel
   rpc_server: returns a BundleRPCServer
 

@@ -860,12 +860,12 @@ def get_faq():
 @post('/api/rpc')
 def execute_rpc_call():
     """
-    Temporary interface for making simple RPC calls to LocalBundleClient over
+    Temporary interface for making simple RPC calls to BundleService methods over
     the REST API, to speed up deprecation of XMLRPC while we migrate to REST.
 
     RPC calls should be POST requests with a JSON payload:
     {
-        'method': <name of the LocalBundleClient method to call>,
+        'method': <name of the BundleService method to call>,
         'args': <array of args>,
         'kwargs': <object of kwargs>
     }

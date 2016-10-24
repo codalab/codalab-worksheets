@@ -451,8 +451,7 @@ def request_accepts_gzip_encoding():
     return False
 
 
-@local_bundle_client_compatible
-def delete_bundles(local, request, uuids, force, recursive, data_only, dry_run):
+def delete_bundles(uuids, force, recursive, data_only, dry_run):
     """
     Delete the bundles specified by |uuids|.
     If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
@@ -517,8 +516,7 @@ def delete_bundles(local, request, uuids, force, recursive, data_only, dry_run):
     return relevant_uuids
 
 
-@local_bundle_client_compatible
-def set_bundle_permissions(local, request, new_permissions):
+def set_bundle_permissions(new_permissions):
     # Check if current user has permission to set bundle permissions
     check_bundles_have_all_permission(
         local.model, request.user, [p['object_uuid'] for p in new_permissions])

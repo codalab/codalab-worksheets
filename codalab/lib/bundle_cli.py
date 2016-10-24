@@ -2011,7 +2011,7 @@ class BundleCLI(object):
 
     def mimic(self, args):
         """
-        Use args.bundles to generate a mimic call to the BundleClient.
+        Use args.bundles to generate a call to self.mimic_bundles()
         """
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
