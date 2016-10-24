@@ -13,10 +13,12 @@ from codalab.common import (
   UsageError,
 )
 from codalab.lib import (
-  path_util,
   spec_util,
 )
 from codalab.model.util import LikeQuery
+
+
+HOME_WORKSHEET = '/'
 
 
 def _parse_relative_bundle_spec(bundle_spec):
@@ -50,20 +52,33 @@ def _parse_relative_bundle_spec(bundle_spec):
     raise UsageError('Invalid bundle_spec: %s' % bundle_spec)
 
 
-def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
+def get_bundle_uuid(model, user, worksheet_uuid, bundle_spec):
     """
     Resolve a string bundle_spec to a bundle uuid.
     Types of specifications:
     - uuid: should be unique.
     - name[^[<index>]: there might be many uuids with this name.
     - ^[<index>], where index is the i-th (1-based) most recent element on the current worksheet.
+    Specification can also be prefixed with a base worksheet spec and a slash:
+    - <worksheet_spec>/<bundle_spec>
     """
+    bundle_spec = bundle_spec.strip()
+    user_id = user and user.user_id
     if not bundle_spec:
         raise UsageError('Tried to expand empty bundle_spec!')
+
+    if '/' in bundle_spec:  # <worksheet_spec>/<bundle_spec>
+        # Shift to new worksheet
+        worksheet_spec, bundle_spec = bundle_spec.split('/', 1)
+        worksheet_uuid = get_worksheet_uuid(model, user, worksheet_uuid, worksheet_spec)
+
     if spec_util.UUID_REGEX.match(bundle_spec):
         return bundle_spec
     elif spec_util.UUID_PREFIX_REGEX.match(bundle_spec):
-        bundle_uuids = model.get_bundle_uuids({'uuid': LikeQuery(bundle_spec + '%'), 'user_id': user_id}, max_results=2)
+        bundle_uuids = model.get_bundle_uuids({
+            'uuid': LikeQuery(bundle_spec + '%'),
+            'user_id': user_id,
+        }, max_results=2)
         if len(bundle_uuids) == 0:
             raise NotFoundError('uuid prefix %s doesn\'t match any bundles' % bundle_spec)
         elif len(bundle_uuids) == 1:
@@ -86,7 +101,7 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
         bundle_uuids = model.get_bundle_uuids({
             'name': bundle_spec_query,
             'worksheet_uuid': worksheet_uuid,
-            'user_id': user_id
+            'user_id': user_id,
         }, max_results=reverse_index)
 
     # Take the last bundle
@@ -103,12 +118,22 @@ def get_bundle_uuid(model, user_id, worksheet_uuid, bundle_spec):
     return bundle_uuids[reverse_index - 1]
 
 
-def get_worksheet_uuid(model, base_worksheet_uuid, worksheet_spec):
+def get_bundle_uuids(model, user, worksheet_uuid, bundle_specs):
+    """
+    Convenience function for resolving more than one bundle spec in one call.
+    """
+    return [get_bundle_uuid(model, user, worksheet_uuid, spec) for spec in bundle_specs]
+
+
+def get_worksheet_uuid(model, user, base_worksheet_uuid, worksheet_spec):
     """
     Resolve a string worksheet_spec to a unique worksheet uuid.
     If base_worksheet_uuid specified, then try to resolve worksheet_spec in the
     context of base_worksheet_uuid.
     """
+    worksheet_spec = worksheet_spec.strip()
+    if (worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET) and user:
+        worksheet_spec = spec_util.home_worksheet(user.user_name)
     if not worksheet_spec:
         raise UsageError('Tried to expand empty worksheet_spec!')
     if spec_util.UUID_REGEX.match(worksheet_spec):

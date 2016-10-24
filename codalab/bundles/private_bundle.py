@@ -9,3 +9,18 @@ class PrivateBundle(Bundle):
     """
     BUNDLE_TYPE = 'private'
     METADATA_SPECS = ()
+
+    @classmethod
+    def construct(cls, uuid):
+        return cls({
+            'uuid': uuid,
+            'bundle_type': cls.BUNDLE_TYPE,
+            'owner_id': None,
+            'command': None,
+            'data_hash': None,
+            'state': None,
+            'dependencies': [],
+            'metadata': {
+                'name': '<private>',
+            },
+        })

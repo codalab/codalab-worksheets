@@ -10,7 +10,6 @@ import os
 import re
 
 from argcomplete import warn
-from argcomplete.completers import FilesCompleter
 
 
 from codalab.lib import spec_util, worksheet_util
@@ -61,7 +60,9 @@ class WorksheetsCompleter(CodaLabCompleter):
     """
     def __call__(self, prefix, **kwargs):
         client, worksheet_spec = self.cli.parse_spec(prefix)
-        worksheets = client.search_worksheets([worksheet_spec])
+        worksheets = client.fetch('worksheets', params={
+            'keywords': worksheet_spec,
+        })
 
         tokens = prefix.split('::')
         if len(tokens) == 1:
@@ -86,11 +87,13 @@ class BundlesCompleter(CodaLabCompleter):
 
         if spec_util.UUID_PREFIX_REGEX.match(prefix):
             # uuids are matched globally
-            return client.search_bundle_uuids(worksheet_uuid, ['uuid=' + prefix + '%'])
+            return client.fetch('bundles', params={
+                'keywords': 'uuid=' + prefix + '%',
+            })
         else:
             # Names are matched locally on worksheet
-            worksheet_info = client.get_worksheet_info(worksheet_uuid, True, True)
-            bundle_infos = self.cli.get_worksheet_bundles(worksheet_info)
+            worksheet_info = client.fetch('worksheets', worksheet_uuid)
+            bundle_infos = [item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle']
             return (b['metadata']['name'] for b in bundle_infos if b['metadata']['name'].startswith(prefix))
 
 
@@ -108,7 +111,8 @@ class GroupsCompleter(CodaLabCompleter):
     """
     def __call__(self, prefix, action=None, parsed_args=None):
         client = self.cli.manager.current_client()
-        group_dicts = client.list_groups()
+        # TODO: allow fetch slice of attributes in API to optimize this
+        group_dicts = client.fetch('groups')
 
         if spec_util.UUID_PREFIX_REGEX.match(prefix):
             return (short_uuid(g['uuid']) for g in group_dicts if g['uuid'].startswith(prefix))
@@ -165,7 +169,7 @@ class TargetsCompleter(CodaLabCompleter):
             # then suggest completions for subpath
             target = self.cli.parse_target(client, worksheet_uuid, bundle_spec + '/' + subpath)
             dir_target = (target[0], os.path.dirname(subpath))
-            info = client.get_target_info(dir_target, 1)
+            info = client.fetch_contents_info(dir_target[0], dir_target[1], depth=1)
             if info is not None and info['type'] == 'directory':
                 matching_child_names = []
                 basename = os.path.basename(subpath)

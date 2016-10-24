@@ -4,38 +4,15 @@ Worksheets REST API Groups Views.
 import httplib
 
 from bottle import abort, get, delete, post, request, local
-from marshmallow_jsonapi import Schema, fields
 
 from codalab.lib.server_util import json_api_include
-from codalab.lib.spec_util import validate_uuid, validate_name
-from codalab.rest.users import UserSchema
+from codalab.rest.schemas import GroupSchema, UserSchema
 from codalab.rest.util import (
     ensure_unused_group_name,
     get_group_info,
     get_resource_ids,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-
-#############################################################
-#  GROUP DE/SERIALIZATION AND VALIDATION SCHEMA
-#############################################################
-
-
-class GroupSchema(Schema):
-    id = fields.String(validate=validate_uuid, attribute='uuid')
-    name = fields.String(required=True, validate=validate_name)
-    user_defined = fields.Bool(dump_only=True)
-    owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
-    admins = fields.Relationship(include_data=True, type_='users', many=True)
-    members = fields.Relationship(include_data=True, type_='users', many=True)
-
-    class Meta:
-        type_ = 'groups'
-
-
-#############################################################
-#  GROUP REST API ENDPOINTS
-#############################################################
 
 
 @get('/groups/<group_spec>', apply=AuthenticatedPlugin())

@@ -30,7 +30,7 @@ class ORMObject(object):
             precondition(key in self.COLUMNS or key == 'id', message)
             setattr(self, key, value)
 
-    def to_dict(self, strict=True):
+    def to_dict(self, strict=True, legacy=False):
         '''
         Return a JSON-serializable and database-uploadable dictionary that
         represents this object.
@@ -42,7 +42,7 @@ class ORMObject(object):
             if not strict and not hasattr(self, column): continue
             value = getattr(self, column)
             # Note: DateTime doesn't serialize, so replace it with string.
-            if isinstance(value, datetime.datetime):
+            if legacy and isinstance(value, datetime.datetime):
                 value = str(value)
             result[column] = value
         return result

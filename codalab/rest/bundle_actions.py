@@ -1,23 +1,10 @@
 from bottle import local, post, request
-from marshmallow import validate
-from marshmallow_jsonapi import Schema, fields
 
 from codalab.common import State, UsageError, precondition
 from codalab.lib.bundle_action import BundleAction
-from codalab.lib.spec_util import validate_child_path, validate_uuid
 from codalab.objects.permission import check_bundles_have_all_permission
+from codalab.rest.schemas import BundleActionSchema
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-
-
-class BundleActionSchema(Schema):
-    id = fields.Integer(dump_only=True, default=None)
-    uuid = fields.String(validate=validate_uuid)
-    type = fields.String(validate=validate.OneOf({BundleAction.KILL, BundleAction.WRITE}))
-    subpath = fields.String(validate=validate_child_path)
-    string = fields.String()
-
-    class Meta:
-        type_ = 'bundle-actions'
 
 
 @post('/bundle-actions', apply=AuthenticatedPlugin())
