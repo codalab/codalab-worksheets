@@ -4,7 +4,7 @@ is synchronized with a set of JSON files in the CodaLab directory.  It contains
 two types of information:
 
 - Configuration (permanent):
-  * Aliases: name (e.g., "main") -> address (e.g., http://codalab.org:2800)
+  * Aliases: name (e.g., "main") -> address (e.g., http://codalab.org:2900)
 - State (transient):
   * address -> username, auth_info
   * session_name -> address, worksheet_uuid
@@ -58,6 +58,9 @@ from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
+
+
+MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
 
 
 def cached(fn):
@@ -177,16 +180,13 @@ class CodaLabManager(object):
         Your CodaLab configuration and state will be stored in: {0.codalab_home}
         """.format(self))
 
-        main_bundle_service = 'https://worksheets.codalab.org/bundleservice'
 
         config = {
             'cli': {
-                'default_address': main_bundle_service,
+                'default_address': MAIN_BUNDLE_SERVICE,
                 'verbose': 1,
             },
             'server': {
-                'host': 'localhost',
-                'port': 2800,
                 'rest_host': 'localhost',
                 'rest_port': 2900,
                 'class': 'MySQLModel',
@@ -197,8 +197,8 @@ class CodaLabManager(object):
                 'verbose': 1,
             },
             'aliases': {
-                'main': main_bundle_service,
-                'localhost': 'http://localhost:2800',
+                'main': MAIN_BUNDLE_SERVICE,
+                'localhost': 'http://localhost:2900',
             },
             'workers': {
                 'default_docker_image': 'codalab/ubuntu:1.9',
@@ -308,9 +308,9 @@ class CodaLabManager(object):
         sessions = self.state['sessions']
         name = self.session_name()
         if name not in sessions:
-            # New session: set the address and worksheet uuid to the default (local if not specified)
+            # New session: set the address and worksheet uuid to the default (main if not specified)
             cli_config = self.config.get('cli', {})
-            address = cli_config.get('default_address', 'local')
+            address = cli_config.get('default_address', MAIN_BUNDLE_SERVICE)
             worksheet_uuid = cli_config.get('default_worksheet_uuid', '')
             sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
         return sessions[name]

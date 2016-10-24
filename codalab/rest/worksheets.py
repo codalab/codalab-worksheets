@@ -10,6 +10,7 @@ from codalab.lib import (
     worksheet_util,
 )
 from codalab.lib import formatting
+from codalab.lib.canonicalize import HOME_WORKSHEET
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
@@ -356,9 +357,10 @@ def ensure_unused_worksheet_name(name):
     if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(request.user.user_name) != name:
         raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
     try:
-        return canonicalize.get_worksheet_uuid(local.model, request.user, None, name)
-    except NotFoundError:
+        canonicalize.get_worksheet_uuid(local.model, request.user, None, name)
         raise UsageError('Worksheet with name %s already exists' % name)
+    except NotFoundError:
+        pass  # all good!
 
 
 def new_worksheet(name):
@@ -398,7 +400,10 @@ def get_worksheet_uuid_or_create(base_worksheet_uuid, worksheet_spec):
     try:
         return canonicalize.get_worksheet_uuid(local.model, request.user, base_worksheet_uuid, worksheet_spec)
     except NotFoundError:
-        if spec_util.is_home_worksheet(worksheet_spec) or spec_util.is_dashboard(worksheet_spec):
+        # A bit hacky, duplicates a bit of canonicalize
+        if (worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET) and request.user:
+            return new_worksheet(spec_util.home_worksheet(request.user.user_name))
+        elif spec_util.is_dashboard(worksheet_spec):
             return new_worksheet(worksheet_spec)
         else:
             raise
