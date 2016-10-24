@@ -465,17 +465,6 @@ class BundleCLI(object):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
     @staticmethod
-    def get_worksheet_bundles(worksheet_info):
-        """
-        Return list of info dicts of distinct bundles in the worksheet.
-        """
-        result = []
-        for (bundle_info, subworksheet_info, value_obj, item_type) in worksheet_info['items']:
-            if item_type == worksheet_util.TYPE_BUNDLE:
-                result.append(bundle_info)
-        return result
-
-    @staticmethod
     def parse_target(client, worksheet_uuid, target_spec):
         """
         Helper: A target_spec is a bundle_spec[/subpath].
@@ -1566,7 +1555,7 @@ class BundleCLI(object):
             'Note that cat on a directory will list its files.',
         ],
         arguments=(
-            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=BundlesCompleter),
+            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
