@@ -21,8 +21,7 @@ from bottle import (
     static_file,
 )
 
-from codalab.common import exception_to_http_error, PreconditionViolation, \
-    UsageError
+from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
 import codalab.rest.account
 import codalab.rest.bundle_actions
@@ -34,7 +33,6 @@ import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
 import codalab.rest.worksheets
-from codalab.rest.util import notify_admin
 from codalab.server.authenticated_plugin import UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
@@ -142,13 +140,13 @@ class ErrorAdapter(object):
                     raise
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
-                    self.report_exception()
+                    self.report_exception(e)
                     message = "Unexpected Internal Error (%s). The administrators have been notified." % message
                 raise HTTPError(code, message)
 
         return wrapper
 
-    def report_exception(self):
+    def report_exception(self, exc):
         query = formatting.key_value_list(request.query.allitems())
         forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
         body = formatting.verbose_pretty_json(request.json)
@@ -180,8 +178,27 @@ class ErrorAdapter(object):
 
              {2}""").format(request, aux_info, traceback.format_exc())
 
+        # Both print to console and send email
         print >>sys.stderr, message
-        notify_admin(message)
+        self.send_email(exc, message)
+
+    @server_util.rate_limited(max_calls_per_hour=6)
+    def send_email(self, exc, message):
+        # Caller is responsible for logging message anyway if desired
+        if 'admin_email' not in local.config['server']:
+            print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
+            return
+
+        # Subject should be "ExceptionType: message"
+        subject = '%s: %s' % (type(exc).__name__, exc.message)
+
+        # Prepend server name to subject if available
+        if 'instance_name' in local.config['server']:
+            subject = "[%s] %s" % (local.config['server']['instance_name'], subject)
+
+        local.emailer.send_email(subject=subject,
+                                 body=message,
+                                 recipient=local.config['server']['admin_email'])
 
 
 def error_handler(response):
