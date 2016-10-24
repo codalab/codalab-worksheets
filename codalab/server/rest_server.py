@@ -223,7 +223,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     root_app.mount('/rest', default_app())
 
     # TODO: Remove when we are confident everyone has upgraded
-    @root_app.route('/bundleservice')
+    @root_app.route('/bundleservice', method=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
     def bundleservice():
         raise UsageError("Your CLI is attempting to connect to an old API, "
                          "please upgrade it by running `git pull` from where "
