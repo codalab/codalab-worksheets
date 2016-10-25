@@ -1,6 +1,6 @@
-'''
+"""
 Mappings for UI action representation on the frontend side.
-'''
+"""
 
 class UIAction(object):
     def __init__(self, parameter=None):
@@ -8,17 +8,18 @@ class UIAction(object):
             raise NotImplementedError
         self.parameter = parameter
 
+
 class OpenWorksheet(UIAction):
     KEY = 'openWorksheet'
+
 
 class SetEditMode(UIAction):
     KEY = 'setEditMode'
 
+
 class OpenBundle(UIAction):
     KEY = 'openBundle'
 
-class Upload(UIAction):
-    KEY = 'upload'
 
 def serialize(actions):
     return {
