@@ -883,9 +883,9 @@ class BundleCLI(object):
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
-        # If headless and no args provided, request an Upload dialog on the front end.
-        if self.headless and not args.path and args.contents is None:
-            return ui_actions.serialize([ui_actions.Upload()])
+        # Uploading from local filesystem not allowed for headless CLI (i.e. web terminal)
+        if self.headless and args.path:
+            raise UsageError("Upload from local filesystem not supported in headless CLI.")
 
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
