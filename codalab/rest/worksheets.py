@@ -367,7 +367,7 @@ def new_worksheet(name):
     """
     Create a new worksheet with the given |name|.
     """
-    if request.user is PUBLIC_USER:
+    if not request.user.is_authenticated:
         raise PermissionError("You must be logged in to create a worksheet.")
     ensure_unused_worksheet_name(name)
 

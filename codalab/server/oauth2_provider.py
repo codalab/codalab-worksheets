@@ -50,12 +50,18 @@ from functools import wraps
 import logging
 import os
 
-from bottle import default_app, request, abort, redirect
+from bottle import default_app, request, redirect
 from oauthlib import oauth2
 from oauthlib.common import to_unicode
 from oauthlib.oauth2 import RequestValidator, Server
 
-from codalab.lib.server_util import cached_property, import_string, extract_params, decode_base64, create_response
+from codalab.lib.server_util import (
+    cached_property,
+    create_response,
+    decode_base64,
+    extract_params,
+    import_string,
+)
 
 log = logging.getLogger(__name__)
 

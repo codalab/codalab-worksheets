@@ -33,7 +33,10 @@ import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
 import codalab.rest.worksheets
-from codalab.server.authenticated_plugin import UserVerifiedPlugin
+from codalab.server.authenticated_plugin import (
+    PublicUserPlugin,
+    UserVerifiedPlugin,
+)
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
 from codalab.server.oauth2_provider import oauth2_provider
@@ -230,6 +233,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(oauth2_provider.check_oauth())
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
+    install(PublicUserPlugin())
     install(ErrorAdapter())
     install(JsonApiPlugin())
 
