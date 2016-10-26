@@ -143,7 +143,7 @@ class BundleService(object):
     @staticmethod
     def search_worksheets(keywords, worksheet_uuid=None):
         keywords = resolve_owner_in_keywords(keywords)
-        results = local.model.search_worksheets(request.user.user_id, keywords)
+        results = local.model.search_worksheets(request.user and request.user.user_id, keywords)
         BundleService._set_owner_names(results)
         return results
 
