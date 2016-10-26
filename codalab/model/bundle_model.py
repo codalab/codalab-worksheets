@@ -3,12 +3,9 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
 
 import collections
-import copy
 import datetime
 import json
-import os.path
 import re
-import sys
 import time
 import uuid
 
@@ -20,10 +17,6 @@ from sqlalchemy import (
     union,
     desc,
     func,
-)
-from sqlalchemy.exc import (
-    OperationalError,
-    ProgrammingError,
 )
 from sqlalchemy.sql.expression import (
     literal,
@@ -715,21 +708,23 @@ class BundleModel(object):
             uuid=bundle.uuid)
 
     def save_bundle(self, bundle):
-        '''
+        """
         Save a bundle. On success, sets the Bundle object's id from the result.
-        '''
+        """
         bundle.validate()
         bundle_value = bundle.to_dict(strict=False)
         dependency_values = bundle_value.pop('dependencies')
         metadata_values = bundle_value.pop('metadata')
 
-        # Check to see if bundle is already present, as in a local 'cl cp'
-        if not self.batch_get_bundles(uuid=bundle.uuid):
-            with self.engine.begin() as connection:
-                result = connection.execute(cl_bundle.insert().values(bundle_value))
-                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-                bundle.id = result.lastrowid
+        # Raises exception when the UUID uniqueness constraint is violated
+        # (Clients should check for this case ahead of time if they want to
+        # silently skip over creating bundles that already exist.)
+        with self.engine.begin() as connection:
+            result = connection.execute(cl_bundle.insert().values(bundle_value))
+            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            bundle.id = result.lastrowid
+
 
     def update_bundle(self, bundle, update, connection=None):
         '''

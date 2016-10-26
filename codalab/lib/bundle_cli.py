@@ -1856,8 +1856,13 @@ class BundleCLI(object):
                                        for dep in old_info['dependencies'])
             if lone_output or downstream_of_inputs:
                 # Now create a new bundle that mimics the old bundle.
-                # Only change the name if the output name is supplied.
                 new_info = copy.deepcopy(old_info)
+
+                # Make sure that new uuids are generated
+                new_info.pop('uuid', None)
+                new_info.pop('id', None)
+
+                # Only change the name if the output name is supplied.
                 new_metadata = new_info['metadata']
                 if new_output_name:
                     if old_bundle_uuid == old_output:
