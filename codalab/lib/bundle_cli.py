@@ -1568,7 +1568,7 @@ class BundleCLI(object):
         ),
     )
     def do_cat_command(self, args):
-        self._fail_if_headless('cat')  # Files might be too big
+        self._fail_if_headless(args)  # Files might be too big
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
