@@ -78,6 +78,8 @@ def run_server_with_watch():
     ),
 )
 def do_rest_server_command(bundle_cli, args):
+    bundle_cli._fail_if_headless(args)
+    bundle_cli._fail_if_not_local(args)
     # Force initialization of the bundle store, so that the misc_temp directory is created
     bundle_cli.manager.bundle_store()
     if args.watch:
@@ -98,6 +100,8 @@ def do_rest_server_command(bundle_cli, args):
     ),
 )
 def do_bundle_manager_command(bundle_cli, args):
+    bundle_cli._fail_if_headless(args)
+    bundle_cli._fail_if_not_local(args)
     from codalab.worker.bundle_manager import BundleManager
     manager = BundleManager.create(bundle_cli.manager)
 
