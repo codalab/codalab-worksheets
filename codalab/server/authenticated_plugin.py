@@ -7,6 +7,48 @@ from bottle import (
 )
 
 from codalab.lib.server_util import redirect_with_query
+from codalab.objects.user import PUBLIC_USER
+
+
+def user_is_authenticated():
+    return hasattr(request, 'user') and \
+           request.user is not None and \
+           request.user is not PUBLIC_USER
+
+
+class UserVerifiedPlugin(object):
+    """
+    Fails the request if the user is authenticated but not verified.
+
+    The handling of AJAX requests is the same as above for AuthenticatedPlugin.
+    """
+    api = 2
+
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            if user_is_authenticated() and not request.user.is_verified:
+                if request.is_ajax:
+                    abort(httplib.UNAUTHORIZED, 'User is not verified')
+                else:
+                    redirect(url('resend_key'))
+
+            return callback(*args, **kwargs)
+
+        return wrapper
+
+
+class PublicUserPlugin(object):
+    """
+    Sets request.user to PUBLIC_USER if none set yet.
+    """
+    api = 2
+
+    def apply(self, callback, route):
+        def wrapper(*args, **kwargs):
+            if not user_is_authenticated():
+                request.user = PUBLIC_USER
+            return callback(*args, **kwargs)
+        return wrapper
 
 
 class AuthenticatedPlugin(object):
@@ -25,33 +67,11 @@ class AuthenticatedPlugin(object):
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            if not hasattr(request, 'user') or request.user is None:
+            if not user_is_authenticated():
                 if request.is_ajax:
                     abort(httplib.UNAUTHORIZED, 'Not authorized')
                 else:
                     redirect_with_query('/account/login', {'next': request.url})
-
-            return callback(*args, **kwargs)
-
-        return wrapper
-
-
-class UserVerifiedPlugin(object):
-    """
-    Fails the request if the user is authenticated but not verified.
-
-    The handling of AJAX requests is the same as above for AuthenticatedPlugin.
-    """
-    api = 2
-
-    def apply(self, callback, route):
-        def wrapper(*args, **kwargs):
-            if (hasattr(request, 'user') and request.user is not None and
-                not request.user.is_verified):
-                if request.is_ajax:
-                    abort(httplib.UNAUTHORIZED, 'User is not verified')
-                else:
-                    redirect(url('resend_key'))
 
             return callback(*args, **kwargs)
 

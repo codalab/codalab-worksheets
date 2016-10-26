@@ -29,6 +29,10 @@ class User(ORMObject):
     def name(self):
         return self.user_name
 
+    @property
+    def is_authenticated(self):
+        return self is not PUBLIC_USER
+
     @staticmethod
     def encode_password(password, salt, iterations=30000):
         """

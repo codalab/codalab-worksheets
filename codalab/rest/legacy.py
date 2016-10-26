@@ -57,7 +57,7 @@ def get_user_token():
     """
     CLIENT_ID = 'codalab_cli_client'
 
-    if request.user is None:
+    if not request.user.is_authenticated:
         return None
 
     # Try to find an existing token that will work.
@@ -143,7 +143,7 @@ class BundleService(object):
     @staticmethod
     def search_worksheets(keywords, worksheet_uuid=None):
         keywords = resolve_owner_in_keywords(keywords)
-        results = local.model.search_worksheets(request.user and request.user.user_id, keywords)
+        results = local.model.search_worksheets(request.user.user_id, keywords)
         BundleService._set_owner_names(results)
         return results
 
@@ -812,7 +812,7 @@ def get_chat_box():
     """
     service = BundleService()
     info = {
-        'user_id': request.user.user_id if request.user is not None else None
+        'user_id': request.user.user_id,
     }
     return {'chats': service.get_chat_log_info(info)}
 
@@ -845,7 +845,7 @@ def post_chat_box():
 def get_users():
     service = BundleService()
     return {
-        'user_info': service.get_user_info(None) if request.user is not None else None,
+        'user_info': service.get_user_info(None) if request.user.is_authenticated else None,
     }
 
 
