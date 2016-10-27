@@ -773,6 +773,17 @@ def test(ctx):
     uuid6 = run_command([cl, 'macro', name, uuid3, '-n', 'new'])
     check_equals(data_hash(uuid2), data_hash(uuid6))
 
+    # Another basic test
+    uuidA = run_command([cl, 'upload', test_path('a.txt')])
+    uuidB = run_command([cl, 'upload', test_path('b.txt')])
+    uuidCountA = run_command([cl, 'run', 'input:' + uuidA, 'wc -l input'])
+    uuidCountB = run_command([cl, 'mimic', uuidA, uuidB])
+    wait(uuidCountA)
+    wait(uuidCountB)
+    # Check that the line counts for a.txt and b.txt are correct
+    check_contains('2', run_command([cl, 'cat', uuidCountA + '/stdout']).split())
+    check_contains('1', run_command([cl, 'cat', uuidCountB + '/stdout']).split())
+
 
 @TestModule.register('status')
 def test(ctx):
