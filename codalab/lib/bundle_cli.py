@@ -942,7 +942,7 @@ class BundleCLI(object):
             sources = [path_util.normalize(path) for path in args.path]
 
             print >>self.stderr, "Preparing upload archive..."
-            upload_blob, filename, total_bytes, unpack_at_server =\
+            upload_blob, filename, total_bytes, unpack_at_server, simplify_at_server =\
                 zip_util.pack_files_for_upload(
                     sources, should_unpack=(not args.pack),
                     follow_symlinks=args.follow_symlinks,
@@ -956,7 +956,11 @@ class BundleCLI(object):
                 client.upload_contents_blob(
                     new_bundle['id'],
                     fileobj=upload_blob,
-                    params={'filename': filename, 'unpack': unpack_at_server},
+                    params={
+                        'filename': filename,
+                        'unpack': unpack_at_server,
+                        'simplify': simplify_at_server,
+                    },
                     progress_callback=progress.update)
 
         print >>self.stdout, new_bundle['id']

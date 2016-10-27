@@ -1,0 +1,9 @@
+This is the only file in dir2.
+`cl upload dir2` should NOT collapse the resulting bundle into just this file.
+This
+file
+has
+a
+lot
+of
+lines.

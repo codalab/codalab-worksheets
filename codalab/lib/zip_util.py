@@ -109,8 +109,8 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
     :param exclude_patterns: list of glob patterns for files to ignore, or
                              None to include all files
     :param force_compression: True to always use compression
-    :return: 4-tuple with fileobj, filename, filesize (or None if unknown),
-             should_unpack_at_server
+    :return: 5-tuple with fileobj, filename, filesize (or None if unknown),
+             should_unpack_at_server, should_simplify_at_server
     """
     exclude_patterns = exclude_patterns or []
 
@@ -135,13 +135,13 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
             archived = tar_gzip_directory(
                 source, follow_symlinks=follow_symlinks,
                 exclude_patterns=exclude_patterns)
-            return archived, filename + '.tar.gz', None, True
+            return archived, filename + '.tar.gz', None, True, False
         elif path_is_archive(source):
-            return open(source), filename, os.path.getsize(source), should_unpack
+            return open(source), filename, os.path.getsize(source), should_unpack, True
         elif force_compression:
-            return gzip_file(source), filename + '.gz', None, True
+            return gzip_file(source), filename + '.gz', None, True, False
         else:
-            return open(source), filename, os.path.getsize(source), False
+            return open(source), filename, os.path.getsize(source), False, False
 
     # Build archive file incrementally from all sources
     # TODO: For further optimization, could either uses a temporary named pipe
@@ -176,4 +176,4 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
     shutil.rmtree(scratch_dir)
     filesize = archive_fileobj.tell()
     archive_fileobj.seek(0)
-    return archive_fileobj, 'contents.tar.gz', filesize, True
+    return archive_fileobj, 'contents.tar.gz', filesize, True, False
