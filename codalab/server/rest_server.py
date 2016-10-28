@@ -21,7 +21,7 @@ from bottle import (
     static_file,
 )
 
-from codalab.common import exception_to_http_error, PreconditionViolation
+from codalab.common import exception_to_http_error
 from codalab.lib import formatting, server_util
 import codalab.rest.account
 import codalab.rest.bundle_actions
@@ -32,8 +32,11 @@ import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
-from codalab.rest.util import notify_admin
-from codalab.server.authenticated_plugin import UserVerifiedPlugin
+import codalab.rest.worksheets
+from codalab.server.authenticated_plugin import (
+    PublicUserPlugin,
+    UserVerifiedPlugin,
+)
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
 from codalab.server.oauth2_provider import oauth2_provider
@@ -140,13 +143,13 @@ class ErrorAdapter(object):
                     raise
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
-                    self.report_exception()
+                    self.report_exception(e)
                     message = "Unexpected Internal Error (%s). The administrators have been notified." % message
                 raise HTTPError(code, message)
 
         return wrapper
 
-    def report_exception(self):
+    def report_exception(self, exc):
         query = formatting.key_value_list(request.query.allitems())
         forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
         body = formatting.verbose_pretty_json(request.json)
@@ -178,8 +181,27 @@ class ErrorAdapter(object):
 
              {2}""").format(request, aux_info, traceback.format_exc())
 
+        # Both print to console and send email
         print >>sys.stderr, message
-        notify_admin(message)
+        self.send_email(exc, message)
+
+    @server_util.rate_limited(max_calls_per_hour=6)
+    def send_email(self, exc, message):
+        # Caller is responsible for logging message anyway if desired
+        if 'admin_email' not in local.config['server']:
+            print >>sys.stderr, 'Warning: No admin_email configured, so no email sent.'
+            return
+
+        # Subject should be "ExceptionType: message"
+        subject = '%s: %s' % (type(exc).__name__, exc.message)
+
+        # Prepend server name to subject if available
+        if 'instance_name' in local.config['server']:
+            subject = "[%s] %s" % (local.config['server']['instance_name'], subject)
+
+        local.emailer.send_email(subject=subject,
+                                 body=message,
+                                 recipient=local.config['server']['admin_email'])
 
 
 def error_handler(response):
@@ -195,6 +217,11 @@ def send_static(filename):
     return static_file(filename, root='static/')
 
 
+def dummy_xmlrpc_app():
+    app = Bottle()
+    return app
+
+
 def run_rest_server(manager, debug, num_processes, num_threads):
     """Runs the REST server."""
     host = manager.config['server']['rest_host']
@@ -206,6 +233,7 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(oauth2_provider.check_oauth())
     install(CookieAuthenticationPlugin())
     install(UserVerifiedPlugin())
+    install(PublicUserPlugin())
     install(ErrorAdapter())
     install(JsonApiPlugin())
 
@@ -214,6 +242,13 @@ def run_rest_server(manager, debug, num_processes, num_threads):
 
     root_app = Bottle()
     root_app.mount('/rest', default_app())
+
+    # TODO: Remove when we are confident everyone has upgraded
+    @root_app.route('/bundleservice', method=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
+    def bundleservice():
+        abort(BAD_REQUEST, "Your CLI is attempting to connect to an old API, "
+                           "please upgrade it by running `git pull` from where "
+                           "you installed it.")
 
     bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
 

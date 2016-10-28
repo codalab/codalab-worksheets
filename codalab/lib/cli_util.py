@@ -1,6 +1,33 @@
 import re
 
-from codalab.common import UsageError
+from codalab.common import precondition, UsageError
+
+
+def nested_dict_get(o, *args, **kwargs):
+    """
+    Get a value from a nested dictionary.
+
+    Cleans up calls that look lke this:
+        bundle_info.get('owner', {}).get('user_name', None)
+
+    And turns them into:
+        safe_get(bundle_info, 'owner', 'user_name')
+
+    :param o: dict-like object to 'get' value from
+    :param args: variable list of nested keys
+    :param kwargs: supports the kwarg 'default' to specify the default value to
+                   return if any of the keys don't exist. (default is None)
+                   Any other kwarg will raise an exception.
+    :return: retrieved value or default if it doesn't exist
+    """
+    default = kwargs.pop('default', None)
+    precondition(not kwargs, 'unsupported kwargs %s' % kwargs.keys())
+    try:
+        for arg in args:
+            o = o[arg]
+        return o
+    except (KeyError, TypeError):
+        return default
 
 
 def desugar_command(orig_target_spec, command):

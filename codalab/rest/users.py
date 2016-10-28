@@ -4,41 +4,18 @@ Worksheets REST API Users Views.
 import httplib
 
 from bottle import abort, get, request, local
-from marshmallow_jsonapi import Schema, fields
 
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.lib.server_util import bottle_patch as patch
+from codalab.rest.schemas import (
+    AuthenticatedUserSchema,
+    USER_READ_ONLY_FIELDS,
+    UserSchema,
+)
 from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
 )
-
-
-class UserSchema(Schema):
-    id = fields.String(attribute='user_id')
-    user_name = fields.String()
-    first_name = fields.String(allow_none=True)
-    last_name = fields.String(allow_none=True)
-    affiliation = fields.String(allow_none=True)
-    url = fields.Url(allow_none=True)
-    date_joined = fields.LocalDateTime("%c")
-
-    class Meta:
-        type_ = 'users'
-
-
-class AuthenticatedUserSchema(UserSchema):
-    email = fields.String()
-    time_quota = fields.Integer()
-    time_used = fields.Integer()
-    disk_quota = fields.Integer()
-    disk_used = fields.Integer()
-    last_login = fields.LocalDateTime("%c")
-
-
-# Email must be updated through the /account/changeemail interface
-USER_READ_ONLY_FIELDS = ('email', 'time_quota', 'time_used', 'disk_quota',
-                         'disk_used', 'date_joined', 'last_login', 'send_notifications')
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)

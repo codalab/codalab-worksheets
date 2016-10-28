@@ -773,6 +773,17 @@ def test(ctx):
     uuid6 = run_command([cl, 'macro', name, uuid3, '-n', 'new'])
     check_equals(data_hash(uuid2), data_hash(uuid6))
 
+    # Another basic test
+    uuidA = run_command([cl, 'upload', test_path('a.txt')])
+    uuidB = run_command([cl, 'upload', test_path('b.txt')])
+    uuidCountA = run_command([cl, 'run', 'input:' + uuidA, 'wc -l input'])
+    uuidCountB = run_command([cl, 'mimic', uuidA, uuidB])
+    wait(uuidCountA)
+    wait(uuidCountB)
+    # Check that the line counts for a.txt and b.txt are correct
+    check_contains('2', run_command([cl, 'cat', uuidCountA + '/stdout']).split())
+    check_contains('1', run_command([cl, 'cat', uuidCountB + '/stdout']).split())
+
 
 @TestModule.register('status')
 def test(ctx):
@@ -783,8 +794,7 @@ def test(ctx):
 
 @TestModule.register('events')
 def test(ctx):
-    local = 'local::' in run_command([cl, 'work'])
-    if local:
+    if 'localhost' in run_command([cl, 'work']):
         run_command([cl, 'events'])
         run_command([cl, 'events', '-n'])
         run_command([cl, 'events', '-g', 'user'])
@@ -880,22 +890,17 @@ def test(ctx):
     run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + remote_home + '/bundle.db'])
 
     # Configure aux servers with alternate ports
-    run_command([cl, 'config', 'server/port', '3800'])
     run_command([cl, 'config', 'server/rest_port', '3900'])
-    remote_worksheet = 'http://localhost:3800::'
+    remote_worksheet = 'http://localhost:3900::'
 
     # Create root user
     run_command(['scripts/create-root-user.py', test_password])
 
     # Start auxiliary servers for the new auxiliary host
     os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
-    server_proc = subprocess.Popen([cl, 'server'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    rest_server_proc = subprocess.Popen([cl, 'rest-server'], stderr=subprocess.PIPE)
+    rest_server_proc = subprocess.Popen([cl, 'server'], stderr=subprocess.PIPE)
 
-    # TODO(sckoo): Refactor test-cli to allow each module to define cleanup method
     try:
-        # TODO(sckoo): Remove BundleRPCServer when REST migration complete
-        wait_until_substring(server_proc.stdout, 'BundleRPCServer serving')
         wait_until_substring(rest_server_proc.stderr, 'Booting worker')
 
         # Restore original config
@@ -909,6 +914,13 @@ def test(ctx):
 
         def check_agree(command):
             check_equals(run_command(command + ['-w', remote_worksheet]), run_command(command + ['-w', source_worksheet]))
+
+        # import pdb; pdb.set_trace()
+        #
+        # # TEST
+        # run_command([cl, 'work', remote_worksheet])
+        # uuid = run_command([cl, 'upload', test_path('')])
+        # run_command([cl, 'add', 'bundle', uuid, source_worksheet])
 
         # Upload to original worksheet, transfer to remote
         run_command([cl, 'work', source_worksheet])
@@ -942,13 +954,8 @@ def test(ctx):
 
     finally:
         # Cleanup
-        server_proc.kill()
+        run_command([cl, 'work', source_worksheet])
         rest_server_proc.kill()
-        # del os.environ['CODALAB_HOME']
-        # del os.environ['PYTHONUNBUFFERED']
-        # del os.environ['CODALAB_USERNAME']
-        # del os.environ['CODALAB_PASSWORD']
-        # run_command([cl, 'work', source_worksheet])
         shutil.rmtree(remote_home)
 
 if __name__ == '__main__':

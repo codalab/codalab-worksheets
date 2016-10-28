@@ -5,6 +5,7 @@ Provides basic formatting utilities.
 import datetime
 import json
 import shlex
+import pipes
 
 from worker import formatting as worker_formatting
 
@@ -116,7 +117,7 @@ def tokens_to_string(tokens):
     :param tokens: list of string tokens
     :return: space-separated string of tokens
     """
-    return ' '.join(quote(token) for token in tokens)
+    return ' '.join(map(pipes.quote, tokens))
 
 
 def string_to_tokens(s):
@@ -144,4 +145,4 @@ def verbose_pretty_json(obj):
 
 
 def key_value_list(pairs):
-    return "\n".join([("%s=%s" % tuple(p)) for p in pairs])
+    return "\n".join([("%s=%r" % tuple(p)) for p in pairs])

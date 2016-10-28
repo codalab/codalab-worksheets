@@ -3,12 +3,9 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
 
 import collections
-import copy
 import datetime
 import json
-import os.path
 import re
-import sys
 import time
 import uuid
 
@@ -20,10 +17,6 @@ from sqlalchemy import (
     union,
     desc,
     func,
-)
-from sqlalchemy.exc import (
-    OperationalError,
-    ProgrammingError,
 )
 from sqlalchemy.sql.expression import (
     literal,
@@ -88,7 +81,7 @@ def str_key_dict(row):
     '''
     row comes out of an element of a database query.
     For some versions of SqlAlchemy, the keys are of type sqlalchemy.sql.elements.quoted_name,
-    which can be serialized to JSON.
+    which cannot be serialized to JSON.
     This function converts the keys to strings.
     '''
     return dict((str(k), v) for k, v in row.items())
@@ -715,21 +708,23 @@ class BundleModel(object):
             uuid=bundle.uuid)
 
     def save_bundle(self, bundle):
-        '''
+        """
         Save a bundle. On success, sets the Bundle object's id from the result.
-        '''
+        """
         bundle.validate()
         bundle_value = bundle.to_dict(strict=False)
         dependency_values = bundle_value.pop('dependencies')
         metadata_values = bundle_value.pop('metadata')
 
-        # Check to see if bundle is already present, as in a local 'cl cp'
-        if not self.batch_get_bundles(uuid=bundle.uuid):
-            with self.engine.begin() as connection:
-                result = connection.execute(cl_bundle.insert().values(bundle_value))
-                self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-                bundle.id = result.lastrowid
+        # Raises exception when the UUID uniqueness constraint is violated
+        # (Clients should check for this case ahead of time if they want to
+        # silently skip over creating bundles that already exist.)
+        with self.engine.begin() as connection:
+            result = connection.execute(cl_bundle.insert().values(bundle_value))
+            self.do_multirow_insert(connection, cl_bundle_dependency, dependency_values)
+            self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            bundle.id = result.lastrowid
+
 
     def update_bundle(self, bundle, update, connection=None):
         '''
@@ -877,7 +872,7 @@ class BundleModel(object):
             for item_row in sorted(item_rows, key=item_sort_key):
                 if item_row.worksheet_uuid not in worksheet_values:
                     raise IntegrityError('Got item %s without worksheet' % (item_row,))
-                item_row = {key: item_row[key] for key in item_row.keys()}
+                item_row = dict(item_row)
                 item_row['value'] = self.decode_str(item_row['value'])
                 worksheet_values[item_row['worksheet_uuid']]['items'].append(item_row)
         return [Worksheet(value) for value in worksheet_values.itervalues()]
@@ -1637,6 +1632,12 @@ class BundleModel(object):
     # User-related methods follow!
     #############################################################################
 
+    def find_user(self, user_spec, check_active=True):
+        user = self.get_user(user_id=user_spec, username=user_spec, check_active=check_active)
+        if user is None:
+            raise NotFoundError("User matching %r not found" % user_spec)
+        return user
+
     def get_user(self, user_id=None, username=None, check_active=True):
         """
         Get user.
@@ -1870,13 +1871,18 @@ class BundleModel(object):
                 user_info = str_key_dict(row)
             if not user_info:
                 raise NotFoundError("User with ID %s not found" % user_id)
+            # Convert datetimes to strings to prevent JSON serialization errors
             if fetch_extra:
-                user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
+                if 'date_joined' in user_info and user_info['date_joined'] is not None:
+                    user_info['date_joined'] = user_info['date_joined'].strftime('%Y-%m-%d')
                 if 'last_login' in user_info and user_info['last_login'] is not None:
                     user_info['last_login'] = user_info['last_login'].strftime('%Y-%m-%d')
                 user_info['is_root_user'] = True if user_info['user_id'] == self.root_user_id else False
                 user_info['root_user_id'] = self.root_user_id
                 user_info['system_user_id'] = self.system_user_id
+            else:
+                del user_info['date_joined']
+                del user_info['last_login']
         return user_info
 
     def update_user_info(self, user_info):

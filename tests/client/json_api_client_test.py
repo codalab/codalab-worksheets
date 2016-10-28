@@ -106,15 +106,11 @@ class JsonApiClientTest(unittest.TestCase):
         })
 
         self.assertDictEqual(obj, {
-            'owner': {
-                'id': '345',
+            'owner': JsonApiRelationship('users', '345', {
                 'name': 'percy',
                 'affiliation': 'stanford'
-            },
-            'parent': {
-                'id': '567',
-                'type': 'bundles'
-            },
+            }),
+            'parent': JsonApiRelationship('bundles', '567'),
             'id': '123',
             'name': 'hello'
         })

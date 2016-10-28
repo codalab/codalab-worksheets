@@ -20,6 +20,7 @@ from codalab.model.orm_object import ORMObject
 def item_sort_key(item):
     return item['id'] if item['sort_key'] is None else item['sort_key']
 
+
 class Worksheet(ORMObject):
     COLUMNS = ('uuid', 'name', 'owner_id', 'title', 'frozen')
 
@@ -45,15 +46,37 @@ class Worksheet(ORMObject):
             row['uuid'] = spec_util.generate_uuid()
         super(Worksheet, self).update_in_memory(row)
         if items is not None:
-            self.items = [(item['bundle_uuid'], item['subworksheet_uuid'], item['value'], item['type']) for item in items]
+            self.items = [
+                {str(k): v for k, v in item.iteritems()}  # Ensure key is string
+                for item in items
+            ]
             self.last_item_id = max(item['id'] for item in items) if items else -1
         else:
             self.items = None
             self.last_item_id = None
 
-    def to_dict(self):
-        result = super(Worksheet, self).to_dict()
+    class Item(object):
+        @staticmethod
+        def as_tuple(item):
+            # Convert to the canonical tuple form that the model methods currently use
+            return (
+                item.get('bundle_uuid', None),
+                item.get('subworksheet_uuid', None),
+                item.get('value', ''),
+                item['type']
+            )
+
+    def legacy_formatted_items(self):
+        return [(item['bundle_uuid'], item['subworksheet_uuid'], item['value'], item['type']) for item in self.items]
+
+    def to_dict(self, strict=False, legacy=False):
+        result = super(Worksheet, self).to_dict(strict=strict, legacy=legacy)
         result['tags'] = self.tags
-        result['items'] = self.items
         result['last_item_id'] = self.last_item_id
+        if legacy:
+            # TODO: legacy format, replace with untampered self.items when BundleClient is gone
+            result['items'] = self.legacy_formatted_items() if self.items is not None else None
+        else:
+            result['items'] = self.items
+            result['frozen'] = self.frozen  # keep DateTime, not str
         return result

@@ -4,7 +4,7 @@ is synchronized with a set of JSON files in the CodaLab directory.  It contains
 two types of information:
 
 - Configuration (permanent):
-  * Aliases: name (e.g., "main") -> address (e.g., http://codalab.org:2800)
+  * Aliases: name (e.g., "main") -> address (e.g., http://codalab.org:2900)
 - State (transient):
   * address -> username, auth_info
   * session_name -> address, worksheet_uuid
@@ -15,7 +15,7 @@ classes based on the configuration in this file:
   codalab_home: returns the CodaLab home directory
   bundle_store: returns a BundleStore
   cli: returns a BundleCLI
-  client: returns a BundleClient
+  client: returns a JsonApiClient
   model: returns a BundleModel
   rpc_server: returns a BundleRPCServer
 
@@ -27,28 +27,24 @@ file that specifies enough information to construct some of these classes is
 still valid. For example, the config file for a remote client will not need to
 include any server configuration.
 '''
+import datetime
 import getpass
 import json
 import os
-import sys
-import time
-
-import datetime
 import psutil
+import sys
 import tempfile
 import textwrap
+import time
 from distutils.util import strtobool
 from urlparse import urlparse
 
-from codalab.client import is_local_address
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import (
     CODALAB_VERSION,
-    UsageError,
     PermissionError,
-    precondition,
+    UsageError,
 )
-from codalab.server.auth import User
 from codalab.lib.bundle_store import (
     MultiDiskBundleStore,
 )
@@ -59,6 +55,9 @@ from codalab.lib.print_util import pretty_print_json
 from codalab.lib.upload_manager import UploadManager
 from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
+
+
+MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
 
 
 def cached(fn):
@@ -157,6 +156,10 @@ class CodaLabManager(object):
 
         self.clients = {}  # map from address => client
 
+        # TODO(sckoo): remove when we feel confident everyone has upgraded
+        # Automatically upgrade old XMLRPC aliases
+        self.upgrade_aliases()
+
     def init_config(self, dry_run=False):
         '''
         Initialize configuration for a simple client.
@@ -174,16 +177,13 @@ class CodaLabManager(object):
         Your CodaLab configuration and state will be stored in: {0.codalab_home}
         """.format(self))
 
-        main_bundle_service = 'https://worksheets.codalab.org/bundleservice'
 
         config = {
             'cli': {
-                'default_address': main_bundle_service,
+                'default_address': MAIN_BUNDLE_SERVICE,
                 'verbose': 1,
             },
             'server': {
-                'host': 'localhost',
-                'port': 2800,
                 'rest_host': 'localhost',
                 'rest_port': 2900,
                 'class': 'MySQLModel',
@@ -194,8 +194,8 @@ class CodaLabManager(object):
                 'verbose': 1,
             },
             'aliases': {
-                'main': main_bundle_service,
-                'localhost': 'http://localhost:2800',
+                'main': MAIN_BUNDLE_SERVICE,
+                'localhost': 'http://localhost:2900',
             },
             'workers': {
                 'default_docker_image': 'codalab/ubuntu:1.9',
@@ -305,9 +305,9 @@ class CodaLabManager(object):
         sessions = self.state['sessions']
         name = self.session_name()
         if name not in sessions:
-            # New session: set the address and worksheet uuid to the default (local if not specified)
+            # New session: set the address and worksheet uuid to the default (main if not specified)
             cli_config = self.config.get('cli', {})
-            address = cli_config.get('default_address', 'local')
+            address = cli_config.get('default_address', MAIN_BUNDLE_SERVICE)
             worksheet_uuid = cli_config.get('default_worksheet_uuid', '')
             sessions[name] = {'address': address, 'worksheet_uuid': worksheet_uuid}
         return sessions[name]
@@ -358,26 +358,6 @@ class CodaLabManager(object):
     def download_manager(self):
         return DownloadManager(self.model(), self.worker_model(), self.bundle_store())
 
-    def auth_handler(self, mock=False):
-        '''
-        Returns a class to authenticate users on the server-side.  Called by the server.
-        '''
-        auth_config = self.config['server']['auth']
-        handler_class = auth_config['class']
-
-        if mock or handler_class == 'MockAuthHandler':
-            return self.mock_auth_handler()
-        if handler_class == 'RestOAuthHandler':
-            return self.rest_oauth_handler()
-        raise UsageError('Unexpected auth handler class: %s, expected RestOAuthHandler or MockAuthHandler' % (handler_class,))
-
-    @cached
-    def mock_auth_handler(self):
-        from codalab.server.auth import MockAuthHandler
-        # Just create one user corresponding to the root
-        users = [User(self.root_user_name(), self.root_user_id())]
-        return MockAuthHandler(users)
-
     @cached
     def rest_oauth_handler(self):
         from codalab.server.auth import RestOAuthHandler
@@ -409,7 +389,7 @@ class CodaLabManager(object):
     def system_user_id(self):
         return self.config['server'].get('system_user_id', '-1')
 
-    # TODO(sckoo): remove when REST migration complete
+    # TODO(sckoo): remove when we feel confident everyone has upgraded
     def derive_rest_address(self, address):
         """
         Given bundle service address, return corresponding REST address
@@ -417,20 +397,11 @@ class CodaLabManager(object):
         Temporary hack to ease transition to REST API.
         """
         o = urlparse(address)
-        if is_local_address(address):
-            # local => http://localhost:<rest_port>
-            precondition('server' in self.config and
-                         'rest_host' in self.config['server'] and
-                         'rest_port' in self.config['server'],
-                         'Working on local now requires running a local '
-                         'server, please configure "rest_host" and '
-                         '"rest_port" under "server" in your config.json.')
-            address = 'http://{rest_host}:{rest_port}'.format(**self.config['server'])
-        elif (o.hostname == 'localhost' and
-                      'server' in self.config and
-                      'port' in self.config['server'] and
-                      'rest_port' in self.config['server'] and
-                      o.port == self.config['server']['port']):
+        if (o.hostname == 'localhost' and
+                'server' in self.config and
+                'port' in self.config['server'] and
+                'rest_port' in self.config['server'] and
+                o.port == self.config['server']['port']):
             # http://localhost:<port> => http://localhost:<rest_port>
             # Note that this does not affect the address of the NLP
             # CodaLab instance behind an SSH tunnel
@@ -444,68 +415,37 @@ class CodaLabManager(object):
             address = address.replace('/bundleservice', '')
         return address
 
-    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
-    def current_client(self, use_rest=False):
-        return self.client(self.session()['address'], use_rest=use_rest)
+    # TODO(sckoo): remove when we feel confident everyone has upgraded
+    def upgrade_aliases(self):
+        """
+        Upgrade old aliases to connect to new REST API.
+        This operation should be idempotent.
+        """
+        for alias, address in self.config['aliases'].items():
+            rest_address = self.derive_rest_address(address)
+            if address != rest_address:
+                self.config['aliases'][alias] = rest_address
+                print >>sys.stderr, "Upgraded your alias from old address %s => %s" % (address, rest_address)
+        self.save_config()
 
-    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
-    def client(self, address, is_cli=True, use_rest=False):
-        '''
-        Return a client given the address.  Note that this can either be called
-        by the CLI (is_cli=True) or the server (is_cli=False).
-        If called by the CLI, we don't need to authenticate.
-        Cache the Client if necessary.
-        '''
-        # FIXME(sckoo): temporary hack
-        # When BundleCLI is no longer dependent on RemoteBundleClient
-        # or LocalBundleClient, simplify everything to only using
-        # JsonApiClient, and remove all use_rest kwargs.
-        # Users should also then update their aliases to point at the
-        # correct addresses of the REST servers.
-        # Use non-rest address as key in credential cache to prevent duplicates
-        auth_cache_key = address
-        if use_rest:
-            address = self.derive_rest_address(address)
+    def current_client(self):
+        return self.client(self.session()['address'])
 
+    def client(self, address):
+        """
+        Return a client given the address.
+        """
         # Return cached client
-        # Additionally requires that the client in the cache is the correct class.
-        # This is necessary to prevent key collisions for the case where the
-        # REST client and the old BundleClient both have the same address.
-        # TODO(sckoo): Remove second condition when REST API complete
-        if address in self.clients and \
-                (use_rest == isinstance(self.clients[address], JsonApiClient)):
+        if address in self.clients:
             return self.clients[address]
 
-        # Create new client
-        if use_rest:
-            # Create RestOAuthHandler that authenticates directly with
-            # OAuth endpoints on the REST server
-            from codalab.server.auth import RestOAuthHandler
-            auth_handler = RestOAuthHandler(address, None)
+        # Create RestOAuthHandler that authenticates directly with
+        # OAuth endpoints on the REST server
+        from codalab.server.auth import RestOAuthHandler
+        auth_handler = RestOAuthHandler(address, None)
 
-            # Create JsonApiClient with a callback to get access tokens
-            client = JsonApiClient(
-                address, lambda: self._authenticate(auth_cache_key, auth_handler), self.check_version)
-        elif is_local_address(address):
-            # if local force mockauth or if local server use correct auth
-            bundle_store = self.bundle_store()
-            model = self.model()
-            worker_model = self.worker_model()
-            upload_manager = self.upload_manager()
-            download_manager = self.download_manager()
-            auth_handler = self.auth_handler(mock=is_cli)
-
-            from codalab.client.local_bundle_client import LocalBundleClient
-            client = LocalBundleClient(address, bundle_store, model, worker_model, upload_manager, download_manager, auth_handler, self.cli_verbose)
-            if is_cli:
-                # Set current user
-                access_token = self._authenticate(auth_cache_key, client.auth_handler)
-                auth_handler.validate_token(access_token)
-        else:
-            from codalab.client.remote_bundle_client import RemoteBundleClient
-
-            client = RemoteBundleClient(address, lambda a_client: self._authenticate(auth_cache_key, a_client), self.check_version, self.cli_verbose)
-            self._authenticate(auth_cache_key, client)
+        # Create JsonApiClient with a callback to get access tokens
+        client = JsonApiClient(address, lambda: self._authenticate(address, auth_handler), self.check_version)
 
         # Cache and return client
         self.clients[address] = client
@@ -560,28 +500,22 @@ class CodaLabManager(object):
         # If we get here, a valid token is not already available.
         auth = self.state['auth'][cache_key] = {}
 
-        # For a local client with mock credentials, use the default username.
-        if is_local_address(cache_key):
-            username = self.root_user_name()
-            password = ''
-        else:
-            username = os.environ.get('CODALAB_USERNAME')
-            password = os.environ.get('CODALAB_PASSWORD')
-            if username is None or password is None:
-                print 'Requesting access at %s' % cache_key
-            if username is None:
-                sys.stdout.write('Username: ')  # Use write to avoid extra space
-                username = sys.stdin.readline().rstrip()
-            if password is None:
-                password = getpass.getpass()
+        username = os.environ.get('CODALAB_USERNAME')
+        password = os.environ.get('CODALAB_PASSWORD')
+        if username is None or password is None:
+            print 'Requesting access at %s' % cache_key
+        if username is None:
+            sys.stdout.write('Username: ')  # Use write to avoid extra space
+            username = sys.stdin.readline().rstrip()
+        if password is None:
+            password = getpass.getpass()
 
         token_info = auth_handler.generate_token('credentials', username, password)
         if token_info is None:
             raise PermissionError("Invalid username or password.")
         return _cache_token(token_info, username)
 
-    # TODO(sckoo): clean up backward compatibility hacks when REST API complete
-    def get_current_worksheet_uuid(self, use_rest=False):
+    def get_current_worksheet_uuid(self):
         '''
         Return a worksheet_uuid for the current worksheet, or None if there is none.
 
@@ -589,12 +523,11 @@ class CodaLabManager(object):
         across multiple invocations in the same shell.
         '''
         session = self.session()
-        client = self.client(session['address'], use_rest=use_rest)
-        bundle_client = self.client(session['address'])
+        client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
         if not worksheet_uuid:
-            worksheet_uuid = bundle_client.get_worksheet_uuid(None, '')
-        return (client, worksheet_uuid)
+            worksheet_uuid = client.fetch_one('worksheets', params={'specs': '/'})['uuid']
+        return client, worksheet_uuid
 
     def set_current_worksheet_uuid(self, address, worksheet_uuid):
         '''

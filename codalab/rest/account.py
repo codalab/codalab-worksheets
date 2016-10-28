@@ -7,7 +7,6 @@ from bottle import request, response, template, local, redirect, default_app, ge
 from codalab.lib import crypt_util, spec_util
 from codalab.lib.server_util import redirect_with_query
 from codalab.lib.spec_util import NAME_REGEX
-from codalab.objects.user import User
 from codalab.common import UsageError
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.server.cookie import LoginCookie
@@ -147,10 +146,10 @@ def resend_key():
 @get('/account/css', skip=UserVerifiedPlugin)
 def css():
     response.content_type = 'text/css'
-    if request.user is None:
-        return template('user_not_authenticated_css')
-    else:
+    if request.user.is_authenticated:
         return template('user_authenticated_css', username=request.user.user_name)
+    else:
+        return template('user_not_authenticated_css')
 
 
 @get('/account/reset', apply=AuthenticatedPlugin())

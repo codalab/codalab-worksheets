@@ -9,6 +9,8 @@ from bottle import (
   response
 )
 
+from codalab.server.authenticated_plugin import user_is_authenticated
+
 
 class LoginCookie(object):
     """
@@ -63,7 +65,7 @@ class CookieAuthenticationPlugin(object):
 
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
-            if not hasattr(request, 'user') or request.user is None:
+            if not user_is_authenticated():
                 cookie = LoginCookie.get()
                 if cookie:
                     request.user = local.model.get_user(user_id=cookie.user_id)
