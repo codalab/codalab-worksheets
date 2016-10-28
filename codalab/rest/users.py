@@ -38,7 +38,7 @@ class AuthenticatedUserSchema(UserSchema):
 
 # Email must be updated through the /account/changeemail interface
 USER_READ_ONLY_FIELDS = ('email', 'time_quota', 'time_used', 'disk_quota',
-                         'disk_used', 'date_joined', 'last_login')
+                         'disk_used', 'date_joined', 'last_login', 'send_notifications')
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)

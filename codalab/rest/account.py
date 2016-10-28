@@ -71,6 +71,7 @@ def do_signup():
     last_name = request.forms.get('last_name')
     password = request.forms.get('password')
     affiliation = request.forms.get('affiliation')
+    send_notifications = request.forms.get('send_notifications') == 'on'
 
     errors = []
     if request.forms.get('confirm_password') != password:
@@ -112,7 +113,7 @@ def do_signup():
 
     # Create unverified user
     _, verification_key = local.model.add_user(
-        username, email, first_name, last_name, password, affiliation
+        username, email, first_name, last_name, password, affiliation, send_notifications
     )
 
     # Send key
