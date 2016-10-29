@@ -5,9 +5,10 @@ Handles create new user accounts and authenticating users.
 from bottle import request, response, template, local, redirect, default_app, get, post
 
 from codalab.lib import crypt_util, spec_util
-from codalab.lib.server_util import redirect_with_query
+from codalab.lib.server_util import redirect_with_query, query_get_bool
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.common import UsageError
+from codalab.objects.user import User
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.server.cookie import LoginCookie
 
@@ -59,7 +60,7 @@ def do_login():
 
 @post('/account/signup')
 def do_signup():
-    if request.user:
+    if request.user.is_authenticated:
         return redirect(default_app().get_url('success', message="You are already logged into your account."))
 
     success_uri = request.forms.get('success_uri')
@@ -70,7 +71,7 @@ def do_signup():
     last_name = request.forms.get('last_name')
     password = request.forms.get('password')
     affiliation = request.forms.get('affiliation')
-    send_notifications = request.forms.get('send_notifications') == 'on'
+    send_notifications = request.forms.get('send_notifications') == '1'
 
     errors = []
     if request.forms.get('confirm_password') != password:
@@ -83,7 +84,7 @@ def do_signup():
         User.validate_password(password)
     except UsageError as e:
         errors.append(e.message)
-
+        
     # Only do a basic validation of email -- the only guaranteed way to check
     # whether an email address is valid is by sending an actual email.
     if not spec_util.BASIC_EMAIL_REGEX.match(email):

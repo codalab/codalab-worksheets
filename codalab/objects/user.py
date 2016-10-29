@@ -17,7 +17,7 @@ from codalab.model.orm_object import ORMObject
 class User(ORMObject):
     COLUMNS = ('user_id', 'user_name', 'email', 'last_login', 'is_active', 'first_name', 'last_name', 'date_joined',
                'is_verified', 'is_superuser', 'password', 'time_quota', 'time_used', 'disk_quota', 'disk_used',
-               'affiliation', 'url')
+               'affiliation', 'url', 'send_notifications')
 
     PASSWORD_MIN_LENGTH = 8
 
@@ -121,4 +121,5 @@ PUBLIC_USER = User({
     "disk_used": 0,
     "affiliation": None,
     "url": None,
+    "send_notifications": False
 })
