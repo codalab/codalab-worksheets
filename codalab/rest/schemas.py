@@ -174,6 +174,7 @@ class AuthenticatedUserSchema(UserSchema):
     email = fields.String()
     time_quota = fields.Integer()
     time_used = fields.Integer()
+    send_notifications = fields.Boolean()
     disk_quota = fields.Integer()
     disk_used = fields.Integer()
     last_login = fields.LocalDateTime("%c")
