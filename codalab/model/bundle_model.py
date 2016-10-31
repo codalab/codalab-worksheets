@@ -1699,7 +1699,7 @@ class BundleModel(object):
         return row is not None and row.is_active
 
     def add_user(self, username, email, first_name, last_name, password,
-                 affiliation, send_notifications, user_id=None, is_verified=False):
+                 affiliation, send_all_notifications, send_some_notifications, user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
         :param username:
@@ -1730,7 +1730,8 @@ class BundleModel(object):
                 "time_used": 0,
                 "disk_quota": self.default_user_info['disk_quota'],
                 "disk_used": 0,
-                "send_notifications": send_notifications,
+                "send_all_notifications": send_all_notifications,
+                "send_some_notifications": send_some_notifications,
                 "affiliation": affiliation,
                 "url": None,
             }))

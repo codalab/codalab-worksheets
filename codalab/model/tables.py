@@ -212,7 +212,8 @@ user = Table(
   Column('user_id', String(63), nullable=False),
   Column('user_name', String(63), nullable=False, unique=True),
   Column('email', String(254), nullable=False, unique=True),  # Length of 254 to be compliant with RFC3696/5321
-  Column('send_notifications', Boolean, nullable=False, default=True),  # email notifcations for user
+  Column('send_all_notifications', Boolean, nullable=False, default=False),  # email all notifications for user
+  Column('send_some_notifications', Boolean, nullable=False, default=True),  # email some notifications for user
   Column('last_login', DateTime),  # Null if user has never logged in
   Column('is_active', Boolean, nullable=False, default=True),  # Set to False instead of deleting users to maintain foreign key integrity
   Column('first_name', String(30, convert_unicode=True)),
