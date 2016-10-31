@@ -121,6 +121,6 @@ PUBLIC_USER = User({
     "disk_used": 0,
     "affiliation": None,
     "url": None,
-    "send_all_notifications": False
+    "send_all_notifications": False,
     "send_some_notifications": False
 })
