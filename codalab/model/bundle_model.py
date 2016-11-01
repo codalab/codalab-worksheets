@@ -1699,7 +1699,7 @@ class BundleModel(object):
         return row is not None and row.is_active
 
     def add_user(self, username, email, first_name, last_name, password,
-                 affiliation, send_all_notifications, send_some_notifications, user_id=None, is_verified=False):
+                 affiliation, send_all_notifications=False, send_some_notifications=True, user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
         :param username:
