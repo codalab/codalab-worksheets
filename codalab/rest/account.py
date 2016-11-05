@@ -71,8 +71,8 @@ def do_signup():
     last_name = request.forms.get('last_name')
     password = request.forms.get('password')
     affiliation = request.forms.get('affiliation')
-    send_all_notifications = request.forms.get('send_all_notifications') == '1'
-    send_some_notifications = request.forms.get('send_some_notifications') == '1'
+    send_all_notifications = False
+    send_some_notifications = True
 
     errors = []
     if request.forms.get('confirm_password') != password:
