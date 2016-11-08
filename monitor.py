@@ -214,7 +214,7 @@ while True:
         # Get statistics on bundles
         if ping_time():
             # Simple things
-            run_command(['cl', 'work'])
+            run_command(['cl', 'work', 'localhost::'])
             run_command(['cl', 'search', '.count'])
         if run_time():
             # More intense
