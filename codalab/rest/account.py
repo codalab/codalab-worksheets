@@ -8,6 +8,7 @@ from codalab.lib import crypt_util, spec_util
 from codalab.lib.server_util import redirect_with_query
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.common import UsageError
+from codalab.objects.user import User
 from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
 from codalab.server.cookie import LoginCookie
 
@@ -59,9 +60,6 @@ def do_login():
 
 @post('/account/signup')
 def do_signup():
-    if request.user:
-        return redirect(default_app().get_url('success', message="You are already logged into your account."))
-
     success_uri = request.forms.get('success_uri')
     error_uri = request.forms.get('error_uri')
     username = request.forms.get('username')
@@ -72,6 +70,10 @@ def do_signup():
     affiliation = request.forms.get('affiliation')
 
     errors = []
+    if request.user.is_authenticated:
+        errors.append("You are already logged in as %s, please log out before "
+                      "creating a new account." % request.user.user_name)
+
     if request.forms.get('confirm_password') != password:
         errors.append("Passwords do not match.")
 
