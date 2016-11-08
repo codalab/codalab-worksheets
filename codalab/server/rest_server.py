@@ -149,11 +149,18 @@ class ErrorAdapter(object):
 
         return wrapper
 
+    @staticmethod
+    def _censor_passwords(pairs):
+        # Return iterator over pairs censoring any values with 'password' in the key
+        return ((k, '<censored>') if 'password' in k else (k, v) for k, v in pairs)
+
     def report_exception(self, exc):
         query = formatting.key_value_list(request.query.allitems())
-        forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
+        forms = formatting.key_value_list(
+            self._censor_passwords(request.forms.allitems()) if request.json is None else [])
         body = formatting.verbose_pretty_json(request.json)
-        local_vars = formatting.key_value_list(server_util.exc_frame_locals().items())
+        local_vars = formatting.key_value_list(
+            self._censor_passwords(server_util.exc_frame_locals().items()))
         aux_info = textwrap.dedent("""\
                     Query params:
                     {0}
