@@ -387,6 +387,10 @@ def test(ctx):
     check_num_lines(2 + 3, run_command([cl, 'cat', uuid]))  # 2 header lines, 3 items at bundle target root
     check_num_lines(2 + 2, run_command([cl, 'cat', uuid + '/dir1']))  # 2 header lines, Only two files left after excluding and extracting.
 
+    # Upload directory with only one file, should not simplify directory structure
+    uuid = run_command([cl, 'upload', test_path('dir2')])
+    check_num_lines(2 + 1, run_command([cl, 'cat', uuid]))  # Directory listing with 2 headers lines and one file
+
 
 @TestModule.register('upload2')
 def test(ctx):
@@ -699,15 +703,16 @@ def test(ctx):
         while 'done' not in run_command([cl, 'cat', uuid]):
             time.sleep(0.5)
 
-        # Info has only the first 10 lines.
+        # Info has only the first 10 lines
         info_output = run_command([cl, 'info', uuid, '--verbose'])
         print(info_output)
         check_contains('passwd', info_output)
-        check_contains('This is a simple text file for CodaLab.', info_output)
         assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
 
         # Cat has everything.
-        check_contains('5\n6\n7', run_command([cl, 'cat', uuid + '/stdout']))
+        cat_output = run_command([cl, 'cat', uuid + '/stdout'])
+        check_contains('5\n6\n7', cat_output)
+        check_contains('This is a simple text file for CodaLab.', cat_output)
 
         # Read a non-existant file.
         run_command([cl, 'cat', uuid + '/unknown'], 1)
