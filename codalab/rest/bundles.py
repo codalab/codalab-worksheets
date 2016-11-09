@@ -369,6 +369,9 @@ def _update_bundle_contents_blob(uuid):
     Query parameters that are always available:
         unpack - (optional) 1 if the uploaded file should be unpacked if it is
                  an archive, or 0 otherwise, default is 1
+        simplify - (optional) 1 if the uploaded file should be 'simplified' if
+                   it is an archive, or 0 otherwise, default is 1
+                   (See UploadManager for full explanation of 'simplification')
         finalize - (optional) 1 if this should be considered the final version
                    of the bundle contents and thus mark the bundle as 'ready'
                    when upload is complete and 'failed' if upload fails, or 0 if
@@ -395,7 +398,7 @@ def _update_bundle_contents_blob(uuid):
             exclude_patterns=None, remove_sources=False,
             git=query_get_bool('git', default=False),
             unpack=query_get_bool('unpack', default=True),
-            simplify_archives=True)
+            simplify_archives=query_get_bool('simplify', default=True))
 
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 
