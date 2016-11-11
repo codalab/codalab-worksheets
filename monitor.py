@@ -179,7 +179,7 @@ def backup_db(db, user, password):
         print >>f, '[client]'
         print >>f, 'user="%s"' % user
         print >>f, 'password="%s"' % password
-    run_command(['bash', '-c', 'mysqldump --single-transaction --quick --defaults-file=%s %s | gzip > %s/%s-%s.mysqldump.gz' % \
+    run_command(['bash', '-c', 'mysqldump --defaults-file=%s --single-transaction --quick %s | gzip > %s/%s-%s.mysqldump.gz' % \
         (mysql_conf_path, db, args.backup_path, db, date)],
         600, 600)  # Backup might take a while.
     os.unlink(mysql_conf_path)
