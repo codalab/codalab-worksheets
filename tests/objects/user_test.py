@@ -21,8 +21,7 @@ user = User({
     "disk_used": 0,
     "affiliation": None,
     "url": None,
-    "send_all_notifications": False,
-    "send_some_notifications": False,
+    "send_notifications_flag": 3
 })
 
 

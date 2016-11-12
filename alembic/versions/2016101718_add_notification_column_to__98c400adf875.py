@@ -15,10 +15,8 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.add_column('user', sa.Column('send_all_notifications', sa.Boolean))
-    op.add_column('user', sa.Column('send_some_notifications', sa.Boolean))
+    op.add_column('user', sa.Column('send_notifications_flag', sa.Integer, default=0))
 
 
 def downgrade():
-    op.drop_column('user', 'send_all_notifications')
-    op.drop_column('user', 'send_some_notifications')
+    op.drop_column('user', 'send_notifications_flag')
