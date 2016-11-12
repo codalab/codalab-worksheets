@@ -3,6 +3,7 @@ import datetime
 
 from codalab.objects.user import User
 
+SEND_SOME_NOTIFICATIONS = 2
 user = User({
     "user_id": 1,
     "user_name": "test",
@@ -21,7 +22,7 @@ user = User({
     "disk_used": 0,
     "affiliation": None,
     "url": None,
-    "send_notifications_flag": 3
+    "send_notifications_flag": SEND_SOME_NOTIFICATIONS
 })
 
 

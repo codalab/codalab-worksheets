@@ -111,8 +111,10 @@ def do_signup():
         affiliation = None
 
     # Create unverified user
+    SEND_SOME_NOTIFICATIONS = 2
     _, verification_key = local.model.add_user(
-        username, email, first_name, last_name, password, affiliation, 2
+        username, email, first_name, last_name, 
+        password, affiliation, SEND_SOME_NOTIFICATIONS
     )
 
     # Send key

@@ -33,7 +33,7 @@ def get_name_email_list(get_all):
         # Get set of emails in bundles db
         bundle_emails = bundle_db.execute(
             select([cl_user.c.user_name, cl_user.c.email])
-            .where(cl_user.c.send_notifications_flag%2 if get_all else\
+            .where(cl_user.c.send_notifications_flag % 2 if get_all else\
                    cl_user.c.send_notifications_flag != 0)).fetchall()
         return [(name, email) for name, email in bundle_emails if email != '']
 

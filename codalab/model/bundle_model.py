@@ -1698,8 +1698,9 @@ class BundleModel(object):
 
         return row is not None and row.is_active
 
+    SEND_SOME_NOTIFICATIONS = 2
     def add_user(self, username, email, first_name, last_name, password,
-                 affiliation, send_notifications_flag=2,
+                 affiliation, send_notifications_flag=SEND_SOME_NOTIFICATIONS,
                  user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
