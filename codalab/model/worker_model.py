@@ -58,10 +58,6 @@ class WorkerModel(object):
                         .where(and_(cl_worker.c.user_id == user_id,
                                     cl_worker.c.worker_id == worker_id))
                         .values(worker_row))
-                conn.execute(
-                    cl_worker_dependency.delete()
-                        .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                    cl_worker_dependency.c.worker_id == worker_id)))   
             else:
                 socket_id = self.allocate_socket(user_id, worker_id, conn)
                 worker_row.update({
@@ -70,12 +66,19 @@ class WorkerModel(object):
                     'socket_id': socket_id,
                 })
                 conn.execute(cl_worker.insert().values(worker_row))
+
+            # Update dependencies
             dependency_rows = [{
                 'user_id': user_id,
                 'worker_id': worker_id,
                 'dependency_uuid': uuid,
                 'dependency_path': path,
             } for uuid, path in dependencies]
+            if existing_row:
+                conn.execute(
+                    cl_worker_dependency.delete()
+                        .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                    cl_worker_dependency.c.worker_id == worker_id)))
             if dependency_rows:
                 conn.execute(cl_worker_dependency.insert(), dependency_rows)
 
