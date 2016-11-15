@@ -364,6 +364,7 @@ worker_run = Table(
 worker_dependency = Table(
   'worker_dependency',
   db_metadata,
+  Column('id', Integer, primary_key=True, nullable=False),
 
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('worker_id', String(127), nullable=False),
@@ -373,4 +374,5 @@ worker_dependency = Table(
   # are deleted.
   Column('dependency_uuid', String(63), nullable=False),
   Column('dependency_path', Text, nullable=False),
+  sqlite_autoincrement=True,
 )
