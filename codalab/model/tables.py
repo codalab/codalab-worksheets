@@ -364,8 +364,6 @@ worker_run = Table(
 worker_dependency = Table(
   'worker_dependency',
   db_metadata,
-  Column('id', Integer, primary_key=True, nullable=False),
-
   Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
   Column('worker_id', String(127), nullable=False),
   ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
