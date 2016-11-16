@@ -25,7 +25,7 @@ def upgrade():
     results = conn.execute("SELECT * FROM worker_dependency").fetchall()
     dependencies = {}
     for row in results:
-        dependencies[(row.user_id, row.worker_id)]['dependencies'].append((row.dependency_uuid, row.dependency_path))
+        dependencies.setdefault((row.user_id, row.worker_id), []).append((row.dependency_uuid, row.dependency_path))
     op.execute("DELETE FROM `worker_dependency`;")
     op.execute(worker_dependency.insert().values([{
         'user_id': user_id,
