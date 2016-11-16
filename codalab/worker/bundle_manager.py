@@ -1,6 +1,7 @@
 import datetime
 import logging
 import os
+import random
 import re
 import sys
 import threading
@@ -313,12 +314,12 @@ class BundleManager(object):
                 return []
 
         # Sort according to the number of dependencies available, breaking
-        # ties by the number of free slots.
+        # ties by the number of free slots and then by a random key.
         needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path),
                               bundle.dependencies))
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
-            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']))
+            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids'], random.random()))
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list
