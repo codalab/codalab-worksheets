@@ -319,7 +319,7 @@ class BundleManager(object):
                               bundle.dependencies))
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
-            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids'], random.random()))
+            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list
