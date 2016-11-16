@@ -12,18 +12,40 @@ down_revision = '309cf9c796b9'
 
 from alembic import op
 import sqlalchemy as sa
-from codalab.model.worker_model import WorkerModel
-from codalab.model.tables import worker_dependency
+from sqlalchemy.dialects.mysql import MEDIUMBLOB
+from sqlalchemy.sql import table, column
+from sqlalchemy import String
+import json
+
+
+def serialize_dependencies(dependencies):
+    return json.dumps(dependencies, separators=(',', ':'))
+
+# ad-hoc table for insert statement
+worker_dependency = table(
+    'worker_dependency',
+    column('user_id', String),
+    column('worker_id', String),
+    column('dependencies', MEDIUMBLOB),
+)
 
 
 def upgrade():
     # Add active flag to worker
     op.add_column('worker', sa.Column('is_active', sa.Boolean(), nullable=False))
 
-    # Convert table to new format
-    op.add_column('worker_dependency', sa.Column('dependencies', sa.LargeBinary(), nullable=False))
+    # Use worker_dependency as a key-value store, with serialized dependencies in the MEDIUMBLOB
+    op.add_column('worker_dependency', sa.Column('dependencies', MEDIUMBLOB(), nullable=False))
+
+    # Save original rows
     conn = op.get_bind()
     results = conn.execute("SELECT * FROM worker_dependency").fetchall()
+
+    # Drop old columns
+    op.drop_column('worker_dependency', 'dependency_uuid')
+    op.drop_column('worker_dependency', 'dependency_path')
+
+    # Migrate data to new format
     if results:
         dependencies = {}
         for row in results:
@@ -32,12 +54,8 @@ def upgrade():
         op.execute(worker_dependency.insert().values([{
             'user_id': user_id,
             'worker_id': worker_id,
-            'dependencies': WorkerModel._serialize_dependencies(deps),
+            'dependencies': serialize_dependencies(deps),
         } for (user_id, worker_id), deps in dependencies.iteritems()]))
-
-    # Use worker_dependency as a key-value store, with serialized dependencies in the MEDIUMBLOB
-    op.drop_column('worker_dependency', 'dependency_uuid')
-    op.drop_column('worker_dependency', 'dependency_path')
 
     # Each user/worker will only have one row now
     op.execute("ALTER TABLE `worker_dependency` ADD PRIMARY KEY (`user_id`, `worker_id`);")
