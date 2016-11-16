@@ -9,7 +9,6 @@ from sqlalchemy import (
   Table,
   UniqueConstraint,
 )
-from sqlalchemy.dialects.mysql import MEDIUMBLOB
 from sqlalchemy.types import (
   BigInteger,
   Boolean,
@@ -371,6 +370,6 @@ worker_dependency = Table(
   Column('worker_id', String(127), primary_key=True, nullable=False),
   ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
 
-  Column('dependencies', MEDIUMBLOB, nullable=False),
+  Column('dependencies', LargeBinary, nullable=False),
   sqlite_autoincrement=True,
 )
