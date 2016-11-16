@@ -46,7 +46,7 @@ def checkout(worker_id):
     Checks out from the bundle service, cleaning up any state related to the
     worker.
     """
-    local.worker_model.worker_cleanup(request.user.user_id, worker_id)
+    local.worker_model.deactivate_worker(request.user.user_id, worker_id)
 
 
 def check_reply_permission(worker_id, socket_id):

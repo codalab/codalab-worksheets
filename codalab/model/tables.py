@@ -11,13 +11,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.types import (
   BigInteger,
-  Integer,
-  String,
-  Text,
   Boolean,
   DateTime,
-  Float,
   Enum,
+  Float,
+  Integer,
+  LargeBinary,
+  String,
+  Text,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
 
@@ -332,6 +333,7 @@ worker = Table(
   Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.
   Column('checkin_time', DateTime, nullable=False),  # When the worker last checked in with the bundle service.
   Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.
+  Column('is_active', Boolean, nullable=False),  # True if worker is considered active and waiting for jobs.
 )
 
 # Store information about all sockets currently allocated to each worker.
@@ -364,13 +366,10 @@ worker_run = Table(
 worker_dependency = Table(
   'worker_dependency',
   db_metadata,
-  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
-  Column('worker_id', String(127), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
+  Column('worker_id', String(127), primary_key=True, nullable=False),
   ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
 
-  # No foreign key here, since we don't have any logic to clean-up bundles that
-  # are deleted.
-  Column('dependency_uuid', String(63), nullable=False),
-  Column('dependency_path', Text, nullable=False),
+  Column('dependencies', LargeBinary, nullable=False),
   sqlite_autoincrement=True,
 )

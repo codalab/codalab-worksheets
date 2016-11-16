@@ -25,7 +25,7 @@ class DefaultBundleManager(BundleManager):
         workers = WorkerInfoAccessor(self._worker_model.get_workers())
 
         # Handle some exceptional cases.
-        self._cleanup_dead_workers(workers)
+        self._deactivate_dead_workers(workers)
         self._restage_stuck_starting_bundles(workers)
         self._fail_stuck_running_bundles(workers)
         self._fail_on_too_many_resources(workers)
