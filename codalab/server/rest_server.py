@@ -45,7 +45,7 @@ from codalab.server.oauth2_provider import oauth2_provider
 # Don't log requests to routes matching these regexes.
 ROUTES_NOT_LOGGED_REGEXES = [
     re.compile(r'/oauth2/.*'),
-    re.compile(r'/worker/.*'),
+    re.compile(r'/workers/.*'),
 ]
 
 
@@ -92,7 +92,7 @@ class CheckJsonPlugin(object):
 class LoggingPlugin(object):
     """Logs successful requests to the events log."""
     api = 2
-    
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             if not self._should_log(route.rule):
@@ -101,7 +101,7 @@ class LoggingPlugin(object):
             start_time = time.time()
 
             res = callback(*args, **kwargs)
-            
+
             command = route.method + ' ' + route.rule
             query_dict = (
                 dict(map(lambda k: (k, request.query[k]), request.query)))
