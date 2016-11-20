@@ -45,7 +45,7 @@ from codalab.server.oauth2_provider import oauth2_provider
 # Don't log requests to routes matching these regexes.
 ROUTES_NOT_LOGGED_REGEXES = [
     re.compile(r'/oauth2/.*'),
-    re.compile(r'/workers/.*'),
+    # re.compile(r'/workers/.*'),
 ]
 
 
@@ -102,7 +102,8 @@ class LoggingPlugin(object):
 
             res = callback(*args, **kwargs)
 
-            command = route.method + ' ' + route.rule
+            # Use explicitly defined route name or 'METHOD /rule'
+            command = route.name or (route.method + ' ' + route.rule)
             query_dict = (
                 dict(map(lambda k: (k, request.query[k]), request.query)))
             args = [request.path, query_dict]
