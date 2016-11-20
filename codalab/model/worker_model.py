@@ -4,6 +4,7 @@ import json
 import os
 import socket
 import time
+import sys
 
 from sqlalchemy import and_, select
 
@@ -38,6 +39,7 @@ class WorkerModel(object):
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
         """
+        tic = time.time()
         with self._engine.begin() as conn:
             worker_row = {
                 'tag': tag,
@@ -90,6 +92,9 @@ class WorkerModel(object):
                     cl_worker_dependency.insert()
                         .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
                 )
+
+        toc = time.time()
+        print >>sys.stderr, 'DEBUG checkin elapsed %f' % (toc - tic)
 
         return socket_id
 
@@ -158,6 +163,7 @@ class WorkerModel(object):
         Returns information about all the workers in the database. The return
         value is a list of dicts with the structure shown in the code below.
         """
+        tic = time.time()
         with self._engine.begin() as conn:
             worker_rows = conn.execute(
                 select([cl_worker, cl_worker_dependency.c.dependencies])
@@ -180,6 +186,10 @@ class WorkerModel(object):
         } for row in worker_rows}
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
+
+        toc = time.time()
+        print >>sys.stderr, 'DEBUG get_workers elapsed %f' % (toc - tic)
+
         return worker_dict.values()
 
     def get_bundle_worker(self, uuid):
