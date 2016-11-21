@@ -65,8 +65,8 @@ class TorqueBundleManager(BundleManager):
         workers = WorkerInfoAccessor(self._worker_model.get_workers())
 
         # Handle some exceptional cases.
-        self._deactivate_dead_workers(workers,
-                                      lambda worker: self._clear_torque_logs(worker['worker_id']))
+        self._cleanup_dead_workers(workers,
+                                   lambda worker: self._clear_torque_logs(worker['worker_id']))
         self._restage_stuck_starting_bundles(workers)
         self._fail_stuck_running_bundles(workers)
         self._fail_on_bad_torque_start()

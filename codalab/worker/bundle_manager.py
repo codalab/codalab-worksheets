@@ -223,15 +223,15 @@ class BundleManager(object):
             with self._make_uuids_lock:
                 self._make_uuids.remove(bundle.uuid)
 
-    def _deactivate_dead_workers(self, workers, callback=None):
+    def _cleanup_dead_workers(self, workers, callback=None):
         """
-        Decommission workers that we haven't heard from for more than 20 minutes.
+        Clean-up workers that we haven't heard from for more than 20 minutes.
         Such workers probably died without checking out properly.
         """
         for worker in workers.workers():
             if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(minutes=20):
                 logger.info('Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id'])
-                self._worker_model.deactivate_worker(worker['user_id'], worker['worker_id'])
+                self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker)
                 if callback is not None:
                     callback(worker)

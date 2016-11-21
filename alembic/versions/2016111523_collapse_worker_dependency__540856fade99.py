@@ -31,9 +31,6 @@ worker_dependency = table(
 
 
 def upgrade():
-    # Add active flag to worker
-    op.add_column('worker', sa.Column('is_active', sa.Boolean(), nullable=False))
-
     # Use worker_dependency as a key-value store, with serialized dependencies in the MEDIUMBLOB
     op.add_column('worker_dependency', sa.Column('dependencies', MEDIUMBLOB(), nullable=False))
 
@@ -78,4 +75,3 @@ def downgrade():
 
     # Remove new columns
     op.drop_column('worker_dependency', 'dependencies')
-    op.drop_column('worker', 'is_active')

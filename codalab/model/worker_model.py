@@ -45,36 +45,27 @@ class WorkerModel(object):
                 'cpus': cpus,
                 'memory_bytes': memory_bytes,
                 'checkin_time': datetime.datetime.now(),
-                'is_active': True,
             }
             existing_row = conn.execute(
                 cl_worker.select()
                     .where(and_(cl_worker.c.user_id == user_id,
                                 cl_worker.c.worker_id == worker_id))
             ).fetchone()
-
-            # If worker doesn't exist or is inactive should allocate socket
-            if existing_row and existing_row.is_active:
-                socket_id = existing_row.socket_id
-            else:
-                socket_id = self.allocate_socket(user_id, worker_id, conn)
-                worker_row['socket_id'] = socket_id
-
-            # Update or insert worker entry
             if existing_row:
+                socket_id = existing_row.socket_id
                 conn.execute(
                     cl_worker.update()
                         .where(and_(cl_worker.c.user_id == user_id,
                                     cl_worker.c.worker_id == worker_id))
                         .values(worker_row))
             else:
+                socket_id = self.allocate_socket(user_id, worker_id, conn)
                 worker_row.update({
                     'user_id': user_id,
                     'worker_id': worker_id,
+                    'socket_id': socket_id,
                 })
-                conn.execute(
-                    cl_worker.insert().values(worker_row)
-                )
+                conn.execute(cl_worker.insert().values(worker_row))
 
             # Update dependencies
             blob = self._serialize_dependencies(dependencies)
@@ -101,15 +92,12 @@ class WorkerModel(object):
     def _deserialize_dependencies(blob):
         return map(tuple, json.loads(blob))
 
-    def deactivate_worker(self, user_id, worker_id):
+    def worker_cleanup(self, user_id, worker_id):
         """
-        Marks the worker as inactive.
+        Deletes the worker and all associated data from the database as well
+        as the socket directory.
         """
         with self._engine.begin() as conn:
-            conn.execute(cl_worker.update()
-                         .where(and_(cl_worker.c.user_id == user_id,
-                                     cl_worker.c.worker_id == worker_id))
-                         .values(is_active=False))
             socket_rows = conn.execute(
                 cl_worker_socket.select()
                     .where(and_(cl_worker_socket.c.user_id == user_id,
@@ -117,42 +105,19 @@ class WorkerModel(object):
             ).fetchall()
             for socket_row in socket_rows:
                 self._cleanup_socket(socket_row.socket_id)
+            conn.execute(cl_worker_socket.delete()
+                         .where(and_(cl_worker_socket.c.user_id == user_id,
+                                     cl_worker_socket.c.worker_id == worker_id)))
+            conn.execute(cl_worker_run.delete()
+                         .where(and_(cl_worker_run.c.user_id == user_id,
+                                     cl_worker_run.c.worker_id == worker_id)))
+            conn.execute(cl_worker_dependency.delete()
+                         .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                     cl_worker_dependency.c.worker_id == worker_id)))
+            conn.execute(cl_worker.delete()
+                         .where(and_(cl_worker.c.user_id == user_id,
+                                     cl_worker.c.worker_id == worker_id)))
 
-    def cleanup_inactive_workers(self):
-        """
-        Deletes inactive workers and all their associated data from the database
-        as well as the socket directory. Should only be run once in a while,
-        e.g. at most once a week.
-        """
-        with self._engine.begin() as conn:
-            inactive_workers = conn.execute(
-                cl_worker.select().where(cl_worker.c.is_active == False)
-            ).fetchall()
-
-            # This can probably be batched better, but not important for
-            # a transaction that occurs very infrequently.
-            for worker in inactive_workers:
-                user_id, worker_id = worker.user_id, worker.worker_id
-                socket_rows = conn.execute(
-                    cl_worker_socket.select()
-                        .where(and_(cl_worker_socket.c.user_id == user_id,
-                                    cl_worker_socket.c.worker_id == worker_id))
-                ).fetchall()
-                for socket_row in socket_rows:
-                    self._cleanup_socket(socket_row.socket_id)
-                conn.execute(cl_worker_socket.delete()
-                             .where(and_(cl_worker_socket.c.user_id == user_id,
-                                         cl_worker_socket.c.worker_id == worker_id)))
-                conn.execute(cl_worker_run.delete()
-                             .where(and_(cl_worker_run.c.user_id == user_id,
-                                         cl_worker_run.c.worker_id == worker_id)))
-                conn.execute(cl_worker_dependency.delete()
-                             .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                         cl_worker_dependency.c.worker_id == worker_id)))
-                conn.execute(cl_worker.delete()
-                             .where(and_(cl_worker.c.user_id == user_id,
-                                         cl_worker.c.worker_id == worker_id)))
-            
     def get_workers(self):
         """
         Returns information about all the workers in the database. The return
@@ -162,7 +127,6 @@ class WorkerModel(object):
             worker_rows = conn.execute(
                 select([cl_worker, cl_worker_dependency.c.dependencies])
                 .select_from(cl_worker.join(cl_worker_dependency))
-                .where(cl_worker.c.is_active == True)
             ).fetchall()
             worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
 
@@ -193,8 +157,7 @@ class WorkerModel(object):
             precondition(row, 'Trying to find worker for bundle that is not running.')
             worker_row = connection.execute(cl_worker.select()
                                             .where(and_(cl_worker.c.user_id == row.user_id,
-                                                        cl_worker.c.worker_id == row.worker_id,
-                                                        cl_worker.c.is_active == True))).fetchone()
+                                                        cl_worker.c.worker_id == row.worker_id))).fetchone()
             return {
                 'user_id': worker_row.user_id,
                 'worker_id': worker_row.worker_id,

@@ -333,7 +333,6 @@ worker = Table(
   Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.
   Column('checkin_time', DateTime, nullable=False),  # When the worker last checked in with the bundle service.
   Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.
-  Column('is_active', Boolean, nullable=False),  # True if worker is considered active and waiting for jobs.
 )
 
 # Store information about all sockets currently allocated to each worker.
