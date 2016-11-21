@@ -1,5 +1,6 @@
 from contextlib import closing
 from subprocess import check_output
+import hashlib
 import logging
 import multiprocessing
 import os
@@ -11,6 +12,7 @@ import traceback
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
 from file_util import remove_path, un_gzip_stream, un_tar_directory
+from dependency_diff import hash_dependencies, diff_dependencies
 from run import Run
 
 VERSION = 6
@@ -43,6 +45,7 @@ class Worker(object):
         if not self.shared_file_system:
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
+            self._reset_last_dependencies()
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed
@@ -98,6 +101,49 @@ class Worker(object):
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
 
+    def _get_dependencies(self):
+        """
+        Get dependencies to send to server on checkin.
+
+        :return: either the full list of dependencies or a patch of the form:
+          {
+            "base_hash": "<hash of the previous set of dependencies>",
+            "patch": { <patch based on the previous set of dependencies> }
+          }
+        """
+        if self.shared_file_system:
+            return []
+
+        dependencies = self._dependency_manager.dependencies()
+        new_hash = hash_dependencies(dependencies)
+
+        # Send the full list of dependencies if there is no record of
+        # successfully reported dependencies, otherwise send a patch
+        if self._last_reported_dependencies is None or \
+           self._last_reported_dependencies_hash is None:
+            result = dependencies
+        else:
+            result = {
+                'base_hash': self._last_reported_dependencies_hash,
+                'patch': diff_dependencies(self._last_reported_dependencies, dependencies)
+            }
+
+        # Assume these dependencies will be successfully reported
+        # If there is a failure, these variables should be set to None again
+        self._last_reported_dependencies = dependencies
+        self._last_reported_dependencies_hash = new_hash
+
+        return result
+
+    def _reset_last_dependencies(self):
+        """
+        Reset the variables for the last reported dependencies.
+        This will make the worker send the full list of dependencies to the
+        server on its next checkin, instead of a patch.
+        """
+        self._last_reported_dependencies = None
+        self._last_reported_dependencies_hash = None
+
     def _checkin(self):
         request = {
             'version': VERSION,
@@ -106,9 +152,16 @@ class Worker(object):
             'slots': self._slots if not self._is_exiting() else 0,
             'cpus': multiprocessing.cpu_count(),
             'memory_bytes': self._get_memory_bytes(),
-            'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
+            'dependencies': self._get_dependencies(),
         }
-        response = self._bundle_service.checkin(self.id, request)
+
+        try:
+            response = self._bundle_service.checkin(self.id, request)
+        except BundleServiceException:
+            # Make sure that full dependencies list is sent on next checkin
+            self._reset_last_dependencies()
+            raise
+
         if response:
             type = response['type']
             logger.debug('Received %s message: %s', type, response)

@@ -9,6 +9,7 @@ import time
 from bottle import abort, get, local, post, put, request, response
 
 from codalab.lib import spec_util
+from codalab.model.worker_model import DependenciesOutOfSync
 from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from worker.worker import VERSION
@@ -31,10 +32,25 @@ def checkin(worker_id):
         not request.json['will_upgrade']):
         return {'type': 'upgrade'}
 
+    # Dependencies can be a full list, or a patch as a dict with this format:
+    # {
+    #   "base_hash": "<hash of the previous set of dependencies>",
+    #   "patch": { <patch based on the previous set of dependencies> }
+    # }
+    dependencies = request.json['dependencies']
+    if isinstance(dependencies, dict):
+        try:
+            dependencies = local.worker_model.patched_dependencies(
+                request.user.user_id, worker_id,
+                dependencies['base_hash'], dependencies['patch'])
+        except DependenciesOutOfSync:
+            return {'type': 'resync_dependencies'}
+
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
-        request.json['slots'], request.json['cpus'], request.json['memory_bytes'],
-        request.json['dependencies'])
+        request.json['slots'], request.json['cpus'],
+        request.json['memory_bytes'], dependencies)
+
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 

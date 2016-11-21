@@ -16,6 +16,10 @@ from codalab.model.tables import (
 )
 
 
+class DependenciesOutOfSync(Exception):
+    pass
+
+
 class WorkerModel(object):
     """
     Manages the worker, worker_dependency and worker_socket tables. This class
@@ -32,6 +36,17 @@ class WorkerModel(object):
         self._engine = engine
         self._socket_dir = socket_dir
         self.shared_file_system = shared_file_system
+
+    def patched_dependencies(self, user_id, worker_id, base_hash, patch):
+        """
+
+        :param user_id:
+        :param worker_id:
+        :param base_hash:
+        :param patch:
+        :return:
+        """
+        assert (dependencies is not None) or (base_hash is not None and patch is not None)
 
     def worker_checkin(self, user_id, worker_id, tag, slots, cpus, memory_bytes, dependencies):
         """
