@@ -369,6 +369,8 @@ worker_dependency = Table(
   Column('worker_id', String(127), primary_key=True, nullable=False),
   ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
 
+  # Serialized list of dependencies for the user/worker combination.
+  # See WorkerModel for the serialization method.
   Column('dependencies', LargeBinary, nullable=False),
   sqlite_autoincrement=True,
 )
