@@ -268,8 +268,8 @@ def _set_bundle_permissions():
     return BundlePermissionSchema(many=True).dump(new_permissions).data
 
 
-@get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR)
-@get('/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
+@get('/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 def _fetch_bundle_contents_info(uuid, path=''):
     depth = query_get_type(int, 'depth', default=0)
     if depth < 0:
@@ -281,8 +281,8 @@ def _fetch_bundle_contents_info(uuid, path=''):
     }
 
 
-@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR)
-@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR)
+@get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
+@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
 def _fetch_bundle_contents_blob(uuid, path=''):
     """
     API to download the contents of a bundle or a subpath within a bundle.
@@ -352,7 +352,8 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     return fileobj
 
 
-@put('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, apply=AuthenticatedPlugin())
+@put('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
+     name='update_bundle_contents_blob', apply=AuthenticatedPlugin())
 def _update_bundle_contents_blob(uuid):
     """
     Update the contents of the given running or uploading bundle.
