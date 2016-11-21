@@ -15,7 +15,7 @@ from worker.worker import VERSION
 
 
 @post('/workers/<worker_id>/checkin',
-      apply=AuthenticatedPlugin())
+      name='worker_checkin', apply=AuthenticatedPlugin())
 def checkin(worker_id):
     """
     Checks in with the bundle service, storing information about the worker.
@@ -40,7 +40,7 @@ def checkin(worker_id):
 
 
 @post('/workers/<worker_id>/checkout',
-      apply=AuthenticatedPlugin())
+      name='worker_checkout', apply=AuthenticatedPlugin())
 def checkout(worker_id):
     """
     Checks out from the bundle service, cleaning up any state related to the
@@ -59,7 +59,7 @@ def check_reply_permission(worker_id, socket_id):
 
 
 @post('/workers/<worker_id>/reply/<socket_id:int>',
-      apply=AuthenticatedPlugin())
+      name='worker_reply_json', apply=AuthenticatedPlugin())
 def reply(worker_id, socket_id):
     """
     Replies with a single JSON message to the given socket ID.
@@ -69,7 +69,7 @@ def reply(worker_id, socket_id):
 
 
 @post('/workers/<worker_id>/reply_data/<socket_id:int>',
-      apply=AuthenticatedPlugin())
+      name='worker_reply_blob', apply=AuthenticatedPlugin())
 def reply_data(worker_id, socket_id):
     """
     Replies with a stream of data to the given socket ID. This reply mechanism
@@ -103,7 +103,7 @@ def check_run_permission(bundle):
 
 
 @post('/workers/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      apply=AuthenticatedPlugin())
+      name='worker_start_bundle', apply=AuthenticatedPlugin())
 def start_bundle(worker_id, uuid):
     """
     Checks whether the bundle is still assigned to run on the worker with the
@@ -122,7 +122,7 @@ def start_bundle(worker_id, uuid):
 
 
 @put('/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
-      apply=AuthenticatedPlugin())
+     name='worker_update_bundle_metadata', apply=AuthenticatedPlugin())
 def update_bundle_metadata(worker_id, uuid):
     """
     Updates metadata related to a running bundle.
@@ -138,7 +138,7 @@ def update_bundle_metadata(worker_id, uuid):
 
 
 @post('/workers/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      apply=AuthenticatedPlugin())
+      name='worker_finalize_bundle', apply=AuthenticatedPlugin())
 def finalize_bundle(worker_id, uuid):
     """
     Reports that the bundle has finished running.
@@ -175,7 +175,7 @@ def finalize_bundle(worker_id, uuid):
                                 request.json['failure_message'])
 
 
-@get('/workers/code.tar.gz')
+@get('/workers/code.tar.gz', name='worker_download_code')
 def code():
     """
     Returns .tar.gz archive containing the code of the worker.
