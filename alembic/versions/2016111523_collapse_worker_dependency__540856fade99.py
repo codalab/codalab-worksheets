@@ -70,8 +70,8 @@ def downgrade():
     op.create_foreign_key('worker_dependency_ibfk_2', 'worker_dependency', 'user', ['user_id'], ['user_id'])
 
     # Add back old columns, though we can't get back old data. But it's okay, the data is transient anyway.
-    op.add_column('worker_dependency', sa.Column('dependency_path', sa.Text(), nullable=False))
     op.add_column('worker_dependency', sa.Column('dependency_uuid', sa.String(63), nullable=False))
+    op.add_column('worker_dependency', sa.Column('dependency_path', sa.Text(), nullable=False))
 
     # Remove new columns
     op.drop_column('worker_dependency', 'dependencies')
