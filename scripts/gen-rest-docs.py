@@ -32,6 +32,23 @@ if __name__ == '__main__':
         print route.method + ' ' + route.rule
         print route.get_undecorated_callback().__doc__
         # TODO: parse out things and convert them to markdown tables
+        # Search bundles
+        #
+        # More Markdown **description**
+        #
+        #   :param depth: the depth to search
+        #   :statuscode 400: invalid arguments
+        #   :request-resource bulk: bundles
+        #   :response-resource: bundles
+        #   :response: { JSON format }
+        #
+        # or maybe worksheet markdown style
+        #
+        #   % param depth integer 'the depth to search'
+        #   % statuscode 400 'invalid arguments'
+        #   % request-resource 'bundles' bulk
+        #   % response-resource 'bundles'
+        #   % response { JSON format }
         print '============================='
 
     schemas = {k: v for k, v in vars(schemas_module).iteritems() if isclass(v) and issubclass(v, Schema)}
