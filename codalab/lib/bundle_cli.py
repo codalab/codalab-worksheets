@@ -1085,7 +1085,11 @@ class BundleCLI(object):
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
                 fileobj=source,
-                params={'filename': filename, 'unpack': unpack},
+                params={
+                    'filename': filename,
+                    'unpack': unpack,
+                    'simplify': False,  # retain original bundle verbatim
+                },
                 progress_callback=progress.update)
 
     @Commands.command(
