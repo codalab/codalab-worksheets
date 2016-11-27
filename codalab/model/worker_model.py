@@ -126,7 +126,7 @@ class WorkerModel(object):
         with self._engine.begin() as conn:
             worker_rows = conn.execute(
                 select([cl_worker, cl_worker_dependency.c.dependencies])
-                .select_from(cl_worker.join(cl_worker_dependency))
+                .select_from(cl_worker.outerjoin(cl_worker_dependency))
             ).fetchall()
             worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
 
