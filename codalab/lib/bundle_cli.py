@@ -1063,6 +1063,7 @@ class BundleCLI(object):
         dest_bundle = dest_client.create('bundles', source_info, params={
             'worksheet': dest_worksheet_uuid,
             'detached': not add_to_worksheet,
+            'wait_for_upload': True,
         })
 
         # If bundle contents don't exist, finish after just copying metadata

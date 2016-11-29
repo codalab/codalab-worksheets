@@ -138,6 +138,11 @@ def _create_bundles():
     |shadow| - the uuid of the bundle to shadow
     |detached| - True ('1') if should not add new bundle to any worksheet,
                  or False ('0') otherwise. Default is False.
+    |wait_for_upload| - True ('1') if the bundle state should be initialized to
+                        UPLOADING regardless of the bundle type, or False ('0')
+                        otherwise. This prevents run bundles that are being
+                        copied from another instance from being run by the
+                        BundleManager. Default is False.
     """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadow')
@@ -170,6 +175,7 @@ def _create_bundles():
         bundle['owner_id'] = request.user.user_id
         bundle['state'] = (State.UPLOADING
                            if issubclass(bundle_class, UploadedBundle)
+                           or query_get_bool('wait_for_upload', False)
                            else State.CREATED)
         bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
