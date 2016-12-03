@@ -17,7 +17,6 @@ classes based on the configuration in this file:
   cli: returns a BundleCLI
   client: returns a JsonApiClient
   model: returns a BundleModel
-  rpc_server: returns a BundleRPCServer
 
 Imports in this file are deferred to as late as possible because some of these
 modules (ex: the model) depend on heavy-weight library imports (ex: sqlalchemy).

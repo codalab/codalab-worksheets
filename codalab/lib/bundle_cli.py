@@ -867,7 +867,6 @@ class BundleCLI(object):
             '  upload <path> ... <path> : Upload one bundle whose directory contents contain <path> ... <path>.',
             '  upload -c <text>         : Upload one bundle whose file contents is <text>.',
             '  upload <url>             : Upload one bundle whose file contents is downloaded from <url>.',
-            '  upload                   : Open file browser dialog and upload contents of the selected file as a bundle (website only).',
             'Most of the other arguments specify metadata fields.',
         ],
         arguments=(
@@ -907,14 +906,12 @@ class BundleCLI(object):
             'metadata': metadata,
         }
 
-        # Create bundle
-        new_bundle = client.create('bundles', bundle_info, params={
-            'worksheet': worksheet_uuid
-        })
-
         # Option 1: Upload contents string
         if args.contents is not None:
             contents_buffer = StringIO(args.contents)
+            new_bundle = client.create('bundles', bundle_info, params={
+                'worksheet': worksheet_uuid
+            })
             client.upload_contents_blob(
                 new_bundle['id'],
                 fileobj=contents_buffer,
@@ -927,6 +924,9 @@ class BundleCLI(object):
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
 
+            new_bundle = client.create('bundles', bundle_info, params={
+                'worksheet': worksheet_uuid
+            })
             client.upload_contents_blob(new_bundle['id'], params={
                 'urls': args.path,
                 'git': args.git,
@@ -948,6 +948,16 @@ class BundleCLI(object):
                     exclude_patterns=args.exclude_patterns,
                     force_compression=args.force_compression)
 
+            # Create bundle.
+            # We must create the bundle right before we upload it because we
+            # perform some input validation in functions such as
+            # zip_util.pack_files_for_upload that we want to fail fast before
+            # we try to create or upload the bundle, otherwise you will be left
+            # with empty shells of failed uploading bundles on your worksheet.
+            new_bundle = client.create('bundles', bundle_info, params={
+                'worksheet': worksheet_uuid,
+                'wait_for_upload': True,
+            })
             print >>self.stderr, 'Uploading %s (%s) to %s' %\
                                  (packed['filename'], new_bundle['id'], client.address)
             progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
@@ -1079,6 +1089,14 @@ class BundleCLI(object):
         else:
             unpack = False
 
+        # Bundles stuck in non-final states such as 'running' should not keep
+        # that state at the destination server, and should instead just fallback
+        # to 'failed'
+        if source_info['state'] == State.READY:
+            source_state = State.READY
+        else:
+            source_state = State.FAILED
+
         # Send file over
         progress = FileTransferProgress('Copied ', f=self.stderr)
         source = source_client.fetch_contents_blob(source_bundle_uuid)
@@ -1090,6 +1108,7 @@ class BundleCLI(object):
                     'filename': filename,
                     'unpack': unpack,
                     'simplify': False,  # retain original bundle verbatim
+                    'state_on_success': source_state,  # copy bundle state
                 },
                 progress_callback=progress.update)
 
