@@ -225,7 +225,7 @@ def _update_bundles():
     ).load(request.json, partial=True).data
 
     # Check permissions
-    bundle_uuids = [b['uuid'] for b in bundle_updates]
+    bundle_uuids = [b.pop('uuid') for b in bundle_updates]
     check_bundles_have_all_permission(local.model, request.user, bundle_uuids)
     bundles = local.model.batch_get_bundles(uuid=bundle_uuids)
 
