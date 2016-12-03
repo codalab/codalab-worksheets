@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+from itertools import izip
 
 from bottle import abort, get, post, put, delete, local, request, response
 
@@ -106,7 +107,7 @@ def build_bundles_document(bundle_uuids):
 
     # Shim in editable metadata keys
     # Used by the front-end application
-    for bundle, data in zip(bundles, document['data']):
+    for bundle, data in izip(bundles, document['data']):
         json_api_meta(data, {
             'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
                 get_bundle_subclass(bundle['bundle_type']))
@@ -229,7 +230,7 @@ def _update_bundles():
     bundles = local.model.batch_get_bundles(uuid=bundle_uuids)
 
     # Update bundles
-    for bundle, update in zip(bundles, bundle_updates):
+    for bundle, update in izip(bundles, bundle_updates):
         local.model.update_bundle(bundle, update)
 
     # Get updated bundles

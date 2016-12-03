@@ -7,7 +7,6 @@ import urllib2
 from codalab.common import (
     http_error_to_exception,
     precondition,
-    State,
     UsageError,
 )
 from worker.rest_client import RestClient, RestClientException
