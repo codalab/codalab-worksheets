@@ -7,7 +7,6 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [Resource Object Schemas](schemas.md)
 - API Endpoints
   - [Bundle Permissions API](bundle-permissions.md)
-  - [Account API](account.md)
   - [Oauth2 API](oauth2.md)
   - [Users API](users.md)
   - [Worksheet Items API](worksheet-items.md)
