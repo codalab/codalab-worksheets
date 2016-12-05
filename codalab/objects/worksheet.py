@@ -22,7 +22,7 @@ def item_sort_key(item):
 
 
 class Worksheet(ORMObject):
-    COLUMNS = ('uuid', 'name', 'owner_id', 'title', 'frozen')
+    COLUMNS = ('uuid', 'name', 'owner_id', 'title', 'frozen', 'is_anonymous')
 
     def validate(self):
         '''

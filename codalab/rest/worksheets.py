@@ -41,6 +41,7 @@ def fetch_worksheet(uuid):
         fetch_items=True,
         fetch_permission=True,
     )
+    print worksheet
 
     # Build response document
     document = WorksheetSchema().dump(worksheet).data
