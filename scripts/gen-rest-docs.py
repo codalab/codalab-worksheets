@@ -28,7 +28,7 @@ from codalab.server import rest_server
 #  - output .md files into static/ ?
 
 
-EXCLUDED_APIS = {'titlejs', 'api', 'static'}
+EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static'}
 
 
 def get_api_routes():
