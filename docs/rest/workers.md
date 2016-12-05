@@ -1,4 +1,5 @@
 # Workers API
+
 &larr; [Back to Table of Contents](index.md)
 ## `POST /workers/<worker_id>/checkin`
 
@@ -43,5 +44,6 @@ Reports that the bundle has finished running.
 ## `GET /workers/code.tar.gz`
 
 Returns .tar.gz archive containing the code of the worker.
+
 
 &larr; [Back to Table of Contents](index.md)

@@ -1,4 +1,5 @@
 # Groups API
+
 &larr; [Back to Table of Contents](index.md)
 ## `GET /groups/<group_spec>`
 Fetch a single group.
@@ -12,4 +13,5 @@ Create a group.
 ## `POST /groups/<group_spec>/relationships/members`
 ## `DELETE /groups/<group_spec>/relationships/members`
 ## `DELETE /groups/<group_spec>/relationships/admins`
+
 &larr; [Back to Table of Contents](index.md)

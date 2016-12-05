@@ -1,4 +1,5 @@
 # Worksheets API
+
 &larr; [Back to Table of Contents](index.md)
 ## `GET /worksheets/<uuid:re:0x[0-9a-f]{32}>`
 ## `GET /worksheets`
@@ -25,4 +26,5 @@ Get worksheets to display on the front page.
 Keep only |worksheet_uuids|.
 
 ## `GET /worksheets/`
+
 &larr; [Back to Table of Contents](index.md)

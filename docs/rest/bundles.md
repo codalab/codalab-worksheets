@@ -1,4 +1,5 @@
 # Bundles API
+
 &larr; [Back to Table of Contents](index.md)
 ## `GET /bundles/<uuid:re:0x[0-9a-f]{32}>`
 ## `GET /bundles`
@@ -73,5 +74,6 @@ Query parameters that are always available:
                of the bundle contents and thus mark the bundle as &#039;ready&#039;
                when upload is complete and &#039;failed&#039; if upload fails, or 0 if
                should allow future updates, default is 0
+
 
 &larr; [Back to Table of Contents](index.md)

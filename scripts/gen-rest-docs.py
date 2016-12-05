@@ -128,7 +128,7 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 % end
 '''
 
-INDEX_LINK = "&larr; [Back to Table of Contents](index.md)\n"
+INDEX_LINK = "\n&larr; [Back to Table of Contents](index.md)\n"
 
 
 if __name__ == '__main__':

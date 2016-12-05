@@ -1,4 +1,5 @@
 # Oauth2 API
+
 &larr; [Back to Table of Contents](index.md)
 ## `GET /oauth2/authorize`
 
@@ -50,4 +51,5 @@ Provide secure services using OAuth2.
             return jsonify(request.user)
 
 ## `GET /oauth2/errors`
+
 &larr; [Back to Table of Contents](index.md)
