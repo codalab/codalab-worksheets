@@ -380,10 +380,10 @@ def _update_bundle_contents_blob(uuid):
         simplify - (optional) 1 if the uploaded file should be 'simplified' if
                    it is an archive, or 0 otherwise, default is 1
                    (See UploadManager for full explanation of 'simplification')
-        finalize_on_failure - (optional) 1 if bundle state should be set to
-                              'failed' in the case of a failure during upload,
-                              or 0 if the bundle state should not change on
-                              failure. Default is 0.
+        finalize_on_failure - (optional) True ('1') if bundle state should be set
+                              to 'failed' in the case of a failure during upload,
+                              or False ('0') if the bundle state should not
+                              change on failure. Default is False.
         state_on_success - (optional) Update the bundle state to this state if
                            the upload completes successfully. Must be either
                            'ready' or 'failed'. Default is 'ready'.
