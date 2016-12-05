@@ -1576,13 +1576,15 @@ class BundleCLI(object):
         }
 
     def _worksheet_description(self, worksheet_info):
+        print worksheet_info['owner']
         fields = [
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
-            ('Owner', self.simple_user_str(worksheet_info['owner'])),
-            ('Permissions', '%s%s' % (group_permissions_str(worksheet_info['group_permissions']),
-                                      ' [frozen]' if worksheet_info['frozen'] else '')),
+            ('Owner', self.simple_user_str(worksheet_info['owner']) +
+                (' [anonymous]' if not worksheet_info['is_anonymous'] else '')),
+            ('Permissions', group_permissions_str(worksheet_info['group_permissions']) +
+                (' [frozen]' if worksheet_info['frozen'] else '')),
         ]
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
@@ -1672,7 +1674,7 @@ class BundleCLI(object):
         lines = []  # The output that we're accumulating
 
         # Bundle fields
-        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command'):
+        for key in ('bundle_type', 'uuid', 'data_hash', 'state', 'command', 'is_anonymous'):
             if not raw:
                 if key not in info: continue
             lines.append(self.key_value_str(key, info.get(key)))

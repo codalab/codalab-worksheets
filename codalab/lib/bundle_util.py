@@ -18,6 +18,7 @@ def bundle_to_bundle_info(model, bundle):
         'command': bundle.command,
         'data_hash': bundle.data_hash,
         'state': bundle.state,
+        'is_anonymous': bundle.is_anonymous,
         'metadata': bundle.metadata.to_dict(),
         'dependencies': [dep.to_dict() for dep in bundle.dependencies],
     }
