@@ -569,7 +569,7 @@ class JsonApiClient(RestClient):
         """
         request_path = '/bundles/%s/contents/blob/' % bundle_id
         params = params or {}
-        params['finalize'] = True
+        params['finalize_on_failure'] = True  # no retry mechanism implemented yet
         params = self._pack_params(params)
         if fileobj is None:
             self._make_request(
