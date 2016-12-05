@@ -1,11 +1,11 @@
 # Bundles API
 &larr; [Back to Table of Contents](index.md)
-# `GET /bundles/<uuid:re:0x[0-9a-f]{32}>`
-# `GET /bundles`
+## `GET /bundles/<uuid:re:0x[0-9a-f]{32}>`
+## `GET /bundles`
 
 Fetch bundles by bundle specs OR search keywords.
 
-# `POST /bundles`
+## `POST /bundles`
 
 Bulk create bundles.
 
@@ -16,11 +16,11 @@ Bulk create bundles.
 |detached| - True (&#039;1&#039;) if should not add new bundle to any worksheet,
              or False (&#039;0&#039;) otherwise. Default is False.
 
-# `PATCH /bundles`
+## `PATCH /bundles`
 
 Bulk update bundles.
 
-# `DELETE /bundles`
+## `DELETE /bundles`
 
 Delete the bundles specified.
 If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
@@ -28,9 +28,9 @@ If |recursive|, add all bundles downstream too.
 If |data-only|, only remove from the bundle store, not the bundle metadata.
 If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
 
-# `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
-# `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/`
-# `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/<path:path>`
+## `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
+## `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/`
+## `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/<path:path>`
 
 API to download the contents of a bundle or a subpath within a bundle.
 
@@ -40,7 +40,7 @@ the directory.
 For files, if the request has an Accept-Encoding header containing gzip,
 then the returned file is gzipped.
 
-# `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
+## `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 
 API to download the contents of a bundle or a subpath within a bundle.
 
@@ -50,7 +50,7 @@ the directory.
 For files, if the request has an Accept-Encoding header containing gzip,
 then the returned file is gzipped.
 
-# `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
+## `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 
 Update the contents of the given running or uploading bundle.
 

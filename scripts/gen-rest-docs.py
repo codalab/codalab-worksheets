@@ -106,7 +106,7 @@ API_ROUTE_DOC = '''\
     from textwrap import dedent
     docstring = route.get_undecorated_callback().__doc__
 %>
-# `{{route.method}} {{!route.rule}}`
+## `{{route.method}} {{!route.rule}}`
 % if docstring:
 {{dedent(docstring)}}
 % end

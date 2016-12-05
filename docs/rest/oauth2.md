@@ -1,15 +1,15 @@
 # Oauth2 API
 &larr; [Back to Table of Contents](index.md)
-# `GET /oauth2/authorize`
+## `GET /oauth2/authorize`
 
 &#039;authorize&#039; endpoint for OAuth2 authorization code flow.
 
-# `POST /oauth2/authorize`
+## `POST /oauth2/authorize`
 
 &#039;authorize&#039; endpoint for OAuth2 authorization code flow.
 
-# `POST /oauth2/token`
-# `POST /oauth2/revoke`
+## `POST /oauth2/token`
+## `POST /oauth2/revoke`
 Provide secure services using OAuth2.
     The server should provide an authorize handler and a token handler,
 
@@ -49,5 +49,5 @@ Provide secure services using OAuth2.
         def user():
             return jsonify(request.user)
 
-# `GET /oauth2/errors`
+## `GET /oauth2/errors`
 &larr; [Back to Table of Contents](index.md)

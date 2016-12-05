@@ -1,8 +1,8 @@
 # Users API
 &larr; [Back to Table of Contents](index.md)
-# `GET /users/<user_spec>`
+## `GET /users/<user_spec>`
 Fetch a single user.
-# `GET /users`
+## `GET /users`
 
 Fetch list of users, filterable by username and email.
 
@@ -12,7 +12,7 @@ Takes the following query parameters:
 
 Fetches all users that match any of these usernames or emails.
 
-# `PATCH /users`
+## `PATCH /users`
 
 Update arbitrary users.
 
