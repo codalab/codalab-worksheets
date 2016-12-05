@@ -5,8 +5,9 @@ Generate REST docs.
 import sys
 sys.path.append('.')
 from inspect import isclass
-from collections import defaultdict, OrderedDict
+from collections import defaultdict
 import os
+from shutil import rmtree
 
 from bottle import default_app, template
 from marshmallow import Schema
@@ -131,6 +132,9 @@ INDEX_LINK = "&larr; [Back to Table of Contents](index.md)\n"
 
 
 if __name__ == '__main__':
+    rmtree(REST_DOCS_PATH)
+    os.mkdir(REST_DOCS_PATH)
+
     for root, routes in get_api_routes().items():
         doc_path = os.path.join(REST_DOCS_PATH, root + '.md')
         api_name = ' '.join(root.title().split('-'))

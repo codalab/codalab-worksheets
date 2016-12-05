@@ -1,1 +1,0 @@
-# `GET /static/<filename:path>`
