@@ -36,3 +36,5 @@ RUN pip install pandas
 RUN pip install sympy
 RUN pip install scikit-tensor
 RUN pip install jupyter
+
+RUN pip install nltk
