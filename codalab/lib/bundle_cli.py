@@ -1697,7 +1697,7 @@ class BundleCLI(object):
         while True:
             if not run_finished:
                 info = client.fetch('bundles', bundle_uuid)
-                run_finished = info['state'] in (State.READY, State.FAILED)
+                run_finished = info['state'] in State.FINAL_STATES
 
             # Read data.
             for i in xrange(0, len(subpaths)):
@@ -1955,8 +1955,8 @@ class BundleCLI(object):
                     'value': '',
                 })
 
-            # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup,
-            # directives, etc.)
+            # A prelude of a bundle on a worksheet is the set of items (markup, directives, etc.)
+            # that occur immediately before it, until the last preceding newline.
             # Let W be the first worksheet containing the old_inputs[0].
             # Add all items on that worksheet that appear in old_to_new along with their preludes.
             # For items not on this worksheet, add them at the end (instead of making them floating).
@@ -1989,7 +1989,6 @@ class BundleCLI(object):
 
                 prelude_items = []  # The prelude that we're building up
                 for item in worksheet_info['items']:
-                    # (bundle_info, subworkheet_info, value_obj, item_type) = item
                     just_added = False
 
                     if item['type'] == worksheet_util.TYPE_BUNDLE:
@@ -2004,6 +2003,9 @@ class BundleCLI(object):
 
                                 # Add prelude
                                 for item2 in prelude_items:
+                                    # Create a copy of the item on the destination worksheet
+                                    item2 = item2.copy()
+                                    item2['worksheet'] = JsonApiRelationship('worksheets', worksheet_uuid)
                                     client.create('worksheet-items', data=item2)
 
                                 # Add the bundle item
@@ -2015,7 +2017,8 @@ class BundleCLI(object):
                                 new_bundle_uuids_added.add(new_bundle_uuid)
                                 just_added = True
 
-                    if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item['type'] == worksheet_util.TYPE_DIRECTIVE:
+                    if ((item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or
+                            item['type'] == worksheet_util.TYPE_DIRECTIVE):
                         prelude_items.append(item)  # Include in prelude
                         skipped = False
                     else:
