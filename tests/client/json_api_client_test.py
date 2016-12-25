@@ -48,6 +48,7 @@ class JsonApiClientTest(unittest.TestCase):
     def test_pack_document(self):
         doc = self.client._pack_document({
             'owner': JsonApiRelationship('users', '345'),
+            'friend': JsonApiRelationship.empty(),
             'id': '123',
             'name': 'hello'
         }, 'bundles')
@@ -65,6 +66,9 @@ class JsonApiClientTest(unittest.TestCase):
                             'id': '345',
                             'type': 'users'
                         }
+                    },
+                    'friend': {
+                        'data': None
                     }
                 },
             }

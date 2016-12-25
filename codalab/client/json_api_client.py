@@ -78,13 +78,21 @@ class JsonApiRelationship(dict):
         self.setdefault('id', id_)
 
     def as_linkage(self):
-        """Serialize into relationship linkage dict for JSON API requests."""
-        return {
-            'data': {
-                'type': self.type_,
-                'id': self.id_,
+        """
+        Serialize into relationship linkage dict for JSON API requests.
+        Empty relationships should be properly serialized as a null linkage.
+        """
+        if self:
+            return {
+                'data': {
+                    'type': self.type_,
+                    'id': self.id_,
+                }
             }
-        }
+        else:
+            return {
+                'data': None
+            }
 
     def __eq__(self, other):
         return self.type_ == other.type_ and \
@@ -98,19 +106,24 @@ class JsonApiRelationship(dict):
         return 'JsonApiRelationship(type_=%s, id_=%s, data=%s)' % \
                (self.type_, self.id_, dict.__repr__(self))
 
+    def __nonzero__(self):
+        """Implements return value of bool(relationship)"""
+        return self.type_ is not None and self.id_ is not None
 
-class EmptyJsonApiRelationship(JsonApiRelationship):
-    """
-    Represents an empty to-one relationship.
-    """
-    def __init__(self):
-        JsonApiRelationship.__init__(self, None, None)
+    @classmethod
+    def empty(cls):
+        """
+        Return an instance of JsonApiRelationship that represents an empty
+        to-one relationship. Note that we have:
 
-    def as_linkage(self):
-        return {'data': None}
+            assert bool(JsonApiRelationship.empty()) == False
 
-    def __repr__(self):
-        return 'EmptyJsonApiRelationship()'
+        Using an empty JsonApiRelationship is required when the client needs
+        to set a to-one relationship to null, otherwise _pack_document will be
+        unable to figure out whether the user is attempting to set an attribute
+        or a relationship to null.
+        """
+        return JsonApiRelationship(type_=None, id_=None)
 
 
 class JsonApiClient(RestClient):
@@ -222,7 +235,7 @@ class JsonApiClient(RestClient):
             # Return recursively unpacked object if the data was included in the
             # document, otherwise just return the linkage object
             if linkage is None:
-                return EmptyJsonApiRelationship()
+                return JsonApiRelationship.empty()
             elif (linkage['type'], linkage['id']) in included:
                 # Wrap in a JsonApiRelationship proxy
                 # This allows you to send an unpacked object back up through
