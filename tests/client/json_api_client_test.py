@@ -4,8 +4,9 @@ Unit tests for the static methods of the JsonApiClient
 import unittest
 
 from codalab.client.json_api_client import (
+    EmptyJsonApiRelationship,
     JsonApiClient,
-    JsonApiRelationship
+    JsonApiRelationship,
 )
 from codalab.common import PreconditionViolation
 
@@ -48,7 +49,7 @@ class JsonApiClientTest(unittest.TestCase):
     def test_pack_document(self):
         doc = self.client._pack_document({
             'owner': JsonApiRelationship('users', '345'),
-            'friend': JsonApiRelationship.empty(),
+            'friend': EmptyJsonApiRelationship(),
             'id': '123',
             'name': 'hello'
         }, 'bundles')

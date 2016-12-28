@@ -73,7 +73,9 @@ class JsonApiRelationship(dict):
         self.type_ = type_
         self.id_ = id_
         dict.__init__(self, *args)
-        # Allow attributes to override the type and id keys in the dict
+        # Allow the JSON API resource object "attributes" [not Python instance
+        # attributes] to override the type and id keys in the dict.
+        # The actual type and id will still be accessible as instance attrs.
         self.setdefault('type', type_)
         self.setdefault('id', id_)
 
@@ -82,17 +84,12 @@ class JsonApiRelationship(dict):
         Serialize into relationship linkage dict for JSON API requests.
         Empty relationships should be properly serialized as a null linkage.
         """
-        if self:
-            return {
-                'data': {
-                    'type': self.type_,
-                    'id': self.id_,
-                }
+        return {
+            'data': {
+                'type': self.type_,
+                'id': self.id_,
             }
-        else:
-            return {
-                'data': None
-            }
+        }
 
     def __eq__(self, other):
         return self.type_ == other.type_ and \
@@ -107,23 +104,38 @@ class JsonApiRelationship(dict):
                (self.type_, self.id_, dict.__repr__(self))
 
     def __nonzero__(self):
-        """Implements return value of bool(relationship)"""
-        return self.type_ is not None and self.id_ is not None
-
-    @classmethod
-    def empty(cls):
         """
-        Return an instance of JsonApiRelationship that represents an empty
-        to-one relationship. Note that we have:
-
-            assert bool(JsonApiRelationship.empty()) == False
-
-        Using an empty JsonApiRelationship is required when the client needs
-        to set a to-one relationship to null, otherwise _pack_document will be
-        unable to figure out whether the user is attempting to set an attribute
-        or a relationship to null.
+        Implements value of bool(relationship).
+        Should be true for non-empty relationships.
         """
-        return JsonApiRelationship(type_=None, id_=None)
+        return True
+
+
+class EmptyJsonApiRelationship(JsonApiRelationship):
+    """
+    Represents an empty to-one relationship.
+
+    Note that we have:
+
+        assert bool(EmptyJsonApiRelationship()) == False
+
+    Using an EmptyJsonApiRelationship is required when the client needs
+    to set a to-one relationship to null, otherwise _pack_document will be
+    unable to figure out whether the user is attempting to set an attribute
+    or a relationship to null.
+    """
+    def __init__(self):
+        JsonApiRelationship.__init__(self, None, None)
+
+    def as_linkage(self):
+        return {'data': None}
+
+    def __nonzero__(self):
+        """Empty relationship should be falsey."""
+        return False
+
+    def __repr__(self):
+        return 'EmptyJsonApiRelationship()'
 
 
 class JsonApiClient(RestClient):
@@ -235,7 +247,7 @@ class JsonApiClient(RestClient):
             # Return recursively unpacked object if the data was included in the
             # document, otherwise just return the linkage object
             if linkage is None:
-                return JsonApiRelationship.empty()
+                return EmptyJsonApiRelationship()
             elif (linkage['type'], linkage['id']) in included:
                 # Wrap in a JsonApiRelationship proxy
                 # This allows you to send an unpacked object back up through
