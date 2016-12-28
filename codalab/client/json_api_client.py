@@ -80,10 +80,7 @@ class JsonApiRelationship(dict):
         self.setdefault('id', id_)
 
     def as_linkage(self):
-        """
-        Serialize into relationship linkage dict for JSON API requests.
-        Empty relationships should be properly serialized as a null linkage.
-        """
+        """Serialize into relationship linkage dict for JSON API requests."""
         return {
             'data': {
                 'type': self.type_,
@@ -128,6 +125,7 @@ class EmptyJsonApiRelationship(JsonApiRelationship):
         JsonApiRelationship.__init__(self, None, None)
 
     def as_linkage(self):
+        """Empty relationships should be serialized as a null linkage."""
         return {'data': None}
 
     def __nonzero__(self):
