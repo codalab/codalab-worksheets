@@ -117,7 +117,7 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
     def _test_nvidia_docker(self):
         try:
             with closing(self._create_nvidia_docker_connection()) as conn:
-                conn.request('GET', '/v1.0/gpu/status')
+                conn.request('GET', '/v1.0/gpu/status/json')
                 status_response = conn.getresponse()
                 if status_response.status != 200:
                     raise DockerException(status_response.read())
