@@ -94,14 +94,8 @@ No ldconfig found. Not loading libcuda libraries.
 nvidia-docker-plugin not available, defaulting to basic GPU support.
 """
             self._use_nvidia_docker = False
-            # DEBUG
-            with open('/tmp/sckoo_test_output', 'wb') as outfile:
-                outfile.write(e.message + '\n')
         else:
             self._use_nvidia_docker = True
-            # DEBUG
-            with open('/tmp/sckoo_test_output', 'wb') as outfile:
-                outfile.write('nvidia-docker-plugin available')
 
     def _create_nvidia_docker_connection(self):
         return httplib.HTTPConnection("localhost:3476")
