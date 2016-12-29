@@ -280,6 +280,11 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
             self._add_nvidia_docker_arguments(create_request)
         if not request_network:
             create_request['HostConfig']['NetworkMode'] = 'none'
+
+        # DEBUG
+        with open('/tmp/sckoo_test_output', 'wb') as outfile:
+            json.dump(create_request, outfile)
+
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',
                                 json.dumps(create_request),
