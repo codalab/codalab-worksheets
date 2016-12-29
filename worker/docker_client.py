@@ -265,8 +265,8 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
                 docker_dependency_path))
 
         # Set up GPU devices manually.
+        devices = []
         if not self._use_nvidia_docker:
-            devices = []
             for device in self._nvidia_device_files:
                 devices.append({
                     'PathOnHost': device,
