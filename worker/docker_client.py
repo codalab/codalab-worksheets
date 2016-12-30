@@ -86,6 +86,10 @@ No ldconfig found. Not loading libcuda libraries.
             if filename.startswith('nvidia'):
                 self._nvidia_device_files.append(os.path.join('/dev', filename))
 
+        # DEBUG
+        self._use_nvidia_docker = False
+        return
+
         # Check if nvidia-docker-plugin is available
         try:
             self._test_nvidia_docker()
