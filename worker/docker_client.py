@@ -136,7 +136,7 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
         devices = [{
             "PathOnHost": device_path,
             "PathInContainer": device_path,
-            "CgroupPermissions": "mrw",  # FIXME: is this correct?
+            "CgroupPermissions": "mrw",
         } for device_path in cli_args['Devices']]
 
         # Set configurations in request json
