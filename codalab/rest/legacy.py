@@ -733,7 +733,7 @@ def get_worksheet_content(uuid):
     service = BundleService()
     bundle_uuids = request.query.getall('bundle_uuid')
     res = service.full_worksheet(uuid, bundle_uuids)
-    print >>sys.stderr, formatting.pretty_json(res)
+    print >>sys.stderr, res
     return res
 
 
