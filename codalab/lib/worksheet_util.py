@@ -1027,7 +1027,6 @@ def interpret_wsearch(client, data):
     """
     # Get the worksheet uuids
     worksheet_infos = client.search_worksheets(data['keywords'])
-    print worksheet_infos
     items = [subworksheet_item(worksheet_info) for worksheet_info in worksheet_infos]
 
     # Finally, interpret the items
