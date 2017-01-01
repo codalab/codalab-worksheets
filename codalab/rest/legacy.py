@@ -727,11 +727,14 @@ def post_worksheets_command():
     return json.dumps(result)
 
 
+import sys
 @get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_worksheet_content(uuid):
     service = BundleService()
     bundle_uuids = request.query.getall('bundle_uuid')
-    return service.full_worksheet(uuid, bundle_uuids)
+    res = service.full_worksheet(uuid, bundle_uuids)
+    print >>sys.stderr, formatting.pretty_json(res)
+    return res
 
 
 @post('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR,
