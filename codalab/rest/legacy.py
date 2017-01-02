@@ -731,7 +731,6 @@ def post_worksheets_command():
     return json.dumps(result)
 
 
-import sys
 @get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_worksheet_content(uuid):
     service = BundleService()
