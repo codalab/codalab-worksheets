@@ -460,6 +460,8 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
                     except:
                         # Plain text file
                         info = ''.join(contents)
+            if not info: # info is an empty dictionary
+                info = None
         else:
             info = None
         target_cache[target] = info
