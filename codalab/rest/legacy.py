@@ -147,7 +147,7 @@ class BundleService(object):
         BundleService._set_owner_names(results)
         # Hack: Make sure worksheet infos are JSON serializable
         for info in results:
-            if isinstance(info['frozen'], datetime.datetime):
+            if isinstance(info['frozen'], datetime):
                 info['frozen'] = str(info['frozen'])
         return results
 
