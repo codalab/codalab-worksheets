@@ -15,10 +15,12 @@ from bottle import (
     HTTPError,
     HTTPResponse,
     install,
+    JSONPlugin,
     local,
     request,
     run,
     static_file,
+    uninstall,
 )
 
 from codalab.common import exception_to_http_error
@@ -243,6 +245,13 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(UserVerifiedPlugin())
     install(PublicUserPlugin())
     install(ErrorAdapter())
+
+    # ErrorAdapter must come before JSONPlugin to catch serialization errors
+    uninstall(JSONPlugin())
+    install(JSONPlugin())
+
+    # JsonApiPlugin must come after JSONPlugin, to inspect and modify response
+    # dicts before they are serialized into JSON
     install(JsonApiPlugin())
 
     for code in xrange(100, 600):
