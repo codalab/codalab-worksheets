@@ -147,7 +147,7 @@ class BundleService(object):
         BundleService._set_owner_names(results)
         # Hack: Make sure worksheet infos are JSON serializable.
         # Since this method is only used for worksheet interpretation (i.e.
-        # handling wsearch directives), these worksheet infos are never
+        # resolving wsearch directives), these worksheet infos are never
         # serialized properly through WorksheetSchema or the Worksheet
         # ORMObject, and so the `frozen` attribute will cause a serialization
         # error when we attempt to serialize the interpretation results into
