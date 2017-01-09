@@ -145,16 +145,6 @@ class BundleService(object):
         keywords = resolve_owner_in_keywords(keywords)
         results = local.model.search_worksheets(request.user.user_id, keywords)
         BundleService._set_owner_names(results)
-        # Hack: Make sure worksheet infos are JSON serializable.
-        # Since this method is only used for worksheet interpretation (i.e.
-        # resolving wsearch directives), these worksheet infos are never
-        # serialized properly through WorksheetSchema or the Worksheet
-        # ORMObject, and so the `frozen` attribute will cause a serialization
-        # error when we attempt to serialize the interpretation results into
-        # JSON.
-        for info in results:
-            if isinstance(info['frozen'], datetime):
-                info['frozen'] = str(info['frozen'])
         return results
 
     @staticmethod

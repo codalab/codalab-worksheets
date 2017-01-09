@@ -1,4 +1,6 @@
 from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST
+import datetime
+import json
 import os
 import re
 import sys
@@ -214,6 +216,15 @@ class ErrorAdapter(object):
                                  recipient=local.config['server']['admin_email'])
 
 
+class DatetimeEncoder(json.JSONEncoder):
+    """Extend JSON encoder to handle datetime objects."""
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
+
+
 def error_handler(response):
     """Simple error handler that doesn't use the Bottle error template."""
     if request.is_ajax:
@@ -246,9 +257,10 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(PublicUserPlugin())
     install(ErrorAdapter())
 
-    # ErrorAdapter must come before JSONPlugin to catch serialization errors
+    # Replace default JSON plugin with one that handles datetime objects
+    # Note: ErrorAdapter must come before JSONPlugin to catch serialization errors
     uninstall(JSONPlugin())
-    install(JSONPlugin())
+    install(JSONPlugin(json_dumps=DatetimeEncoder().encode))
 
     # JsonApiPlugin must come after JSONPlugin, to inspect and modify response
     # dicts before they are serialized into JSON
