@@ -443,7 +443,9 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
                 contents = client.head_target(target, MAX_LINES)
                 contents = map(base64.b64decode, contents)
 
-            if all('\t' in x for x in contents):
+            if isinstance(contents, list) and len(contents) == 0:
+              info = ''
+            elif all('\t' in x for x in contents):
                 # Tab-separated file (key\tvalue\nkey\tvalue...)
                 info = {}
                 for x in contents:
@@ -460,8 +462,6 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
                     except:
                         # Plain text file
                         info = ''.join(contents)
-            if not info: # info is an empty dictionary
-                info = None
         else:
             info = None
         target_cache[target] = info
