@@ -1008,7 +1008,6 @@ class BundleModel(object):
         if sort_key[0] is not None:
             query = query.order_by(sort_key[0])
 
-        #print self._render_query(query)
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
             if not rows:
