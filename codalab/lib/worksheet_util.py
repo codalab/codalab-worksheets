@@ -443,7 +443,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
                 contents = client.head_target(target, MAX_LINES)
                 contents = map(base64.b64decode, contents)
 
-            if isinstance(contents, list) and len(contents) == 0:
+            if not contents: # contents is empty list
               info = ''
             elif all('\t' in x for x in contents):
                 # Tab-separated file (key\tvalue\nkey\tvalue...)
