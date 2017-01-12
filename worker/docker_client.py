@@ -40,6 +40,8 @@ class DockerClient(object):
     """
     Methods for talking to Docker.
     """
+    LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
+
     def __init__(self):
         self._docker_host = os.environ.get('DOCKER_HOST') or None
         self._nvidia_docker_host = os.environ.get('NVIDIA_DOCKER_HOST', 'localhost:3476')
@@ -70,6 +72,22 @@ to run the worker from the Docker shell.
 """
             raise
 
+        # Check if nvidia-docker-plugin is available
+        try:
+            self._test_nvidia_docker()
+        except DockerException as e:
+            print >> sys.stderr, """
+nvidia-docker-plugin not available, defaulting to basic GPU support.
+"""
+            self._use_nvidia_docker = False
+            self._init_libcuda()
+        else:
+            self._use_nvidia_docker = True
+            self._nvidia_device_files = []
+            self._libcuda = None
+
+    def _init_libcuda(self):
+        """Initialize to provide limited GPU support."""
         # Find the libcuda library.
         try:
             self._libcuda = None
@@ -88,17 +106,6 @@ No ldconfig found. Not loading libcuda libraries.
         for filename in os.listdir('/dev'):
             if filename.startswith('nvidia'):
                 self._nvidia_device_files.append(os.path.join('/dev', filename))
-
-        # Check if nvidia-docker-plugin is available
-        try:
-            self._test_nvidia_docker()
-        except DockerException as e:
-            print >> sys.stderr, """
-nvidia-docker-plugin not available, defaulting to basic GPU support.
-"""
-            self._use_nvidia_docker = False
-        else:
-            self._use_nvidia_docker = True
 
     def _create_nvidia_docker_connection(self):
         return httplib.HTTPConnection(self._nvidia_docker_host)
@@ -213,20 +220,18 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
-        LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
-
         # Set up the command.
         docker_bundle_path = '/' + uuid
         libcuda_commands = []
-        if not self._use_nvidia_docker and self._libcuda is not None:
+        if self._libcuda is not None:
             # Set up the libcuda.so symlinks.
             libcuda_commands = [
-                'rm -f %s %s' % (os.path.join(LIBCUDA_DIR, 'libcuda.so.1'),
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+                'rm -f %s %s' % (os.path.join(self.LIBCUDA_DIR, 'libcuda.so.1'),
+                                 os.path.join(self.LIBCUDA_DIR, 'libcuda.so')),
                 'ln -s %s %s' % (os.path.basename(self._libcuda),
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so.1')),
+                                 os.path.join(self.LIBCUDA_DIR, 'libcuda.so.1')),
                 'ln -s %s %s' % ('libcuda.so.1',
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+                                 os.path.join(self.LIBCUDA_DIR, 'libcuda.so')),
             ]
         docker_commands = libcuda_commands + [
             'ldconfig',
@@ -251,10 +256,10 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
 
         # Set up the volumes.
         volume_bindings = []
-        if not self._use_nvidia_docker and self._libcuda is not None:
+        if self._libcuda is not None:
             volume_bindings.append('%s:%s:ro' % (
                 self._libcuda,
-                os.path.join(LIBCUDA_DIR, os.path.basename(self._libcuda))))
+                os.path.join(self.LIBCUDA_DIR, os.path.basename(self._libcuda))))
         volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
         for dependency_path, docker_dependency_path in dependencies:
             volume_bindings.append('%s:%s:ro' % (
@@ -263,12 +268,11 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
 
         # Set up GPU devices manually.
         devices = []
-        if not self._use_nvidia_docker:
-            for device in self._nvidia_device_files:
-                devices.append({
-                    'PathOnHost': device,
-                    'PathInContainer': device,
-                    'CgroupPermissions': 'mrw'})
+        for device in self._nvidia_device_files:
+            devices.append({
+                'PathOnHost': device,
+                'PathInContainer': device,
+                'CgroupPermissions': 'mrw'})
 
         # Create the container.
         create_request = {
