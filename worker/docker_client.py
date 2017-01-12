@@ -39,16 +39,37 @@ class DockerException(Exception):
 class DockerClient(object):
     """
     Methods for talking to Docker.
+
+    GPU Support
+    -----------
+    DockerClient tries its best to support runs that require GPUs.
+    During initialization, DockerClient checks to see if nvidia-docker-plugin
+    is available by contacting the REST API at the address specified by the
+    environment variable `NV_HOST`, or the default `localhost:3476`. If the
+    plugin is available, then DockerClient will query the REST API for
+    information about the volumes and devices that it should specify in the
+    Docker container creation request.
+
+    If the plugin is not available, we do a bit of manual work to attempt to
+    support GPU jobs. In particular, DockerClient will query `ldconfig` to
+    see if libcuda is available on the host machine, then if it is available,
+    manually mount `libcuda.so` and NVIDIA character devices in the containers.
+    Many GPU jobs will require more than just libcuda, so it is recommended that
+    you install nvidia-docker on the host machines of workers that should
+    support GPU jobs.
     """
     LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
 
     def __init__(self):
         self._docker_host = os.environ.get('DOCKER_HOST') or None
-        self._nvidia_docker_host = os.environ.get('NVIDIA_DOCKER_HOST', 'localhost:3476')
         if self._docker_host:
             self._docker_host = self._docker_host.replace('tcp://', '')
+
+        # NV_HOST specification in the nvidia-docker documentation:
+        # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker#running-it-remotely
+        self._nvidia_docker_host = os.environ.get('NV_HOST', 'localhost:3476')
         if self._nvidia_docker_host:
-            self._nvidia_docker_host = self._nvidia_docker_host.replace('tcp://', '')
+            self._nvidia_docker_host = self._nvidia_docker_host.replace('http://', '')
 
         cert_path = os.environ.get('DOCKER_CERT_PATH') or None
         if cert_path:
