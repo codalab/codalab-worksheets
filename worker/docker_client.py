@@ -44,11 +44,10 @@ class DockerClient(object):
     -----------
     DockerClient tries its best to support runs that require GPUs.
     During initialization, DockerClient checks to see if nvidia-docker-plugin
-    is available by contacting the REST API at the address specified by the
-    environment variable `NV_HOST`, or the default `localhost:3476`. If the
-    plugin is available, then DockerClient will query the REST API for
-    information about the volumes and devices that it should specify in the
-    Docker container creation request.
+    is available on the host machine by contacting the REST API at the default
+    address `localhost:3476`. If the plugin is available, then DockerClient will
+    query the REST API for information about the volumes and devices that it
+    should specify in the Docker container creation request.
 
     If the plugin is not available, we do a bit of manual work to attempt to
     support GPU jobs. In particular, DockerClient will query `ldconfig` to
@@ -58,18 +57,16 @@ class DockerClient(object):
     you install nvidia-docker on the host machines of workers that should
     support GPU jobs.
     """
+    # Where to look for nvidia-docker-plugin
+    NV_HOST = 'localhost:3476'
+
+    # Where to mount libcuda inside the container
     LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
 
     def __init__(self):
         self._docker_host = os.environ.get('DOCKER_HOST') or None
         if self._docker_host:
             self._docker_host = self._docker_host.replace('tcp://', '')
-
-        # NV_HOST specification in the nvidia-docker documentation:
-        # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker#running-it-remotely
-        self._nvidia_docker_host = os.environ.get('NV_HOST', 'localhost:3476')
-        if self._nvidia_docker_host:
-            self._nvidia_docker_host = self._nvidia_docker_host.replace('http://', '')
 
         cert_path = os.environ.get('DOCKER_CERT_PATH') or None
         if cert_path:
@@ -129,7 +126,7 @@ No ldconfig found. Not loading libcuda libraries.
                 self._nvidia_device_files.append(os.path.join('/dev', filename))
 
     def _create_nvidia_docker_connection(self):
-        return httplib.HTTPConnection(self._nvidia_docker_host)
+        return httplib.HTTPConnection(self.NV_HOST)
 
     def _create_connection(self):
         if self._docker_host:
