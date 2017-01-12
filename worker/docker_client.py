@@ -42,8 +42,11 @@ class DockerClient(object):
     """
     def __init__(self):
         self._docker_host = os.environ.get('DOCKER_HOST') or None
+        self._nvidia_docker_host = os.environ.get('NVIDIA_DOCKER_HOST', 'localhost:3476')
         if self._docker_host:
             self._docker_host = self._docker_host.replace('tcp://', '')
+        if self._nvidia_docker_host:
+            self._nvidia_docker_host = self._nvidia_docker_host.replace('tcp://', '')
 
         cert_path = os.environ.get('DOCKER_CERT_PATH') or None
         if cert_path:
@@ -98,7 +101,7 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
             self._use_nvidia_docker = True
 
     def _create_nvidia_docker_connection(self):
-        return httplib.HTTPConnection("localhost:3476")
+        return httplib.HTTPConnection(self._nvidia_docker_host)
 
     def _create_connection(self):
         if self._docker_host:
@@ -109,6 +112,7 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
         return DockerUnixConnection()
 
     def _test_nvidia_docker(self):
+        """Throw exception if nvidia-docker-plugin is not available."""
         try:
             with closing(self._create_nvidia_docker_connection()) as conn:
                 conn.request('GET', '/v1.0/gpu/status/json')
@@ -121,7 +125,6 @@ nvidia-docker-plugin not available, defaulting to basic GPU support.
                     raise DockerException('Invalid json response')
         except Exception as e:
             raise DockerException(e.message)
-        return True
 
     def _add_nvidia_docker_arguments(self, request):
         """Add the arguments supplied by nvidia-docker-plugin REST API"""
