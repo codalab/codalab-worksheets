@@ -58,6 +58,7 @@ class DockerClient(object):
     support GPU jobs.
     """
     # Where to look for nvidia-docker-plugin
+    # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin
     NV_HOST = 'localhost:3476'
 
     # Where to mount libcuda inside the container
