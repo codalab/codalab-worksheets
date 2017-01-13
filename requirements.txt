@@ -1,6 +1,6 @@
 argcomplete==1.1.0
-SQLAlchemy==1.0.8
 PyYAML==3.11
 psutil==3.3.0
 six==1.10.0
+SQLAlchemy==1.0.8
 watchdog==0.8.3
