@@ -170,6 +170,8 @@ No ldconfig found. Not loading libcuda libraries.
 
     def _add_nvidia_docker_arguments(self, request):
         """Add the arguments supplied by nvidia-docker-plugin REST API"""
+        # nvidia-docker-plugin REST API documentation:
+        # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin#rest-api
         with closing(self._create_nvidia_docker_connection()) as conn:
             path = '/v1.0/docker/cli/json?dev='
             if self._cuda_visible_devices is not None:
