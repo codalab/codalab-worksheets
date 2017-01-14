@@ -1,3 +1,7 @@
+alembic==0.8.2
+bottle==0.12.9
 futures==3.0.5
 gunicorn==19.4.5
+marshmallow-jsonapi==0.6.0
+oauthlib==1.0.3
 MySQL-python==1.2.5
