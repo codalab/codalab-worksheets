@@ -161,15 +161,8 @@ No ldconfig found. Not loading libcuda libraries.
     def _test_nvidia_docker(self):
         """Throw exception if nvidia-docker-plugin is not available."""
         try:
-            with closing(self._create_nvidia_docker_connection()) as conn:
-                conn.request('GET', '/v1.0/gpu/status/json')
-                status_response = conn.getresponse()
-                if status_response.status != 200:
-                    raise DockerException(status_response.read())
-                try:
-                    json.loads(status_response.read())
-                except:
-                    raise DockerException('Invalid json response')
+            # Test the API call
+            self._add_nvidia_docker_arguments({})
         except Exception as e:
             raise DockerException(e.message)
 
