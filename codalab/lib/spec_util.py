@@ -4,8 +4,6 @@ spec_util contains some simple methods to generate and check names and uuids.
 import re
 import uuid
 
-from marshmallow import ValidationError
-
 from codalab.common import (
   precondition,
   UsageError,
@@ -59,24 +57,6 @@ def check_uuid(uuid_str):
 def check_name(name):
     if not NAME_REGEX.match(name):
         raise UsageError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))
-
-
-def validate_uuid(uuid_str):
-    """
-    Raise a ValidationError if the uuid does not conform to its regex.
-    """
-    if not UUID_REGEX.match:
-        raise ValidationError('uuids must match %s, was %s' % (UUID_REGEX.pattern, uuid_str))
-
-
-def validate_name(name):
-    if not NAME_REGEX.match(name):
-        raise ValidationError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))
-
-
-def validate_child_path(path):
-    if not CHILD_PATH_REGEX.match(path):
-        raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
 
 def check_id(owner_id):
