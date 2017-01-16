@@ -16,6 +16,8 @@ import sqlalchemy as sa
 
 def upgrade():
     op.add_column('user', sa.Column('notifications', sa.Integer(), nullable=False))
+    conn = op.get_bind()
+    conn.execute("UPDATE user SET notifications = 2")
 
 
 def downgrade():
