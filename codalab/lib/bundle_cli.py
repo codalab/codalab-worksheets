@@ -867,7 +867,6 @@ class BundleCLI(object):
             '  upload <path> ... <path> : Upload one bundle whose directory contents contain <path> ... <path>.',
             '  upload -c <text>         : Upload one bundle whose file contents is <text>.',
             '  upload <url>             : Upload one bundle whose file contents is downloaded from <url>.',
-            '  upload                   : Open file browser dialog and upload contents of the selected file as a bundle (website only).',
             'Most of the other arguments specify metadata fields.',
         ],
         arguments=(
@@ -907,14 +906,12 @@ class BundleCLI(object):
             'metadata': metadata,
         }
 
-        # Create bundle
-        new_bundle = client.create('bundles', bundle_info, params={
-            'worksheet': worksheet_uuid
-        })
-
         # Option 1: Upload contents string
         if args.contents is not None:
             contents_buffer = StringIO(args.contents)
+            new_bundle = client.create('bundles', bundle_info, params={
+                'worksheet': worksheet_uuid
+            })
             client.upload_contents_blob(
                 new_bundle['id'],
                 fileobj=contents_buffer,
@@ -927,6 +924,9 @@ class BundleCLI(object):
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
 
+            new_bundle = client.create('bundles', bundle_info, params={
+                'worksheet': worksheet_uuid
+            })
             client.upload_contents_blob(new_bundle['id'], params={
                 'urls': args.path,
                 'git': args.git,
@@ -942,21 +942,34 @@ class BundleCLI(object):
             sources = [path_util.normalize(path) for path in args.path]
 
             print >>self.stderr, "Preparing upload archive..."
-            upload_blob, filename, total_bytes, unpack_at_server =\
-                zip_util.pack_files_for_upload(
+            packed = zip_util.pack_files_for_upload(
                     sources, should_unpack=(not args.pack),
                     follow_symlinks=args.follow_symlinks,
                     exclude_patterns=args.exclude_patterns,
                     force_compression=args.force_compression)
 
+            # Create bundle.
+            # We must create the bundle right before we upload it because we
+            # perform some input validation in functions such as
+            # zip_util.pack_files_for_upload that we want to fail fast before
+            # we try to create or upload the bundle, otherwise you will be left
+            # with empty shells of failed uploading bundles on your worksheet.
+            new_bundle = client.create('bundles', bundle_info, params={
+                'worksheet': worksheet_uuid,
+                'wait_for_upload': True,
+            })
             print >>self.stderr, 'Uploading %s (%s) to %s' %\
-                                 (filename, new_bundle['id'], client.address)
-            progress = FileTransferProgress('Sent ', total_bytes, f=self.stderr)
-            with closing(upload_blob), progress:
+                                 (packed['filename'], new_bundle['id'], client.address)
+            progress = FileTransferProgress('Sent ', packed['filesize'], f=self.stderr)
+            with closing(packed['fileobj']), progress:
                 client.upload_contents_blob(
                     new_bundle['id'],
-                    fileobj=upload_blob,
-                    params={'filename': filename, 'unpack': unpack_at_server},
+                    fileobj=packed['fileobj'],
+                    params={
+                        'filename': packed['filename'],
+                        'unpack': packed['should_unpack'],
+                        'simplify': packed['should_simplify'],
+                    },
                     progress_callback=progress.update)
 
         print >>self.stdout, new_bundle['id']
@@ -1060,6 +1073,7 @@ class BundleCLI(object):
         dest_bundle = dest_client.create('bundles', source_info, params={
             'worksheet': dest_worksheet_uuid,
             'detached': not add_to_worksheet,
+            'wait_for_upload': True,
         })
 
         # If bundle contents don't exist, finish after just copying metadata
@@ -1075,6 +1089,14 @@ class BundleCLI(object):
         else:
             unpack = False
 
+        # Bundles stuck in non-final states such as 'running' should not keep
+        # that state at the destination server, and should instead just fallback
+        # to 'failed'
+        if source_info['state'] == State.READY:
+            source_state = State.READY
+        else:
+            source_state = State.FAILED
+
         # Send file over
         progress = FileTransferProgress('Copied ', f=self.stderr)
         source = source_client.fetch_contents_blob(source_bundle_uuid)
@@ -1082,7 +1104,12 @@ class BundleCLI(object):
             dest_client.upload_contents_blob(
                 dest_bundle['id'],
                 fileobj=source,
-                params={'filename': filename, 'unpack': unpack},
+                params={
+                    'filename': filename,
+                    'unpack': unpack,
+                    'simplify': False,  # retain original bundle verbatim
+                    'state_on_success': source_state,  # copy bundle state
+                },
                 progress_callback=progress.update)
 
     @Commands.command(
@@ -1670,7 +1697,7 @@ class BundleCLI(object):
         while True:
             if not run_finished:
                 info = client.fetch('bundles', bundle_uuid)
-                run_finished = info['state'] in (State.READY, State.FAILED)
+                run_finished = info['state'] in State.FINAL_STATES
 
             # Read data.
             for i in xrange(0, len(subpaths)):
@@ -1928,8 +1955,8 @@ class BundleCLI(object):
                     'value': '',
                 })
 
-            # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup,
-            # directives, etc.)
+            # A prelude of a bundle on a worksheet is the set of items (markup, directives, etc.)
+            # that occur immediately before it, until the last preceding newline.
             # Let W be the first worksheet containing the old_inputs[0].
             # Add all items on that worksheet that appear in old_to_new along with their preludes.
             # For items not on this worksheet, add them at the end (instead of making them floating).
@@ -1962,7 +1989,6 @@ class BundleCLI(object):
 
                 prelude_items = []  # The prelude that we're building up
                 for item in worksheet_info['items']:
-                    # (bundle_info, subworkheet_info, value_obj, item_type) = item
                     just_added = False
 
                     if item['type'] == worksheet_util.TYPE_BUNDLE:
@@ -1977,6 +2003,9 @@ class BundleCLI(object):
 
                                 # Add prelude
                                 for item2 in prelude_items:
+                                    # Create a copy of the item on the destination worksheet
+                                    item2 = item2.copy()
+                                    item2['worksheet'] = JsonApiRelationship('worksheets', worksheet_uuid)
                                     client.create('worksheet-items', data=item2)
 
                                 # Add the bundle item
@@ -1988,7 +2017,8 @@ class BundleCLI(object):
                                 new_bundle_uuids_added.add(new_bundle_uuid)
                                 just_added = True
 
-                    if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item['type'] == worksheet_util.TYPE_DIRECTIVE:
+                    if ((item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or
+                            item['type'] == worksheet_util.TYPE_DIRECTIVE):
                         prelude_items.append(item)  # Include in prelude
                         skipped = False
                     else:
@@ -2559,7 +2589,7 @@ class BundleCLI(object):
         group = client.fetch('groups', args.group_spec)
 
         members = []
-        # group['owner'] may be None (i.e. for the public group)
+        # group['owner'] may be a falsey null-relationship (i.e. for the public group)
         if group['owner']:
             members.append({
                 'role': 'owner',

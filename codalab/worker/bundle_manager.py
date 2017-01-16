@@ -1,13 +1,13 @@
 import datetime
 import logging
 import os
+import random
 import re
 import sys
 import threading
 import time
 import traceback
 
-from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.common import State
 from codalab.lib import bundle_util, formatting, path_util
 from worker.file_util import remove_path
@@ -312,13 +312,22 @@ class BundleManager(object):
                 # argument.
                 return []
 
-        # Sort according to the number of dependencies available, breaking
-        # ties by the number of free slots.
+        # Sort workers list according to these keys in the following succession:
+        #  - number of dependencies available, descending
+        #  - number of free slots, descending
+        #  - random key
+        # Breaking ties randomly is important, since multiple workers frequently
+        # have the same number of dependencies and free slots for a given bundle
+        # (in particular, bundles with no dependencies) and we may end up
+        # selecting the same worker over and over again for new jobs. While this
+        # is not a problem for the performance of the jobs themselves, this can
+        # cause one worker to collect a disproportionate number of dependencies
+        # in its cache.
         needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path),
                               bundle.dependencies))
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
-            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']))
+            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list

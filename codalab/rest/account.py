@@ -73,6 +73,10 @@ def do_signup():
     affiliation = request.forms.get('affiliation')
 
     errors = []
+    if request.user.is_authenticated:
+        errors.append("You are already logged in as %s, please log out before "
+                      "creating a new account." % request.user.user_name)
+
     if request.forms.get('confirm_password') != password:
         errors.append("Passwords do not match.")
 

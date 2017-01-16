@@ -5,7 +5,7 @@ import os
 import socket
 import time
 
-from sqlalchemy import and_
+from sqlalchemy import and_, select
 
 from codalab.common import precondition
 from codalab.model.tables import (
@@ -52,16 +52,12 @@ class WorkerModel(object):
                                 cl_worker.c.worker_id == worker_id))
             ).fetchone()
             if existing_row:
-                socket_id = existing_row.socket_id  
+                socket_id = existing_row.socket_id
                 conn.execute(
                     cl_worker.update()
                         .where(and_(cl_worker.c.user_id == user_id,
                                     cl_worker.c.worker_id == worker_id))
                         .values(worker_row))
-                conn.execute(
-                    cl_worker_dependency.delete()
-                        .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                    cl_worker_dependency.c.worker_id == worker_id)))   
             else:
                 socket_id = self.allocate_socket(user_id, worker_id, conn)
                 worker_row.update({
@@ -70,16 +66,31 @@ class WorkerModel(object):
                     'socket_id': socket_id,
                 })
                 conn.execute(cl_worker.insert().values(worker_row))
-            dependency_rows = [{
-                'user_id': user_id,
-                'worker_id': worker_id,
-                'dependency_uuid': uuid,
-                'dependency_path': path,
-            } for uuid, path in dependencies]
-            if dependency_rows:
-                conn.execute(cl_worker_dependency.insert(), dependency_rows)
+
+            # Update dependencies
+            blob = self._serialize_dependencies(dependencies)
+            if existing_row:
+                conn.execute(
+                    cl_worker_dependency.update()
+                        .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                    cl_worker_dependency.c.worker_id == worker_id))
+                        .values(dependencies=blob)
+                )
+            else:
+                conn.execute(
+                    cl_worker_dependency.insert()
+                        .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
+                )
 
         return socket_id
+
+    @staticmethod
+    def _serialize_dependencies(dependencies):
+        return json.dumps(dependencies, separators=(',', ':'))
+
+    @staticmethod
+    def _deserialize_dependencies(blob):
+        return map(tuple, json.loads(blob))
 
     def worker_cleanup(self, user_id, worker_id):
         """
@@ -96,29 +107,29 @@ class WorkerModel(object):
                 self._cleanup_socket(socket_row.socket_id)
             conn.execute(cl_worker_socket.delete()
                          .where(and_(cl_worker_socket.c.user_id == user_id,
-                                     cl_worker_socket.c.worker_id == worker_id)))   
+                                     cl_worker_socket.c.worker_id == worker_id)))
             conn.execute(cl_worker_run.delete()
                          .where(and_(cl_worker_run.c.user_id == user_id,
-                                     cl_worker_run.c.worker_id == worker_id)))      
+                                     cl_worker_run.c.worker_id == worker_id)))
             conn.execute(cl_worker_dependency.delete()
                          .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                     cl_worker_dependency.c.worker_id == worker_id)))      
+                                     cl_worker_dependency.c.worker_id == worker_id)))
             conn.execute(cl_worker.delete()
                          .where(and_(cl_worker.c.user_id == user_id,
                                      cl_worker.c.worker_id == worker_id)))
-            
+
     def get_workers(self):
         """
         Returns information about all the workers in the database. The return
         value is a list of dicts with the structure shown in the code below.
         """
         with self._engine.begin() as conn:
-            worker_rows = conn.execute(cl_worker.select()).fetchall()
-            worker_run_rows = (
-                conn.execute(cl_worker_run.select()).fetchall())
-            worker_dependency_rows = (
-                conn.execute(cl_worker_dependency.select()).fetchall())
- 
+            worker_rows = conn.execute(
+                select([cl_worker, cl_worker_dependency.c.dependencies])
+                .select_from(cl_worker.outerjoin(cl_worker_dependency))
+            ).fetchall()
+            worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
+
         worker_dict = {(row.user_id, row.worker_id): {
             'user_id': row.user_id,
             'worker_id': row.worker_id,
@@ -129,13 +140,10 @@ class WorkerModel(object):
             'checkin_time': row.checkin_time,
             'socket_id': row.socket_id,
             'run_uuids': [],
-            'dependencies': [],
+            'dependencies': row.dependencies and self._deserialize_dependencies(row.dependencies),
         } for row in worker_rows}
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
-        for row in worker_dependency_rows:
-            worker_dict[(row.user_id, row.worker_id)]['dependencies'].append(
-                (row.dependency_uuid, row.dependency_path))
         return worker_dict.values()
 
     def get_bundle_worker(self, uuid):

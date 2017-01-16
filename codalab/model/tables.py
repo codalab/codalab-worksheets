@@ -11,13 +11,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.types import (
   BigInteger,
-  Integer,
-  String,
-  Text,
   Boolean,
   DateTime,
-  Float,
   Enum,
+  Float,
+  Integer,
+  LargeBinary,
+  String,
+  Text,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
 
@@ -365,13 +366,12 @@ worker_run = Table(
 worker_dependency = Table(
   'worker_dependency',
   db_metadata,
-
-  Column('user_id', String(63), ForeignKey(user.c.user_id), nullable=False),
-  Column('worker_id', String(127), nullable=False),
+  Column('user_id', String(63), ForeignKey(user.c.user_id), primary_key=True, nullable=False),
+  Column('worker_id', String(127), primary_key=True, nullable=False),
   ForeignKeyConstraint(['user_id', 'worker_id'], ['worker.user_id', 'worker.worker_id']),
 
-  # No foreign key here, since we don't have any logic to clean-up bundles that
-  # are deleted.
-  Column('dependency_uuid', String(63), nullable=False),
-  Column('dependency_path', Text, nullable=False),
+  # Serialized list of dependencies for the user/worker combination.
+  # See WorkerModel for the serialization method.
+  Column('dependencies', LargeBinary, nullable=False),
+  sqlite_autoincrement=True,
 )

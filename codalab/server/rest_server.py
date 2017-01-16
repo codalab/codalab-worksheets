@@ -45,7 +45,7 @@ from codalab.server.oauth2_provider import oauth2_provider
 # Don't log requests to routes matching these regexes.
 ROUTES_NOT_LOGGED_REGEXES = [
     re.compile(r'/oauth2/.*'),
-    re.compile(r'/worker/.*'),
+    re.compile(r'/workers/.*'),
 ]
 
 
@@ -92,7 +92,7 @@ class CheckJsonPlugin(object):
 class LoggingPlugin(object):
     """Logs successful requests to the events log."""
     api = 2
-    
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             if not self._should_log(route.rule):
@@ -101,8 +101,9 @@ class LoggingPlugin(object):
             start_time = time.time()
 
             res = callback(*args, **kwargs)
-            
-            command = route.method + ' ' + route.rule
+
+            # Use explicitly defined route name or 'METHOD /rule'
+            command = route.name or (route.method + ' ' + route.rule)
             query_dict = (
                 dict(map(lambda k: (k, request.query[k]), request.query)))
             args = [request.path, query_dict]
@@ -149,11 +150,18 @@ class ErrorAdapter(object):
 
         return wrapper
 
+    @staticmethod
+    def _censor_passwords(pairs):
+        # Return iterator over pairs censoring any values with 'password' in the key
+        return ((k, '<censored>') if 'password' in k else (k, v) for k, v in pairs)
+
     def report_exception(self, exc):
         query = formatting.key_value_list(request.query.allitems())
-        forms = formatting.key_value_list(request.forms.allitems() if request.json is None else [])
+        forms = formatting.key_value_list(
+            self._censor_passwords(request.forms.allitems()) if request.json is None else [])
         body = formatting.verbose_pretty_json(request.json)
-        local_vars = formatting.key_value_list(server_util.exc_frame_locals().items())
+        local_vars = formatting.key_value_list(
+            self._censor_passwords(server_util.exc_frame_locals().items()))
         aux_info = textwrap.dedent("""\
                     Query params:
                     {0}
@@ -250,7 +258,11 @@ def run_rest_server(manager, debug, num_processes, num_threads):
                            "please upgrade it by running `git pull` from where "
                            "you installed it.")
 
+    # Look for templates in codalab-cli/views
     bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
+
+    # Increase the request body size limit to 8 MiB
+    bottle.BaseRequest.MEMFILE_MAX = 8 * 1024 * 1024
 
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter
