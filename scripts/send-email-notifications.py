@@ -81,7 +81,7 @@ def main(args):
         # Apply template to get body of message
         body = body_template
         for field, value in info.items():
-            body = body.replace('{{' + field + '}}', str(value or ''))
+            body = body.replace('{{' + field + '}}', unicode(value or ''))
 
         if args.verbose >= 1:
             print 'To      : %s' % info['email_description']

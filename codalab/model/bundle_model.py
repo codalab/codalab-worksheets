@@ -44,7 +44,7 @@ from codalab.model.tables import (
     group as cl_group,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
-    NOTIFICATIONS_IMPORTANT,
+    NOTIFICATIONS_GENERAL,
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
     GROUP_OBJECT_PERMISSION_NONE,
@@ -1700,7 +1700,7 @@ class BundleModel(object):
         return row is not None and row.is_active
 
     def add_user(self, username, email, first_name, last_name, password,
-                 affiliation, notifications=NOTIFICATIONS_IMPORTANT,
+                 affiliation, notifications=NOTIFICATIONS_GENERAL,
                  user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
