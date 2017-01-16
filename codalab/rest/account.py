@@ -5,7 +5,7 @@ Handles create new user accounts and authenticating users.
 from bottle import request, response, template, local, redirect, default_app, get, post
 
 from codalab.lib import crypt_util, spec_util
-from codalab.lib.server_util import redirect_with_query
+from codalab.lib.server_util import redirect_with_query, query_get_bool
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.common import UsageError
 from codalab.objects.user import User
@@ -60,6 +60,9 @@ def do_login():
 
 @post('/account/signup')
 def do_signup():
+    if request.user.is_authenticated:
+        return redirect(default_app().get_url('success', message="You are already logged into your account."))
+
     success_uri = request.forms.get('success_uri')
     error_uri = request.forms.get('error_uri')
     username = request.forms.get('username')
@@ -84,7 +87,7 @@ def do_signup():
         User.validate_password(password)
     except UsageError as e:
         errors.append(e.message)
-
+        
     # Only do a basic validation of email -- the only guaranteed way to check
     # whether an email address is valid is by sending an actual email.
     if not spec_util.BASIC_EMAIL_REGEX.match(email):
@@ -112,8 +115,10 @@ def do_signup():
         affiliation = None
 
     # Create unverified user
+    SEND_SOME_NOTIFICATIONS = 2
     _, verification_key = local.model.add_user(
-        username, email, first_name, last_name, password, affiliation
+        username, email, first_name, last_name, 
+        password, affiliation, SEND_SOME_NOTIFICATIONS
     )
 
     # Send key
