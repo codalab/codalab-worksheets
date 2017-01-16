@@ -44,6 +44,7 @@ from codalab.model.tables import (
     group as cl_group,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
+    NOTIFICATIONS_IMPORTANT,
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
     GROUP_OBJECT_PERMISSION_NONE,
@@ -1698,9 +1699,8 @@ class BundleModel(object):
 
         return row is not None and row.is_active
 
-    SEND_SOME_NOTIFICATIONS = 2
     def add_user(self, username, email, first_name, last_name, password,
-                 affiliation, send_notifications_flag=SEND_SOME_NOTIFICATIONS,
+                 affiliation, notifications=NOTIFICATIONS_IMPORTANT,
                  user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
@@ -1720,6 +1720,7 @@ class BundleModel(object):
                 "user_id": user_id,
                 "user_name": username,
                 "email": email,
+                "notifications": notifications,
                 "last_login": None,
                 "is_active": True,
                 "first_name": first_name,
@@ -1732,7 +1733,6 @@ class BundleModel(object):
                 "time_used": 0,
                 "disk_quota": self.default_user_info['disk_quota'],
                 "disk_used": 0,
-                "send_notifications_flag": send_notifications_flag,
                 "affiliation": affiliation,
                 "url": None,
             }))

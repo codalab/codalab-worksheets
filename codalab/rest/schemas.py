@@ -201,9 +201,9 @@ class UserSchema(Schema):
 
 class AuthenticatedUserSchema(UserSchema):
     email = fields.String()
+    notifications = fields.Integer()
     time_quota = fields.Integer()
     time_used = fields.Integer()
-    send_notifications_flag = fields.Integer()
     disk_quota = fields.Integer()
     disk_used = fields.Integer()
     last_login = fields.LocalDateTime("%c")

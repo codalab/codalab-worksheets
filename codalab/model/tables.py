@@ -213,7 +213,7 @@ user = Table(
   Column('user_id', String(63), nullable=False),
   Column('user_name', String(63), nullable=False, unique=True),
   Column('email', String(254), nullable=False, unique=True),  # Length of 254 to be compliant with RFC3696/5321
-  Column('send_notifications_flag', Integer, nullable=False, default=0),  # flag for user notification type
+  Column('notifications', Integer, nullable=False, default=0),  # Encodes what email user wants to receive
   Column('last_login', DateTime),  # Null if user has never logged in
   Column('is_active', Boolean, nullable=False, default=True),  # Set to False instead of deleting users to maintain foreign key integrity
   Column('first_name', String(30, convert_unicode=True)),
@@ -238,6 +238,11 @@ user = Table(
   UniqueConstraint('user_id', name='uix_1'),
   sqlite_autoincrement=True,
 )
+
+# A notifications value is one of the following:
+NOTIFICATIONS_NONE      = 0x00  # Receive no notifications
+NOTIFICATIONS_IMPORTANT = 0x01  # Receive only important notifications
+NOTIFICATIONS_GENERAL   = 0x02  # Receive general notifications (new features)
 
 # Stores (email) verification keys
 user_verification = Table(
@@ -315,8 +320,8 @@ chat = Table(
   Column('sender_user_id', String(63), nullable=True),  # Who sent it?
   Column('recipient_user_id', String(63), nullable=True),  # Who received it?
   Column('message', Text, nullable=False),  # What's the content of the chat?
-  Column('worksheet_uuid', String(63), nullable=True), # What is the id of the worksheet that the sender is on? 
-  Column('bundle_uuid', String(63), nullable=True), # What is the id of the bundle that the sender is on? 
+  Column('worksheet_uuid', String(63), nullable=True), # What is the id of the worksheet that the sender is on?
+  Column('bundle_uuid', String(63), nullable=True), # What is the id of the bundle that the sender is on?
   sqlite_autoincrement=True,
 )
 

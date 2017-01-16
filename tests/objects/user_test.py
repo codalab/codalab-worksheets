@@ -2,12 +2,13 @@ import unittest
 import datetime
 
 from codalab.objects.user import User
+from codalab.model.tables import NOTIFICATIONS_IMPORTANT
 
-SEND_SOME_NOTIFICATIONS = 2
 user = User({
     "user_id": 1,
     "user_name": "test",
     "email": "test@test.com",
+    "notifications": NOTIFICATIONS_IMPORTANT,
     "last_login": datetime.datetime.now(),
     "is_active": True,
     "first_name": None,
@@ -22,7 +23,6 @@ user = User({
     "disk_used": 0,
     "affiliation": None,
     "url": None,
-    "send_notifications_flag": SEND_SOME_NOTIFICATIONS
 })
 
 
