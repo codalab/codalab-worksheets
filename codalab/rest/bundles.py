@@ -114,7 +114,7 @@ def build_bundles_document(bundle_uuids):
         })
 
     # Include users
-    owner_ids = set(b['owner_id'] for b in bundles)
+    owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
     json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
 
     # Include permissions
