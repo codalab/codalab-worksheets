@@ -18,7 +18,10 @@ from codalab.lib.server_util import (
     query_get_list,
     query_get_bool,
 )
-from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
+from codalab.model.tables import (
+    GROUP_OBJECT_PERMISSION_ALL,
+    GROUP_OBJECT_PERMISSION_READ,
+)
 from codalab.objects.permission import (
     check_worksheet_has_all_permission,
     check_worksheet_has_read_permission,
@@ -247,21 +250,23 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
     """
     worksheet = local.model.get_worksheet(uuid, fetch_items=fetch_items)
     check_worksheet_has_read_permission(local.model, request.user, worksheet)
+    permission = local.model.get_user_worksheet_permissions(
+        request.user.user_id, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}
+    )[worksheet.uuid]
 
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
 
+    # Mask owner identity on anonymous worksheet if don't have ALL permission
+    if permission < GROUP_OBJECT_PERMISSION_ALL and worksheet.is_anonymous:
+        result['owner_id'] = None
+
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
     if fetch_permission:
-        result['permission'] = local.model.get_user_worksheet_permissions(
-            request.user.user_id, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}
-        )[worksheet.uuid]
-        if result['permission'] >= GROUP_OBJECT_PERMISSION_READ:
-            result['group_permissions'] = local.model.get_group_worksheet_permissions(
-                request.user.user_id, worksheet.uuid)
-        else:
-            result['group_permissions'] = []
+        result['group_permissions'] = local.model.get_group_worksheet_permissions(
+            request.user.user_id, worksheet.uuid)
+        result['permission'] = permission
 
     return result
 

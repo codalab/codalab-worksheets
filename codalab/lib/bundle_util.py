@@ -24,7 +24,7 @@ def bundle_to_bundle_info(model, bundle):
     }
     if result['dependencies']:
         dep_names = model.get_bundle_names(
-            map(lambda dep: dep['parent_uuid'], result['dependencies']))
+            [dep['parent_uuid'] for dep in result['dependencies']])
         for dep in result['dependencies']:
             dep['parent_name'] = dep_names.get(dep['parent_uuid'])
 
