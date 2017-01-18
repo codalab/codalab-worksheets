@@ -1430,7 +1430,7 @@ class BundleCLI(object):
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
             ('Tags', ' '.join(worksheet_info['tags'])),
             ('Owner', self.simple_user_str(worksheet_info['owner']) +
-                (' [anonymous]' if not worksheet_info['is_anonymous'] else '')),
+                (' [anonymous]' if worksheet_info['is_anonymous'] else '')),
             ('Permissions', group_permissions_str(worksheet_info['group_permissions']) +
                 (' [frozen]' if worksheet_info['frozen'] else '')),
         ]
