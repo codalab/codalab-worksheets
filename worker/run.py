@@ -30,8 +30,8 @@ class Run(object):
     """
     def __init__(self, bundle_service, docker, worker, bundle, bundle_path,
                  resources):
-        logger.error('Run: {}'.format(bundle_service, docker, worker, bundle, bundle_path, resources))
-        print 'Run: {}'.format(bundle_service, docker, worker, bundle, bundle_path, resources)
+        logger.error('Run: {}'.format([bundle_service, docker, worker, bundle, bundle_path, resources]))
+        print 'Run: {}'.format([bundle_service, docker, worker, bundle, bundle_path, resources])
         self._bundle_service = bundle_service
         self._docker = docker
         self._worker = worker
