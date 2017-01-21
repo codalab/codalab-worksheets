@@ -386,8 +386,9 @@ No ldconfig found. Not loading libcuda libraries.
             
             inspect_json = json.loads(inspect_response.read())
             if not inspect_json['State']['Running']:
-                return (True, inspect_json['State']['ExitCode'], None)
-            return (False, None, None)   
+                logs = self._get_logs(container_id)
+                return (True, inspect_json['State']['ExitCode'], logs or None)
+            return (False, None, None)
 
     @wrap_exception('Unable to delete Docker container')
     def delete_container(self, container_id):
@@ -397,6 +398,14 @@ No ldconfig found. Not loading libcuda libraries.
             delete_response = conn.getresponse()
             if delete_response.status == 500:
                 raise DockerException(delete_response.read())
+
+    def _get_logs(self, container_id):
+        with closing(self._create_connection()) as conn:
+            conn.request('GET', '/containers/%s/logs?stdout=1&stderr=1' % container_id)
+            logs_response = conn.getresponse()
+            if logs_response.status == 500:
+                raise DockerException(logs_response.read())
+            return logs_response.read()
 
 
 class DockerUnixConnection(httplib.HTTPConnection, object):
