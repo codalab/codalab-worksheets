@@ -83,6 +83,10 @@ from codalab.lib.bundle_store import (
 from codalab.lib.print_util import FileTransferProgress
 from worker.file_util import un_tar_directory
 
+from codalab.lib.spec_util import generate_uuid
+from worker.docker_client import DockerClient
+from worker.file_util import remove_path
+
 # Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
@@ -100,6 +104,10 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
+    'run-local',
+    'run-image',
+    'commit-image',
+    'push-image',
     'edit',
     'detach',
     'rm',
@@ -484,12 +492,8 @@ class BundleCLI(object):
         bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
-    def parse_key_targets(self, client, worksheet_uuid, items):
-        """
-        Helper: items is a list of strings which are [<key>]:<target>
-        """
+    def parse_target_specs(self, items):
         targets = []
-        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
         for item in items:
             if ':' in item:
                 (key, target) = item.split(':', 1)
@@ -498,6 +502,18 @@ class BundleCLI(object):
             else:
                 # Provide syntactic sugar for a make bundle with a single anonymous target.
                 (key, target) = ('', item)
+
+            targets.append((key, target))
+        return targets
+
+    def parse_key_targets(self, client, worksheet_uuid, items):
+        """
+        Helper: items is a list of strings which are [<key>]:<target>
+        """
+        targets = []
+        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
+
+        for key, target in self.parse_target_specs(items):
             if key in targets:
                 if key:
                     raise UsageError('Duplicate key: %s' % (key,))
@@ -1192,6 +1208,119 @@ class BundleCLI(object):
         self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
+        'run-local',
+        help='Run a run bundle locally.',
+        arguments=(
+            Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
+            Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
+    )
+    def do_run_local_command(self, args):
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
+        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
+        metadata = self.get_missing_metadata(RunBundle, args)
+
+        docker_image = metadata.get('request_docker_image', 'ubuntu:14.04')
+        if not docker_image:
+            docker_image = 'ubuntu:14.04'
+
+        uuid = generate_uuid()
+        bundle_path = '/opt/{}'.format(uuid)
+        command = args.command
+        request_network = None
+        dependencies = [
+            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
+        ]
+
+        # Set up a directory to store the bundle.
+        remove_path(bundle_path)
+        os.mkdir(bundle_path)
+
+        for path1, path2 in dependencies:
+            docker_dependency_path = path2
+            child_path = os.path.join(bundle_path, path1)
+            os.symlink(docker_dependency_path, child_path)
+
+        dc = DockerClient()
+        container_id = dc.start_container(bundle_path, uuid, command, docker_image, request_network, dependencies)
+        print >>self.stdout, '===='
+        print >>self.stdout, 'ContainerID: ', container_id
+        print >>self.stdout, 'Local Bundle ID: ', uuid
+        print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
+        print >>self.stdout, '===='
+
+    @Commands.command(
+        'run-image',
+        help='Create a bundle by running a program bundle on an input bundle.',
+        arguments=(
+            Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
+    )
+    def do_run_image_command(self, args):
+        metadata = self.get_missing_metadata(RunBundle, args)
+        docker_image = metadata.get('request_docker_image', 'ubuntu:14.04')
+        if not docker_image:
+            docker_image = 'ubuntu:14.04'
+
+        uuid = generate_uuid()
+        bundle_path = '/opt/{}'.format(uuid)
+        command = '/bin/bash'
+        request_network = None
+        dependencies = [
+            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
+        ]
+
+        # Set up a directory to store the bundle.
+        remove_path(bundle_path)
+        os.mkdir(bundle_path)
+
+        for path1, path2 in dependencies:
+            docker_dependency_path = path2
+            child_path = os.path.join(bundle_path, path1)
+            os.symlink(docker_dependency_path, child_path)
+
+        dc = DockerClient()
+        extra_args = ['-it']
+        volume_bindings = dc.get_volume_bindings(bundle_path, uuid, command, docker_image, request_network, dependencies)
+        devices = dc.get_device_bindings(bundle_path, uuid, command, docker_image, request_network, dependencies)
+        docker_commands = dc.get_docker_commands_interactive(bundle_path, uuid, command, docker_image, request_network, dependencies)
+        cli_command = 'docker run {} {} {} {} {}'.format(
+                    ' '.join(extra_args),
+                    ' '.join([ '-v {}'.format(v) for v in volume_bindings ]),
+                    ' '.join([ '--device {}'.format(d) for d in devices ]),
+                    docker_image,
+                    ' '.join(['bash', '-c', '; '.join(docker_commands)])
+            )
+        os.system(cli_command)
+
+    @Commands.command(
+        'commit-image',
+        help='Create a bundle by running a program bundle on an input bundle.',
+        arguments=(
+            Commands.Argument('--container', help='Container to commit.', required=True),
+            Commands.Argument('--repository', help='Repository to commit to. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
+        )
+    )
+    def do_commit_image_command(self, args):
+        cli_command = 'docker commit {} {}'.format(args.container, args.repository)
+        os.system(cli_command)
+
+    @Commands.command(
+        'push-image',
+        help='Create a bundle by running a program bundle on an input bundle.',
+        arguments=(
+            Commands.Argument('--repository', help='Repository to commit to. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
+        )
+    )
+    def do_push_image_command(self, args):
+        cli_command = 'docker push {}'.format(args.repository)
+        os.system(cli_command)
+
+
+    @Commands.command(
         'edit',
         aliases=('e',),
         help=[
@@ -1643,7 +1772,7 @@ class BundleCLI(object):
 
         if info_type == 'link':
             print >>self.stdout, ' -> ' + info['link']
-            
+
         return info
 
     @Commands.command(

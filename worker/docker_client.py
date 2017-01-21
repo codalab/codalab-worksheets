@@ -160,36 +160,10 @@ No ldconfig found. Not loading libcuda libraries.
 
         # Set up the command.
         docker_bundle_path = '/' + uuid
-        libcuda_commands = []
-        if self._libcuda is not None:
-            # Set up the libcuda.so symlinks.
-            libcuda_commands = [
-                'rm -f %s %s' % (os.path.join(LIBCUDA_DIR, 'libcuda.so.1'),
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
-                'ln -s %s %s' % (os.path.basename(self._libcuda),
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so.1')),
-                'ln -s %s %s' % ('libcuda.so.1',
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
-            ]
-        docker_commands = libcuda_commands + [
-            'ldconfig',
-            'BASHRC=$(pwd)/.bashrc',
-            # Run as the user that owns the bundle directory. That way
-            # any new files are created as that user and not root.
-            'U_ID=$(stat -c %%u %s)' % docker_bundle_path,
-            'G_ID=$(stat -c %%g %s)' % docker_bundle_path,
-            'sudo -u \\#$U_ID -g \\#$G_ID -n bash -c ' +
-            # We pass several commands for bash to execute as the user as a
-            # single argument (i.e. all commands appear in quotes with no spaces
-            # outside the quotes). The first commands appear in double quotes
-            # since we want environment variables to be expanded. The last
-            # appears in single quotes since we do not. The expansion there, if
-            # any, should happen when bash executes it. Note, since the user's
-            # command can have single quotes we need to escape them.
-            '"[ -e $BASHRC ] && . $BASHRC; "' +
+        docker_commands = [
             '"cd %s; "' % docker_bundle_path +
             '"export HOME=%s; "' % docker_bundle_path +
-            '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
+            '\'(%s)\'' % command.replace('\'', '\'"\'"\''),
         ]
         return docker_commands
 
@@ -263,8 +237,6 @@ No ldconfig found. Not loading libcuda libraries.
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
-        logger.error('StartContainer: {}'.format([bundle_path, uuid, command, docker_image, request_network, dependencies]))
-
         docker_commands = self.get_docker_commands(bundle_path, uuid, command, docker_image,
                         request_network, dependencies)
 
