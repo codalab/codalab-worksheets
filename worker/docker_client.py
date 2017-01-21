@@ -36,122 +36,6 @@ class DockerException(Exception):
         super(DockerException, self).__init__(message)
 
 
-class DockerRunConfiguration(object):
-
-    def __init__(self, bundle_path, uuid, command, docker_image,
-                        request_network, dependencies, libcuda, nvidia_device_files):
-        self.bundle_path = bundle_path
-        self.uuid = uuid
-        self.command = command
-        self.docker_image = docker_image
-        self.request_network = request_network
-        self.dependencies = dependencies
-        self._libcuda = libcuda
-        self._nvidia_device_files = nvidia_device_files
-
-        LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
-
-        # Set up the command.
-        self.docker_bundle_path = '/' + uuid
-        libcuda_commands = []
-        if self._libcuda is not None:
-            # Set up the libcuda.so symlinks.
-            libcuda_commands = [
-                'rm -f %s %s' % (os.path.join(LIBCUDA_DIR, 'libcuda.so.1'),
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
-                'ln -s %s %s' % (os.path.basename(self._libcuda),
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so.1')),
-                'ln -s %s %s' % ('libcuda.so.1',
-                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
-            ]
-        self.docker_commands = libcuda_commands + [
-            'ldconfig',
-            'BASHRC=$(pwd)/.bashrc',
-            # Run as the user that owns the bundle directory. That way
-            # any new files are created as that user and not root.
-            'U_ID=$(stat -c %%u %s)' % self.docker_bundle_path,
-            'G_ID=$(stat -c %%g %s)' % self.docker_bundle_path,
-            'sudo -u \\#$U_ID -g \\#$G_ID -n bash -c ' +
-            # We pass several commands for bash to execute as the user as a
-            # single argument (i.e. all commands appear in quotes with no spaces
-            # outside the quotes). The first commands appear in double quotes
-            # since we want environment variables to be expanded. The last
-            # appears in single quotes since we do not. The expansion there, if
-            # any, should happen when bash executes it. Note, since the user's
-            # command can have single quotes we need to escape them.
-            '"[ -e $BASHRC ] && . $BASHRC; "' +
-            '"cd %s; "' % self.docker_bundle_path +
-            '"export HOME=%s; "' % self.docker_bundle_path +
-            '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
-        ]
-
-    def create_request(self):
-        # Set up the volumes.
-        volume_bindings = []
-        if self._libcuda is not None:
-            volume_bindings.append('%s:%s:ro' % (
-                self._libcuda,
-                os.path.join(LIBCUDA_DIR, os.path.basename(self._libcuda))))
-        volume_bindings.append('%s:%s' % (self.bundle_path, self.docker_bundle_path))
-        for dependency_path, docker_dependency_path in self.dependencies:
-            volume_bindings.append('%s:%s:ro' % (
-                os.path.abspath(dependency_path),
-                docker_dependency_path))
-
-        # Set up the devices.
-        devices = []
-        for device in self._nvidia_device_files:
-            devices.append({
-                'PathOnHost': device,
-                'PathInContainer': device,
-                'CgroupPermissions': 'mrw'})
-
-        # Create the container.
-        request = {
-            'Cmd': ['bash', '-c', '; '.join(self.docker_commands)],
-            'Image': self.docker_image,
-            'HostConfig': {
-                'Binds': volume_bindings,
-                'Devices': devices,
-                },
-        }
-        if not self.request_network:
-            request['HostConfig']['NetworkMode'] = 'none'
-
-        return request
-
-    def create_cli_command(self, extra_args=''):
-        # Set up the volumes.
-        volume_bindings = []
-        if self._libcuda is not None:
-            volume_bindings.append('%s:%s:ro' % (
-                self._libcuda,
-                os.path.join(LIBCUDA_DIR, os.path.basename(self._libcuda))))
-        volume_bindings.append('%s:%s' % (self.bundle_path, self.docker_bundle_path))
-        for dependency_path, docker_dependency_path in self.dependencies:
-            volume_bindings.append('%s:%s:ro' % (
-                os.path.abspath(dependency_path),
-                docker_dependency_path))
-
-        # Set up the devices.
-        devices = []
-        for device in self._nvidia_device_files:
-            devices.append('{}:{}:mrw'.format(device, device))
-
-        # Create the container.
-        command = 'bash -c; ' + '; '.join(self.docker_commands)
-
-        return 'docker run {} {} {} {} {}'.format(
-                ' '.join(extra_args),
-                ' '.join([ '-v {}'.format(v) for v in volume_bindings ]),
-                ' '.join([ '--device {}'.format(d) for d in devices ]),
-                self.docker_image,
-                command
-        )
-
-        # missing: use self.request_network
-
-
 class DockerClient(object):
     """
     Methods for talking to Docker.
@@ -270,19 +154,137 @@ No ldconfig found. Not loading libcuda libraries.
                     pass
                 loop_callback(status)
 
-    def get_docker_run_command(self):
-        pass
+    def get_docker_commands_interactive(self, bundle_path, uuid, command, docker_image,
+                        request_network, dependencies):
+        LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
+
+        # Set up the command.
+        docker_bundle_path = '/' + uuid
+        libcuda_commands = []
+        if self._libcuda is not None:
+            # Set up the libcuda.so symlinks.
+            libcuda_commands = [
+                'rm -f %s %s' % (os.path.join(LIBCUDA_DIR, 'libcuda.so.1'),
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+                'ln -s %s %s' % (os.path.basename(self._libcuda),
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so.1')),
+                'ln -s %s %s' % ('libcuda.so.1',
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+            ]
+        docker_commands = libcuda_commands + [
+            'ldconfig',
+            'BASHRC=$(pwd)/.bashrc',
+            # Run as the user that owns the bundle directory. That way
+            # any new files are created as that user and not root.
+            'U_ID=$(stat -c %%u %s)' % docker_bundle_path,
+            'G_ID=$(stat -c %%g %s)' % docker_bundle_path,
+            'sudo -u \\#$U_ID -g \\#$G_ID -n bash -c ' +
+            # We pass several commands for bash to execute as the user as a
+            # single argument (i.e. all commands appear in quotes with no spaces
+            # outside the quotes). The first commands appear in double quotes
+            # since we want environment variables to be expanded. The last
+            # appears in single quotes since we do not. The expansion there, if
+            # any, should happen when bash executes it. Note, since the user's
+            # command can have single quotes we need to escape them.
+            '"[ -e $BASHRC ] && . $BASHRC; "' +
+            '"cd %s; "' % docker_bundle_path +
+            '"export HOME=%s; "' % docker_bundle_path +
+            '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
+        ]
+        return docker_commands
+
+    def get_docker_commands(self, bundle_path, uuid, command, docker_image,
+                        request_network, dependencies):
+        LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
+
+        # Set up the command.
+        docker_bundle_path = '/' + uuid
+        libcuda_commands = []
+        if self._libcuda is not None:
+            # Set up the libcuda.so symlinks.
+            libcuda_commands = [
+                'rm -f %s %s' % (os.path.join(LIBCUDA_DIR, 'libcuda.so.1'),
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+                'ln -s %s %s' % (os.path.basename(self._libcuda),
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so.1')),
+                'ln -s %s %s' % ('libcuda.so.1',
+                                 os.path.join(LIBCUDA_DIR, 'libcuda.so')),
+            ]
+        docker_commands = libcuda_commands + [
+            'ldconfig',
+            'BASHRC=$(pwd)/.bashrc',
+            # Run as the user that owns the bundle directory. That way
+            # any new files are created as that user and not root.
+            'U_ID=$(stat -c %%u %s)' % docker_bundle_path,
+            'G_ID=$(stat -c %%g %s)' % docker_bundle_path,
+            'sudo -u \\#$U_ID -g \\#$G_ID -n bash -c ' +
+            # We pass several commands for bash to execute as the user as a
+            # single argument (i.e. all commands appear in quotes with no spaces
+            # outside the quotes). The first commands appear in double quotes
+            # since we want environment variables to be expanded. The last
+            # appears in single quotes since we do not. The expansion there, if
+            # any, should happen when bash executes it. Note, since the user's
+            # command can have single quotes we need to escape them.
+            '"[ -e $BASHRC ] && . $BASHRC; "' +
+            '"cd %s; "' % docker_bundle_path +
+            '"export HOME=%s; "' % docker_bundle_path +
+            '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
+        ]
+        return docker_commands
+
+    def get_device_bindings(self, bundle_path, uuid, command, docker_image,
+                        request_network, dependencies):
+        # Set up the devices.
+        devices = []
+        for device in self._nvidia_device_files:
+            devices.append({
+                'PathOnHost': device,
+                'PathInContainer': device,
+                'CgroupPermissions': 'mrw'})
+        return devices
+
+    def get_volume_bindings(self, bundle_path, uuid, command, docker_image,
+                        request_network, dependencies):
+        docker_bundle_path = '/' + uuid
+
+        # Set up the volumes.
+        volume_bindings = []
+        if self._libcuda is not None:
+            volume_bindings.append('%s:%s:ro' % (
+                self._libcuda,
+                os.path.join(LIBCUDA_DIR, os.path.basename(self._libcuda))))
+        volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
+        for dependency_path, docker_dependency_path in dependencies:
+            volume_bindings.append('%s:%s:ro' % (
+                os.path.abspath(dependency_path),
+                docker_dependency_path))
+        return volume_bindings
 
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
         logger.error('StartContainer: {}'.format([bundle_path, uuid, command, docker_image, request_network, dependencies]))
 
-        docker_run_config = DockerRunConfiguration(bundle_path, uuid, command, docker_image,
-                        request_network, dependencies, self._libcuda, self._nvidia_device_files)
+        docker_commands = self.get_docker_commands(bundle_path, uuid, command, docker_image,
+                        request_network, dependencies)
 
-        create_request = docker_run_config.create_request()
+        volume_bindings = self.get_volume_bindings(bundle_path, uuid, command, docker_image,
+                        request_network, dependencies)
 
+        devices = self.get_device_bindings(bundle_path, uuid, command, docker_image,
+                        request_network, dependencies)
+
+        # Create the container.
+        create_request = {
+            'Cmd': ['bash', '-c', '; '.join(docker_commands)],
+            'Image': docker_image,
+            'HostConfig': {
+                'Binds': volume_bindings,
+                'Devices': devices,
+                },
+        }
+        if not request_network:
+            create_request['HostConfig']['NetworkMode'] = 'none'
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',
                                 json.dumps(create_request),
@@ -294,7 +296,7 @@ No ldconfig found. Not loading libcuda libraries.
 
         # Start the container.
         logger.debug('Starting Docker container for UUID %s with command %s, container ID %s',
-            uuid, docker_run_config.command, container_id)
+            uuid, command, container_id)
         with closing(self._create_connection()) as start_conn:
             start_conn.request('POST', '/containers/%s/start' % container_id)
             start_response = start_conn.getresponse()
