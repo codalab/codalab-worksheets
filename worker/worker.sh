@@ -11,8 +11,8 @@ if ! [ -z "$PBS_JOBID" ]; then
   WORKER_ARGS="${WORKER_ARGS//|/ }"
 else
   WORKER_CODE_DIR=$(dirname $0)
-  STDOUT=/opt/stdout
-  STDERR=/opt/stderr
+  STDOUT=$WORKER_CODE_DIR/stdout
+  STDERR=$WORKER_CODE_DIR/stderr
 fi
 
 while [ 1 ]; do
