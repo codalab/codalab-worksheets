@@ -319,10 +319,16 @@ No ldconfig found. Not loading libcuda libraries.
                 'PathInContainer': device,
                 'CgroupPermissions': 'mrw'})
 
+        # Get user/group that owns the bundle directory
+        bundle_stat = os.stat(bundle_path)
+        uid = bundle_stat.st_uid
+        gid = bundle_stat.st_gid
+
         # Create the container.
         create_request = {
             'Cmd': ['bash', '-c', '; '.join(docker_commands)],
             'Image': docker_image,
+            'User': '%s:%s' % (uid, gid),
             'HostConfig': {
                 'Binds': volume_bindings,
                 'Devices': devices,
@@ -415,7 +421,12 @@ No ldconfig found. Not loading libcuda libraries.
                 # wrong with the commands run before the user command,
                 # such as ldconfig.
                 _, stderr = self._get_logs(container_id)
-                return (True, inspect_json['State']['ExitCode'], stderr or None)
+                # Strip non-ASCII chars since failure_message is not Unicode
+                if len(stderr) > 0:
+                    failure_msg = stderr.encode('ascii', 'ignore')
+                else:
+                    failure_msg = None
+                return (True, inspect_json['State']['ExitCode'], failure_msg)
             return (False, None, None)
 
     @wrap_exception('Unable to delete Docker container')
