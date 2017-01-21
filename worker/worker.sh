@@ -11,12 +11,12 @@ if ! [ -z "$PBS_JOBID" ]; then
   WORKER_ARGS="${WORKER_ARGS//|/ }"
 else
   WORKER_CODE_DIR=$(dirname $0)
-  STDOUT=$WORKER_CODE_DIR/stdout
-  STDERR=$WORKER_CODE_DIR/stderr
+  STDOUT=/dev/stdout
+  STDERR=/dev/stderr
 fi
 
 while [ 1 ]; do
-    python $WORKER_CODE_DIR/main.py --verbose $ID_ARG $WORKER_ARGS "$@" >$STDOUT 2>$STDERR
+    python $WORKER_CODE_DIR/main.py $ID_ARG $WORKER_ARGS "$@" >$STDOUT 2>$STDERR
     if [ "$?" -ne "123" ]; then
         break
     fi
