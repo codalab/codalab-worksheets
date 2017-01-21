@@ -6,6 +6,7 @@ import os
 import re
 import socket
 import ssl
+import struct
 import subprocess
 import sys
 
@@ -413,8 +414,8 @@ No ldconfig found. Not loading libcuda libraries.
                 # If the logs are nonempty, then something might have gone
                 # wrong with the commands run before the user command,
                 # such as ldconfig.
-                failure_msg = self._get_logs(container_id) or None
-                return (True, inspect_json['State']['ExitCode'], failure_msg)
+                _, stderr = self._get_logs(container_id)
+                return (True, inspect_json['State']['ExitCode'], stderr or None)
             return (False, None, None)
 
     @wrap_exception('Unable to delete Docker container')
@@ -427,13 +428,30 @@ No ldconfig found. Not loading libcuda libraries.
                 raise DockerException(delete_response.read())
 
     def _get_logs(self, container_id):
-        """Read stdout and stderr of the given container."""
+        """
+        Read stdout and stderr of the given container.
+
+        The stream is encoded in a format defined here:
+        https://docs.docker.com/engine/api/v1.20/#/attach-to-a-container
+        """
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/logs?stdout=1&stderr=1' % container_id)
             logs_response = conn.getresponse()
             if logs_response.status == 500:
                 raise DockerException(logs_response.read())
-            return logs_response.read()
+            contents = logs_response.read()
+            stderr = []
+            stdout = []
+            start = 0
+            while start < len(contents):
+                fp, size = struct.unpack('>BxxxL', contents[start:start+8])
+                payload = contents[start+8:start+8+size]
+                if fp == 1:
+                    stdout.append(payload)
+                elif fp == 2:
+                    stderr.append(payload)
+                start += 8 + size
+            return ''.join(stdout), ''.join(stderr)
 
 
 class DockerUnixConnection(httplib.HTTPConnection, object):
