@@ -157,6 +157,7 @@ No ldconfig found. Not loading libcuda libraries.
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
+        logger.error('StartContainer: {}'.format([bundle_path, uuid, command, docker_image, request_network, dependencies]))
         LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
 
         # Set up the command.
@@ -299,11 +300,11 @@ No ldconfig found. Not loading libcuda libraries.
                 return (True, None, 'Lost by Docker')
             if inspect_response.status != 200:
                 raise DockerException(inspect_response.read())
-            
+
             inspect_json = json.loads(inspect_response.read())
             if not inspect_json['State']['Running']:
                 return (True, inspect_json['State']['ExitCode'], None)
-            return (False, None, None)   
+            return (False, None, None)
 
     @wrap_exception('Unable to delete Docker container')
     def delete_container(self, container_id):
@@ -322,7 +323,7 @@ class DockerUnixConnection(httplib.HTTPConnection, object):
 
     def __init__(self):
         httplib.HTTPConnection.__init__(self, 'localhost')
- 
+
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(300)
