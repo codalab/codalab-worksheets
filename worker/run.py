@@ -30,6 +30,7 @@ class Run(object):
     """
     def __init__(self, bundle_service, docker, worker, bundle, bundle_path,
                  resources):
+        print 'Run: {}'.format(bundle_service, docker, worker, bundle, bundle_path, resources)
         self._bundle_service = bundle_service
         self._docker = docker
         self._worker = worker
@@ -42,7 +43,7 @@ class Run(object):
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
-        
+
         self._max_memory = 0
 
         self._kill_lock = threading.Lock()
@@ -404,7 +405,7 @@ class Run(object):
                 logger.debug('Uploading results for run with UUID %s', self._uuid)
                 updater = self._throttled_updater()
                 def update_status(bytes_uploaded):
-                    updater('Uploading results: %s done (archived size)' % 
+                    updater('Uploading results: %s done (archived size)' %
                         size_str(bytes_uploaded))
                 self._execute_bundle_service_command_with_retry(
                     lambda: self._bundle_service.update_bundle_contents(
