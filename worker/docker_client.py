@@ -272,7 +272,7 @@ No ldconfig found. Not loading libcuda libraries.
             + '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
             # Ensure that any created files are owned by the user/group that
             # owns the bundle directory, not root.
-            'chown -R $U_ID:$G_ID %s' % docker_bundle_path,
+            #'chown -R $U_ID:$G_ID %s' % docker_bundle_path,
         ]
 
         # Set up the volumes.
