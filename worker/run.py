@@ -156,6 +156,7 @@ class Run(object):
                 docker_dependency_path = os.path.join(
                     docker_dependencies_path, dep['child_path'])
                 os.symlink(docker_dependency_path, child_path)
+                logger.error('OS.symlink: {}'.format((docker_dependency_path, child_path)))
                 dependencies.append((dependency_path, docker_dependency_path))
 
             def do_start():
