@@ -35,13 +35,6 @@ RUN pip install pyyaml
 RUN pip install pandas
 RUN pip install sympy
 RUN pip install scikit-tensor
-RUN pip install cvxopt
 RUN pip install jupyter
 
-# Dev version of Theano to make keras work
-RUN apt-get install -y git
-RUN pip install --upgrade --no-deps git+git://github.com/Theano/Theano.git
-#RUN python -c "import theano; theano.test()"  # Takes too long
-RUN python `python -c "import os, theano; print os.path.dirname(theano.__file__)"`/misc/check_blas.py
-
-RUN pip install keras
+RUN pip install nltk

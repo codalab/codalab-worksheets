@@ -49,10 +49,11 @@ class Worker(object):
         # when the Run class calls finish_run.
         self._runs_lock = threading.Lock()
         self._runs = {}
- 
+
         self._exiting_lock = threading.Lock()
         self._exiting = False
         self._should_upgrade = False
+        self._last_checkin_successful = False
 
     def run(self):
         if not self.shared_file_system:
@@ -61,7 +62,12 @@ class Worker(object):
         while self._should_run():
             try:
                 self._checkin()
+                if not self._last_checkin_successful:
+                    print('Connected! Successful check in.')
+                self._last_checkin_successful = True
+
             except Exception:
+                self._last_checkin_successful = False
                 traceback.print_exc()
                 time.sleep(1)
 
@@ -167,14 +173,14 @@ class Worker(object):
                         loop_callback(bytes_downloaded[0])
                         return data
                     fileobj.read = interruptable_read
-  
+
                     self._store_dependency(dependency_path, fileobj, filename)
                     download_success = True
             finally:
                 logger.debug('Finished downloading dependency %s/%s', parent_uuid, parent_path)
                 self._dependency_manager.finish_download(
                     parent_uuid, parent_path, download_success)
-        
+
         return dependency_path
 
     def _store_dependency(self, dependency_path, fileobj, filename):
