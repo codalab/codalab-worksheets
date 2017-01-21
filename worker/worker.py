@@ -33,6 +33,9 @@ class Worker(object):
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
                  shared_file_system, slots,
                  bundle_service, docker):
+        logger.info("hi")
+        logger.warn("hl")
+        logger.error("hh")
         self.id = id
         self._tag = tag
         self.shared_file_system = shared_file_system
