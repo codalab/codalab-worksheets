@@ -386,8 +386,11 @@ No ldconfig found. Not loading libcuda libraries.
             
             inspect_json = json.loads(inspect_response.read())
             if not inspect_json['State']['Running']:
-                logs = self._get_logs(container_id)
-                return (True, inspect_json['State']['ExitCode'], logs or None)
+                # If the logs are nonempty, then something might have gone
+                # wrong with the commands run before the user command,
+                # such as ldconfig.
+                failure_msg = self._get_logs(container_id) or None
+                return (True, inspect_json['State']['ExitCode'], failure_msg)
             return (False, None, None)
 
     @wrap_exception('Unable to delete Docker container')
@@ -400,6 +403,7 @@ No ldconfig found. Not loading libcuda libraries.
                 raise DockerException(delete_response.read())
 
     def _get_logs(self, container_id):
+        """Read stdout and stderr of the given container."""
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/logs?stdout=1&stderr=1' % container_id)
             logs_response = conn.getresponse()
