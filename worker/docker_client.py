@@ -44,20 +44,17 @@ class DockerClient(object):
 
     GPU Support
     -----------
-    DockerClient tries its best to support runs that require GPUs.
+    DockerClient relies on nvidia-docker-plugin for runs that require GPUs.
     During initialization, DockerClient checks to see if nvidia-docker-plugin
     is available on the host machine by contacting the REST API at the default
     address `localhost:3476`. If the plugin is available, then DockerClient will
     query the REST API for information about the volumes and devices that it
     should specify in the Docker container creation request.
 
-    If the plugin is not available, we do a bit of manual work to attempt to
-    support GPU jobs. In particular, DockerClient will query `ldconfig` to
-    see if libcuda is available on the host machine, then if it is available,
-    manually mount `libcuda.so` and NVIDIA character devices in the containers.
-    Many GPU jobs will require more than just libcuda, so it is recommended that
-    you install nvidia-docker on the host machines of workers that should
-    support GPU jobs.
+    If you want your worker to support GPU jobs, make sure to install
+    nvidia-docker on the host machine. You can find the project and installation
+    instructions on GitHub:
+    https://github.com/NVIDIA/nvidia-docker
 
     DockerClient will read the CUDA_VISIBLE_DEVICES environment variable and
     only mount the GPU device corresponding to the indices listed in the
@@ -66,9 +63,6 @@ class DockerClient(object):
     # Where to look for nvidia-docker-plugin
     # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin
     NV_HOST = 'localhost:3476'
-
-    # Where to mount libcuda inside the container
-    LIBCUDA_DIR = '/usr/lib/x86_64-linux-gnu/'
 
     def __init__(self):
         self._docker_host = os.environ.get('DOCKER_HOST') or None
@@ -106,50 +100,13 @@ to run the worker from the Docker shell.
         # Check if nvidia-docker-plugin is available
         try:
             self._test_nvidia_docker()
-        except DockerException as e:
+        except DockerException:
             print >> sys.stderr, """
-nvidia-docker-plugin not available, defaulting to basic GPU support.
+nvidia-docker-plugin not available, no GPU support on this worker.
 """
             self._use_nvidia_docker = False
-            self._init_libcuda()
         else:
             self._use_nvidia_docker = True
-            self._nvidia_device_files = []
-            self._libcuda = None
-
-    def _init_libcuda(self):
-        """Initialize to provide limited GPU support."""
-        # Find the libcuda library.
-        try:
-            self._libcuda = None
-            for lib in subprocess.check_output(['/sbin/ldconfig', '-p']).split('\n'):
-                if 'x86-64' in lib and lib.endswith('libcuda.so'):
-                    self._libcuda = os.path.realpath(lib.split(' => ')[-1])
-        except OSError:
-            # ldconfig isn't available on Mac OS X. Let's just say that we
-            # don't support libcuda on Mac.
-            print >> sys.stderr, """
-No ldconfig found. Not loading libcuda libraries.
-"""
-
-        # Find all the NVIDIA device files.
-        self._nvidia_device_files = []
-        for filename in os.listdir('/dev'):
-            m = re.match(r'nvidia(\d+)', filename)
-            if m is None:
-                continue
-            device_idx = m.group(1)
-            if self._cuda_visible_devices is None or \
-                    device_idx in self._cuda_visible_devices:
-                self._nvidia_device_files.append(os.path.join('/dev', filename))
-                if self._cuda_visible_devices is not None:
-                    self._cuda_visible_devices.remove(device_idx)
-
-        # Check that all requested devices are used
-        if self._cuda_visible_devices is not None and \
-                len(self._cuda_visible_devices) > 0:
-            raise DockerException('NVIDIA devices not found: ' +
-                                  ','.join(self._cuda_visible_devices))
 
     def _create_nvidia_docker_connection(self):
         return httplib.HTTPConnection(self.NV_HOST)
@@ -266,21 +223,7 @@ No ldconfig found. Not loading libcuda libraries.
                         request_network, dependencies):
         # Set up the command.
         docker_bundle_path = '/' + uuid
-        libcuda_commands = []
-        if self._libcuda is not None:
-            # Set up the libcuda.so symlinks.
-            libcuda_commands = [
-                'rm -f %s %s' % (os.path.join(self.LIBCUDA_DIR, 'libcuda.so.1'),
-                                 os.path.join(self.LIBCUDA_DIR, 'libcuda.so')),
-                'ln -s %s %s' % (os.path.basename(self._libcuda),
-                                 os.path.join(self.LIBCUDA_DIR, 'libcuda.so.1')),
-                'ln -s %s %s' % ('libcuda.so.1',
-                                 os.path.join(self.LIBCUDA_DIR, 'libcuda.so')),
-            ]
-        docker_commands = libcuda_commands + [
-            'ldconfig',
-            'U_ID=$(stat -c %%u %s)' % docker_bundle_path,
-            'G_ID=$(stat -c %%g %s)' % docker_bundle_path,
+        docker_commands = [
             'BASHRC=$(pwd)/.bashrc',
             # We pass several commands for bash to execute as a single
             # argument (i.e. all commands appear in quotes with no spaces
@@ -294,32 +237,18 @@ No ldconfig found. Not loading libcuda libraries.
             + '"cd %s; "' % docker_bundle_path
             + '"export HOME=%s; "' % docker_bundle_path
             + '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
-            # Ensure that any created files are owned by the user/group that
-            # owns the bundle directory, not root.
-            #'chown -R $U_ID:$G_ID %s' % docker_bundle_path,
         ]
 
         # Set up the volumes.
-        volume_bindings = []
-        if self._libcuda is not None:
-            volume_bindings.append('%s:%s:ro' % (
-                self._libcuda,
-                os.path.join(self.LIBCUDA_DIR, os.path.basename(self._libcuda))))
-        volume_bindings.append('%s:%s' % (bundle_path, docker_bundle_path))
+        volume_bindings = ['%s:%s' % (bundle_path, docker_bundle_path)]
         for dependency_path, docker_dependency_path in dependencies:
             volume_bindings.append('%s:%s:ro' % (
                 os.path.abspath(dependency_path),
                 docker_dependency_path))
 
-        # Set up GPU devices manually.
-        devices = []
-        for device in self._nvidia_device_files:
-            devices.append({
-                'PathOnHost': device,
-                'PathInContainer': device,
-                'CgroupPermissions': 'mrw'})
-
         # Get user/group that owns the bundle directory
+        # Then we can ensure that any created files are owned by the user/group
+        # that owns the bundle directory, not root.
         bundle_stat = os.stat(bundle_path)
         uid = bundle_stat.st_uid
         gid = bundle_stat.st_gid
@@ -331,7 +260,6 @@ No ldconfig found. Not loading libcuda libraries.
             'User': '%s:%s' % (uid, gid),
             'HostConfig': {
                 'Binds': volume_bindings,
-                'Devices': devices,
                 },
         }
         if self._use_nvidia_docker:
@@ -419,7 +347,7 @@ No ldconfig found. Not loading libcuda libraries.
             if not inspect_json['State']['Running']:
                 # If the logs are nonempty, then something might have gone
                 # wrong with the commands run before the user command,
-                # such as ldconfig.
+                # such as bash or cd.
                 _, stderr = self._get_logs(container_id)
                 # Strip non-ASCII chars since failure_message is not Unicode
                 if len(stderr) > 0:
