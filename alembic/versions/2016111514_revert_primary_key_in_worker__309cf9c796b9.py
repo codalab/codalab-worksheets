@@ -1,5 +1,4 @@
 """Revert primary key in worker_dependency
-Inverse of the parent revision
 
 Revision ID: 309cf9c796b9
 Revises: 54725ffc62f3
