@@ -13,7 +13,7 @@ from dependency_manager import DependencyManager
 from file_util import remove_path, un_gzip_stream, un_tar_directory
 from run import Run
 
-VERSION = 6
+VERSION = 7
 
 logger = logging.getLogger(__name__)
 

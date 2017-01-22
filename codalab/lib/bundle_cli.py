@@ -2589,7 +2589,7 @@ class BundleCLI(object):
         group = client.fetch('groups', args.group_spec)
 
         members = []
-        # group['owner'] may be None (i.e. for the public group)
+        # group['owner'] may be a falsey null-relationship (i.e. for the public group)
         if group['owner']:
             members.append({
                 'role': 'owner',
