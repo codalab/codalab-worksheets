@@ -443,7 +443,9 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
                 contents = client.head_target(target, MAX_LINES)
                 contents = map(base64.b64decode, contents)
 
-            if all('\t' in x for x in contents):
+            if len(contents) == 0:
+              info = ''
+            elif all('\t' in x for x in contents):
                 # Tab-separated file (key\tvalue\nkey\tvalue...)
                 info = {}
                 for x in contents:
@@ -631,11 +633,11 @@ def interpret_items(schemas, raw_items):
     Each interpreted item has a focusIndex, and possibly consists of a list of
     table rows (indexed by subFocusIndex).  Here is an example:
       --- Raw ---                   --- Interpreted ---
-      rawIndex                                         (focusIndex, subFocusIndex)  
+      rawIndex                                         (focusIndex, subFocusIndex)
       0        % display table
       1        [bundle]             [table - row 0     (0, 0)
       2        [bundle]                    - row 1]    (0, 1)
-      3        
+      3
       4        hello                [markup            (1, 0)
       5        world                       ]
       6        [worksheet]          [worksheet]        (2, 0)
@@ -1036,4 +1038,3 @@ def interpret_wsearch(client, data):
 def check_worksheet_not_frozen(worksheet):
     if worksheet.frozen:
         raise PermissionError('Cannot mutate frozen worksheet %s(%s).' % (worksheet.uuid, worksheet.name))
-

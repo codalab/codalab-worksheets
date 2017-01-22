@@ -4,6 +4,7 @@ import os
 import re
 import sys
 import time
+from itertools import izip
 
 from bottle import abort, get, post, put, delete, local, request, response
 
@@ -106,7 +107,7 @@ def build_bundles_document(bundle_uuids):
 
     # Shim in editable metadata keys
     # Used by the front-end application
-    for bundle, data in zip(bundles, document['data']):
+    for bundle, data in izip(bundles, document['data']):
         json_api_meta(data, {
             'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
                 get_bundle_subclass(bundle['bundle_type']))
@@ -138,6 +139,11 @@ def _create_bundles():
     |shadow| - the uuid of the bundle to shadow
     |detached| - True ('1') if should not add new bundle to any worksheet,
                  or False ('0') otherwise. Default is False.
+    |wait_for_upload| - True ('1') if the bundle state should be initialized to
+                        UPLOADING regardless of the bundle type, or False ('0')
+                        otherwise. This prevents run bundles that are being
+                        copied from another instance from being run by the
+                        BundleManager. Default is False.
     """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadow')
@@ -170,6 +176,7 @@ def _create_bundles():
         bundle['owner_id'] = request.user.user_id
         bundle['state'] = (State.UPLOADING
                            if issubclass(bundle_class, UploadedBundle)
+                           or query_get_bool('wait_for_upload', False)
                            else State.CREATED)
         bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
@@ -218,12 +225,12 @@ def _update_bundles():
     ).load(request.json, partial=True).data
 
     # Check permissions
-    bundle_uuids = [b['uuid'] for b in bundle_updates]
+    bundle_uuids = [b.pop('uuid') for b in bundle_updates]
     check_bundles_have_all_permission(local.model, request.user, bundle_uuids)
+    bundles = local.model.batch_get_bundles(uuid=bundle_uuids)
 
     # Update bundles
-    for update in bundle_updates:
-        bundle = local.model.get_bundle(update.pop('uuid'))
+    for bundle, update in izip(bundles, bundle_updates):
         local.model.update_bundle(bundle, update)
 
     # Get updated bundles
@@ -373,14 +380,24 @@ def _update_bundle_contents_blob(uuid):
         simplify - (optional) 1 if the uploaded file should be 'simplified' if
                    it is an archive, or 0 otherwise, default is 1
                    (See UploadManager for full explanation of 'simplification')
-        finalize - (optional) 1 if this should be considered the final version
-                   of the bundle contents and thus mark the bundle as 'ready'
-                   when upload is complete and 'failed' if upload fails, or 0 if
-                   should allow future updates, default is 0
+        finalize_on_failure - (optional) True ('1') if bundle state should be set
+                              to 'failed' in the case of a failure during upload,
+                              or False ('0') if the bundle state should not
+                              change on failure. Default is False.
+        state_on_success - (optional) Update the bundle state to this state if
+                           the upload completes successfully. Must be either
+                           'ready' or 'failed'. Default is 'ready'.
     """
-    finalize = query_get_bool('finalize', default=False)
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
+    if bundle.state in State.FINAL_STATES:
+        abort(httplib.FORBIDDEN, 'Contents cannot be modified, bundle already finalized.')
+
+    # Get and validate query parameters
+    finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
+    final_state = request.query.get('state_on_success', default=State.READY)
+    if final_state not in State.FINAL_STATES:
+        abort(httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES))
 
     # If this bundle already has data, remove it.
     if local.upload_manager.has_contents(bundle):
@@ -403,18 +420,30 @@ def _update_bundle_contents_blob(uuid):
 
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 
-        if finalize:
-            local.model.finalize_bundle(bundle, request.user.user_id,
-                                        exitcode=None, failure_message=None)
-
     except Exception as e:
+        # Upload failed: cleanup, update state if desired, and return HTTP error
         if local.upload_manager.has_contents(bundle):
             local.upload_manager.cleanup_existing_contents(bundle)
-        if finalize:
-            msg = "Upload failed: %s" % e
-            local.model.finalize_bundle(bundle, request.user.user_id,
-                                        exitcode=None, failure_message=msg)
-        raise
+
+        msg = "Upload failed: %s" % e
+
+        # The client may not want to finalize the bundle on failure, to keep
+        # open the possibility of retrying the upload in the case of transient
+        # failure.
+        # Workers also use this API endpoint to upload partial contents of
+        # running bundles, and they should use finalize_on_failure=0 to avoid
+        # letting transient errors during upload fail the bundles prematurely.
+        if finalize_on_failure:
+            local.model.update_bundle(bundle, {
+                'state': State.FAILED,
+                'metadata': {'failure_message': msg},
+            })
+
+        abort(httplib.INTERNAL_SERVER_ERROR, msg)
+
+    else:
+        # Upload succeeded: update state
+        local.model.update_bundle(bundle, {'state': final_state})
 
 
 #############################################################

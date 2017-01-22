@@ -963,6 +963,13 @@ def test(ctx):
         rest_server_proc.kill()
         shutil.rmtree(remote_home)
 
+
+@TestModule.register('groups')
+def test(ctx):
+    # Should not crash
+    run_command([cl, 'ginfo', 'public'])
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('Usage: python %s <module> ... <module>' % sys.argv[0])

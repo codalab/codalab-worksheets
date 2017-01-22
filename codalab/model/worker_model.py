@@ -126,7 +126,7 @@ class WorkerModel(object):
         with self._engine.begin() as conn:
             worker_rows = conn.execute(
                 select([cl_worker, cl_worker_dependency.c.dependencies])
-                .select_from(cl_worker.join(cl_worker_dependency))
+                .select_from(cl_worker.outerjoin(cl_worker_dependency))
             ).fetchall()
             worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
 
@@ -140,7 +140,7 @@ class WorkerModel(object):
             'checkin_time': row.checkin_time,
             'socket_id': row.socket_id,
             'run_uuids': [],
-            'dependencies': self._deserialize_dependencies(row.dependencies),
+            'dependencies': row.dependencies and self._deserialize_dependencies(row.dependencies),
         } for row in worker_rows}
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
