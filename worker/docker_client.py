@@ -3,6 +3,7 @@ import httplib
 import json
 import logging
 import os
+import re
 import socket
 import ssl
 import subprocess
@@ -56,6 +57,10 @@ class DockerClient(object):
     Many GPU jobs will require more than just libcuda, so it is recommended that
     you install nvidia-docker on the host machines of workers that should
     support GPU jobs.
+
+    DockerClient will read the CUDA_VISIBLE_DEVICES environment variable and
+    only mount the GPU device corresponding to the indices listed in the
+    variable. The order in which the devices are listed is ignored.
     """
     # Where to look for nvidia-docker-plugin
     # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin
@@ -91,6 +96,12 @@ to run the worker from the Docker shell.
 """
             raise
 
+        # Read CUDA_VISIBLE_DEVICES
+        if 'CUDA_VISIBLE_DEVICES' in os.environ:
+            self._cuda_visible_devices = os.environ['CUDA_VISIBLE_DEVICES'].split(',')
+        else:
+            self._cuda_visible_devices = None
+
         # Check if nvidia-docker-plugin is available
         try:
             self._test_nvidia_docker()
@@ -123,8 +134,21 @@ No ldconfig found. Not loading libcuda libraries.
         # Find all the NVIDIA device files.
         self._nvidia_device_files = []
         for filename in os.listdir('/dev'):
-            if filename.startswith('nvidia'):
+            m = re.match(r'nvidia(\d+)', filename)
+            if m is None:
+                continue
+            device_idx = m.group(1)
+            if self._cuda_visible_devices is None or \
+                    device_idx in self._cuda_visible_devices:
                 self._nvidia_device_files.append(os.path.join('/dev', filename))
+                if self._cuda_visible_devices is not None:
+                    self._cuda_visible_devices.remove(device_idx)
+
+        # Check that all requested devices are used
+        if self._cuda_visible_devices is not None and \
+                len(self._cuda_visible_devices) > 0:
+            raise DockerException('NVIDIA devices not found: ' +
+                                  ','.join(self._cuda_visible_devices))
 
     def _create_nvidia_docker_connection(self):
         return httplib.HTTPConnection(self.NV_HOST)
@@ -140,22 +164,22 @@ No ldconfig found. Not loading libcuda libraries.
     def _test_nvidia_docker(self):
         """Throw exception if nvidia-docker-plugin is not available."""
         try:
-            with closing(self._create_nvidia_docker_connection()) as conn:
-                conn.request('GET', '/v1.0/gpu/status/json')
-                status_response = conn.getresponse()
-                if status_response.status != 200:
-                    raise DockerException(status_response.read())
-                try:
-                    json.loads(status_response.read())
-                except:
-                    raise DockerException('Invalid json response')
+            # Test the API call directly
+            # Will catch any errors (such as CUDA_VISIBLE_DEVICES format)
+            # ahead of time.
+            self._add_nvidia_docker_arguments({})
         except Exception as e:
             raise DockerException(e.message)
 
     def _add_nvidia_docker_arguments(self, request):
         """Add the arguments supplied by nvidia-docker-plugin REST API"""
+        # nvidia-docker-plugin REST API documentation:
+        # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin#rest-api
         with closing(self._create_nvidia_docker_connection()) as conn:
-            conn.request('GET', '/v1.0/docker/cli/json')
+            path = '/v1.0/docker/cli/json?dev='
+            if self._cuda_visible_devices is not None:
+                path += '+'.join(self._cuda_visible_devices)
+            conn.request('GET', path)
             cli_response = conn.getresponse()
             if cli_response.status != 200:
                 raise DockerException(cli_response.read())
