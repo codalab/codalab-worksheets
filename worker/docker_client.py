@@ -134,18 +134,21 @@ No ldconfig found. Not loading libcuda libraries.
         # Find all the NVIDIA device files.
         self._nvidia_device_files = []
         for filename in os.listdir('/dev'):
-            m = re.match(r'nvidia(.*)', filename)
-            if m is not None and (self._cuda_visible_devices is None or
-                                  m.group(1) in self._cuda_visible_devices):
+            m = re.match(r'nvidia(\d+)', filename)
+            if m is None:
+                continue
+            device_idx = m.group(1)
+            if self._cuda_visible_devices is None or \
+                    device_idx in self._cuda_visible_devices:
                 self._nvidia_device_files.append(os.path.join('/dev', filename))
                 if self._cuda_visible_devices is not None:
-                    self._cuda_visible_devices.remove(m.group(1))
+                    self._cuda_visible_devices.remove(device_idx)
 
         # Check that all requested devices are used
         if self._cuda_visible_devices is not None and \
                 len(self._cuda_visible_devices) > 0:
-            raise DockerException('Invalid GPU index: ' +
-                                  self._cuda_visible_devices.pop())
+            raise DockerException('NVIDIA devices not found: ' +
+                                  ','.join(self._cuda_visible_devices))
 
     def _create_nvidia_docker_connection(self):
         return httplib.HTTPConnection(self.NV_HOST)
