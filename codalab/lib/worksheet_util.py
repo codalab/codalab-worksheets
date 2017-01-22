@@ -475,7 +475,7 @@ def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
             elif isinstance(info, list):
                 try:
                     info = info[int(k)]
-                except KeyError:
+                except:
                     info = None
             else:
                 info = None
