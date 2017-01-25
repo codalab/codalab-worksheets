@@ -172,6 +172,17 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if version_info['ApiVersion'] < '1.17':
                 raise DockerException('Please upgrade your version of Docker')
 
+    @wrap_exception('Unable to fetch Docker image metadata')
+    def get_image_repo_digest(self, request_docker_image):
+        logger.debug('Fetching Docker image metadata for %s', request_docker_image)
+        with closing(self._create_connection()) as conn:
+            conn.request('GET', '/images/%s/json' % request_docker_image)
+            create_image_response = conn.getresponse()
+            if create_image_response.status != 200:
+                raise DockerException(create_image_response.read())
+            contents = json.loads(create_image_response.read())
+        return contents.get('RepoDigests', [''])[0]
+
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
         logger.debug('Downloading Docker image %s', docker_image)
