@@ -12,7 +12,6 @@ import sys
 
 from formatting import size_str
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -348,7 +347,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 return (True, None, 'Lost by Docker')
             if inspect_response.status != 200:
                 raise DockerException(inspect_response.read())
-            
+
             inspect_json = json.loads(inspect_response.read())
             if not inspect_json['State']['Running']:
                 # If the logs are nonempty, then something might have gone
@@ -406,7 +405,7 @@ class DockerUnixConnection(httplib.HTTPConnection, object):
 
     def __init__(self):
         httplib.HTTPConnection.__init__(self, 'localhost')
- 
+
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(300)
