@@ -71,6 +71,7 @@ def fetch_worksheet(uuid):
 
     # Include permissions
     json_api_include(document, WorksheetPermissionSchema(), worksheet['group_permissions'])
+    worksheet['group_permissions'] = sorted(worksheet['group_permissions'], key=lambda x: x['group_name'])
 
     return document
 
@@ -103,6 +104,7 @@ def fetch_worksheets():
     for w in worksheets:
         if 'group_permissions' in w:
             json_api_include(document, WorksheetPermissionSchema(), w['group_permissions'])
+            w['group_permissions'] = sorted(w['group_permissions'], key=lambda x: x['group_name'])
 
     return document
 
@@ -240,6 +242,8 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
         result['permission'] = local.model.get_user_worksheet_permissions(
             request.user.user_id, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}
         )[worksheet.uuid]
+
+        result['group_permissions'] = sorted(result['group_permissions'], key=lambda x: x['group_name'])
 
     return result
 

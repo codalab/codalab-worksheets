@@ -120,6 +120,7 @@ def build_bundles_document(bundle_uuids):
     # Include permissions
     for bundle in bundles:
         json_api_include(document, BundlePermissionSchema(), bundle['group_permissions'])
+        bundle['group_permissions'] = sorted(bundle['group_permissions'], key=lambda x: x['group_name'])
 
     # Include child bundles
     children_uuids = set(c['uuid'] for bundle in bundles for c in bundle['children'])
