@@ -224,19 +224,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # Set up the command.
         docker_bundle_path = '/' + uuid
         docker_commands = [
-            'BASHRC=$(pwd)/.bashrc',
-            # We pass several commands for bash to execute as a single
-            # argument (i.e. all commands appear in quotes with no spaces
-            # outside the quotes). The first commands appear in double quotes
-            # since we want environment variables to be expanded. The last
-            # appears in single quotes since we do not. The expansion there,
-            # if any, should happen when bash executes it. Note, since the
-            # user's command can have single quotes we need to escape them.
-            'bash -c '
-            + '"[ -e $BASHRC ] && . $BASHRC; "'
-            + '"cd %s; "' % docker_bundle_path
-            + '"export HOME=%s; "' % docker_bundle_path
-            + '\'(%s) >stdout 2>stderr\'' % command.replace('\'', '\'"\'"\''),
+            # TODO: Remove when codalab/torch uses ENV directives
+            # Temporary hack for codalab/torch image to load env variables
+            '[ -e /user/.bashrc ] && . /user/.bashrc',
+            '(%s) >stdout 2>stderr' % command,
         ]
 
         # Set up the volumes.
@@ -257,10 +248,14 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         create_request = {
             'Cmd': ['bash', '-c', '; '.join(docker_commands)],
             'Image': docker_image,
-            'User': '%s:%s' % (uid, gid),
+            'WorkingDir': docker_bundle_path,
+            'Env': ['HOME=%s' % docker_bundle_path],
             'HostConfig': {
                 'Binds': volume_bindings,
                 },
+            # TODO: Fix potential permissions issues arising from this setting
+            # This can cause problems if users expect to run as a specific user
+            'User': '%s:%s' % (uid, gid),
         }
         if self._use_nvidia_docker:
             self._add_nvidia_docker_arguments(create_request)
