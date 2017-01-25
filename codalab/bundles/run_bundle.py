@@ -23,13 +23,13 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)
     # Note that these are strings, which need to be parsed
     # Request a machine with this much resources and don't let run exceed these resources
-    METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (e.g., codalab/ubuntu:1.9) we wish to use.', completer=DockerImagesCompleter))
+    METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (e.g., codalab/ubuntu:1.9) we wish to use.', completer=DockerImagesCompleter, hide_when_anonymous=True))
     METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run.', formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size'))
     METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size'))
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'Number of CPUs allowed for this run.'))
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'Number of GPUs allowed for this run.'))
-    METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'Submit run to this job queue.'))
+    METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'Submit run to this job queue.', hide_when_anonymous=True))
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important).'))
     METADATA_SPECS.append(MetadataSpec('request_network', bool, 'Whether to allow network access.'))
 
@@ -46,10 +46,10 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('run_status', basestring, 'Execution status of the bundle.', generated=True))
 
     # Information about running
-    METADATA_SPECS.append(MetadataSpec('docker_image', basestring, 'Which docker image was used to run the process.', generated=True))
+    METADATA_SPECS.append(MetadataSpec('docker_image', basestring, 'Which docker image was used to run the process.', generated=True, hide_when_anonymous=True))
     METADATA_SPECS.append(MetadataSpec('exitcode', int, 'Exitcode of the process.', generated=True))
-    METADATA_SPECS.append(MetadataSpec('job_handle', basestring, 'Identifies the job handle (internal).', generated=True))
-    METADATA_SPECS.append(MetadataSpec('remote', basestring, 'Where this job is/was run (internal).', generated=True))
+    METADATA_SPECS.append(MetadataSpec('job_handle', basestring, 'Identifies the job handle (internal).', generated=True, hide_when_anonymous=True))
+    METADATA_SPECS.append(MetadataSpec('remote', basestring, 'Where this job is/was run (internal).', generated=True, hide_when_anonymous=True))
 
     @classmethod
     def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):
