@@ -104,6 +104,7 @@ class BundleService(object):
         bundle_info['permission_str'] = permission_str(bundle_info['permission'])
         for group_permission in bundle_info['group_permissions']:
             group_permission['permission_str'] = permission_str(group_permission['permission'])
+        # TODO??
 
         metadata = bundle_info['metadata']
 
@@ -177,6 +178,7 @@ class BundleService(object):
         worksheet_info['permission_str'] = permission_str(worksheet_info['permission'])
         for group_permission in worksheet_info['group_permissions']:
             group_permission['permission_str'] = permission_str(group_permission['permission'])
+        # sorted(worksheet_info['group_permissions'], key=lambda x: x['group_name'])
 
         # Go and fetch more information about the worksheet contents by
         # resolving the interpreted items.

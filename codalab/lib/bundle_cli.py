@@ -664,6 +664,8 @@ class BundleCLI(object):
         """
         Given a command string, return a list of suggestions to complete the last token.
         """
+        print command
+
         parser = Commands.build_parser(self)
         cf = argcomplete.CompletionFinder(parser)
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
