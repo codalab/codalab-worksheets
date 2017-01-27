@@ -1646,7 +1646,7 @@ class BundleCLI(object):
 
         if info_type == 'link':
             print >>self.stdout, ' -> ' + info['link']
-            
+
         return info
 
     @Commands.command(
@@ -1901,6 +1901,10 @@ class BundleCLI(object):
                         # Just make up a name heuristically
                         new_metadata['name'] = new_output_name + '-' + \
                                                old_info['metadata']['name']
+
+                # Put docker_image in requested_docker_image if it is present and this is a run bundle
+                if new_info['bundle_type'] == 'run' and not new_metadata.get('docker_image', ''):
+                    new_metadata['request_docker_image'] = new_metadata['docker_image']
 
                 # Remove all the automatically generated keys
                 cls = get_bundle_subclass(new_info['bundle_type'])
