@@ -237,29 +237,41 @@ class TestModule(object):
     """
     modules = OrderedDict()
 
-    def __init__(self, name, func, description):
+    def __init__(self, name, func, description, default):
         self.name = name
         self.func = func
         self.description = description
+        self.default = default
 
     @classmethod
-    def register(cls, name):
+    def register(cls, name, default=True):
         """Returns a decorator to register new test modules.
 
         The decorator will add a given function as test modules to the registry
         under the name provided here. The function's docstring (PEP 257) will
         be used as the prose description of the test module.
+
+        :param name: name of the test module
+        :param default: True to include in the 'default' module set
         """
         def add_module(func):
-            cls.modules[name] = TestModule(name, func, func.__doc__)
+            cls.modules[name] = TestModule(name, func, func.__doc__, default)
         return add_module
+
+    @classmethod
+    def all_modules(cls):
+        return cls.modules.values()
+
+    @classmethod
+    def default_modules(cls):
+        return filter(lambda m: m.default, cls.modules.itervalues())
 
     @classmethod
     def run(cls, query):
         """Run the modules named in query.
 
-        query should be a list of strings, each of which is either 'all'
-        or the name of an existing test module.
+        query should be a list of strings, each of which is either 'all',
+        'default', or the name of an existing test module.
         """
         # Might prompt user for password
         subprocess.call([cl, 'work'])
@@ -268,7 +280,9 @@ class TestModule(object):
         modules_to_run = []
         for name in query:
             if name == 'all':
-                modules_to_run.extend(cls.modules.values())
+                modules_to_run.extend(cls.all_modules())
+            elif name == 'default':
+                modules_to_run.extend(cls.default_modules())
             elif name in cls.modules:
                 modules_to_run.append(cls.modules[name])
             else:
@@ -970,11 +984,25 @@ def test(ctx):
     run_command([cl, 'ginfo', 'public'])
 
 
+@TestModule.register('docker', default=False)
+def test(ctx):
+    """
+    Check that certain Docker containers work with the CodaLab workers.
+    """
+    # Environment variables should load properly in codalab images
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
+    wait(uuid)
+    check_equals('/opt/scala/current', run_command([cl, 'cat', uuid+'/stdout']))
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1','echo $LUA_PATH'])
+    wait(uuid)
+    check_contains('/user/.luarocks/share/lua/5.1/?.lua', run_command([cl, 'cat', uuid+'/stdout']))
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('Usage: python %s <module> ... <module>' % sys.argv[0])
         print('This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.')
-        print('Modules: all ' + ' '.join(TestModule.modules.keys()))
+        print('Modules: default all ' + ' '.join(TestModule.modules.keys()))
     else:
         success = TestModule.run(sys.argv[1:])
         if not success:
