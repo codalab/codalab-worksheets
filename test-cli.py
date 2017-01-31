@@ -969,6 +969,7 @@ def test(ctx):
     # Should not crash
     run_command([cl, 'ginfo', 'public'])
 
+
 @TestModule.register('docker')
 def test(ctx):
     # Environment variables should load properly in codalab images
