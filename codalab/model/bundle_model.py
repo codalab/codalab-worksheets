@@ -44,6 +44,7 @@ from codalab.model.tables import (
     group as cl_group,
     group_bundle_permission as cl_group_bundle_permission,
     group_object_permission as cl_group_worksheet_permission,
+    NOTIFICATIONS_GENERAL,
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
     GROUP_OBJECT_PERMISSION_NONE,
@@ -1008,7 +1009,6 @@ class BundleModel(object):
         if sort_key[0] is not None:
             query = query.order_by(sort_key[0])
 
-        #print self._render_query(query)
         with self.engine.begin() as connection:
             rows = connection.execute(query).fetchall()
             if not rows:
@@ -1699,7 +1699,8 @@ class BundleModel(object):
         return row is not None and row.is_active
 
     def add_user(self, username, email, first_name, last_name, password,
-                 affiliation, user_id=None, is_verified=False):
+                 affiliation, notifications=NOTIFICATIONS_GENERAL,
+                 user_id=None, is_verified=False):
         """
         Create a brand new unverified user.
         :param username:
@@ -1718,6 +1719,7 @@ class BundleModel(object):
                 "user_id": user_id,
                 "user_name": username,
                 "email": email,
+                "notifications": notifications,
                 "last_login": None,
                 "is_active": True,
                 "first_name": first_name,
