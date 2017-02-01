@@ -669,7 +669,10 @@ class BundleCLI(object):
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
 
         # Strip whitespace and parse according to shell escaping rules
-        clean = lambda s: shlex.split(s.strip())[0] if s else ''
+        try: 
+            clean = lambda s: shlex.split(s.strip())[0] if s else ''
+        except ValueError as e:
+            raise UsageError(e.message)
         return map(clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos))
 
     def do_command(self, argv, stdout=None, stderr=None):

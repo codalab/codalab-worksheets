@@ -124,7 +124,7 @@ def error_logs(error_type, s):
         last_sent[error_type] = t
 
 durations = defaultdict(list)  # Command => durations for that command
-def run_command(args, soft_time_limit=5, hard_time_limit=60, include_output=True):
+def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True):
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
     try:
