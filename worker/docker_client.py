@@ -12,7 +12,6 @@ import sys
 
 from formatting import size_str
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -171,6 +170,17 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 raise DockerException('Invalid version information')
             if version_info['ApiVersion'] < '1.17':
                 raise DockerException('Please upgrade your version of Docker')
+
+    @wrap_exception('Unable to fetch Docker image metadata')
+    def get_image_repo_digest(self, request_docker_image):
+        logger.debug('Fetching Docker image metadata for %s', request_docker_image)
+        with closing(self._create_connection()) as conn:
+            conn.request('GET', '/images/%s/json' % request_docker_image)
+            create_image_response = conn.getresponse()
+            if create_image_response.status != 200:
+                raise DockerException(create_image_response.read())
+            contents = json.loads(create_image_response.read())
+        return contents.get('RepoDigests', [''])[0]
 
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
@@ -337,7 +347,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 return (True, None, 'Lost by Docker')
             if inspect_response.status != 200:
                 raise DockerException(inspect_response.read())
-            
+
             inspect_json = json.loads(inspect_response.read())
             if not inspect_json['State']['Running']:
                 # If the logs are nonempty, then something might have gone
@@ -395,7 +405,7 @@ class DockerUnixConnection(httplib.HTTPConnection, object):
 
     def __init__(self):
         httplib.HTTPConnection.__init__(self, 'localhost')
- 
+
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(300)

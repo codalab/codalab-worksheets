@@ -669,7 +669,7 @@ class BundleCLI(object):
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
 
         # Strip whitespace and parse according to shell escaping rules
-        try: 
+        try:
             clean = lambda s: shlex.split(s.strip())[0] if s else ''
         except ValueError as e:
             raise UsageError(e.message)
@@ -1646,7 +1646,7 @@ class BundleCLI(object):
 
         if info_type == 'link':
             print >>self.stdout, ' -> ' + info['link']
-            
+
         return info
 
     @Commands.command(
@@ -1901,6 +1901,13 @@ class BundleCLI(object):
                         # Just make up a name heuristically
                         new_metadata['name'] = new_output_name + '-' + \
                                                old_info['metadata']['name']
+
+                # By default, the mimic bundle uses whatever image the old bundle uses
+                # Preferably it uses the SHA256 image digest, but it may simply copy request_docker_image
+                # if it is not present
+                if new_info['bundle_type'] == 'run' and new_metadata.get('docker_image', ''):
+                    # Put docker_image in requested_docker_image if it is present and this is a run bundle
+                    new_metadata['request_docker_image'] = new_metadata['docker_image']
 
                 # Remove all the automatically generated keys
                 cls = get_bundle_subclass(new_info['bundle_type'])
