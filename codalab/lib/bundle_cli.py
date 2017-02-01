@@ -980,6 +980,7 @@ class BundleCLI(object):
                     progress_callback=progress.update)
 
         print >>self.stdout, new_bundle['id']
+        return new_bundle
 
     @Commands.command(
         'download',
@@ -1141,6 +1142,7 @@ class BundleCLI(object):
         )
 
         print >>self.stdout, new_bundle['uuid']
+        return new_bundle
 
     def wait(self, client, args, uuid):
         # Build new args for a hacky artificial call to the info command
@@ -1197,6 +1199,7 @@ class BundleCLI(object):
 
         print >>self.stdout, new_bundle['uuid']
         self.wait(client, args, new_bundle['uuid'])
+        return new_bundle
 
     @Commands.command(
         'edit',
@@ -1340,6 +1343,7 @@ class BundleCLI(object):
         else:
             for uuid in deleted_uuids:
                 print >>self.stdout, uuid
+            return deleted_uuids
 
     @Commands.command(
         'search',
