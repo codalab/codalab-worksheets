@@ -42,7 +42,7 @@ class Run(object):
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
-        
+
         self._max_memory = 0
 
         self._kill_lock = threading.Lock()
@@ -86,6 +86,16 @@ class Run(object):
         threading.Thread(target=Run._start, args=[self]).start()
 
         return True
+
+    def _safe_update_docker_image(self, docker_image):
+        """ Update the docker_image metadata field for the run bundle """
+        try:
+            update = {
+                'docker_image': docker_image
+            }
+            self._bundle_service.update_bundle_metadata(self._worker.id, self._uuid, update)
+        except BundleServiceException:
+            traceback.print_exc()
 
     def _safe_update_run_status(self, status):
         try:
@@ -165,6 +175,8 @@ class Run(object):
 
             try:
                 self._container_id = do_start()
+                digest = self._docker.get_image_repo_digest(self._resources['docker_image'])
+                self._safe_update_docker_image(digest)
             except DockerException as e:
                 # The download image call is slow, even if the image is already
                 # available. Thus, we only make it if we know the image is not
@@ -404,7 +416,7 @@ class Run(object):
                 logger.debug('Uploading results for run with UUID %s', self._uuid)
                 updater = self._throttled_updater()
                 def update_status(bytes_uploaded):
-                    updater('Uploading results: %s done (archived size)' % 
+                    updater('Uploading results: %s done (archived size)' %
                         size_str(bytes_uploaded))
                 self._execute_bundle_service_command_with_retry(
                     lambda: self._bundle_service.update_bundle_contents(
