@@ -1280,10 +1280,17 @@ class BundleCLI(object):
                     docker_image,
                     ' '.join(['bash', '-c', '; '.join(docker_commands)])
             )
+
+        print >>self.stdout, '===='
+        print >>self.stdout, 'About to enter container' # todo: provide container id
+        print >>self.stdout, 'Once you are happy with the changes, please exit the container (ctrl-D)'
+        print >>self.stdout, 'and commit your changes to a new image by running:'
+        print >>self.stdout, '"cl commit-image --container [container-id] --image-tag [image-tag]"'
+        print >>self.stdout, '===='
         os.system(cli_command)
         print >>self.stdout, '===='
         print >>self.stdout, 'Exited from container' # todo: provide container id
-        print >>self.stdout, 'Once you are happy with the changes, please commit your changes to a new image'
+        print >>self.stdout, 'If you are happy with the changes, please commit your changes to a new image'
         print >>self.stdout, 'by running "cl commit-image --container [container-id] --image-tag [image-tag]"'
         print >>self.stdout, '===='
 
