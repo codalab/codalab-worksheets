@@ -1186,11 +1186,12 @@ class BundleCLI(object):
 
     @Commands.command(
         'run',
-        help='Create a bundle by running a program bundle on an input bundle.',
+        help='Create a bundle by running a program bundle on an input bundle. If local mode is specified, simulate a run bundle locally, producing bundle contents in the local environment',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('--local', action='store_true', help='Simulate a run bundle locally.'),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
@@ -1198,58 +1199,44 @@ class BundleCLI(object):
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
         targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = self.get_missing_metadata(RunBundle, args)
-        new_bundle = client.create(
-            'bundles',
-            self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-            params={'worksheet': worksheet_uuid},
-        )
 
-        print >>self.stdout, new_bundle['uuid']
-        self.wait(client, args, new_bundle['uuid'])
+        if args.local:
+            docker_image = metadata.get('request_docker_image', None)
+            if docker_image is None:
+                raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
 
-    @Commands.command(
-        'run-local',
-        help='Run a run bundle locally.',
-        arguments=(
-            Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
-            Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
-            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
-    )
-    def do_run_local_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
-        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
-        metadata = self.get_missing_metadata(RunBundle, args)
+            uuid = generate_uuid()
+            bundle_path = '/opt/{}'.format(uuid)
+            command = args.command
+            request_network = None
+            dependencies = [
+                (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
+            ]
 
-        docker_image = metadata.get('request_docker_image', 'ubuntu:14.04')
-        if not docker_image:
-            docker_image = 'ubuntu:14.04'
+            # Set up a directory to store the bundle.
+            remove_path(bundle_path)
+            os.mkdir(bundle_path)
 
-        uuid = generate_uuid()
-        bundle_path = '/opt/{}'.format(uuid)
-        command = args.command
-        request_network = None
-        dependencies = [
-            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
-        ]
+            for dependency_path, docker_dependency_path in dependencies:
+                child_path = os.path.join(bundle_path, dependency_path)
+                os.symlink(docker_dependency_path, child_path)
 
-        # Set up a directory to store the bundle.
-        remove_path(bundle_path)
-        os.mkdir(bundle_path)
+            dc = DockerClient()
+            container_id = dc.start_container(bundle_path, uuid, command, docker_image, request_network, dependencies)
+            print >>self.stdout, '===='
+            print >>self.stdout, 'ContainerID: ', container_id
+            print >>self.stdout, 'Local Bundle ID: ', uuid
+            print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
+            print >>self.stdout, '===='
+        else:
+            new_bundle = client.create(
+                'bundles',
+                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+                params={'worksheet': worksheet_uuid},
+            )
 
-        for path1, path2 in dependencies:
-            docker_dependency_path = path2
-            child_path = os.path.join(bundle_path, path1)
-            os.symlink(docker_dependency_path, child_path)
-
-        dc = DockerClient()
-        container_id = dc.start_container(bundle_path, uuid, command, docker_image, request_network, dependencies)
-        print >>self.stdout, '===='
-        print >>self.stdout, 'ContainerID: ', container_id
-        print >>self.stdout, 'Local Bundle ID: ', uuid
-        print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
-        print >>self.stdout, '===='
+            print >>self.stdout, new_bundle['uuid']
+            self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
         'run-image',
@@ -1277,9 +1264,8 @@ class BundleCLI(object):
         remove_path(bundle_path)
         os.mkdir(bundle_path)
 
-        for path1, path2 in dependencies:
-            docker_dependency_path = path2
-            child_path = os.path.join(bundle_path, path1)
+        for dependency_path, docker_dependency_path in dependencies:
+            child_path = os.path.join(bundle_path, dependency_path)
             os.symlink(docker_dependency_path, child_path)
 
         dc = DockerClient()
@@ -1295,24 +1281,29 @@ class BundleCLI(object):
                     ' '.join(['bash', '-c', '; '.join(docker_commands)])
             )
         os.system(cli_command)
+        print >>self.stdout, '===='
+        print >>self.stdout, 'Exited from container' # todo: provide container id
+        print >>self.stdout, 'Once you are happy with the changes, please commit your changes to a new image'
+        print >>self.stdout, 'by running "cl commit-image --container [container-id] --image-tag [image-tag]"'
+        print >>self.stdout, '===='
 
     @Commands.command(
         'commit-image',
         help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
             Commands.Argument('--container', help='Container to commit.', required=True),
-            Commands.Argument('--repository', help='Repository to commit to. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
+            Commands.Argument('--image-tag', help='Image-tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
         )
     )
     def do_commit_image_command(self, args):
-        cli_command = 'docker commit {} {}'.format(args.container, args.repository)
+        cli_command = 'docker commit {} {}'.format(args.container, args.image_tag)
         os.system(cli_command)
 
     @Commands.command(
         'push-image',
-        help='Create a bundle by running a program bundle on an input bundle.',
+        help='Push a (committed) image to a docker registry.',
         arguments=(
-            Commands.Argument('--repository', help='Repository to commit to. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
+            Commands.Argument('--image-tag', help='Image-tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
         )
     )
     def do_push_image_command(self, args):
