@@ -104,7 +104,6 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
-    'run-local',
     'run-image',
     'commit-image',
     'push-image',
