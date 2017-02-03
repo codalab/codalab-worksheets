@@ -679,7 +679,7 @@ class BundleCLI(object):
             raise UsageError(e.message)
         return map(clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos))
 
-    def do_command(self, argv, stdout=None, stderr=None):
+    def do_command(self, argv, cli=True, stdout=None, stderr=None):
         parser = Commands.build_parser(self)
 
         # Call autocompleter (no side effect if os.environ['_ARGCOMPLETE'] is not set)
@@ -710,11 +710,11 @@ class BundleCLI(object):
                 else:
                     structured_result = command_fn()
             except PermissionError, e:
-                if self.headless:
+                if self.headless or not cli:
                     raise e
                 self.exit(e.message)
             except UsageError, e:
-                if self.headless:
+                if self.headless or not cli:
                     raise e
                 self.exit('%s: %s' % (e.__class__.__name__, e))
         return structured_result
