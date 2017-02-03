@@ -7,27 +7,16 @@ sys.path.append('.')
 from inspect import isclass
 from collections import defaultdict
 import os
-from shutil import rmtree
 
 from bottle import default_app, template
 from marshmallow import Schema
 from marshmallow_jsonapi import Schema as JsonApiSchema
 from textwrap import dedent
 
-
-REST_DOCS_PATH = 'docs/rest'
-SCHEMA_DOC_PATH = os.path.join(REST_DOCS_PATH, 'schemas.md')
-INDEX_DOC_PATH = os.path.join(REST_DOCS_PATH, 'index.md')
-
 from codalab.server import rest_server
 
 
-# TODO
-#  - create python string templates in Markdown for everything
-#  - filter out unwanted things (rpc endpoint, account endpoints, Schema)
-#  - output .md files into static/ ?
-
-
+REST_DOCS_PATH = 'docs/rest.md'
 EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static'}
 
 
@@ -56,6 +45,24 @@ def get_codalab_schemas():
         yield k, v
 
 
+
+INDEX_DOC = '''\
+# REST API Reference
+
+This reference and the REST API itself is still under heavy development and is
+subject to change at any time. Feedback through our GitHub issues is appreciated!
+
+## Table of Contents
+- [Resource Object Schemas](#resource-object-schemas)
+- [API Endpoints](#api-endpoints)
+% for root in route_roots:
+% api_name = ' '.join(root.title().split('-'))
+  - [{{api_name}} API](#{{root}}-api)
+% end
+
+'''
+
+
 SCHEMA_DOC = '''\
 <%
     from marshmallow_jsonapi import Schema as JsonApiSchema
@@ -63,9 +70,9 @@ SCHEMA_DOC = '''\
     from codalab.lib import spec_util
 %>
 % if issubclass(schema, JsonApiSchema):
-# {{schema.Meta.type_}}
+## {{schema.Meta.type_}}
 % else:
-# {{schema.__name__}}
+## {{schema.__name__}}
 % end
 
 % if schema.__doc__:
@@ -79,7 +86,11 @@ Name | Type
     attrs = vars(field)
     field_class = field.__class__
 %>
-`{{field_name}}` | {{field_class.__name__}}
+% if field_class.__name__ == 'Nested':
+    `{{field_name}}` | {{field.nested.__name__}}
+% else:
+    `{{field_name}}` | {{field_class.__name__}}
+%end
 % end
 '''
 
@@ -106,53 +117,36 @@ API_ROUTE_DOC = '''\
     from textwrap import dedent
     docstring = route.get_undecorated_callback().__doc__
 %>
-## `{{route.method}} {{!route.rule}}`
+### `{{route.method}} {{!route.rule}}`
 % if docstring:
 {{dedent(docstring)}}
 % end
 '''
 
 
-INDEX_DOC = '''\
-# REST API Reference
-
-This reference and the REST API itself is still under heavy development and is
-subject to change at any time. Feedback through our GitHub issues is appreciated!
-
-## Table of Contents
-- [Resource Object Schemas](schemas.md)
-- API Endpoints
-% for root in route_roots:
-% api_name = ' '.join(root.title().split('-'))
-  - [{{api_name}} API]({{root}}.md)
-% end
-'''
-
-INDEX_LINK = "\n&larr; [Back to Table of Contents](index.md)\n"
+INDEX_LINK = "\n&uarr; [Back to Top](#table-of-contents)\n"
 
 
 if __name__ == '__main__':
-    rmtree(REST_DOCS_PATH)
-    os.mkdir(REST_DOCS_PATH)
+    if not os.path.exists(os.path.dirname(REST_DOCS_PATH)):
+        os.makedirs(os.path.dirname(REST_DOCS_PATH))
 
-    for root, routes in get_api_routes().items():
-        doc_path = os.path.join(REST_DOCS_PATH, root + '.md')
-        api_name = ' '.join(root.title().split('-'))
-        with open(doc_path, 'wb') as out:
-            out.write('# %s API\n' % api_name)
-            out.write(INDEX_LINK)
+    with open(REST_DOCS_PATH, 'wb') as out:
+        out.write(template(dedent(INDEX_DOC), route_roots=get_api_routes().keys()))
+
+        out.write('# Resource Object Schemas\n')
+        for schema_name, schema in get_codalab_schemas():
+            out.write(template(dedent(SCHEMA_DOC), schema=schema))
+            # For debugging.
+            # for field_name, field in schema._declared_fields.items():
+            #     print vars(field)
+        out.write(INDEX_LINK)
+
+        out.write('# API Endpoints\n')
+        for root, routes in get_api_routes().items():
+            doc_path = os.path.join(REST_DOCS_PATH, root + '.md')
+            api_name = ' '.join(root.title().split('-'))
+            out.write('## %s API\n' % api_name)
             for route in routes:
                 out.write(template(dedent(API_ROUTE_DOC), route=route))
             out.write(INDEX_LINK)
-
-    with open(SCHEMA_DOC_PATH, 'wb') as out:
-        out.write(INDEX_LINK)
-        for schema_name, schema in get_codalab_schemas():
-            out.write(template(dedent(SCHEMA_DOC), schema=schema))
-            for field_name, field in schema._declared_fields.items():
-                print vars(field)
-        out.write(INDEX_LINK)
-
-    with open(INDEX_DOC_PATH, 'wb') as out:
-        out.write(template(dedent(INDEX_DOC), route_roots=get_api_routes().keys()))
-
