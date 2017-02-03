@@ -104,7 +104,7 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
-    'run-image',
+    'edit-image',
     'commit-image',
     'push-image',
     'edit',
@@ -1196,7 +1196,6 @@ class BundleCLI(object):
     def do_run_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
-        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = self.get_missing_metadata(RunBundle, args)
 
         if args.local:
@@ -1228,6 +1227,7 @@ class BundleCLI(object):
             print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
             print >>self.stdout, '===='
         else:
+            targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
             new_bundle = client.create(
                 'bundles',
                 self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
@@ -1238,18 +1238,15 @@ class BundleCLI(object):
             self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
-        'run-image',
-        help='Create a bundle by running a program bundle on an input bundle.',
+        'edit-image',
+        help='Drop to an interactive container within an image as a bash shell to allow edits.',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
-            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
+            Commands.Argument('--request-docker-image', help='The docker image to edit', required=True),
+        )
     )
-    def do_run_image_command(self, args):
-        metadata = self.get_missing_metadata(RunBundle, args)
-        docker_image = metadata.get('request_docker_image', 'ubuntu:14.04')
-        if not docker_image:
-            docker_image = 'ubuntu:14.04'
+    def do_edit_image_command(self, args):
+        docker_image = args.request_docker_image
 
         uuid = generate_uuid()
         bundle_path = '/opt/{}'.format(uuid)
@@ -1298,7 +1295,7 @@ class BundleCLI(object):
         help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
             Commands.Argument('--container', help='Container to commit.', required=True),
-            Commands.Argument('--image-tag', help='Image-tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
+            Commands.Argument('image_tag', help='Image-tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu'),
         )
     )
     def do_commit_image_command(self, args):
@@ -1309,11 +1306,11 @@ class BundleCLI(object):
         'push-image',
         help='Push a (committed) image to a docker registry.',
         arguments=(
-            Commands.Argument('--image-tag', help='Image-tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu', required=True),
+            Commands.Argument('image_tag', help='Image-tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu'),
         )
     )
     def do_push_image_command(self, args):
-        cli_command = 'docker push {}'.format(args.repository)
+        cli_command = 'docker push {}'.format(args.image_tag)
         os.system(cli_command)
 
 
