@@ -83,6 +83,10 @@ from codalab.lib.bundle_store import (
 from codalab.lib.print_util import FileTransferProgress
 from worker.file_util import un_tar_directory
 
+from codalab.lib.spec_util import generate_uuid
+from worker.docker_client import DockerClient
+from worker.file_util import remove_path
+
 # Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
@@ -100,6 +104,9 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
+    'edit-image',
+    'commit-image',
+    'push-image',
     'edit',
     'detach',
     'rm',
@@ -484,12 +491,8 @@ class BundleCLI(object):
         bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
-    def parse_key_targets(self, client, worksheet_uuid, items):
-        """
-        Helper: items is a list of strings which are [<key>]:<target>
-        """
+    def parse_target_specs(self, items):
         targets = []
-        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
         for item in items:
             if ':' in item:
                 (key, target) = item.split(':', 1)
@@ -498,6 +501,18 @@ class BundleCLI(object):
             else:
                 # Provide syntactic sugar for a make bundle with a single anonymous target.
                 (key, target) = ('', item)
+
+            targets.append((key, target))
+        return targets
+
+    def parse_key_targets(self, client, worksheet_uuid, items):
+        """
+        Helper: items is a list of strings which are [<key>]:<target>
+        """
+        targets = []
+        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
+
+        for key, target in self.parse_target_specs(items):
             if key in targets:
                 if key:
                     raise UsageError('Duplicate key: %s' % (key,))
@@ -1173,26 +1188,124 @@ class BundleCLI(object):
 
     @Commands.command(
         'run',
-        help='Create a bundle by running a program bundle on an input bundle.',
+        help='Create a bundle by running a program bundle on an input bundle. If local mode is specified, simulate a run bundle locally, producing bundle contents in the local environment',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+            Commands.Argument('--local', action='store_true', help='Simulate a run bundle locally.'),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
-        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = self.get_missing_metadata(RunBundle, args)
-        new_bundle = client.create(
-            'bundles',
-            self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-            params={'worksheet': worksheet_uuid},
-        )
 
-        print >>self.stdout, new_bundle['uuid']
-        self.wait(client, args, new_bundle['uuid'])
+        if args.local:
+            docker_image = metadata.get('request_docker_image', None)
+            if docker_image is None:
+                raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
+
+            uuid = generate_uuid()
+            bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
+            command = args.command
+            request_network = None
+            dependencies = [
+                (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
+            ]
+
+            # Set up a directory to store the bundle.
+            remove_path(bundle_path)
+            os.makedirs(bundle_path)
+
+            for dependency_path, docker_dependency_path in dependencies:
+                child_path = os.path.join(bundle_path, dependency_path)
+                os.symlink(docker_dependency_path, child_path)
+
+            dc = DockerClient()
+            container_id = dc.start_container(bundle_path, uuid, command, docker_image, request_network, dependencies)
+            print >>self.stdout, '===='
+            print >>self.stdout, 'ContainerID: ', container_id
+            print >>self.stdout, 'Local Bundle ID: ', uuid
+            print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
+            print >>self.stdout, '===='
+        else:
+            targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
+            new_bundle = client.create(
+                'bundles',
+                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+                params={'worksheet': worksheet_uuid},
+            )
+
+            print >>self.stdout, new_bundle['uuid']
+            self.wait(client, args, new_bundle['uuid'])
+
+    @Commands.command(
+        'edit-image',
+        help='Drop to an interactive container within an image as a bash shell to allow edits.',
+        arguments=(
+            Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
+            Commands.Argument('--request-docker-image', help='The docker image to edit', required=True),
+        )
+    )
+    def do_edit_image_command(self, args):
+        docker_image = args.request_docker_image
+
+        uuid = generate_uuid()
+        bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
+        command = '/bin/bash'
+        request_network = None
+        dependencies = [
+            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
+        ]
+
+        # Set up a directory to store the bundle.
+        remove_path(bundle_path)
+        os.makedirs(bundle_path)
+
+        for dependency_path, docker_dependency_path in dependencies:
+            child_path = os.path.join(bundle_path, dependency_path)
+            os.symlink(docker_dependency_path, child_path)
+
+        dc = DockerClient()
+        cli_command = dc.create_cli_command(bundle_path, uuid, command, docker_image, request_network, dependencies, ['-it'])
+
+        print >>self.stdout, '===='
+        print >>self.stdout, 'About to enter container' # todo: provide container id
+        print >>self.stdout, 'Once you are happy with the changes, please exit the container (ctrl-D)'
+        print >>self.stdout, 'and commit your changes to a new image by running:'
+        print >>self.stdout, '"cl commit-image --container [container-id] [image-tag]"'
+        print >>self.stdout, '===='
+        os.system(cli_command)
+        print >>self.stdout, '===='
+        print >>self.stdout, 'Exited from container' # todo: provide container id
+        print >>self.stdout, 'If you are happy with the changes, please commit your changes to a new image'
+        print >>self.stdout, 'by running "cl commit-image --container [container-id] [image-tag]"'
+        print >>self.stdout, '===='
+
+    @Commands.command(
+        'commit-image',
+        help='Create a bundle by running a program bundle on an input bundle.',
+        arguments=(
+            Commands.Argument('--container', help='Container to commit.', required=True),
+            Commands.Argument('image_tag', help='Image tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu'),
+        )
+    )
+    def do_commit_image_command(self, args):
+        cli_command = 'docker commit {} {}'.format(args.container, args.image_tag)
+        os.system(cli_command)
+
+    @Commands.command(
+        'push-image',
+        help='Push a (committed) image to a docker registry.',
+        arguments=(
+            Commands.Argument('image_tag', help='Image tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu'),
+        )
+    )
+    def do_push_image_command(self, args):
+        cli_command = 'docker push {}'.format(args.image_tag)
+        os.system(cli_command)
+
 
     @Commands.command(
         'edit',
