@@ -32,6 +32,15 @@ if __name__ == '__main__':
     parser.add_argument('--max-work-dir-size', type=str, default='10g',
                         help='Maximum size of the temporary bundle data '
                              '(e.g., 3, 3k, 3m, 3g, 3t).')
+    parser.add_argument('--min-disk-free', type=str, default='10g',
+                        help='Minimum amount of disk space to keep free on the '
+                             'disk where Docker images are stored '
+                             '(e.g., 3, 3k, 3m, 3g, 3t). '
+                             'The --remove-stale-images flag must be specified '
+                             'in order to enforce this limit.')
+    parser.add_argument('--remove-stale-images', action='store_true',
+                        help='Whether to remove Docker images that have not '
+                             'been used recently when the disk is almost full.')
     parser.add_argument('--slots', type=int, default=1,
                         help='Number of slots to use for running bundles. '
                              'A single bundle takes up a single slot.')
@@ -73,8 +82,10 @@ chmod 600 %s""" % args.password_file
                             level=logging.DEBUG)
 
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
+    min_disk_free_bytes = parse_size(args.min_disk_free)
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
-                    args.shared_file_system, args.slots,
+                    min_disk_free_bytes, args.remove_stale_images, args.shared_file_system,
+                    args.slots,
                     BundleServiceClient(args.server, username, password),
                     DockerClient())
 

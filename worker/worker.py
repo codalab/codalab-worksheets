@@ -15,6 +15,7 @@ from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
 from file_util import remove_path, un_gzip_stream, un_tar_directory
 from run import Run
+from docker_image_manager import DockerImageManager
 
 VERSION = 9
 
@@ -34,10 +35,11 @@ class Worker(object):
         4) Upgrading the worker.
     """
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
-                 shared_file_system, slots,
-                 bundle_service, docker):
+                 min_disk_free_bytes, remove_stale_images, shared_file_system,
+                 slots, bundle_service, docker):
         self.id = id
         self._tag = tag
+        self._remove_stale_images = remove_stale_images
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._docker = docker
@@ -46,6 +48,7 @@ class Worker(object):
         if not self.shared_file_system:
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
+        self._image_manager = DockerImageManager(self._docker, work_dir, min_disk_free_bytes)
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed
@@ -59,6 +62,8 @@ class Worker(object):
         self._last_checkin_successful = False
 
     def run(self):
+        if self._remove_stale_images:
+            self._image_manager.start_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
 
@@ -76,6 +81,8 @@ class Worker(object):
 
         self._checkout()
 
+        if self._remove_stale_images:
+            self._image_manager.stop_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.stop_cleanup_thread()
 
@@ -152,7 +159,7 @@ class Worker(object):
             bundle_path = bundle['location']
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
-        run = Run(self._bundle_service, self._docker, self,
+        run = Run(self._bundle_service, self._docker, self._image_manager, self,
                   bundle, bundle_path, resources)
         if run.run():
             with self._runs_lock:

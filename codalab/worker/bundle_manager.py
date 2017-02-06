@@ -441,4 +441,10 @@ class BundleManager(object):
         resources['request_network'] = (bundle.metadata.request_network or
                                         self._default_request_network)
 
+        resources['request_cpus'] = (bundle.metadata.request_cpus or
+                                        self._default_request_cpus)
+
+        resources['request_gpus'] = (bundle.metadata.request_gpus or
+                                     self._default_request_gpus)
+
         return message

@@ -28,10 +28,11 @@ class Run(object):
         4) Handling any messages related to the run.
         5) Reporting to the bundle service that the run has finished.
     """
-    def __init__(self, bundle_service, docker, worker, bundle, bundle_path,
-                 resources):
+    def __init__(self, bundle_service, docker, image_manager, worker,
+                 bundle, bundle_path, resources):
         self._bundle_service = bundle_service
         self._docker = docker
+        self._image_manager = image_manager
         self._worker = worker
         self._bundle = bundle
         self._bundle_path = os.path.realpath(bundle_path)
@@ -170,13 +171,13 @@ class Run(object):
                 self._safe_update_run_status('Starting Docker container')
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
-                    self._resources['docker_image'], self._resources['request_network'],
+                    self._resources['docker_image'],
+                    self._resources['request_network'],
+                    self._resources['request_gpus'],
                     dependencies)
 
             try:
                 self._container_id = do_start()
-                digest = self._docker.get_image_repo_digest(self._resources['docker_image'])
-                self._safe_update_docker_image(digest)
             except DockerException as e:
                 # The download image call is slow, even if the image is already
                 # available. Thus, we only make it if we know the image is not
@@ -191,6 +192,11 @@ class Run(object):
                     self._container_id = do_start()
                 else:
                     raise
+
+            image_info = self._docker.inspect_image(self._resources['docker_image'])
+            self._safe_update_docker_image(image_info.get('RepoDigests', [''])[0])
+            self._image_manager.touch_image(image_info['Id'])
+
         except Exception as e:
             self._finish(failure_message=str(e))
             self._worker.finish_run(self._uuid)
