@@ -669,7 +669,10 @@ class BundleCLI(object):
         cword_prequote, cword_prefix, _, comp_words, first_colon_pos = argcomplete.split_line(command, len(command))
 
         # Strip whitespace and parse according to shell escaping rules
-        clean = lambda s: shlex.split(s.strip())[0] if s else ''
+        try:
+            clean = lambda s: shlex.split(s.strip())[0] if s else ''
+        except ValueError as e:
+            raise UsageError(e.message)
         return map(clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos))
 
     def do_command(self, argv, stdout=None, stderr=None):
@@ -1643,7 +1646,7 @@ class BundleCLI(object):
 
         if info_type == 'link':
             print >>self.stdout, ' -> ' + info['link']
-            
+
         return info
 
     @Commands.command(
@@ -1656,7 +1659,7 @@ class BundleCLI(object):
         ),
     )
     def do_wait_command(self, args):
-        self._fail_if_headless('wait')
+        self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
@@ -1697,7 +1700,7 @@ class BundleCLI(object):
         while True:
             if not run_finished:
                 info = client.fetch('bundles', bundle_uuid)
-                run_finished = info['state'] in (State.READY, State.FAILED)
+                run_finished = info['state'] in State.FINAL_STATES
 
             # Read data.
             for i in xrange(0, len(subpaths)):
@@ -1899,6 +1902,13 @@ class BundleCLI(object):
                         new_metadata['name'] = new_output_name + '-' + \
                                                old_info['metadata']['name']
 
+                # By default, the mimic bundle uses whatever image the old bundle uses
+                # Preferably it uses the SHA256 image digest, but it may simply copy request_docker_image
+                # if it is not present
+                if new_info['bundle_type'] == 'run' and new_metadata.get('docker_image', ''):
+                    # Put docker_image in requested_docker_image if it is present and this is a run bundle
+                    new_metadata['request_docker_image'] = new_metadata['docker_image']
+
                 # Remove all the automatically generated keys
                 cls = get_bundle_subclass(new_info['bundle_type'])
                 for spec in cls.METADATA_SPECS:
@@ -1955,8 +1965,8 @@ class BundleCLI(object):
                     'value': '',
                 })
 
-            # A prelude of a bundle on a worksheet is the set of items that occur right before it (markup,
-            # directives, etc.)
+            # A prelude of a bundle on a worksheet is the set of items (markup, directives, etc.)
+            # that occur immediately before it, until the last preceding newline.
             # Let W be the first worksheet containing the old_inputs[0].
             # Add all items on that worksheet that appear in old_to_new along with their preludes.
             # For items not on this worksheet, add them at the end (instead of making them floating).
@@ -1989,7 +1999,6 @@ class BundleCLI(object):
 
                 prelude_items = []  # The prelude that we're building up
                 for item in worksheet_info['items']:
-                    # (bundle_info, subworkheet_info, value_obj, item_type) = item
                     just_added = False
 
                     if item['type'] == worksheet_util.TYPE_BUNDLE:
@@ -2004,6 +2013,9 @@ class BundleCLI(object):
 
                                 # Add prelude
                                 for item2 in prelude_items:
+                                    # Create a copy of the item on the destination worksheet
+                                    item2 = item2.copy()
+                                    item2['worksheet'] = JsonApiRelationship('worksheets', worksheet_uuid)
                                     client.create('worksheet-items', data=item2)
 
                                 # Add the bundle item
@@ -2015,7 +2027,8 @@ class BundleCLI(object):
                                 new_bundle_uuids_added.add(new_bundle_uuid)
                                 just_added = True
 
-                    if (item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or item['type'] == worksheet_util.TYPE_DIRECTIVE:
+                    if ((item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or
+                            item['type'] == worksheet_util.TYPE_DIRECTIVE):
                         prelude_items.append(item)  # Include in prelude
                         skipped = False
                     else:
@@ -2586,7 +2599,7 @@ class BundleCLI(object):
         group = client.fetch('groups', args.group_spec)
 
         members = []
-        # group['owner'] may be None (i.e. for the public group)
+        # group['owner'] may be a falsey null-relationship (i.e. for the public group)
         if group['owner']:
             members.append({
                 'role': 'owner',

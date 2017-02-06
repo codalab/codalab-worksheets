@@ -12,12 +12,44 @@ from marshmallow import (
 )
 from marshmallow_jsonapi import Schema, fields
 
+from codalab.common import UsageError
 from codalab.bundles import BUNDLE_SUBCLASSES
 from codalab.lib.bundle_action import BundleAction
-from codalab.lib.spec_util import validate_child_path, validate_uuid, \
-    validate_name
+from codalab.lib.spec_util import CHILD_PATH_REGEX, NAME_REGEX, UUID_REGEX
 from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
-from codalab.objects.permission import PermissionSpec
+from codalab.objects.permission import parse_permission, permission_str
+
+
+class PermissionSpec(fields.Field):
+    def _serialize(self, value, attr, obj):
+        try:
+            return permission_str(value)
+        except UsageError as e:
+            raise ValidationError(e.message)
+
+    def _deserialize(self, value, attr, data):
+        try:
+            return parse_permission(value)
+        except UsageError as e:
+            raise ValidationError(e.message)
+
+
+def validate_uuid(uuid_str):
+    """
+    Raise a ValidationError if the uuid does not conform to its regex.
+    """
+    if not UUID_REGEX.match:
+        raise ValidationError('uuids must match %s, was %s' % (UUID_REGEX.pattern, uuid_str))
+
+
+def validate_name(name):
+    if not NAME_REGEX.match(name):
+        raise ValidationError('Names must match %s, was %s' % (NAME_REGEX.pattern, name))
+
+
+def validate_child_path(path):
+    if not CHILD_PATH_REGEX.match(path):
+        raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
 
 class WorksheetItemSchema(Schema):
@@ -169,6 +201,7 @@ class UserSchema(Schema):
 
 class AuthenticatedUserSchema(UserSchema):
     email = fields.String()
+    notifications = fields.Integer()
     time_quota = fields.Integer()
     time_used = fields.Integer()
     disk_quota = fields.Integer()
