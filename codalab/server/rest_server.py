@@ -1,4 +1,6 @@
 from httplib import INTERNAL_SERVER_ERROR, BAD_REQUEST
+import datetime
+import json
 import os
 import re
 import sys
@@ -15,10 +17,12 @@ from bottle import (
     HTTPError,
     HTTPResponse,
     install,
+    JSONPlugin,
     local,
     request,
     run,
     static_file,
+    uninstall,
 )
 
 from codalab.common import exception_to_http_error
@@ -212,6 +216,15 @@ class ErrorAdapter(object):
                                  recipient=local.config['server']['admin_email'])
 
 
+class DatetimeEncoder(json.JSONEncoder):
+    """Extend JSON encoder to handle datetime objects."""
+    def default(self, obj):
+        if isinstance(obj, datetime.datetime):
+            return obj.isoformat()
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
+
+
 def error_handler(response):
     """Simple error handler that doesn't use the Bottle error template."""
     if request.is_ajax:
@@ -243,6 +256,14 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     install(UserVerifiedPlugin())
     install(PublicUserPlugin())
     install(ErrorAdapter())
+
+    # Replace default JSON plugin with one that handles datetime objects
+    # Note: ErrorAdapter must come before JSONPlugin to catch serialization errors
+    uninstall(JSONPlugin())
+    install(JSONPlugin(json_dumps=DatetimeEncoder().encode))
+
+    # JsonApiPlugin must come after JSONPlugin, to inspect and modify response
+    # dicts before they are serialized into JSON
     install(JsonApiPlugin())
 
     for code in xrange(100, 600):
@@ -258,7 +279,11 @@ def run_rest_server(manager, debug, num_processes, num_threads):
                            "please upgrade it by running `git pull` from where "
                            "you installed it.")
 
+    # Look for templates in codalab-cli/views
     bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
+
+    # Increase the request body size limit to 8 MiB
+    bottle.BaseRequest.MEMFILE_MAX = 8 * 1024 * 1024
 
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter

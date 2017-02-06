@@ -12,10 +12,11 @@ from codalab.lib.crypt_util import (
     constant_time_compare,
 )
 from codalab.model.orm_object import ORMObject
+from codalab.model.tables import NOTIFICATIONS_NONE
 
 
 class User(ORMObject):
-    COLUMNS = ('user_id', 'user_name', 'email', 'last_login', 'is_active', 'first_name', 'last_name', 'date_joined',
+    COLUMNS = ('user_id', 'user_name', 'email', 'notifications', 'last_login', 'is_active', 'first_name', 'last_name', 'date_joined',
                'is_verified', 'is_superuser', 'password', 'time_quota', 'time_used', 'disk_quota', 'disk_used',
                'affiliation', 'url')
 
@@ -107,6 +108,7 @@ PUBLIC_USER = User({
     "user_id": None,  # sentinel for BundleModel methods indicating public user
     "user_name": 'public',
     "email": None,
+    "notifications": NOTIFICATIONS_NONE,
     "last_login": None,
     "is_active": True,
     "first_name": None,
