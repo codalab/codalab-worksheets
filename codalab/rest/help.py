@@ -21,7 +21,6 @@ def fetch_help():
     username = user['data']['attributes']['user_name']
     message = request.json['message']
     user_email = user['data']['attributes']['email']
-    print "********" + user_email
 
     local.emailer.send_email(
         subject="Message from %s" % user_email,
