@@ -16,15 +16,16 @@ from codalab.server.authenticated_plugin import (
 
 @post('/help/', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_help():
-    # import pdb; pdb.set_trace()
     user = AuthenticatedUserSchema().dump(request.user).data
-    email = user['data']['attributes']['email']
+    support_email = local.config['support_email']
     username = user['data']['attributes']['user_name']
     message = request.json['message']
+    user_email = user['data']['attributes']['email']
+    print "********" + user_email
 
     local.emailer.send_email(
-        subject="",
-        body=template('help_message_to_codalab_body', username=username, email=email, message=message),
-        recipient=email,
+        subject="Message from %s" % user_email,
+        body=template('help_message_to_codalab_body', username=username, email=support_email, message=message, sender=user_email),
+        recipient=support_email,
     )
     return '{}'
