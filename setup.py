@@ -3,7 +3,7 @@ from setuptools.command.install import install
 import os
 
 setup(name='codalab-cli',
-    version='0.2.0',
+    version='0.2.1',
     description='CLI for CodaLab, a platform for reproducible computation',
     long_description='Visit https://worksheets.codalab.org/ or setup your own server by following the instructions in the Wiki.',
     url='https://github.com/codalab/codalab-cli',
