@@ -4,11 +4,6 @@ from bottle import abort, get, request, local, post, template
 
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.lib.server_util import bottle_patch as patch
-from codalab.rest.schemas import (
-    AuthenticatedUserSchema,
-    USER_READ_ONLY_FIELDS,
-    UserSchema,
-)
 from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
