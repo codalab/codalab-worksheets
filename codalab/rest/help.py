@@ -1,3 +1,4 @@
+import sys
 import httplib
 
 from bottle import abort, get, request, local, post, template
@@ -11,9 +12,14 @@ from codalab.server.authenticated_plugin import (
 
 @post('/help/', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
 def fetch_help():
+    message = request.json['message']
+    if 'support_email' not in local.config:
+        print >>sys.stderr, 'Warning: No support_email configured, so no email sent.'
+        print >>sys.stderr, 'User\'s message: %s' % message
+        return
+
     support_email = local.config['support_email']
     username = request.user.user_name
-    message = request.json['message']
     user_email = request.user.email
 
     local.emailer.send_email(
