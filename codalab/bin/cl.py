@@ -119,10 +119,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
-#    cli = BundleCLI(CodaLabManager())
-#    try:
-#        cli.do_command(sys.argv[1:])
-#    except KeyboardInterrupt:
-#        print 'Terminated by Ctrl-C'
-#        sys.exit(130)
