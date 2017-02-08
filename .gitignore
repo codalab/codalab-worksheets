@@ -56,5 +56,6 @@ Thumbs.db
 dist/
 build/
 codalab_env/
+codalab_cli.egg-info
 
 /venv
