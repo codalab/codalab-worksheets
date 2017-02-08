@@ -27,4 +27,3 @@ def fetch_help():
         recipient=support_email,
         sender=user_email
     )
-    return '{}'
