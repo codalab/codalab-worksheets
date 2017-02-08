@@ -1,9 +1,11 @@
 from setuptools import setup, find_packages
 from setuptools.command.install import install
 import os
+from codalab.common import CODALAB_VERSION
+
 
 setup(name='codalab-cli',
-    version='0.2.1',
+    version=CODALAB_VERSION,
     description='CLI for CodaLab, a platform for reproducible computation',
     long_description='Visit https://worksheets.codalab.org/ or setup your own server by following the instructions in the Wiki.',
     url='https://github.com/codalab/codalab-cli',
