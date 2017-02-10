@@ -31,6 +31,7 @@ import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
 import codalab.rest.groups
+import codalab.rest.help
 import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
