@@ -1409,6 +1409,7 @@ class BundleModel(object):
                 .where(table.c.group_uuid == cl_group.c.uuid)
                 .where(group_restrict)
                 .where(table.c.object_uuid.in_(object_uuids))
+                .order_by(cl_group.c.name)
             ).fetchall()
             result = collections.defaultdict(list)  # object_uuid => list of rows
             for row in rows:
