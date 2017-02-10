@@ -124,16 +124,13 @@ def error_logs(error_type, s):
         last_sent[error_type] = t
 
 durations = defaultdict(list)  # Command => durations for that command
-def run_command(args, soft_time_limit=5, hard_time_limit=60, include_output=True):
+def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True):
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
-    try:
-        args = ['timeout', '%ss' % hard_time_limit] + args
-        output = subprocess.check_output(args)
-        exitcode = 0
-    except subprocess.CalledProcessError, e:
-        output = e.output
-        exitcode = e.returncode
+    args = ['timeout', '%ss' % hard_time_limit] + args
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, err_output = proc.communicate()
+    exitcode = proc.returncode
     end_time = time.time()
 
     # Add to the list
@@ -148,9 +145,14 @@ def run_command(args, soft_time_limit=5, hard_time_limit=60, include_output=True
     # Abstract away the concrete uuids
     simple_args = ['0x*' if arg.startswith('0x') else arg for arg in args]
 
+    # Include stderr in output if returncode != 0
+    full_output = output
+    if exitcode != 0:
+        full_output += err_output
+
     message = '>> %s (exit code %s, time %.2fs [limit: %ds,%ds]; avg %.2fs; max %.2fs)\n%s' % \
         (' '.join(args), exitcode, duration, soft_time_limit, hard_time_limit,
-        average_duration, max_duration, output if include_output else '')
+        average_duration, max_duration, full_output if include_output else '')
     if exitcode == 0:
         logs(message)
     else:

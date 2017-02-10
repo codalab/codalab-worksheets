@@ -87,7 +87,7 @@ def reply_data(worker_id, socket_id):
     try:
         header_message = json.loads(request.query.header_message)
     except ValueError:
-        abort(httplib.BAD_REQUEST, 'Header message should be in JSON format.') 
+        abort(httplib.BAD_REQUEST, 'Header message should be in JSON format.')
 
     check_reply_permission(worker_id, socket_id)
     local.worker_model.send_json_message(socket_id, header_message, 60, autoretry=False)
@@ -129,7 +129,7 @@ def update_bundle_metadata(worker_id, uuid):
     """
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
-    allowed_keys = set(['run_status', 'time', 'time_user', 'time_system', 'memory', 'memory_max', 'data_size', 'last_updated'])
+    allowed_keys = set(['run_status', 'time', 'time_user', 'time_system', 'memory', 'memory_max', 'data_size', 'last_updated', 'docker_image'])
     metadata_update = {}
     for key, value in request.json.iteritems():
         if key in allowed_keys:
