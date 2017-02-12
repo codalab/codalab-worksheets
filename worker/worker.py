@@ -7,6 +7,8 @@ import shutil
 import threading
 import time
 import traceback
+import socket
+import statsd
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
@@ -39,6 +41,7 @@ class Worker(object):
         self._bundle_service = bundle_service
         self._docker = docker
         self._slots = slots
+        self._statsd = statsd.StatsClient('clws-w8125.cloudapp.net', 9899, 'workers.{}'.format(socket.gethostname().split('.')[0]))
 
         if not self.shared_file_system:
             # Manages which dependencies are available.
@@ -61,6 +64,7 @@ class Worker(object):
 
         while self._should_run():
             try:
+                self._statsd.incr('checkin', count=1, rate=1)
                 self._checkin()
                 if not self._last_checkin_successful:
                     print('Connected! Successful check in.')
@@ -139,7 +143,7 @@ class Worker(object):
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
         run = Run(self._bundle_service, self._docker, self,
-                  bundle, bundle_path, resources)
+                  bundle, bundle_path, resources, self._statsd)
         if run.run():
             with self._runs_lock:
                 self._runs[bundle['uuid']] = run

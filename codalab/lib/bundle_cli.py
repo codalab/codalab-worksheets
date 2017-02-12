@@ -1519,6 +1519,7 @@ class BundleCLI(object):
         # Headless client should fire OpenBundle UI action if no special flags used
         if self.headless and not (args.field or args.raw or args.verbose):
             return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
+        return info
 
     @staticmethod
     def key_value_str(key, value):

@@ -29,7 +29,7 @@ class Run(object):
         5) Reporting to the bundle service that the run has finished.
     """
     def __init__(self, bundle_service, docker, worker, bundle, bundle_path,
-                 resources):
+                 resources, statsd):
         self._bundle_service = bundle_service
         self._docker = docker
         self._worker = worker
@@ -39,6 +39,7 @@ class Run(object):
         self._resources = resources
         self._uuid = bundle['uuid']
         self._container_id = None
+        self._statsd = statsd
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
@@ -67,6 +68,7 @@ class Run(object):
             'hostname': socket.gethostname(),
             'start_time': int(self._start_time),
         }
+        self._statsd.incr('run', count=1, rate=1)
         if not self._bundle_service.start_bundle(self._worker.id, self._uuid,
                                                  start_message):
             return False
