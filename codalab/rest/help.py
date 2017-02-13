@@ -24,7 +24,7 @@ def fetch_help():
 
     local.emailer.send_email(
         subject="Message from %s" % user_email,
-        body=template('help_message_to_codalab_body', username=username, email=support_email, message=message),
+        body=template('help_message_to_codalab_body', username=username, email=user_email, message=message),
         recipient=support_email,
         sender=user_email
     )
