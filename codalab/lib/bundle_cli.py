@@ -176,10 +176,14 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         # Adapted from original:
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
-        self.print_usage(self.cli.stderr)
-        if self.cli.headless:
+        if len(sys.argv) == 1:
+            self.print_help()
+            self.exit(2)
+        elif self.cli.headless:
+            self.print_usage(self.cli.stderr)
             raise UsageError(message)
         else:
+            self.print_usage(self.cli.stderr)
             self.exit(2, '%s: error: %s\n' % (self.prog, message))
 
 
