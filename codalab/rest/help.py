@@ -14,7 +14,7 @@ from codalab.server.authenticated_plugin import (
 def fetch_help():
     message = request.json['message']
 
-    if local.config and 'support_email' not in local.config['server']:
+    if 'server' in local.config and 'support_email' not in local.config['server']:
         print >>sys.stderr, 'Warning: No support_email configured, so no email sent.'
         print >>sys.stderr, 'User\'s message: %s' % message
         return
@@ -22,7 +22,9 @@ def fetch_help():
     support_email = local.config['server']['support_email']
     username = request.user.user_name
     user_email = request.user.email
-    real_name = ("%s %s" % (request.user.first_name, request.user.last_name))
+    first_name = request.user.first_name if request.user.first_name else ''
+    last_name = request.user.last_name if request.user.last_name else ''
+    real_name = ("%s %s" % (first_name, last_name))
 
     local.emailer.send_email(
         subject="Message from %s" % user_email,
