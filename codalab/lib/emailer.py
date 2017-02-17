@@ -34,7 +34,8 @@ class SMTPEmailer(Emailer):
         self.port = port
         self.use_tls = use_tls
 
-    def send_email(self, subject, body, recipient, sender=None, mime_type='plain'):
+    def send_email(self, subject, body, recipient, sender=None,
+                   mime_type='plain', charset='us-ascii'):
         """
         Send email
 
@@ -57,7 +58,7 @@ class SMTPEmailer(Emailer):
 
             mail_server.login(self.user, self.password)
 
-            message = MIMEText(body, mime_type)
+            message = MIMEText(body, mime_type, charset)
             message["From"] = sender or self.default_sender
             message["To"] = recipient
             message["Subject"] = subject
