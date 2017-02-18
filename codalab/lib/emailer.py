@@ -45,6 +45,9 @@ class SMTPEmailer(Emailer):
         :param body: body of email
         :param recipient: recipient of email, must be valid email address
         :param sender: optional alternative 'From' header
+        :param mime_type: optional speficies the mime type
+        :param charset: optional specifies the character encoding; use 'utf-8'
+               for unicode
         :return:
         """
         try:
