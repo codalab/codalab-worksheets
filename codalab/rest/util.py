@@ -144,14 +144,14 @@ def ensure_unused_group_name(name):
         abort(httplib.CONFLICT, 'Group with name %s already exists' % name)
 
 
-def get_group_info(group_spec, need_admin):
+def get_group_info(group_spec, need_admin, access_all_groups=False):
     """
     Resolve |group_spec| and return the associated group_info.
     """
     user_id = request.user.user_id
 
     # If we're root, then we can access any group.
-    if user_id == local.model.root_user_id:
+    if user_id == local.model.root_user_id or access_all_groups:
         user_id = None
 
     group_info = unique_group(local.model, group_spec, user_id)

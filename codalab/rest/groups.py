@@ -18,7 +18,7 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 @get('/groups/<group_spec>', apply=AuthenticatedPlugin())
 def fetch_group(group_spec):
     """Fetch a single group."""
-    group = get_group_info(group_spec, need_admin=False)
+    group = get_group_info(group_spec, need_admin=False, access_all_groups=True)
     load_group_members(group)
     document = GroupSchema().dump(group).data
     include_group_relationships(document, [group])
