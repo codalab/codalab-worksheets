@@ -171,7 +171,7 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
         if out_file is None:
             out_file = self.cli.stdout
-        self._print_message(self.format_help(), out_file)
+        self.cli.do_command(['help'])
 
     def error(self, message):
         # Adapted from original:
