@@ -1429,7 +1429,7 @@ class BundleModel(object):
         '''
         Gets the set of permissions granted to the given user on the given objects.
         owner_ids: map from object_uuid to owner_id.
-        Return: map from object_uuid to permission.
+        Return: map from object_uuid to integer permission.
 
         Use user_id = None to check the set of permissions of an anonymous user.
         To compute this, look at the groups that the user belongs to.
