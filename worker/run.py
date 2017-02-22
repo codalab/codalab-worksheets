@@ -68,7 +68,6 @@ class Run(object):
             'hostname': socket.gethostname(),
             'start_time': int(self._start_time),
         }
-        self._statsd.incr('run', count=1, rate=1)
         if not self._bundle_service.start_bundle(self._worker.id, self._uuid,
                                                  start_message):
             return False
@@ -199,6 +198,7 @@ class Run(object):
             return
 
         self._safe_update_run_status('Running')
+        self._statsd.incr('run', count=1, rate=1)
         self._monitor()
 
     def _monitor(self):
@@ -427,6 +427,7 @@ class Run(object):
 
             logger.debug('Finalizing run with UUID %s', self._uuid)
             self._safe_update_run_status('Finished')  # Also, reports the finish time.
+            self._statsd.incr('finish_run', count=1, rate=1)
             if failure_message is None and self._is_killed():
                 failure_message = self._get_kill_message()
             finalize_message = {

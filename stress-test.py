@@ -1,29 +1,13 @@
 #!./venv/bin/python
 
-"""
-To Do List
-Things to push the limits of:
-
-    (Higher priority)
-    - Amount of data read by a run
-    - Amount of data written by a run
-    - num of workers running jobs
-    - num of times that a bundle is used by downstream bundles
-
-    (Lower priority)
-    - Size of bundle
-    - num of bundle dependencies for a run/make bundle
-    - num users in a group
-    - num of permissions for a bundle
-
-"""
-
 import logging
 import os, sys
 import uuid
 import re
 import time
+import tempfile
 from cStringIO import StringIO
+import sys, random, string
 
 from codalab.lib.bundle_cli import BundleCLI, Commands
 from codalab.lib.codalab_manager import CodaLabManager
@@ -131,6 +115,15 @@ class UploadBalloons(object):
         if eType:
             return False
 
+def CreateRandomFile(size_mb=50, chunk_size_mb=50):
+    with open('tmp_file', 'w') as f:
+        while size_mb > 0:
+            s = string.lowercase + string.digits + string.uppercase
+            contents = ''.join(random.choice(s) for i in xrange(int(chunk_size_mb * 1024 * 1024)))
+            f.write(contents)
+            size_mb -= chunk_size_mb
+    return 'tmp_file'
+
 class UploadTiny(object):
 
     def upload_tiny(self):
@@ -175,15 +168,17 @@ class UploadTiny(object):
         if eType:
             return False
 
-class UploadMemoryHog(object):
-    def __init__(self, cli):
+class UploadFile(object):
+    def __init__(self, cli, filename):
         self.cli = cli
+        self.filename = filename
 
     def __enter__(self):
         self.bundle = self.cli.do_command([
             'upload',
-            'stress-test-data/memory_hog.py',
+            self.filename,
         ], cli=False)
+        return self.bundle['uuid']
 
     def __exit__(self, eType, eValue, eTrace):
         self.cli.do_command([
@@ -193,6 +188,22 @@ class UploadMemoryHog(object):
 
         if eType:
             return False
+
+def wait_for_bundles(bundles, max_seconds):
+    ''' return 0 if all bundles succeed, X > 0 if X bundles failed, or -1 if timeout '''
+
+    t = 0
+    while t < max_seconds:
+        bundle_stats = [cli.do_command(['info', bundle['uuid']], cli=False) for bundle in bundles]
+        if all(b['state'] in ('ready', 'failed') for b in bundle_stats): # TODO: report failed bundles
+            num_failed = sum([1 for b in bundle_stats if b['state'] == 'failed'])
+            for bundle in bundles:
+                cli.do_command(['rm', bundle['uuid']], cli=False)
+            return num_failed
+        else:
+            time.sleep(1)
+            t += 1
+    return -1
 
 if __name__ == '__main__':
     logging.basicConfig(level='INFO')
@@ -208,49 +219,78 @@ if __name__ == '__main__':
         logger.error(e)
         sys.exit(1)
 
-    '''
-    n = 300
-    with CreateWorksheets(cli, n):
-        with Timer() as t:
-            output = cli.do_command(['wsearch', '.mine'], cli=False)
-        print 'Searching through ~{} worksheets took {}s'.format(n, t.interval)
+    def test_create_worksheets():
+        n = 300
+        with CreateWorksheets(cli, n):
+            with Timer() as t:
+                output = cli.do_command(['wsearch', '.mine'], cli=False)
+            print 'Searching through ~{} worksheets took {}s'.format(n, t.interval)
 
-    with UploadBalloons(cli):
-        with Timer() as t:
-            output = cli.do_command(['search', '.mine'], cli=False)
-        print 'Listing ~{} bundles took {}s'.format(len(output['refs']), t.interval)
-    '''
+    def test_upload_balloons():
+        with UploadBalloons(cli):
+            with Timer() as t:
+                output = cli.do_command(['search', '.mine'], cli=False)
+            print 'Listing ~{} bundles took {}s'.format(len(output['refs']), t.interval)
 
-    with CreateWorksheet(cli, test_id) as ws_name:
-        with UploadMemoryHog(cli):
-            def run(cli):
-                bundle = cli.do_command([
-                    'run',
-                    ':memory_hog.py',
-                    '---',
-                    'python memory_hog.py 1000 180'
-                ], cli=False)
-                return bundle
+    def test_count_lines():
+        with UploadFile(cli, 'stress-test-data/count_lines.py') as count_lines:
+            with CreateWorksheet(cli, test_id) as ws_name:
+                with UploadFile(cli, 'stress-test-data/memory_hog.py'):
+                    #def run(cli):
+                    #    bundle = cli.do_command([
+                    #        'run',
+                    #        ':memory_hog.py',
+                    #        '---',
+                    #        'python memory_hog.py 1000 180'
+                    #    ], cli=False)
+                    #    return bundle
 
-            bundles = []
-            for i in range(8):
-                bundles.append(run(cli))
+                    def run(cli):
+                        bundle = cli.do_command([
+                            'run',
+                            'balloon:0x5a49ab',
+                            'count_lines.py:{}'.format(count_lines),
+                            '---',
+                            'python count_lines.py balloon 10'
+                        ], cli=False)
+                        return bundle
 
-            t = 0
-            while t < 3000:
-                bundle_stats = [cli.do_command(['info', bundle['uuid']], cli=False) for bundle in bundles]
-                if all(b['state'] in ('ready', 'failed') for b in bundle_stats): # TODO: report failed bundles
-                    for bundle in bundles:
-                        cli.do_command(['rm', bundle['uuid']], cli=False)
-                    break;
-                else:
-                    time.sleep(1)
-                    t += 1
+                    bundles = []
+                    for i in range(4):
+                        bundles.append(run(cli))
 
-    '''
-    with UploadTiny(cli, n=3000, cleanup=False):
-        with Timer() as t:
-            output = cli.do_command(['search', '.mine'], cli=False)
-        print 'Listing ~{} bundles took {}s'.format(len(output['refs']), t.interval)
-    '''
+                    wait_for_bundles(bundles, 1200)
+
+    def test_print_lines():
+        with UploadFile(cli, 'stress-test-data/print_lines.py') as print_lines:
+            with CreateWorksheet(cli, test_id) as ws_name:
+                    def run(cli):
+                        bundle = cli.do_command([
+                            'run',
+                            'print_lines.py:{}'.format(print_lines),
+                            '---',
+                            'python print_lines.py 0.5 180'
+                        ], cli=False)
+                        return bundle
+
+                    bundles = []
+                    for i in range(1):
+                        bundles.append(run(cli))
+
+                    code = wait_for_bundles(bundles, 1200)
+                    if code != 0:
+                        raise Exception('Failed run: wait_for_bundles returns {}'.format(code))
+
+    def test_upload_big():
+        with CreateWorksheet(cli, test_id) as ws_name:
+            for i in range(1):
+                filename = CreateRandomFile(size_mb=1024*2)
+                with UploadFile(cli, filename) as bundle:
+                    print cli.do_command(['info', bundle], cli=False)
+
+    def test_upload_big():
+        with UploadTiny(cli, n=3000, cleanup=False):
+            with Timer() as t:
+                output = cli.do_command(['search', '.mine'], cli=False)
+            print 'Listing ~{} bundles took {}s'.format(len(output['refs']), t.interval)
 
