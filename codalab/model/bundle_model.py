@@ -1395,12 +1395,6 @@ class BundleModel(object):
             if user_id is None:
                 # Not logged in: include only public group
                 group_restrict = (table.c.group_uuid == self.public_group_uuid)
-            elif user_id != self.root_user_id:
-                # Logged in but not root: include only public group and groups that user_id is in
-                group_restrict = or_(
-                    table.c.group_uuid == self.public_group_uuid,
-                    table.c.group_uuid.in_(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id))
-                )
             else:
                 # Logged in as root: include all groups
                 group_restrict = true()
@@ -1435,7 +1429,7 @@ class BundleModel(object):
         '''
         Gets the set of permissions granted to the given user on the given objects.
         owner_ids: map from object_uuid to owner_id.
-        Return: map from object_uuid to permission.
+        Return: map from object_uuid to integer permission.
 
         Use user_id = None to check the set of permissions of an anonymous user.
         To compute this, look at the groups that the user belongs to.

@@ -118,12 +118,19 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
                 if worksheet_uuid not in unreadable]
 
     if get_permissions:
-        # Fill the info
-        group_result = local.model.batch_get_group_bundle_permissions(request.user.user_id, uuids)
-        result = local.model.get_user_bundle_permissions(request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
+        # Fill the permissions info
+        group_perms = local.model.batch_get_group_bundle_permissions(
+                request.user.user_id, uuids)
+        user_perm = local.model.get_user_bundle_permissions(
+                request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
         for uuid, info in bundle_dict.items():
-            info['group_permissions'] = group_result[uuid]
-            info['permission'] = result[uuid]
+            info['permission'] = user_perm[uuid]
+            # Only show group permissions to the user is they have
+            # at least read permission on this bundle.
+            if user_perm[uuid] >= GROUP_OBJECT_PERMISSION_READ:
+                info['group_permissions'] = group_perms[uuid]
+            else:
+                info['group_permissions'] = []
 
     return bundle_dict
 
@@ -144,14 +151,14 @@ def ensure_unused_group_name(name):
         abort(httplib.CONFLICT, 'Group with name %s already exists' % name)
 
 
-def get_group_info(group_spec, need_admin):
+def get_group_info(group_spec, need_admin, access_all_groups=False):
     """
     Resolve |group_spec| and return the associated group_info.
     """
     user_id = request.user.user_id
 
     # If we're root, then we can access any group.
-    if user_id == local.model.root_user_id:
+    if user_id == local.model.root_user_id or access_all_groups:
         user_id = None
 
     group_info = unique_group(local.model, group_spec, user_id)
