@@ -235,11 +235,14 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
     if fetch_permission:
-        result['group_permissions'] = local.model.get_group_worksheet_permissions(
-            request.user.user_id, worksheet.uuid)
         result['permission'] = local.model.get_user_worksheet_permissions(
             request.user.user_id, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}
         )[worksheet.uuid]
+        if result['permission'] >= GROUP_OBJECT_PERMISSION_READ:
+            result['group_permissions'] = local.model.get_group_worksheet_permissions(
+                request.user.user_id, worksheet.uuid)
+        else:
+            result['group_permissions'] = []
 
     return result
 
