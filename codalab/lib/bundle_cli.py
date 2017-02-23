@@ -24,6 +24,7 @@ import os
 import shlex
 import shutil
 import sys
+import subprocess
 import time
 import textwrap
 from contextlib import closing
@@ -1203,7 +1204,7 @@ class BundleCLI(object):
 
         if args.local:
             docker_image = metadata.get('request_docker_image', None)
-            if docker_image is None:
+            if not docker_image:
                 raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
 
             uuid = generate_uuid()
@@ -1268,23 +1269,23 @@ class BundleCLI(object):
             os.symlink(docker_dependency_path, child_path)
 
         dc = DockerClient()
-        cli_command = dc.create_cli_command(bundle_path, uuid, command, docker_image, request_network, dependencies, ['-it'])
+        container_id = dc.create_container(bundle_path, uuid, command, docker_image, request_network, dependencies, ['-it'])
 
         print >>self.stdout, '===='
-        print >>self.stdout, 'About to enter container' # todo: provide container id
+        print >>self.stdout, 'Entering container {}'.format(container_id[:8])
         print >>self.stdout, 'Once you are happy with the changes, please exit the container (ctrl-D)'
         print >>self.stdout, 'and commit your changes to a new image by running:'
         print >>self.stdout, ''
-        print >>self.stdout, '\tcl commit-image --container [container-id] [image-tag]'
+        print >>self.stdout, '\tcl commit-image {} [image-tag]'.format(container_id[:8])
         print >>self.stdout, ''
         print >>self.stdout, '===='
-        os.system(cli_command)
+        os.system('docker start -ai {}'.format(container_id))
         print >>self.stdout, '===='
-        print >>self.stdout, 'Exited from container' # todo: provide container id
-        print >>self.stdout, 'If you are happy with the changes, please commit your changes to a new image'
-        print >>self.stdout, 'by running:'
+        print >>self.stdout, 'Exited from container {}'.format(container_id[:8])
+        print >>self.stdout, 'If you are happy with the changes, please commit your changes to a new'
+        print >>self.stdout, 'image by running:'
         print >>self.stdout, ''
-        print >>self.stdout, '\tcl commit-image --container [container-id] [image-tag]'
+        print >>self.stdout, '\tcl commit-image {} [image-tag]'.format(container_id[:8])
         print >>self.stdout, ''
         print >>self.stdout, '===='
 
@@ -1292,7 +1293,7 @@ class BundleCLI(object):
         'commit-image',
         help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
-            Commands.Argument('--container', help='Container to commit.', required=True),
+            Commands.Argument('container', help='Container to commit.'),
             Commands.Argument('image_tag', help='Image tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu'),
         )
     )

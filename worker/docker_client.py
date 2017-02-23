@@ -228,7 +228,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     pass
                 loop_callback(status)
 
-    def create_cli_command(self, bundle_path, uuid, command, docker_image,
+    def create_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies, extra_args=[]):
         bundle_stat = os.stat(bundle_path)
         uid = bundle_stat.st_uid
@@ -244,20 +244,29 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 docker_dependency_path))
 
         # Create the container.
-        #command = 'bash -c; ' + '; '.join(self.docker_commands)
         command = 'bash'
 
-        return 'docker run {} {} {} {} {} {} {}'.format(
+        try:
+            cli_command = 'docker {} {} {} {} {} {} {}'.format(
+                'create',
                 ' '.join(extra_args),
                 ' '.join([ '-v {}'.format(v) for v in volume_bindings ]),
-                '-w="{}"'.format(docker_bundle_path),
-                '', #'--user={}:{}'.format(uid, gid),
-                '-e {}="{}"'.format('HOME', docker_bundle_path),
+                '-w={}'.format(docker_bundle_path),
+                '-e {}={}'.format('HOME', docker_bundle_path),
                 docker_image,
                 command
-        )
+            )
+            output = subprocess.check_output(cli_command.split(' '))
+            exitcode = 0
+        except subprocess.CalledProcessError, e:
+            output = e.output
+            exitcode = e.returncode
+            raise
 
-    def get_docker_commands(self, bundle_path, uuid, command, docker_image,
+        container_id = output
+        return container_id
+
+    def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
         # Set up the command.
         docker_bundle_path = '/' + uuid
@@ -269,7 +278,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         ]
         return docker_commands
 
-    def get_volume_bindings(self, bundle_path, uuid, command, docker_image,
+    def _get_volume_bindings(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
         docker_bundle_path = '/' + uuid
 
@@ -284,10 +293,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
-        docker_commands = self.get_docker_commands(bundle_path, uuid, command, docker_image,
+        docker_commands = self._get_docker_commands(bundle_path, uuid, command, docker_image,
                         request_network, dependencies)
 
-        volume_bindings = self.get_volume_bindings(bundle_path, uuid, command, docker_image,
+        volume_bindings = self._get_volume_bindings(bundle_path, uuid, command, docker_image,
                         request_network, dependencies)
 
         # Get user/group that owns the bundle directory
