@@ -29,7 +29,7 @@ class Run(object):
         5) Reporting to the bundle service that the run has finished.
     """
     def __init__(self, bundle_service, docker, worker, bundle, bundle_path,
-                 resources):
+                 resources, statsd):
         self._bundle_service = bundle_service
         self._docker = docker
         self._worker = worker
@@ -39,6 +39,7 @@ class Run(object):
         self._resources = resources
         self._uuid = bundle['uuid']
         self._container_id = None
+        self._statsd = statsd
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
@@ -197,6 +198,7 @@ class Run(object):
             return
 
         self._safe_update_run_status('Running')
+        self._statsd.incr('run', count=1, rate=1)
         self._monitor()
 
     def _monitor(self):
@@ -425,6 +427,7 @@ class Run(object):
 
             logger.debug('Finalizing run with UUID %s', self._uuid)
             self._safe_update_run_status('Finished')  # Also, reports the finish time.
+            self._statsd.incr('finish_run', count=1, rate=1)
             if failure_message is None and self._is_killed():
                 failure_message = self._get_kill_message()
             finalize_message = {

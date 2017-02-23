@@ -679,7 +679,7 @@ class BundleCLI(object):
             raise UsageError(e.message)
         return map(clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos))
 
-    def do_command(self, argv, stdout=None, stderr=None):
+    def do_command(self, argv, cli=True, stdout=None, stderr=None):
         parser = Commands.build_parser(self)
 
         # Call autocompleter (no side effect if os.environ['_ARGCOMPLETE'] is not set)
@@ -710,11 +710,11 @@ class BundleCLI(object):
                 else:
                     structured_result = command_fn()
             except PermissionError, e:
-                if self.headless:
+                if self.headless or not cli:
                     raise e
                 self.exit(e.message)
             except UsageError, e:
-                if self.headless:
+                if self.headless or not cli:
                     raise e
                 self.exit('%s: %s' % (e.__class__.__name__, e))
         return structured_result
@@ -980,6 +980,7 @@ class BundleCLI(object):
                     progress_callback=progress.update)
 
         print >>self.stdout, new_bundle['id']
+        return new_bundle
 
     @Commands.command(
         'download',
@@ -1141,6 +1142,7 @@ class BundleCLI(object):
         )
 
         print >>self.stdout, new_bundle['uuid']
+        return new_bundle
 
     def wait(self, client, args, uuid):
         # Build new args for a hacky artificial call to the info command
@@ -1197,6 +1199,7 @@ class BundleCLI(object):
 
         print >>self.stdout, new_bundle['uuid']
         self.wait(client, args, new_bundle['uuid'])
+        return new_bundle
 
     @Commands.command(
         'edit',
@@ -1340,6 +1343,7 @@ class BundleCLI(object):
         else:
             for uuid in deleted_uuids:
                 print >>self.stdout, uuid
+            return deleted_uuids
 
     @Commands.command(
         'search',
@@ -1515,6 +1519,7 @@ class BundleCLI(object):
         # Headless client should fire OpenBundle UI action if no special flags used
         if self.headless and not (args.field or args.raw or args.verbose):
             return ui_actions.serialize([ui_actions.OpenBundle(bundle['id']) for bundle in bundles])
+        return info
 
     @staticmethod
     def key_value_str(key, value):
