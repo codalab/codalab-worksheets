@@ -105,9 +105,6 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
-    'edit-image',
-    'commit-image',
-    'push-image',
     'edit',
     'detach',
     'rm',
@@ -121,6 +118,12 @@ BUNDLE_COMMANDS = (
     'macro',
     'kill',
     'write',
+)
+
+DOCKER_IMAGE_COMMANDS = (
+    'edit-image',
+    'commit-image',
+    'push-image',
 )
 
 WORKSHEET_COMMANDS = (
@@ -151,20 +154,21 @@ USER_COMMANDS = (
     'uedit',
 )
 
-OTHER_COMMANDS = (
-    'help',
-    'status',
-    'uedit',
-    'alias',
-    'config',
-    'work-manager',
+SERVER_COMMANDS = (
     'server',
-    'rest-server',
-    'logout',
+    'bundle-manager',
     'bs-add-partition',
     'bs-rm-partition',
     'bs-ls-partitions',
     'bs-health-check',
+)
+
+OTHER_COMMANDS = (
+    'help',
+    'status',
+    'alias',
+    'config',
+    'logout',
 )
 
 
@@ -290,8 +294,11 @@ class Commands(object):
         max_length = max(
           len(command_name(command)) for command in itertools.chain(
               BUNDLE_COMMANDS,
+              DOCKER_IMAGE_COMMANDS,
               WORKSHEET_COMMANDS,
               GROUP_AND_PERMISSION_COMMANDS,
+              USER_COMMANDS,
+              SERVER_COMMANDS,
               available_other_commands)
         )
 
@@ -345,13 +352,21 @@ class Commands(object):
         Commands for users:
         {user_commands}
 
+        Commands for building Docker images:
+        {docker_image_commands}
+
+        Commands for managing server:
+        {server_commands}
+
         Other commands:
         {other_commands}
         """).format(
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
+            docker_image_commands=command_group_help_text(DOCKER_IMAGE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
             user_commands=command_group_help_text(USER_COMMANDS),
+            server_commands=command_group_help_text(SERVER_COMMANDS),
             other_commands=command_group_help_text(available_other_commands),
         ).strip()
 
