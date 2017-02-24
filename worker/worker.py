@@ -7,7 +7,9 @@ import shutil
 import threading
 import time
 import traceback
+import socket
 import subprocess
+import re
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
@@ -106,16 +108,16 @@ class Worker(object):
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
 
     def _get_gpu_count(self):
-        try:
-            args = ['nvidia-smi', '-L']
-            output = subprocess.check_output(args)
-            exitcode = 0
-        except Exception, e:
+        if not self._docker._use_nvidia_docker:
             return 0
-        return len(output.split('\n'))
+
+        container_id = self._docker.run_nvidia_smi('-L', 'gcr.io/tensorflow/tensorflow:latest-gpu')
+        out, err = self._docker.get_logs(container_id)
+        count = len(re.findall('^GPU \d', out))
+        self._docker.delete_container(container_id)
+        return count
 
     def _checkin(self):
-        self._get_gpu_count()
         request = {
             'version': VERSION,
             'will_upgrade': self._should_upgrade,

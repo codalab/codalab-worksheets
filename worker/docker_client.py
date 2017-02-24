@@ -266,6 +266,35 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         container_id = output
         return container_id
 
+    @wrap_exception('Unable to start Docker container')
+    def run_nvidia_smi(self, args, docker_image):
+        # Create the container.
+        create_request = {
+            'Cmd': ['nvidia-smi', args],
+            'Image': docker_image
+        }
+        if self._use_nvidia_docker:
+            self._add_nvidia_docker_arguments(create_request)
+
+        with closing(self._create_connection()) as create_conn:
+            create_conn.request('POST', '/containers/create',
+                                json.dumps(create_request),
+                                {'Content-Type': 'application/json'})
+            create_response = create_conn.getresponse()
+            if create_response.status != 201:
+                raise DockerException(create_response.read())
+            container_id = json.loads(create_response.read())['Id']
+
+        # Start the container.
+        logger.debug('Starting Docker container for running nvidia-smi')
+        with closing(self._create_connection()) as start_conn:
+            start_conn.request('POST', '/containers/%s/start' % container_id)
+            start_response = start_conn.getresponse()
+            if start_response.status != 204:
+                raise DockerException(start_response.read())
+        return container_id
+
+
     def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
         # Set up the command.
@@ -407,7 +436,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 # If the logs are nonempty, then something might have gone
                 # wrong with the commands run before the user command,
                 # such as bash or cd.
-                _, stderr = self._get_logs(container_id)
+                _, stderr = self.get_logs(container_id)
                 # Strip non-ASCII chars since failure_message is not Unicode
                 if len(stderr) > 0:
                     failure_msg = stderr.encode('ascii', 'ignore')
@@ -425,7 +454,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if delete_response.status == 500:
                 raise DockerException(delete_response.read())
 
-    def _get_logs(self, container_id):
+    def get_logs(self, container_id):
         """
         Read stdout and stderr of the given container.
 

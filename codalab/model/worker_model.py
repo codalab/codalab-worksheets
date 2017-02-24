@@ -137,6 +137,7 @@ class WorkerModel(object):
             'tag': row.tag,
             'slots': row.slots,
             'cpus': row.cpus,
+            'gpus': row.gpus,
             'memory_bytes': row.memory_bytes,
             'checkin_time': row.checkin_time,
             'socket_id': row.socket_id,
