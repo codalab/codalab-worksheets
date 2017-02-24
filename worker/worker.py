@@ -7,6 +7,7 @@ import shutil
 import threading
 import time
 import traceback
+import subprocess
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
@@ -104,13 +105,24 @@ class Worker(object):
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
 
+    def _get_gpu_count(self):
+        try:
+            args = ['nvidia-smi', '-L']
+            output = subprocess.check_output(args)
+            exitcode = 0
+        except Exception, e:
+            return 0
+        return len(output.split('\n'))
+
     def _checkin(self):
+        self._get_gpu_count()
         request = {
             'version': VERSION,
             'will_upgrade': self._should_upgrade,
             'tag': self._tag,
             'slots': self._slots if not self._is_exiting() else 0,
             'cpus': multiprocessing.cpu_count(),
+            'gpus': self._get_gpu_count(),
             'memory_bytes': self._get_memory_bytes(),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }

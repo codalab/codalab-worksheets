@@ -336,6 +336,7 @@ worker = Table(
   Column('tag', Text, nullable=True),  # Tag that allows for scheduling runs on specific workers.
   Column('slots', Integer, nullable=False),  # Number of bundles the worker can run.
   Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
+  Column('gpus', Integer, nullable=False),  # Number of GPUs on worker.
   Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.
   Column('checkin_time', DateTime, nullable=False),  # When the worker last checked in with the bundle service.
   Column('socket_id', Integer, nullable=False),  # Socket ID worker listens for messages on.

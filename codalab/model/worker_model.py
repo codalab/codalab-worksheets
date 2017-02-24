@@ -20,7 +20,7 @@ class WorkerModel(object):
     """
     Manages the worker, worker_dependency and worker_socket tables. This class
     serves 2 primary functions:
- 
+
     1) It is used to add, remove and query information about workers.
     2) It is used for communication with the workers. This communication happens
        through Unix domain sockets stored in a special directory. This class
@@ -33,7 +33,7 @@ class WorkerModel(object):
         self._socket_dir = socket_dir
         self.shared_file_system = shared_file_system
 
-    def worker_checkin(self, user_id, worker_id, tag, slots, cpus, memory_bytes, dependencies):
+    def worker_checkin(self, user_id, worker_id, tag, slots, cpus, gpus, memory_bytes, dependencies):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
@@ -43,6 +43,7 @@ class WorkerModel(object):
                 'tag': tag,
                 'slots': slots,
                 'cpus': cpus,
+                'gpus': gpus,
                 'memory_bytes': memory_bytes,
                 'checkin_time': datetime.datetime.now(),
             }
