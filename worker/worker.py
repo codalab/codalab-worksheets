@@ -111,7 +111,7 @@ class Worker(object):
         if not self._docker._use_nvidia_docker:
             return 0
 
-        container_id = self._docker.run_nvidia_smi('-L', 'gcr.io/tensorflow/tensorflow:latest-gpu')
+        container_id = self._docker.run_nvidia_smi('-L', 'nvidia/cuda:8.0-runtime')
         out, err = self._docker.get_logs(container_id)
         count = len(re.findall('^GPU \d', out))
         self._docker.delete_container(container_id)
