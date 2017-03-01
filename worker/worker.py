@@ -7,6 +7,9 @@ import shutil
 import threading
 import time
 import traceback
+import socket
+import subprocess
+import re
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
@@ -104,6 +107,16 @@ class Worker(object):
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
 
+    def _get_gpu_count(self):
+        if not self._docker._use_nvidia_docker:
+            return 0
+
+        container_id = self._docker.run_nvidia_smi('-L', 'nvidia/cuda:8.0-runtime')
+        out, err = self._docker.get_logs(container_id)
+        count = len(re.findall('^GPU \d', out))
+        self._docker.delete_container(container_id)
+        return count
+
     def _checkin(self):
         request = {
             'version': VERSION,
@@ -111,6 +124,7 @@ class Worker(object):
             'tag': self._tag,
             'slots': self._slots if not self._is_exiting() else 0,
             'cpus': multiprocessing.cpu_count(),
+            'gpus': self._get_gpu_count(),
             'memory_bytes': self._get_memory_bytes(),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
