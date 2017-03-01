@@ -39,7 +39,7 @@ class BundleManager(object):
         self._worker_model = codalab_manager.worker_model()
         self._bundle_store = codalab_manager.bundle_store()
         self._upload_manager = codalab_manager.upload_manager()
-        
+
         self._exiting_lock = threading.Lock()
         self._exiting = False
 
@@ -61,6 +61,7 @@ class BundleManager(object):
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
         self._default_request_cpus = config.get('default_request_cpus')
+        self._default_request_gpus = config.get('default_request_gpus')
         self._default_request_network = config.get('default_request_network')
         self._default_request_queue = config.get('default_request_queue')
         self._default_request_priority = config.get('default_request_priority')
@@ -202,7 +203,7 @@ class BundleManager(object):
                 deps.append((dependency_path, child_path))
 
             remove_path(path)
-            
+
             if len(deps) == 1 and deps[0][1] == path:
                 path_util.copy(deps[0][0], path, follow_symlinks=False)
             else:
@@ -294,6 +295,12 @@ class BundleManager(object):
             workers_list = filter(lambda worker: worker['cpus'] >= request_cpus,
                                   workers_list)
 
+        # Filter by GPUs.
+        request_gpus = self._compute_request_gpus(bundle)
+        if request_gpus:
+            workers_list = filter(lambda worker: worker['gpus'] >= request_gpus,
+                                  workers_list)
+
         # Filter by memory.
         request_memory = self._compute_request_memory(bundle)
         if request_memory:
@@ -362,6 +369,13 @@ class BundleManager(object):
         """
         return bundle.metadata.request_cpus or self._default_request_cpus
 
+    def _compute_request_gpus(self, bundle):
+        """
+        Compute the GPU limit used for scheduling the run.
+        """
+        return bundle.metadata.request_gpus or self._default_request_gpus
+
+
     def _compute_request_memory(self, bundle):
         """
         Compute the memory limit used for scheduling the run.
@@ -395,7 +409,7 @@ class BundleManager(object):
             # use as many resources as they wish on their own machines.
             if worker['user_id'] != self._model.root_user_id:
                 max_value = None
-            
+
             # Use default if request value doesn't exist
             if request_string:
                 request_value = to_value(request_string)

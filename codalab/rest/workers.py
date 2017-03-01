@@ -33,7 +33,7 @@ def checkin(worker_id):
 
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
-        request.json['slots'], request.json['cpus'], request.json['memory_bytes'],
+        request.json['slots'], request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
         request.json['dependencies'])
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
