@@ -4,6 +4,7 @@ This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
 
 ## Table of Contents
+- [Introduction](#introduction)
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
   - [Bundle Permissions API](#bundle-permissions-api)
@@ -19,16 +20,113 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
   - [Worksheet Permissions API](#worksheet-permissions-api)
   - [Help API](#help-api)
 
+# Introduction
+We use the JSON API v1.0 specification with the Bulk extension.
+- http://jsonapi.org/format/
+- https://github.com/json-api/json-api/blob/9c7a03dbc37f80f6ca81b16d444c960e96dd7a57/extensions/bulk/index.md
+
+The following specification will not provide the verbose JSON formats of the API requests and responses, as those can be found in the JSON API specification. Instead:
+- Each resource type below (worksheets, bundles, etc.) specifies a list of
+  attributes with their respective data types and semantics, along with a list
+  of relationships.
+- Each API call specifies the HTTP request method, the endpoint URI, HTTP
+  parameters with their respective data types and semantics, description of the
+  API call.
+
+## How we use JSON API
+
+Using the JSON API specification allows us to avoid redesigning the wheel when designing our request and response formats. This also means that we will not specify all the details of the API (for example, Content-Type headers, the fact that POST requests should contain a single resource object, etc.) in this document at this time, while we may choose to continue copying in more details as we go in the design and implementation process. However, since there are many optional features of the JSON API specification, we will document on a best-effort basis the ways in which we will use the specification that are specific to our API, as well as which parts of the specification we use, and which parts we do not.
+
+## Top-level JSON structure
+
+Every JSON request or response will have at its root a JSON object containing either a “data” field or an “error” field, but not both. Thus the presence of an “error” field will unambiguously indicate an error state.
+
+Response documents may also contain a top-level "meta" field, containing additional constructed data that are not strictly resource objects, such as summations in a search query.
+
+Response documents may also contain a top-level "included" field, discussed below.
+
+## Primary Data
+
+The JSON API standard specifies that the “data” field will contain either a [resource object](http://jsonapi.org/format/#document-resource-objects) or an array of resource objects, depending on the nature of the request. More specfically, if the client is fetching a single specific resource (e.g. GET /bundles/0x1d09b495), the “data” field will have a single JSON object at its root. If the client intends to fetch a variable number of resources, then the “data” field will have at its root an array of zero or more JSON objects.
+
+The structure of a JSON response with a single resource object will typically look like this:
+
+```
+{
+  "data": {
+    "type": "bundles",
+    "id": "0x1d09b495410249f89dee4465cd21d499",
+    "attributes": {
+      // ... this bundle's attributes
+    },
+    "relationships": {
+      // ... this bundle's relationships
+    }
+  }
+}
+```
+
+Note that we use UUIDs as the "id" of a resource when available (i.e. for worksheets, bundles, and groups) and some other unique key for those resources to which we have not prescribed a UUID scheme.
+
+For each of the resource types available in the Worksheets API, we define the schema for its **attributes**, as well as list what **relationships** each instance may have defined. Relationships are analogous to relationships in relational databases and ORMs—some may be to-one (such as the "owner" of a bundle) and some may be to-many (such as the "permissions" of a bundle).
+
+We will use the following subset of the relationship object schema for our Worksheets API (Orderly schema):
+
+```
+object {
+  object {
+    string related;   // URL to GET the related resource
+  } links;
+  object {            // used to identify resource in includes
+    string type;      // type of the related resource
+    string id;        // id of the related resource
+  } data?;
+}
+```
+
+## Query Parameters
+
+The client may provide additional parameters for requests as query parameters in the request URL. Available parameters will be listed under each API route. In general:
+- Boolean query parameters are encoded as 1 for "true" and 0 for "false".
+- Some query parameters take multiple values, which can be passed by simply listing
+  the parameter multiple times in the query, e.g. `GET /bundles?keywords=hello&keywords=world`
+
+## Includes
+
+The client will often want to fetch data for resources related to the primary resource(s) in the same request: for example, client may want to fetch a worksheet along with all of its items, as well as data about the bundles and worksheets referenced in the items.
+
+Currently, most of the API endpoints will include related resources automatically.
+For example, fetching a "worksheet" will also include the "bundles" referenced
+by the worksheet in the response. These related resource objects will be
+included in an array in the top-level "included" field of the response object.
+
+## Non-JSON API Endpoints
+
+The JSON API specification is not all-encompassing, and there are some cases in our API that fall outside of the specification. We will indicate this explicitly where it applies, and provide an alternative schema for the JSON format where necessary.
+
+## Authorization and Authentication
+
+The Bundle Service also serves as an OAuth2 Provider.
+
+All requests to protected resources on the Worksheets API must include a valid
+OAuth bearer token in the HTTP headers:
+
+    Authorization: Bearer xxxxtokenxxxx
+
+If the token is expired, does not authorize the application to access the
+target resource, or is otherwise invalid, the Bundle Service will respond with
+a `401 Unauthorized` or `403 Forbidden` status.
+
 # Resource Object Schemas
 ## worksheet-items
 
 
 Name | Type
 --- | ---
-    `subworksheet` | Relationship
+    `subworksheet` | Relationship([worksheets](#worksheets))
     `sort_key` | Integer
-    `worksheet` | Relationship
-    `bundle` | Relationship
+    `worksheet` | Relationship([worksheets](#worksheets))
+    `bundle` | Relationship([bundles](#bundles))
     `value` | String
     `type` | String
     `id` | Integer
@@ -60,15 +158,15 @@ Name | Type
     `data_hash` | String
     `uuid` | String
     `permission` | Integer
-    `group_permissions` | Relationship
+    `group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
     `args` | String
     `id` | String
     `state` | String
-    `dependencies` | BundleDependencySchema
+    `dependencies` | [BundleDependencySchema](#BundleDependencySchema)
     `command` | String
-    `owner` | Relationship
+    `owner` | Relationship([users](#users))
     `bundle_type` | String
-    `children` | Relationship
+    `children` | Relationship([bundles](#bundles))
     `permission_spec` | PermissionSpec
     `metadata` | Dict
 ## worksheet-permissions
@@ -76,9 +174,9 @@ Name | Type
 
 Name | Type
 --- | ---
-    `group` | Relationship
+    `group` | Relationship([groups](#groups))
     `permission` | Integer
-    `worksheet` | Relationship
+    `worksheet` | Relationship([worksheets](#worksheets))
     `group_name` | String
     `id` | Integer
     `permission_spec` | PermissionSpec
@@ -87,9 +185,9 @@ Name | Type
 
 Name | Type
 --- | ---
-    `group` | Relationship
+    `group` | Relationship([groups](#groups))
     `permission` | Integer
-    `bundle` | Relationship
+    `bundle` | Relationship([bundles](#bundles))
     `group_name` | String
     `id` | Integer
     `permission_spec` | PermissionSpec
@@ -127,10 +225,10 @@ Name | Type
     `last_item_id` | Integer
     `tags` | List
     `frozen` | DateTime
-    `group_permissions` | Relationship
+    `group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
     `title` | String
-    `items` | Relationship
-    `owner` | Relationship
+    `items` | Relationship([worksheet-items](#worksheet-items))
+    `owner` | Relationship([users](#users))
     `permission` | Integer
     `id` | String
     `permission_spec` | PermissionSpec
@@ -142,9 +240,9 @@ Name | Type
 --- | ---
     `name` | String
     `user_defined` | Boolean
-    `admins` | Relationship
-    `members` | Relationship
-    `owner` | Relationship
+    `admins` | Relationship([users](#users))
+    `members` | Relationship([users](#users))
+    `owner` | Relationship([users](#users))
     `id` | String
 ## users
 
