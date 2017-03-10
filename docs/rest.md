@@ -387,10 +387,7 @@ Query parameters:
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/<path:path>`
 
-Fetch the bundle contents metadata.
-
-The `<path>` refers to a path to a file or a directory inside the directory
-structure of the bundle contents.
+Fetch metadata of the bundle contents or a subpath within the bundle.
 
 Query parameters:
 - `depth`: recursively fetch subdirectory info up to this depth.
@@ -415,10 +412,7 @@ Response format:
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/info/`
 
-Fetch the bundle contents metadata.
-
-The `<path>` refers to a path to a file or a directory inside the directory
-structure of the bundle contents.
+Fetch metadata of the bundle contents or a subpath within the bundle.
 
 Query parameters:
 - `depth`: recursively fetch subdirectory info up to this depth.
@@ -445,11 +439,11 @@ Response format:
 
 API to download the contents of a bundle or a subpath within a bundle.
 
-For directories this method always returns a tarred and gzipped archive of
+For directories, this method always returns a tarred and gzipped archive of
 the directory.
 
 For files, if the request has an Accept-Encoding header containing gzip,
-then the returned file is gzipped.
+then the returned file is gzipped. Otherwise, the file is returned as-is.
 
 HTTP headers:
 - `Range: bytes=<start>-<end>`: fetch bytes from the range
@@ -462,17 +456,16 @@ Query parameters:
   Default is 0, meaning to fetch the entire file.
 - `max_line_length`: maximum number of characters to fetch from each line,
   if either `head` or `tail` is specified. Default is 128.
-- 
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 
 API to download the contents of a bundle or a subpath within a bundle.
 
-For directories this method always returns a tarred and gzipped archive of
+For directories, this method always returns a tarred and gzipped archive of
 the directory.
 
 For files, if the request has an Accept-Encoding header containing gzip,
-then the returned file is gzipped.
+then the returned file is gzipped. Otherwise, the file is returned as-is.
 
 HTTP headers:
 - `Range: bytes=<start>-<end>`: fetch bytes from the range
@@ -485,7 +478,6 @@ Query parameters:
   Default is 0, meaning to fetch the entire file.
 - `max_line_length`: maximum number of characters to fetch from each line,
   if either `head` or `tail` is specified. Default is 128.
-- 
 
 ### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 
