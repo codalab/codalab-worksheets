@@ -119,7 +119,7 @@ API_ROUTE_DOC = '''\
 %>
 ### `{{route.method}} {{!route.rule}}`
 % if docstring:
-{{dedent(docstring)}}
+{{!dedent(docstring)}}
 % end
 '''
 
