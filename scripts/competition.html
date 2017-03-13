@@ -1,0 +1,87 @@
+<!--
+An example leaderboard for use with the competition daemon.
+Please copy and modify for your own needs.
+-->
+<html>
+  <head>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  </head>
+  <body>
+    <div id="container" class="container"></div>
+    <script id="template" type="x-tmpl-mustache">
+
+<div class="row">
+  <h1>{{config.metadata.name}}</h1>
+  <table class="table table-striped">
+    <tr>
+      <th>UUID</th>
+      <th>Submitter</th>
+      <th>Status</th>
+      <th>Description</th>
+      <th>Public?</th>
+      <th>F1 Score</th>
+      <th>Exact Match</th>
+    </tr>
+    {{#leaderboard}}
+    <tr>
+      <th><a href="{{url}}">{{short_id}}</a></th>
+      <td>{{submission.user_name}}</td>
+      <td>{{status}}</td>
+      <td>{{submission.description}}</td>
+      <td>{{submission.public}}</td>
+      <td>{{scores.f1}}</td>
+      <td>{{scores.exact_match}}</td>
+    </tr>
+    {{/leaderboard}}
+  </table>
+  <p>Last updated: {{updated_string}}</p>
+</div>
+
+    </script>
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.min.js" integrity="sha256-iaqfO5ue0VbSGcEiQn+OeXxnxAMK2+QgHXIDA5bWtGI=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+(function($) {
+
+  var LEADERBOARD_JSON = 'out.json';
+
+  // Preload the Mustache template
+  var template = $('#template').html();
+  Mustache.parse(template);   // optional, speeds up future uses
+
+  // Fetch the leaderboard JSON
+  $.getJSON(LEADERBOARD_JSON, function (data) {
+
+    // Preprocess data
+    for (var i = 0; i < data.leaderboard.length; i++) {
+      var item = data.leaderboard[i];
+      item.url = data.config.host + '/bundles/' + item.bundle.id + '/';
+      item.short_id = item.bundle.id.slice(0, 2+8);
+      switch (item.bundle.state) {
+        case 'ready':
+          item.status = 'success';
+          break;
+        case 'created':
+          item.status = 'running';
+          break;
+        default:
+          item.status = item.bundle.state;
+          break;
+      }
+    }
+
+    data.updated_string = new Date(data.updated * 1000);
+
+    // Render Mustache template in the container div
+    var rendered = Mustache.render(template, data);
+    $('#container').html(rendered);
+
+  });
+
+})(jQuery);
+    </script>
+  </body>
+</html>
