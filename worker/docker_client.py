@@ -316,9 +316,11 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 def update_status(status):
                     logger.info('Downloading Docker image for running nvidia-smi: ' + status)
                 self.download_image(docker_image, update_status)
-                return _start_nvidia_smi()
+                container_id = _start_nvidia_smi()
             else:
                 raise
+
+        return container_id
 
     def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
