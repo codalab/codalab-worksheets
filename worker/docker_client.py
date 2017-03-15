@@ -180,7 +180,18 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if create_image_response.status != 200:
                 raise DockerException(create_image_response.read())
             contents = json.loads(create_image_response.read())
-        return contents.get('RepoDigests', [''])[0]
+
+        # the following try-except clause is intentional:
+        # old docker versions may have an empty entry under RepoDigests
+        # older docker versions may not even have an entry under RepoDigests
+        # this handles both cases
+        # the goal is to eventually remove this try-except clause completely,
+        # once we are sure every worker has updated docker
+        try:
+            return contents['RepoDigests'][0]
+        except KeyError, IndexError:
+            return ''
+
 
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
@@ -276,24 +287,38 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         if self._use_nvidia_docker:
             self._add_nvidia_docker_arguments(create_request)
 
-        with closing(self._create_connection()) as create_conn:
-            create_conn.request('POST', '/containers/create',
-                                json.dumps(create_request),
-                                {'Content-Type': 'application/json'})
-            create_response = create_conn.getresponse()
-            if create_response.status != 201:
-                raise DockerException(create_response.read())
-            container_id = json.loads(create_response.read())['Id']
+        def _start_nvidia_smi():
+            with closing(self._create_connection()) as create_conn:
+                create_conn.request('POST', '/containers/create',
+                                    json.dumps(create_request),
+                                    {'Content-Type': 'application/json'})
+                create_response = create_conn.getresponse()
+                if create_response.status != 201:
+                    raise DockerException(create_response.read())
+                container_id = json.loads(create_response.read())['Id']
 
-        # Start the container.
-        logger.debug('Starting Docker container for running nvidia-smi')
-        with closing(self._create_connection()) as start_conn:
-            start_conn.request('POST', '/containers/%s/start' % container_id)
-            start_response = start_conn.getresponse()
-            if start_response.status != 204:
-                raise DockerException(start_response.read())
-        return container_id
+            # Start the container.
+            logger.debug('Starting Docker container for running nvidia-smi')
+            with closing(self._create_connection()) as start_conn:
+                start_conn.request('POST', '/containers/%s/start' % container_id)
+                start_response = start_conn.getresponse()
+                if start_response.status != 204:
+                    raise DockerException(start_response.read())
+            return container_id
 
+        try:
+            container_id = _start_nvidia_smi()
+        except DockerException as e:
+            # The download image call is slow, even if the image is already
+            # available. Thus, we only make it if we know the image is not
+            # available. Start-up is much faster that way.
+            if 'No such image' in e.message:
+                def update_status(status):
+                    logger.info('Downloading Docker image for running nvidia-smi: ' + status)
+                self.download_image(docker_image, update_status)
+                return _start_nvidia_smi()
+            else:
+                raise
 
     def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
