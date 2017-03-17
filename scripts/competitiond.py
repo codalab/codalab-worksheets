@@ -327,7 +327,7 @@ class Competition(object):
                 logger.debug(
                     "{owner[user_name]} exceeded quota "
                     "({used}/{allowed} total submissions)".format(
-                        used=num_submissions_total,
+                        used=num_total_submissions[owner_id],
                         allowed=self.config['max_submissions_total'],
                         **bundle))
                 del submissions[owner_id]
@@ -337,7 +337,7 @@ class Competition(object):
                 logger.debug(
                     "{owner[user_name]} exceeded quota "
                     "({used}/{allowed} submissions per day)".format(
-                        used=num_submissions_today,
+                        used=num_period_submissions[owner_id],
                         allowed=self.config['max_submissions_per_period'],
                         **bundle))
                 del submissions[owner_id]
