@@ -8,8 +8,6 @@ from .hash_ring import HashRing
 from codalab.lib import path_util, spec_util
 from codalab.common import State
 
-
-
 class BundleStoreCleanupMixin(object):
     """A mixin for BundleStores that wish to support a cleanup operation
     """
@@ -75,7 +73,7 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
     MISC_TEMP_SUBDIRECTORY = 'misc_temp' # BundleServer writes out to here, so should have a different name
 
     def require_partitions(f):
-        """Decorator added to MulitDiskBundleStore methods that require a disk to
+        """Decorator added to BalancedMultiDiskBundleStore methods that require a disk to
         be added to the deployment for tasks to succeed. Prints a helpful error
         message prompting the user to add a new disk.
         """
@@ -164,7 +162,8 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
 
         try:
             path_util.make_directory(mdata)
-        except:
+        except Exception, e:
+            print >> sys.stderr, e
             print >> sys.stderr, "Could not make directory %s on partition %s, aborting" % (mdata, target)
             sys.exit(1)
 
@@ -470,6 +469,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         try:
             path_util.make_directory(mtemp)
         except:
+            print >> sys.stderr, e
             print >> sys.stderr, "Could not make directory %s on partition %s, aborting" % (mtemp, target)
             sys.exit(1)
 
