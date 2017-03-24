@@ -129,7 +129,9 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
 
             if disk is None:
                 # return disk with largest free space
-                disk = max(self.nodes, key=lambda x: get_node_avail_frac(self, x))
+                disk = max(self.nodes, key=lambda x:
+                        self.get_node_avail_frac(os.path.join(self.partitions, x, MultiDiskBundleStore.DATA_SUBDIRECTORY))
+                )
 
         if len(self.lru_cache) >= self.CACHE_SIZE:
             self.lru_cache.popitem(last=False)
@@ -158,6 +160,10 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         """
         target = os.path.abspath(target)
         new_partition_location = os.path.join(self.partitions, new_partition_name)
+
+        print >> sys.stderr, "Adding new partition as %s..." % new_partition_location
+        path_util.soft_link(target, new_partition_location)
+
         mdata = os.path.join(new_partition_location, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY)
 
         try:
@@ -168,8 +174,8 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
             sys.exit(1)
 
         self.nodes.append(new_partition_name)
-        path_util.make_directory(new_mtemp)
         new_mtemp = os.path.join(new_partition_location, BalancedMultiDiskBundleStore.TEMP_SUBDIRECTORY)
+        path_util.make_directory(new_mtemp)
 
         print >> sys.stderr, "Successfully added partition '%s' to the pool." % new_partition_name
 
