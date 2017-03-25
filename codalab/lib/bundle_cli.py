@@ -2781,8 +2781,8 @@ class BundleCLI(object):
         self._fail_if_not_local(args)
         if not args.commit:
             raise UsageError('If you really want to delete EVERYTHING, use --commit')
-        print >>self.stdout, 'Deleting entire bundle store...'
-        self.manager.bundle_store().reset()
+        #print >>self.stdout, 'Deleting entire bundle store...'
+        #self.manager.bundle_store().reset()
         print >>self.stdout, 'Deleting entire database...'
         self.manager.model()._reset()
 

@@ -54,12 +54,6 @@ class BaseBundleStore(object):
         """
         pass
 
-    def reset(self):
-        """
-        Clears the bundle store, resetting it to an empty state.
-        """
-        pass
-
 class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStoreHealthCheckMixin):
     """
     responsible for taking a set of locations and load-balancing the placement of
@@ -104,13 +98,11 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         self.lru_cache = OrderedDict()
         super(BalancedMultiDiskBundleStore, self).__init__()
 
-    def get_node_avail_frac(self, node):
-        # rather than get absolute free space, get fraction
+    def get_node_avail(self, node):
+        # get absolute free space
         st = os.statvfs(node)
         free = st.f_bavail * st.f_frsize
-        used = (st.f_blocks - st.f_bfree) * st.f_frsize
-        total = st.f_blocks * st.f_frsize
-        return float(free) / total
+        return free
 
     @require_partitions
     def get_bundle_location(self, uuid):
@@ -130,7 +122,7 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
             if disk is None:
                 # return disk with largest free space
                 disk = max(self.nodes, key=lambda x:
-                        self.get_node_avail_frac(os.path.join(self.partitions, x, MultiDiskBundleStore.DATA_SUBDIRECTORY))
+                        self.get_node_avail(os.path.join(self.partitions, x, MultiDiskBundleStore.DATA_SUBDIRECTORY))
                 )
 
         if len(self.lru_cache) >= self.CACHE_SIZE:
@@ -178,19 +170,6 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         path_util.make_directory(new_mtemp)
 
         print >> sys.stderr, "Successfully added partition '%s' to the pool." % new_partition_name
-
-    def reset(self):
-        """
-        Delete all stored bundles and then recreate the root directories.
-        """
-
-        pass
-
-        '''
-        # Do not run this function in production!
-        path_util.remove(self.partitions)
-        self.initialize_store()
-        '''
 
     def __get_num_partitions(self):
         """
@@ -513,14 +492,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             path_util.remove(to_delete)
 
         print >> sys.stderr, "Successfully added partition '%s' to the pool." % new_partition_name
-
-    def reset(self):
-        """
-        Delete all stored bundles and then recreate the root directories.
-        """
-        # Do not run this function in production!
-        path_util.remove(self.partitions)
-        self.initialize_store()
 
     def __get_num_partitions(self):
         """
