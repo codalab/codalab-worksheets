@@ -165,8 +165,10 @@ class ConfigSchema(Schema):
     max_submissions_per_period = fields.Integer(missing=1)
     max_submissions_total = fields.Integer(missing=1e10)
     refresh_period_seconds = fields.Integer(missing=60)
-    max_leaderboard_size = fields.Integer(missing=200)
+    max_leaderboard_size = fields.Integer(missing=10000)
     quota_period_seconds = fields.Integer(missing=24*60*60)  # default 1 day
+    count_failed_submissions = fields.Boolean(missing=True)  # default count everything toward quota
+    make_predictions_public = fields.Boolean(missing=False)  # default keep predictions private
     host = fields.Url(required=True)
     username = fields.String()
     password = fields.String()
@@ -212,9 +214,10 @@ class Competition(object):
 
     the prediction bundles maintain the record of all submissions.
     """
-    def __init__(self, config_path, output_path):
+    def __init__(self, config_path, output_path, leaderboard_only):
         self.config = self.load_config(config_path)
         self.output_path = output_path
+        self.leaderboard_only = leaderboard_only
         auth = AuthHelper(
             self.config['host'],
             self.config.get('username') or raw_input('Username: '),
@@ -239,6 +242,9 @@ class Competition(object):
         Ensure that the leaderboard worksheet is private, so that all bundles
         created on it are automatically private.
         """
+        if self.config['make_predictions_public']:
+            return
+
         # Get public group info
         public = self.client.fetch('groups', 'public')
 
@@ -273,7 +279,7 @@ class Competition(object):
             'keywords': [
                 'tags={submission_tag}'.format(**self.config),
                 'created=.sort-',
-                '.limit=1500',  # should not exceed 1500 submissions ever
+                '.limit={max_leaderboard_size}'.format(**self.config),
             ]
         })
 
@@ -300,7 +306,9 @@ class Competition(object):
         for predict_bundle in last_tests:
             submit_info = json.loads(predict_bundle['metadata']['description'])
             timestamp = predict_bundle['metadata']['created']
-            submission_ids.add(submit_info['bundle_id'])
+            submission_ids.add(submit_info['submit_id'])
+            # Only count toward quota if not failed or configured to count failed submissions
+            # if predict_bundle['state'] != State.FAILED or self.config['count_failed_submissions']:
             submission_times[submit_info['submitter_id']].append(timestamp)
 
         # Compute submission counts
@@ -363,7 +371,7 @@ class Competition(object):
         metadata = {
             'tags': [predict_config['tag']],
             'description': json.dumps({
-                'bundle_id': submit_bundle['id'],
+                'submit_id': submit_bundle['id'],
                 'submitter_id': submit_bundle['owner']['id'],
             }),
         }
@@ -417,7 +425,8 @@ class Competition(object):
             'name': eval_bundle_name,
             'tags': [self.config['evaluate']['tag']],
             'description': json.dumps({
-                'bundle_id': submit_bundle['id'],
+                'submit_id': submit_bundle['id'],
+                'predict_id': predict_bundle['id'],
             })
         }
         metadata.update(self.config['evaluate']['metadata'])
@@ -447,6 +456,7 @@ class Competition(object):
         return False
 
     def _fetch_leaderboard(self):
+        logger.debug('Fetching the leaderboard')
         # Fetch bundles on current leaderboard
         eval_bundles = self.client.fetch('bundles', params={
             'keywords': [
@@ -460,26 +470,32 @@ class Competition(object):
         submit2eval = {}
         for bundle in eval_bundles.itervalues():
             submit_info = json.loads(bundle['metadata']['description'])
-            submit2eval[submit_info['bundle_id']] = bundle
+            submit2eval[submit_info['submit_id']] = bundle
 
         # Fetch the original submission bundles.
         # A NotFoundError will be thrown if a bundle no longer exists.
         # We will remove that submission from the leaderboard, and keep
         # trying until there are no more deleted bundles.
+        logger.debug('Fetching corresponding original submission bundles')
         while True:
             if len(eval_bundles) == 0:
                 submit_bundles = {}
                 break
             try:
-                submit_bundles = self.client.fetch('bundles', params={
-                    'specs': submit2eval.keys(),
-                    'worksheet': self.config['log_worksheet_uuid'],
-                })
+                uuids = submit2eval.keys()
+                submit_bundles = []
+                for start in range(0, len(uuids), 50):
+                    end = start + 50
+                    submit_bundles.extend(self.client.fetch('bundles', params={
+                        'specs': uuids[start:end],
+                        'worksheet': self.config['log_worksheet_uuid'],
+                    }))
                 break
             except NotFoundError as e:
                 # If a submission bundle has been deleted, remove the entry from
                 # the leaderboard and try fetching all the bundles again
                 missing_uuid = re.search(UUID_STR, e.message).group(0)
+                logger.info("Removing submission %s", missing_uuid)
                 self.untag([submit2eval[missing_uuid]], self.config['evaluate']['tag'])
                 eval_uuid = submit2eval[missing_uuid]['id']
                 del eval_bundles[eval_uuid]
@@ -498,6 +514,7 @@ class Competition(object):
         eval_bundles, eval2submit = self._fetch_leaderboard()
 
         # Build leaderboard table
+        logger.debug('Fetching scores and building leaderboard table')
         leaderboard = []
         target_cache = {}
         for bundle in eval_bundles.itervalues():
@@ -525,6 +542,7 @@ class Competition(object):
                     'user_name': submit_bundle['owner']['user_name'],
                     'num_total_submissions': num_total_submissions[submit_bundle['owner']['id']],
                     'num_period_submissions': num_period_submissions[submit_bundle['owner']['id']],
+                    'created': submit_bundle['metadata']['created'],
                 }
             })
 
@@ -550,19 +568,20 @@ class Competition(object):
         if not submissions:
             logger.debug('No new submissions.')
 
-        for owner_id, submit_bundle in submissions.items():
-            logger.info("Running submission for "
-                        "{owner[user_name]}".format(**submit_bundle))
-            predict_bundle = self.run_prediction(submit_bundle)
-            if predict_bundle is None:
-                logger.info("Aborting submission for "
+        if not self.leaderboard_only:
+            for owner_id, submit_bundle in submissions.items():
+                logger.info("Running submission for "
                             "{owner[user_name]}".format(**submit_bundle))
-                continue
-            self.run_evaluation(submit_bundle, predict_bundle)
-            logger.info("Finished running submission for "
-                        "{owner[user_name]}".format(**submit_bundle))
-            num_total_submissions[owner_id] += 1
-            num_period_submissions[owner_id] += 1
+                predict_bundle = self.run_prediction(submit_bundle)
+                if predict_bundle is None:
+                    logger.info("Aborting submission for "
+                                "{owner[user_name]}".format(**submit_bundle))
+                    continue
+                self.run_evaluation(submit_bundle, predict_bundle)
+                logger.info("Finished running submission for "
+                            "{owner[user_name]}".format(**submit_bundle))
+                num_total_submissions[owner_id] += 1
+                num_period_submissions[owner_id] += 1
 
         self.generate_leaderboard(num_total_submissions, num_period_submissions)
 
@@ -593,6 +612,8 @@ def main():
                         help='JSON file containing configurations.')
     parser.add_argument('output_path',
                         help='path to write json file containing leaderboard.')
+    parser.add_argument('-l', '--leaderboard-only', action='store_true',
+                        help='Generate a new leaderboard but without creating any new runs.')
     parser.add_argument('-d', '--daemon', action='store_true',
                         help='Run as a daemon. (By default only runs once.)')
     parser.add_argument('-v', '--verbose', action='store_true',
@@ -600,7 +621,7 @@ def main():
     args = parser.parse_args()
     logging.basicConfig(format='[%(levelname)s] %(asctime)s: %(message)s',
                         level=(logging.DEBUG if args.verbose else logging.INFO))
-    comp = Competition(args.config_file, args.output_path)
+    comp = Competition(args.config_file, args.output_path, args.leaderboard_only)
     if args.daemon:
         # Catch interrupt signals so that eval loop doesn't get interrupted in the
         # middle of a series of actions and leave things in an inconsistent state.
