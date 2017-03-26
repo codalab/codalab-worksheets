@@ -242,9 +242,6 @@ class BundleService(object):
                         continue
                     if 'bundle_type' not in bundle_info:
                         continue  # empty info: invalid bundle reference
-                    if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
-                        target_info = self.get_top_level_contents((bundle_info['uuid'], ''))
-                        bundle_info['target_info'] = target_info
                     if isinstance(bundle_info, dict):
                         worksheet_util.format_metadata(bundle_info.get('metadata'))
         if bundle_uuids:
