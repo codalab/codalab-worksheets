@@ -56,7 +56,7 @@ class BaseBundleStore(object):
 
 class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStoreHealthCheckMixin):
     """
-    responsible for taking a set of locations and load-balancing the placement of
+    Responsible for taking a set of locations and load-balancing the placement of
     bundle data between the locations. Builds an LRU cache of bundle locations over time.
     """
 
