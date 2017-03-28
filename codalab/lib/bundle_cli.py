@@ -2851,7 +2851,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
         print >> sys.stderr, 'Performing Health Check...'
-        self.manager.bundle_store().health_check(self.manager.current_client().model, args.force, args.data_hash, args.repair)
+        self.manager.bundle_store().health_check(self.manager.model(), args.force, args.data_hash, args.repair)
 
     def _fail_if_headless(self, args):
         if self.headless:
