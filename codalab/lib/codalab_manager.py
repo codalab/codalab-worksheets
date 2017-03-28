@@ -45,8 +45,7 @@ from codalab.common import (
     UsageError,
 )
 from codalab.lib.bundle_store import (
-    MultiDiskBundleStore,
-    BalancedMultiDiskBundleStore,
+    BalancedMultiDiskBundleStore
 )
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
@@ -256,9 +255,7 @@ class CodaLabManager(object):
         BalancedMultiDiskBundleStore.
         """
         store_type = self.config.get('bundle_store', 'BalancedMultiDiskBundleStore')
-        if store_type == MultiDiskBundleStore.__name__:
-            return MultiDiskBundleStore(self.codalab_home)
-        elif store_type == BalancedMultiDiskBundleStore.__name__:
+        if store_type == BalancedMultiDiskBundleStore.__name__:
             return BalancedMultiDiskBundleStore(self.codalab_home)
         else:
             print >>sys.stderr, "Invalid bundle store type \"%s\"", store_type

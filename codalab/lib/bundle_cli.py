@@ -80,7 +80,6 @@ from codalab.lib.completers import (
     WorksheetsCompleter,
 )
 from codalab.lib.bundle_store import (
-    MultiDiskBundleStore,
     BalancedMultiDiskBundleStore
 )
 from codalab.lib.print_util import FileTransferProgress
@@ -2788,7 +2787,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'bs-add-partition',
-        help='Add another partition for storage (MultiDiskBundleStore or BalancedMultiDiskBundleStore only)',
+        help='Add another partition for storage (BalancedMultiDiskBundleStore only)',
         arguments=(
             Commands.Argument('name',
                               help='The name you\'d like to give this partition for CodaLab.',),
@@ -2805,16 +2804,15 @@ class BundleCLI(object):
         """
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
-        # This operation only allowed if we're using MultiDiskBundleStore or BalancedMultiDiskBundleStore
-        if not (isinstance(self.manager.bundle_store(), MultiDiskBundleStore) \
-                or isinstance(self.manager.bundle_store(), BalancedMultiDiskBundleStore)):
-            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore or BalancedMultiDiskBundleStore is in use."
+        # This operation only allowed if we're using BalancedMultiDiskBundleStore
+        if not isinstance(self.manager.bundle_store(), BalancedMultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when BalancedMultiDiskBundleStore is in use."
             sys.exit(1)
         self.manager.bundle_store().add_partition(args.path, args.name)
 
     @Commands.command(
         'bs-rm-partition',
-        help='Remove a partition by its number (MultiDiskBundleStore or BalancedMultiDiskBundleStore only)',
+        help='Remove a partition by its number (BalancedMultiDiskBundleStore only)',
         arguments=(
             Commands.Argument('partition', help='The partition you want to remove.'),
         ),
@@ -2822,23 +2820,21 @@ class BundleCLI(object):
     def do_rm_partition_command(self, args):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
-        if not (isinstance(self.manager.bundle_store(), MultiDiskBundleStore) \
-                or isinstance(self.manager.bundle_store(), BalancedMultiDiskBundleStore)):
-            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore or BalancedMultiDiskBundleStore is in use."
+        if not isinstance(self.manager.bundle_store(), BalancedMultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when BalancedMultiDiskBundleStore is in use."
             sys.exit(1)
         self.manager.bundle_store().rm_partition(args.partition)
 
     @Commands.command(
         'bs-ls-partitions',
-        help='List available partitions (MultiDiskBundleStore or BalancedMultiDiskBundleStore only)',
+        help='List available partitions (BalancedMultiDiskBundleStore only)',
         arguments=(),
     )
     def do_ls_partitions_command(self, args):
         self._fail_if_headless(args)
         self._fail_if_not_local(args)
-        if not (isinstance(self.manager.bundle_store(), MultiDiskBundleStore) \
-                or isinstance(self.manager.bundle_store(), BalancedMultiDiskBundleStore)):
-            print >> sys.stderr, "This command can only be run when MultiDiskBundleStore or BalancedMultiDiskBundleStore is in use."
+        if not isinstance(self.manager.bundle_store(), BalancedMultiDiskBundleStore):
+            print >> sys.stderr, "This command can only be run when BalancedMultiDiskBundleStore is in use."
             sys.exit(1)
         self.manager.bundle_store().ls_partitions()
 
