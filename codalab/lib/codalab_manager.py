@@ -45,7 +45,7 @@ from codalab.common import (
     UsageError,
 )
 from codalab.lib.bundle_store import (
-    BalancedMultiDiskBundleStore
+    MultiDiskBundleStore
 )
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
@@ -236,7 +236,7 @@ class CodaLabManager(object):
         # temporary directory.  The default /tmp generally doesn't have enough
         # space.
         # TODO: Fix this, this is bad
-        tempfile.tempdir = os.path.join(home, BalancedMultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
+        tempfile.tempdir = os.path.join(home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
         return home
 
     @property
@@ -252,11 +252,11 @@ class CodaLabManager(object):
         """
         Returns the bundle store backing this CodaLab instance. The type of the store object
         depends on what the user has configured, but if no bundle store is configured manually then it defaults to a
-        BalancedMultiDiskBundleStore.
+        MultiDiskBundleStore.
         """
-        store_type = self.config.get('bundle_store', 'BalancedMultiDiskBundleStore')
-        if store_type == BalancedMultiDiskBundleStore.__name__:
-            return BalancedMultiDiskBundleStore(self.codalab_home)
+        store_type = self.config.get('bundle_store', 'MultiDiskBundleStore')
+        if store_type == MultiDiskBundleStore.__name__:
+            return MultiDiskBundleStore(self.codalab_home)
         else:
             print >>sys.stderr, "Invalid bundle store type \"%s\"", store_type
             sys.exit(1)

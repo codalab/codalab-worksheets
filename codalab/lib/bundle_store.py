@@ -52,20 +52,20 @@ class BaseBundleStore(object):
         """
         pass
 
-class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStoreHealthCheckMixin):
+class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStoreHealthCheckMixin):
     """
     Responsible for taking a set of locations and load-balancing the placement of
     bundle data between the locations. Builds an LRU cache of bundle locations over time.
     """
 
-    # Location where BalancedMultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
+    # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
     DATA_SUBDIRECTORY = 'bundles'
     TEMP_SUBDIRECTORY = 'temp'
     CACHE_SIZE = 1 * 1000 * 1000 # number of entries to cache
     MISC_TEMP_SUBDIRECTORY = 'misc_temp' # BundleServer writes out to here, so should have a different name
 
     def require_partitions(f):
-        """Decorator added to BalancedMultiDiskBundleStore methods that require a disk to
+        """Decorator added to MultiDiskBundleStore methods that require a disk to
         be added to the deployment for tasks to succeed. Prints a helpful error
         message prompting the user to add a new disk.
         """
@@ -74,7 +74,7 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
             if len(self.nodes) < 1:
                 print >> sys.stderr,"""
     Error: No partitions available.
-    To use BalancedMultiDiskBundleStore, you must add at least one partition. Try the following:
+    To use MultiDiskBundleStore, you must add at least one partition. Try the following:
 
         $ cl help bs-add-partition
     """
@@ -87,14 +87,14 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         self.codalab_home = path_util.normalize(codalab_home)
 
         self.partitions = os.path.join(self.codalab_home, 'partitions')
-        self.mtemp = os.path.join(self.codalab_home, BalancedMultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
+        self.mtemp = os.path.join(self.codalab_home, MultiDiskBundleStore.MISC_TEMP_SUBDIRECTORY)
 
         # Perform initialization first to ensure that directories will be populated
-        super(BalancedMultiDiskBundleStore, self).__init__()
+        super(MultiDiskBundleStore, self).__init__()
         nodes, _ = path_util.ls(self.partitions)
         self.nodes = nodes
         self.lru_cache = OrderedDict()
-        super(BalancedMultiDiskBundleStore, self).__init__()
+        super(MultiDiskBundleStore, self).__init__()
 
     def get_node_avail(self, node):
         # get absolute free space
@@ -113,20 +113,20 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         else:
             disk = None
             for n in self.nodes: # go through every partition
-                bundle_path = os.path.join(self.partitions, n, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
+                bundle_path = os.path.join(self.partitions, n, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
                 if os.path.exists(bundle_path):
                     disk = n
 
             if disk is None:
                 # return disk with largest free space
                 disk = max(self.nodes, key=lambda x:
-                        self.get_node_avail(os.path.join(self.partitions, x, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY))
+                        self.get_node_avail(os.path.join(self.partitions, x, MultiDiskBundleStore.DATA_SUBDIRECTORY))
                 )
 
         if len(self.lru_cache) >= self.CACHE_SIZE:
             self.lru_cache.popitem(last=False)
         self.lru_cache[uuid] = disk
-        return os.path.join(self.partitions, disk, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
+        return os.path.join(self.partitions, disk, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
 
     def initialize_store(self):
         """
@@ -138,14 +138,14 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         # Create the default partition, if there are no partitions currently
         if self.__get_num_partitions() == 0:
             # Create a default partition that links to the codalab_home
-            path_util.make_directory(os.path.join(self.codalab_home, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY))
-            path_util.make_directory(os.path.join(self.codalab_home, BalancedMultiDiskBundleStore.TEMP_SUBDIRECTORY))
+            path_util.make_directory(os.path.join(self.codalab_home, MultiDiskBundleStore.DATA_SUBDIRECTORY))
+            path_util.make_directory(os.path.join(self.codalab_home, MultiDiskBundleStore.TEMP_SUBDIRECTORY))
             default_partition = os.path.join(self.partitions, 'default')
             path_util.soft_link(self.codalab_home, default_partition)
 
     def add_partition(self, target, new_partition_name):
         """
-        BalancedMultiDiskBundleStore specific method. Add a new partition to the bundle store. The "target" is actually a symlink to
+        MultiDiskBundleStore specific method. Add a new partition to the bundle store. The "target" is actually a symlink to
         the target directory, which the user has configured as the mountpoint for some desired partition.
         """
         target = os.path.abspath(target)
@@ -154,7 +154,7 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         print >> sys.stderr, "Adding new partition as %s..." % new_partition_location
         path_util.soft_link(target, new_partition_location)
 
-        mdata = os.path.join(new_partition_location, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY)
+        mdata = os.path.join(new_partition_location, MultiDiskBundleStore.DATA_SUBDIRECTORY)
 
         try:
             path_util.make_directory(mdata)
@@ -164,14 +164,14 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
             sys.exit(1)
 
         self.nodes.append(new_partition_name)
-        new_mtemp = os.path.join(new_partition_location, BalancedMultiDiskBundleStore.TEMP_SUBDIRECTORY)
+        new_mtemp = os.path.join(new_partition_location, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
         path_util.make_directory(new_mtemp)
 
         print >> sys.stderr, "Successfully added partition '%s' to the pool." % new_partition_name
 
     def __get_num_partitions(self):
         """
-        Returns the current number of disks being used by this BalancedMultiDiskBundleStore.
+        Returns the current number of disks being used by this MultiDiskBundleStore.
         This is calculated as the number of directories in self.partitions
         """
         return reduce(lambda dirs, _: len(dirs), path_util.ls(self.partitions))
@@ -215,7 +215,7 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
         for d in partitions:
             partition_path = os.path.join(self.partitions, d)
             real_path = os.readlink(partition_path)
-            bundles = reduce(lambda x,y: x+y, path_util.ls(os.path.join(partition_path, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY)))
+            bundles = reduce(lambda x,y: x+y, path_util.ls(os.path.join(partition_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)))
             print '- %-016s\n\tmountpoint: %s\n\t%d %s' % (d, real_path, len(bundles), 'bundle' if len(bundles) == 1 else 'bundles')
 
     def cleanup(self, uuid, dry_run):
@@ -230,7 +230,7 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
 
     def health_check(self, model, force=False, compute_data_hash=False, repair_hashes=False):
         """
-        BalancedMultiDiskBundleStore.health_check(): In the BalancedMultiDiskBundleStore, bundle contents are stored on disk, and
+        MultiDiskBundleStore.health_check(): In the MultiDiskBundleStore, bundle contents are stored on disk, and
         occasionally the disk gets out of sync with the database, in which case we make repairs in the following ways:
 
             1. Deletes bundles with corresponding UUID not in the database.
@@ -312,7 +312,7 @@ class BalancedMultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, Bun
 
         for partition in partitions:
             print >> sys.stderr, 'Looking for trash in partition %s...' % partition
-            partition_path = os.path.join(self.partitions, partition, BalancedMultiDiskBundleStore.DATA_SUBDIRECTORY)
+            partition_path = os.path.join(self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY)
             entries = map(lambda f: os.path.join(partition_path, f),
                           reduce(lambda d,f: d + f, path_util.ls(partition_path)))
             bundle_paths = filter(_is_bundle, entries)
