@@ -45,7 +45,7 @@ from codalab.common import (
     UsageError,
 )
 from codalab.lib.bundle_store import (
-    MultiDiskBundleStore,
+    MultiDiskBundleStore
 )
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
@@ -214,7 +214,7 @@ class CodaLabManager(object):
     @property
     @cached
     def config_path(self):
-        return os.getenv('CODALAB_CONFIG', 
+        return os.getenv('CODALAB_CONFIG',
                          os.path.join(self.codalab_home, 'config.json'))
 
     @property
