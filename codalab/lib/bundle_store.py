@@ -55,7 +55,11 @@ class BaseBundleStore(object):
 class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStoreHealthCheckMixin):
     """
     Responsible for taking a set of locations and load-balancing the placement of
-    bundle data between the locations. Builds an LRU cache of bundle locations over time.
+    bundle data between the locations.
+
+    Use case: we store bundles in multiple disks, and they can be distributed in any arbitrary way.
+    Due to efficiency reasons, it builds up an LRU cache of bundle locations over time. When retrieving
+    a bundle that isn't recorded in the cache, the bundle store performs a linear search over all the locations.
     """
 
     # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
@@ -106,7 +110,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
     def get_bundle_location(self, uuid):
         """
         get_bundle_location: look for bundle in the cache, or if not in cache, go through every partition.
-        If not in any partition, return disk with largest free space
+        If not in any partition, return disk with largest free space.
         """
         if uuid in self.lru_cache:
             disk = self.lru_cache.pop(uuid)
@@ -116,6 +120,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                 bundle_path = os.path.join(self.partitions, n, MultiDiskBundleStore.DATA_SUBDIRECTORY, uuid)
                 if os.path.exists(bundle_path):
                     disk = n
+                    break
 
             if disk is None:
                 # return disk with largest free space
