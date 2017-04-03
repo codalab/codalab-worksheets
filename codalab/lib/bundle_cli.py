@@ -171,13 +171,13 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
         if out_file is None:
             out_file = self.cli.stdout
-        self.cli.do_command(['help'])
+        self._print_message(self.format_help(), out_file)
 
     def error(self, message):
         # Adapted from original:
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
-        if len(sys.argv) == 1:
-            self.print_help()
+        if len(sys.argv) == 1 or (len(sys.argv) == 2 and (sys.argv[1] == '--help' or sys.argv[1] == '-h')):
+            self.cli.do_command(['help'])
             self.exit(2)
         elif self.cli.headless:
             self.print_usage(self.cli.stderr)
