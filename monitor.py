@@ -44,7 +44,7 @@ hostname = socket.gethostname()
 config_path = os.path.join(args.codalab_home, 'config.json')
 config = json.loads(open(config_path).read())
 engine_url = config['server']['engine_url']
-m = re.match('mysql://(.+):(.+)@localhost(?::3306)?/(.+)', engine_url)
+m = re.match('mysql://(.+):(.+)@(.+)(?::3306)?/(.+)', engine_url)
 if not m:
     print 'Can\'t extract server.engine_url from %s' % config_path
     sys.exit(1)
