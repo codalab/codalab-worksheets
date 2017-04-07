@@ -1,18 +1,23 @@
-Welcome to your **CodaLab Dashboard**, which shows worksheets and bundles
-(programs and datasets) owned by you.  Read the
-[documentation](https://github.com/codalab/codalab-worksheets/wiki) to learn
-more.
+Welcome to your **CodaLab Dashboard**, which shows worksheets and bundles (programs and datasets) owned by you.  Read the [documentation](https://github.com/codalab/codalab-worksheets/wiki) to learn more. See [this page](https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown) to learn more about CodaLab’s markdown syntax. 
 
 ## **My worksheets**
 % wsearch .mine
 
-## **My pending bundles**
-These are bundles that are running or waiting to be run.
-% display table run
-% search .mine state=created,staged,making,waiting_for_worker_startup,starting,running id=.sort- .limit=10000
+## **My running bundles**
+These are bundles that are currently running or queued to be run.
+% schema r
+% add uuid uuid '[0:8]'
+% add name
+% add owner owner_name
+% add created created date
+% add time time duration
+% add state
+% display table r
+% search state=running created=.sort- .limit=10000 .mine
+% search state=queued created=.sort- .limit=10000 .mine
 
 ## **My recent bundles**
-% search .mine id=.sort- .limit=10
+% search created=.sort- .limit=5 .mine
 
 ## **My floating bundles**
 These are bundles that are not on any worksheet (you might have lost track of these).
@@ -24,5 +29,4 @@ Number of bundles owned by me:
 My disk usage:
 % search .mine size=.sum .format=size
 
-This dashboard itself is a worksheet.  You can click 'Edit Source' and copy the
-markdown to your own worksheet to customize it!
+This dashboard itself is a worksheet.  You can click 'Edit Source' and copy the markdown to your own worksheet to customize it!
