@@ -13,7 +13,7 @@ class DockerImageManagerTest(unittest.TestCase):
         self.work_dir = tempfile.mkdtemp()
         self.docker = Mock(spec=DockerClient)
         self.manager = DockerImageManager(self.docker, self.work_dir,
-                                          min_disk_free_bytes=100)
+                                          max_images_bytes=100)
 
     def tearDown(self):
         remove_path(self.work_dir)
@@ -31,21 +31,26 @@ class DockerImageManagerTest(unittest.TestCase):
         time.sleep(0.1)
         self.manager.touch_image(B)
 
-        # Simulate the available bytes being enough
-        self.manager._get_free_bytes = lambda: 1000
+        # Simulate the limit NOT being exceeded
+        self.docker.get_disk_usage.return_value = (10, 10)
         self._run_cleanup()
 
-        # Should not do anything to the images
+        # Simulate reclaimable disk usage being zero despite disk usage
+        # exceeding limit
+        self.docker.get_disk_usage.return_value = (120, 0)
+        self._run_cleanup()
+
+        # Should not do anything to the images in either case
         self.assertIn(A, self.manager._last_used)
         self.assertIn(B, self.manager._last_used)
         self.docker.remove_image.assert_not_called()
 
-        # Simulate the available bytes being too small
-        # and increasing with each call to remove image
-        free_bytes = [50]  # allow update from inside closure
-        self.manager._get_free_bytes = lambda: free_bytes[0]
+        # Simulate the limit beind exceeded, and then the disk usage decreasing
+        # below the limit after removing image A, the stalest image.
+        self.docker.get_disk_usage.return_value = (120, 120)
         def increment_free_bytes(*args, **kwargs):
-            free_bytes[0] += 100
+            t, r = self.docker.get_disk_usage.return_value
+            self.docker.get_disk_usage.return_value = (t - 50, r - 50)
         self.docker.remove_image.side_effect = increment_free_bytes
         self._run_cleanup()
 
@@ -54,9 +59,9 @@ class DockerImageManagerTest(unittest.TestCase):
         self.assertIn(B, self.manager._last_used)
         self.docker.remove_image.assert_called_with(A)
 
-        # Simulate available bytes being too small
-        # and never reaching the minimum free bytes
-        self.manager._get_free_bytes = lambda: 10
+        # Simulate the limit being exceeded again, and then the disk usage never
+        # decreasing below the limit
+        self.docker.get_disk_usage.return_value = (120, 120)
         self._run_cleanup()
 
         # Image B should be removed now, and things shouldn't crash

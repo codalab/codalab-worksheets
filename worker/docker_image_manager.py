@@ -89,7 +89,7 @@ class DockerImageManager(object):
             return self._stop_cleanup
 
     def _remove_stalest_image(self):
-        with self._lock():
+        with self._lock:
             digest = min(self._last_used, key=lambda i: self._last_used[i])
             self._docker.remove_image(digest)
             del self._last_used[digest]
