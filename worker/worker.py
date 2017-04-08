@@ -35,7 +35,7 @@ class Worker(object):
         4) Upgrading the worker.
     """
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
-                 min_disk_free_bytes, remove_stale_images, shared_file_system,
+                 max_images_bytes, remove_stale_images, shared_file_system,
                  slots, bundle_service, docker):
         self.id = id
         self._tag = tag
@@ -48,7 +48,7 @@ class Worker(object):
         if not self.shared_file_system:
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
-        self._image_manager = DockerImageManager(self._docker, work_dir, min_disk_free_bytes)
+        self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed

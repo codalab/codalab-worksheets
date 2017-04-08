@@ -193,9 +193,9 @@ class Run(object):
                 else:
                     raise
 
-            image_info = self._docker.inspect_image(self._resources['docker_image'])
-            self._safe_update_docker_image(image_info.get('RepoDigests', [''])[0])
-            self._image_manager.touch_image(image_info['Id'])
+            digest = self._docker.get_image_repo_digest(self._resources['docker_image'])
+            self._safe_update_docker_image(digest)
+            self._image_manager.touch_image(digest)
 
         except Exception as e:
             self._finish(failure_message=str(e))

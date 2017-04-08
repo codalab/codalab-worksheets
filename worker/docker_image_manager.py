@@ -24,25 +24,28 @@ class DockerImageManager(object):
     """
     STATE_FILENAME = 'images-state.json'
 
-    def __init__(self, docker, work_dir, min_disk_free_bytes):
+    def __init__(self, docker, work_dir, max_images_bytes):
         """
         :param docker: DockerClient
         :param work_dir: worker scratch directory, where the state file lives
-        :param min_disk_free_bytes: minimum bytes that should be free on the disk
+        :param max_images_bytes: maximum bytes that images should use
         """
         self._docker = docker
         self._work_dir = work_dir
         self._cleanup_thread = None
         self._stop_cleanup = False
         self._lock = threading.Lock()
-        self._last_used = None
+        self._last_used = {}
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
-        self._min_disk_free_bytes = min_disk_free_bytes
+        self._max_images_bytes = max_images_bytes
         self._docker_root_dir = docker.get_root_dir()
 
         if os.path.exists(self._state_file):
             self._load_state()
         else:
+            # When using shared filesystem, work_dir might not exist yet
+            if not os.path.exists(work_dir):
+                os.makedirs(work_dir, 0770)
             self._save_state()
 
     def _load_state(self):
@@ -52,24 +55,21 @@ class DockerImageManager(object):
 
     def _save_state(self):
         # In case we're initializing the state for the first time
-        if self._last_used is None:
-            self._last_used = {}
         state = {
             'last_used': self._last_used,
         }
         with open(self._state_file, 'w') as f:
             json.dump(state, f)
 
-    def touch_image(self, image_id):
+    def touch_image(self, digest):
         """
         Update the last-used date of an image to be the current date.
         """
-        # Writes must be exclusive with other reads and writes
         with self._lock:
             now = time.time()
-            self._last_used[image_id] = now
+            self._last_used[digest] = now
             self._save_state()
-        logger.debug('touched image %s at %f' % (image_id, now))
+        logger.debug('touched image %s at %f', digest, now)
 
     def start_cleanup_thread(self):
         self._stop_cleanup = False
@@ -88,15 +88,12 @@ class DockerImageManager(object):
         with self._lock:
             return self._stop_cleanup
 
-    def _get_free_bytes(self):
-        """
-        Return bytes free on the disk containing the Docker images.
-        """
-        # FIXME: this doesn't work on worker nodes since don't have permissions on docker dir
-        fd = os.open(self._docker_root_dir, os.O_RDONLY)
-        stat = os.fstatvfs(fd)
-        os.close(fd)
-        return stat.f_bavail * stat.f_frsize
+    def _remove_stalest_image(self):
+        with self._lock():
+            digest = min(self._last_used, key=lambda i: self._last_used[i])
+            self._docker.remove_image(digest)
+            del self._last_used[digest]
+            self._save_state()
 
     def _do_cleanup(self):
         """
@@ -109,21 +106,12 @@ class DockerImageManager(object):
             # is within the limit.
             try:
                 while True:
-                    free_bytes = self._get_free_bytes()
-                    if len(self._last_used) > 0 and free_bytes < self._min_disk_free_bytes:
-                        logging.info('disk free: %s (min %s)',
-                                     size_str(free_bytes),
-                                     size_str(self._min_disk_free_bytes))
-                        with self._lock:
-                            # Pick the stalest image
-                            image_id = min(self._last_used,
-                                           key=lambda id_: self._last_used[id_])
-
-                            # Remove that image
-                            self._docker.remove_image(image_id)
-                            del self._last_used[image_id]
-                            self._save_state()
-                            logging.info('removed image %s', image_id)
+                    total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
+                    if total_bytes > self._max_images_bytes and len(self._last_used) > 0 and reclaimable_bytes > 0:
+                        logging.info('Docker images disk usage: %s (max %s)',
+                                     size_str(total_bytes),
+                                     size_str(self._max_images_bytes))
+                        self._remove_stalest_image()
                     else:
                         # Break out of the loop when disk usage is normal.
                         break
