@@ -221,7 +221,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # once we are sure every worker has updated docker
         try:
             return info['RepoDigests'][0]
-        except KeyError, IndexError:
+        except (KeyError, IndexError):
             return ''
 
     @wrap_exception('Unable to remove Docker image')
