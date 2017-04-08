@@ -7,8 +7,6 @@ import shutil
 import threading
 import time
 import traceback
-import socket
-import subprocess
 import re
 
 from bundle_service_client import BundleServiceException
@@ -17,7 +15,7 @@ from file_util import remove_path, un_gzip_stream, un_tar_directory
 from run import Run
 from docker_image_manager import DockerImageManager
 
-VERSION = 9
+VERSION = 10
 
 logger = logging.getLogger(__name__)
 

@@ -108,9 +108,9 @@ class DockerImageManager(object):
                 while True:
                     total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
                     if total_bytes > self._max_images_bytes and len(self._last_used) > 0 and reclaimable_bytes > 0:
-                        logging.info('Docker images disk usage: %s (max %s)',
-                                     size_str(total_bytes),
-                                     size_str(self._max_images_bytes))
+                        logging.debug('Docker images disk usage: %s (max %s)',
+                                      size_str(total_bytes),
+                                      size_str(self._max_images_bytes))
                         self._remove_stalest_image()
                     else:
                         # Break out of the loop when disk usage is normal.
