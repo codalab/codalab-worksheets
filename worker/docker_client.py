@@ -189,7 +189,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # once we are sure every worker has updated docker
         try:
             return contents['RepoDigests'][0]
-        except KeyError, IndexError:
+        except (KeyError, IndexError):
             return ''
 
 
