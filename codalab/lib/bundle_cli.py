@@ -178,7 +178,6 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
         if len(sys.argv) == 1:
             self.print_help()
-            self.cli.do_command(['help'])
             self.exit(2)
         elif self.cli.headless:
             self.print_usage(self.cli.stderr)
