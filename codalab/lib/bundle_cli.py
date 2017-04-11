@@ -176,7 +176,8 @@ class CodaLabArgumentParser(argparse.ArgumentParser):
     def error(self, message):
         # Adapted from original:
         # https://hg.python.org/cpython/file/2.7/Lib/argparse.py
-        if len(sys.argv) == 1 or (len(sys.argv) == 2 and sys.argv[1] in ['--help', '-h']):
+        if len(sys.argv) == 1:
+            self.print_help()
             self.cli.do_command(['help'])
             self.exit(2)
         elif self.cli.headless:

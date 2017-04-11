@@ -1,4 +1,8 @@
-Welcome to your **CodaLab Dashboard**, which shows worksheets and bundles (programs and datasets) owned by you.  Read the [documentation](https://github.com/codalab/codalab-worksheets/wiki) to learn more. See [this page](https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown) to learn more about CodaLab’s markdown syntax. 
+Welcome to your **CodaLab Dashboard**, which shows worksheets and bundles 
+(programs and datasets) owned by you.  Read the 
+[documentation](https://github.com/codalab/codalab-worksheets/wiki) to 
+learn more. See [this page](https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Markdown)
+to learn more about CodaLab’s markdown syntax. 
 
 ## **My worksheets**
 % wsearch .mine
@@ -17,7 +21,7 @@ These are bundles that are currently running or queued to be run.
 % search state=queued created=.sort- .limit=10000 .mine
 
 ## **My recent bundles**
-% search created=.sort- .limit=5 .mine
+% search id=.sort- .limit=5 .mine
 
 ## **My floating bundles**
 These are bundles that are not on any worksheet (you might have lost track of these).
