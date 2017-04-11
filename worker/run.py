@@ -444,8 +444,8 @@ class Run(object):
             traceback.print_exc()
 
     def _execute_bundle_service_command_with_retry(self, f):
-        # Retry for 30 minutes before giving up.
-        retries_left = 60
+        # Retry for 6 hours before giving up.
+        retries_left = 2 * 60 * 6
         while True:
             try:
                 retries_left -= 1
