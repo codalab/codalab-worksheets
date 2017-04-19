@@ -60,6 +60,7 @@ class DockerClient(object):
     # Where to look for nvidia-docker-plugin
     # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin
     NV_HOST = 'localhost:3476'
+    MIN_API_VERSION = '1.17'
 
     def __init__(self):
         self._docker_host = os.environ.get('DOCKER_HOST') or None
@@ -166,7 +167,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 version_info = json.loads(version_response.read())
             except:
                 raise DockerException('Invalid version information')
-            if version_info['ApiVersion'] < '1.17':
+            if map(int, version_info['ApiVersion'].split('.')) < \
+                    map(int, self.MIN_API_VERSION.split('.')):
                 raise DockerException('Please upgrade your version of Docker')
 
     @wrap_exception('Unable to get disk usage info')
@@ -398,12 +400,12 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
-                        request_network, request_gpus, dependencies):
-        docker_commands = self._get_docker_commands(bundle_path, uuid, command, docker_image,
-                                                    request_network, dependencies)
+                        request_network, dependencies):
+        docker_commands = self._get_docker_commands(
+            bundle_path, uuid, command, docker_image, request_network, dependencies)
 
-        volume_bindings = self._get_volume_bindings(bundle_path, uuid, command, docker_image,
-                                                    request_network, dependencies)
+        volume_bindings = self._get_volume_bindings(
+            bundle_path, uuid, command, docker_image, request_network, dependencies)
 
         # Get user/group that owns the bundle directory
         # Then we can ensure that any created files are owned by the user/group
@@ -427,7 +429,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             # This can cause problems if users expect to run as a specific user
             'User': '%s:%s' % (uid, gid),
         }
-        # TODO: Allocate the specified number of GPUs and isolate
+
+        # TODO: Allocate the requested number of GPUs and isolate
         if self._use_nvidia_docker:
             self._add_nvidia_docker_arguments(create_request)
         if not request_network:
@@ -489,16 +492,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             pass
 
         return stats
-
-    @wrap_exception('Unable to get Docker info')
-    def get_root_dir(self):
-        with closing(self._create_connection()) as conn:
-            conn.request('GET', '/info')
-            info_response = conn.getresponse()
-            if info_response.status != 200:
-                raise DockerException(info_response.read())
-            info = json.load(info_response)
-            return info['DockerRootDir']
 
     @wrap_exception('Unable to kill Docker container')
     def kill_container(self, container_id):

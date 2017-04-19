@@ -173,7 +173,6 @@ class Run(object):
                     self._bundle_path, self._uuid, self._bundle['command'],
                     self._resources['docker_image'],
                     self._resources['request_network'],
-                    self._resources['request_gpus'],
                     dependencies)
 
             try:
