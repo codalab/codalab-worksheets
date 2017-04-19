@@ -28,16 +28,16 @@ class Worker(object):
         2) Managing all the runs currently executing on the worker and
            forwarding messages associated with those runs to the appropriate
            instance of the Run class.
-        3) Managing the storage of bundles, both running bundles as well as
-           their dependencies.
+        3) Spawning classes and threads that manage other worker resources,
+           specifically the storage of bundles (both running bundles as well as
+           their dependencies) and the cache of Docker images.
         4) Upgrading the worker.
     """
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
-                 max_images_bytes, remove_stale_images, shared_file_system,
+                 max_images_bytes, shared_file_system,
                  slots, bundle_service, docker):
         self.id = id
         self._tag = tag
-        self._remove_stale_images = remove_stale_images
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._docker = docker
@@ -47,6 +47,7 @@ class Worker(object):
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
         self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
+        self._max_images_bytes = max_images_bytes
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed
@@ -60,7 +61,7 @@ class Worker(object):
         self._last_checkin_successful = False
 
     def run(self):
-        if self._remove_stale_images:
+        if self._max_images_bytes is not None:
             self._image_manager.start_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
@@ -79,7 +80,7 @@ class Worker(object):
 
         self._checkout()
 
-        if self._remove_stale_images:
+        if self._max_images_bytes is not None:
             self._image_manager.stop_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.stop_cleanup_thread()
