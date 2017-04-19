@@ -810,7 +810,7 @@ class BundleCLI(object):
     @Commands.command(
         'alias',
         help=[
-            'Manage CodaLab instance aliases.',
+            'Manage CodaLab instance aliases. These are mappings from names to CodaLab Worksheet servers.',
             '  alias                   : List all aliases.',
             '  alias <name>            : Shows which instance <name> is bound to.',
             '  alias <name> <instance> : Binds <name> to <instance>.',
