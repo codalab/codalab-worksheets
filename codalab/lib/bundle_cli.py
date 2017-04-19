@@ -1332,7 +1332,7 @@ class BundleCLI(object):
         print >>self.stdout, '===='
         print >>self.stdout, 'cl push-image has been deprecated and disabled. Please use docker push instead:'
         print >>self.stdout, ''
-        print >>self.stdout, '\tcl commit-image {} [image-tag]'.format(container_id[:8])
+        print >>self.stdout, '\tdocker push [image-tag]'
         print >>self.stdout, ''
         print >>self.stdout, '===='
 
