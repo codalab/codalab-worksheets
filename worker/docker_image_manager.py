@@ -38,7 +38,6 @@ class DockerImageManager(object):
         self._last_used = {}
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
         self._max_images_bytes = max_images_bytes
-        self._docker_root_dir = docker.get_root_dir()
 
         if os.path.exists(self._state_file):
             self._load_state()

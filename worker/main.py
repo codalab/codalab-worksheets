@@ -80,7 +80,10 @@ chmod 600 %s""" % args.password_file
                             level=logging.DEBUG)
 
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
-    max_images_bytes = parse_size(args.max_image_cache_size)
+    if args.max_image_cache_size is None:
+        max_images_bytes = None
+    else:
+        max_images_bytes = parse_size(args.max_image_cache_size)
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     max_images_bytes, args.shared_file_system, args.slots,
                     BundleServiceClient(args.server, username, password),
