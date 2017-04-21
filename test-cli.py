@@ -119,6 +119,7 @@ def wait_until_running(uuid, timeout_seconds=100):
 
 
 def wait_for_contents(uuid, substring, timeout_seconds=100):
+    start_time = time.time()
     while True:
         if time.time() - start_time > 100:
             raise AssertionError('timeout while waiting for %s to run' % uuid)
