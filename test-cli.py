@@ -267,8 +267,7 @@ def temp_instance():
     finally:
         # Kill any processes started in reverse order
         if worker_proc:
-            worker_proc.terminate()
-            worker_proc.wait()
+            worker_proc.kill()
         if bundle_manager_proc:
             bundle_manager_proc.kill()
         if rest_server_proc:
