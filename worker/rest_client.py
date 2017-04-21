@@ -6,6 +6,8 @@ import urllib
 import urllib2
 import urlparse
 
+from file_util import un_gzip_stream
+
 
 class RestClientException(Exception):
     """
@@ -53,8 +55,22 @@ class RestClient(object):
                                   headers=headers)
         request.get_method = lambda: method
         if return_response:
-            return urllib2.urlopen(request)
+            # Return a file-like object containing the contents of the response
+            # body, transparently decoding gzip streams if indicated by the
+            # Content-Encoding header.
+            response = urllib2.urlopen(request)
+            encoding = response.headers.get('Content-Encoding')
+            if not encoding:
+                return response
+            elif encoding == 'gzip':
+                return un_gzip_stream(response)
+            else:
+                raise RestClientException(
+                    'Unsupported Content-Encoding: ' + encoding, False)
         with closing(urllib2.urlopen(request)) as response:
+            # If the response is a JSON document, as indicated by the
+            # Content-Type header, try to deserialize it and return the result.
+            # Otherwise, just ignore the response body and return None.
             if response.headers.get('Content-Type') == 'application/json':
                 response_data = response.read()
                 try:

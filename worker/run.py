@@ -197,6 +197,7 @@ class Run(object):
             self._image_manager.touch_image(digest)
 
         except Exception as e:
+            logger.exception('Failed while starting run')
             self._finish(failure_message=str(e))
             self._worker.finish_run(self._uuid)
             return

@@ -182,9 +182,11 @@ class Worker(object):
             logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
             try:
                 download_success = False
-                fileobj, filename = (
+                fileobj, target_type = (
                     self._bundle_service.get_bundle_contents(parent_uuid, parent_path))
                 with closing(fileobj):
+                    # "Bug" the fileobj's read function so that we can keep
+                    # track of the number of bytes downloaded so far.
                     old_read_method = fileobj.read
                     bytes_downloaded = [0]
                     def interruptable_read(*args, **kwargs):
@@ -194,7 +196,7 @@ class Worker(object):
                         return data
                     fileobj.read = interruptable_read
 
-                    self._store_dependency(dependency_path, fileobj, filename)
+                    self._store_dependency(dependency_path, fileobj, target_type)
                     download_success = True
             finally:
                 logger.debug('Finished downloading dependency %s/%s', parent_uuid, parent_path)
@@ -203,13 +205,13 @@ class Worker(object):
 
         return dependency_path
 
-    def _store_dependency(self, dependency_path, fileobj, filename):
+    def _store_dependency(self, dependency_path, fileobj, target_type):
         try:
-            if filename.endswith('.tar.gz'):
+            if target_type == 'directory':
                 un_tar_directory(fileobj, dependency_path, 'gz')
             else:
                 with open(dependency_path, 'wb') as f:
-                    shutil.copyfileobj(un_gzip_stream(fileobj), f)
+                    shutil.copyfileobj(fileobj, f)
         except:
             remove_path(dependency_path)
             raise

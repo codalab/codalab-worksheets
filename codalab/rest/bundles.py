@@ -341,7 +341,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
       "data": {
           "name": "<name of file or directory>",
           "link": "<string representing target if file is a symbolic link>",
-          "type": "<file|directory>",
+          "type": "<file|directory|link>",
           "size": <size of file in bytes>,
           "contents": {
             "name": ...,
@@ -406,41 +406,48 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     if target_info['type'] == 'directory':
         if byte_range:
             abort(httplib.BAD_REQUEST, 'Range not supported for directory blobs.')
-        if head_lines:
-            abort(httplib.BAD_REQUEST, 'Head not supported for directory blobs.')
-        # Always tar and gzip directories.
-        filename = filename + '.tar.gz'
+        if head_lines or tail_lines:
+            abort(httplib.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
+        # Always tar and gzip directories
+        gzipped_stream = False  # but don't set the encoding to 'gzip'
+        mimetype = 'application/gzip'
+        filename += '.tar.gz'
         fileobj = local.download_manager.stream_tarred_gzipped_directory(uuid, path)
     elif target_info['type'] == 'file':
-        gzipped = False
-        if not zip_util.path_is_archive(filename) and request_accepts_gzip_encoding():
-            # Let's gzip to save bandwidth. The browser will transparently decode
-            # the file.
-            filename = filename + '.gz'
-            gzipped = True
+        # Let's gzip to save bandwidth.
+        # For simplicity, we do this even if the file is already a packed
+        # archive (which should be relatively rare).
+        # The browser will transparently decode the file.
+        gzipped_stream = request_accepts_gzip_encoding()
+
+        # Since guess_type() will interpret '.tar.gz' as an 'application/x-tar' file
+        # with 'gzip' encoding, which would usually go into the Content-Encoding
+        # header. But if the bundle contents is actually a packed archive, we don't
+        # want the client to automatically decompress the file, so we don't want to
+        # set the Content-Encoding header. Instead, if guess_type() detects an
+        # archive, we just set mimetype to indicate an arbitrary binary file.
+        mimetype, encoding = mimetypes.guess_type(filename, strict=False)
+        if encoding is not None:
+            mimetype = 'application/octet-stream'
 
         if byte_range and (head_lines or tail_lines):
             abort(httplib.BAD_REQUEST, 'Head and range not supported on the same request.')
         elif byte_range:
             start, end = byte_range
-            fileobj = local.download_manager.read_file_section(uuid, path, start, end - start + 1, gzipped)
+            fileobj = local.download_manager.read_file_section(uuid, path, start, end - start + 1, gzipped_stream)
         elif head_lines or tail_lines:
-            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, None, gzipped)
+            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, None, gzipped_stream)
         else:
-            fileobj = local.download_manager.stream_file(uuid, path, gzipped)
+            fileobj = local.download_manager.stream_file(uuid, path, gzipped_stream)
     else:
         # Symlinks.
-        abort(httplib.FORBIDDEN, 'Cannot download files of this type.')
+        abort(httplib.FORBIDDEN, 'Cannot download files of this type (%s).' % target_info['type'])
 
     # Set headers.
-    mimetype, _ = mimetypes.guess_type(filename, strict=False)
     response.set_header('Content-Type', mimetype or 'text/plain')
-    if zip_util.get_archive_ext(filename) == '.gz' and request_accepts_gzip_encoding():
-        filename = zip_util.strip_archive_ext(filename)
-        response.set_header('Content-Encoding', 'gzip')
-    else:
-        response.set_header('Content-Encoding', 'identity')
+    response.set_header('Content-Encoding', 'gzip' if gzipped_stream else 'identity')
     response.set_header('Content-Disposition', 'filename="%s"' % filename)
+    response.set_header('Target-Type', target_info['type'])
 
     return fileobj
 

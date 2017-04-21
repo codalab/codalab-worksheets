@@ -569,12 +569,8 @@ class JsonApiClient(RestClient):
             params['head'] = head
         if tail is not None:
             params['tail'] = tail
-        response = self._make_request('GET', request_path, headers=headers,
-                                      query_params=params, return_response=True)
-
-        if response.headers.get('Content-Encoding') == 'gzip':
-            return un_gzip_stream(response)
-        return response
+        return self._make_request('GET', request_path, headers=headers,
+                                  query_params=params, return_response=True)
 
     @wrap_exception('Unable to upload contents of bundle {1}')
     def upload_contents_blob(self, bundle_id, fileobj=None, params=None,
