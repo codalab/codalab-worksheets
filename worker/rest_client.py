@@ -60,7 +60,7 @@ class RestClient(object):
             # Content-Encoding header.
             response = urllib2.urlopen(request)
             encoding = response.headers.get('Content-Encoding')
-            if not encoding:
+            if not encoding or encoding == 'identity':
                 return response
             elif encoding == 'gzip':
                 return un_gzip_stream(response)
