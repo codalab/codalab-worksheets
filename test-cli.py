@@ -844,7 +844,7 @@ def test(ctx):
     # killed.
     for running in [True, False]:
         # Wait for the output to appear. Also, tests cat on a directory.
-        wait_for_contents(uuid, substring='done', timeout=60)
+        wait_for_contents(uuid, substring='done', timeout_seconds=60)
 
         # Info has only the first 10 lines
         info_output = run_command([cl, 'info', uuid, '--verbose'])
