@@ -497,7 +497,7 @@ Response format:
   "data": {
       "name": "<name of file or directory>",
       "link": "<string representing target if file is a symbolic link>",
-      "type": "<file|directory>",
+      "type": "<file|directory|link>",
       "size": <size of file in bytes>,
       "contents": {
         "name": ...,
@@ -522,7 +522,7 @@ Response format:
   "data": {
       "name": "<name of file or directory>",
       "link": "<string representing target if file is a symbolic link>",
-      "type": "<file|directory>",
+      "type": "<file|directory|link>",
       "size": <size of file in bytes>,
       "contents": {
         "name": ...,
@@ -543,9 +543,11 @@ the directory.
 For files, if the request has an Accept-Encoding header containing gzip,
 then the returned file is gzipped. Otherwise, the file is returned as-is.
 
-HTTP headers:
+HTTP Request headers:
 - `Range: bytes=<start>-<end>`: fetch bytes from the range
   `[<start>, <end>)`.
+- `Accept-Encoding: <encoding>`: indicate that the client can accept
+  encoding `<encoding>`. Currently only `gzip` encoding is supported.
 
 Query parameters:
 - `head`: number of lines to fetch from the beginning of the file.
@@ -554,6 +556,18 @@ Query parameters:
   Default is 0, meaning to fetch the entire file.
 - `max_line_length`: maximum number of characters to fetch from each line,
   if either `head` or `tail` is specified. Default is 128.
+
+HTTP Response headers (for single-file targets):
+- `Content-Disposition: filename=<bundle name or target filename>`
+- `Content-Type: <guess of mimetype based on file extension>`
+- `Content-Encoding: [gzip|identity]`
+- `Target-Type: file`
+
+HTTP Response headers (for directories):
+- `Content-Disposition: filename=<bundle or directory name>.tar.gz`
+- `Content-Type: application/gzip`
+- `Content-Encoding: identity`
+- `Target-Type: directory`
 
 ### `GET /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 
@@ -565,9 +579,11 @@ the directory.
 For files, if the request has an Accept-Encoding header containing gzip,
 then the returned file is gzipped. Otherwise, the file is returned as-is.
 
-HTTP headers:
+HTTP Request headers:
 - `Range: bytes=<start>-<end>`: fetch bytes from the range
   `[<start>, <end>)`.
+- `Accept-Encoding: <encoding>`: indicate that the client can accept
+  encoding `<encoding>`. Currently only `gzip` encoding is supported.
 
 Query parameters:
 - `head`: number of lines to fetch from the beginning of the file.
@@ -576,6 +592,18 @@ Query parameters:
   Default is 0, meaning to fetch the entire file.
 - `max_line_length`: maximum number of characters to fetch from each line,
   if either `head` or `tail` is specified. Default is 128.
+
+HTTP Response headers (for single-file targets):
+- `Content-Disposition: filename=<bundle name or target filename>`
+- `Content-Type: <guess of mimetype based on file extension>`
+- `Content-Encoding: [gzip|identity]`
+- `Target-Type: file`
+
+HTTP Response headers (for directories):
+- `Content-Disposition: filename=<bundle or directory name>.tar.gz`
+- `Content-Type: application/gzip`
+- `Content-Encoding: identity`
+- `Target-Type: directory`
 
 ### `PUT /bundles/<uuid:re:0x[0-9a-f]{32}>/contents/blob/`
 

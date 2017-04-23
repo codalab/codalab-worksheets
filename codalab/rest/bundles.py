@@ -374,9 +374,11 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     For files, if the request has an Accept-Encoding header containing gzip,
     then the returned file is gzipped. Otherwise, the file is returned as-is.
 
-    HTTP headers:
+    HTTP Request headers:
     - `Range: bytes=<start>-<end>`: fetch bytes from the range
       `[<start>, <end>)`.
+    - `Accept-Encoding: <encoding>`: indicate that the client can accept
+      encoding `<encoding>`. Currently only `gzip` encoding is supported.
 
     Query parameters:
     - `head`: number of lines to fetch from the beginning of the file.
@@ -385,6 +387,18 @@ def _fetch_bundle_contents_blob(uuid, path=''):
       Default is 0, meaning to fetch the entire file.
     - `max_line_length`: maximum number of characters to fetch from each line,
       if either `head` or `tail` is specified. Default is 128.
+
+    HTTP Response headers (for single-file targets):
+    - `Content-Disposition: filename=<bundle name or target filename>`
+    - `Content-Type: <guess of mimetype based on file extension>`
+    - `Content-Encoding: [gzip|identity]`
+    - `Target-Type: file`
+
+    HTTP Response headers (for directories):
+    - `Content-Disposition: filename=<bundle or directory name>.tar.gz`
+    - `Content-Type: application/gzip`
+    - `Content-Encoding: identity`
+    - `Target-Type: directory`
     """
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)

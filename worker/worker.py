@@ -11,13 +11,14 @@ import re
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
-from file_util import remove_path, un_gzip_stream, un_tar_directory
+from file_util import remove_path, un_tar_directory
 from run import Run
 from docker_image_manager import DockerImageManager
 
 VERSION = 11
 
 logger = logging.getLogger(__name__)
+
 
 class Worker(object):
     """
