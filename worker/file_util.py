@@ -105,6 +105,15 @@ def un_gzip_stream(fileobj):
 
         def close(self):
             self._fileobj.close()
+
+        def __getattr__(self, name):
+            """
+            Proxy any methods/attributes besides read() and close() to the
+            fileobj (for example, if we're wrapping an HTTP response object.)
+            Behavior is undefined if other file methods such as tell() are
+            attempted through this proxy.
+            """
+            return getattr(self._fileobj, name)
     
     # Note, that we don't use gzip.GzipFile or the gunzip shell command since
     # they require the input file-like object to support either tell() or

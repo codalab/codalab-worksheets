@@ -105,8 +105,26 @@ def get_info(uuid, key):
     return run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_running(uuid):
-    while get_info(uuid, 'state') != 'running':
+def wait_until_running(uuid, timeout_seconds=100):
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > 100:
+            raise AssertionError('timeout while waiting for %s to run' % uuid)
+        state = get_info(uuid, 'state')
+        # Break when running or one of the final states
+        if state in {'running', 'ready', 'failed'}:
+            assert state == 'running', "waiting for 'running' state, but got '%s'" % state
+            return
+        time.sleep(0.5)
+
+
+def wait_for_contents(uuid, substring, timeout_seconds=100):
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > 100:
+            raise AssertionError('timeout while waiting for %s to run' % uuid)
+        if substring in run_command([cl, 'cat', uuid]):
+            return True
         time.sleep(0.5)
 
 
@@ -249,8 +267,7 @@ def temp_instance():
     finally:
         # Kill any processes started in reverse order
         if worker_proc:
-            worker_proc.terminate()
-            worker_proc.wait()
+            worker_proc.kill()
         if bundle_manager_proc:
             bundle_manager_proc.kill()
         if rest_server_proc:
@@ -827,8 +844,7 @@ def test(ctx):
     # killed.
     for running in [True, False]:
         # Wait for the output to appear. Also, tests cat on a directory.
-        while 'done' not in run_command([cl, 'cat', uuid]):
-            time.sleep(0.5)
+        wait_for_contents(uuid, substring='done', timeout_seconds=60)
 
         # Info has only the first 10 lines
         info_output = run_command([cl, 'info', uuid, '--verbose'])
