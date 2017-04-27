@@ -547,6 +547,69 @@ def _update_bundle_contents_blob(uuid):
         # Upload succeeded: update state
         local.model.update_bundle(bundle, {'state': final_state})
 
+#############################################################
+# BUNDLE FUSE ACTIONS
+#############################################################
+
+@get('/bundles/<uuid:re:%s>/contents/fuse/' % spec_util.UUID_STR, name='fetch_bundle_contents_fuse')
+@get('/bundles/<uuid:re:%s>/contents/fuse/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_fuse')
+def _fetch_bundle_contents_fuse(uuid, path=''):
+
+    byte_range = get_request_range()
+    head_lines = query_get_type(int, 'head', default=0)
+    tail_lines = query_get_type(int, 'tail', default=0)
+    max_line_length = query_get_type(int, 'max_line_length', default=128)
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
+    bundle = local.model.get_bundle(uuid)
+
+    target_info = local.download_manager.get_target_info(uuid, path, 0)
+    if target_info is None:
+        abort(httplib.NOT_FOUND, 'Not found.')
+
+    # Figure out the file name.
+    if not path and bundle.metadata.name:
+        filename = bundle.metadata.name
+    else:
+        filename = target_info['name']
+
+    if target_info['type'] == 'directory':
+        if byte_range:
+            abort(httplib.BAD_REQUEST, 'Range not supported for directory blobs.')
+        if head_lines or tail_lines:
+            abort(httplib.BAD_REQUEST, 'Head and tail not supported for directory blobs.')
+        # Always tar and gzip directories
+        gzipped_stream = False  # but don't set the encoding to 'gzip'
+        mimetype = 'application/gzip'
+        filename += '.tar.gz'
+        fileobj = local.download_manager.stream_tarred_gzipped_directory(uuid, path)
+    elif target_info['type'] == 'file':
+        gzipped_stream = request_accepts_gzip_encoding()
+
+        mimetype, encoding = mimetypes.guess_type(filename, strict=False)
+        if encoding is not None:
+            mimetype = 'application/octet-stream'
+
+        if byte_range and (head_lines or tail_lines):
+            abort(httplib.BAD_REQUEST, 'Head and range not supported on the same request.')
+        elif byte_range:
+            start, end = byte_range
+            fileobj = local.download_manager.read_file_section(uuid, path, start, end - start + 1, gzipped_stream)
+        elif head_lines or tail_lines:
+            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, None, gzipped_stream)
+        else:
+            fileobj = local.download_manager.stream_file(uuid, path, gzipped_stream)
+    else:
+        # Symlinks.
+        abort(httplib.FORBIDDEN, 'Cannot download files of this type (%s).' % target_info['type'])
+
+    # Set headers.
+    response.set_header('Content-Type', mimetype or 'text/plain')
+    response.set_header('Content-Encoding', 'gzip' if gzipped_stream else 'identity')
+    response.set_header('Content-Disposition', 'filename="%s"' % filename)
+    response.set_header('Target-Type', target_info['type'])
+
+    return fileobj
+
 
 #############################################################
 #  BUNDLE HELPER FUNCTIONS

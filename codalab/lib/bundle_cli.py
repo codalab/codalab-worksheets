@@ -1738,25 +1738,24 @@ class BundleCLI(object):
             'Note that cat on a directory will list its files.',
         ],
         arguments=(
-            Commands.Argument('--mp', help='Paths (or URLs) of the files/directories to upload.'),
-            Commands.Argument('--bundle', help='Change title of worksheet.'),
+            Commands.Argument('--mountpoint', help='Paths (or URLs) of the files/directories to upload.'),
+            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_mount_command(self, args):
         self._fail_if_headless(args)  # Files might be too big
-        mp = path_util.normalize(args.mp)
-        root = path_util.normalize(args.bundle)
-        path_util.check_isvalid(mp, 'mount')
-        path_util.check_isvalid(root, 'mount')
 
-        bundle_fuse.bundle_mount(mp, root)
-
-        '''
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        self.print_target_info(client, target, decorate=False, fail_if_not_exist=True)
-        '''
+        uuid, path = target
+
+        mountpoint = path_util.normalize(args.mountpoint)
+        path_util.check_isvalid(mountpoint, 'mount')
+        print mountpoint, uuid, path
+        info = client.fetch_contents_info(target[0], target[1], 1)
+        print info
+        bundle_fuse.bundle_mount(client, mountpoint, target)
 
     @Commands.command(
         'cat',

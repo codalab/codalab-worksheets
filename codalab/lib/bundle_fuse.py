@@ -5,14 +5,21 @@ from __future__ import with_statement
 import os
 import sys
 import errno
+import stat
+
+from contextlib import closing
 
 from codalab.lib.fuse import FUSE, FuseOSError, Operations
 from codalab.client.json_api_client import JsonApiRelationship
+from codalab.lib.path_util import normalize
 
 
 class BundleFuse(Operations):
-    def __init__(self, root):
-        self.root = root
+    def __init__(self, client, target):
+        self.client = client
+        self.target = target
+        self.bundle_uuid = target[0]
+        self.fd = 0
 
     # Helpers
     # =======
@@ -23,55 +30,72 @@ class BundleFuse(Operations):
         path = os.path.join(self.root, partial)
         return path
 
+    def _get_info(self, path):
+        info = self.client.fetch_contents_info(self.bundle_uuid, path, 1)
+        return info
+
     # Filesystem methods
     # ==================
 
-    def access(self, path, mode):
-        full_path = self._full_path(path)
-        if not os.access(full_path, mode):
-            raise FuseOSError(errno.EACCES)
-
     def getattr(self, path, fh=None):
-        full_path = self._full_path(path)
-        st = os.lstat(full_path)
-        return dict((key, getattr(st, key)) for key in ('st_atime', 'st_ctime',
-                     'st_gid', 'st_mode', 'st_mtime', 'st_nlink', 'st_size', 'st_uid'))
+        info = self._get_info(path)
+
+        if info['type'] == 'file':
+            mode = stat.S_IFREG | info['perm']
+            nlink = 1
+        elif info['type'] == 'directory':
+            mode = stat.S_IFDIR | info['perm']
+            nlink = 2
+        elif info['type'] == 'link':
+            mode = stat.S_IFLNK | info['perm']
+            nlink = 1
+        return {
+            'st_atime': 0,
+            'st_ctime': 0,
+            'st_gid': 0,
+            'st_mode': mode,
+            'st_mtime': 0,
+            'st_nlink': nlink,
+            'st_uid': 0,
+            'st_size': info['size'],
+        }
+
 
     def readdir(self, path, fh):
-        full_path = self._full_path(path)
-
         dirents = ['.', '..']
-        if os.path.isdir(full_path):
-            dirents.extend(os.listdir(full_path))
+        info = self._get_info(path)
+        items = info.get('contents', [])
+        for d in items:
+            dirents.append(d['name'])
         for r in dirents:
             yield r
 
     def readlink(self, path):
-        pathname = os.readlink(self._full_path(path))
+        info = self._get_info(path)
+
+        pathname = info['link']
+        #TODO: not sure if this is completely correct
         if pathname.startswith("/"):
             # Path name is absolute, sanitize it.
             return os.path.relpath(pathname, self.root)
         else:
             return pathname
 
-    def statfs(self, path):
-        full_path = self._full_path(path)
-        stv = os.statvfs(full_path)
-        return dict((key, getattr(stv, key)) for key in ('f_bavail', 'f_bfree',
-            'f_blocks', 'f_bsize', 'f_favail', 'f_ffree', 'f_files', 'f_flag',
-            'f_frsize', 'f_namemax'))
 
     # File methods
     # ============
 
     def open(self, path, flags):
-        full_path = self._full_path(path)
-        return os.open(full_path, flags)
+        self.fd += 1
+        return self.fd
 
     def read(self, path, length, offset, fh):
-        os.lseek(fh, offset, os.SEEK_SET)
-        return os.read(fh, length)
+        byte_range = (offset, offset + length - 1)
+        with closing(self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)) as contents:
+            result = contents.read()
+        return result
 
+    '''
     def flush(self, path, fh):
         return os.fsync(fh)
 
@@ -80,10 +104,8 @@ class BundleFuse(Operations):
 
     def fsync(self, path, fdatasync, fh):
         return self.flush(path, fh)
+    '''
 
 
-def bundle_mount(mountpoint, root):
-    FUSE(BundleFuse(root), mountpoint, nothreads=True, foreground=True)
-
-if __name__ == '__main__':
-    bundle_mount(sys.argv[2], sys.argv[1])
+def bundle_mount(client, mountpoint, target):
+    FUSE(BundleFuse(client, target), mountpoint, nothreads=True, foreground=True)
