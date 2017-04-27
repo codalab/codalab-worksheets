@@ -59,6 +59,7 @@ from codalab.lib import (
     ui_actions,
     worksheet_util,
     zip_util,
+    bundle_fuse,
 )
 from codalab.lib.cli_util import nested_dict_get
 from codalab.objects.permission import (
@@ -119,6 +120,7 @@ BUNDLE_COMMANDS = (
     'macro',
     'kill',
     'write',
+    'mount',
 )
 
 DOCKER_IMAGE_COMMANDS = (
@@ -1728,6 +1730,33 @@ class BundleCLI(object):
                     continue
                 print >>self.stdout, wrap(item['name'])
                 self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
+
+    @Commands.command(
+        'mount',
+        help=[
+            'Print the contents of a file/directory in a bundle.',
+            'Note that cat on a directory will list its files.',
+        ],
+        arguments=(
+            Commands.Argument('--mp', help='Paths (or URLs) of the files/directories to upload.'),
+            Commands.Argument('--bundle', help='Change title of worksheet.'),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ),
+    )
+    def do_mount_command(self, args):
+        self._fail_if_headless(args)  # Files might be too big
+        mp = path_util.normalize(args.mp)
+        root = path_util.normalize(args.bundle)
+        path_util.check_isvalid(mp, 'mount')
+        path_util.check_isvalid(root, 'mount')
+
+        bundle_fuse.bundle_mount(mp, root)
+
+        '''
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        self.print_target_info(client, target, decorate=False, fail_if_not_exist=True)
+        '''
 
     @Commands.command(
         'cat',
