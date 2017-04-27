@@ -1734,17 +1734,16 @@ class BundleCLI(object):
     @Commands.command(
         'mount',
         help=[
-            'Print the contents of a file/directory in a bundle.',
-            'Note that cat on a directory will list its files.',
+            'Mount the contents of a bundle at a read-only mountpoint.',
         ],
         arguments=(
-            Commands.Argument('--mountpoint', help='Paths (or URLs) of the files/directories to upload.'),
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
+            Commands.Argument('--mountpoint', help='Empty directory path to set up as the mountpoint for FUSE.'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
     def do_mount_command(self, args):
-        self._fail_if_headless(args)  # Files might be too big
+        self._fail_if_headless(args)  # Disable on headless systems
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
@@ -1752,9 +1751,7 @@ class BundleCLI(object):
 
         mountpoint = path_util.normalize(args.mountpoint)
         path_util.check_isvalid(mountpoint, 'mount')
-        print mountpoint, uuid, path
-        info = client.fetch_contents_info(target[0], target[1], 1)
-        print info
+        print >>self.stdout, 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.'
         bundle_fuse.bundle_mount(client, mountpoint, target)
 
     @Commands.command(
