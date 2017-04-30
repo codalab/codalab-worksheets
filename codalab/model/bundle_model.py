@@ -1592,11 +1592,16 @@ class BundleModel(object):
         return result
 
     def get_chat_log_info(self, query_info):
-        '''
+        """
+        |query_info| specifies the user_id of the user that you are querying about.
+        Example: query_info = {
+            user_id: 2,   // get the chats sent by and received by the user with user_id 2
+            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
+        }
         Return a list of chats that the user have had given the user_id
-        '''
+        """
         user_id1 = query_info.get('user_id')
-        if user_id1 == None:
+        if user_id1 is None:
             return
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
@@ -1611,7 +1616,7 @@ class BundleModel(object):
                 clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
             clause = or_(*clause)
             query = query.where(clause)
-            if limit != None:
+            if limit is not None:
                 query = query.limit(limit)
             # query = query.order_by(cl_chat.c.id.desc())
             rows = connection.execute(query).fetchall()
