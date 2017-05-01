@@ -168,6 +168,4 @@ class BundleServiceClient(RestClient):
         response = self._make_request(
             'GET', '/bundles/' + uuid + '/contents/blob/' + path,
             headers={'Accept-Encoding': 'gzip'}, return_response=True)
-        match = re.match('filename="(.*)"',
-                         response.headers['Content-Disposition'])
-        return (response, match.group(1))
+        return response, response.headers.get('Target-Type')

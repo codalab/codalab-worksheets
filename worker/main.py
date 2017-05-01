@@ -29,9 +29,16 @@ if __name__ == '__main__':
                         help='Directory where to store temporary bundle data, '
                              'including dependencies and the data from run '
                              'bundles.')
-    parser.add_argument('--max-work-dir-size', type=str, default='10g',
+    parser.add_argument('--max-work-dir-size', type=str, metavar='SIZE', default='10g',
                         help='Maximum size of the temporary bundle data '
                              '(e.g., 3, 3k, 3m, 3g, 3t).')
+    parser.add_argument('--max-image-cache-size', type=str, metavar='SIZE',
+                        help='Limit the disk space used to cache Docker images '
+                             'for worker jobs to the specified amount (e.g. '
+                             '3, 3k, 3m, 3g, 3t). If the limit is exceeded, '
+                             'the least recently used images are removed first. '
+                             'Worker will not remove any images if this option '
+                             'is not specified.')
     parser.add_argument('--slots', type=int, default=1,
                         help='Number of slots to use for running bundles. '
                              'A single bundle takes up a single slot.')
@@ -73,8 +80,12 @@ chmod 600 %s""" % args.password_file
                             level=logging.DEBUG)
 
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
+    if args.max_image_cache_size is None:
+        max_images_bytes = None
+    else:
+        max_images_bytes = parse_size(args.max_image_cache_size)
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
-                    args.shared_file_system, args.slots,
+                    max_images_bytes, args.shared_file_system, args.slots,
                     BundleServiceClient(args.server, username, password),
                     DockerClient())
 
