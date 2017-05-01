@@ -810,7 +810,7 @@ class BundleCLI(object):
     @Commands.command(
         'alias',
         help=[
-            'Manage CodaLab instance aliases.',
+            'Manage CodaLab instance aliases. These are mappings from names to CodaLab Worksheet servers.',
             '  alias                   : List all aliases.',
             '  alias <name>            : Shows which instance <name> is bound to.',
             '  alias <name> <instance> : Binds <name> to <instance>.',
@@ -1209,12 +1209,12 @@ class BundleCLI(object):
 
     @Commands.command(
         'run',
-        help='Create a bundle by running a program bundle on an input bundle. If local mode is specified, simulate a run bundle locally, producing bundle contents in the local environment',
+        help='Create a bundle by running a program bundle on an input bundle. If local mode is specified, simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-            Commands.Argument('--local', action='store_true', help='Simulate a run bundle locally.'),
+            Commands.Argument('--local', action='store_true', help='Simulate a run bundle locally. This means any dependencies provided are local files/directories mounted to a temporary container (read-only).'),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
@@ -1263,7 +1263,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'edit-image',
-        help='Start an interactive shell with an image to allow edits to that image.',
+        help='Start an interactive shell with an image to allow edits to that image locally. This means any dependencies provided are also local files/directories mounted to a temporary container (read-only).',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('--request-docker-image', help='The docker image to edit', required=True),
@@ -1311,7 +1311,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'commit-image',
-        help='Create a bundle by running a program bundle on an input bundle.',
+        help='Create an image from a container.',
         arguments=(
             Commands.Argument('container', help='Container to commit.'),
             Commands.Argument('image_tag', help='Image tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu'),
@@ -1323,14 +1323,18 @@ class BundleCLI(object):
 
     @Commands.command(
         'push-image',
-        help='Push a (committed) image to a docker registry.',
+        help='Push a (committed) image to a docker registry. Deprecated and disabled. Please use docker push instead.',
         arguments=(
             Commands.Argument('image_tag', help='Image tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu'),
         )
     )
     def do_push_image_command(self, args):
-        cli_command = 'docker push {}'.format(args.image_tag)
-        os.system(cli_command)
+        print >>self.stdout, '===='
+        print >>self.stdout, 'cl push-image has been deprecated and disabled. Please use docker push instead:'
+        print >>self.stdout, ''
+        print >>self.stdout, '\tdocker push [image-tag]'
+        print >>self.stdout, ''
+        print >>self.stdout, '===='
 
 
     @Commands.command(
