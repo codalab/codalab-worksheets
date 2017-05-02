@@ -23,6 +23,7 @@ class TorqueBundleManager(BundleManager):
         self._torque_bundle_service_url = torque_config['bundle_service_url']
         self._torque_password_file = torque_config['password_file']
         self._torque_log_dir = torque_config['log_dir']
+        self._torque_min_seconds_between_qsub = torque_config.get('min_seconds_between_qsub', 0)
         path_util.make_directory(self._torque_log_dir)
         if 'worker_code_dir' in torque_config:
             self._torque_worker_code_dir = torque_config['worker_code_dir']
@@ -30,6 +31,7 @@ class TorqueBundleManager(BundleManager):
             codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             self._torque_worker_code_dir = os.path.join(codalab_cli, 'worker')
         self._last_delete_attempt = {}
+        self._last_qsub_time = 0
 
     def _schedule_run_bundles(self):
         """
@@ -155,7 +157,12 @@ class TorqueBundleManager(BundleManager):
                  '-v', ','.join([k + '=' + v for k, v in script_env.iteritems()])] +
                 resource_args +
                 ['-S', '/bin/bash', os.path.join(self._torque_worker_code_dir, 'worker.sh')])
-            
+
+            # Throttle Torque commands, sometimes scheduler has trouble keeping up
+            elapsed = time.time() - self._last_qsub_time
+            if elapsed < self._torque_min_seconds_between_qsub:
+                time.sleep(self._torque_min_seconds_between_qsub - elapsed)
+
             try:
                 job_handle = subprocess.check_output(command, stderr=subprocess.STDOUT).strip()
             except subprocess.CalledProcessError as e:
@@ -165,6 +172,8 @@ class TorqueBundleManager(BundleManager):
                     bundle, {'state': State.FAILED,
                              'metadata': {'failure_message': failure_message}})
                 continue
+            finally:
+                self._last_qsub_time = time.time()
 
             logger.info('Started Torque worker for bundle %s, job handle %s', bundle.uuid, job_handle)
             self._model.set_waiting_for_worker_startup_bundle(bundle, job_handle)
