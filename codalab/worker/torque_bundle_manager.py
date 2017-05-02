@@ -150,10 +150,11 @@ class TorqueBundleManager(BundleManager):
             }
             
             command = self._torque_ssh_command(
-                ['qsub', '-o', '/dev/null', '-e', '/dev/null',
+                ['qsub',
+                 '-k', 'n',  # do not keep stdout/stderr streams (we redirect them manually to the configured log_dir)
                  '-v', ','.join([k + '=' + v for k, v in script_env.iteritems()])] +
                 resource_args +
-                [ '-S', '/bin/bash', os.path.join(self._torque_worker_code_dir, 'worker.sh')])
+                ['-S', '/bin/bash', os.path.join(self._torque_worker_code_dir, 'worker.sh')])
             
             try:
                 job_handle = subprocess.check_output(command, stderr=subprocess.STDOUT).strip()
