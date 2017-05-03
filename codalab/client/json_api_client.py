@@ -611,7 +611,7 @@ class JsonApiClient(RestClient):
         """
         return self._make_request(
             method='POST',
-            path='/interpret/file/genpaths',
+            path='/interpret/file-genpaths',
             data={
                 'queries': [{
                     'bundle_uuid': bundle_uuid,
@@ -625,7 +625,7 @@ class JsonApiClient(RestClient):
     def interpret_genpath_table_contents(self, contents):
         return self._make_request(
             method='POST',
-            path='/interpret/genpath/table/contents',
+            path='/interpret/genpath-table-contents',
             data={
                 'contents': contents
             }

@@ -78,7 +78,7 @@ def _interpret_wsearch():
     return interpret_wsearch(request.json)
 
 
-@post('/interpret/file/genpaths')
+@post('/interpret/file-genpaths')
 def _interpret_file_genpaths():
     """
     Interpret a file genpath.
@@ -114,7 +114,7 @@ def _interpret_file_genpaths():
     }
 
 
-@post('/interpret/genpath/table/contents')
+@post('/interpret/genpath-table-contents')
 def _interpret_genpath_table_contents():
     """
     Takes a table and fills in unresolved genpath specifications.
@@ -156,7 +156,7 @@ def _interpret_genpath_table_contents():
 
 @get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR)
 @get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)  # DEPRECATED ROUTE
-def get_worksheet_content(uuid):
+def fetch_worksheet_content(uuid):
     """
     Return information about a worksheet. Calls
     - get_worksheet_info: get basic info
