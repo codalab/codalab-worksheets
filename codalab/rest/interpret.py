@@ -78,7 +78,6 @@ def _interpret_wsearch():
     return interpret_wsearch(request.json)
 
 
-# FIXME: should this be available at all?
 @post('/interpret/file/genpaths')
 def _interpret_file_genpaths():
     """
@@ -254,6 +253,11 @@ def get_worksheet_content(uuid):
     if bundle_uuids:
         return {'items': worksheet_info['items']}
     return worksheet_info
+
+
+#############################################################
+#  INTERPRETATION HELPER FUNCTIONS
+#############################################################
 
 
 def cat_target(target, out):

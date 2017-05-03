@@ -103,7 +103,6 @@ from codalab.lib.bundle_util import mimic_bundles
 from codalab.lib.metadata_util import fill_missing_metadata
 from codalab.lib.print_util import pretty_json
 from codalab.lib.spec_util import UUID_STR
-from codalab.lib.worksheet_util import interpret_file_genpath
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.rest.schemas import BundleDependencySchema, validate_uuid
 from codalab.server.auth import RestOAuthHandler
