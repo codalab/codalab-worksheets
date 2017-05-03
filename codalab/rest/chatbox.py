@@ -29,6 +29,7 @@ def get_faq():
         return {'faq': content}
 
 
+@get('/chatbox')
 @get('/api/chatbox/')
 def get_chat_box():
     """
@@ -40,6 +41,7 @@ def get_chat_box():
     return {'chats': local.model.get_chat_log_info(query)}
 
 
+@post('/chatbox')
 @post('/api/chatbox',
       apply=AuthenticatedPlugin())
 def post_chat_box():

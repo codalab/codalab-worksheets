@@ -994,6 +994,7 @@ def interpret_search(client, worksheet_uuid, data):
     Input: specification of a search query.
     Output: worksheet items based on the result of issuing the search query.
     """
+    # FIXME: bundle service is gone
     bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'])
 
     # Single number, just print it out...

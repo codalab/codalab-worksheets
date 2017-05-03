@@ -1,7 +1,9 @@
+import json
 import os
+import random
 
 import datetime
-from bottle import abort, get, post, put, delete, response, local, request
+from bottle import get, post, delete, response, local, redirect, request
 
 from codalab.common import PermissionError, UsageError, NotFoundError
 from codalab.lib import (
@@ -22,7 +24,6 @@ from codalab.objects.permission import (
     check_worksheet_has_all_permission,
     check_worksheet_has_read_permission,
 )
-from codalab.objects.user import PUBLIC_USER
 from codalab.objects.worksheet import Worksheet
 from codalab.rest.schemas import WorksheetSchema, WorksheetPermissionSchema, \
     BundleSchema, WorksheetItemSchema
@@ -123,6 +124,9 @@ def create_worksheets():
 @put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
 @post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
 def update_worksheet_raw(uuid):
+    """
+    Request body contains the raw lines of the worksheet.
+    """
     lines = request.body.read().split(os.linesep)
     new_items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
     worksheet_info = get_worksheet_info(uuid, fetch_items=True)
@@ -205,6 +209,35 @@ def set_worksheet_permissions():
         worksheet = local.model.get_worksheet(p['object_uuid'], fetch_items=False)
         set_worksheet_permission(worksheet, p['group_uuid'], p['permission'])
     return WorksheetPermissionSchema(many=True).dump(new_permissions).data
+
+
+@get('/worksheets/sample/')
+def get_sample_worksheets():
+    """
+    Get worksheets to display on the front page.
+    Keep only |worksheet_uuids|.
+    """
+    # Select good high-quality worksheets and randomly choose some
+    list_worksheets = search_worksheets(['tag=paper,software,data'])
+    list_worksheets = random.sample(list_worksheets, min(3, len(list_worksheets)))
+
+    # Always put home worksheet in
+    list_worksheets = search_worksheets(['name=home']) + list_worksheets
+
+    # Reformat
+    list_worksheets = [{'uuid': val['uuid'],
+                        'display_name': val.get('title') or val['name'],
+                        'owner_name': val['owner_name']} for val in list_worksheets]
+
+    response.content_type = 'application/json'
+    return json.dumps(list_worksheets)
+
+
+@get('/worksheets/')
+def get_worksheets_landing():
+    requested_ws = request.query.get('uuid', request.query.get('name', 'home'))
+    uuid = get_worksheet_uuid_or_create(None, requested_ws)
+    redirect('/worksheets/%s/' % uuid)
 
 
 #############################################################
@@ -430,3 +463,21 @@ def delete_worksheet(uuid, force):
             raise UsageError("Can't delete worksheet %s because it is not empty (--force to override)." %
                              worksheet.uuid)
     local.model.delete_worksheet(uuid)
+
+
+def search_worksheets(keywords):
+    keywords = resolve_owner_in_keywords(keywords)
+    results = local.model.search_worksheets(request.user.user_id, keywords)
+    _set_owner_names(results)
+    return results
+
+
+def _set_owner_names(results):
+    """
+    Helper function: Set owner_name given owner_id of each item in results.
+    """
+    owners = [local.model.get_user(r['owner_id']) for r in results]
+    for r, o in zip(results, owners):
+        r['owner_name'] = o.user_name
+
+
