@@ -46,7 +46,7 @@ from codalab.rest.worksheets import (
 )
 
 
-@post('/interpret/search' % spec_util.UUID_STR)
+@post('/interpret/search')
 def _interpret_search():
     """
     Returns worksheet items given a search query for bundles.
@@ -66,7 +66,7 @@ def _interpret_search():
     return interpret_search(request.json)
 
 
-@post('/interpret/wsearch' % spec_util.UUID_STR)
+@post('/interpret/wsearch')
 def _interpret_wsearch():
     """
     Returns worksheet items given a search query for worksheets.
@@ -159,7 +159,7 @@ def _interpret_genpath_table_contents():
 
 
 @get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR)
-@get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)
+@get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)  # DEPRECATED ROUTE
 def get_worksheet_content(uuid):
     """
     Return information about a worksheet. Calls

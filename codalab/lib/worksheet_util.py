@@ -27,16 +27,12 @@ A genpath (generalized path) is either:
 See get_worksheet_lines for documentation on the specification of the directives.
 """
 import copy
-import json
 import os
 import re
 import sys
-import types
 from itertools import izip
 
-import yaml
 
-from codalab.client.json_api_client import JsonApiClient
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
