@@ -10,7 +10,10 @@ from bottle import abort, local, request
 from codalab.bundles import PrivateBundle
 from codalab.lib import bundle_util
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
-from codalab.objects.permission import unique_group
+from codalab.objects.permission import (
+    check_bundles_have_read_permission,
+    unique_group,
+)
 
 
 def get_resource_ids(document, type_):
@@ -133,6 +136,19 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
                 info['group_permissions'] = []
 
     return bundle_dict
+
+
+def check_target_has_read_permission(target):
+    check_bundles_have_read_permission(local.model, request.user, [target[0]])
+
+
+def get_target_info(target, depth):
+    """
+    Returns information about an individual target inside the bundle, or
+    None if the target doesn't exist.
+    """
+    check_target_has_read_permission(target)
+    return local.download_manager.get_target_info(target[0], target[1], depth)
 
 
 #############################################################

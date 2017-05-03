@@ -35,10 +35,7 @@ from codalab.lib.worksheet_util import (
     subworksheet_item,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
-from codalab.objects.permission import (
-    check_bundles_have_read_permission,
-    permission_str,
-)
+from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 from codalab.rest.worksheets import (
     get_worksheet_info,
@@ -268,7 +265,7 @@ def cat_target(target, out):
 
 
 def _do_download_file(target, out_path=None, out_fileobj=None):
-    check_target_has_read_permission(target)
+    rest_util.check_target_has_read_permission(target)
     with closing(local.download_manager.stream_file(target[0], target[1], gzipped=False)) as fileobj:
         if out_path is not None:
             with open(out_path, 'wb') as out:
@@ -287,7 +284,7 @@ def head_target(target, max_num_lines, replace_non_unicode=False, base64_encode=
 
     The caller should ensure that the target is a file.
     """
-    check_target_has_read_permission(target)
+    rest_util.check_target_has_read_permission(target)
     lines = local.download_manager.summarize_file(
         target[0], target[1],
         max_num_lines, 0, MAX_BYTES_PER_LINE, None,
@@ -346,7 +343,7 @@ def resolve_interpreted_items(interpreted_items):
                 except ValueError:
                     raise UsageError("maxlines must be integer")
 
-                target_info = get_target_info(data, 0)
+                target_info = rest_util.get_target_info(data, 0)
                 if target_info is not None and target_info['type'] == 'directory':
                     data = [base64.b64encode('<directory>')]
                 elif target_info is not None and target_info['type'] == 'file':
@@ -354,13 +351,13 @@ def resolve_interpreted_items(interpreted_items):
                 else:
                     data = None
             elif mode == 'html':
-                target_info = get_target_info(data, 0)
+                target_info = rest_util.get_target_info(data, 0)
                 if target_info is not None and target_info['type'] == 'file':
                     data = head_target(data, None)
                 else:
                     data = None
             elif mode == 'image':
-                target_info = get_target_info(data, 0)
+                target_info = rest_util.get_target_info(data, 0)
                 if target_info is not None and target_info['type'] == 'file':
                     result = StringIO()
                     cat_target(data, result)
@@ -377,7 +374,7 @@ def resolve_interpreted_items(interpreted_items):
                 # Add a 'points' field that contains the contents of the target.
                 for info in data:
                     target = info['target']
-                    target_info = get_target_info(target, 0)
+                    target_info = rest_util.get_target_info(target, 0)
                     if target_info is not None and target_info['type'] == 'file':
                         contents = head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
                         # Assume TSV file without header for now, just return each line as a row
@@ -514,7 +511,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
-        target_info = get_target_info(target, 0)
+        target_info = rest_util.get_target_info(target, 0)
 
         # Try to interpret the structure of the file by looking inside it.
         if target_info is not None and target_info['type'] == 'file':
@@ -598,16 +595,3 @@ def convert_items_from_db(items):
         value_obj = formatting.string_to_tokens(value) if type == TYPE_DIRECTIVE else value
         new_items.append((bundle_info, subworksheet_info, value_obj, type))
     return new_items
-
-
-def check_target_has_read_permission(target):
-    check_bundles_have_read_permission(local.model, request.user, [target[0]])
-
-
-def get_target_info(target, depth):
-    """
-    Returns information about an individual target inside the bundle, or
-    None if the target doesn't exist.
-    """
-    check_target_has_read_permission(target)
-    return local.download_manager.get_target_info(target[0], target[1], depth)

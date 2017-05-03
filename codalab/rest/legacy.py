@@ -30,17 +30,12 @@ from codalab.objects.permission import (
     check_bundles_have_read_permission,
 )
 from codalab.rest import util as rest_util
-from codalab.rest.worksheets import (
-    update_worksheet_items,
-    get_worksheet_info,
-)
-from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
 @get('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_bundle_info_(uuid):
     """
-    DEPRECATED: Use `GET /bundles/<uuid>` instead.
+    DEPRECATED: Use `GET /bundles/<uuid>` and `GET /bundles/<uuid>/contents/*` instead.
     """
     bundle_info = get_bundle_info(uuid)
     if bundle_info is None:
@@ -164,7 +159,7 @@ def get_bundle_file_contents(uuid):
         elif info['type'] == 'link':
             return  ' -> ' + info['link']
 
-    info = get_top_level_contents((uuid, ''))
+    info = rest_util.get_target_info((uuid, ''), 1)
     if info is None:
         return {}
 
@@ -193,25 +188,6 @@ def get_bundle_file_contents(uuid):
         for th in read_threads:
             th.join()
     return info
-
-
-# TODO: Replace with appropriate calls to download manager
-def get_top_level_contents(target):
-    info = get_target_info(target, 1)
-    # Pre-format file sizes
-    if info is not None and info['type'] == 'directory':
-        for item in info['contents']:
-            item['size_str'] = formatting.size_str(item['size'])
-    return info
-
-
-def get_target_info(target, depth):
-    """
-    Returns information about an individual target inside the bundle, or
-    None if the target doesn't exist.
-    """
-    check_target_has_read_permission(target)
-    return local.download_manager.get_target_info(target[0], target[1], depth)
 
 
 def update_bundle_metadata(uuid, metadata):
