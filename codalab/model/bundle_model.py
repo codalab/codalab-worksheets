@@ -250,8 +250,8 @@ class BundleModel(object):
             depth -= 1
         return visited
 
-    def search_bundle_uuids(self, user_id, worksheet_uuid, keywords):
-        '''
+    def search_bundle_uuids(self, user_id, keywords):
+        """
         Return a list of uuids (in the appropriate order) matching the keywords.
         Each keyword is either:
         - <key>=<value>
@@ -271,8 +271,7 @@ class BundleModel(object):
         - .sum: add up the numbers
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
-        worksheet_uuid is not used right now.
-        '''
+        """
         clauses = []
         offset = 0
         limit = 10

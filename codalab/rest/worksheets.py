@@ -11,7 +11,6 @@ from codalab.lib import (
     spec_util,
     worksheet_util,
 )
-from codalab.lib import formatting
 from codalab.lib.canonicalize import HOME_WORKSHEET
 from codalab.lib.server_util import (
     bottle_patch as patch,
@@ -255,13 +254,6 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict(legacy=legacy)
 
-    # TODO(sckoo): Legacy requirement, remove when BundleService is deprecated
-    if legacy:
-        if fetch_items:
-            result['items'] = convert_items_from_db(result['items'])
-        owner = local.model.get_user(user_id=result['owner_id'])
-        result['owner_name'] = owner.user_name
-
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
     if fetch_permission:
@@ -275,42 +267,6 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
             result['group_permissions'] = []
 
     return result
-
-
-# TODO(sckoo): Legacy requirement, remove when BundleService is deprecated
-def convert_items_from_db(items):
-    """
-    Helper function.
-    (bundle_uuid, subworksheet_uuid, value, type) -> (bundle_info, subworksheet_info, value_obj, type)
-    """
-    # Database only contains the uuid; need to expand to info.
-    # We need to do to convert the bundle_uuids into bundle_info dicts.
-    # However, we still make O(1) database calls because we use the
-    # optimized batch_get_bundles multiget method.
-    bundle_uuids = set(
-        bundle_uuid for (bundle_uuid, subworksheet_uuid, value, type) in items
-        if bundle_uuid is not None
-    )
-
-    bundle_dict = get_bundle_infos(bundle_uuids)
-
-    # Go through the items and substitute the components
-    new_items = []
-    for (bundle_uuid, subworksheet_uuid, value, type) in items:
-        bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
-        if subworksheet_uuid:
-            try:
-                subworksheet_info = local.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict(legacy=True)
-            except UsageError, e:
-                # If can't get the subworksheet, it's probably invalid, so just replace it with an error
-                # type = worksheet_util.TYPE_MARKUP
-                subworksheet_info = {'uuid': subworksheet_uuid}
-                # value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
-        else:
-            subworksheet_info = None
-        value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
-        new_items.append((bundle_info, subworksheet_info, value_obj, type))
-    return new_items
 
 
 def update_worksheet_items(worksheet_info, new_items, convert_items=True):
