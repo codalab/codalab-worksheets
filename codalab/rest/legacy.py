@@ -35,6 +35,8 @@ from codalab.rest import util as rest_util
 @get('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_bundle_info_(uuid):
     """
+    Fetch bundle info along with summaries of its top level contents.
+
     DEPRECATED: Use `GET /bundles/<uuid>` and `GET /bundles/<uuid>/contents/*` instead.
     """
     bundle_info = get_bundle_info(uuid)
@@ -86,6 +88,8 @@ def post_bundle_info(uuid):
 @get('/api/users/')
 def get_users():
     """
+    Fetch info about the current authenticated user.
+
     DEPRECATED: Use `GET /user` instead.
     """
     if request.user.is_authenticated:
