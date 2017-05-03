@@ -17,7 +17,6 @@ from codalab.lib import (
     canonicalize,
     formatting,
     spec_util,
-    zip_util,
     worksheet_util,
 )
 from codalab.lib.server_util import (
@@ -106,7 +105,7 @@ def _fetch_bundles():
     if keywords:
         # Handle search keywords
         keywords = resolve_owner_in_keywords(keywords)
-        bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, worksheet_uuid, keywords)
+        bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
     elif specs:
         # Resolve bundle specs
         bundle_uuids = canonicalize.get_bundle_uuids(local.model, request.user, worksheet_uuid, specs)
@@ -344,7 +343,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
           "link": "<string representing target if file is a symbolic link>",
           "type": "<file|directory|link>",
           "size": <size of file in bytes>,
-          "size_str": <size of file as a human-readable string>,
           "perm": <unix permission integer>,
           "contents": [
               {
@@ -365,14 +363,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
     info = local.download_manager.get_target_info(uuid, path, depth)
     if info is None:
         abort(httplib.NOT_FOUND, 'Bundle not found')
-
-    def render_human_readable(target_info):
-        if 'size' in target_info:
-            target_info['size_str'] = formatting.size_str(target_info['size'])
-        if 'contents' in target_info:
-            for entry in target_info['contents']:
-                render_human_readable(entry)
-    render_human_readable(info)
 
     return {
         'data': info

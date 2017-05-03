@@ -49,20 +49,6 @@ def post_worksheet_content(uuid):
     return {}
 
 
-# TODO: check if this is still in use
-@get('/api/bundles/content/<uuid:re:%s>/' % spec_util.UUID_STR)
-@get('/api/bundles/content/<uuid:re:%s>/<path:path>/' % spec_util.UUID_STR)
-def get_bundle_content(uuid, path=''):
-    """
-    DEPRECATED: Use `GET /bundles/<uuid>/contents/blob/<path>` instead
-    """
-    info = None
-    bundle_info = get_bundle_info(uuid)
-    if bundle_info and bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
-        info = get_top_level_contents((uuid, path))
-    return info if info is not None else {}
-
-
 @get('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_bundle_info_(uuid):
     """
@@ -231,8 +217,10 @@ def get_bundle_file_contents(uuid):
     return info
 
 
+# TODO: Replace with appropriate calls to download manager
 def get_top_level_contents(target):
     info = get_target_info(target, 1)
+    # Pre-format file sizes
     if info is not None and info['type'] == 'directory':
         for item in info['contents']:
             item['size_str'] = formatting.size_str(item['size'])

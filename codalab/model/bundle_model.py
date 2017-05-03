@@ -1911,7 +1911,7 @@ class BundleModel(object):
         })
 
     def _get_disk_used(self, user_id):
-        return self.search_bundle_uuids(user_id, None, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
+        return self.search_bundle_uuids(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
 
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)
