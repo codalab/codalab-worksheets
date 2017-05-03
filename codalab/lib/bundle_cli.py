@@ -1632,7 +1632,7 @@ class BundleCLI(object):
                 values = []
                 for genpath in args.field.split(','):
                     if worksheet_util.is_file_genpath(genpath):
-                        value = contents_str(client.interpret_file_genpath([(info['id'], genpath, None)])[0])
+                        value = contents_str(client.interpret_file_genpaths([(info['id'], genpath, None)])[0])
                     else:
                         value = worksheet_util.interpret_genpath(info, genpath)
                     values.append(value)
