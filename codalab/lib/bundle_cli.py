@@ -2207,32 +2207,8 @@ class BundleCLI(object):
                 lines = worksheet_util.request_lines(worksheet_info)
 
             # Update worksheet
-            commands = client.update_worksheet_raw(worksheet_info['id'], lines)
+            client.update_worksheet_raw(worksheet_info['id'], lines)
             print >>self.stdout, 'Saved worksheet items for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
-
-            # Batch the rm commands so that we can handle the recursive
-            # dependencies properly (and it's faster).
-            rm_bundle_uuids = []
-            rest_commands = []
-            for command in commands:
-                if command[0] == 'rm' and len(command) == 2:
-                    rm_bundle_uuids.append(command[1])
-                else:
-                    rest_commands.append(command)
-            commands = rest_commands
-            if len(rm_bundle_uuids) > 0:
-                commands.append(['rm'] + rm_bundle_uuids)
-
-            # Execute the commands that the user put into the worksheet.
-            for command in commands:
-                # Make sure to do it with respect to this worksheet!
-                spec = client.address + '::' + worksheet_uuid
-                if command[0] in ('ls', 'print'):
-                    command.append(spec)
-                else:
-                    command.extend(['--worksheet-spec', spec])
-                print >>self.stdout, '=== Executing: %s' % ' '.join(command)
-                self.do_command(command)
 
     @staticmethod
     def unpack_item(item):
