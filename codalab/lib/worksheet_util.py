@@ -214,11 +214,8 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     Input: form_result is a list of lines.
     Return (list of (bundle_info, subworksheet_info, value, type) tuples, commands to execute)
     """
-
     def get_line_type(line):
-        if line.startswith('!'):  # Run commands
-            return 'command'
-        elif line.startswith('//'):
+        if line.startswith('//'):
             return 'comment'
         elif BUNDLE_REGEX.match(line) is not None:
             return TYPE_BUNDLE
@@ -242,16 +239,9 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     # bundle_uuids = {line_i: bundle_uuid, ...}
     bundle_uuids = dict(zip(bundle_specs[0], canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1])))
 
-    commands = []
     items = []
     for line_i, (line_type, line) in enumerate(izip(line_types, form_result)):
-        if line_type == 'command':
-            command = formatting.string_to_tokens(line[1:].strip())
-            # The user can specify '!<command> ^', which perform actions on the previous bundle.
-            # Replace ^ with the reference to the last bundle.
-            command = [(bundle_uuids[-1][1] if arg == '^' else arg) for arg in command]
-            commands.append(command)
-        elif line_type == 'comment':
+        if line_type == 'comment':
             comment = line[2:]
             items.append(directive_item([DIRECTIVE_CHAR, comment]))
         elif line_type == TYPE_BUNDLE:
@@ -273,7 +263,7 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
         else:
             raise RuntimeError("Invalid line type %s: this should not happen." % line_type)
 
-    return items, commands
+    return items
 
 
 def is_file_genpath(genpath):

@@ -254,9 +254,8 @@ class BundleService(object):
         Replace worksheet |uuid| with the raw contents given by |lines|.
         """
         worksheet_info = get_worksheet_info(uuid, fetch_items=True, legacy=True)
-        new_items, commands = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet_info['uuid'])
+        new_items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet_info['uuid'])
         update_worksheet_items(worksheet_info, new_items)
-        # Note: commands are ignored
 
     def get_bundle_file_contents(self, uuid):
         """
