@@ -617,7 +617,7 @@ class JsonApiClient(RestClient):
 
     @wrap_exception('Unable to update worksheet')
     def update_worksheet_raw(self, worksheet_id, lines):
-        return self._make_request(
+        self._make_request(
             method='POST',
             path='/worksheets/%s/raw' % worksheet_id,
-            data='\n'.join(lines))['data']['commands']
+            data='\n'.join(lines))
