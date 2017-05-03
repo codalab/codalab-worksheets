@@ -27,7 +27,7 @@ from codalab.objects.oauth2 import OAuth2Token
 
 
 @post('/cli/command')
-@post('/api/worksheets/command/')  # DEPRECATED
+@post('/api/worksheets/command/')  # TODO: DEPRECATED ROUTE
 def post_worksheets_command():
     # TODO(klopyrev): The Content-Type header is not set correctly in
     # editable_field.jsx, so we can't use request.json.

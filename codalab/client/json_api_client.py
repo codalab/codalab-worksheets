@@ -612,11 +612,13 @@ class JsonApiClient(RestClient):
         return self._make_request(
             method='POST',
             path='/interpret/file/genpaths',
-            data=[{
-                'bundle_uuid': bundle_uuid,
-                'genpath': genpath,
-                'post': post,
-            } for bundle_uuid, genpath, post in queries]
+            data={
+                'queries': [{
+                    'bundle_uuid': bundle_uuid,
+                    'genpath': genpath,
+                    'post': post,
+                } for bundle_uuid, genpath, post in queries]
+            }
         )['data']
 
     @wrap_exception('Unable to interpret genpath table contents')
