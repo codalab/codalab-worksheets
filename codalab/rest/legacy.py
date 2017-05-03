@@ -37,18 +37,6 @@ from codalab.rest.worksheets import (
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
-@post('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR,
-      apply=AuthenticatedPlugin())
-def post_worksheet_content(uuid):
-    """
-    DEPRECATED: Use `POST /worksheets/<uuid>/raw` instead.
-    """
-    data = request.json
-    lines = data['lines']
-    parse_and_update_worksheet(uuid, lines)
-    return {}
-
-
 @get('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_bundle_info_(uuid):
     """
@@ -138,16 +126,6 @@ def get_bundle_info(uuid):
     bundle_info['editable_metadata_fields'] = worksheet_util.get_editable_metadata_fields(cls)
 
     return bundle_info
-
-
-def parse_and_update_worksheet(uuid, lines):
-    """
-    Replace worksheet |uuid| with the raw contents given by |lines|.
-    """
-    worksheet_info = get_worksheet_info(uuid, fetch_items=True, legacy=True)
-    new_items, commands = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet_info['uuid'])
-    update_worksheet_items(worksheet_info, new_items)
-    # Note: commands are ignored
 
 
 def validate_user_metadata(bundle_subclass, metadata):
