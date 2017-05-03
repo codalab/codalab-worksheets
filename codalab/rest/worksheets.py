@@ -3,7 +3,7 @@ import os
 import random
 
 import datetime
-from bottle import get, post, delete, response, local, redirect, request
+from bottle import get, post, put, delete, response, local, redirect, request
 
 from codalab.common import PermissionError, UsageError, NotFoundError
 from codalab.lib import (
