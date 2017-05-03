@@ -11,6 +11,7 @@ import json
 import yaml
 from bottle import (
     get,
+    post,
     local,
     request,
 )
@@ -45,7 +46,7 @@ from codalab.rest.worksheets import (
 )
 
 
-@get('/interpret/search' % spec_util.UUID_STR)
+@post('/interpret/search' % spec_util.UUID_STR)
 def _interpret_search():
     """
     Returns worksheet items given a search query for bundles.
@@ -65,7 +66,7 @@ def _interpret_search():
     return interpret_search(request.json)
 
 
-@get('/interpret/wsearch' % spec_util.UUID_STR)
+@post('/interpret/wsearch' % spec_util.UUID_STR)
 def _interpret_wsearch():
     """
     Returns worksheet items given a search query for worksheets.
@@ -80,14 +81,81 @@ def _interpret_wsearch():
     return interpret_wsearch(request.json)
 
 
-@get('/interpret/file/genpath')
-def _interpret_file_genpath():
-    pass
+# FIXME: should this be available at all?
+@post('/interpret/file/genpaths')
+def _interpret_file_genpaths():
+    """
+    Interpret a file genpath.
+
+    JSON request body:
+    ```
+    {
+        "queries": [
+            {
+                "bundle_uuid": "<uuid>",
+                "genpath": "<genpath>",
+                "post": "<postprocessor spec>",
+            },
+            ...
+        ]
+    }
+    ```
+
+    Response body:
+    ```
+    {
+        "data": [
+            "<resolved file genpath data>",
+            ...
+        ]
+    }
+    ```
+    """
+    queries = [(q['bundle_uuid'], q['genpath'], q['post']) for q in request.json['queries']]
+    results = interpret_file_genpaths(queries)
+    return {
+        'data': results
+    }
 
 
-@get('/interpret/genpath/table/contents')
+@post('/interpret/genpath/table/contents')
 def _interpret_genpath_table_contents():
-    pass
+    """
+    Takes a table and fills in unresolved genpath specifications.
+
+    JSON request body:
+    ```
+    {
+        "contents": [
+            {
+                col1: "<resolved string>",
+                col2: (bundle_uuid, genpath, post),
+                ...
+            },
+            ...
+        ]
+    }
+    ```
+
+    JSON response body:
+    ```
+    {
+        "contents": [
+            {
+                col1: "<resolved string>",
+                col2: "<resolved string>",
+                ...
+            },
+            ...
+        ]
+    }
+    ```
+    """
+    contents = request.json['contents']
+    new_contents = interpret_genpath_table_contents(contents)
+    return {
+        'contents': new_contents
+    }
 
 
 @get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR)
@@ -380,8 +448,8 @@ def interpret_wsearch(query):
 
 def interpret_genpath_table_contents(contents):
     """
-    contents represents a table, but some of the elements might not be interpreted.
-    Interpret them by calling the client.
+    contents represents a table, but some of the elements might not be
+    interpreted yet, so fill them in.
     """
     # if called after an RPC call tuples may become lists
     need_gen_types = (types.TupleType, types.ListType)

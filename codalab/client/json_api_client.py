@@ -603,17 +603,47 @@ class JsonApiClient(RestClient):
                 fileobj=fileobj,
                 progress_callback=progress_callback)
 
-    @wrap_exception('Unable to make RPC call \'{1}\'')
-    def rpc(self, method, *args, **kwargs):
-        request = {
-            'method': method,
-            'args': args,
-            'kwargs': kwargs,
-        }
+    @wrap_exception('Unable to interpret file genpaths')
+    def interpret_file_genpaths(self, queries):
+        """
+        :param queries: list of (bundle_uuid, genpath, post) tuples
+        :return: list of strings
+        """
         return self._make_request(
             method='POST',
-            path='/api/rpc',
-            data=request)['data']
+            path='/interpret/file/genpaths',
+            data=[{
+                'bundle_uuid': bundle_uuid,
+                'genpath': genpath,
+                'post': post,
+            } for bundle_uuid, genpath, post in queries]
+        )['data']
+
+    @wrap_exception('Unable to interpret genpath table contents')
+    def interpret_genpath_table_contents(self, contents):
+        return self._make_request(
+            method='POST',
+            path='/interpret/genpath/table/contents',
+            data={
+                'contents': contents
+            }
+        )['contents']
+
+    @wrap_exception('Unable to interpret bundle search')
+    def interpret_search(self, query):
+        return self._make_request(
+            method='POST',
+            path='/interpret/search',
+            data=query,
+        )
+
+    @wrap_exception('Unable to interpret worksheet search')
+    def interpret_wsearch(self, query):
+        return self._make_request(
+            method='POST',
+            path='/interpret/wsearch',
+            data=query,
+        )
 
     @wrap_exception('Unable to update worksheet')
     def update_worksheet_raw(self, worksheet_id, lines):

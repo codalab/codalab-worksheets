@@ -1632,7 +1632,7 @@ class BundleCLI(object):
                 values = []
                 for genpath in args.field.split(','):
                     if worksheet_util.is_file_genpath(genpath):
-                        value = contents_str(worksheet_util.interpret_file_genpath(client, {}, info['id'], genpath, None))
+                        value = contents_str(client.interpret_file_genpath([(info['id'], genpath, None)])[0])
                     else:
                         value = worksheet_util.interpret_genpath(info, genpath)
                     values.append(value)
@@ -2265,17 +2265,17 @@ class BundleCLI(object):
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
-                contents = client.rpc('interpret_genpath_table_contents', contents)
+                contents = client.interpret_genpath_table_contents(contents)
                 # print >>self.stdout, the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image' or mode == 'graph':
                 # Placeholder
                 print >>self.stdout, '[' + mode + ']'
             elif mode == 'search':
-                search_interpreted = client.rpc('interpret_search', worksheet_info['uuid'], data)
+                search_interpreted = client.interpret_search(data)
                 self.display_interpreted(client, worksheet_info, search_interpreted)
             elif mode == 'wsearch':
-                wsearch_interpreted = client.rpc('interpret_wsearch', data)
+                wsearch_interpreted = client.interpret_wsearch(data)
                 self.display_interpreted(client, worksheet_info, wsearch_interpreted)
             elif mode == 'worksheet':
                 print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(data) + ']'
