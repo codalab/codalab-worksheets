@@ -531,13 +531,13 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
                 try:
                     # JSON file
                     info = json.loads(''.join(contents))
-                # FIXME: reduce exception set
-                except:
+                except (TypeError, ValueError):
                     try:
                         # YAML file
-                        info = yaml.load(''.join(contents))
-                    # FIXME: reduce exception set
-                    except:
+                        # Use safe_load because yaml.load() could execute
+                        # arbitrary Python code
+                        info = yaml.safe_load(''.join(contents))
+                    except yaml.YAMLError:
                         # Plain text file
                         info = ''.join(contents)
         else:
@@ -553,8 +553,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
             elif isinstance(info, list):
                 try:
                     info = info[int(k)]
-                # FIXME: reduce exception set
-                except:
+                except (KeyError, ValueError):
                     info = None
             else:
                 info = None
