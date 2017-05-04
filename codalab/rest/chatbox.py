@@ -10,27 +10,8 @@ from codalab.objects.chat_box_qa import ChatBoxQA
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
-# @get('/api/faq/')
-def get_faq():
-    """
-    Return a list of FAQ items, each of the following format:
-    '0': {
-        'question': 'how can I upload / add a bundle?'
-        'answer': {
-            'response': 'You can do cl upload or click Update Bundle.',
-            'command': 'cl upload <file_path>'
-        }
-    }
-    Currently disabled. Needs further work.
-    """
-    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
-    with open(file_path, 'r') as stream:
-        content = yaml.load(stream)
-        return {'faq': content}
-
-
-@get('/chatbox')
-@get('/api/chatbox/')
+@get('/chats', apply=AuthenticatedPlugin())
+@get('/api/chatbox/', apply=AuthenticatedPlugin())  # DEPRECATED ROUTE
 def get_chat_box():
     """
     Return a list of chats that the current user has had
@@ -38,12 +19,15 @@ def get_chat_box():
     query = {
         'user_id': request.user.user_id,
     }
-    return {'chats': local.model.get_chat_log_info(query)}
+    return {
+        'chats': local.model.get_chat_log_info(query),
+        'root_user_id': local.model.root_user_id,
+        'system_user_id': local.model.system_user_id,
+    }
 
 
-@post('/chatbox')
-@post('/api/chatbox',
-      apply=AuthenticatedPlugin())
+@post('/chats', apply=AuthenticatedPlugin())
+@post('/api/chatbox', apply=AuthenticatedPlugin())  # DEPRECATED ROUTE
 def post_chat_box():
     """
     Add the chat to the log.
@@ -63,6 +47,25 @@ def post_chat_box():
     }
     chats = add_chat_log_info(info)
     return {'chats': chats}
+
+
+# @get('/api/faq/')
+def get_faq():
+    """
+    Return a list of FAQ items, each of the following format:
+    '0': {
+        'question': 'how can I upload / add a bundle?'
+        'answer': {
+            'response': 'You can do cl upload or click Update Bundle.',
+            'command': 'cl upload <file_path>'
+        }
+    }
+    Currently disabled. Needs further work.
+    """
+    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
+    with open(file_path, 'r') as stream:
+        content = yaml.load(stream)
+        return {'faq': content}
 
 
 def add_chat_log_info(query_info):

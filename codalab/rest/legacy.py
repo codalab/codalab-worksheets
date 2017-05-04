@@ -5,31 +5,18 @@ This entire module and the routes defined here are deprecated.
 Interfaces here should be removed over time as the frontend code migrates to
 using the newer interfaces defined in the other modules in this package.
 """
-import json
 import threading
 
-from bottle import (
-  abort,
-  get,
-  httplib,
-  local,
-  post,
-  request,
-)
+from bottle import abort, get, httplib, local
 
 from codalab.bundles import get_bundle_subclass, PrivateBundle
-from codalab.common import UsageError
 from codalab.lib import (
   formatting,
   spec_util,
   worksheet_util,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
-from codalab.objects.permission import (
-    permission_str,
-    check_bundles_have_all_permission,
-    check_bundles_have_read_permission,
-)
+from codalab.objects.permission import permission_str
 from codalab.rest import util as rest_util
 
 
@@ -46,59 +33,6 @@ def get_bundle_info_(uuid):
     if bundle_info['bundle_type'] != PrivateBundle.BUNDLE_TYPE:
         bundle_info.update(get_bundle_file_contents(uuid))
     return bundle_info
-
-
-@post('/api/bundles/<uuid:re:%s>/' % spec_util.UUID_STR)
-def post_bundle_info(uuid):
-    """
-    Save metadata information for a bundle.
-
-    DEPRECATED: Use `PATCH /bundles` instead.
-    """
-    bundle_info = get_bundle_info(uuid)
-    # Save only if we're the owner.
-    if bundle_info['edit_permission']:
-        # The Content-Type header is not set correctly in
-        # editable_field.jsx, so we can't use request.json.
-        data = json.loads(request.body.read())
-        new_metadata = data['metadata']
-
-        # Remove generated fields.
-        for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'exitcode', 'actions', 'started', 'last_updated', 'run_status', 'job_handle']:
-            if key in new_metadata:
-                del new_metadata[key]
-
-        # Convert to arrays
-        for key in ['tags', 'language', 'architectures']:
-            if key in new_metadata and isinstance(new_metadata[key], basestring):
-                new_metadata[key] = new_metadata[key].split(',')
-
-        # Convert to ints
-        for key in ['request_cpus', 'request_gpus', 'request_priority']:
-            if key in new_metadata:
-                new_metadata[key] = int(new_metadata[key])
-
-        update_bundle_metadata(uuid, new_metadata)
-        bundle_info = get_bundle_info(uuid)
-        return bundle_info
-    else:
-        abort(httplib.FORBIDDEN, 'Can\'t save unless you\'re the owner')
-
-
-@get('/api/users/')
-def get_users():
-    """
-    Fetch info about the current authenticated user.
-
-    DEPRECATED: Use `GET /user` instead.
-    """
-    if request.user.is_authenticated:
-        user_info = local.model.get_user_info(request.user.user_id, fetch_extra=False)
-    else:
-        user_info = None
-    return {
-        'user_info': user_info
-    }
 
 
 # Helper methods
@@ -125,22 +59,6 @@ def get_bundle_info(uuid):
     bundle_info['editable_metadata_fields'] = worksheet_util.get_editable_metadata_fields(cls)
 
     return bundle_info
-
-
-def validate_user_metadata(bundle_subclass, metadata):
-    """
-    Check that the user did not supply values for any auto-generated metadata.
-    Raise a UsageError with the offending keys if they are.
-    """
-    # Allow generated keys as well
-    legal_keys = set(spec.key for spec in bundle_subclass.METADATA_SPECS)
-    illegal_keys = [key for key in metadata if key not in legal_keys]
-    if illegal_keys:
-        raise UsageError('Illegal metadata keys: %s' % (', '.join(illegal_keys),))
-
-
-def check_target_has_read_permission(target):
-    check_bundles_have_read_permission(local.model, request.user, [target[0]])
 
 
 def get_bundle_file_contents(uuid):
@@ -192,10 +110,3 @@ def get_bundle_file_contents(uuid):
         for th in read_threads:
             th.join()
     return info
-
-
-def update_bundle_metadata(uuid, metadata):
-    check_bundles_have_all_permission(local.model, request.user, [uuid])
-    bundle = local.model.get_bundle(uuid)
-    validate_user_metadata(bundle, metadata)
-    local.model.update_bundle(bundle, {'metadata': metadata})
