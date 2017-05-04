@@ -3,7 +3,6 @@ docker_util.py
 
 Utility class wrapping the docker executable
 """
-from argcomplete import warn
 import re
 from subprocess import Popen, PIPE
 

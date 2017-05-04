@@ -191,8 +191,8 @@ class DockerImagesCompleter(CodaLabCompleter):
     Completes names of Docker images available on DockerHub.
     """
     def __call__(self, prefix, action=None, parsed_args=None):
-        def handle_err(exc):
-            warn("Error: %s" % exc)
+        def handle_err(exitcode, msg):
+            warn("Error: %s (exitcode %d)" % (msg, exitcode))
         if prefix == "":
             prefix = "codalab"
         first_slash = prefix.find('/')
