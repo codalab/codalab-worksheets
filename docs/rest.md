@@ -126,74 +126,74 @@ a `401 Unauthorized` or `403 Forbidden` status.
 
 Name | Type
 --- | ---
-    `subworksheet` | Relationship([worksheets](#worksheets))
-    `sort_key` | Integer
-    `worksheet` | Relationship([worksheets](#worksheets))
-    `bundle` | Relationship([bundles](#bundles))
-    `value` | String
-    `type` | String
-    `id` | Integer
+`subworksheet` | Relationship([worksheets](#worksheets))
+`sort_key` | Integer
+`worksheet` | Relationship([worksheets](#worksheets))
+`bundle` | Relationship([bundles](#bundles))
+`value` | String
+`type` | String
+`id` | Integer
 ## users
 
 
 Name | Type
 --- | ---
-    `first_name` | String
-    `last_name` | String
-    `time_quota` | Integer
-    `notifications` | Integer
-    `url` | Url
-    `disk_used` | Integer
-    `time_used` | Integer
-    `email` | String
-    `disk_quota` | Integer
-    `affiliation` | String
-    `last_login` | LocalDateTime
-    `user_name` | String
-    `id` | String
-    `date_joined` | LocalDateTime
+`first_name` | String
+`last_name` | String
+`time_quota` | Integer
+`notifications` | Integer
+`url` | Url
+`disk_used` | Integer
+`time_used` | Integer
+`email` | String
+`disk_quota` | Integer
+`affiliation` | String
+`last_login` | LocalDateTime
+`user_name` | String
+`id` | String
+`date_joined` | LocalDateTime
 ## bundles
 
 
 Name | Type
 --- | ---
-    `host_worksheets` | List
-    `data_hash` | String
-    `uuid` | String
-    `permission` | Integer
-    `group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
-    `args` | String
-    `id` | String
-    `state` | String
-    `dependencies` | [BundleDependencySchema](#BundleDependencySchema)
-    `command` | String
-    `owner` | Relationship([users](#users))
-    `bundle_type` | String
-    `children` | Relationship([bundles](#bundles))
-    `permission_spec` | PermissionSpec
-    `metadata` | Dict
+`host_worksheets` | List
+`data_hash` | String
+`uuid` | String
+`permission` | Integer
+`group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
+`args` | String
+`id` | String
+`state` | String
+`dependencies` | [BundleDependencySchema](#BundleDependencySchema)
+`command` | String
+`owner` | Relationship([users](#users))
+`bundle_type` | String
+`children` | Relationship([bundles](#bundles))
+`permission_spec` | PermissionSpec
+`metadata` | Dict
 ## worksheet-permissions
 
 
 Name | Type
 --- | ---
-    `group` | Relationship([groups](#groups))
-    `permission` | Integer
-    `worksheet` | Relationship([worksheets](#worksheets))
-    `group_name` | String
-    `id` | Integer
-    `permission_spec` | PermissionSpec
+`group` | Relationship([groups](#groups))
+`permission` | Integer
+`worksheet` | Relationship([worksheets](#worksheets))
+`group_name` | String
+`id` | Integer
+`permission_spec` | PermissionSpec
 ## bundle-permissions
 
 
 Name | Type
 --- | ---
-    `group` | Relationship([groups](#groups))
-    `permission` | Integer
-    `bundle` | Relationship([bundles](#bundles))
-    `group_name` | String
-    `id` | Integer
-    `permission_spec` | PermissionSpec
+`group` | Relationship([groups](#groups))
+`permission` | Integer
+`bundle` | Relationship([bundles](#bundles))
+`group_name` | String
+`id` | Integer
+`permission_spec` | PermissionSpec
 ## BundleDependencySchema
 
 
@@ -204,61 +204,61 @@ create a set of dependencies once at bundle creation.
 
 Name | Type
 --- | ---
-    `parent_name` | Method
-    `child_uuid` | String
-    `parent_uuid` | String
-    `child_path` | String
-    `parent_path` | String
+`parent_name` | Method
+`child_uuid` | String
+`parent_uuid` | String
+`child_path` | String
+`parent_path` | String
 ## bundle-actions
 
 
 Name | Type
 --- | ---
-    `type` | String
-    `uuid` | String
-    `subpath` | String
-    `string` | String
-    `id` | Integer
+`type` | String
+`uuid` | String
+`subpath` | String
+`string` | String
+`id` | Integer
 ## worksheets
 
 
 Name | Type
 --- | ---
-    `name` | String
-    `last_item_id` | Integer
-    `tags` | List
-    `frozen` | DateTime
-    `group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
-    `title` | String
-    `items` | Relationship([worksheet-items](#worksheet-items))
-    `owner` | Relationship([users](#users))
-    `permission` | Integer
-    `id` | String
-    `permission_spec` | PermissionSpec
-    `uuid` | String
+`name` | String
+`last_item_id` | Integer
+`tags` | List
+`frozen` | DateTime
+`group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
+`title` | String
+`items` | Relationship([worksheet-items](#worksheet-items))
+`owner` | Relationship([users](#users))
+`permission` | Integer
+`id` | String
+`permission_spec` | PermissionSpec
+`uuid` | String
 ## groups
 
 
 Name | Type
 --- | ---
-    `name` | String
-    `user_defined` | Boolean
-    `admins` | Relationship([users](#users))
-    `members` | Relationship([users](#users))
-    `owner` | Relationship([users](#users))
-    `id` | String
+`name` | String
+`user_defined` | Boolean
+`admins` | Relationship([users](#users))
+`members` | Relationship([users](#users))
+`owner` | Relationship([users](#users))
+`id` | String
 ## users
 
 
 Name | Type
 --- | ---
-    `first_name` | String
-    `last_name` | String
-    `url` | Url
-    `affiliation` | String
-    `user_name` | String
-    `id` | String
-    `date_joined` | LocalDateTime
+`first_name` | String
+`last_name` | String
+`url` | Url
+`affiliation` | String
+`user_name` | String
+`id` | String
+`date_joined` | LocalDateTime
 
 &uarr; [Back to Top](#table-of-contents)
 # API Endpoints

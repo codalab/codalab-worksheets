@@ -188,11 +188,11 @@ Name | Type
     field_class = field.__class__
 %>
 % if field_class.__name__ == 'Nested':
-    `{{field_name}}` | [{{field.nested.__name__}}](#{{field.nested.__name__}})
+`{{field_name}}` | [{{field.nested.__name__}}](#{{field.nested.__name__}})
 % elif field_class.__name__ == 'Relationship':
-    `{{field_name}}` | Relationship([{{field.type_}}](#{{field.type_}}))
+`{{field_name}}` | Relationship([{{field.type_}}](#{{field.type_}}))
 % else:
-    `{{field_name}}` | {{field_class.__name__}}
+`{{field_name}}` | {{field_class.__name__}}
 %end
 % end
 '''
