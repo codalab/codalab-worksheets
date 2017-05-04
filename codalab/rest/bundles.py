@@ -363,6 +363,8 @@ def _fetch_bundle_contents_info(uuid, path=''):
 
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     info = local.download_manager.get_target_info(uuid, path, depth)
+    if info is None:
+        abort(httplib.NOT_FOUND, 'Bundle not found')
 
     def render_human_readable(target_info):
         if 'size' in target_info:

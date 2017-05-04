@@ -1831,12 +1831,14 @@ class BundleCLI(object):
 
         SLEEP_PERIOD = 1.0
 
-        # Wait for the run to start.
-        while True:
-            info = client.fetch('bundles', bundle_uuid)
-            if info['state'] in (State.RUNNING, State.READY, State.FAILED):
-                break
-            time.sleep(SLEEP_PERIOD)
+        # Wait for all files to become ready
+        for subpath in subpaths:
+            while True:
+                try:
+                    target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
+                    break
+                except NotFoundError:
+                    time.sleep(SLEEP_PERIOD)
 
         info = None
         run_finished = False
