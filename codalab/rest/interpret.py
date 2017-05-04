@@ -3,6 +3,11 @@ Worksheet interpretation API.
 
 While not deprecated, this API is subject to further redesign and refactoring
 due to its relative complexity.
+
+The distinction between the placement of functions in this module versus
+the worksheet_util module can appear blurry. The distinction is that
+worksheet_util does not make any calls to the model, they are kind of just like
+static helper functions.
 """
 import base64
 import types

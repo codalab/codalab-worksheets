@@ -8,8 +8,8 @@ from oauthlib.common import generate_token
 import shlex
 
 from bottle import (
+    abort,
     httplib,
-    HTTPResponse,
     local,
     post,
     request,
@@ -18,10 +18,7 @@ from bottle import (
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import UsageError
-from codalab.lib import (
-    bundle_cli,
-    worksheet_util,
-)
+from codalab.lib import bundle_cli
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.objects.oauth2 import OAuth2Token
 
@@ -29,27 +26,36 @@ from codalab.objects.oauth2 import OAuth2Token
 @post('/cli/command')
 @post('/api/worksheets/command/')  # DEPRECATED ROUTE
 def post_worksheets_command():
-    # TODO(klopyrev): The Content-Type header is not set correctly in
-    # editable_field.jsx, so we can't use request.json.
-    data = json.loads(request.body.read())
+    """
+    JSON request body:
+    ```
+    {
+        "worksheet_uuid": "0xea72f9b6aa754636a6657ff2b5e005b0",
+        "command": "cl run :main.py 'python main.py'",
+        "autocomplete": false
+    }
 
-    if data.get('raw_command', None):
-        data['command'] = worksheet_util.get_worksheet_info_edit_command(data['raw_command'])
-
-    if not data.get('worksheet_uuid', None) or not data.get('command', None):
-        return HTTPResponse("Must have worksheet uuid and command", status=httplib.BAD_REQUEST)
+    JSON response body:
+    ```
+    {
+        "structured_result": { ... },
+        "output": "..."
+    }
+    ```
+    """
+    query = request.json
+    if 'worksheet_uuid' not in query:
+        abort(httplib.BAD_REQUEST, 'Missing `workhseet_uuid`')
+    if 'command' not in query:
+        abort(httplib.BAD_REQUEST, 'Missing `command`')
 
     # If 'autocomplete' field is set, return a list of completions instead
-    if data.get('autocomplete', False):
+    if query.get('autocomplete', False):
         return {
-            'completions': complete_command(data['worksheet_uuid'], data['command'])
+            'completions': complete_command(query['worksheet_uuid'], query['command'])
         }
 
-    result = general_command(data['worksheet_uuid'], data['command'])
-    # The return value is a list, so the normal Bottle JSON return-value logic
-    # doesn't apply since it handles only dicts.
-    response.content_type = 'application/json'
-    return json.dumps(result)
+    return general_command(query['worksheet_uuid'], query['command'])
 
 
 def rest_url():
@@ -146,7 +152,6 @@ def general_command(worksheet_uuid, command):
         args = args[1:]
 
     cli, output_buffer = create_cli(worksheet_uuid)
-    exception = None
     structured_result = None
     try:
         structured_result = cli.do_command(args)
@@ -160,5 +165,4 @@ def general_command(worksheet_uuid, command):
     return {
         'structured_result': structured_result,
         'output': output_str,
-        'exception': exception
     }
