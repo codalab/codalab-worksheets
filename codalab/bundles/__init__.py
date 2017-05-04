@@ -24,6 +24,5 @@ UPLOADED_TYPES = set(
 )
 
 
-# TODO(sckoo): refactor out the bundle ORM classes
 def get_bundle_subclass(bundle_type):
     return BUNDLE_TYPE_MAP[bundle_type]

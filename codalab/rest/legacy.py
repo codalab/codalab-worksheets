@@ -57,12 +57,11 @@ def post_bundle_info(uuid):
     bundle_info = get_bundle_info(uuid)
     # Save only if we're the owner.
     if bundle_info['edit_permission']:
-        # TODO(klopyrev): The Content-Type header is not set correctly in
+        # The Content-Type header is not set correctly in
         # editable_field.jsx, so we can't use request.json.
         data = json.loads(request.body.read())
         new_metadata = data['metadata']
 
-        # TODO: do this generally based on the CLI specs.
         # Remove generated fields.
         for key in ['data_size', 'created', 'time', 'time_user', 'time_system', 'memory', 'exitcode', 'actions', 'started', 'last_updated', 'run_status', 'job_handle']:
             if key in new_metadata:

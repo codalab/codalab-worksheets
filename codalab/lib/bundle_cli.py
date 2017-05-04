@@ -1578,7 +1578,6 @@ class BundleCLI(object):
         ]
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
-    # TODO(sckoo): clean up use_rest hack when REST API migration complete
     def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
         """
         Helper function: print >>self.stdout, a nice table showing all provided bundles.
@@ -1645,7 +1644,6 @@ class BundleCLI(object):
                 if args.verbose:
                     self.print_children(info)
                     self.print_host_worksheets(info)
-                    # TODO(sckoo): clean up use_rest hack when REST API migration complete
                     self.print_permissions(info)
                     self.print_contents(client, info)
 

@@ -66,9 +66,6 @@ def fetch_worksheet(uuid):
                           if item['type'] == worksheet_util.TYPE_WORKSHEET and item['subworksheet_uuid'] is not None}
     json_api_include(document, WorksheetSchema(), local.model.batch_get_worksheets(fetch_items=False, uuid=subworksheet_uuids))
 
-    # FIXME: tokenizing directive args
-    # value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
-
     # Include permissions
     json_api_include(document, WorksheetPermissionSchema(), worksheet['group_permissions'])
 
@@ -299,9 +296,6 @@ def update_worksheet_metadata(uuid, info):
     for key, value in info.items():
         if key == 'owner_id':
             metadata['owner_id'] = value
-        elif key == 'owner_spec':
-            # TODO(sckoo): Legacy requirement, remove with BundleService
-            metadata['owner_id'] = local.model.find_user(value).user_id
         elif key == 'name':
             ensure_unused_worksheet_name(value)
             metadata[key] = value
@@ -309,9 +303,6 @@ def update_worksheet_metadata(uuid, info):
             metadata[key] = value
         elif key == 'tags':
             metadata[key] = value
-        elif key == 'freeze':
-            # TODO(sckoo): Support for the 'freeze' key is a legacy requirement, remove with BundleService
-            metadata['frozen'] = datetime.datetime.now()
         elif key == 'frozen' and value and not worksheet.frozen:
             # ignore the value the client provided, just freeze as long as it's truthy
             metadata['frozen'] = datetime.datetime.now()
