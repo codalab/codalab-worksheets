@@ -156,7 +156,7 @@ def _interpret_genpath_table_contents():
 
 @get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR)
 @get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)  # DEPRECATED ROUTE
-def fetch_worksheet_content(uuid):
+def fetch_interpreted_worksheet(uuid):
     """
     Return information about a worksheet. Calls
     - get_worksheet_info: get basic info
@@ -165,10 +165,10 @@ def fetch_worksheet_content(uuid):
     that we can render something basic.
     """
     bundle_uuids = request.query.getall('bundle_uuid')
-    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True, legacy=True)
+    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True)
 
     # Shim in additional data for the frontend
-    worksheet_info['items'] = convert_items_from_db(worksheet_info['items'])
+    worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
     owner = local.model.get_user(user_id=worksheet_info['owner_id'])
     worksheet_info['owner_name'] = owner.user_name
 
@@ -565,36 +565,37 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
     return apply_func(post, info)
 
 
-def convert_items_from_db(items):
+def resolve_items_into_infos(items):
     """
     Helper function.
-    (bundle_uuid, subworksheet_uuid, value, type) -> (bundle_info, subworksheet_info, value_obj, type)
+    {'bundle_uuid': '...', 'subworksheet_uuid': '...', 'value': '...', 'type': '...')
+        -> (bundle_info, subworksheet_info, value_obj, type)
     """
     # Database only contains the uuid; need to expand to info.
     # We need to do to convert the bundle_uuids into bundle_info dicts.
     # However, we still make O(1) database calls because we use the
     # optimized batch_get_bundles multiget method.
     bundle_uuids = set(
-        bundle_uuid for (bundle_uuid, subworksheet_uuid, value, type) in items
-        if bundle_uuid is not None
+        i['bundle_uuid'] for i in items
+        if i['bundle_uuid'] is not None
     )
 
     bundle_dict = rest_util.get_bundle_infos(bundle_uuids)
 
     # Go through the items and substitute the components
     new_items = []
-    for (bundle_uuid, subworksheet_uuid, value, type) in items:
-        bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
-        if subworksheet_uuid:
+    for i in items:
+        bundle_info = bundle_dict.get(i['bundle_uuid'], {'uuid': i['bundle_uuid']}) if i['bundle_uuid'] else None
+        if i['subworksheet_uuid']:
             try:
-                subworksheet_info = local.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict(legacy=True)
+                subworksheet_info = local.model.get_worksheet(i['subworksheet_uuid'], fetch_items=False).to_dict()
             except UsageError, e:
                 # If can't get the subworksheet, it's probably invalid, so just replace it with an error
                 # type = worksheet_util.TYPE_MARKUP
-                subworksheet_info = {'uuid': subworksheet_uuid}
+                subworksheet_info = {'uuid': i['subworksheet_uuid']}
                 # value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
         else:
             subworksheet_info = None
-        value_obj = formatting.string_to_tokens(value) if type == TYPE_DIRECTIVE else value
-        new_items.append((bundle_info, subworksheet_info, value_obj, type))
+        value_obj = formatting.string_to_tokens(i['value']) if i['type'] == TYPE_DIRECTIVE else i['value']
+        new_items.append((bundle_info, subworksheet_info, value_obj, i['type']))
     return new_items

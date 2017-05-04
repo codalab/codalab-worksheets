@@ -244,7 +244,7 @@ def get_worksheets_landing():
 #############################################################
 
 
-def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=False):
+def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
     """
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
     """
@@ -252,7 +252,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
     check_worksheet_has_read_permission(local.model, request.user, worksheet)
 
     # Create the info by starting out with the metadata.
-    result = worksheet.to_dict(legacy=legacy)
+    result = worksheet.to_dict()
 
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
