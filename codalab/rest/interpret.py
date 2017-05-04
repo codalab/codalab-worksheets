@@ -2,9 +2,7 @@
 Worksheet interpretation API.
 """
 import base64
-import shutil
 import types
-from cStringIO import StringIO
 from contextlib import closing
 import json
 
@@ -219,20 +217,10 @@ def fetch_interpreted_worksheet(uuid):
     worksheet_info['raw_to_interpreted'] = interpreted_items['raw_to_interpreted']
     worksheet_info['interpreted_to_raw'] = interpreted_items['interpreted_to_raw']
 
-    def decode_lines(interpreted):
-        # interpreted is None or list of base64 encoded lines
-        if interpreted is None:
-            return formatting.contents_str(None)
-        else:
-            return map(base64.b64decode, interpreted)
-
-    # Currently, only certain fields are base64 encoded.
     for item in worksheet_info['items']:
         if item is None:
             continue
-        if item['mode'] in ['html', 'contents']:
-            item['interpreted'] = decode_lines(item['interpreted'])
-        elif item['mode'] == 'table':
+        if item['mode'] == 'table':
             for row_map in item['interpreted'][1]:
                 for k, v in row_map.iteritems():
                     if v is None:
@@ -260,33 +248,29 @@ def fetch_interpreted_worksheet(uuid):
 #############################################################
 
 
-def cat_target(target, out):
+def cat_target(target):
     """
     Prints the contents of the target file into the file-like object out.
     The caller should ensure that the target is a file.
     """
-    _do_download_file(target, out_fileobj=out)
-
-
-def _do_download_file(target, out_path=None, out_fileobj=None):
     rest_util.check_target_has_read_permission(target)
     with closing(local.download_manager.stream_file(target[0], target[1], gzipped=False)) as fileobj:
-        if out_path is not None:
-            with open(out_path, 'wb') as out:
-                shutil.copyfileobj(fileobj, out)
-        elif out_fileobj is not None:
-            shutil.copyfileobj(fileobj, out_fileobj)
+        return fileobj.read()
 
 
 # Maximum number of bytes to read per line requested
-MAX_BYTES_PER_LINE = 128
+MAX_BYTES_PER_LINE = 1024
 
 
-def head_target(target, max_num_lines, replace_non_unicode=False, base64_encode=True):
+def head_target(target, max_num_lines, replace_non_unicode=False):
     """
-    Return base64 encoded version of the result.
+    Return the first max_num_lines of target as a list of strings.
 
     The caller should ensure that the target is a file.
+
+    :param target: (bundle_uuid, subpath)
+    :param max_num_lines: max number of lines to fetch
+    :param replace_non_unicode: replace non-unicode characters with something printable
     """
     rest_util.check_target_has_read_permission(target)
     lines = local.download_manager.summarize_file(
@@ -296,9 +280,6 @@ def head_target(target, max_num_lines, replace_non_unicode=False, base64_encode=
 
     if replace_non_unicode:
         lines = map(formatting.verbose_contents_str, lines)
-
-    if base64_encode:
-        lines = map(base64.b64encode, lines)
 
     return lines
 
@@ -318,8 +299,6 @@ def resolve_interpreted_items(interpreted_items):
     def error_data(mode, message):
         if mode == 'record' or mode == 'table':
             return (('ERROR',), [{'ERROR': message}])
-        elif mode == 'html' or mode == 'contents':
-            return [base64.b64encode(message)]
         else:
             return [message]
 
@@ -349,7 +328,7 @@ def resolve_interpreted_items(interpreted_items):
 
                 target_info = rest_util.get_target_info(data, 0)
                 if target_info is not None and target_info['type'] == 'directory':
-                    data = [base64.b64encode('<directory>')]
+                    data = ['<directory>']
                 elif target_info is not None and target_info['type'] == 'file':
                     data = head_target(data, max_lines, replace_non_unicode=True)
                 else:
@@ -363,9 +342,7 @@ def resolve_interpreted_items(interpreted_items):
             elif mode == 'image':
                 target_info = rest_util.get_target_info(data, 0)
                 if target_info is not None and target_info['type'] == 'file':
-                    result = StringIO()
-                    cat_target(data, result)
-                    data = base64.b64encode(result.getvalue())
+                    data = base64.b64encode(cat_target(data))
                 else:
                     data = None
             elif mode == 'graph':
@@ -380,7 +357,7 @@ def resolve_interpreted_items(interpreted_items):
                     target = info['target']
                     target_info = rest_util.get_target_info(target, 0)
                     if target_info is not None and target_info['type'] == 'file':
-                        contents = head_target(target, max_lines, replace_non_unicode=True, base64_encode=False)
+                        contents = head_target(target, max_lines, replace_non_unicode=True)
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:
@@ -519,9 +496,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
 
         # Try to interpret the structure of the file by looking inside it.
         if target_info is not None and target_info['type'] == 'file':
-            # FIXME: is base64 necessary here?
             contents = head_target(target, MAX_LINES)
-            contents = map(base64.b64decode, contents)
 
             if len(contents) == 0:
                 info = ''
