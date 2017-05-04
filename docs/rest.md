@@ -10,15 +10,18 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
   - [Bundle Permissions API](#bundle-permissions-api)
   - [Oauth2 API](#oauth2-api)
   - [Users API](#users-api)
-  - [Worksheet Items API](#worksheet-items-api)
+  - [Chatbox API](#chatbox-api)
+  - [Help API](#help-api)
   - [Workers API](#workers-api)
   - [Bundles API](#bundles-api)
+  - [Interpret API](#interpret-api)
+  - [Worksheet Items API](#worksheet-items-api)
   - [User API](#user-api)
   - [Groups API](#groups-api)
   - [Bundle Actions API](#bundle-actions-api)
   - [Worksheets API](#worksheets-api)
   - [Worksheet Permissions API](#worksheet-permissions-api)
-  - [Help API](#help-api)
+  - [Cli API](#cli-api)
 
 # Introduction
 We use the JSON API v1.0 specification with the Bulk extension.
@@ -346,13 +349,21 @@ allows one update at a time.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Worksheet Items API
-### `POST /worksheet-items`
+## Chatbox API
+### `GET /chatbox`
 
-Bulk add worksheet items.
+Return a list of chats that the current user has had
 
-|replace| - Replace existing items in host worksheets. Default is False.
+### `POST /chatbox`
 
+Add the chat to the log.
+Return an auto response, if the chat is directed to the system.
+Otherwise, return an updated chat list of the sender.
+
+
+&uarr; [Back to Top](#table-of-contents)
+## Help API
+### `POST /help/`
 
 &uarr; [Back to Top](#table-of-contents)
 ## Workers API
@@ -490,6 +501,7 @@ Fetch metadata of the bundle contents or a subpath within the bundle.
 Query parameters:
 - `depth`: recursively fetch subdirectory info up to this depth.
   Default is 0.
+- `human_readable`: render the file size as a human-readable string
 
 Response format:
 ```
@@ -499,11 +511,14 @@ Response format:
       "link": "<string representing target if file is a symbolic link>",
       "type": "<file|directory|link>",
       "size": <size of file in bytes>,
-      "contents": {
-        "name": ...,
-        <contents of the directory represented recursively with the same schema>
-      },
-      "perm", <unix permission integer>
+      "perm": <unix permission integer>,
+      "contents": [
+          {
+            "name": ...,
+            <each file of directory represented recursively with the same schema>
+          },
+          ...
+      ]
   }
 }
 ```
@@ -515,6 +530,7 @@ Fetch metadata of the bundle contents or a subpath within the bundle.
 Query parameters:
 - `depth`: recursively fetch subdirectory info up to this depth.
   Default is 0.
+- `human_readable`: render the file size as a human-readable string
 
 Response format:
 ```
@@ -524,11 +540,14 @@ Response format:
       "link": "<string representing target if file is a symbolic link>",
       "type": "<file|directory|link>",
       "size": <size of file in bytes>,
-      "contents": {
-        "name": ...,
-        <contents of the directory represented recursively with the same schema>
-      },
-      "perm", <unix permission integer>
+      "perm": <unix permission integer>,
+      "contents": [
+          {
+            "name": ...,
+            <each file of directory represented recursively with the same schema>
+          },
+          ...
+      ]
   }
 }
 ```
@@ -629,6 +648,113 @@ Query parameters:
 
 
 &uarr; [Back to Top](#table-of-contents)
+## Interpret API
+### `POST /interpret/search`
+
+Returns worksheet items given a search query for bundles.
+
+JSON request body:
+```
+{
+    "keywords": [ list of search keywords ],
+    "schemas": {
+        schema_key: [ list of schema columns ],
+        ...
+    },
+    "display": [ display args ]
+}
+```
+
+### `POST /interpret/wsearch`
+
+Returns worksheet items given a search query for worksheets.
+
+JSON request body:
+```
+{
+    "keywords": [ list of search keywords ]
+}
+```
+
+### `POST /interpret/file-genpaths`
+
+Interpret a file genpath.
+
+JSON request body:
+```
+{
+    "queries": [
+        {
+            "bundle_uuid": "<uuid>",
+            "genpath": "<genpath>",
+            "post": "<postprocessor spec>",
+        },
+        ...
+    ]
+}
+```
+
+Response body:
+```
+{
+    "data": [
+        "<resolved file genpath data>",
+        ...
+    ]
+}
+```
+
+### `POST /interpret/genpath-table-contents`
+
+Takes a table and fills in unresolved genpath specifications.
+
+JSON request body:
+```
+{
+    "contents": [
+        {
+            col1: "<resolved string>",
+            col2: (bundle_uuid, genpath, post),
+            ...
+        },
+        ...
+    ]
+}
+```
+
+JSON response body:
+```
+{
+    "contents": [
+        {
+            col1: "<resolved string>",
+            col2: "<resolved string>",
+            ...
+        },
+        ...
+    ]
+}
+```
+
+### `GET /interpret/worksheet/<uuid:re:0x[0-9a-f]{32}>`
+
+Return information about a worksheet. Calls
+- get_worksheet_info: get basic info
+- resolve_interpreted_items: get more information about a worksheet.
+In the future, for large worksheets, might want to break this up so
+that we can render something basic.
+
+
+&uarr; [Back to Top](#table-of-contents)
+## Worksheet Items API
+### `POST /worksheet-items`
+
+Bulk add worksheet items.
+
+|replace| - Replace existing items in host worksheets. Default is False.
+
+
+&uarr; [Back to Top](#table-of-contents)
 ## User API
 ### `GET /user`
 Fetch authenticated user.
@@ -667,6 +793,13 @@ Fetch bundles by bundle specs OR search keywords.
 
 ### `POST /worksheets`
 ### `POST /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
+
+Request body contains the raw lines of the worksheet.
+
+### `PUT /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
+
+Request body contains the raw lines of the worksheet.
+
 ### `PATCH /worksheets`
 
 Bulk update worksheets metadata.
@@ -694,7 +827,7 @@ Bulk set worksheet permissions.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Help API
-### `POST /help/`
+## Cli API
+### `POST /cli/command`
 
 &uarr; [Back to Top](#table-of-contents)

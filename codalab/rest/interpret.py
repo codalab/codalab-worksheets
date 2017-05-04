@@ -1,5 +1,8 @@
 """
 Worksheet interpretation API.
+
+While not deprecated, this API is subject to further redesign and refactoring
+due to its relative complexity.
 """
 import base64
 import types

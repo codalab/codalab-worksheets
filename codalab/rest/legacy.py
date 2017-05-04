@@ -1,6 +1,7 @@
 """
 Legacy REST APIs moved from the codalab-worksheets Django REST server.
 
+This entire module and the routes defined here are deprecated.
 Interfaces here should be removed over time as the frontend code migrates to
 using the newer interfaces defined in the other modules in this package.
 """
@@ -198,5 +199,3 @@ def update_bundle_metadata(uuid, metadata):
     bundle = local.model.get_bundle(uuid)
     validate_user_metadata(bundle, metadata)
     local.model.update_bundle(bundle, {'metadata': metadata})
-
-
