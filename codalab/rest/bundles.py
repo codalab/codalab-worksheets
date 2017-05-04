@@ -335,7 +335,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
     Query parameters:
     - `depth`: recursively fetch subdirectory info up to this depth.
       Default is 0.
-    - `human_readable`: render the file size as a human-readable string
 
     Response format:
     ```
@@ -345,6 +344,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
           "link": "<string representing target if file is a symbolic link>",
           "type": "<file|directory|link>",
           "size": <size of file in bytes>,
+          "size_str": <size of file as a human-readable string>,
           "perm": <unix permission integer>,
           "contents": [
               {
@@ -358,7 +358,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
     ```
     """
     depth = query_get_type(int, 'depth', default=0)
-    human_readable = query_get_bool('human_readable', default=False)
     if depth < 0:
         abort(httplib.BAD_REQUEST, "Depth must be at least 0")
 
@@ -367,12 +366,12 @@ def _fetch_bundle_contents_info(uuid, path=''):
 
     def render_human_readable(target_info):
         if 'size' in target_info:
-            target_info['size'] = formatting.size_str(target_info['size'])
+            target_info['size_str'] = formatting.size_str(target_info['size'])
         if 'contents' in target_info:
             for entry in target_info['contents']:
                 render_human_readable(entry)
-    if human_readable:
-        render_human_readable(info)
+    render_human_readable(info)
+
     return {
         'data': info
     }
