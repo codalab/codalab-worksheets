@@ -13,8 +13,9 @@ from codalab.bundles import (
     UploadedBundle,
 )
 from codalab.common import precondition, State, UsageError
-from codalab.lib import canonicalize
 from codalab.lib import (
+    canonicalize,
+    formatting,
     spec_util,
     zip_util,
     worksheet_util,
@@ -343,11 +344,15 @@ def _fetch_bundle_contents_info(uuid, path=''):
           "link": "<string representing target if file is a symbolic link>",
           "type": "<file|directory|link>",
           "size": <size of file in bytes>,
-          "contents": {
-            "name": ...,
-            <contents of the directory represented recursively with the same schema>
-          },
-          "perm", <unix permission integer>
+          "size_str": <size of file as a human-readable string>,
+          "perm": <unix permission integer>,
+          "contents": [
+              {
+                "name": ...,
+                <each file of directory represented recursively with the same schema>
+              },
+              ...
+          ]
       }
     }
     ```
@@ -357,8 +362,20 @@ def _fetch_bundle_contents_info(uuid, path=''):
         abort(httplib.BAD_REQUEST, "Depth must be at least 0")
 
     check_bundles_have_read_permission(local.model, request.user, [uuid])
+    info = local.download_manager.get_target_info(uuid, path, depth)
+    if info is None:
+        abort(httplib.NOT_FOUND, 'Bundle not found')
+
+    def render_human_readable(target_info):
+        if 'size' in target_info:
+            target_info['size_str'] = formatting.size_str(target_info['size'])
+        if 'contents' in target_info:
+            for entry in target_info['contents']:
+                render_human_readable(entry)
+    render_human_readable(info)
+
     return {
-        'data': local.download_manager.get_target_info(uuid, path, depth)
+        'data': info
     }
 
 
