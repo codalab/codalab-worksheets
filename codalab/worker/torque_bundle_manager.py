@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import sys
+import threading
 import time
 import traceback
 
@@ -32,6 +33,15 @@ class TorqueBundleManager(BundleManager):
             self._torque_worker_code_dir = os.path.join(codalab_cli, 'worker')
         self._last_delete_attempt = {}
         self._last_qsub_time = 0
+
+    def run(self, sleep_time):
+        # Start separate thread for creating Torque jobs (see method
+        # documentation for more explanation).
+        threading.Thread(
+            target=TorqueBundleManager._listen_for_staged_bundles, args=[self, sleep_time]
+        ).start()
+        # Start main work loop
+        super(TorqueBundleManager, self).run(sleep_time)
 
     def _schedule_run_bundles(self):
         """
@@ -77,7 +87,7 @@ class TorqueBundleManager(BundleManager):
         self._schedule_run_bundles_on_workers(workers, user_owned=True)
 
         # Run the normal Torque workflow for the rest.
-        self._start_torque_workers()
+        # self._start_torque_workers()  # done in a separate thread!
         self._start_bundles(workers)
         self._delete_finished_torque_workers(workers)
 
@@ -108,6 +118,22 @@ class TorqueBundleManager(BundleManager):
                     return ''.join(lines)
 
         return None
+
+    def _listen_for_staged_bundles(self, sleep_time):
+        """
+        Separate run loop dedicated to waiting for staged bundles and firing off
+        the requests to Torque.
+
+        We do this in a separate thread because while we want to throttle
+        requests to Torque and send them one-by-one, we also don't want to lose
+        responsiveness in the other operations (e.g. staging bundles).
+        """
+        while not self._is_exiting():
+            try:
+                self._start_torque_workers()
+                time.sleep(sleep_time)
+            except Exception:
+                traceback.print_exc()
 
     def _start_torque_workers(self):
         """
