@@ -180,6 +180,7 @@ class TorqueBundleManager(BundleManager):
             command = self._torque_ssh_command(
                 ['qsub',
                  '-k', 'n',  # do not keep stdout/stderr streams (we redirect them manually to the configured log_dir)
+                 '-d', '/tmp',  # avoid chdir permission problems, worker won't do anything in working directory anyway
                  '-v', ','.join([k + '=' + v for k, v in script_env.iteritems()])] +
                 resource_args +
                 ['-S', '/bin/bash', os.path.join(self._torque_worker_code_dir, 'worker.sh')])
