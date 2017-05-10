@@ -161,7 +161,6 @@ def _interpret_genpath_table_contents():
 
 
 @get('/interpret/worksheet/<uuid:re:%s>' % spec_util.UUID_STR)
-@get('/api/worksheets/<uuid:re:%s>/' % spec_util.UUID_STR)  # DEPRECATED ROUTE
 def fetch_interpreted_worksheet(uuid):
     """
     Return information about a worksheet. Calls
@@ -186,9 +185,9 @@ def fetch_interpreted_worksheet(uuid):
     # Check enable chat box
     worksheet_info['enable_chat'] = local.config.get('enable_chat', False)
     # Format permissions into strings
-    worksheet_info['permission_str'] = permission_str(worksheet_info['permission'])
+    worksheet_info['permission_spec'] = permission_str(worksheet_info['permission'])
     for group_permission in worksheet_info['group_permissions']:
-        group_permission['permission_str'] = permission_str(group_permission['permission'])
+        group_permission['permission_spec'] = permission_str(group_permission['permission'])
 
     # Go and fetch more information about the worksheet contents by
     # resolving the interpreted items.

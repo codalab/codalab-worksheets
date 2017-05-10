@@ -35,7 +35,6 @@ import codalab.rest.cli
 import codalab.rest.groups
 import codalab.rest.help
 import codalab.rest.interpret
-import codalab.rest.legacy
 import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
