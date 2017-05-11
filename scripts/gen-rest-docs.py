@@ -14,6 +14,7 @@ from marshmallow import Schema
 from marshmallow_jsonapi import Schema as JsonApiSchema
 from textwrap import dedent
 
+# Ensure all REST modules are loaded
 from codalab.server import rest_server
 
 

@@ -3,7 +3,6 @@ Web terminal API.
 """
 from cStringIO import StringIO
 from datetime import datetime, timedelta
-import json
 from oauthlib.common import generate_token
 import shlex
 
@@ -13,7 +12,6 @@ from bottle import (
     local,
     post,
     request,
-    response,
 )
 
 from codalab.client.json_api_client import JsonApiClient
