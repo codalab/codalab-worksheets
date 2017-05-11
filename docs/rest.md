@@ -7,15 +7,15 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [Introduction](#introduction)
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
+  - [Chats API](#chats-api)
   - [Bundle Permissions API](#bundle-permissions-api)
   - [Oauth2 API](#oauth2-api)
   - [Users API](#users-api)
-  - [Chatbox API](#chatbox-api)
+  - [Worksheet Items API](#worksheet-items-api)
   - [Help API](#help-api)
   - [Workers API](#workers-api)
   - [Bundles API](#bundles-api)
   - [Interpret API](#interpret-api)
-  - [Worksheet Items API](#worksheet-items-api)
   - [User API](#user-api)
   - [Groups API](#groups-api)
   - [Bundle Actions API](#bundle-actions-api)
@@ -262,6 +262,19 @@ Name | Type
 
 &uarr; [Back to Top](#table-of-contents)
 # API Endpoints
+## Chats API
+### `GET /chats`
+
+Return a list of chats that the current user has had
+
+### `POST /chats`
+
+Add the chat to the log.
+Return an auto response, if the chat is directed to the system.
+Otherwise, return an updated chat list of the sender.
+
+
+&uarr; [Back to Top](#table-of-contents)
 ## Bundle Permissions API
 ### `POST /bundle-permissions`
 
@@ -349,16 +362,12 @@ allows one update at a time.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Chatbox API
-### `GET /chatbox`
+## Worksheet Items API
+### `POST /worksheet-items`
 
-Return a list of chats that the current user has had
+Bulk add worksheet items.
 
-### `POST /chatbox`
-
-Add the chat to the log.
-Return an auto response, if the chat is directed to the system.
-Otherwise, return an updated chat list of the sender.
+|replace| - Replace existing items in host worksheets. Default is False.
 
 
 &uarr; [Back to Top](#table-of-contents)
@@ -418,6 +427,11 @@ Returns .tar.gz archive containing the code of the worker.
 
 Fetch bundle by UUID.
 
+Query parameters:
+
+ - `include_display_metadata`: `1` to include additional metadata helpful
+   for displaying the bundle info, `0` to omit them. Default is `0`.
+
 ### `GET /bundles`
 
 Fetch bundles by bundle `specs` OR search `keywords`. Behavior is undefined
@@ -444,6 +458,8 @@ Query parameters:
     - `.floating              ` : Match bundles that aren't on any worksheet.
     - `.count                 ` : Count the number of bundles.
     - `.limit=10              ` : Limit the number of results to the top 10.
+ - `include_display_metadata`: `1` to include additional metadata helpful
+   for displaying the bundle info, `0` to omit them. Default is `0`.
 
 When aggregation keywords such as `.count` are used, the resulting value
 is returned as:
@@ -501,7 +517,6 @@ Fetch metadata of the bundle contents or a subpath within the bundle.
 Query parameters:
 - `depth`: recursively fetch subdirectory info up to this depth.
   Default is 0.
-- `human_readable`: render the file size as a human-readable string
 
 Response format:
 ```
@@ -530,7 +545,6 @@ Fetch metadata of the bundle contents or a subpath within the bundle.
 Query parameters:
 - `depth`: recursively fetch subdirectory info up to this depth.
   Default is 0.
-- `human_readable`: render the file size as a human-readable string
 
 Response format:
 ```
@@ -746,15 +760,6 @@ that we can render something basic.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Worksheet Items API
-### `POST /worksheet-items`
-
-Bulk add worksheet items.
-
-|replace| - Replace existing items in host worksheets. Default is False.
-
-
-&uarr; [Back to Top](#table-of-contents)
 ## User API
 ### `GET /user`
 Fetch authenticated user.
@@ -829,5 +834,22 @@ Bulk set worksheet permissions.
 &uarr; [Back to Top](#table-of-contents)
 ## Cli API
 ### `POST /cli/command`
+
+JSON request body:
+```
+{
+    "worksheet_uuid": "0xea72f9b6aa754636a6657ff2b5e005b0",
+    "command": "cl run :main.py 'python main.py'",
+    "autocomplete": false
+}
+
+JSON response body:
+```
+{
+    "structured_result": { ... },
+    "output": "..."
+}
+```
+
 
 &uarr; [Back to Top](#table-of-contents)
