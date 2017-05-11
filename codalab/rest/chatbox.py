@@ -11,7 +11,6 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
 @get('/chats', apply=AuthenticatedPlugin())
-@get('/api/chatbox/', apply=AuthenticatedPlugin())  # DEPRECATED ROUTE
 def get_chat_box():
     """
     Return a list of chats that the current user has had
@@ -27,7 +26,6 @@ def get_chat_box():
 
 
 @post('/chats', apply=AuthenticatedPlugin())
-@post('/api/chatbox', apply=AuthenticatedPlugin())  # DEPRECATED ROUTE
 def post_chat_box():
     """
     Add the chat to the log.

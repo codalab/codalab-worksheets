@@ -24,7 +24,6 @@ from codalab.objects.oauth2 import OAuth2Token
 
 
 @post('/cli/command')
-@post('/api/worksheets/command/')  # DEPRECATED ROUTE
 def post_worksheets_command():
     """
     JSON request body:
