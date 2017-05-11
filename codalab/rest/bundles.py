@@ -144,11 +144,24 @@ def build_bundles_document(bundle_uuids):
 
     # Shim in editable metadata keys
     # Used by the front-end application
-    for bundle, data in izip(bundles, document['data']):
-        json_api_meta(data, {
-            'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
-                get_bundle_subclass(bundle['bundle_type']))
-        })
+    if query_get_bool('fetch_display_meta', default=False):
+        for bundle, data in izip(bundles, document['data']):
+            bundle_class = get_bundle_subclass(bundle['bundle_type'])
+            # Map from key -> format/type, e.g.
+            #   'request_time' -> 'basestring'
+            #   'time' -> 'duration'
+            #   'tags' -> 'list'
+            # Possibilties are: 'int', 'float', 'list', 'bool', 'duration', 'size', 'date', 'basestring'
+            metadata_type = {
+                spec.key: (not issubclass(spec.type, basestring) and spec.formatting) or spec.type.__name__
+                for spec in bundle_class.METADATA_SPECS
+            }
+
+            json_api_meta(data, {
+                'editable_metadata_keys':
+                    worksheet_util.get_editable_metadata_fields(bundle_class),
+                'metadata_type': metadata_type,
+            })
 
     # Include users
     owner_ids = set(b['owner_id'] for b in bundles)

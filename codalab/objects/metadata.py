@@ -4,6 +4,7 @@ Its constructor takes both the metadata and the bundle's metadata specs,
 and validates the metadata before returning.
 '''
 from codalab.common import UsageError
+from codalab.lib import formatting
 
 
 class Metadata(object):
@@ -26,13 +27,24 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
-                if spec.type == float and isinstance(value, int):
+                if spec.type is float and isinstance(value, int):
                     # cast int to float
                     value = float(value)
-                if value != None and not isinstance(value, spec.type):
+                # Validate formatted string fields
+                if issubclass(spec.type, basestring) and spec.formatting is not None and value:
+                    try:
+                        if spec.formatting == 'duration':
+                            formatting.parse_duration(value)
+                        elif spec.formatting == 'size':
+                            formatting.parse_size(value)
+                        elif spec.formatting == 'date':
+                            formatting.parse_datetime(value)
+                    except ValueError as e:
+                        raise UsageError(e.message)
+                if value is not None and not isinstance(value, spec.type):
                     raise UsageError(
                       'Metadata value for %s should be of type %s, was %s (type %s)' %
-                      (spec.key, spec.type, value, type(value))
+                      (spec.key, spec.type.__name__, value, type(value).__name__)
                     )
             elif not spec.generated:
                 raise UsageError('Missing metadata key: %s' % (spec.key,))

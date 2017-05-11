@@ -555,8 +555,6 @@ class BundleModel(object):
           get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
           for bundle_value in sorted_values
         ]
-        for bundle in bundles:
-            bundle.validate()
         return bundles
 
     def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
