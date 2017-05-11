@@ -187,6 +187,26 @@ def get_editable_metadata_fields(cls):
     return result
 
 
+def get_metadata_types(cls):
+    """
+    Return map from key -> type for the metadata fields in the given bundle class.
+    e.g.
+       'request_time' -> 'basestring'
+       'time' -> 'duration'
+       'tags' -> 'list'
+
+    Possible types: 'int', 'float', 'list', 'bool', 'duration',
+                    'size', 'date', 'basestring'
+
+    Special types like 'duration' are only indicated when client-side
+    formatting/serialization is necessary.
+    """
+    return {
+        spec.key: (not issubclass(spec.type, basestring) and spec.formatting) or spec.type.__name__
+        for spec in cls.METADATA_SPECS
+    }
+
+
 def request_lines(worksheet_info):
     """
     Input: worksheet_info

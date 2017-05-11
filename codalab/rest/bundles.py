@@ -51,6 +51,11 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 def _fetch_bundle(uuid):
     """
     Fetch bundle by UUID.
+
+    Query parameters:
+
+     - `include_display_metadata`: `1` to include additional metadata helpful
+       for displaying the bundle info, `0` to omit them. Default is `0`.
     """
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
@@ -85,6 +90,8 @@ def _fetch_bundles():
         - `.floating              ` : Match bundles that aren't on any worksheet.
         - `.count                 ` : Count the number of bundles.
         - `.limit=10              ` : Limit the number of results to the top 10.
+     - `include_display_metadata`: `1` to include additional metadata helpful
+       for displaying the bundle info, `0` to omit them. Default is `0`.
 
     When aggregation keywords such as `.count` are used, the resulting value
     is returned as:
@@ -142,25 +149,15 @@ def build_bundles_document(bundle_uuids):
     # Build response document
     document = BundleSchema(many=True).dump(bundles).data
 
-    # Shim in editable metadata keys
-    # Used by the front-end application
-    if query_get_bool('fetch_display_meta', default=False):
+    # Shim in display metadata used by the front-end application
+    if query_get_bool('include_display_metadata', default=False):
         for bundle, data in izip(bundles, document['data']):
             bundle_class = get_bundle_subclass(bundle['bundle_type'])
-            # Map from key -> format/type, e.g.
-            #   'request_time' -> 'basestring'
-            #   'time' -> 'duration'
-            #   'tags' -> 'list'
-            # Possibilties are: 'int', 'float', 'list', 'bool', 'duration', 'size', 'date', 'basestring'
-            metadata_type = {
-                spec.key: (not issubclass(spec.type, basestring) and spec.formatting) or spec.type.__name__
-                for spec in bundle_class.METADATA_SPECS
-            }
-
             json_api_meta(data, {
                 'editable_metadata_keys':
                     worksheet_util.get_editable_metadata_fields(bundle_class),
-                'metadata_type': metadata_type,
+                'metadata_type':
+                    worksheet_util.get_metadata_types(bundle_class),
             })
 
     # Include users
