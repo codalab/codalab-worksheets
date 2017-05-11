@@ -30,7 +30,7 @@ from codalab.lib import formatting, server_util
 import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
-import codalab.rest.chatbox
+import codalab.rest.chats
 import codalab.rest.cli
 import codalab.rest.groups
 import codalab.rest.help

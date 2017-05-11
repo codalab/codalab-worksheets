@@ -47,7 +47,7 @@ def post_chat_box():
     return {'chats': chats}
 
 
-# @get('/api/faq/')
+# @get('/faqs')
 def get_faq():
     """
     Return a list of FAQ items, each of the following format:
