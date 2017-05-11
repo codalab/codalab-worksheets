@@ -97,8 +97,8 @@ def get_user(username, password, *args, **kwargs):
 
 
 # Not currently used by CodaLab website nor by the CLI client.
-@oauth2_provider.authorize_handler
 @route('/oauth2/authorize', ['GET', 'POST'], apply=AuthenticatedPlugin())
+@oauth2_provider.authorize_handler
 def authorize(*args, **kwargs):
     """
     'authorize' endpoint for OAuth2 authorization code flow.
@@ -114,8 +114,8 @@ def authorize(*args, **kwargs):
         return confirm == 'yes'
 
 
-@oauth2_provider.token_handler
 @post('/oauth2/token')
+@oauth2_provider.token_handler
 def handle_token():
     """
     OAuth2 token endpoint.
@@ -152,8 +152,8 @@ def handle_token():
     pass
 
 
-@oauth2_provider.revoke_handler
 @post('/oauth2/revoke')
+@oauth2_provider.revoke_handler
 def revoke_token():
     """Revoke OAuth2 token."""
     pass
