@@ -7,21 +7,19 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [Introduction](#introduction)
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
-  - [Chats API](#chats-api)
   - [Bundle Permissions API](#bundle-permissions-api)
-  - [Oauth2 API](#oauth2-api)
-  - [Users API](#users-api)
+  - [OAuth2 API](#oauth2-api)
+  - [CLI API](#cli-api)
   - [Worksheet Items API](#worksheet-items-api)
-  - [Help API](#help-api)
   - [Workers API](#workers-api)
   - [Bundles API](#bundles-api)
-  - [Interpret API](#interpret-api)
+  - [Worksheet Interpretation API](#worksheet-interpretation-api)
   - [User API](#user-api)
   - [Groups API](#groups-api)
   - [Bundle Actions API](#bundle-actions-api)
   - [Worksheets API](#worksheets-api)
   - [Worksheet Permissions API](#worksheet-permissions-api)
-  - [Cli API](#cli-api)
+  - [Users API](#users-api)
 
 # Introduction
 We use the JSON API v1.0 specification with the Bulk extension.
@@ -262,19 +260,6 @@ Name | Type
 
 &uarr; [Back to Top](#table-of-contents)
 # API Endpoints
-## Chats API
-### `GET /chats`
-
-Return a list of chats that the current user has had
-
-### `POST /chats`
-
-Add the chat to the log.
-Return an auto response, if the chat is directed to the system.
-Otherwise, return an updated chat list of the sender.
-
-
-&uarr; [Back to Top](#table-of-contents)
 ## Bundle Permissions API
 ### `POST /bundle-permissions`
 
@@ -285,7 +270,7 @@ existing permissions on the same bundle-group pair.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Oauth2 API
+## OAuth2 API
 ### `GET /oauth2/authorize`
 
 'authorize' endpoint for OAuth2 authorization code flow.
@@ -295,70 +280,62 @@ existing permissions on the same bundle-group pair.
 'authorize' endpoint for OAuth2 authorization code flow.
 
 ### `POST /oauth2/token`
+
+OAuth2 token endpoint.
+
+Access token request:
+
+    grant_type
+        REQUIRED.  Value MUST be set to "password".
+
+    username
+        REQUIRED.  The resource owner username.
+
+    password
+        REQUIRED.  The resource owner password.
+
+    scope
+        OPTIONAL.  The scope of the access request. (UNUSED)
+
+Example successful response:
+
+    HTTP/1.1 200 OK
+    Content-Type: application/json;charset=UTF-8
+    Cache-Control: no-store
+    Pragma: no-cache
+
+    {
+      "access_token":"2YotnFZFEjr1zCsicMWpAA",
+      "token_type":"example",
+      "expires_in":3600,
+      "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA",
+      "example_parameter":"example_value"
+    }
+
 ### `POST /oauth2/revoke`
-Provide secure services using OAuth2.
-    The server should provide an authorize handler and a token handler,
-
-    But before the handlers are implemented, the server should provide
-    some getters for the validation.
-    There are two usage modes. One is binding the Bottle app instance:
-
-        app = Bottle()
-        oauth = OAuth2Provider(app)
-
-    The second possibility is to bind the Bottle app later:
-
-        oauth = OAuth2Provider()
-
-        def create_app():
-            app = Bottle()
-            oauth.app = app
-            return app
-
-    Configure :meth:`tokengetter` and :meth:`tokensetter` to get and
-    set tokens. Configure :meth:`grantgetter` and :meth:`grantsetter`
-    to get and set grant tokens. Configure :meth:`clientgetter` to
-    get the client.
-
-    Configure :meth:`usergetter` if you need password credential
-    authorization.
-
-    With everything ready, implement the authorization workflow:
-
-        * :meth:`authorize_handler` for consumer to confirm the grant
-        * :meth:`token_handler` for client to exchange access token
-
-    And now you can protect the resource with scopes::
-
-        @app.route('/api/user')
-        @oauth.check_oauth('email', 'username')
-        def user():
-            return jsonify(request.user)
-
+Revoke OAuth2 token.
 ### `GET /oauth2/errors`
 
 &uarr; [Back to Top](#table-of-contents)
-## Users API
-### `GET /users/<user_spec>`
-Fetch a single user.
-### `GET /users`
+## CLI API
+### `POST /cli/command`
 
-Fetch list of users, filterable by username and email.
+JSON request body:
+```
+{
+    "worksheet_uuid": "0xea72f9b6aa754636a6657ff2b5e005b0",
+    "command": "cl run :main.py 'python main.py'",
+    "autocomplete": false
+}
+```
 
-Takes the following query parameters:
-    filter[user_name]=name1,name2,...
-    filter[email]=email1,email2,...
-
-Fetches all users that match any of these usernames or emails.
-
-### `PATCH /users`
-
-Update arbitrary users.
-
-This operation is reserved for the root user. Other users can update their
-information through the /user "authenticated user" API.
-Follows the bulk-update convention in the CodaLab API, but currently only
-allows one update at a time.
+JSON response body:
+```
+{
+    "structured_result": { ... },
+    "output": "..."
+}
+```
 
 
 &uarr; [Back to Top](#table-of-contents)
@@ -369,10 +346,6 @@ Bulk add worksheet items.
 
 |replace| - Replace existing items in host worksheets. Default is False.
 
-
-&uarr; [Back to Top](#table-of-contents)
-## Help API
-### `POST /help/`
 
 &uarr; [Back to Top](#table-of-contents)
 ## Workers API
@@ -662,7 +635,7 @@ Query parameters:
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Interpret API
+## Worksheet Interpretation API
 ### `POST /interpret/search`
 
 Returns worksheet items given a search query for bundles.
@@ -832,24 +805,27 @@ Bulk set worksheet permissions.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Cli API
-### `POST /cli/command`
+## Users API
+### `GET /users/<user_spec>`
+Fetch a single user.
+### `GET /users`
 
-JSON request body:
-```
-{
-    "worksheet_uuid": "0xea72f9b6aa754636a6657ff2b5e005b0",
-    "command": "cl run :main.py 'python main.py'",
-    "autocomplete": false
-}
+Fetch list of users, filterable by username and email.
 
-JSON response body:
-```
-{
-    "structured_result": { ... },
-    "output": "..."
-}
-```
+Takes the following query parameters:
+    filter[user_name]=name1,name2,...
+    filter[email]=email1,email2,...
+
+Fetches all users that match any of these usernames or emails.
+
+### `PATCH /users`
+
+Update arbitrary users.
+
+This operation is reserved for the root user. Other users can update their
+information through the /user "authenticated user" API.
+Follows the bulk-update convention in the CodaLab API, but currently only
+allows one update at a time.
 
 
 &uarr; [Back to Top](#table-of-contents)

@@ -31,6 +31,7 @@ def post_worksheets_command():
         "command": "cl run :main.py 'python main.py'",
         "autocomplete": false
     }
+    ```
 
     JSON response body:
     ```

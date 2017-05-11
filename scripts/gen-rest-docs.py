@@ -6,7 +6,7 @@ Generate REST docs.
 import sys
 sys.path.append('.')
 from inspect import isclass
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 import os
 
 from bottle import default_app, template
@@ -19,7 +19,10 @@ from codalab.server import rest_server
 
 
 REST_DOCS_PATH = 'docs/rest.md'
-EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static'}
+EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static', 'chats', 'faq', 'help'}
+
+
+APISpec = namedtuple('APISpec', 'name anchor routes')
 
 
 def get_api_routes():
@@ -28,13 +31,28 @@ def get_api_routes():
     # Then we can also load the docstrings of the modules themselves and print
     # those on each page.
     app = default_app()
-    routes_by_root = defaultdict(list)
+    base2routes = defaultdict(list)
+    bases = set()
     for route in app.routes:
         path = route.rule.split('/')
-        root = path[1]
-        if root in EXCLUDED_APIS: continue
-        routes_by_root[root].append(route)
-    return routes_by_root
+        base = path[1]
+        if base in EXCLUDED_APIS:
+            continue
+        base2routes[base].append(route)
+        bases.add(base)
+
+    api_specs = []
+    for base in bases:
+        default_name = ' '.join(base.title().split('-'))
+        name = {
+            'oauth2': 'OAuth2',
+            'cli': 'CLI',
+            'interpret': 'Worksheet Interpretation',
+        }.get(base, default_name)
+        anchor = '-'.join(name.lower().split())
+        api_specs.append(APISpec(name, anchor, base2routes[base]))
+
+    return api_specs
 
 
 def get_codalab_schemas():
@@ -57,9 +75,8 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [Introduction](#introduction)
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
-% for root in route_roots:
-% api_name = ' '.join(root.title().split('-'))
-  - [{{api_name}} API](#{{root}}-api)
+% for spec in api_specs:
+  - [{{spec.name}} API](#{{spec.anchor}}-api)
 % end
 
 '''
@@ -231,12 +248,12 @@ API_ROUTE_DOC = '''\
 INDEX_LINK = "\n&uarr; [Back to Top](#table-of-contents)\n"
 
 
-if __name__ == '__main__':
+def main():
     if not os.path.exists(os.path.dirname(REST_DOCS_PATH)):
         os.makedirs(os.path.dirname(REST_DOCS_PATH))
 
     with open(REST_DOCS_PATH, 'wb') as out:
-        out.write(template(dedent(INDEX_DOC), route_roots=get_api_routes().keys()))
+        out.write(template(dedent(INDEX_DOC), api_specs=get_api_routes()))
         out.write(dedent(INTRODUCTION_DOC))
 
         out.write('# Resource Object Schemas\n')
@@ -248,10 +265,12 @@ if __name__ == '__main__':
         out.write(INDEX_LINK)
 
         out.write('# API Endpoints\n')
-        for root, routes in get_api_routes().items():
-            doc_path = os.path.join(REST_DOCS_PATH, root + '.md')
-            api_name = ' '.join(root.title().split('-'))
-            out.write('## %s API\n' % api_name)
-            for route in routes:
+        for spec in get_api_routes():
+            out.write('## %s API\n' % spec.name)
+            for route in spec.routes:
                 out.write(template(dedent(API_ROUTE_DOC), route=route))
             out.write(INDEX_LINK)
+
+
+if __name__ == '__main__':
+    main()
