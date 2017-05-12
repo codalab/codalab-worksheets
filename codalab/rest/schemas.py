@@ -111,7 +111,7 @@ class BundleDependencySchema(PlainSchema):
     child_uuid = fields.String(validate=validate_uuid, dump_only=True)
     child_path = fields.String()  # Validated in Bundle ORMObject
     parent_uuid = fields.String(validate=validate_uuid)
-    parent_path = fields.String()
+    parent_path = fields.String(missing="")
     parent_name = fields.Method('get_parent_name', dump_only=True)  # for convenience
 
     def get_parent_name(self, dep):

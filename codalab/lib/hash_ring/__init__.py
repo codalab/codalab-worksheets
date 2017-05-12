@@ -1,2 +1,0 @@
-from .ring import HashRing
-

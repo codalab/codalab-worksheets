@@ -45,7 +45,7 @@ from codalab.common import (
     UsageError,
 )
 from codalab.lib.bundle_store import (
-    MultiDiskBundleStore,
+    MultiDiskBundleStore
 )
 from codalab.lib.crypt_util import get_random_string
 from codalab.lib.download_manager import DownloadManager
@@ -214,7 +214,7 @@ class CodaLabManager(object):
     @property
     @cached
     def config_path(self):
-        return os.getenv('CODALAB_CONFIG', 
+        return os.getenv('CODALAB_CONFIG',
                          os.path.join(self.codalab_home, 'config.json'))
 
     @property
@@ -362,7 +362,7 @@ class CodaLabManager(object):
         from codalab.server.auth import RestOAuthHandler
         address = 'http://%s:%d' % (self.config['server']['rest_host'],
                                     self.config['server']['rest_port'])
-        return RestOAuthHandler(address, self.model())
+        return RestOAuthHandler(address)
 
     @property
     @cached
@@ -441,7 +441,7 @@ class CodaLabManager(object):
         # Create RestOAuthHandler that authenticates directly with
         # OAuth endpoints on the REST server
         from codalab.server.auth import RestOAuthHandler
-        auth_handler = RestOAuthHandler(address, None)
+        auth_handler = RestOAuthHandler(address)
 
         # Create JsonApiClient with a callback to get access tokens
         client = JsonApiClient(address, lambda: self._authenticate(address, auth_handler), self.check_version)
