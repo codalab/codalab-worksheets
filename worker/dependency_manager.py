@@ -4,6 +4,7 @@ import threading
 import time
 
 from file_util import get_path_size, remove_path
+from docker_image_manager import DockerImageManager
 
 
 class DependencyManager(object):
@@ -12,10 +13,12 @@ class DependencyManager(object):
     runs download the same dependency at the same time. Ensures that the total
     size of all the dependencies doesn't exceed the given limit.
     """
+    STATE_FILENAME = 'state.json'
+
     def __init__(self, work_dir, max_work_dir_size_bytes):
         self._work_dir = work_dir
         self._max_work_dir_size_bytes = max_work_dir_size_bytes
-        self._state_file = os.path.join(work_dir, 'state.json')
+        self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
         self._lock = threading.Lock()
         self._stop_cleanup = False
         self._cleanup_thread = None
@@ -41,7 +44,8 @@ class DependencyManager(object):
             self._paths.add(dep.path)
 
         # Remove paths that aren't complete (e.g. interrupted downloads and runs).
-        for path in set(os.listdir(self._work_dir)) - self._paths - set(['state.json']):
+        for path in set(os.listdir(self._work_dir)) - self._paths - \
+                {DependencyManager.STATE_FILENAME, DockerImageManager.STATE_FILENAME}:
             remove_path(os.path.join(self._work_dir, path))
 
     def _save_state(self):

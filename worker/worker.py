@@ -7,18 +7,18 @@ import shutil
 import threading
 import time
 import traceback
-import socket
-import subprocess
 import re
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
-from file_util import remove_path, un_gzip_stream, un_tar_directory
+from file_util import remove_path, un_tar_directory
 from run import Run
+from docker_image_manager import DockerImageManager
 
-VERSION = 7
+VERSION = 11
 
 logger = logging.getLogger(__name__)
+
 
 class Worker(object):
     """
@@ -29,13 +29,14 @@ class Worker(object):
         2) Managing all the runs currently executing on the worker and
            forwarding messages associated with those runs to the appropriate
            instance of the Run class.
-        3) Managing the storage of bundles, both running bundles as well as
-           their dependencies.
+        3) Spawning classes and threads that manage other worker resources,
+           specifically the storage of bundles (both running bundles as well as
+           their dependencies) and the cache of Docker images.
         4) Upgrading the worker.
     """
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
-                 shared_file_system, slots,
-                 bundle_service, docker):
+                 max_images_bytes, shared_file_system,
+                 slots, bundle_service, docker):
         self.id = id
         self._tag = tag
         self.shared_file_system = shared_file_system
@@ -46,6 +47,8 @@ class Worker(object):
         if not self.shared_file_system:
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
+        self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
+        self._max_images_bytes = max_images_bytes
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed
@@ -59,6 +62,8 @@ class Worker(object):
         self._last_checkin_successful = False
 
     def run(self):
+        if self._max_images_bytes is not None:
+            self._image_manager.start_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
 
@@ -76,6 +81,8 @@ class Worker(object):
 
         self._checkout()
 
+        if self._max_images_bytes is not None:
+            self._image_manager.stop_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.stop_cleanup_thread()
 
@@ -152,7 +159,7 @@ class Worker(object):
             bundle_path = bundle['location']
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
-        run = Run(self._bundle_service, self._docker, self,
+        run = Run(self._bundle_service, self._docker, self._image_manager, self,
                   bundle, bundle_path, resources)
         if run.run():
             with self._runs_lock:
@@ -176,9 +183,11 @@ class Worker(object):
             logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
             try:
                 download_success = False
-                fileobj, filename = (
+                fileobj, target_type = (
                     self._bundle_service.get_bundle_contents(parent_uuid, parent_path))
                 with closing(fileobj):
+                    # "Bug" the fileobj's read function so that we can keep
+                    # track of the number of bytes downloaded so far.
                     old_read_method = fileobj.read
                     bytes_downloaded = [0]
                     def interruptable_read(*args, **kwargs):
@@ -188,7 +197,7 @@ class Worker(object):
                         return data
                     fileobj.read = interruptable_read
 
-                    self._store_dependency(dependency_path, fileobj, filename)
+                    self._store_dependency(dependency_path, fileobj, target_type)
                     download_success = True
             finally:
                 logger.debug('Finished downloading dependency %s/%s', parent_uuid, parent_path)
@@ -197,13 +206,13 @@ class Worker(object):
 
         return dependency_path
 
-    def _store_dependency(self, dependency_path, fileobj, filename):
+    def _store_dependency(self, dependency_path, fileobj, target_type):
         try:
-            if filename.endswith('.tar.gz'):
+            if target_type == 'directory':
                 un_tar_directory(fileobj, dependency_path, 'gz')
             else:
                 with open(dependency_path, 'wb') as f:
-                    shutil.copyfileobj(un_gzip_stream(fileobj), f)
+                    shutil.copyfileobj(fileobj, f)
         except:
             remove_path(dependency_path)
             raise
