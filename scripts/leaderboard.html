@@ -1,0 +1,133 @@
+<!--
+An example leaderboard for use with the competition daemon.
+Please copy and modify for your own needs.
+-->
+<html>
+  <head>
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  </head>
+  <body>
+    <div id="container" class="container"></div>
+    <script id="template" type="x-tmpl-mustache">
+
+<div class="row">
+  <h1>{{config.metadata.name}}</h1>
+  {{#out_of_date}}
+    <div class="alert alert-danger" role="alert">Leaderboard data has gone stale. Try refreshing again in a minute, or clear your browser cache.</div>
+  {{/out_of_date}}
+  <p>{{{config.metadata.description}}}</p>
+  <p>Max submissions per day: <b>{{config.max_submissions_per_period}}</b>.
+  Max submissions total: <b>{{config.max_submissions_total}}.</b></p>
+  <table class="table table-condensed">
+    <thead>
+      <tr>
+        <th>Rank</th>
+        <th>F1 Score</th>
+        <th>Exact Match</th>
+        <th>Status</th>
+        <th>Submitter</th>
+        <th>Created</th>
+        <th>Description</th>
+        <th>Quota</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#leaderboard}}
+      <tr class="{{context_class}}">
+        <th>#{{{rank}}}</th>
+        <td>{{scores.f1}}</td>
+        <td>{{scores.exact_match}}</td>
+        <td><a href="{{url}}">{{status}}</a></td>
+        <td>
+          <div>{{submission.user_name}}</div>
+        </td>
+        <td>{{created}}</td>
+        <td>{{submission.description}}</td>
+        <td>
+          <div><small>{{submission.num_period_submissions}}/{{config.max_submissions_per_period}} today</small></div>
+          <div><small>{{submission.num_total_submissions}}/{{config.max_submissions_total}} total</small></div>
+        </td>
+      </tr>
+      {{/leaderboard}}
+    </tbody>
+  </table>
+  <p>Last updated: {{updated}}</p>
+</div>
+
+    </script>
+    <script src="https://code.jquery.com/jquery-2.2.4.min.js" integrity="sha256-BbhdlvQf/xTY9gja0Dq3HiwQF8LaCRTXxZKRutelT44=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mustache.js/2.3.0/mustache.min.js" integrity="sha256-iaqfO5ue0VbSGcEiQn+OeXxnxAMK2+QgHXIDA5bWtGI=" crossorigin="anonymous"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.17.1/moment.min.js" integrity="sha256-Gn7MUQono8LUxTfRA0WZzJgTua52Udm1Ifrk5421zkA=" crossorigin="anonymous"></script>
+    <script type="text/javascript">
+(function($) {
+
+  var LEADERBOARD_JSON = 'out.json';
+
+  // Preload the Mustache template
+  var template = $('#template').html();
+  Mustache.parse(template);   // optional, speeds up future uses
+
+  // Fetch the leaderboard JSON
+  $.getJSON(LEADERBOARD_JSON).done(function (data) {
+    var now = (new Date).getTime() / 1000;
+    var buffer = 100;  // seconds
+    data.out_of_date = now - data.updated - buffer > data.config.refresh_period_seconds;
+
+    // Preprocess data
+    for (var i = 0; i < data.leaderboard.length; i++) {
+      var item = data.leaderboard[i];
+      item.rank = i + 1;
+      var submissionInfo = JSON.parse(item.bundle.metadata.description);
+      var linkId;
+      if (submissionInfo.hasOwnProperty('predict_id')) {
+        linkId = submissionInfo.predict_id;
+      } else {
+        linkId = item.bundle.id;
+      }
+
+      item.url = data.config.host + '/bundles/' + linkId + '/';
+      item.short_id = linkId.slice(0, 2+8);
+      item.created = moment.unix(item.submission.created).format('YYYY-MM-DD, h:mm:ss A');
+      switch (item.bundle.state) {
+        case 'ready':
+          item.status = 'success';
+          item.scores.f1 = Number((item.scores.f1).toFixed(3));
+          item.scores.exact_match = Number((item.scores.exact_match).toFixed(3));
+          item.context_class = "";
+          break;
+        case 'running':
+        case 'staged':
+        case 'created':
+          item.status = 'running';
+          item.context_class = "warning";
+          break;
+        default:
+          item.status = item.bundle.state;
+          item.context_class = "danger";
+          break;
+      }
+      // Provide local reference to config (for Mustache)
+      item.config = data.config;
+    }
+
+    data.taglen = data.config.submission_tag.length + 1;
+    data.updated = moment.unix(data.updated).format('dddd MMMM Do, YYYY [at] h:mm:ss A') + ' PDT';
+    data.nav_class = {};
+    data.nav_class[data.config.metadata.key] = "active";
+
+    // Render Mustache template in the container div
+    var rendered = Mustache.render(template, data);
+    $('#container').html(rendered);
+    document.title = data.config.metadata.name;
+
+  }).fail(function () {
+    $('#container').html('This leaderboard is not ready yet.');
+  });
+
+})(jQuery);
+    </script>
+  </body>
+</html>

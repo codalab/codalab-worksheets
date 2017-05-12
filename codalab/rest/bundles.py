@@ -49,6 +49,9 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 @get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR)
 def _fetch_bundle(uuid):
+    """
+    Fetch bundle by UUID.
+    """
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
     document['data'] = document['data'][0]  # Flatten data list
@@ -58,7 +61,41 @@ def _fetch_bundle(uuid):
 @get('/bundles')
 def _fetch_bundles():
     """
-    Fetch bundles by bundle specs OR search keywords.
+    Fetch bundles by bundle `specs` OR search `keywords`. Behavior is undefined
+    when both `specs` and `keywords` are provided.
+
+    Query parameters:
+
+     - `worksheet`: UUID of the base worksheet. Required when fetching by specs.
+     - `specs`: Bundle spec of bundle to fetch. May be provided multiples times
+        to fetch multiple bundle specs. A bundle spec is either:
+        1. a UUID (8 or 32 hex characters with a preceding '0x')
+        2. a bundle name referring to the last bundle with that name on the
+           given base worksheet
+        3. or a reverse index of the form `^N` referring to the Nth-to-last
+           bundle on the given base worksheet.
+     - `keywords`: Search keyword. May be provided multiples times for multiple
+        keywords. Bare keywords match the names and descriptions of bundles.
+        Examples of other special keyword forms:
+        - `name=<name>            ` : More targeted search of using metadata fields.
+        - `size=.sort             ` : Sort by a particular field.
+        - `size=.sort-            ` : Sort by a particular field in reverse.
+        - `size=.sum              ` : Compute total of a particular field.
+        - `.mine                  ` : Match only bundles I own.
+        - `.floating              ` : Match bundles that aren't on any worksheet.
+        - `.count                 ` : Count the number of bundles.
+        - `.limit=10              ` : Limit the number of results to the top 10.
+
+    When aggregation keywords such as `.count` are used, the resulting value
+    is returned as:
+    ```
+    {
+        "meta": {
+            "results": <value>
+        }
+    }
+    ```
+
     """
     keywords = query_get_list('keywords')
     specs = query_get_list('specs')
@@ -133,17 +170,18 @@ def _create_bundles():
     """
     Bulk create bundles.
 
-    |worksheet_uuid| - The parent worksheet of the bundle, add to this worksheet
-                       if not detached or shadowing another bundle. Also used
-                       to inherit permissions.
-    |shadow| - the uuid of the bundle to shadow
-    |detached| - True ('1') if should not add new bundle to any worksheet,
-                 or False ('0') otherwise. Default is False.
-    |wait_for_upload| - True ('1') if the bundle state should be initialized to
-                        UPLOADING regardless of the bundle type, or False ('0')
-                        otherwise. This prevents run bundles that are being
-                        copied from another instance from being run by the
-                        BundleManager. Default is False.
+    Query parameters:
+    - `worksheet`: UUID of the parent worksheet of the new bundle, add to
+      this worksheet if not detached or shadowing another bundle. The new
+      bundle also inherits permissions from this worksheet.
+    - `shadow`: UUID of the bundle to "shadow" (the new bundle will be added
+      as an item immediately after this bundle in its parent worksheet).
+    - `detached`: 1 if should not add new bundle to any worksheet,
+      or 0 otherwise. Default is 0.
+    - `wait_for_upload`: 1 if the bundle state should be initialized to
+      "uploading" regardless of the bundle type, or 0 otherwise. Used when
+      copying bundles from another CodaLab instance, this prevents these new
+      bundles from being executed by the BundleManager. Default is 0.
     """
     worksheet_uuid = request.query.get('worksheet')
     shadow_parent_uuid = request.query.get('shadow')
@@ -246,10 +284,19 @@ def _update_bundles():
 def _delete_bundles():
     """
     Delete the bundles specified.
-    If |force|, allow deletion of bundles that have descendants or that appear across multiple worksheets.
-    If |recursive|, add all bundles downstream too.
-    If |data-only|, only remove from the bundle store, not the bundle metadata.
-    If |dry-run|, just return list of bundles that would be deleted, but do not actually delete.
+
+    Query parameters:
+     - `force`: 1 to allow deletion of bundles that have descendants or that
+       appear across multiple worksheets, or 0 to throw an error if any of the
+       specified bundles have multiple references. Default is 0.
+     - `recursive`: 1 to remove all bundles downstream too, or 0 otherwise.
+       Default is 0.
+     - `data-only`: 1 to only remove contents of the bundle(s) from the bundle
+       store and leave the bundle metadata intact, or 0 to remove both the
+       bundle contents and the bundle metadata. Default is 0.
+     - `dry-run`: 1 to just return list of bundles that would be deleted with
+       the given parameters without actually deleting them, or 0 to perform
+       the deletion. Default is 0.
     """
     uuids = get_resource_ids(request.json, 'bundles')
     force = query_get_bool('force', default=False)
@@ -267,6 +314,9 @@ def _delete_bundles():
 def _set_bundle_permissions():
     """
     Bulk set bundle permissions.
+
+    A bundle permission created on a bundle-group pair will replace any
+    existing permissions on the same bundle-group pair.
     """
     new_permissions = BundlePermissionSchema(
         strict=True, many=True,
@@ -278,6 +328,30 @@ def _set_bundle_permissions():
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 @get('/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
 def _fetch_bundle_contents_info(uuid, path=''):
+    """
+    Fetch metadata of the bundle contents or a subpath within the bundle.
+
+    Query parameters:
+    - `depth`: recursively fetch subdirectory info up to this depth.
+      Default is 0.
+
+    Response format:
+    ```
+    {
+      "data": {
+          "name": "<name of file or directory>",
+          "link": "<string representing target if file is a symbolic link>",
+          "type": "<file|directory>",
+          "size": <size of file in bytes>,
+          "contents": {
+            "name": ...,
+            <contents of the directory represented recursively with the same schema>
+          },
+          "perm", <unix permission integer>
+      }
+    }
+    ```
+    """
     depth = query_get_type(int, 'depth', default=0)
     if depth < 0:
         abort(httplib.BAD_REQUEST, "Depth must be at least 0")
@@ -294,11 +368,23 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     """
     API to download the contents of a bundle or a subpath within a bundle.
 
-    For directories this method always returns a tarred and gzipped archive of
+    For directories, this method always returns a tarred and gzipped archive of
     the directory.
 
     For files, if the request has an Accept-Encoding header containing gzip,
-    then the returned file is gzipped.
+    then the returned file is gzipped. Otherwise, the file is returned as-is.
+
+    HTTP headers:
+    - `Range: bytes=<start>-<end>`: fetch bytes from the range
+      `[<start>, <end>)`.
+
+    Query parameters:
+    - `head`: number of lines to fetch from the beginning of the file.
+      Default is 0, meaning to fetch the entire file.
+    - `tail`: number of lines to fetch from the end of the file.
+      Default is 0, meaning to fetch the entire file.
+    - `max_line_length`: maximum number of characters to fetch from each line,
+      if either `head` or `tail` is specified. Default is 128.
     """
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)
@@ -366,27 +452,22 @@ def _update_bundle_contents_blob(uuid):
     Update the contents of the given running or uploading bundle.
 
     Query parameters:
-        urls - comma-separated list of URLs from which to fetch data to fill the
-               bundle, using this option will ignore any uploaded file data
-        git - (optional) 1 if URL should be interpreted as git repos to clone
-              or 0 otherwise, default is 0
-    OR
-        filename - (optional) filename of the uploaded file, used to indicate
-                   whether or not it is an archive, default is 'contents'
-
-    Query parameters that are always available:
-        unpack - (optional) 1 if the uploaded file should be unpacked if it is
-                 an archive, or 0 otherwise, default is 1
-        simplify - (optional) 1 if the uploaded file should be 'simplified' if
-                   it is an archive, or 0 otherwise, default is 1
-                   (See UploadManager for full explanation of 'simplification')
-        finalize_on_failure - (optional) True ('1') if bundle state should be set
-                              to 'failed' in the case of a failure during upload,
-                              or False ('0') if the bundle state should not
-                              change on failure. Default is False.
-        state_on_success - (optional) Update the bundle state to this state if
-                           the upload completes successfully. Must be either
-                           'ready' or 'failed'. Default is 'ready'.
+    - `urls`: (optional) comma-separated list of URLs from which to fetch data
+      to fill the bundle, using this option will ignore any uploaded file data
+    - `git`: (optional) 1 if URL should be interpreted as git repos to clone
+      or 0 otherwise, default is 0.
+    - `filename`: (optional) filename of the uploaded file, used to indicate
+      whether or not it is an archive, default is 'contents'
+    - `unpack`: (optional) 1 if the uploaded file should be unpacked if it is
+      an archive, or 0 otherwise, default is 1
+    - `simplify`: (optional) 1 if the uploaded file should be 'simplified' if
+      it is an archive, or 0 otherwise, default is 1.
+    - `finalize_on_failure`: (optional) 1 if bundle state should be set
+      to 'failed' in the case of a failure during upload, or 0 if the bundle
+      state should not change on failure. Default is 0.
+    - `state_on_success`: (optional) Update the bundle state to this state if
+      the upload completes successfully. Must be either 'ready' or 'failed'.
+      Default is 'ready'.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -416,7 +497,7 @@ def _update_bundle_contents_blob(uuid):
             exclude_patterns=None, remove_sources=False,
             git=query_get_bool('git', default=False),
             unpack=query_get_bool('unpack', default=True),
-            simplify_archives=query_get_bool('simplify', default=True))
+            simplify_archives=query_get_bool('simplify', default=True)) # See UploadManager for full explanation of 'simplify'
 
         local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
 

@@ -13,26 +13,20 @@ import urllib2
 #  - CodaLabManager._authenticate
 #  - CodaLabManager.client
 #  - JsonApiClient._get_access_token
-class RestOAuthHandler(threading.local):
-    '''
+class RestOAuthHandler(object):
+    """
     Handles user authentication with the REST bundle service server. Fetches
     other user records from the local database.
-
-    Inherits from threading.local, which makes all instance attributes thread-local.
-    When an OAuthHandler instance is used from a new thread, __init__ will be called
-    again, and from thereon all attributes may be different between threads.
-    https://hg.python.org/cpython/file/2.7/Lib/_threading_local.py
-    '''
-    def __init__(self, address, model):
-        '''
+    """
+    def __init__(self, address):
+        """
         address: the address of the server
         model: BundleModel instance
-        '''
-        super(RestOAuthHandler, self).__init__(model)
+        """
         self._address = address
 
     def generate_token(self, grant_type, username, key):
-        '''
+        """
         Generate OAuth access token from username/password or from a refresh token.
 
         If the grant succeeds, the method returns a dictionary of the form:
@@ -41,13 +35,12 @@ class RestOAuthHandler(threading.local):
           'expires_in': <span in seconds>,
           'refresh_token': <token> }
         If the grant fails because of invalid credentials, None is returned.
-        '''
+        """
         if grant_type == 'credentials':
             return self._make_token_request({
                 'grant_type': 'password',
                 'username': username,
                 'password': key})
-            return self._generate_token_from_credentials(username, key)
         if grant_type == 'refresh_token':
             return self._make_token_request({
                 'grant_type': 'refresh_token',
