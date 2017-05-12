@@ -10,7 +10,7 @@ import time
 
 from contextlib import closing
 
-from codalab.lib.fuse import FUSE, FuseOSError, Operations
+from fuse import FUSE, FuseOSError, Operations
 from codalab.client.json_api_client import JsonApiRelationship
 from codalab.lib.path_util import normalize
 
@@ -65,11 +65,27 @@ class Memoize(MWT):
                     del self._caches[func][key]
 
 class BundleFuse(Operations):
+    """
+    A FUSE filesystem implementation for mounting CodaLab bundles
+
+    This is meant to be a read-only filesystem and so all write functionality is omitted.
+
+    If the bundle is a single file, the mountpoint will look like a directory that contains that single file.
+
+    """
+
     def __init__(self, client, target):
         self.client = client
         self.target = target
         self.bundle_uuid = target[0]
         self.fd = 0 # file descriptor
+        self.bundle_metadata = self.client.fetch('bundles', self.bundle_uuid)['metadata']
+
+        self.single_file_bundle = False
+        info = self._get_info('/')
+        if info['type'] == 'file':
+            self.single_file_bundle = True
+            print 'Note: specified bundle is a single file; mountpoint will look like a directory that contains that single file.'
 
     # Helpers
     # =======
@@ -78,36 +94,45 @@ class BundleFuse(Operations):
     def _get_info(self, path):
         ''' Set a request through the json api client to get info about the bundle '''
         info = self.client.fetch_contents_info(self.bundle_uuid, path, 1)
+        if info is None:
+            raise FuseOSError(errno.ENOENT)
         return info
 
     # Filesystem methods
     # ==================
 
     def getattr(self, path, fh=None):
-        '''
-        Fetch standard filesystem attributes
-        (fabianc: Or just outright make some of them up if they don't really matter)
-        '''
+        ''' Fetch standard filesystem attributes '''
 
-        info = self._get_info(path)
+        if self.single_file_bundle:
+            info = self._get_info('/')
+            if path == '/':
+                mode = stat.S_IFDIR | info['perm']
+                nlink = 2
+            else:
+                mode = stat.S_IFREG | info['perm']
+                nlink = 1
 
         # set item mode and nlinks according to item type
-        if info['type'] == 'file':
-            mode = stat.S_IFREG | info['perm']
-            nlink = 1
-        elif info['type'] == 'directory':
-            mode = stat.S_IFDIR | info['perm']
-            nlink = 2
-        elif info['type'] == 'link':
-            mode = stat.S_IFLNK | info['perm']
-            nlink = 1
+        else:
+            info = self._get_info(path)
+            if info['type'] == 'directory':
+                mode = stat.S_IFDIR | info['perm']
+                nlink = 2
+            elif info['type'] == 'file':
+                mode = stat.S_IFREG | info['perm']
+                nlink = 1
+            elif info['type'] == 'link':
+                mode = stat.S_IFLNK | info['perm']
+                nlink = 1
 
-        return { # time attributes are set to 0 for lack of a better idea
-            'st_atime': 0,
-            'st_ctime': 0,
+        bundle_created_time = self.bundle_metadata['created']
+        return {
+            'st_atime': bundle_created_time,
+            'st_ctime': bundle_created_time,
             'st_gid': 0,
             'st_mode': mode,
-            'st_mtime': 0,
+            'st_mtime': bundle_created_time,
             'st_nlink': nlink,
             'st_uid': 0,
             'st_size': info['size'],
@@ -117,15 +142,24 @@ class BundleFuse(Operations):
     def readdir(self, path, fh):
         ''' Yield a sequence of entries in the filesystem under the current path '''
         dirents = ['.', '..']
-        info = self._get_info(path)
-        items = info.get('contents', [])
-        for d in items:
-            dirents.append(d['name'])
+
+        if self.single_file_bundle:
+            dirents.append(self.bundle_metadata['name'])
+        else:
+            info = self._get_info(path)
+            items = info.get('contents', [])
+            for d in items:
+                dirents.append(d['name'])
+
         for r in dirents:
             yield r
 
     def readlink(self, path):
         ''' Figure out where the link points to '''
+
+        if self.single_file_bundle:
+            path = '/'
+
         info = self._get_info(path)
 
         pathname = info['link']
@@ -151,6 +185,10 @@ class BundleFuse(Operations):
 
     def read(self, path, length, offset, fh):
         ''' Return a range of bytes from a path as specified.  '''
+
+        if self.single_file_bundle:
+            path = '/'
+
         byte_range = (offset, offset + length - 1)
         with closing(self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)) as contents:
             result = contents.read()

@@ -7,6 +7,7 @@ import socket
 import ssl
 import struct
 import sys
+import subprocess
 
 from formatting import size_str
 
