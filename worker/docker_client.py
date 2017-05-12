@@ -3,11 +3,9 @@ import httplib
 import json
 import logging
 import os
-import re
 import socket
 import ssl
 import struct
-import subprocess
 import sys
 
 from formatting import size_str
@@ -62,6 +60,7 @@ class DockerClient(object):
     # Where to look for nvidia-docker-plugin
     # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin
     NV_HOST = 'localhost:3476'
+    MIN_API_VERSION = '1.17'
 
     def __init__(self):
         self._docker_host = os.environ.get('DOCKER_HOST') or None
@@ -168,19 +167,83 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 version_info = json.loads(version_response.read())
             except:
                 raise DockerException('Invalid version information')
-            if version_info['ApiVersion'] < '1.17':
+            if map(int, version_info['ApiVersion'].split('.')) < \
+                    map(int, self.MIN_API_VERSION.split('.')):
                 raise DockerException('Please upgrade your version of Docker')
 
-    @wrap_exception('Unable to fetch Docker image metadata')
-    def get_image_repo_digest(self, request_docker_image):
-        logger.debug('Fetching Docker image metadata for %s', request_docker_image)
+    @wrap_exception('Unable to get disk usage info')
+    def get_disk_usage(self):
+        """
+        Return the total amount of disk space used by Docker images, and the
+        amount that can be reclaimed by removing unused Docker images, in bytes.
+
+        Emulates computation of the RECLAIMABLE field in the output for
+        `docker system df`.
+
+        Original implementation:
+        https://github.com/docker/docker/blob/ea61dac9e6d04879445f9c34729055ac1bb15050/cli/command/formatter/disk_usage.go#L197-L214
+        """
         with closing(self._create_connection()) as conn:
-            conn.request('GET', '/images/%s/json' % request_docker_image)
+            conn.request('GET', '/system/df')
+            df_response = conn.getresponse()
+            if df_response.status != 200:
+                raise DockerException(df_response.read())
+            df_info = json.loads(df_response.read())
+        total = df_info['LayersSize']
+        used = 0.
+        for image in df_info['Images']:
+            if image['Containers'] > 0:
+                if image['VirtualSize'] == -1 or image['SharedSize'] == -1:
+                    continue
+                used += image['VirtualSize'] - image['SharedSize']
+        reclaimable = total - used
+        return total, reclaimable
+
+    def _inspect_image(self, image_name):
+        """
+        Get raw image info JSON.
+        :param image_name: id, tag, or repo digest
+        """
+        logger.debug('Fetching Docker image metadata for %s', image_name)
+        with closing(self._create_connection()) as conn:
+            conn.request('GET', '/images/%s/json' % image_name)
             create_image_response = conn.getresponse()
             if create_image_response.status != 200:
                 raise DockerException(create_image_response.read())
-            contents = json.loads(create_image_response.read())
-        return contents.get('RepoDigests', [''])[0]
+            return json.loads(create_image_response.read())
+
+    @wrap_exception('Unable to fetch Docker image metadata')
+    def get_image_repo_digest(self, request_docker_image):
+        info = self._inspect_image(request_docker_image)
+        # the following try-except clause is intentional:
+        # old docker versions may have an empty entry under RepoDigests
+        # older docker versions may not even have an entry under RepoDigests
+        # this handles both cases
+        # the goal is to eventually remove this try-except clause completely,
+        # once we are sure every worker has updated docker
+        try:
+            return info['RepoDigests'][0]
+        except (KeyError, IndexError):
+            return ''
+
+    @wrap_exception('Unable to remove Docker image')
+    def remove_image(self, repo_digest):
+        # First get the image id, because removing by repo digest only untags
+        # the digest, without deleting the image.
+        # https://github.com/docker/docker/issues/24688
+        image_id = self._inspect_image(repo_digest)['Id']
+
+        # Now delete it
+        with closing(self._create_connection()) as conn:
+            conn.request('DELETE', '/images/%s' % image_id)
+            remove_image_response = conn.getresponse()
+            if remove_image_response.status != 200:
+                raise DockerException(remove_image_response.read())
+            # Log the resulting actions
+            info = json.load(remove_image_response)
+            for line in info:
+                for action, target in line.items():
+                    logger.debug('docker image %s: %s', action.lower(), target)
 
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
@@ -266,7 +329,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         container_id = output
         return container_id
 
-    @wrap_exception('Unable to start Docker container')
+    @wrap_exception('Unable to start Docker container with nvidia-smi')
     def run_nvidia_smi(self, args, docker_image):
         # Create the container.
         create_request = {
@@ -276,24 +339,40 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         if self._use_nvidia_docker:
             self._add_nvidia_docker_arguments(create_request)
 
-        with closing(self._create_connection()) as create_conn:
-            create_conn.request('POST', '/containers/create',
-                                json.dumps(create_request),
-                                {'Content-Type': 'application/json'})
-            create_response = create_conn.getresponse()
-            if create_response.status != 201:
-                raise DockerException(create_response.read())
-            container_id = json.loads(create_response.read())['Id']
+        def _start_nvidia_smi():
+            with closing(self._create_connection()) as create_conn:
+                create_conn.request('POST', '/containers/create',
+                                    json.dumps(create_request),
+                                    {'Content-Type': 'application/json'})
+                create_response = create_conn.getresponse()
+                if create_response.status != 201:
+                    raise DockerException(create_response.read())
+                container_id = json.loads(create_response.read())['Id']
 
-        # Start the container.
-        logger.debug('Starting Docker container for running nvidia-smi')
-        with closing(self._create_connection()) as start_conn:
-            start_conn.request('POST', '/containers/%s/start' % container_id)
-            start_response = start_conn.getresponse()
-            if start_response.status != 204:
-                raise DockerException(start_response.read())
+            # Start the container.
+            logger.debug('Starting Docker container for running nvidia-smi')
+            with closing(self._create_connection()) as start_conn:
+                start_conn.request('POST', '/containers/%s/start' % container_id)
+                start_response = start_conn.getresponse()
+                if start_response.status != 204:
+                    raise DockerException(start_response.read())
+            return container_id
+
+        try:
+            container_id = _start_nvidia_smi()
+        except DockerException as e:
+            # The download image call is slow, even if the image is already
+            # available. Thus, we only make it if we know the image is not
+            # available. Start-up is much faster that way.
+            if 'No such image' in e.message:
+                def update_status(status):
+                    logger.info('Downloading Docker image for running nvidia-smi: ' + status)
+                self.download_image(docker_image, update_status)
+                container_id = _start_nvidia_smi()
+            else:
+                raise
+
         return container_id
-
 
     def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
@@ -322,11 +401,11 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
-        docker_commands = self._get_docker_commands(bundle_path, uuid, command, docker_image,
-                        request_network, dependencies)
+        docker_commands = self._get_docker_commands(
+            bundle_path, uuid, command, docker_image, request_network, dependencies)
 
-        volume_bindings = self._get_volume_bindings(bundle_path, uuid, command, docker_image,
-                        request_network, dependencies)
+        volume_bindings = self._get_volume_bindings(
+            bundle_path, uuid, command, docker_image, request_network, dependencies)
 
         # Get user/group that owns the bundle directory
         # Then we can ensure that any created files are owned by the user/group
@@ -350,6 +429,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             # This can cause problems if users expect to run as a specific user
             'User': '%s:%s' % (uid, gid),
         }
+
+        # TODO: Allocate the requested number of GPUs and isolate
         if self._use_nvidia_docker:
             self._add_nvidia_docker_arguments(create_request)
         if not request_network:
