@@ -24,7 +24,6 @@ import os
 import shlex
 import shutil
 import sys
-import subprocess
 import time
 import textwrap
 from contextlib import closing
@@ -1043,8 +1042,6 @@ class BundleCLI(object):
 
         # Do the download.
         target_info = client.fetch_contents_info(target[0], target[1], 0)
-        if target_info is None:
-            raise UsageError('Target doesn\'t exist.')
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
@@ -1116,8 +1113,9 @@ class BundleCLI(object):
         })
 
         # If bundle contents don't exist, finish after just copying metadata
-        target_info = source_client.fetch_contents_info(source_bundle_uuid)
-        if target_info is None:
+        try:
+            target_info = source_client.fetch_contents_info(source_bundle_uuid)
+        except NotFoundError:
             return
 
         # Collect information about how server should unpack
@@ -1750,13 +1748,10 @@ class BundleCLI(object):
     # Helper: shared between info and cat
     def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
         info = client.fetch_contents_info(target[0], target[1], 1)
-        info_type = info.get('type') if info is not None else None
+        info_type = info.get('type')
 
         if info_type is None:
-            if fail_if_not_exist:
-                raise UsageError('Target doesn\'t exist: %s/%s' % target)
-            else:
-                print >>self.stdout, formatting.verbose_contents_str(None)
+            print >>self.stdout, formatting.verbose_contents_str(None)
 
         if info_type == 'file':
             if decorate:
@@ -1831,12 +1826,14 @@ class BundleCLI(object):
 
         SLEEP_PERIOD = 1.0
 
-        # Wait for the run to start.
-        while True:
-            info = client.fetch('bundles', bundle_uuid)
-            if info['state'] in (State.RUNNING, State.READY, State.FAILED):
-                break
-            time.sleep(SLEEP_PERIOD)
+        # Wait for all files to become ready
+        for subpath in subpaths:
+            while True:
+                try:
+                    target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
+                    break
+                except NotFoundError:
+                    time.sleep(SLEEP_PERIOD)
 
         info = None
         run_finished = False
@@ -1851,13 +1848,12 @@ class BundleCLI(object):
                 # file and if so, initialize the offset.
                 if subpath_is_file[i] is None:
                     target_info = client.fetch_contents_info(bundle_uuid, subpaths[i], 0)
-                    if target_info is not None:
-                        if target_info['type'] == 'file':
-                            subpath_is_file[i] = True
-                            # Go to near the end of the file (TODO: make this match up with lines)
-                            subpath_offset[i] = max(target_info['size'] - 64, 0)
-                        else:
-                            subpath_is_file[i] = False
+                    if target_info['type'] == 'file':
+                        subpath_is_file[i] = True
+                        # Go to near the end of the file (TODO: make this match up with lines)
+                        subpath_offset[i] = max(target_info['size'] - 64, 0)
+                    else:
+                        subpath_is_file[i] = False
 
                 if not subpath_is_file[i]:
                     continue
@@ -2207,32 +2203,8 @@ class BundleCLI(object):
                 lines = worksheet_util.request_lines(worksheet_info)
 
             # Update worksheet
-            commands = client.update_worksheet_raw(worksheet_info['id'], lines)
+            client.update_worksheet_raw(worksheet_info['id'], lines)
             print >>self.stdout, 'Saved worksheet items for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])
-
-            # Batch the rm commands so that we can handle the recursive
-            # dependencies properly (and it's faster).
-            rm_bundle_uuids = []
-            rest_commands = []
-            for command in commands:
-                if command[0] == 'rm' and len(command) == 2:
-                    rm_bundle_uuids.append(command[1])
-                else:
-                    rest_commands.append(command)
-            commands = rest_commands
-            if len(rm_bundle_uuids) > 0:
-                commands.append(['rm'] + rm_bundle_uuids)
-
-            # Execute the commands that the user put into the worksheet.
-            for command in commands:
-                # Make sure to do it with respect to this worksheet!
-                spec = client.address + '::' + worksheet_uuid
-                if command[0] in ('ls', 'print'):
-                    command.append(spec)
-                else:
-                    command.extend(['--worksheet-spec', spec])
-                print >>self.stdout, '=== Executing: %s' % ' '.join(command)
-                self.do_command(command)
 
     @staticmethod
     def unpack_item(item):
