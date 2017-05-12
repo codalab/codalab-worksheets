@@ -17,9 +17,9 @@ success="${bold}\033[32m"  # green
 # =======================================
 
 
-if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] ); then
+if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] && [ "$1" != "dev" ] ); then
   echo "Usage:"
-  echo "  $0 [client | server]"
+  echo "  $0 [client | server | dev]"
   exit 1
 fi
 
@@ -43,9 +43,12 @@ if [ ! -e $env ]; then
 fi
 
 echo -e "${info}[*] Installing Python packages into $env...${reset}"
-$env/bin/pip install -r $codalabdir/requirements.txt
 if [ "$1" == "server" ]; then
   $env/bin/pip install -r $codalabdir/requirements-server.txt
+elif [ "$1" == "dev" ]; then
+  $env/bin/pip install -r $codalabdir/requirements-dev.txt
+else
+  $env/bin/pip install -r $codalabdir/requirements.txt
 fi
 
 ( # try

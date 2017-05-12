@@ -1,4 +1,4 @@
-'''
+"""
 A CodaLabManager instance stores all the information needed for the CLI, which
 is synchronized with a set of JSON files in the CodaLab directory.  It contains
 two types of information:
@@ -25,12 +25,13 @@ As an added benefit of the lazy importing and initialization, note that a config
 file that specifies enough information to construct some of these classes is
 still valid. For example, the config file for a remote client will not need to
 include any server configuration.
-'''
+"""
 import datetime
 import getpass
 import json
 import os
 import psutil
+import re
 import sys
 import tempfile
 import textwrap
@@ -266,9 +267,9 @@ class CodaLabManager(object):
 
     @cached
     def session_name(self):
-        '''
+        """
         Return the current session name.
-        '''
+        """
         if self.temporary:
             return 'temporary'
 
@@ -288,19 +289,25 @@ class CodaLabManager(object):
         session = 'top'
         max_depth = 10
         while process and max_depth:
-            name = os.path.basename(process.cmdline()[0])
-            if name not in ('sh', 'bash', 'csh', 'tcsh', 'zsh', 'python', 'ruby'):
+            try:
+                name = os.path.basename(process.cmdline()[0])
+                # When a shell is invoked as a login shell, its process command
+                # will be preceded by a dash '-'.
+                if re.match(r'-?(sh|bash|csh|tcsh|zsh|python|ruby)', name) is None:
+                    break
+                session = str(process.pid)
+                process = process.parent()
+                max_depth -= 1
+            except psutil.AccessDenied:
+                # If we hit a root process, just stop searching upwards
                 break
-            session = str(process.pid)
-            process = process.parent()
-            max_depth = max_depth - 1
         return session
 
     @cached
     def session(self):
-        '''
+        """
         Return the current session.
-        '''
+        """
         sessions = self.state['sessions']
         name = self.session_name()
         if name not in sessions:
@@ -515,12 +522,12 @@ class CodaLabManager(object):
         return _cache_token(token_info, username)
 
     def get_current_worksheet_uuid(self):
-        '''
+        """
         Return a worksheet_uuid for the current worksheet, or None if there is none.
 
         This method uses the current parent-process id to return the same result
         across multiple invocations in the same shell.
-        '''
+        """
         session = self.session()
         client = self.client(session['address'])
         worksheet_uuid = session.get('worksheet_uuid', None)
@@ -529,9 +536,9 @@ class CodaLabManager(object):
         return client, worksheet_uuid
 
     def set_current_worksheet_uuid(self, address, worksheet_uuid):
-        '''
+        """
         Set the current worksheet to the given worksheet_uuid.
-        '''
+        """
         session = self.session()
         session['address'] = address
         if worksheet_uuid:
