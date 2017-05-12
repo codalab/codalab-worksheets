@@ -120,17 +120,14 @@ def create_worksheets():
     return WorksheetSchema(many=True).dump(worksheets).data
 
 
+@put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
 @post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
 def update_worksheet_raw(uuid):
     lines = request.body.read().split(os.linesep)
-    new_items, commands = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
+    new_items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
     worksheet_info = get_worksheet_info(uuid, fetch_items=True)
     update_worksheet_items(worksheet_info, new_items)
-    return {
-        'data': {
-            'commands': commands
-        }
-    }
+    response.status = 204  # Success, No Content
 
 
 @patch('/worksheets', apply=AuthenticatedPlugin())
@@ -343,7 +340,7 @@ def set_worksheet_permission(worksheet, group_uuid, permission):
 def populate_worksheet(worksheet, name, title):
     file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
     lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
-    items, commands = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet.uuid)
+    items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet.uuid)
     info = get_worksheet_info(worksheet.uuid, fetch_items=True)
     update_worksheet_items(info, items)
     update_worksheet_metadata(worksheet.uuid, {'title': title})

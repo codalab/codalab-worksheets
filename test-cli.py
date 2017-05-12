@@ -16,12 +16,15 @@ Things not tested:
 - Permissions
 """
 from __future__ import print_function
-from collections import OrderedDict
+from collections import namedtuple, OrderedDict
+from contextlib import contextmanager
 
+import json
 import os
 import random
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import time
@@ -32,6 +35,7 @@ cl = 'codalab/bin/cl'
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
 crazy_name = 'crazy ("ain\'t it?")'
+CodaLabInstance = namedtuple('CodaLabInstance', 'host home username password')
 
 
 def test_path(name):
@@ -57,6 +61,18 @@ def temp_path(suffix):
 
 def random_name():
     return 'temp-test-cli-' + str(random.randint(0, 1000000))
+
+
+def current_worksheet():
+    """
+    Returns the full worksheet spec of the current worksheet.
+
+    Does so by parsing the output of `cl work`:
+        Switched to worksheet http://localhost:2800::home-pliang(0x87a7a7ffe29d4d72be9b23c745adc120).
+    """
+    m = re.search('(http[^\(]+)', run_command([cl, 'work']))
+    assert m is not None
+    return m.group(1)
 
 
 def sanitize(string):
@@ -89,8 +105,26 @@ def get_info(uuid, key):
     return run_command([cl, 'info', '-f', key, uuid])
 
 
-def wait_until_running(uuid):
-    while get_info(uuid, 'state') != 'running':
+def wait_until_running(uuid, timeout_seconds=100):
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > 100:
+            raise AssertionError('timeout while waiting for %s to run' % uuid)
+        state = get_info(uuid, 'state')
+        # Break when running or one of the final states
+        if state in {'running', 'ready', 'failed'}:
+            assert state == 'running', "waiting for 'running' state, but got '%s'" % state
+            return
+        time.sleep(0.5)
+
+
+def wait_for_contents(uuid, substring, timeout_seconds=100):
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > 100:
+            raise AssertionError('timeout while waiting for %s to run' % uuid)
+        if substring in run_command([cl, 'cat', uuid]):
+            return True
         time.sleep(0.5)
 
 
@@ -152,6 +186,102 @@ class Colorizer:
 
     @classmethod
     def cyan(cls, string): return cls._colorize(string, "CYAN")
+
+
+@contextmanager
+def temp_instance():
+    """
+    Usage:
+        with temp_instance() as remote:
+            run_command([cl, 'work', remote.home])
+            ... do more stuff with new temp instance ...
+
+    TODO:
+        - Use dockerized CodaLab services
+    """
+    original_worksheet = current_worksheet()
+
+    # Create another CodaLab instance.
+    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
+    remote_home = temp_path('-home')
+    os.mkdir(remote_home)
+    remote_worker_scratch = temp_path('-worker-scratch')
+    os.mkdir(remote_worker_scratch)
+    os.environ['CODALAB_HOME'] = remote_home
+
+    # Create credentials
+    test_username = os.environ.get('CODALAB_USERNAME', 'codalab')
+    test_password = os.environ.get('CODALAB_PASSWORD', '1234')
+    password_file = temp_path('-password')
+    with open(password_file, 'wb') as fp:
+        print(test_username, file=fp)
+        print(test_password, file=fp)
+    os.chmod(password_file, stat.S_IWUSR | stat.S_IRUSR)  # set mode to 0600
+
+    # Use simple local database
+    run_command([cl, 'config', 'server/class', 'SQLiteModel'])
+    run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + remote_home + '/bundle.db'])
+
+    # Configure aux servers with alternate ports
+    run_command([cl, 'config', 'server/rest_port', '3900'])
+    remote_host = 'http://localhost:3900'
+    remote_worksheet = remote_host + '::'
+
+    # Create root user
+    run_command(['scripts/create-root-user.py', test_password])
+
+    rest_server_proc = None
+    bundle_manager_proc = None
+    worker_proc = None
+    os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
+    FNULL = open(os.devnull, 'w')
+
+    try:
+        # Start auxiliary servers for the new auxiliary host
+        rest_server_proc = subprocess.Popen([cl, 'server'], stdout=FNULL, stderr=subprocess.PIPE)
+        bundle_manager_proc = subprocess.Popen([cl, 'bundle-manager'], stdout=FNULL, stderr=subprocess.PIPE)
+        wait_until_substring(rest_server_proc.stderr, 'Booting worker')
+        wait_until_substring(bundle_manager_proc.stderr, 'Bundle manager running')
+
+        # Start worker after servers are up
+        worker_proc = subprocess.Popen([os.path.join(base_path, 'venv/bin/python'),
+                                        os.path.join(base_path, 'worker/main.py'),
+                                        '--server=' + remote_host,
+                                        '--slots=1',
+                                        '--work-dir=' + remote_worker_scratch,
+                                        '--password-file=' + password_file],
+                                       stdout=subprocess.PIPE, stderr=FNULL)
+        wait_until_substring(worker_proc.stdout, 'Worker started')
+
+        # Restore original config
+        os.environ['CODALAB_HOME'] = old_home
+
+        # Switch to new host and log in to cache auth token
+        run_command([cl, 'logout', remote_worksheet[:-2]])
+        os.environ['CODALAB_USERNAME'] = test_username
+        os.environ['CODALAB_PASSWORD'] = test_password
+        run_command([cl, 'work', remote_worksheet])
+
+        yield CodaLabInstance(remote_host, remote_worksheet, test_username, test_password)
+
+    finally:
+        # Kill any processes started in reverse order
+        if worker_proc:
+            worker_proc.kill()
+        if bundle_manager_proc:
+            bundle_manager_proc.kill()
+        if rest_server_proc:
+            rest_server_proc.kill()
+
+        # Clean up temporary data
+        shutil.rmtree(remote_home)
+        shutil.rmtree(remote_worker_scratch)
+        os.remove(password_file)
+        del os.environ['PYTHONUNBUFFERED']
+        FNULL.close()
+
+        # Switch back to original worksheet for convenience
+        run_command([cl, 'work', original_worksheet])
 
 
 class ModuleContext(object):
@@ -376,22 +506,22 @@ def test(ctx):
     # Upload file with crazy name
     uuid = run_command([cl, 'upload', test_path(crazy_name)])
     check_equals(test_path_contents(crazy_name), run_command([cl, 'cat', uuid]))
- 
+
     # Upload directory with a symlink
     uuid = run_command([cl, 'upload', test_path('')])
     check_equals(' -> /etc/passwd', run_command([cl, 'cat', uuid + '/passwd']))
-    
+
     # Upload symlink without following it.
     uuid = run_command([cl, 'upload', test_path('a-symlink.txt')], 1)
- 
+
     # Upload symlink, follow link
     uuid = run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'])
     check_equals(test_path_contents('a-symlink.txt'), run_command([cl, 'cat', uuid]))
     run_command([cl, 'cat', uuid])  # Should have the full contents
- 
+
     # Upload broken symlink (should not be possible)
     uuid = run_command([cl, 'upload', test_path('broken-symlink'), '--follow-symlinks'], 1)
- 
+
     # Upload directory with excluded files
     uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
     check_num_lines(2 + 2, run_command([cl, 'cat', uuid]))  # 2 header lines, Only two files left after excluding and extracting.
@@ -714,13 +844,12 @@ def test(ctx):
     # killed.
     for running in [True, False]:
         # Wait for the output to appear. Also, tests cat on a directory.
-        while 'done' not in run_command([cl, 'cat', uuid]):
-            time.sleep(0.5)
+        wait_for_contents(uuid, substring='done', timeout_seconds=60)
 
         # Info has only the first 10 lines
         info_output = run_command([cl, 'info', uuid, '--verbose'])
         print(info_output)
-        check_contains('passwd', info_output)
+        check_contains('a.txt', info_output)
         assert '5\n6\n7' not in info_output, 'info output should contain only first 10 lines'
 
         # Cat has everything.
@@ -887,59 +1016,14 @@ def test(ctx):
 @TestModule.register('copy')
 def test(ctx):
     """Test copying between instances."""
-    # Figure out the current instance and use it as the 'remote' instance
-    # Switched to worksheet http://localhost:2800::home-pliang(0x87a7a7ffe29d4d72be9b23c745adc120).
-    m = re.search('(http[^\(]+)', run_command([cl, 'work']))
-    if not m:
-        print(Colorizer.yellow("[!] Not a remote instance, skipping test."))
-        return
-    source_worksheet = m.group(1)
+    source_worksheet = current_worksheet()
 
-    # Create another CodaLab instance.
-    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
-    remote_home = temp_path('-home')
-    os.environ['CODALAB_HOME'] = remote_home
-    os.mkdir(remote_home)
-
-    test_username = os.environ.get('CODALAB_USERNAME', 'codalab')
-    test_password = os.environ.get('CODALAB_PASSWORD', '1234')
-
-    # Use simple local database
-    run_command([cl, 'config', 'server/class', 'SQLiteModel'])
-    run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + remote_home + '/bundle.db'])
-
-    # Configure aux servers with alternate ports
-    run_command([cl, 'config', 'server/rest_port', '3900'])
-    remote_worksheet = 'http://localhost:3900::'
-
-    # Create root user
-    run_command(['scripts/create-root-user.py', test_password])
-
-    # Start auxiliary servers for the new auxiliary host
-    os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
-    rest_server_proc = subprocess.Popen([cl, 'server'], stderr=subprocess.PIPE)
-
-    try:
-        wait_until_substring(rest_server_proc.stderr, 'Booting worker')
-
-        # Restore original config
-        os.environ['CODALAB_HOME'] = old_home
-
-        # Switch to new host and log in to cache auth token
-        run_command([cl, 'logout', remote_worksheet[:-2]])
-        os.environ['CODALAB_USERNAME'] = test_username
-        os.environ['CODALAB_PASSWORD'] = test_password
+    with temp_instance() as remote:
+        remote_worksheet = remote.home
         run_command([cl, 'work', remote_worksheet])
 
         def check_agree(command):
             check_equals(run_command(command + ['-w', remote_worksheet]), run_command(command + ['-w', source_worksheet]))
-
-        # import pdb; pdb.set_trace()
-        #
-        # # TEST
-        # run_command([cl, 'work', remote_worksheet])
-        # uuid = run_command([cl, 'upload', test_path('')])
-        # run_command([cl, 'add', 'bundle', uuid, source_worksheet])
 
         # Upload to original worksheet, transfer to remote
         run_command([cl, 'work', source_worksheet])
@@ -971,11 +1055,6 @@ def test(ctx):
         run_command([cl, 'wadd', source_worksheet, remote_worksheet])
         run_command([cl, 'wadd', remote_worksheet, source_worksheet])
 
-    finally:
-        # Cleanup
-        run_command([cl, 'work', source_worksheet])
-        rest_server_proc.kill()
-        shutil.rmtree(remote_home)
 
 
 @TestModule.register('groups')
@@ -996,6 +1075,76 @@ def test(ctx):
     uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1','echo $LUA_PATH'])
     wait(uuid)
     check_contains('/user/.luarocks/share/lua/5.1/?.lua', run_command([cl, 'cat', uuid+'/stdout']))
+
+
+@TestModule.register('competition')
+def test(ctx):
+    """
+    Sanity-check the competition script.
+    """
+    submit_tag = 'submit'
+    eval_tag = 'eval'
+    with temp_instance() as remote:
+        log_worksheet_uuid = run_command([cl, 'new', 'log'])
+        devset_uuid = run_command([cl, 'upload', test_path('a.txt')])
+        testset_uuid = run_command([cl, 'upload', test_path('b.txt')])
+        script_uuid = run_command([cl, 'upload', test_path('evaluate.sh')])
+        submission_uuid = run_command([cl, 'run', 'dataset.txt:' + devset_uuid, 'echo dataset.txt > predictions.txt',
+                                       '--tags', submit_tag])
+
+        config_file = temp_path('-competition-config.json')
+        with open(config_file, 'wb') as fp:
+            json.dump({
+                "host": remote.host,
+                "username": remote.username,
+                "password": remote.password,
+                "log_worksheet_uuid": log_worksheet_uuid,
+                "submission_tag": submit_tag,
+                "predict": {
+                    "mimic": [
+                        {
+                            "old": devset_uuid,
+                            "new": testset_uuid
+                        }
+                    ],
+                    "tag": "predict"
+                },
+                "evaluate": {
+                    "dependencies": [
+                        {
+                            "parent_uuid": script_uuid,
+                            "child_path": "evaluate.sh"
+                        },
+                        {
+                            "parent_uuid": "{predict}",
+                            "parent_path": "predictions.txt",
+                            "child_path": "predictions.txt"
+                        }
+                    ],
+                    "command": "cat predictions.txt | bash evaluate.sh",
+                    "tag": eval_tag,
+                },
+                "score_specs": [
+                    {
+                        "name": "goodness",
+                        "key": "/stdout:goodness"
+                    }
+                ],
+                "metadata": {
+                    "name": "Cool Competition Leaderboard"
+                }
+            }, fp)
+
+        out_file = temp_path('-competition-out.json')
+        try:
+            run_command([os.path.join(base_path, 'scripts/competitiond.py'), config_file, out_file, '--verbose'])
+
+            # Check that eval bundle gets created
+            results = run_command([cl, 'search', 'tags=' + eval_tag, '-u'])
+            check_equals(1, len(results.splitlines()))
+        finally:
+            os.remove(config_file)
+            os.remove(out_file)
 
 
 if __name__ == '__main__':
