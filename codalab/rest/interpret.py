@@ -544,7 +544,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
             else:
                 info = None
             if info is None: break
-    return apply_func(post, info)
+    return formatting.verbose_contents_str(apply_func(post, info))
 
 
 def resolve_items_into_infos(items):
