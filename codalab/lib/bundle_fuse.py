@@ -74,11 +74,12 @@ class BundleFuse(Operations):
 
     """
 
-    def __init__(self, client, target):
+    def __init__(self, client, target, verbose=False):
         self.client = client
         self.target = target
         self.bundle_uuid = target[0]
         self.fd = 0 # file descriptor
+        self.verbose = verbose
         self.bundle_metadata = self.client.fetch('bundles', self.bundle_uuid)['metadata']
 
         self.single_file_bundle = False
@@ -97,6 +98,10 @@ class BundleFuse(Operations):
         if info is None:
             raise FuseOSError(errno.ENOENT)
         return info
+
+    def verbose_print(self, msg):
+        if self.verbose:
+            print '[BundleFUSE]:', msg
 
     # Filesystem methods
     # ==================
@@ -127,7 +132,8 @@ class BundleFuse(Operations):
                 nlink = 1
 
         bundle_created_time = self.bundle_metadata['created']
-        return {
+
+        attributes = {
             'st_atime': bundle_created_time,
             'st_ctime': bundle_created_time,
             'st_gid': 0,
@@ -137,6 +143,9 @@ class BundleFuse(Operations):
             'st_uid': 0,
             'st_size': info['size'],
         }
+
+        self.verbose_print('getattr path={}, attr={}'.format(path, attributes))
+        return attributes
 
 
     def readdir(self, path, fh):
@@ -151,6 +160,8 @@ class BundleFuse(Operations):
             for d in items:
                 dirents.append(d['name'])
 
+        self.verbose_print('readdir path={}, dirents={}'.format(path, dirents))
+
         for r in dirents:
             yield r
 
@@ -163,6 +174,8 @@ class BundleFuse(Operations):
         info = self._get_info(path)
 
         pathname = info['link']
+        self.verbose_print('readlink path={}, pathname={}'.format(path, pathname))
+
         #TODO: not sure if this is completely correct
         if pathname.startswith("/"):
             # Path name is absolute, sanitize it.
@@ -181,6 +194,7 @@ class BundleFuse(Operations):
         '''
 
         self.fd += 1
+        self.verbose_print('open path={}'.format(path))
         return self.fd
 
     def read(self, path, length, offset, fh):
@@ -192,9 +206,11 @@ class BundleFuse(Operations):
         byte_range = (offset, offset + length - 1)
         with closing(self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)) as contents:
             result = contents.read()
+
+        self.verbose_print('read path={}, length={}, offset={}'.format(path, length, offset))
         return result
 
 
-def bundle_mount(client, mountpoint, target):
+def bundle_mount(client, mountpoint, target, verbose=False):
     ''' Mount the filesystem on the mountpoint. '''
-    FUSE(BundleFuse(client, target), mountpoint, nothreads=True, foreground=True)
+    FUSE(BundleFuse(client, target, verbose), mountpoint, nothreads=True, foreground=True)

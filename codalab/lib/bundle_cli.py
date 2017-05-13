@@ -1743,6 +1743,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
             Commands.Argument('--mountpoint', help='Empty directory path to set up as the mountpoint for FUSE.'),
+            Commands.Argument('--verbose', help='Verbose mode for BundleFUSE.', action='store_true', default=False),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1757,7 +1758,7 @@ class BundleCLI(object):
         path_util.check_isvalid(mountpoint, 'mount')
         print >>self.stdout, 'BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint)
         print >>self.stdout, 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.'
-        bundle_fuse.bundle_mount(client, mountpoint, target)
+        bundle_fuse.bundle_mount(client, mountpoint, target, args.verbose)
         print >>self.stdout, 'BundleFUSE shutting down.'
 
     @Commands.command(
