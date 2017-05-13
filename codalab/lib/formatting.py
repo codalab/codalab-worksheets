@@ -1,11 +1,13 @@
 """
 Provides basic formatting utilities.
 """
-
 import datetime
 import json
 import shlex
 import pipes
+import re
+import sys
+import unicodedata
 
 from worker import formatting as worker_formatting
 
@@ -149,3 +151,12 @@ def verbose_pretty_json(obj):
 
 def key_value_list(pairs):
     return "\n".join([("%s=%r" % tuple(p)) for p in pairs])
+
+
+ALL_CHARS = (unichr(i) for i in xrange(sys.maxunicode))
+CONTROL_CHARS = ''.join(c for c in ALL_CHARS if unicodedata.category(c) == 'Cc')
+CONTROL_CHARS_REGEX = re.compile('[%s]' % re.escape(CONTROL_CHARS))
+
+
+def strip_control_chars(s):
+    return CONTROL_CHARS_REGEX.sub('', s)

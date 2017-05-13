@@ -133,14 +133,14 @@ def get_worksheet_lines(worksheet_info):
                 # lines.append('ERROR: non-existent bundle %s' % bundle_info['uuid'])
                 description = formatting.contents_str(None)
             else:
-                metadata = bundle_info['metadata']
-                # raise Exception(metadata)
                 description = bundle_info['bundle_type']
-                description += ' ' + metadata['name']
+                description += ' ' + bundle_info['metadata']['name']
                 deps = interpret_genpath(bundle_info, 'dependencies')
-                if deps: description += ' -- ' + deps
+                if deps:
+                    description += ' -- ' + deps
                 command = bundle_info.get('command')
-                if command: description += ' : ' + command
+                if command:
+                    description += ' : ' + formatting.strip_control_chars(command)
             lines.append(bundle_line(description, bundle_info['uuid']))
         elif item_type == TYPE_WORKSHEET:
             lines.append(worksheet_line('worksheet ' + formatting.contents_str(subworksheet_info.get('name')),
