@@ -2,6 +2,7 @@
 spec_util contains some simple methods to generate and check names and uuids.
 """
 import re
+import urlparse
 import uuid
 
 from codalab.common import (
@@ -86,17 +87,32 @@ def create_default_name(bundle_type, raw_material):
     return name
 
 
+def is_instance_url(s):
+    try:
+        url = urlparse.urlsplit(s)
+        return (url.scheme in ('http', 'https') and
+                len(url.netloc) > 0 and
+                not url.query and
+                not url.fragment)
+    except ValueError:
+        return False
+
+
 def client_is_explicit(spec):
     return '::' in spec
+
 
 def home_worksheet(username):
     return 'home-' + username
 
+
 def is_home_worksheet(name):
     return name.startswith('home-')
 
+
 def is_dashboard(name):
     return name == 'dashboard'
+
 
 def is_public_home(name):
     return name == 'home'

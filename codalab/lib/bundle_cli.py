@@ -617,6 +617,8 @@ class BundleCLI(object):
         else:
             address = self.manager.apply_alias(tokens[0])
             spec = tokens[1]
+        if not spec_util.is_instance_url(address):
+            raise UsageError('Invalid instance address %r' % address)
         return self.manager.client(address), spec
 
     def parse_client_worksheet_uuid(self, spec):
