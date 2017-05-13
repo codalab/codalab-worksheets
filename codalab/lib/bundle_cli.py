@@ -1225,6 +1225,7 @@ class BundleCLI(object):
         metadata = self.get_missing_metadata(RunBundle, args)
 
         if args.local:
+            self._fail_if_headless(args)  # Disable on headless systems
             docker_image = metadata.get('request_docker_image', None)
             if not docker_image:
                 raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
@@ -1272,6 +1273,7 @@ class BundleCLI(object):
         )
     )
     def do_edit_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         docker_image = args.request_docker_image
 
         uuid = generate_uuid()
@@ -1320,6 +1322,7 @@ class BundleCLI(object):
         )
     )
     def do_commit_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         cli_command = 'docker commit {} {}'.format(args.container, args.image_tag)
         os.system(cli_command)
 
@@ -1331,6 +1334,7 @@ class BundleCLI(object):
         )
     )
     def do_push_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         print >>self.stdout, '===='
         print >>self.stdout, 'cl push-image has been deprecated and disabled. Please use docker push instead:'
         print >>self.stdout, ''
