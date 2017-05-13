@@ -1,13 +1,12 @@
 """
 BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
-
+from uuid import uuid4
 import collections
 import datetime
 import json
 import re
 import time
-import uuid
 
 from sqlalchemy import (
     and_,
@@ -78,14 +77,18 @@ from codalab.objects.user import (
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
+BundleStateAndOwnerId = collections.namedtuple('BundleStateAndOwnerId', 'uuid state owner_id')
+
+
 def str_key_dict(row):
-    '''
+    """
     row comes out of an element of a database query.
     For some versions of SqlAlchemy, the keys are of type sqlalchemy.sql.elements.quoted_name,
     which cannot be serialized to JSON.
     This function converts the keys to strings.
-    '''
+    """
     return dict((str(k), v) for k, v in row.items())
+
 
 class BundleModel(object):
     def __init__(self, engine, default_user_info):
@@ -768,18 +771,19 @@ class BundleModel(object):
                 do_update(connection)
 
     def get_bundle_state(self, uuid):
-        result_dict = self.get_bundle_states([uuid])
-        if uuid not in result_dict:
-            raise NotFoundError('Could not find bundle with uuid %s' % uuid)
-        return result_dict[uuid]
-
-    def get_bundle_states(self, uuids):
-        '''
-        Return {uuid: state, ...}
-        '''
         with self.engine.begin() as connection:
-            rows = connection.execute(select([cl_bundle.c.uuid, cl_bundle.c.state]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
-            return dict((r.uuid, r.state) for r in rows)
+            row = connection.execute(select([cl_bundle.c.state]).where(cl_bundle.c.uuid == uuid)).fetchone()
+            if row is None:
+                raise NotFoundError('Could not find bundle with uuid %s' % uuid)
+            return row.state
+
+    def get_bundle_states_and_owners(self, uuids):
+        """
+        Return [(uuid, state, owner_id), ...]
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(select([cl_bundle.c.uuid, cl_bundle.c.state, cl_bundle.c.owner_id]).where(cl_bundle.c.uuid.in_(uuids))).fetchall()
+            return [BundleStateAndOwnerId(r.uuid, r.state, r.owner_id) for r in rows]
 
     def delete_bundles(self, uuids):
         '''
@@ -1710,7 +1714,7 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
-            user_id = user_id or '0x%s' % uuid.uuid4().hex
+            user_id = user_id or '0x%s' % uuid4().hex
 
             connection.execute(cl_user.insert().values({
                 "user_id": user_id,
@@ -1736,7 +1740,7 @@ class BundleModel(object):
             if is_verified:
                 verification_key = None
             else:
-                verification_key = uuid.uuid4().hex
+                verification_key = uuid4().hex
                 connection.execute(cl_user_verification.insert().values({
                     "user_id": user_id,
                     "date_created": now,
@@ -1761,7 +1765,7 @@ class BundleModel(object):
             ).limit(1)).fetchone()
 
             if verify_row is None:
-                key = uuid.uuid4().hex
+                key = uuid4().hex
                 now = datetime.datetime.utcnow()
                 connection.execute(cl_user_verification.insert().values({
                     "user_id": user_id,
@@ -1817,7 +1821,7 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
-            code = uuid.uuid4().hex
+            code = uuid4().hex
 
             connection.execute(cl_user_reset_code.insert().values({
                 "user_id": user_id,

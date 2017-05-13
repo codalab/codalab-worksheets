@@ -623,8 +623,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     check_bundles_have_all_permission(local.model, request.user, relevant_uuids)
 
     # Make sure we don't delete bundles which are active.
-    states = local.model.get_bundle_states(uuids)
-    active_uuids = [uuid for (uuid, state) in states.items() if state in State.ACTIVE_STATES]
+    infos = local.model.get_bundle_states_and_owners(uuids)
+    active_uuids = [info.uuid for info in infos if info.state in State.ACTIVE_STATES]
     if len(active_uuids) > 0:
         raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
                          'For run bundles, kill them first. ' +
@@ -647,6 +647,7 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
                              (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
 
     # Delete the actual bundle
+    owner_ids = [info.owner_id for info in infos]
     if not dry_run:
         if data_only:
             # Just remove references to the data hashes
@@ -656,7 +657,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
             local.model.delete_bundles(relevant_uuids)
 
         # Update user statistics
-        local.model.update_user_disk_used(request.user.user_id)
+        for owner_id in owner_ids:
+            local.model.update_user_disk_used(owner_id)
 
     # Delete the data.
     for uuid in relevant_uuids:
