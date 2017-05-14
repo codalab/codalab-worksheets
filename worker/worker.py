@@ -8,6 +8,7 @@ import threading
 import time
 import traceback
 import re
+import json
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
@@ -34,6 +35,9 @@ class Worker(object):
            their dependencies) and the cache of Docker images.
         4) Upgrading the worker.
     """
+
+    STATE_FILENAME = 'worker-state.json'
+
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
                  max_images_bytes, shared_file_system,
                  slots, bundle_service, docker):
@@ -43,23 +47,62 @@ class Worker(object):
         self._bundle_service = bundle_service
         self._docker = docker
         self._slots = slots
-
-        if not self.shared_file_system:
-            # Manages which dependencies are available.
-            self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
-        self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
-        self._max_images_bytes = max_images_bytes
+        self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
 
         # Dictionary from UUID to Run that keeps track of bundles currently
         # running. These runs are added to this dict inside _run, and removed
         # when the Run class calls finish_run.
-        self._runs_lock = threading.Lock()
         self._runs = {}
+        self._runs_lock = threading.Lock()
+
+        self._previous_runs = {}
+        if os.path.exists(self._state_file):
+            self._load_state()
+        else:
+            if not os.path.exists(work_dir):
+                os.makedirs(work_dir, 0770)
+            self._save_state()
+
+        if not self.shared_file_system:
+            # Manages which dependencies are available.
+            self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes, self._previous_runs.keys())
+        self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
+        self._max_images_bytes = max_images_bytes
 
         self._exiting_lock = threading.Lock()
         self._exiting = False
         self._should_upgrade = False
         self._last_checkin_successful = False
+
+        self._resume_previous_runs()
+
+    def _load_state(self):
+        with open(self._state_file, 'r') as f:
+            state = json.load(f)
+            print('loaded state: {}'.format(state))
+            for uuid, run_info in state['runs'].items():
+                self._previous_runs[uuid] = run_info
+
+    def _resume_previous_runs(self):
+        with self._runs_lock:
+            for uuid, run_info in self._previous_runs.items():
+                run = Run.deserialize(self._bundle_service, self._docker, self._image_manager, self, run_info)
+                run.resume()
+                self._runs[uuid] = run
+
+    def _save_state(self):
+        # In case we're initializing the state for the first time
+        state = {
+            'runs': {}
+        }
+
+        with self._runs_lock:
+            for uuid, run in self._runs.items():
+                state['runs'][uuid] = run.serialize()
+
+        with open(self._state_file, 'w') as f:
+            print('save state: {}'.format(state))
+            json.dump(state, f)
 
     def run(self):
         if self._max_images_bytes is not None:
@@ -69,6 +112,7 @@ class Worker(object):
 
         while self._should_run():
             try:
+                self._save_state()
                 self._checkin()
                 if not self._last_checkin_successful:
                     print('Connected! Successful check in.')
@@ -80,6 +124,7 @@ class Worker(object):
                 time.sleep(1)
 
         self._checkout()
+        #self._save_state()
 
         if self._max_images_bytes is not None:
             self._image_manager.stop_cleanup_thread()

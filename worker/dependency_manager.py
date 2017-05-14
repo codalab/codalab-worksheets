@@ -15,10 +15,10 @@ class DependencyManager(object):
     """
     STATE_FILENAME = 'state.json'
 
-    def __init__(self, work_dir, max_work_dir_size_bytes):
-        self._work_dir = work_dir
+    def __init__(self, work_dir, max_work_dir_size_bytes, prevous_runs=[]):
         self._max_work_dir_size_bytes = max_work_dir_size_bytes
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
+        self._work_dir = os.path.join(work_dir, 'bundles')
         self._lock = threading.Lock()
         self._stop_cleanup = False
         self._cleanup_thread = None
@@ -27,13 +27,14 @@ class DependencyManager(object):
         self._paths = set()
 
         if os.path.exists(self._state_file):
-            self._load_state()
+            self._load_state(prevous_runs)
         else:
-            remove_path(work_dir)
-            os.makedirs(work_dir, 0770)
+            remove_path(self._work_dir)
+            print('remove')
+            os.makedirs(self._work_dir, 0770)
             self._save_state()
 
-    def _load_state(self):
+    def _load_state(self, prevous_runs):
         with open(self._state_file, 'r') as f:
             loaded_state = json.loads(f.read())
 
@@ -43,9 +44,12 @@ class DependencyManager(object):
                 Dependency.load(dependency, self._lock))
             self._paths.add(dep.path)
 
+        for uuid in prevous_runs:
+            self._paths.add(uuid)
+        print("paths: {}".format(self._paths))
+
         # Remove paths that aren't complete (e.g. interrupted downloads and runs).
-        for path in set(os.listdir(self._work_dir)) - self._paths - \
-                {DependencyManager.STATE_FILENAME, DockerImageManager.STATE_FILENAME}:
+        for path in set(os.listdir(self._work_dir)) - self._paths:
             remove_path(os.path.join(self._work_dir, path))
 
     def _save_state(self):
