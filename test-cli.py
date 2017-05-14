@@ -727,6 +727,7 @@ def test(ctx):
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
+    run_command([cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')])  # try unicode in worksheet contents
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
 
 

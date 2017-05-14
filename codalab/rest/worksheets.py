@@ -14,6 +14,7 @@ from codalab.lib import (
 from codalab.lib.canonicalize import HOME_WORKSHEET
 from codalab.lib.server_util import (
     bottle_patch as patch,
+    decoded_body,
     json_api_include,
     query_get_bool,
     query_get_json_api_include_set,
@@ -150,7 +151,7 @@ def update_worksheet_raw(uuid):
     """
     Request body contains the raw lines of the worksheet.
     """
-    lines = request.body.read().split(os.linesep)
+    lines = decoded_body().split(os.linesep)
     new_items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
     worksheet_info = get_worksheet_info(uuid, fetch_items=True)
     update_worksheet_items(worksheet_info, new_items)

@@ -97,6 +97,12 @@ class BundleModel(object):
         self.public_group_uuid = ''
         self.create_tables()
 
+    def encode_str(self, value):
+        raise NotImplementedError
+
+    def decode_str(self, value):
+        raise NotImplementedError
+
     def _reset(self):
         '''
         Do a drop / create table to clear and reset the schema of all tables.

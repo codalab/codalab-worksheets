@@ -16,6 +16,7 @@ results in the following:
 """
 # TODO(sckoo): Move this into a separate CLI directory/package
 import argparse
+import codecs
 import datetime
 import inspect
 import itertools
@@ -32,10 +33,7 @@ from StringIO import StringIO
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
-from codalab.bundles import (
-    get_bundle_subclass,
-    UPLOADED_TYPES,
-)
+from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
@@ -2284,10 +2282,11 @@ class BundleCLI(object):
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
                 if args.file == '-':
-                    infile = sys.stdin
+                    lines = sys.stdin.readlines()
                 else:
-                    infile = open(args.file)
-                lines = [line.rstrip() for line in infile.readlines()]
+                    with codecs.open(args.file, encoding='utf-8', mode='r') as infile:
+                        lines = infile.readlines()
+                lines = [line.rstrip() for line in lines]
             else:
                 worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
                 lines = worksheet_util.request_lines(worksheet_info)

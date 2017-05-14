@@ -664,4 +664,5 @@ class JsonApiClient(RestClient):
         self._make_request(
             method='POST',
             path='/worksheets/%s/raw' % worksheet_id,
+            headers={'Content-Type': 'text/plain'},
             data='\n'.join(lines))

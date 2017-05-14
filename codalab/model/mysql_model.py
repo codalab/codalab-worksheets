@@ -54,5 +54,6 @@ class MySQLModel(BundleModel):
 
     def encode_str(self, value):
         return value.encode('utf-8')
+
     def decode_str(self, value):
         return value.decode('utf-8')
