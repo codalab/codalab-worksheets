@@ -1,3 +1,6 @@
+"""
+Bundle manager integration with Torque / PBS / Maui job scheduler.
+"""
 import logging
 import os
 import re
@@ -156,7 +159,7 @@ class TorqueBundleManager(BundleManager):
                 m = re.match('host=(.+)', request_queue)
                 tagm = re.match('tag=.+', request_queue)
                 if m:
-                    resource_args.extend(['-l', 'host=' + m.group(1)])
+                    resource_args.extend(['-W', 'x=HOSTLIST:' + m.group(1)])
                 elif not tagm:
                     resource_args.extend(['-q', request_queue])
             
