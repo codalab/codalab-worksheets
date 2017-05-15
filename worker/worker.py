@@ -74,8 +74,6 @@ class Worker(object):
         self._should_upgrade = False
         self._last_checkin_successful = False
 
-        self._resume_previous_runs()
-
     def _load_state(self):
         with open(self._state_file, 'r') as f:
             state = json.load(f)
@@ -112,6 +110,7 @@ class Worker(object):
             try:
                 self._save_state()
                 self._checkin()
+                self._resume_previous_runs()
                 if not self._last_checkin_successful:
                     print('Connected! Successful check in.')
                 self._last_checkin_successful = True
@@ -122,7 +121,7 @@ class Worker(object):
                 time.sleep(1)
 
         self._checkout()
-        #self._save_state()
+        self._save_state()
 
         if self._max_images_bytes is not None:
             self._image_manager.stop_cleanup_thread()

@@ -110,8 +110,26 @@ class Run(object):
         return True
 
     def resume(self):
+        # Report that the bundle is running. We note the start time here for
+        # accurate accounting of time used, since the clock on the bundle
+        # service and on the worker could be different.
+        self._start_time = time.time()
+        start_message = {
+            'hostname': socket.gethostname(),
+            'start_time': int(time.time()),
+        }
+        if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
+                                                 start_message):
+            print("false!!")
+            return False
+
         # Start a thread for this run.
-        threading.Thread(target=Run._monitor, args=[self]).start()
+        def resume_run(self):
+            Run._safe_update_run_status(self, 'Running')
+            Run._monitor(self)
+
+        print("resuming")
+        threading.Thread(target=resume_run, args=[self]).start()
 
     def _safe_update_docker_image(self, docker_image):
         """ Update the docker_image metadata field for the run bundle """
@@ -238,6 +256,7 @@ class Run(object):
         REPORT_FREQ_SECS = 5.0
         last_report_time = 0
         while True:
+            print("monitoring {}".format(self._uuid))
             self._handle_kill()
             if self._check_and_report_finished():
                 break

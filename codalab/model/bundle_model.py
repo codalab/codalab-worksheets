@@ -687,6 +687,45 @@ class BundleModel(object):
 
         return True
 
+    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+        '''
+        Marks the bundle as running but only if it is still scheduled to run
+        #on the given worker (done by checking the worker_run table). Returns
+        True if it is. Updates a few metadata fields and the events log.
+        '''
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return False
+            if row.state != State.WORKER_DISCONNECTED:
+                return False
+
+            worker_run_row = {
+                'user_id': user_id,
+                'worker_id': worker_id,
+                'run_uuid': bundle.uuid,
+            }
+            connection.execute(cl_worker_run.insert().values(worker_run_row))
+
+            bundle_update = {
+                'state': State.RUNNING,
+                'metadata': {
+                    'last_updated': start_time,
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+
+        self.update_events_log(
+            user_id=bundle.owner_id,
+            user_name=None,  # Don't know
+            command='resume_bundle',
+            args=(bundle.uuid),
+            uuid=bundle.uuid)
+
+        return True
+
     def finalize_bundle(self, bundle, user_id, exitcode=None, failure_message=None):
         '''
         Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields, the

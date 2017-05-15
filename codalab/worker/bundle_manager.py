@@ -250,7 +250,7 @@ class BundleManager(object):
 
     def _fail_stuck_running_bundles(self, workers):
         """
-        Fails bundles that got stuck in the RUNNING state. -> make them into WORKER_DISCONNECTED?
+        Make bundles that got stuck in the RUNNING state into WORKER_DISCONNECTED
         """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
