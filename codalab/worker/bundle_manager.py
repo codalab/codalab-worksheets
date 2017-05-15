@@ -225,11 +225,11 @@ class BundleManager(object):
 
     def _cleanup_dead_workers(self, workers, callback=None):
         """
-        Clean-up workers that we haven't heard from for more than 20 minutes.
+        Clean-up workers that we haven't heard from for more than 30 seconds.
         Such workers probably died without checking out properly.
         """
         for worker in workers.workers():
-            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(minutes=20):
+            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(seconds=30):
                 logger.info('Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id'])
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker)
@@ -250,15 +250,16 @@ class BundleManager(object):
 
     def _fail_stuck_running_bundles(self, workers):
         """
-        Fails bundles that got stuck in the RUNNING state.
+        Fails bundles that got stuck in the RUNNING state. -> make them into WORKER_DISCONNECTED?
         """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
-                time.time() - bundle.metadata.last_updated > 60 * 60):  # Shouldn't really happen, but let's be safe.
-                failure_message = 'Worker died'
+                time.time() - bundle.metadata.last_updated > 1 * 30):  # Shouldn't really happen, but let's be safe.
+                failure_message = 'Worker disconnected'
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
-                self._model.finalize_bundle(bundle, -1, exitcode=None, failure_message=failure_message)
-                workers.restage(bundle.uuid)
+                self._model.set_disconnected_bundle(bundle)
+                #self._model.finalize_bundle(bundle, -1, exitcode=None, failure_message=failure_message)
+                #workers.restage(bundle.uuid)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
         """

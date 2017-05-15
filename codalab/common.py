@@ -102,9 +102,10 @@ class State(object):
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
     KILLED = 'killed'     # Killed by user
+    WORKER_DISCONNECTED = 'worker_disconnected'
 
     OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED}
-    ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING}
+    ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, WORKER_DISCONNECTED}
     FINAL_STATES = {READY, FAILED, KILLED}
 
 
