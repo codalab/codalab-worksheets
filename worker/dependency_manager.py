@@ -13,7 +13,7 @@ class DependencyManager(object):
     runs download the same dependency at the same time. Ensures that the total
     size of all the dependencies doesn't exceed the given limit.
     """
-    STATE_FILENAME = 'state.json'
+    STATE_FILENAME = 'dependency-state.json'
 
     def __init__(self, work_dir, max_work_dir_size_bytes, prevous_runs=[]):
         self._max_work_dir_size_bytes = max_work_dir_size_bytes
@@ -30,7 +30,6 @@ class DependencyManager(object):
             self._load_state(prevous_runs)
         else:
             remove_path(self._work_dir)
-            print('remove')
             os.makedirs(self._work_dir, 0770)
             self._save_state()
 
@@ -46,7 +45,6 @@ class DependencyManager(object):
 
         for uuid in prevous_runs:
             self._paths.add(uuid)
-        print("paths: {}".format(self._paths))
 
         # Remove paths that aren't complete (e.g. interrupted downloads and runs).
         for path in set(os.listdir(self._work_dir)) - self._paths:

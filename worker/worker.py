@@ -79,7 +79,6 @@ class Worker(object):
     def _load_state(self):
         with open(self._state_file, 'r') as f:
             state = json.load(f)
-            print('loaded state: {}'.format(state))
             for uuid, run_info in state['runs'].items():
                 self._previous_runs[uuid] = run_info
 
@@ -101,7 +100,6 @@ class Worker(object):
                 state['runs'][uuid] = run.serialize()
 
         with open(self._state_file, 'w') as f:
-            print('save state: {}'.format(state))
             json.dump(state, f)
 
     def run(self):
