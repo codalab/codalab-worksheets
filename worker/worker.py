@@ -86,6 +86,7 @@ class Worker(object):
                 run = Run.deserialize(self._bundle_service, self._docker, self._image_manager, self, run_info)
                 run.resume()
                 self._runs[uuid] = run
+        self._previous_runs = {}
 
     def _save_state(self):
         # In case we're initializing the state for the first time

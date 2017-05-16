@@ -113,10 +113,9 @@ class Run(object):
         # Report that the bundle is running. We note the start time here for
         # accurate accounting of time used, since the clock on the bundle
         # service and on the worker could be different.
-        self._start_time = time.time()
         start_message = {
             'hostname': socket.gethostname(),
-            'start_time': int(time.time()),
+            'start_time': int(self._start_time),
         }
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
                                                  start_message):
@@ -128,7 +127,7 @@ class Run(object):
             Run._safe_update_run_status(self, 'Running')
             Run._monitor(self)
 
-        print("resuming")
+        print("resuming bundle {}, container {}".format(self._uuid, self._container_id))
         threading.Thread(target=resume_run, args=[self]).start()
 
     def _safe_update_docker_image(self, docker_image):

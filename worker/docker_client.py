@@ -508,7 +508,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             conn.request('GET', '/containers/%s/json' % container_id)
             inspect_response = conn.getresponse()
             if inspect_response.status == 404:
-                return (True, None, 'Lost by Docker')
+                return (True, None, 'Container {} Lost by Docker'.format(container_id))
             if inspect_response.status != 200:
                 raise DockerException(inspect_response.read())
 

@@ -137,7 +137,6 @@ class BundleServiceClient(RestClient):
 
     @wrap_exception('Unable to resume bundle in bundle service')
     def resume_bundle(self, worker_id, uuid, request_data):
-        print("resume {} request_data {}".format(uuid, request_data))
         return self._make_request(
             'POST', self._worker_url_prefix(worker_id) + '/resume_bundle/' + uuid,
             data=request_data)
