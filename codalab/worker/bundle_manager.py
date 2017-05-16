@@ -250,14 +250,14 @@ class BundleManager(object):
 
     def _fail_stuck_running_bundles(self, workers):
         """
-        Make bundles that got stuck in the RUNNING state into WORKER_DISCONNECTED
+        Make bundles that got stuck in the RUNNING state into WORKER_OFFLINE
         """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > 1 * 30):  # Shouldn't really happen, but let's be safe.
-                failure_message = 'Worker disconnected'
+                failure_message = 'Worker offline'
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
-                self._model.set_disconnected_bundle(bundle)
+                self._model.set_offline_bundle(bundle)
                 #self._model.finalize_bundle(bundle, -1, exitcode=None, failure_message=failure_message)
                 #workers.restage(bundle.uuid)
 

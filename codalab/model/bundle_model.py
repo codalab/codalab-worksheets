@@ -610,7 +610,7 @@ class BundleModel(object):
 
             return True
 
-    def set_disconnected_bundle(self, bundle):
+    def set_offline_bundle(self, bundle):
         with self.engine.begin() as connection:
             # Check that it still exists.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
@@ -619,7 +619,7 @@ class BundleModel(object):
                 return False
 
             bundle_update = {
-                'state': State.WORKER_DISCONNECTED,
+                'state': State.WORKER_OFFLINE,
                 'metadata': {
                     'last_updated': int(time.time()),
                 },
@@ -699,7 +699,7 @@ class BundleModel(object):
             if not row:
                 # The user deleted the bundle.
                 return False
-            if row.state != State.WORKER_DISCONNECTED:
+            if row.state != State.WORKER_OFFLINE:
                 return False
 
             worker_run_row = {
