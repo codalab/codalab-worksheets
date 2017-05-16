@@ -16,7 +16,7 @@ from file_util import remove_path, un_tar_directory
 from run import Run
 from docker_image_manager import DockerImageManager
 
-VERSION = 11
+VERSION = 12
 
 logger = logging.getLogger(__name__)
 
