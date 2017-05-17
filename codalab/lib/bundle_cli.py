@@ -1173,6 +1173,7 @@ class BundleCLI(object):
         print >>self.stdout, new_bundle['uuid']
 
     def wait(self, client, args, uuid):
+        """Wait for a run bundle to finish. Called by run and mimic."""
         # Build new args for a hacky artificial call to the info command
         info_args = argparse.Namespace()
         info_args.worksheet_spec = args.worksheet_spec
@@ -1185,7 +1186,8 @@ class BundleCLI(object):
             self.follow_targets(client, uuid, [])
             self.do_info_command(info_args)
         if args.tail:
-            self.follow_targets(client, uuid, ['stdout', 'stderr'])
+            # Follow from the beginnings of the files since we just start running them
+            self.follow_targets(client, uuid, ['stdout', 'stderr'], from_start=True)
             if args.verbose:
                 self.do_info_command(info_args)
 
@@ -1815,11 +1817,16 @@ class BundleCLI(object):
             self.exit(state)
         print >>self.stdout, bundle_uuid
 
-    def follow_targets(self, client, bundle_uuid, subpaths):
+    def follow_targets(self, client, bundle_uuid, subpaths, from_start=False):
         """
         Block on the execution of the given bundle.
-        subpaths: list of files to print >>self.stdout, out output as we go along.
-        Return READY or FAILED based on whether it was computed successfully.
+
+        :param client: JsonApiClient
+        :param bundle_uuid: uuid of bundle to follow
+        :param subpaths: list of files to print >>self.stdout, out output as we go along.
+        :param from_start: whether to follow from the beginning of the file, or
+            start from near the end of the file (like tail)
+        :return: 'ready' or 'failed' based on whether it was computed successfully.
         """
         subpath_is_file = [None] * len(subpaths)
         subpath_offset = [None] * len(subpaths)
@@ -1830,7 +1837,7 @@ class BundleCLI(object):
         for subpath in subpaths:
             while True:
                 try:
-                    target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
+                    client.fetch_contents_info(bundle_uuid, subpath, 0)
                     break
                 except NotFoundError:
                     time.sleep(SLEEP_PERIOD)
@@ -1850,8 +1857,11 @@ class BundleCLI(object):
                     target_info = client.fetch_contents_info(bundle_uuid, subpaths[i], 0)
                     if target_info['type'] == 'file':
                         subpath_is_file[i] = True
-                        # Go to near the end of the file (TODO: make this match up with lines)
-                        subpath_offset[i] = max(target_info['size'] - 64, 0)
+                        if from_start:
+                            subpath_offset[i] = 0
+                        else:
+                            # Go to near the end of the file (TODO: make this match up with lines)
+                            subpath_offset[i] = max(target_info['size'] - 64, 0)
                     else:
                         subpath_is_file[i] = False
 
