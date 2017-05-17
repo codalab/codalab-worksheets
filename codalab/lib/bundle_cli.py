@@ -58,6 +58,7 @@ from codalab.lib import (
     ui_actions,
     worksheet_util,
     zip_util,
+    bundle_fuse,
 )
 from codalab.lib.cli_util import nested_dict_get
 from codalab.objects.permission import (
@@ -118,6 +119,7 @@ BUNDLE_COMMANDS = (
     'macro',
     'kill',
     'write',
+    'mount',
 )
 
 DOCKER_IMAGE_COMMANDS = (
@@ -1223,6 +1225,7 @@ class BundleCLI(object):
         metadata = self.get_missing_metadata(RunBundle, args)
 
         if args.local:
+            self._fail_if_headless(args)  # Disable on headless systems
             docker_image = metadata.get('request_docker_image', None)
             if not docker_image:
                 raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
@@ -1270,6 +1273,7 @@ class BundleCLI(object):
         )
     )
     def do_edit_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         docker_image = args.request_docker_image
 
         uuid = generate_uuid()
@@ -1318,6 +1322,7 @@ class BundleCLI(object):
         )
     )
     def do_commit_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         cli_command = 'docker commit {} {}'.format(args.container, args.image_tag)
         os.system(cli_command)
 
@@ -1329,6 +1334,7 @@ class BundleCLI(object):
         )
     )
     def do_push_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         print >>self.stdout, '===='
         print >>self.stdout, 'cl push-image has been deprecated and disabled. Please use docker push instead:'
         print >>self.stdout, ''
@@ -1728,6 +1734,32 @@ class BundleCLI(object):
                     continue
                 print >>self.stdout, wrap(item['name'])
                 self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
+
+    @Commands.command(
+        'mount',
+        help=[
+            'Mount the contents of a bundle at a read-only mountpoint.',
+        ],
+        arguments=(
+            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
+            Commands.Argument('--mountpoint', help='Empty directory path to set up as the mountpoint for FUSE.'),
+            Commands.Argument('--verbose', help='Verbose mode for BundleFUSE.', action='store_true', default=False),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ),
+    )
+    def do_mount_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        uuid, path = target
+
+        mountpoint = path_util.normalize(args.mountpoint)
+        path_util.check_isvalid(mountpoint, 'mount')
+        print >>self.stdout, 'BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint)
+        print >>self.stdout, 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.'
+        bundle_fuse.bundle_mount(client, mountpoint, target, args.verbose)
+        print >>self.stdout, 'BundleFUSE shutting down.'
 
     @Commands.command(
         'cat',
