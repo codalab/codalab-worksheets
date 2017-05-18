@@ -93,7 +93,7 @@ from marshmallow import Schema, fields, ValidationError
 
 sys.path.append('.')
 from codalab.bundles import RunBundle
-from codalab.common import NotFoundError, State
+from codalab.common import NotFoundError, State, PermissionError
 from codalab.client.json_api_client import (
     JsonApiClient,
     JsonApiRelationship,
@@ -195,6 +195,8 @@ class AuthHelper(object):
         if not self.grant or time.time() > self.expires_at - self.REFRESH_BUFFER_SECONDS:
             self.grant = self.auth_handler.generate_token('credentials',
                                                           self.username, self.password)
+            if self.grant is None:
+                raise PermissionError('Invalid username or password.')
             self.expires_at = time.time() + self.grant['expires_in']
         return self.grant['access_token']
 
@@ -221,6 +223,11 @@ class Competition(object):
             self.config['host'],
             self.config.get('username') or raw_input('Username: '),
             self.config.get('password') or getpass.getpass('Password: '))
+
+        # Remove credentials from config to prevent them from being copied
+        # into the leaderboard file.
+        self.config.pop('username', None)
+        self.config.pop('password', None)
 
         self.client = ThrottledJsonApiClientWithRetry(self.config['host'], auth.get_access_token)
         self.should_stop = False
@@ -294,6 +301,7 @@ class Competition(object):
         # Fetch latest predict run bundles
         last_tests = self.client.fetch('bundles', params={
             'keywords': [
+                '.mine',  # don't allow others to forge prediction bundles
                 'tags={predict[tag]}'.format(**self.config),
                 '.limit={max_leaderboard_size}'.format(**self.config),
             ]
@@ -411,6 +419,7 @@ class Competition(object):
         # Untag any old evaluation run(s) for this submitter
         old_evaluations = self.client.fetch('bundles', params={
             'keywords': [
+                '.mine',
                 'tags={evaluate[tag]}'.format(**self.config),
                 'name=' + eval_bundle_name,
                 ]
@@ -459,6 +468,7 @@ class Competition(object):
         # Fetch bundles on current leaderboard
         eval_bundles = self.client.fetch('bundles', params={
             'keywords': [
+                '.mine',
                 'tags={evaluate[tag]}'.format(**self.config),
                 '.limit={max_leaderboard_size}'.format(**self.config),
             ]
