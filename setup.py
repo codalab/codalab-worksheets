@@ -26,6 +26,7 @@ setup(name='codalab-cli',
     entry_points={
         'console_scripts': [
             'cl=codalab.bin.cl:main',
+            'cl-worker=worker.main:main',
         ],
     },
     zip_safe=False),
