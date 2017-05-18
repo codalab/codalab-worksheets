@@ -17,7 +17,6 @@ from codalab.lib import (
     canonicalize,
     formatting,
     spec_util,
-    zip_util,
     worksheet_util,
 )
 from codalab.lib.server_util import (
@@ -52,6 +51,11 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 def _fetch_bundle(uuid):
     """
     Fetch bundle by UUID.
+
+    Query parameters:
+
+     - `include_display_metadata`: `1` to include additional metadata helpful
+       for displaying the bundle info, `0` to omit them. Default is `0`.
     """
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
@@ -86,6 +90,8 @@ def _fetch_bundles():
         - `.floating              ` : Match bundles that aren't on any worksheet.
         - `.count                 ` : Count the number of bundles.
         - `.limit=10              ` : Limit the number of results to the top 10.
+     - `include_display_metadata`: `1` to include additional metadata helpful
+       for displaying the bundle info, `0` to omit them. Default is `0`.
 
     When aggregation keywords such as `.count` are used, the resulting value
     is returned as:
@@ -106,7 +112,7 @@ def _fetch_bundles():
     if keywords:
         # Handle search keywords
         keywords = resolve_owner_in_keywords(keywords)
-        bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, worksheet_uuid, keywords)
+        bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
     elif specs:
         # Resolve bundle specs
         bundle_uuids = canonicalize.get_bundle_uuids(local.model, request.user, worksheet_uuid, specs)
@@ -143,13 +149,16 @@ def build_bundles_document(bundle_uuids):
     # Build response document
     document = BundleSchema(many=True).dump(bundles).data
 
-    # Shim in editable metadata keys
-    # Used by the front-end application
-    for bundle, data in izip(bundles, document['data']):
-        json_api_meta(data, {
-            'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
-                get_bundle_subclass(bundle['bundle_type']))
-        })
+    # Shim in display metadata used by the front-end application
+    if query_get_bool('include_display_metadata', default=False):
+        for bundle, data in izip(bundles, document['data']):
+            bundle_class = get_bundle_subclass(bundle['bundle_type'])
+            json_api_meta(data, {
+                'editable_metadata_keys':
+                    worksheet_util.get_editable_metadata_fields(bundle_class),
+                'metadata_type':
+                    worksheet_util.get_metadata_types(bundle_class),
+            })
 
     # Include users
     owner_ids = set(b['owner_id'] for b in bundles)
@@ -344,7 +353,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
           "link": "<string representing target if file is a symbolic link>",
           "type": "<file|directory|link>",
           "size": <size of file in bytes>,
-          "size_str": <size of file as a human-readable string>,
           "perm": <unix permission integer>,
           "contents": [
               {
@@ -365,14 +373,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
     info = local.download_manager.get_target_info(uuid, path, depth)
     if info is None:
         abort(httplib.NOT_FOUND, 'Bundle not found')
-
-    def render_human_readable(target_info):
-        if 'size' in target_info:
-            target_info['size_str'] = formatting.size_str(target_info['size'])
-        if 'contents' in target_info:
-            for entry in target_info['contents']:
-                render_human_readable(entry)
-    render_human_readable(info)
 
     return {
         'data': info
@@ -420,6 +420,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     byte_range = get_request_range()
     head_lines = query_get_type(int, 'head', default=0)
     tail_lines = query_get_type(int, 'tail', default=0)
+    truncation_text = query_get_type(str, 'truncation_text', default='')
     max_line_length = query_get_type(int, 'max_line_length', default=128)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -467,7 +468,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             start, end = byte_range
             fileobj = local.download_manager.read_file_section(uuid, path, start, end - start + 1, gzipped_stream)
         elif head_lines or tail_lines:
-            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, None, gzipped_stream)
+            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream)
         else:
             fileobj = local.download_manager.stream_file(uuid, path, gzipped_stream)
     else:

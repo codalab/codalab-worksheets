@@ -103,7 +103,6 @@ from codalab.lib.bundle_util import mimic_bundles
 from codalab.lib.metadata_util import fill_missing_metadata
 from codalab.lib.print_util import pretty_json
 from codalab.lib.spec_util import UUID_STR
-from codalab.lib.worksheet_util import interpret_file_genpath
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.rest.schemas import BundleDependencySchema, validate_uuid
 from codalab.server.auth import RestOAuthHandler
@@ -510,29 +509,47 @@ class Competition(object):
 
         return eval_bundles, eval2submit
 
+    def fetch_scores(self, eval_bundles):
+        """
+        Fetch scores from server.
+
+        Returns dict with (bundle_id, score_spec_name) as the key and the score
+        value as the value.
+        """
+        # Extract score specs
+        scores = {}
+        queries = []
+        keys = []
+        for bundle in eval_bundles.itervalues():
+            if bundle['state'] == State.READY:
+                for spec in self.config['score_specs']:
+                    queries.append((bundle['id'], spec['key'], None))
+                    keys.append((bundle['id'], spec['name']))
+            else:
+                # All scores are None if the bundle failed
+                scores[bundle['id']] = {spec['name']: None for spec in self.config['score_specs']}
+
+        # Actually fetch score values
+        results = self.client.interpret_file_genpaths(queries)
+        for (bundle_id, spec_name), value in zip(keys, results):
+            if bundle_id not in scores:
+                scores[bundle_id] = {}
+            scores[bundle_id][spec_name] = value
+
+        return scores
+
     def generate_leaderboard(self, num_total_submissions, num_period_submissions):
         eval_bundles, eval2submit = self._fetch_leaderboard()
+        scores = self.fetch_scores(eval_bundles)
 
         # Build leaderboard table
         logger.debug('Fetching scores and building leaderboard table')
         leaderboard = []
-        target_cache = {}
         for bundle in eval_bundles.itervalues():
-            # Extract scores
-            if bundle['state'] == State.READY:
-                scores = {}
-                for spec in self.config['score_specs']:
-                    value = interpret_file_genpath(
-                        self.client, target_cache, bundle['id'], genpath=spec['key'], post=None)
-                    scores[spec['name']] = value
-            else:
-                # All scores are None if the bundle failed
-                scores = {spec['name']: None for spec in self.config['score_specs']}
-
             submit_bundle = eval2submit[bundle['id']]
             leaderboard.append({
                 'bundle': bundle,
-                'scores': scores,
+                'scores': scores[bundle['id']],
                 'submission': {
                     # Can include any information you want from the submission
                     # within bounds of reason (since submitter may want to

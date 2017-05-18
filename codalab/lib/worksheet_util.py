@@ -27,16 +27,12 @@ A genpath (generalized path) is either:
 See get_worksheet_lines for documentation on the specification of the directives.
 """
 import copy
-import json
 import os
 import re
 import sys
-import types
 from itertools import izip
 
-import yaml
 
-from codalab.client.json_api_client import JsonApiClient
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
@@ -189,6 +185,26 @@ def get_editable_metadata_fields(cls):
         if not spec.generated:
             result.append(key)
     return result
+
+
+def get_metadata_types(cls):
+    """
+    Return map from key -> type for the metadata fields in the given bundle class.
+    e.g.
+       'request_time' -> 'basestring'
+       'time' -> 'duration'
+       'tags' -> 'list'
+
+    Possible types: 'int', 'float', 'list', 'bool', 'duration',
+                    'size', 'date', 'basestring'
+
+    Special types like 'duration' are only indicated when client-side
+    formatting/serialization is necessary.
+    """
+    return {
+        spec.key: (not issubclass(spec.type, basestring) and spec.formatting) or spec.type.__name__
+        for spec in cls.METADATA_SPECS
+    }
 
 
 def request_lines(worksheet_info):
@@ -377,100 +393,6 @@ def interpret_genpath(bundle_info, genpath):
     if value is not None: return value
 
     return None
-
-
-def interpret_file_genpaths(client, requests):
-    """
-    Helper function.
-    requests: list of (bundle_uuid, genpath, post-processing-func)
-    Return responses: corresponding list of strings
-    """
-    target_cache = {}
-    responses = []
-    for (bundle_uuid, genpath, post) in requests:
-        value = interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post)
-        responses.append(value)
-    return responses
-
-
-def interpret_file_genpath(client, target_cache, bundle_uuid, genpath, post):
-    """
-    |client|: used to read files
-    |cache| is a mapping from target (bundle_uuid, subpath) to the info map,
-    which is to be read/written to avoid reading/parsing the same file many
-    times.
-    |genpath| specifies the subpath and various fields (e.g., for
-    /stats:train/errorRate, subpath = 'stats', key = 'train/errorRate').
-    |post| function to apply to the resulting value.
-    Return the string value.
-    """
-    MAX_LINES = 1000  # Maximum number of lines we need to read from a file.
-
-    # Load the file
-    if not is_file_genpath(genpath):
-        raise UsageError('Not file genpath: %s' % genpath)
-    genpath = genpath[1:]
-    if ':' in genpath:  # Looking for a particular key in the file
-        subpath, key = genpath.split(':')
-    else:
-        subpath, key = genpath, None
-
-    target = (bundle_uuid, subpath)
-    if target not in target_cache:
-        if isinstance(client, JsonApiClient):
-            target_info = client.fetch_contents_info(*target, depth=0)
-        else:  # isinstance(client, legacy.BundleService)
-            # TODO(sckoo): Remove path along with BundleService
-            target_info = client.get_target_info(target, 0)
-
-        # Try to interpret the structure of the file by looking inside it.
-        if target_info is not None and target_info['type'] == 'file':
-            if isinstance(client, JsonApiClient):
-                contents = client.fetch_contents_blob(*target, head=MAX_LINES).read().splitlines(True)
-            else:  # isinstance(client, legacy.BundleService)
-                # TODO(sckoo): Remove path along with BundleService
-                import base64
-                contents = client.head_target(target, MAX_LINES)
-                contents = map(base64.b64decode, contents)
-
-            if len(contents) == 0:
-              info = ''
-            elif all('\t' in x for x in contents):
-                # Tab-separated file (key\tvalue\nkey\tvalue...)
-                info = {}
-                for x in contents:
-                    kv = x.strip().split("\t", 1)
-                    if len(kv) == 2: info[kv[0]] = kv[1]
-            else:
-                try:
-                    # JSON file
-                    info = json.loads(''.join(contents))
-                except:
-                    try:
-                        # YAML file
-                        info = yaml.load(''.join(contents))
-                    except:
-                        # Plain text file
-                        info = ''.join(contents)
-        else:
-            info = None
-        target_cache[target] = info
-
-    # Traverse the info object.
-    info = target_cache.get(target, None)
-    if key is not None and info is not None:
-        for k in key.split('/'):
-            if isinstance(info, dict):
-                info = info.get(k, None)
-            elif isinstance(info, list):
-                try:
-                    info = info[int(k)]
-                except:
-                    info = None
-            else:
-                info = None
-            if info is None: break
-    return apply_func(post, info)
 
 
 def format_metadata(metadata):
@@ -956,73 +878,6 @@ def interpret_items(schemas, raw_items):
     result['raw_to_interpreted'] = raw_to_interpreted
     result['interpreted_to_raw'] = interpreted_to_raw
     return result
-
-
-def interpret_genpath_table_contents(client, contents):
-    """
-    contents represents a table, but some of the elements might not be interpreted.
-    Interpret them by calling the client.
-    """
-    # if called after an RPC call tuples may become lists
-    need_gen_types = (types.TupleType, types.ListType)
-
-    # Request information
-    requests = []
-    for r, row in enumerate(contents):
-        for key, value in row.items():
-            # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
-            if isinstance(value, need_gen_types):
-                requests.append(value)
-    responses = interpret_file_genpaths(client, requests)
-
-    # Put it in a table
-    new_contents = []
-    ri = 0
-    for r, row in enumerate(contents):
-        new_row = {}
-        for key, value in row.items():
-            if isinstance(value, need_gen_types):
-                value = responses[ri]
-                ri += 1
-            new_row[key] = value
-        new_contents.append(new_row)
-    return new_contents
-
-
-def interpret_search(client, worksheet_uuid, data):
-    """
-    Input: specification of a search query.
-    Output: worksheet items based on the result of issuing the search query.
-    """
-    bundle_uuids = client.search_bundle_uuids(worksheet_uuid, data['keywords'])
-
-    # Single number, just print it out...
-    if not isinstance(bundle_uuids, list):
-        return interpret_items(data['schemas'], [markup_item(str(bundle_uuids))])
-
-    # Set display
-    items = [directive_item(('display',) + tuple(data['display']))]
-
-    # Show bundles
-    bundle_infos = client.get_bundle_infos(bundle_uuids)
-    for bundle_uuid in bundle_uuids:
-        items.append(bundle_item(bundle_infos[bundle_uuid]))
-
-    # Finally, interpret the items
-    return interpret_items(data['schemas'], items)
-
-
-def interpret_wsearch(client, data):
-    """
-    Input: specification of a worksheet search query.
-    Output: worksheet items based on the result of issuing the search query.
-    """
-    # Get the worksheet uuids
-    worksheet_infos = client.search_worksheets(data['keywords'])
-    items = [subworksheet_item(worksheet_info) for worksheet_info in worksheet_infos]
-
-    # Finally, interpret the items
-    return interpret_items([], items)
 
 
 def check_worksheet_not_frozen(worksheet):

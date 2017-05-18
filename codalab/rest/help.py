@@ -1,17 +1,15 @@
 import sys
-import httplib
 
-from bottle import abort, get, request, local, post, template
+from bottle import request, local, post, template
 
-from codalab.lib.spec_util import NAME_REGEX
-from codalab.lib.server_util import bottle_patch as patch
 from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
 )
 
+
 @post('/help/', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
-def fetch_help():
+def send_help_message():
     message = request.json['message']
 
     if 'server' in local.config and 'support_email' not in local.config['server']:
@@ -22,9 +20,6 @@ def fetch_help():
     support_email = local.config['server']['support_email']
     username = request.user.user_name
     user_email = request.user.email
-    first_name = request.user.first_name if request.user.first_name else ''
-    last_name = request.user.last_name if request.user.last_name else ''
-    real_name = ("%s %s" % (first_name, last_name))
 
     first_name = request.user.first_name if request.user.first_name else ''
     last_name = request.user.last_name if request.user.last_name else ''

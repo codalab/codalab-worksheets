@@ -8,17 +8,18 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
 - [Resource Object Schemas](#resource-object-schemas)
 - [API Endpoints](#api-endpoints)
   - [Bundle Permissions API](#bundle-permissions-api)
-  - [Oauth2 API](#oauth2-api)
-  - [Users API](#users-api)
+  - [OAuth2 API](#oauth2-api)
+  - [CLI API](#cli-api)
   - [Worksheet Items API](#worksheet-items-api)
   - [Workers API](#workers-api)
   - [Bundles API](#bundles-api)
+  - [Worksheet Interpretation API](#worksheet-interpretation-api)
   - [User API](#user-api)
   - [Groups API](#groups-api)
   - [Bundle Actions API](#bundle-actions-api)
   - [Worksheets API](#worksheets-api)
   - [Worksheet Permissions API](#worksheet-permissions-api)
-  - [Help API](#help-api)
+  - [Users API](#users-api)
 
 # Introduction
 We use the JSON API v1.0 specification with the Bulk extension.
@@ -123,74 +124,74 @@ a `401 Unauthorized` or `403 Forbidden` status.
 
 Name | Type
 --- | ---
-    `subworksheet` | Relationship([worksheets](#worksheets))
-    `sort_key` | Integer
-    `worksheet` | Relationship([worksheets](#worksheets))
-    `bundle` | Relationship([bundles](#bundles))
-    `value` | String
-    `type` | String
-    `id` | Integer
+`subworksheet` | Relationship([worksheets](#worksheets))
+`sort_key` | Integer
+`worksheet` | Relationship([worksheets](#worksheets))
+`bundle` | Relationship([bundles](#bundles))
+`value` | String
+`type` | String
+`id` | Integer
 ## users
 
 
 Name | Type
 --- | ---
-    `first_name` | String
-    `last_name` | String
-    `time_quota` | Integer
-    `notifications` | Integer
-    `url` | Url
-    `disk_used` | Integer
-    `time_used` | Integer
-    `email` | String
-    `disk_quota` | Integer
-    `affiliation` | String
-    `last_login` | LocalDateTime
-    `user_name` | String
-    `id` | String
-    `date_joined` | LocalDateTime
+`first_name` | String
+`last_name` | String
+`time_quota` | Integer
+`notifications` | Integer
+`url` | Url
+`disk_used` | Integer
+`time_used` | Integer
+`email` | String
+`disk_quota` | Integer
+`affiliation` | String
+`last_login` | LocalDateTime
+`user_name` | String
+`id` | String
+`date_joined` | LocalDateTime
 ## bundles
 
 
 Name | Type
 --- | ---
-    `host_worksheets` | List
-    `data_hash` | String
-    `uuid` | String
-    `permission` | Integer
-    `group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
-    `args` | String
-    `id` | String
-    `state` | String
-    `dependencies` | [BundleDependencySchema](#BundleDependencySchema)
-    `command` | String
-    `owner` | Relationship([users](#users))
-    `bundle_type` | String
-    `children` | Relationship([bundles](#bundles))
-    `permission_spec` | PermissionSpec
-    `metadata` | Dict
+`host_worksheets` | List
+`data_hash` | String
+`uuid` | String
+`permission` | Integer
+`group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
+`args` | String
+`id` | String
+`state` | String
+`dependencies` | [BundleDependencySchema](#BundleDependencySchema)
+`command` | String
+`owner` | Relationship([users](#users))
+`bundle_type` | String
+`children` | Relationship([bundles](#bundles))
+`permission_spec` | PermissionSpec
+`metadata` | Dict
 ## worksheet-permissions
 
 
 Name | Type
 --- | ---
-    `group` | Relationship([groups](#groups))
-    `permission` | Integer
-    `worksheet` | Relationship([worksheets](#worksheets))
-    `group_name` | String
-    `id` | Integer
-    `permission_spec` | PermissionSpec
+`group` | Relationship([groups](#groups))
+`permission` | Integer
+`worksheet` | Relationship([worksheets](#worksheets))
+`group_name` | String
+`id` | Integer
+`permission_spec` | PermissionSpec
 ## bundle-permissions
 
 
 Name | Type
 --- | ---
-    `group` | Relationship([groups](#groups))
-    `permission` | Integer
-    `bundle` | Relationship([bundles](#bundles))
-    `group_name` | String
-    `id` | Integer
-    `permission_spec` | PermissionSpec
+`group` | Relationship([groups](#groups))
+`permission` | Integer
+`bundle` | Relationship([bundles](#bundles))
+`group_name` | String
+`id` | Integer
+`permission_spec` | PermissionSpec
 ## BundleDependencySchema
 
 
@@ -201,61 +202,61 @@ create a set of dependencies once at bundle creation.
 
 Name | Type
 --- | ---
-    `parent_name` | Method
-    `child_uuid` | String
-    `parent_uuid` | String
-    `child_path` | String
-    `parent_path` | String
+`parent_name` | Method
+`child_uuid` | String
+`parent_uuid` | String
+`child_path` | String
+`parent_path` | String
 ## bundle-actions
 
 
 Name | Type
 --- | ---
-    `type` | String
-    `uuid` | String
-    `subpath` | String
-    `string` | String
-    `id` | Integer
+`type` | String
+`uuid` | String
+`subpath` | String
+`string` | String
+`id` | Integer
 ## worksheets
 
 
 Name | Type
 --- | ---
-    `name` | String
-    `last_item_id` | Integer
-    `tags` | List
-    `frozen` | DateTime
-    `group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
-    `title` | String
-    `items` | Relationship([worksheet-items](#worksheet-items))
-    `owner` | Relationship([users](#users))
-    `permission` | Integer
-    `id` | String
-    `permission_spec` | PermissionSpec
-    `uuid` | String
+`name` | String
+`last_item_id` | Integer
+`tags` | List
+`frozen` | DateTime
+`group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
+`title` | String
+`items` | Relationship([worksheet-items](#worksheet-items))
+`owner` | Relationship([users](#users))
+`permission` | Integer
+`id` | String
+`permission_spec` | PermissionSpec
+`uuid` | String
 ## groups
 
 
 Name | Type
 --- | ---
-    `name` | String
-    `user_defined` | Boolean
-    `admins` | Relationship([users](#users))
-    `members` | Relationship([users](#users))
-    `owner` | Relationship([users](#users))
-    `id` | String
+`name` | String
+`user_defined` | Boolean
+`admins` | Relationship([users](#users))
+`members` | Relationship([users](#users))
+`owner` | Relationship([users](#users))
+`id` | String
 ## users
 
 
 Name | Type
 --- | ---
-    `first_name` | String
-    `last_name` | String
-    `url` | Url
-    `affiliation` | String
-    `user_name` | String
-    `id` | String
-    `date_joined` | LocalDateTime
+`first_name` | String
+`last_name` | String
+`url` | Url
+`affiliation` | String
+`user_name` | String
+`id` | String
+`date_joined` | LocalDateTime
 
 &uarr; [Back to Top](#table-of-contents)
 # API Endpoints
@@ -269,7 +270,7 @@ existing permissions on the same bundle-group pair.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Oauth2 API
+## OAuth2 API
 ### `GET /oauth2/authorize`
 
 'authorize' endpoint for OAuth2 authorization code flow.
@@ -279,70 +280,62 @@ existing permissions on the same bundle-group pair.
 'authorize' endpoint for OAuth2 authorization code flow.
 
 ### `POST /oauth2/token`
+
+OAuth2 token endpoint.
+
+Access token request:
+
+    grant_type
+        REQUIRED.  Value MUST be set to "password".
+
+    username
+        REQUIRED.  The resource owner username.
+
+    password
+        REQUIRED.  The resource owner password.
+
+    scope
+        OPTIONAL.  The scope of the access request. (UNUSED)
+
+Example successful response:
+
+    HTTP/1.1 200 OK
+    Content-Type: application/json;charset=UTF-8
+    Cache-Control: no-store
+    Pragma: no-cache
+
+    {
+      "access_token":"2YotnFZFEjr1zCsicMWpAA",
+      "token_type":"example",
+      "expires_in":3600,
+      "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA",
+      "example_parameter":"example_value"
+    }
+
 ### `POST /oauth2/revoke`
-Provide secure services using OAuth2.
-    The server should provide an authorize handler and a token handler,
-
-    But before the handlers are implemented, the server should provide
-    some getters for the validation.
-    There are two usage modes. One is binding the Bottle app instance:
-
-        app = Bottle()
-        oauth = OAuth2Provider(app)
-
-    The second possibility is to bind the Bottle app later:
-
-        oauth = OAuth2Provider()
-
-        def create_app():
-            app = Bottle()
-            oauth.app = app
-            return app
-
-    Configure :meth:`tokengetter` and :meth:`tokensetter` to get and
-    set tokens. Configure :meth:`grantgetter` and :meth:`grantsetter`
-    to get and set grant tokens. Configure :meth:`clientgetter` to
-    get the client.
-
-    Configure :meth:`usergetter` if you need password credential
-    authorization.
-
-    With everything ready, implement the authorization workflow:
-
-        * :meth:`authorize_handler` for consumer to confirm the grant
-        * :meth:`token_handler` for client to exchange access token
-
-    And now you can protect the resource with scopes::
-
-        @app.route('/api/user')
-        @oauth.check_oauth('email', 'username')
-        def user():
-            return jsonify(request.user)
-
+Revoke OAuth2 token.
 ### `GET /oauth2/errors`
 
 &uarr; [Back to Top](#table-of-contents)
-## Users API
-### `GET /users/<user_spec>`
-Fetch a single user.
-### `GET /users`
+## CLI API
+### `POST /cli/command`
 
-Fetch list of users, filterable by username and email.
+JSON request body:
+```
+{
+    "worksheet_uuid": "0xea72f9b6aa754636a6657ff2b5e005b0",
+    "command": "cl run :main.py 'python main.py'",
+    "autocomplete": false
+}
+```
 
-Takes the following query parameters:
-    filter[user_name]=name1,name2,...
-    filter[email]=email1,email2,...
-
-Fetches all users that match any of these usernames or emails.
-
-### `PATCH /users`
-
-Update arbitrary users.
-
-This operation is reserved for the root user. Other users can update their
-information through the /user "authenticated user" API.
-Follows the bulk-update convention in the CodaLab API, but currently only
-allows one update at a time.
+JSON response body:
+```
+{
+    "structured_result": { ... },
+    "output": "..."
+}
+```
 
 
 &uarr; [Back to Top](#table-of-contents)
@@ -407,6 +400,11 @@ Returns .tar.gz archive containing the code of the worker.
 
 Fetch bundle by UUID.
 
+Query parameters:
+
+ - `include_display_metadata`: `1` to include additional metadata helpful
+   for displaying the bundle info, `0` to omit them. Default is `0`.
+
 ### `GET /bundles`
 
 Fetch bundles by bundle `specs` OR search `keywords`. Behavior is undefined
@@ -433,6 +431,8 @@ Query parameters:
     - `.floating              ` : Match bundles that aren't on any worksheet.
     - `.count                 ` : Count the number of bundles.
     - `.limit=10              ` : Limit the number of results to the top 10.
+ - `include_display_metadata`: `1` to include additional metadata helpful
+   for displaying the bundle info, `0` to omit them. Default is `0`.
 
 When aggregation keywords such as `.count` are used, the resulting value
 is returned as:
@@ -499,11 +499,14 @@ Response format:
       "link": "<string representing target if file is a symbolic link>",
       "type": "<file|directory|link>",
       "size": <size of file in bytes>,
-      "contents": {
-        "name": ...,
-        <contents of the directory represented recursively with the same schema>
-      },
-      "perm", <unix permission integer>
+      "perm": <unix permission integer>,
+      "contents": [
+          {
+            "name": ...,
+            <each file of directory represented recursively with the same schema>
+          },
+          ...
+      ]
   }
 }
 ```
@@ -524,11 +527,14 @@ Response format:
       "link": "<string representing target if file is a symbolic link>",
       "type": "<file|directory|link>",
       "size": <size of file in bytes>,
-      "contents": {
-        "name": ...,
-        <contents of the directory represented recursively with the same schema>
-      },
-      "perm", <unix permission integer>
+      "perm": <unix permission integer>,
+      "contents": [
+          {
+            "name": ...,
+            <each file of directory represented recursively with the same schema>
+          },
+          ...
+      ]
   }
 }
 ```
@@ -629,6 +635,104 @@ Query parameters:
 
 
 &uarr; [Back to Top](#table-of-contents)
+## Worksheet Interpretation API
+### `POST /interpret/search`
+
+Returns worksheet items given a search query for bundles.
+
+JSON request body:
+```
+{
+    "keywords": [ list of search keywords ],
+    "schemas": {
+        schema_key: [ list of schema columns ],
+        ...
+    },
+    "display": [ display args ]
+}
+```
+
+### `POST /interpret/wsearch`
+
+Returns worksheet items given a search query for worksheets.
+
+JSON request body:
+```
+{
+    "keywords": [ list of search keywords ]
+}
+```
+
+### `POST /interpret/file-genpaths`
+
+Interpret a file genpath.
+
+JSON request body:
+```
+{
+    "queries": [
+        {
+            "bundle_uuid": "<uuid>",
+            "genpath": "<genpath>",
+            "post": "<postprocessor spec>",
+        },
+        ...
+    ]
+}
+```
+
+Response body:
+```
+{
+    "data": [
+        "<resolved file genpath data>",
+        ...
+    ]
+}
+```
+
+### `POST /interpret/genpath-table-contents`
+
+Takes a table and fills in unresolved genpath specifications.
+
+JSON request body:
+```
+{
+    "contents": [
+        {
+            col1: "<resolved string>",
+            col2: (bundle_uuid, genpath, post),
+            ...
+        },
+        ...
+    ]
+}
+```
+
+JSON response body:
+```
+{
+    "contents": [
+        {
+            col1: "<resolved string>",
+            col2: "<resolved string>",
+            ...
+        },
+        ...
+    ]
+}
+```
+
+### `GET /interpret/worksheet/<uuid:re:0x[0-9a-f]{32}>`
+
+Return information about a worksheet. Calls
+- get_worksheet_info: get basic info
+- resolve_interpreted_items: get more information about a worksheet.
+In the future, for large worksheets, might want to break this up so
+that we can render something basic.
+
+
+&uarr; [Back to Top](#table-of-contents)
 ## User API
 ### `GET /user`
 Fetch authenticated user.
@@ -667,6 +771,13 @@ Fetch bundles by bundle specs OR search keywords.
 
 ### `POST /worksheets`
 ### `POST /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
+
+Request body contains the raw lines of the worksheet.
+
+### `PUT /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`
+
+Request body contains the raw lines of the worksheet.
+
 ### `PATCH /worksheets`
 
 Bulk update worksheets metadata.
@@ -694,7 +805,27 @@ Bulk set worksheet permissions.
 
 
 &uarr; [Back to Top](#table-of-contents)
-## Help API
-### `POST /help/`
+## Users API
+### `GET /users/<user_spec>`
+Fetch a single user.
+### `GET /users`
+
+Fetch list of users, filterable by username and email.
+
+Takes the following query parameters:
+    filter[user_name]=name1,name2,...
+    filter[email]=email1,email2,...
+
+Fetches all users that match any of these usernames or emails.
+
+### `PATCH /users`
+
+Update arbitrary users.
+
+This operation is reserved for the root user. Other users can update their
+information through the /user "authenticated user" API.
+Follows the bulk-update convention in the CodaLab API, but currently only
+allows one update at a time.
+
 
 &uarr; [Back to Top](#table-of-contents)

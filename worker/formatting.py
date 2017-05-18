@@ -51,15 +51,18 @@ def parse_size(s):
     s: <number>[<k|m|g|t>]
     Returns the number of bytes.
     """
-    if s[-1].isdigit():
-        return float(s)
-    n, unit = float(s[0:-1]), s[-1].lower()
-    if unit == 'k':
-        return n * 1024
-    if unit == 'm':
-        return n * 1024 * 1024
-    if unit == 'g':
-        return n * 1024 * 1024 * 1024
-    if unit == 't':
-        return n * 1024 * 1024 * 1024 * 1024
+    try:
+        if s[-1].isdigit():
+            return float(s)
+        n, unit = float(s[0:-1]), s[-1].lower()
+        if unit == 'k':
+            return n * 1024
+        if unit == 'm':
+            return n * 1024 * 1024
+        if unit == 'g':
+            return n * 1024 * 1024 * 1024
+        if unit == 't':
+            return n * 1024 * 1024 * 1024 * 1024
+    except (IndexError, ValueError):
+        pass  # continue to next line and throw error
     raise ValueError('Invalid size: %s, expected <number>[<k|m|g|t>]' % s)
