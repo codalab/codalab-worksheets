@@ -169,7 +169,6 @@ def get_formatted_metadata(cls, metadata, raw=False):
             if key not in metadata: continue
             if metadata[key] == '' or metadata[key] == []: continue
             value = apply_func(spec.formatting, metadata.get(key))
-            if isinstance(value, list): value = ' | '.join(value)
         else:
             value = metadata.get(key)
         result.append((key, value))
