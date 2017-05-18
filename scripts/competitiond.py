@@ -168,6 +168,7 @@ class ConfigSchema(Schema):
     quota_period_seconds = fields.Integer(missing=24*60*60)  # default 1 day
     count_failed_submissions = fields.Boolean(missing=True)  # default count everything toward quota
     make_predictions_public = fields.Boolean(missing=False)  # default keep predictions private
+    allow_orphans = fields.Boolean(missing=True)  # default allow leaderboard entries that no longer have corresponding submission bundles
     host = fields.Url(required=True)
     username = fields.String()
     password = fields.String()
@@ -243,6 +244,20 @@ class Competition(object):
             sys.exit(1)
         return config
 
+    @staticmethod
+    def get_competition_metadata(bundle):
+        try:
+            return json.loads(bundle['metadata']['description'])
+        except ValueError:
+            return None
+
+    def clear_competition_metadata(self, bundle):
+        bundle['metadata']['description'] = ''
+        self.client.update('bundles', {
+            'id': bundle['id'],
+            'metadata': {'description': ''}
+        })
+
     def ensure_log_worksheet_private(self):
         """
         Ensure that the leaderboard worksheet is private, so that all bundles
@@ -297,6 +312,8 @@ class Competition(object):
             if owner_id not in submissions or \
                     created > submissions[owner_id]['metadata']['created']:
                 submissions[owner_id] = bundle
+
+        # FIXME: check that all this works when multiple predict bundles are created
 
         # Fetch latest predict run bundles
         last_tests = self.client.fetch('bundles', params={
@@ -478,8 +495,12 @@ class Competition(object):
         # Build map from submission bundle id => eval bundle
         submit2eval = {}
         for bundle in eval_bundles.itervalues():
-            submit_info = json.loads(bundle['metadata']['description'])
-            submit2eval[submit_info['submit_id']] = bundle
+            submit_info = self.get_competition_metadata(bundle)
+            # Eval bundles that are missing competition metadata are simply
+            # skipped; code downstream must handle the case where eval2submit
+            # does not contain an entry for a given eval bundle
+            if submit_info is not None:
+                submit2eval[submit_info['submit_id']] = bundle
 
         # Fetch the original submission bundles.
         # A NotFoundError will be thrown if a bundle no longer exists.
@@ -501,14 +522,24 @@ class Competition(object):
                     }))
                 break
             except NotFoundError as e:
-                # If a submission bundle has been deleted, remove the entry from
-                # the leaderboard and try fetching all the bundles again
-                missing_uuid = re.search(UUID_STR, e.message).group(0)
-                logger.info("Removing submission %s", missing_uuid)
-                self.untag([submit2eval[missing_uuid]], self.config['evaluate']['tag'])
-                eval_uuid = submit2eval[missing_uuid]['id']
-                del eval_bundles[eval_uuid]
-                del submit2eval[missing_uuid]
+                missing_submit_uuid = re.search(UUID_STR, e.message).group(0)
+                eval_uuid = submit2eval[missing_submit_uuid]['id']
+
+                # If a submission bundle (missing_uuid) has been deleted...
+                if self.config['allow_orphans']:
+                    # Just clear the competition metadata on the eval bundle,
+                    # thus removing the reference to the original submit bundle
+                    logger.info("Clearing reference to deleted submission %s", missing_submit_uuid)
+                    self.clear_competition_metadata(eval_bundles[eval_uuid])
+                    pass
+                else:
+                    # Untag and remove entry from the leaderboard entirely
+                    logger.info("Removing submission %s", missing_submit_uuid)
+                    self.untag([submit2eval[missing_submit_uuid]], self.config['evaluate']['tag'])
+                    del eval_bundles[eval_uuid]
+
+                # Drop from list of submit bundles and try fetching batch again
+                del submit2eval[missing_submit_uuid]
                 continue
 
         # Build map from eval bundle id => submission bundle
@@ -556,12 +587,10 @@ class Competition(object):
         logger.debug('Fetching scores and building leaderboard table')
         leaderboard = []
         for bundle in eval_bundles.itervalues():
-            submit_bundle = eval2submit[bundle['id']]
-            leaderboard.append({
-                'bundle': bundle,
-                'scores': scores[bundle['id']],
-                'submission': {
-                    # Can include any information you want from the submission
+            if bundle['id'] in eval2submit:
+                submit_bundle = eval2submit[bundle['id']]
+                submission_info = {
+                    # Can include any information we want from the submission
                     # within bounds of reason (since submitter may want to
                     # keep some of the metadata private).
                     'description': submit_bundle['metadata']['description'],
@@ -571,6 +600,22 @@ class Competition(object):
                     'num_period_submissions': num_period_submissions[submit_bundle['owner']['id']],
                     'created': submit_bundle['metadata']['created'],
                 }
+            else:
+                # If there isn't a corresponding submit bundle, use some sane
+                # defaults based on just the eval bundle.
+                submission_info = {
+                    'description': bundle['metadata']['description'],
+                    'public': None,
+                    'user_name': None,
+                    'num_total_submissions': 0,
+                    'num_period_submissions': 0,
+                    'created': bundle['metadata']['created'],
+                }
+
+            leaderboard.append({
+                'bundle': bundle,
+                'scores': scores,
+                'submission': submission_info,
             })
 
         # Sort by the scores, descending
