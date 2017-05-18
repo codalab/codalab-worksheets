@@ -66,17 +66,9 @@ class Worksheet(ORMObject):
                 item['type']
             )
 
-    def legacy_formatted_items(self):
-        return [(item['bundle_uuid'], item['subworksheet_uuid'], item['value'], item['type']) for item in self.items]
-
-    def to_dict(self, strict=False, legacy=False):
-        result = super(Worksheet, self).to_dict(strict=strict, legacy=legacy)
+    def to_dict(self, strict=False):
+        result = super(Worksheet, self).to_dict(strict=strict)
         result['tags'] = self.tags
         result['last_item_id'] = self.last_item_id
-        if legacy:
-            # TODO: legacy format, replace with untampered self.items when BundleClient is gone
-            result['items'] = self.legacy_formatted_items() if self.items is not None else None
-        else:
-            result['items'] = self.items
-            result['frozen'] = self.frozen  # keep DateTime, not str
+        result['items'] = self.items
         return result

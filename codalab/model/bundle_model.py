@@ -250,8 +250,8 @@ class BundleModel(object):
             depth -= 1
         return visited
 
-    def search_bundle_uuids(self, user_id, worksheet_uuid, keywords):
-        '''
+    def search_bundle_uuids(self, user_id, keywords):
+        """
         Return a list of uuids (in the appropriate order) matching the keywords.
         Each keyword is either:
         - <key>=<value>
@@ -271,8 +271,7 @@ class BundleModel(object):
         - .sum: add up the numbers
         Bare keywords: sugar for uuid_name=.*<word>.*
         Search only bundles which are readable by user_id.
-        worksheet_uuid is not used right now.
-        '''
+        """
         clauses = []
         offset = 0
         limit = 10
@@ -556,8 +555,6 @@ class BundleModel(object):
           get_bundle_subclass(bundle_value['bundle_type'])(bundle_value)
           for bundle_value in sorted_values
         ]
-        for bundle in bundles:
-            bundle.validate()
         return bundles
 
     def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
@@ -1592,11 +1589,16 @@ class BundleModel(object):
         return result
 
     def get_chat_log_info(self, query_info):
-        '''
+        """
+        |query_info| specifies the user_id of the user that you are querying about.
+        Example: query_info = {
+            user_id: 2,   // get the chats sent by and received by the user with user_id 2
+            limit: 20,   // get the most recent 20 chats related to this user. This is optional, as by default it will get all the chats.
+        }
         Return a list of chats that the user have had given the user_id
-        '''
+        """
         user_id1 = query_info.get('user_id')
-        if user_id1 == None:
+        if user_id1 is None:
             return
         limit = query_info.get('limit')
         with self.engine.begin() as connection:
@@ -1611,7 +1613,7 @@ class BundleModel(object):
                 clause.append(cl_chat.c.recipient_user_id == self.system_user_id)
             clause = or_(*clause)
             query = query.where(clause)
-            if limit != None:
+            if limit is not None:
                 query = query.limit(limit)
             # query = query.order_by(cl_chat.c.id.desc())
             rows = connection.execute(query).fetchall()
@@ -1907,7 +1909,7 @@ class BundleModel(object):
         })
 
     def _get_disk_used(self, user_id):
-        return self.search_bundle_uuids(user_id, None, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
+        return self.search_bundle_uuids(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
 
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)

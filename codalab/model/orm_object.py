@@ -30,19 +30,16 @@ class ORMObject(object):
             precondition(key in self.COLUMNS or key == 'id', message)
             setattr(self, key, value)
 
-    def to_dict(self, strict=True, legacy=False):
-        '''
+    def to_dict(self, strict=True):
+        """
         Return a JSON-serializable and database-uploadable dictionary that
         represents this object.
 
         If strict is True, checks that all columns are set in this object.
-        '''
+        """
         result = {}
         for column in self.COLUMNS:
             if not strict and not hasattr(self, column): continue
             value = getattr(self, column)
-            # Note: DateTime doesn't serialize, so replace it with string.
-            if legacy and isinstance(value, datetime.datetime):
-                value = str(value)
             result[column] = value
         return result

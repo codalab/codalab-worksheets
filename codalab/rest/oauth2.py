@@ -116,12 +116,47 @@ def authorize(*args, **kwargs):
 
 @post('/oauth2/token')
 @oauth2_provider.token_handler
-def handle_token(): pass
+def handle_token():
+    """
+    OAuth2 token endpoint.
+
+    Access token request:
+
+        grant_type
+            REQUIRED.  Value MUST be set to "password".
+
+        username
+            REQUIRED.  The resource owner username.
+
+        password
+            REQUIRED.  The resource owner password.
+
+        scope
+            OPTIONAL.  The scope of the access request. (UNUSED)
+
+    Example successful response:
+
+        HTTP/1.1 200 OK
+        Content-Type: application/json;charset=UTF-8
+        Cache-Control: no-store
+        Pragma: no-cache
+
+        {
+          "access_token":"2YotnFZFEjr1zCsicMWpAA",
+          "token_type":"example",
+          "expires_in":3600,
+          "refresh_token":"tGzv3JOkF0XG5Qx2TlKWIA",
+          "example_parameter":"example_value"
+        }
+    """
+    pass
 
 
 @post('/oauth2/revoke')
 @oauth2_provider.revoke_handler
-def revoke_token(): pass
+def revoke_token():
+    """Revoke OAuth2 token."""
+    pass
 
 
 @get('/oauth2/errors', name='oauth2_errors')
