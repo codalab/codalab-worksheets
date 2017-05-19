@@ -272,7 +272,7 @@ class Worker(object):
             try:
                 with closing(self._bundle_service.get_code()) as code:
                     remove_path(worker_dir)
-                    un_tar_directory(code, worker_dir)
+                    un_tar_directory(code, worker_dir, 'gz')
                     break
             except Exception:
                 traceback.print_exc()
