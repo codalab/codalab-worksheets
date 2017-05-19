@@ -775,17 +775,20 @@ class BundleCLI(object):
         help='Show current client status.'
     )
     def do_status_command(self, args):
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+
         if not self.headless:
             print >>self.stdout, "codalab_home: %s" % self.manager.codalab_home
             print >>self.stdout, "session: %s" % self.manager.session_name()
             address = self.manager.session()['address']
+            print >>self.stdout, "client_version: %s" % CODALAB_VERSION
+            print >>self.stdout, "server_version: %s" % worksheet_info['meta']['version']
             print >>self.stdout, "address: %s" % address
             state = self.manager.state['auth'].get(address, {})
             if 'username' in state:
                 print >>self.stdout, "username: %s" % state['username']
 
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        worksheet_info = client.fetch('worksheets', worksheet_uuid)
         print >>self.stdout, "current_worksheet: %s" % self.simple_worksheet_str(worksheet_info)
         print >>self.stdout, "user: %s" % self.simple_user_str(client.fetch('user'))
 
