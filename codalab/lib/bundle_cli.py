@@ -82,11 +82,11 @@ from codalab.lib.bundle_store import (
     MultiDiskBundleStore
 )
 from codalab.lib.print_util import FileTransferProgress
-from worker.file_util import un_tar_directory
+from codalabworker.file_util import un_tar_directory
 
 from codalab.lib.spec_util import generate_uuid
-from worker.docker_client import DockerClient
-from worker.file_util import remove_path
+from codalabworker.docker_client import DockerClient
+from codalabworker.file_util import remove_path
 
 # Formatting Constants
 GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"

@@ -13,7 +13,7 @@ setup(name='codalab-cli',
     author_email='codalab.worksheets@gmail.com', # Percy's email?
     license='Apache License 2.0',
     keywords='codalab reproducible computation worksheets competitions',
-    packages=find_packages(include=['codalab*', 'worker*']),
+    packages=find_packages(include=['codalab*',]),
     include_package_data=True,
     install_requires=[
         'argcomplete==1.1.0',
@@ -26,7 +26,6 @@ setup(name='codalab-cli',
     entry_points={
         'console_scripts': [
             'cl=codalab.bin.cl:main',
-            'clworker=worker.main:main',
         ],
     },
     zip_safe=False),
