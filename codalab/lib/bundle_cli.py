@@ -58,6 +58,7 @@ from codalab.lib import (
     ui_actions,
     worksheet_util,
     zip_util,
+    bundle_fuse,
 )
 from codalab.lib.cli_util import nested_dict_get
 from codalab.objects.permission import (
@@ -118,6 +119,7 @@ BUNDLE_COMMANDS = (
     'macro',
     'kill',
     'write',
+    'mount',
 )
 
 DOCKER_IMAGE_COMMANDS = (
@@ -1173,6 +1175,7 @@ class BundleCLI(object):
         print >>self.stdout, new_bundle['uuid']
 
     def wait(self, client, args, uuid):
+        """Wait for a run bundle to finish. Called by run and mimic."""
         # Build new args for a hacky artificial call to the info command
         info_args = argparse.Namespace()
         info_args.worksheet_spec = args.worksheet_spec
@@ -1185,7 +1188,8 @@ class BundleCLI(object):
             self.follow_targets(client, uuid, [])
             self.do_info_command(info_args)
         if args.tail:
-            self.follow_targets(client, uuid, ['stdout', 'stderr'])
+            # Follow from the beginnings of the files since we just start running them
+            self.follow_targets(client, uuid, ['stdout', 'stderr'], from_start=True)
             if args.verbose:
                 self.do_info_command(info_args)
 
@@ -1221,6 +1225,7 @@ class BundleCLI(object):
         metadata = self.get_missing_metadata(RunBundle, args)
 
         if args.local:
+            self._fail_if_headless(args)  # Disable on headless systems
             docker_image = metadata.get('request_docker_image', None)
             if not docker_image:
                 raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
@@ -1268,6 +1273,7 @@ class BundleCLI(object):
         )
     )
     def do_edit_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         docker_image = args.request_docker_image
 
         uuid = generate_uuid()
@@ -1316,6 +1322,7 @@ class BundleCLI(object):
         )
     )
     def do_commit_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         cli_command = 'docker commit {} {}'.format(args.container, args.image_tag)
         os.system(cli_command)
 
@@ -1327,6 +1334,7 @@ class BundleCLI(object):
         )
     )
     def do_push_image_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
         print >>self.stdout, '===='
         print >>self.stdout, 'cl push-image has been deprecated and disabled. Please use docker push instead:'
         print >>self.stdout, ''
@@ -1578,7 +1586,6 @@ class BundleCLI(object):
         ]
         return '\n'.join('### %s: %s' % (k, v) for k, v in fields)
 
-    # TODO(sckoo): clean up use_rest hack when REST API migration complete
     def print_bundle_info_list(self, bundle_info_list, uuid_only, print_ref):
         """
         Helper function: print >>self.stdout, a nice table showing all provided bundles.
@@ -1632,7 +1639,7 @@ class BundleCLI(object):
                 values = []
                 for genpath in args.field.split(','):
                     if worksheet_util.is_file_genpath(genpath):
-                        value = contents_str(worksheet_util.interpret_file_genpath(client, {}, info['id'], genpath, None))
+                        value = contents_str(client.interpret_file_genpaths([(info['id'], genpath, None)])[0])
                     else:
                         value = worksheet_util.interpret_genpath(info, genpath)
                     values.append(value)
@@ -1645,7 +1652,6 @@ class BundleCLI(object):
                 if args.verbose:
                     self.print_children(info)
                     self.print_host_worksheets(info)
-                    # TODO(sckoo): clean up use_rest hack when REST API migration complete
                     self.print_permissions(info)
                     self.print_contents(client, info)
 
@@ -1726,6 +1732,32 @@ class BundleCLI(object):
                     continue
                 print >>self.stdout, wrap(item['name'])
                 self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
+
+    @Commands.command(
+        'mount',
+        help=[
+            'Mount the contents of a bundle at a read-only mountpoint.',
+        ],
+        arguments=(
+            Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
+            Commands.Argument('--mountpoint', help='Empty directory path to set up as the mountpoint for FUSE.'),
+            Commands.Argument('--verbose', help='Verbose mode for BundleFUSE.', action='store_true', default=False),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ),
+    )
+    def do_mount_command(self, args):
+        self._fail_if_headless(args)  # Disable on headless systems
+
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        uuid, path = target
+
+        mountpoint = path_util.normalize(args.mountpoint)
+        path_util.check_isvalid(mountpoint, 'mount')
+        print >>self.stdout, 'BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint)
+        print >>self.stdout, 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.'
+        bundle_fuse.bundle_mount(client, mountpoint, target, args.verbose)
+        print >>self.stdout, 'BundleFUSE shutting down.'
 
     @Commands.command(
         'cat',
@@ -1815,11 +1847,16 @@ class BundleCLI(object):
             self.exit(state)
         print >>self.stdout, bundle_uuid
 
-    def follow_targets(self, client, bundle_uuid, subpaths):
+    def follow_targets(self, client, bundle_uuid, subpaths, from_start=False):
         """
         Block on the execution of the given bundle.
-        subpaths: list of files to print >>self.stdout, out output as we go along.
-        Return READY or FAILED based on whether it was computed successfully.
+
+        :param client: JsonApiClient
+        :param bundle_uuid: uuid of bundle to follow
+        :param subpaths: list of files to print >>self.stdout, out output as we go along.
+        :param from_start: whether to follow from the beginning of the file, or
+            start from near the end of the file (like tail)
+        :return: 'ready' or 'failed' based on whether it was computed successfully.
         """
         subpath_is_file = [None] * len(subpaths)
         subpath_offset = [None] * len(subpaths)
@@ -1830,7 +1867,7 @@ class BundleCLI(object):
         for subpath in subpaths:
             while True:
                 try:
-                    target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
+                    client.fetch_contents_info(bundle_uuid, subpath, 0)
                     break
                 except NotFoundError:
                     time.sleep(SLEEP_PERIOD)
@@ -1850,8 +1887,11 @@ class BundleCLI(object):
                     target_info = client.fetch_contents_info(bundle_uuid, subpaths[i], 0)
                     if target_info['type'] == 'file':
                         subpath_is_file[i] = True
-                        # Go to near the end of the file (TODO: make this match up with lines)
-                        subpath_offset[i] = max(target_info['size'] - 64, 0)
+                        if from_start:
+                            subpath_offset[i] = 0
+                        else:
+                            # Go to near the end of the file (TODO: make this match up with lines)
+                            subpath_offset[i] = max(target_info['size'] - 64, 0)
                     else:
                         subpath_is_file[i] = False
 
@@ -2265,17 +2305,17 @@ class BundleCLI(object):
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
-                contents = client.rpc('interpret_genpath_table_contents', contents)
+                contents = client.interpret_genpath_table_contents(contents)
                 # print >>self.stdout, the table
                 self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
             elif mode == 'html' or mode == 'image' or mode == 'graph':
                 # Placeholder
                 print >>self.stdout, '[' + mode + ']'
             elif mode == 'search':
-                search_interpreted = client.rpc('interpret_search', worksheet_info['uuid'], data)
+                search_interpreted = client.interpret_search(data)
                 self.display_interpreted(client, worksheet_info, search_interpreted)
             elif mode == 'wsearch':
-                wsearch_interpreted = client.rpc('interpret_wsearch', data)
+                wsearch_interpreted = client.interpret_wsearch(data)
                 self.display_interpreted(client, worksheet_info, wsearch_interpreted)
             elif mode == 'worksheet':
                 print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(data) + ']'

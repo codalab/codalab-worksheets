@@ -79,19 +79,22 @@ def parse_duration(s):
     s: <number>[<s|m|h|d|y>]
     Returns the number of seconds
     """
-    if s[-1].isdigit():
-        return float(s)
-    n, unit = float(s[0:-1]), s[-1].lower()
-    if unit == 's':
-        return n
-    if unit == 'm':
-        return n * 60
-    if unit == 'h':
-        return n * 60 * 60
-    if unit == 'd':
-        return n * 60 * 60 * 24
-    if unit == 'y':
-        return n * 60 * 60 * 24 * 365
+    try:
+        if s[-1].isdigit():
+            return float(s)
+        n, unit = float(s[0:-1]), s[-1].lower()
+        if unit == 's':
+            return n
+        if unit == 'm':
+            return n * 60
+        if unit == 'h':
+            return n * 60 * 60
+        if unit == 'd':
+            return n * 60 * 60 * 24
+        if unit == 'y':
+            return n * 60 * 60 * 24 * 365
+    except (IndexError, ValueError):
+        pass  # continue to next line and throw error
     raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
 
 ############################################################

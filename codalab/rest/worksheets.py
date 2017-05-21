@@ -1,7 +1,9 @@
+import json
 import os
+import random
 
 import datetime
-from bottle import abort, get, post, put, delete, response, local, request
+from bottle import get, post, put, delete, response, local, redirect, request
 
 from codalab.common import PermissionError, UsageError, NotFoundError
 from codalab.lib import (
@@ -9,7 +11,6 @@ from codalab.lib import (
     spec_util,
     worksheet_util,
 )
-from codalab.lib import formatting
 from codalab.lib.canonicalize import HOME_WORKSHEET
 from codalab.lib.server_util import (
     bottle_patch as patch,
@@ -22,7 +23,6 @@ from codalab.objects.permission import (
     check_worksheet_has_all_permission,
     check_worksheet_has_read_permission,
 )
-from codalab.objects.user import PUBLIC_USER
 from codalab.objects.worksheet import Worksheet
 from codalab.rest.schemas import WorksheetSchema, WorksheetPermissionSchema, \
     BundleSchema, WorksheetItemSchema
@@ -65,9 +65,6 @@ def fetch_worksheet(uuid):
                           for item in worksheet['items']
                           if item['type'] == worksheet_util.TYPE_WORKSHEET and item['subworksheet_uuid'] is not None}
     json_api_include(document, WorksheetSchema(), local.model.batch_get_worksheets(fetch_items=False, uuid=subworksheet_uuids))
-
-    # FIXME: tokenizing directive args
-    # value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
 
     # Include permissions
     json_api_include(document, WorksheetPermissionSchema(), worksheet['group_permissions'])
@@ -123,6 +120,9 @@ def create_worksheets():
 @put('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
 @post('/worksheets/<uuid:re:%s>/raw' % spec_util.UUID_STR)
 def update_worksheet_raw(uuid):
+    """
+    Request body contains the raw lines of the worksheet.
+    """
     lines = request.body.read().split(os.linesep)
     new_items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, uuid)
     worksheet_info = get_worksheet_info(uuid, fetch_items=True)
@@ -207,12 +207,41 @@ def set_worksheet_permissions():
     return WorksheetPermissionSchema(many=True).dump(new_permissions).data
 
 
+@get('/worksheets/sample/')
+def get_sample_worksheets():
+    """
+    Get worksheets to display on the front page.
+    Keep only |worksheet_uuids|.
+    """
+    # Select good high-quality worksheets and randomly choose some
+    list_worksheets = search_worksheets(['tag=paper,software,data'])
+    list_worksheets = random.sample(list_worksheets, min(3, len(list_worksheets)))
+
+    # Always put home worksheet in
+    list_worksheets = search_worksheets(['name=home']) + list_worksheets
+
+    # Reformat
+    list_worksheets = [{'uuid': val['uuid'],
+                        'display_name': val.get('title') or val['name'],
+                        'owner_name': val['owner_name']} for val in list_worksheets]
+
+    response.content_type = 'application/json'
+    return json.dumps(list_worksheets)
+
+
+@get('/worksheets/')
+def get_worksheets_landing():
+    requested_ws = request.query.get('uuid', request.query.get('name', 'home'))
+    uuid = get_worksheet_uuid_or_create(None, requested_ws)
+    redirect('/worksheets/%s/' % uuid)
+
+
 #############################################################
 #  WORKSHEET HELPER FUNCTIONS
 #############################################################
 
 
-def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=False):
+def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
     """
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
     """
@@ -220,14 +249,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
     check_worksheet_has_read_permission(local.model, request.user, worksheet)
 
     # Create the info by starting out with the metadata.
-    result = worksheet.to_dict(legacy=legacy)
-
-    # TODO(sckoo): Legacy requirement, remove when BundleService is deprecated
-    if legacy:
-        if fetch_items:
-            result['items'] = convert_items_from_db(result['items'])
-        owner = local.model.get_user(user_id=result['owner_id'])
-        result['owner_name'] = owner.user_name
+    result = worksheet.to_dict()
 
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
@@ -242,42 +264,6 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True, legacy=Fa
             result['group_permissions'] = []
 
     return result
-
-
-# TODO(sckoo): Legacy requirement, remove when BundleService is deprecated
-def convert_items_from_db(items):
-    """
-    Helper function.
-    (bundle_uuid, subworksheet_uuid, value, type) -> (bundle_info, subworksheet_info, value_obj, type)
-    """
-    # Database only contains the uuid; need to expand to info.
-    # We need to do to convert the bundle_uuids into bundle_info dicts.
-    # However, we still make O(1) database calls because we use the
-    # optimized batch_get_bundles multiget method.
-    bundle_uuids = set(
-        bundle_uuid for (bundle_uuid, subworksheet_uuid, value, type) in items
-        if bundle_uuid is not None
-    )
-
-    bundle_dict = get_bundle_infos(bundle_uuids)
-
-    # Go through the items and substitute the components
-    new_items = []
-    for (bundle_uuid, subworksheet_uuid, value, type) in items:
-        bundle_info = bundle_dict.get(bundle_uuid, {'uuid': bundle_uuid}) if bundle_uuid else None
-        if subworksheet_uuid:
-            try:
-                subworksheet_info = local.model.get_worksheet(subworksheet_uuid, fetch_items=False).to_dict(legacy=True)
-            except UsageError, e:
-                # If can't get the subworksheet, it's probably invalid, so just replace it with an error
-                # type = worksheet_util.TYPE_MARKUP
-                subworksheet_info = {'uuid': subworksheet_uuid}
-                # value = 'ERROR: non-existent worksheet %s' % subworksheet_uuid
-        else:
-            subworksheet_info = None
-        value_obj = formatting.string_to_tokens(value) if type == worksheet_util.TYPE_DIRECTIVE else value
-        new_items.append((bundle_info, subworksheet_info, value_obj, type))
-    return new_items
 
 
 def update_worksheet_items(worksheet_info, new_items, convert_items=True):
@@ -310,9 +296,6 @@ def update_worksheet_metadata(uuid, info):
     for key, value in info.items():
         if key == 'owner_id':
             metadata['owner_id'] = value
-        elif key == 'owner_spec':
-            # TODO(sckoo): Legacy requirement, remove with BundleService
-            metadata['owner_id'] = local.model.find_user(value).user_id
         elif key == 'name':
             ensure_unused_worksheet_name(value)
             metadata[key] = value
@@ -320,9 +303,6 @@ def update_worksheet_metadata(uuid, info):
             metadata[key] = value
         elif key == 'tags':
             metadata[key] = value
-        elif key == 'freeze':
-            # TODO(sckoo): Support for the 'freeze' key is a legacy requirement, remove with BundleService
-            metadata['frozen'] = datetime.datetime.now()
         elif key == 'frozen' and value and not worksheet.frozen:
             # ignore the value the client provided, just freeze as long as it's truthy
             metadata['frozen'] = datetime.datetime.now()
@@ -430,3 +410,21 @@ def delete_worksheet(uuid, force):
             raise UsageError("Can't delete worksheet %s because it is not empty (--force to override)." %
                              worksheet.uuid)
     local.model.delete_worksheet(uuid)
+
+
+def search_worksheets(keywords):
+    keywords = resolve_owner_in_keywords(keywords)
+    results = local.model.search_worksheets(request.user.user_id, keywords)
+    _set_owner_names(results)
+    return results
+
+
+def _set_owner_names(results):
+    """
+    Helper function: Set owner_name given owner_id of each item in results.
+    """
+    owners = [local.model.get_user(r['owner_id']) for r in results]
+    for r, o in zip(results, owners):
+        r['owner_name'] = o.user_name
+
+

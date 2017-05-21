@@ -77,6 +77,7 @@ class MockBundle(object):
           self._tester.assertEqual(row[field], value)
     for (field, value) in self._fields.iteritems():
       setattr(self, field, value)
+    self._validate_called = False
 
   def validate(self):
     self._validate_called = True
@@ -115,4 +116,3 @@ class BundleModelTest(unittest.TestCase):
     with mock.patch(get_bundle_subclass_path, lambda bundle_type: MockBundle):
       retrieved_bundle = self.model.get_bundle(bundle.uuid)
     self.assertTrue(isinstance(retrieved_bundle, MockBundle))
-    self.assertTrue(retrieved_bundle._validate_called)

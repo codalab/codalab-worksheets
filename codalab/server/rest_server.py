@@ -30,9 +30,11 @@ from codalab.lib import formatting, server_util
 import codalab.rest.account
 import codalab.rest.bundle_actions
 import codalab.rest.bundles
+import codalab.rest.chats
+import codalab.rest.cli
 import codalab.rest.groups
 import codalab.rest.help
-import codalab.rest.legacy
+import codalab.rest.interpret
 import codalab.rest.oauth2
 import codalab.rest.titlejs
 import codalab.rest.users
@@ -272,13 +274,6 @@ def run_rest_server(manager, debug, num_processes, num_threads):
 
     root_app = Bottle()
     root_app.mount('/rest', default_app())
-
-    # TODO: Remove when we are confident everyone has upgraded
-    @root_app.route('/bundleservice', method=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
-    def bundleservice():
-        abort(BAD_REQUEST, "Your CLI is attempting to connect to an old API, "
-                           "please upgrade it by running `git pull` from where "
-                           "you installed it.")
 
     # Look for templates in codalab-cli/views
     bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]

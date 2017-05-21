@@ -5,3 +5,4 @@ six==1.10.0
 SQLAlchemy==1.0.8
 watchdog==0.8.3
 codalabworker>=0.2.6
+git+https://github.com/terencehonles/fusepy.git#v2.0.4
