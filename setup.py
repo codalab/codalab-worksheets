@@ -12,15 +12,6 @@ def get_requirements(*requirements_file_paths):
                     requirements.append(line.strip())
     return requirements
 
-def get_dependency_links(*requirements_file_paths):
-    dependency_links = []
-    for requirements_file_path in requirements_file_paths:
-        with open(requirements_file_path) as requirements_file:
-            for line in requirements_file:
-                if line.find('git') != -1:
-                    dependency_links.append(line.strip())
-    return dependency_links
-
 setup(name='codalab',
     version=CODALAB_VERSION,
     description='CLI for CodaLab, a platform for reproducible computation',
@@ -33,7 +24,6 @@ setup(name='codalab',
     packages=find_packages(include=['codalab*',]),
     include_package_data=True,
     install_requires=get_requirements('./requirements.txt', './requirements-server.txt'),
-    dependency_links=get_dependency_links('./requirements.txt', './requirements-server.txt'),
     entry_points={
         'console_scripts': [
             'cl=codalab.bin.cl:main',

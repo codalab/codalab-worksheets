@@ -2,15 +2,6 @@ from setuptools import setup, find_packages
 from setuptools.command.install import install
 import os
 
-def get_dependency_links(*requirements_file_paths):
-    dependency_links = []
-    for requirements_file_path in requirements_file_paths:
-        with open(requirements_file_path) as requirements_file:
-            for line in requirements_file:
-                if line.find('git') != -1:
-                    dependency_links.append(line)
-    return dependency_links
-
 def get_requirements(*requirements_file_paths):
     requirements = []
     for requirements_file_path in requirements_file_paths:
@@ -33,7 +24,6 @@ setup(name='codalabworker',
     package_data={'': 'requirements.txt'},
     include_package_data=True,
     install_requires=get_requirements('./requirements.txt'),
-    dependency_links=get_dependency_links('./requirements.txt'),
     entry_points={
         'console_scripts': [
             'cl-worker=codalabworker.main:main',
