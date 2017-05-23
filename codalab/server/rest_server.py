@@ -289,4 +289,5 @@ def run_rest_server(manager, debug, num_processes, num_threads):
                             # Gunicorn.
     run(app=root_app, host=host, port=port, debug=debug, server='gunicorn',
         workers=num_processes, worker_class='gthread', threads=num_threads,
+        worker_tmp_dir='/tmp',  # don't use globally set tempdir
         timeout=5 * 60)
