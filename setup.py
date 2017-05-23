@@ -21,7 +21,7 @@ setup(name='codalab',
     author_email='codalab.worksheets@gmail.com',
     license='Apache License 2.0',
     keywords='codalab reproducible computation worksheets competitions',
-    packages=find_packages(include=['codalab*',]),
+    packages=find_packages(exclude=["codalabworker", "tests*"]),
     include_package_data=True,
     install_requires=get_requirements('./requirements.txt'),
     entry_points={
