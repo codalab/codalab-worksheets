@@ -12,7 +12,7 @@ def get_requirements(*requirements_file_paths):
     return requirements
 
 setup(name='codalabworker',
-    version='0.0.1',
+    version='0.0.2',
     description='Worker for CodaLab, a platform for reproducible computation',
     long_description='To use your own hardware in CodaLab Worksheets, visit https://github.com/codalab/codalab-worksheets/wiki/Execution#running-your-own-workervisit. You can find the code at https://github.com/codalab/codalab-cli.',
     url='https://github.com/codalab/codalab-cli',
