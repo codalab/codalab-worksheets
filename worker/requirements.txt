@@ -1,3 +1,4 @@
+setuptools>=35.0.2
 argcomplete==1.1.0
 PyYAML==3.11
 psutil==3.3.0
@@ -6,4 +7,3 @@ SQLAlchemy==1.0.8
 watchdog==0.8.3
 fusepy==2.0.4
 codalabworker>=0.0.0
-setuptools>=35.0.2
