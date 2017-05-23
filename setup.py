@@ -23,7 +23,7 @@ setup(name='codalab',
     keywords='codalab reproducible computation worksheets competitions',
     packages=find_packages(include=['codalab*',]),
     include_package_data=True,
-    install_requires=get_requirements('./requirements.txt', './requirements-server.txt'),
+    install_requires=get_requirements('./requirements.txt'),
     entry_points={
         'console_scripts': [
             'cl=codalab.bin.cl:main',
