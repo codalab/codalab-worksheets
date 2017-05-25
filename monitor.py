@@ -38,8 +38,6 @@ parser.add_argument('--run-interval', help='run a job every this many seconds', 
 parser.add_argument('--email-interval', help='email a report every this many seconds', type=int, default=24*60*60)
 args = parser.parse_args()
 
-hostname = socket.gethostname()
-
 # Get MySQL username and password for bundles
 config_path = os.path.join(args.codalab_home, 'config.json')
 config = json.loads(open(config_path).read())
@@ -52,6 +50,8 @@ bundles_db = m.group(3)
 bundles_user = m.group(1)
 bundles_password = m.group(2)
 print 'bundles DB: %s; user: %s' % (bundles_db, bundles_user)
+
+hostname = config['server'].get('instance_name', socket.gethostname())
 
 # Email
 recipient = config['server'].get('admin_email')
