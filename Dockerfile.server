@@ -19,6 +19,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY . /opt/codalab-cli
 
+ENV PATH="/opt/codalab-cli/codalab/bin:${PATH}"
 ENV CODALAB_HOME=/home/codalab
 RUN cd /opt/codalab-cli && ./setup.sh server
 
