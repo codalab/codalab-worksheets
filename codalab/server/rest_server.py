@@ -114,9 +114,9 @@ class LoggingPlugin(object):
             query_dict = (
                 dict(map(lambda k: (k, request.query[k]), request.query)))
             args = [request.path, query_dict]
-            if (route.method == 'POST'
-                and request.content_type == 'application/json'):
-                args.append(request.json)
+            # if (route.method == 'POST'
+            #     and request.content_type == 'application/json'):
+            #     args.append(request.json)
 
             local.model.update_events_log(
                 start_time=start_time,
