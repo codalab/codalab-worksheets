@@ -313,23 +313,23 @@ class Competition(object):
                     created > submissions[owner_id]['metadata']['created']:
                 submissions[owner_id] = bundle
 
-        # FIXME: check that all this works when multiple predict bundles are created
-
-        # Fetch latest predict run bundles
+        # Fetch latest evaluation bundles
         last_tests = self.client.fetch('bundles', params={
             'keywords': [
-                '.mine',  # don't allow others to forge prediction bundles
-                'tags={predict[tag]}'.format(**self.config),
+                '.mine',  # don't allow others to forge evaluations
+                'tags={evaluate[tag]}'.format(**self.config),
                 '.limit={max_leaderboard_size}'.format(**self.config),
             ]
         })
 
-        # Build map from submitter_user_id -> UNIX timestamps of submissions, sorted
-        submission_times = defaultdict(list)
-        submission_ids = set()
-        for predict_bundle in last_tests:
-            submit_info = json.loads(predict_bundle['metadata']['description'])
-            timestamp = predict_bundle['metadata']['created']
+        # Collect data in preparation for computing submission counts
+        submission_times = defaultdict(list)  # map from submitter_user_id -> UNIX timestamps of submissions, sorted
+        submission_ids = set()                # set of submission bundle uuids
+        for eval_bundle in last_tests:
+            submit_info = self.get_competition_metadata(eval_bundle)
+            if submit_info is None:
+                continue
+            timestamp = eval_bundle['metadata']['created']
             submission_ids.add(submit_info['submit_id'])
             # Only count toward quota if not failed or configured to count failed submissions
             # if predict_bundle['state'] != State.FAILED or self.config['count_failed_submissions']:
@@ -350,7 +350,7 @@ class Competition(object):
         for owner_id, bundle in submissions.items():
             # Drop submission if we already ran it before
             if bundle['id'] in submission_ids:
-                logger.debug('Already ran last submission by '
+                logger.debug('Already mimicked last submission by '
                              '{owner[user_name]}.'.format(**bundle))
                 del submissions[owner_id]
                 continue
@@ -379,7 +379,14 @@ class Competition(object):
 
     def run_prediction(self, submit_bundle):
         """
-        Returns None if prediction fails.
+        Given a bundle tagged for submission, try to mimic the bundle with the
+        evaluation data according to the prediction run specification.
+
+        Returns the mimicked prediction bundle. (If the mimic created multiple
+        bundles, then the one corresponding to the tagged submission bundle is
+        returned.)
+
+        Returns None if the submission does not meet requirements.
         """
         predict_bundle_name = PREDICT_RUN_PREFIX + submit_bundle['owner']['id']
         predict_config = self.config['predict']
@@ -394,10 +401,6 @@ class Competition(object):
 
         metadata = {
             'tags': [predict_config['tag']],
-            'description': json.dumps({
-                'submit_id': submit_bundle['id'],
-                'submitter_id': submit_bundle['owner']['id'],
-            }),
         }
         metadata.update(predict_config['metadata'])
         mimic_args = {
@@ -424,11 +427,9 @@ class Competition(object):
             return None
 
         # Actually perform the mimic now
-        plan = mimic_bundles(dry_run=False, **mimic_args)
-        for old_info, new_info in plan:
-            if old_info['uuid'] == submit_bundle['uuid']:
-                return new_info
-        raise AssertionError("Couldn't find mimicked bundle found in plan")
+        predict_bundle = find_mimicked(mimic_bundles(dry_run=False, **mimic_args))
+        assert predict_bundle is not None, "Unexpected error: couldn't find mimicked bundle in plan"
+        return predict_bundle
 
     def run_evaluation(self, submit_bundle, predict_bundle):
         eval_bundle_name = '{owner[user_name]}-results'.format(**submit_bundle)
@@ -436,7 +437,7 @@ class Competition(object):
         # Untag any old evaluation run(s) for this submitter
         old_evaluations = self.client.fetch('bundles', params={
             'keywords': [
-                '.mine',
+                '.mine',  # don't allow others to forge evaluations
                 'tags={evaluate[tag]}'.format(**self.config),
                 'name=' + eval_bundle_name,
                 ]
@@ -451,8 +452,9 @@ class Competition(object):
             'tags': [self.config['evaluate']['tag']],
             'description': json.dumps({
                 'submit_id': submit_bundle['id'],
+                'submitter_id': submit_bundle['owner']['id'],
                 'predict_id': predict_bundle['id'],
-            })
+            }),
         }
         metadata.update(self.config['evaluate']['metadata'])
         metadata = fill_missing_metadata(RunBundle, argparse.Namespace(), metadata)
@@ -481,11 +483,21 @@ class Competition(object):
         return False
 
     def _fetch_leaderboard(self):
+        """
+        Fetches the evaluation bundles tagged for the leaderboard, along with
+        the corresponding submission bundles if they exist.
+
+        :return: (eval_bundles, eval2submit) where eval_bundles is a list of the
+                 evaluation bundles, and eval2submit is a dict mapping evaluation
+                 bundle id to the original submission bundle. The id will not be
+                 a key in eval2submit if a corresponding submission bundle does
+                 not exist.
+        """
         logger.debug('Fetching the leaderboard')
         # Fetch bundles on current leaderboard
         eval_bundles = self.client.fetch('bundles', params={
             'keywords': [
-                '.mine',
+                '.mine',  # don't allow others to forge evaluations
                 'tags={evaluate[tag]}'.format(**self.config),
                 '.limit={max_leaderboard_size}'.format(**self.config),
             ]
@@ -642,7 +654,7 @@ class Competition(object):
 
         if not self.leaderboard_only:
             for owner_id, submit_bundle in submissions.items():
-                logger.info("Running submission for "
+                logger.info("Mimicking submission for "
                             "{owner[user_name]}".format(**submit_bundle))
                 predict_bundle = self.run_prediction(submit_bundle)
                 if predict_bundle is None:
@@ -650,7 +662,7 @@ class Competition(object):
                                 "{owner[user_name]}".format(**submit_bundle))
                     continue
                 self.run_evaluation(submit_bundle, predict_bundle)
-                logger.info("Finished running submission for "
+                logger.info("Finished mimicking submission for "
                             "{owner[user_name]}".format(**submit_bundle))
                 num_total_submissions[owner_id] += 1
                 num_period_submissions[owner_id] += 1
