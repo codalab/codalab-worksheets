@@ -1756,7 +1756,8 @@ class BundleCLI(object):
         path_util.check_isvalid(mountpoint, 'mount')
         print >>self.stdout, 'BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint)
         print >>self.stdout, 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.'
-        bundle_fuse.bundle_mount(client, mountpoint, target, args.verbose)
+        if not bundle_fuse.fuse_is_available:
+            bundle_fuse.bundle_mount(client, mountpoint, target, args.verbose)
         print >>self.stdout, 'BundleFUSE shutting down.'
 
     @Commands.command(

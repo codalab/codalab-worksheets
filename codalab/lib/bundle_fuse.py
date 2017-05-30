@@ -10,7 +10,11 @@ import time
 
 from contextlib import closing
 
-from fuse import FUSE, FuseOSError, Operations
+try:
+    from fuse import FUSE, FuseOSError, Operations
+    fuse_is_available = True
+except ImportError:
+    fuse_is_available = False
 from codalab.client.json_api_client import JsonApiRelationship
 from codalab.lib.path_util import normalize
 
