@@ -491,9 +491,9 @@ class BundleCLI(object):
         For a user matching output of UserSchema, return 'user_name(id)'
         """
         if not user:
-            return '<unknown>'
+            return '<anonymous>'
         if 'user_name' not in user:
-            return '<unknown>(%s)' % user['id']
+            return '<anonymous>(%s)' % user['id']
         return '%s(%s)' % (user['user_name'], user['id'])
 
     @staticmethod
@@ -651,10 +651,7 @@ class BundleCLI(object):
                 spec.key: getattr(args, metadata_util.metadata_key_to_argument(spec.key))
                 for spec in bundle_subclass.get_user_defined_metadata()
             }
-        if not getattr(args, 'edit', True):
-            return metadata_util.fill_missing_metadata(bundle_subclass, args, initial_metadata)
-        else:
-            return metadata_util.request_missing_metadata(bundle_subclass, initial_metadata)
+        return metadata_util.fill_missing_metadata(bundle_subclass, args, initial_metadata)
 
     #############################################################################
     # CLI methods
@@ -1357,6 +1354,10 @@ class BundleCLI(object):
             Commands.Argument('-n', '--name', help='Change the bundle name (format: %s).' % spec_util.NAME_REGEX.pattern),
             Commands.Argument('-T', '--tags', help='Change tags (must appear after worksheet_spec).', nargs='*'),
             Commands.Argument('-d', '--description', help='New bundle description.'),
+            Commands.Argument('--anonymous', help='Set bundle to be anonymous (identity of the owner will NOT \n'
+                              'be visisble to users without \'all\' permission on the bundle).',
+                              dest='anonymous', action='store_true', default=None),
+            Commands.Argument('--not-anonymous', help='Set bundle to be NOT anonymous.', dest='anonymous', action='store_false'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1370,29 +1371,30 @@ class BundleCLI(object):
 
         bundle_subclass = get_bundle_subclass(info['bundle_type'])
 
-        metadata = info['metadata']
-        new_metadata = copy.deepcopy(metadata)
-        is_new_metadata_updated = False
+        metadata_update = {}
+        bundle_update = {}
         if args.name:
-            new_metadata['name'] = args.name
-            is_new_metadata_updated = True
+            metadata_update['name'] = args.name
         if args.description:
-            new_metadata['description'] = args.description
-            is_new_metadata_updated = True
+            metadata_update['description'] = args.description
         if args.tags:
-            new_metadata['tags'] = args.tags
-            is_new_metadata_updated = True
+            metadata_update['tags'] = args.tags
+        if args.anonymous is not None:
+            bundle_update['is_anonymous'] = args.anonymous
 
-        # Prompt user for all information
-        if not is_new_metadata_updated and not self.headless and metadata == new_metadata:
-            new_metadata = self.get_missing_metadata(bundle_subclass, args, new_metadata)
+        # Prompt user for edits via an editor when no edits provided by command line options
+        if not self.headless and not metadata_update and not bundle_update:
+            metadata_update = metadata_util.request_missing_metadata(bundle_subclass, info['metadata'])
 
-        if metadata != new_metadata:
-            client.update('bundles', {
+        if bundle_update or metadata_update:
+            bundle_update.update({
                 'id': info['id'],
                 'bundle_type': info['bundle_type'],
-                'metadata': new_metadata,
             })
+            if metadata_update:
+                bundle_update['metadata'] = metadata_update
+
+            client.update('bundles', bundle_update)
             print >>self.stdout, "Saved metadata for bundle %s." % (info['id'])
 
     @Commands.command(
@@ -1576,6 +1578,7 @@ class BundleCLI(object):
         }
 
     def _worksheet_description(self, worksheet_info):
+        print worksheet_info
         fields = [
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
@@ -2206,13 +2209,17 @@ class BundleCLI(object):
             Commands.Argument('-T', '--tags', help='Change tags (must appear after worksheet_spec).', nargs='*'),
             Commands.Argument('-o', '--owner-spec', help='Change owner of worksheet.'),
             Commands.Argument('--freeze', help='Freeze worksheet to prevent future modification (PERMANENT!).', action='store_true'),
+            Commands.Argument('--anonymous', help='Set worksheet to be anonymous (identity of the owner will NOT \n'
+                                                  'be visisble to users without \'all\' permission on the worksheet).',
+                              dest='anonymous', action='store_true', default=None),
+            Commands.Argument('--not-anonymous', help='Set bundle to be NOT anonymous.', dest='anonymous', action='store_false'),
             Commands.Argument('-f', '--file', help='Replace the contents of the current worksheet with this file.', completer=require_not_headless(FilesCompleter(directories=False))),
         ),
     )
     def do_wedit_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         worksheet_info = client.fetch('worksheets', worksheet_uuid)
-        if args.freeze or any(arg is not None for arg in (args.name, args.title, args.tags, args.owner_spec)):
+        if args.freeze or any(arg is not None for arg in (args.name, args.title, args.tags, args.owner_spec, args.anonymous)):
             # Update the worksheet metadata.
             info = {
                 'id': worksheet_info['id']
@@ -2228,6 +2235,8 @@ class BundleCLI(object):
                 info['owner'] = JsonApiRelationship('users', owner['id'])
             if args.freeze:
                 info['frozen'] = datetime.datetime.utcnow().isoformat()
+            if args.anonymous is not None:
+                info['is_anonymous'] = args.anonymous
 
             client.update('worksheets', info)
             print >>self.stdout, 'Saved worksheet metadata for %s(%s).' % (worksheet_info['name'], worksheet_info['uuid'])

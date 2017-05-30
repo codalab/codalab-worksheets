@@ -299,18 +299,13 @@ def update_worksheet_metadata(uuid, info):
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     metadata = {}
     for key, value in info.items():
-        if key == 'owner_id':
-            metadata['owner_id'] = value
-        elif key == 'name':
+        if key == 'name':
             ensure_unused_worksheet_name(value)
-            metadata[key] = value
-        elif key == 'title':
-            metadata[key] = value
-        elif key == 'tags':
-            metadata[key] = value
         elif key == 'frozen' and value and not worksheet.frozen:
             # ignore the value the client provided, just freeze as long as it's truthy
-            metadata['frozen'] = datetime.datetime.now()
+            value = datetime.datetime.now()
+        metadata[key] = value
+
     local.model.update_worksheet_metadata(worksheet, metadata)
 
 
