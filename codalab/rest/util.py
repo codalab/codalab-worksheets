@@ -74,22 +74,6 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
         elif p < GROUP_OBJECT_PERMISSION_ALL and bundle['is_anonymous']:
             bundle['owner_id'] = None
 
-    # TODO(sckoo): remove when frontend migrated to new REST API
-    # Look up the user names of all the owners
-    # Used by the legacy API, i.e. bundle_interface.jsx in the frontend
-    user_ids = [info['owner_id'] for info in bundle_dict.itervalues() if info['owner_id'] is not None]
-    users = local.model.get_users(user_ids=user_ids) if len(user_ids) > 0 else []
-    users = {u.user_id: u for u in users}
-    if users:
-        for info in bundle_dict.itervalues():
-            if info['owner_id'] is None:
-                info['owner_name'] = '<anonymous>'
-                info['owner'] = '<anonymous>'
-            else:
-                user = users[info['owner_id']]
-                info['owner_name'] = user.user_name
-                info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
-
     # Filter out bundles and worksheets that we don't have read permission on
     def select_unreadable_bundles(uuids):
         permissions = local.model.get_user_bundle_permissions(request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))

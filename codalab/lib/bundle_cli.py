@@ -1576,7 +1576,6 @@ class BundleCLI(object):
         }
 
     def _worksheet_description(self, worksheet_info):
-        print worksheet_info['owner']
         fields = [
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
