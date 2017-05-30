@@ -623,10 +623,9 @@ class Competition(object):
                     'num_period_submissions': 0,
                     'created': bundle['metadata']['created'],
                 }
-
             leaderboard.append({
                 'bundle': bundle,
-                'scores': scores,
+                'scores': scores[bundle['id']],
                 'submission': submission_info,
             })
 
