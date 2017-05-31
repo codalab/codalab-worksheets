@@ -318,8 +318,13 @@ class BundleManager(object):
                 # We don't know how to handle this type of request queue
                 # argument.
                 return []
+        else: 
+            # if no tag specified, filter out workers that have a tag -- only jobs that 
+            # specifically request a tag will run on the workers with that tag
+            workers_list = filter(lambda worker: worker['tag'] == request_queue, workers_list)
 
         # Sort workers list according to these keys in the following succession:
+        #  - if the bundle doesn't request GPUs (only requests CPUs), prioritize workers that don't have GPUs
         #  - number of dependencies available, descending
         #  - number of free slots, descending
         #  - random key
@@ -334,6 +339,10 @@ class BundleManager(object):
                               bundle.dependencies))
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
+
+            # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
+            if not self._compute_request_gpus(bundle):
+                return (-worker['gpus'], len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
             return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
