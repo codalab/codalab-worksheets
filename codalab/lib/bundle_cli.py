@@ -1481,6 +1481,7 @@ class BundleCLI(object):
         if args.dry_run:
             bundles = client.fetch('bundles', params={
                 'specs': deleted_uuids,
+                'include': ['owner']
             })
             print >>self.stdout, 'This command would permanently remove the following bundles (not doing so yet):'
             self.print_bundle_info_list(bundles, uuid_only=False, print_ref=False)
@@ -1516,6 +1517,7 @@ class BundleCLI(object):
         bundles = client.fetch('bundles', params={
             'worksheet': worksheet_uuid,
             'keywords': args.keywords,
+            'include': ['owner'],
         })
 
         # Print direct numeric result
@@ -1578,7 +1580,6 @@ class BundleCLI(object):
         }
 
     def _worksheet_description(self, worksheet_info):
-        print worksheet_info
         fields = [
             ('Worksheet', self.worksheet_str(worksheet_info)),
             ('Title', formatting.verbose_contents_str(worksheet_info['title'])),
@@ -1635,6 +1636,7 @@ class BundleCLI(object):
         bundles = client.fetch('bundles', params={
             'specs': args.bundle_spec,
             'worksheet': worksheet_uuid,
+            'include': ['owner'] + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
         })
 
         for i, info in enumerate(bundles):

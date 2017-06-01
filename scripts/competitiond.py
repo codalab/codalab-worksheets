@@ -265,7 +265,8 @@ class Competition(object):
                 'tags={submission_tag}'.format(**self.config),
                 'created=.sort-',
                 '.limit={max_leaderboard_size}'.format(**self.config),
-            ]
+            ],
+            'include': ['owner']
         })
 
         # Drop all but the latest submission for each user
@@ -292,7 +293,7 @@ class Competition(object):
                 '.mine',  # don't allow others to forge evaluations
                 'tags={evaluate[tag]}'.format(**self.config),
                 '.limit={max_leaderboard_size}'.format(**self.config),
-            ]
+            ],
         })
 
         # Collect data in preparation for computing submission counts
@@ -516,6 +517,7 @@ class Competition(object):
                     submit_bundles.extend(self.client.fetch('bundles', params={
                         'specs': uuids[start:end],
                         'worksheet': self.config['log_worksheet_uuid'],
+                        'include': ['owner', 'group_permissions'],
                     }))
                 break
             except NotFoundError as e:

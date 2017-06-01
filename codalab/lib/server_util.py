@@ -114,6 +114,22 @@ def query_get_bool(key, default=False):
         abort(httplib.BAD_REQUEST, '%r parameter must be integer boolean' % key)
 
 
+def query_get_json_api_include_set(supported):
+    """
+    Get the set of related resources to include, as defined by
+    http://jsonapi.org/format/#fetching-includes
+
+    :param set[str] supported: set of supported resources to include
+    """
+    query_str = request.query.get('include', None)
+    if query_str is None:
+        return set()
+    requested = set(query_str.split(','))
+    if not requested <= supported:
+        abort(httplib.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported)))
+    return requested
+
+
 def json_api_meta(doc, meta_update):
     precondition(isinstance(meta_update, dict), "Meta data must be dict")
     meta = doc.setdefault('meta', {})

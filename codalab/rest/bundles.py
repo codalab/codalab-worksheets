@@ -22,6 +22,7 @@ from codalab.lib import (
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
+    query_get_json_api_include_set,
     json_api_meta,
     query_get_bool,
     query_get_list,
@@ -37,6 +38,7 @@ from codalab.rest.schemas import (
     BundlePermissionSchema,
     BUNDLE_CREATE_RESTRICTED_FIELDS,
     BUNDLE_UPDATE_RESTRICTED_FIELDS,
+    WorksheetSchema,
 )
 from codalab.rest.users import UserSchema
 from codalab.rest.util import (
@@ -133,18 +135,18 @@ def _fetch_bundles():
 
 
 def build_bundles_document(bundle_uuids):
+    include_set = query_get_json_api_include_set(supported={'owner', 'group_permissions', 'children', 'host_worksheets'})
+
     bundles_dict = get_bundle_infos(
         bundle_uuids,
-        get_children=True,
-        get_permissions=True,
-        get_host_worksheets=True,
+        get_children='children' in include_set,
+        get_permissions='group_permissions' in include_set,
+        get_host_worksheets='host_worksheets' in include_set,
+        ignore_not_found=False,
     )
 
     # Create list of bundles in original order
-    try:
-        bundles = [bundles_dict[uuid] for uuid in bundle_uuids]
-    except KeyError as e:
-        abort(httplib.NOT_FOUND, "Bundle %s not found" % e.args[0])
+    bundles = [bundles_dict[uuid] for uuid in bundle_uuids]
 
     # Build response document
     document = BundleSchema(many=True).dump(bundles).data
@@ -160,17 +162,21 @@ def build_bundles_document(bundle_uuids):
                     worksheet_util.get_metadata_types(bundle_class),
             })
 
-    # Include users
-    owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
-    json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
+    if 'owner' in include_set:
+        owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
+        json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
 
-    # Include permissions
-    for bundle in bundles:
-        json_api_include(document, BundlePermissionSchema(), bundle['group_permissions'])
+    if 'group_permissions' in include_set:
+        for bundle in bundles:
+            json_api_include(document, BundlePermissionSchema(), bundle['group_permissions'])
 
-    # Include child bundles
-    children_uuids = set(c['uuid'] for bundle in bundles for c in bundle['children'])
-    json_api_include(document, BundleSchema(), get_bundle_infos(children_uuids).values())
+    if 'children' in include_set:
+        for bundle in bundles:
+            json_api_include(document, BundleSchema(), bundle['children'])
+
+    if 'host_worksheets' in include_set:
+        for bundle in bundles:
+            json_api_include(document, WorksheetSchema(), bundle['host_worksheets'])
 
     return document
 
