@@ -10,7 +10,7 @@ import traceback
 
 from codalab.common import State
 from codalab.lib import bundle_util, formatting, path_util
-from worker.file_util import remove_path
+from codalabworker.file_util import remove_path
 
 
 logger = logging.getLogger(__name__)

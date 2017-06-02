@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y \
   software-properties-common \
   zip
 
+RUN pip install -U setuptools
+
 COPY . /opt/codalab-cli
 
 ENV CODALAB_HOME=/home/codalab

@@ -5,8 +5,8 @@ import threading
 import time
 import unittest
 
-from worker.dependency_manager import DependencyManager
-from worker.file_util import remove_path
+from codalabworker.dependency_manager import DependencyManager
+from codalabworker.file_util import remove_path
 
 class DependencyManagerTest(unittest.TestCase):
     def setUp(self):

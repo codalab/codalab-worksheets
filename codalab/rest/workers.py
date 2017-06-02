@@ -11,7 +11,7 @@ from bottle import abort, get, local, post, put, request, response
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from worker.worker import VERSION
+from codalabworker.worker import VERSION
 
 
 @post('/workers/<worker_id>/checkin',
