@@ -51,6 +51,8 @@ else
   $env/bin/pip install -r $codalabdir/requirements.txt
 fi
 
+$env/bin/pip install -U setuptools
+
 ( # try
     $env/bin/pip install psutil || exit 1
 ) || ( # catch
