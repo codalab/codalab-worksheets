@@ -1746,15 +1746,15 @@ class BundleCLI(object):
         ),
     )
     def do_mount_command(self, args):
-        self._fail_if_headless(args)  # Disable on headless systems
-
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        uuid, path = target
-
-        mountpoint = path_util.normalize(args.mountpoint)
-        path_util.check_isvalid(mountpoint, 'mount')
         if bundle_fuse.fuse_is_available:
+            self._fail_if_headless(args)  # Disable on headless systems
+
+            client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+            target = self.parse_target(client, worksheet_uuid, args.target_spec)
+            uuid, path = target
+
+            mountpoint = path_util.normalize(args.mountpoint)
+            path_util.check_isvalid(mountpoint, 'mount')
             print >>self.stdout, 'BundleFUSE mounting bundle {} on {}'.format(uuid, mountpoint)
             print >>self.stdout, 'BundleFUSE will run and maintain the mounted filesystem in the foreground. CTRL-C to cancel.'
             bundle_fuse.bundle_mount(client, mountpoint, target, args.verbose)
