@@ -93,7 +93,7 @@ from marshmallow import Schema, fields, ValidationError
 
 sys.path.append('.')
 from codalab.bundles import RunBundle
-from codalab.common import NotFoundError, State
+from codalab.common import NotFoundError, State, PermissionError
 from codalab.client.json_api_client import (
     JsonApiClient,
     JsonApiRelationship,
@@ -168,6 +168,7 @@ class ConfigSchema(Schema):
     quota_period_seconds = fields.Integer(missing=24*60*60)  # default 1 day
     count_failed_submissions = fields.Boolean(missing=True)  # default count everything toward quota
     make_predictions_public = fields.Boolean(missing=False)  # default keep predictions private
+    allow_orphans = fields.Boolean(missing=True)  # default allow leaderboard entries that no longer have corresponding submission bundles
     host = fields.Url(required=True)
     username = fields.String()
     password = fields.String()
@@ -195,6 +196,8 @@ class AuthHelper(object):
         if not self.grant or time.time() > self.expires_at - self.REFRESH_BUFFER_SECONDS:
             self.grant = self.auth_handler.generate_token('credentials',
                                                           self.username, self.password)
+            if self.grant is None:
+                raise PermissionError('Invalid username or password.')
             self.expires_at = time.time() + self.grant['expires_in']
         return self.grant['access_token']
 
@@ -222,6 +225,11 @@ class Competition(object):
             self.config.get('username') or raw_input('Username: '),
             self.config.get('password') or getpass.getpass('Password: '))
 
+        # Remove credentials from config to prevent them from being copied
+        # into the leaderboard file.
+        self.config.pop('username', None)
+        self.config.pop('password', None)
+
         self.client = ThrottledJsonApiClientWithRetry(self.config['host'], auth.get_access_token)
         self.should_stop = False
 
@@ -235,6 +243,20 @@ class Competition(object):
             print >> sys.stderr, 'Invalid config file:', e
             sys.exit(1)
         return config
+
+    @staticmethod
+    def get_competition_metadata(bundle):
+        try:
+            return json.loads(bundle['metadata']['description'])
+        except ValueError:
+            return None
+
+    def clear_competition_metadata(self, bundle):
+        bundle['metadata']['description'] = ''
+        self.client.update('bundles', {
+            'id': bundle['id'],
+            'metadata': {'description': ''}
+        })
 
     def ensure_log_worksheet_private(self):
         """
@@ -291,20 +313,23 @@ class Competition(object):
                     created > submissions[owner_id]['metadata']['created']:
                 submissions[owner_id] = bundle
 
-        # Fetch latest predict run bundles
+        # Fetch latest evaluation bundles
         last_tests = self.client.fetch('bundles', params={
             'keywords': [
-                'tags={predict[tag]}'.format(**self.config),
+                '.mine',  # don't allow others to forge evaluations
+                'tags={evaluate[tag]}'.format(**self.config),
                 '.limit={max_leaderboard_size}'.format(**self.config),
             ]
         })
 
-        # Build map from submitter_user_id -> UNIX timestamps of submissions, sorted
-        submission_times = defaultdict(list)
-        submission_ids = set()
-        for predict_bundle in last_tests:
-            submit_info = json.loads(predict_bundle['metadata']['description'])
-            timestamp = predict_bundle['metadata']['created']
+        # Collect data in preparation for computing submission counts
+        submission_times = defaultdict(list)  # map from submitter_user_id -> UNIX timestamps of submissions, sorted
+        submission_ids = set()                # set of submission bundle uuids
+        for eval_bundle in last_tests:
+            submit_info = self.get_competition_metadata(eval_bundle)
+            if submit_info is None:
+                continue
+            timestamp = eval_bundle['metadata']['created']
             submission_ids.add(submit_info['submit_id'])
             # Only count toward quota if not failed or configured to count failed submissions
             # if predict_bundle['state'] != State.FAILED or self.config['count_failed_submissions']:
@@ -325,7 +350,7 @@ class Competition(object):
         for owner_id, bundle in submissions.items():
             # Drop submission if we already ran it before
             if bundle['id'] in submission_ids:
-                logger.debug('Already ran last submission by '
+                logger.debug('Already mimicked last submission by '
                              '{owner[user_name]}.'.format(**bundle))
                 del submissions[owner_id]
                 continue
@@ -354,7 +379,14 @@ class Competition(object):
 
     def run_prediction(self, submit_bundle):
         """
-        Returns None if prediction fails.
+        Given a bundle tagged for submission, try to mimic the bundle with the
+        evaluation data according to the prediction run specification.
+
+        Returns the mimicked prediction bundle. (If the mimic created multiple
+        bundles, then the one corresponding to the tagged submission bundle is
+        returned.)
+
+        Returns None if the submission does not meet requirements.
         """
         predict_bundle_name = PREDICT_RUN_PREFIX + submit_bundle['owner']['id']
         predict_config = self.config['predict']
@@ -369,10 +401,6 @@ class Competition(object):
 
         metadata = {
             'tags': [predict_config['tag']],
-            'description': json.dumps({
-                'submit_id': submit_bundle['id'],
-                'submitter_id': submit_bundle['owner']['id'],
-            }),
         }
         metadata.update(predict_config['metadata'])
         mimic_args = {
@@ -399,11 +427,9 @@ class Competition(object):
             return None
 
         # Actually perform the mimic now
-        plan = mimic_bundles(dry_run=False, **mimic_args)
-        for old_info, new_info in plan:
-            if old_info['uuid'] == submit_bundle['uuid']:
-                return new_info
-        raise AssertionError("Couldn't find mimicked bundle found in plan")
+        predict_bundle = find_mimicked(mimic_bundles(dry_run=False, **mimic_args))
+        assert predict_bundle is not None, "Unexpected error: couldn't find mimicked bundle in plan"
+        return predict_bundle
 
     def run_evaluation(self, submit_bundle, predict_bundle):
         eval_bundle_name = '{owner[user_name]}-results'.format(**submit_bundle)
@@ -411,6 +437,7 @@ class Competition(object):
         # Untag any old evaluation run(s) for this submitter
         old_evaluations = self.client.fetch('bundles', params={
             'keywords': [
+                '.mine',  # don't allow others to forge evaluations
                 'tags={evaluate[tag]}'.format(**self.config),
                 'name=' + eval_bundle_name,
                 ]
@@ -425,8 +452,9 @@ class Competition(object):
             'tags': [self.config['evaluate']['tag']],
             'description': json.dumps({
                 'submit_id': submit_bundle['id'],
+                'submitter_id': submit_bundle['owner']['id'],
                 'predict_id': predict_bundle['id'],
-            })
+            }),
         }
         metadata.update(self.config['evaluate']['metadata'])
         metadata = fill_missing_metadata(RunBundle, argparse.Namespace(), metadata)
@@ -455,10 +483,21 @@ class Competition(object):
         return False
 
     def _fetch_leaderboard(self):
+        """
+        Fetches the evaluation bundles tagged for the leaderboard, along with
+        the corresponding submission bundles if they exist.
+
+        :return: (eval_bundles, eval2submit) where eval_bundles is a list of the
+                 evaluation bundles, and eval2submit is a dict mapping evaluation
+                 bundle id to the original submission bundle. The id will not be
+                 a key in eval2submit if a corresponding submission bundle does
+                 not exist.
+        """
         logger.debug('Fetching the leaderboard')
         # Fetch bundles on current leaderboard
         eval_bundles = self.client.fetch('bundles', params={
             'keywords': [
+                '.mine',  # don't allow others to forge evaluations
                 'tags={evaluate[tag]}'.format(**self.config),
                 '.limit={max_leaderboard_size}'.format(**self.config),
             ]
@@ -468,8 +507,12 @@ class Competition(object):
         # Build map from submission bundle id => eval bundle
         submit2eval = {}
         for bundle in eval_bundles.itervalues():
-            submit_info = json.loads(bundle['metadata']['description'])
-            submit2eval[submit_info['submit_id']] = bundle
+            submit_info = self.get_competition_metadata(bundle)
+            # Eval bundles that are missing competition metadata are simply
+            # skipped; code downstream must handle the case where eval2submit
+            # does not contain an entry for a given eval bundle
+            if submit_info is not None:
+                submit2eval[submit_info['submit_id']] = bundle
 
         # Fetch the original submission bundles.
         # A NotFoundError will be thrown if a bundle no longer exists.
@@ -491,14 +534,24 @@ class Competition(object):
                     }))
                 break
             except NotFoundError as e:
-                # If a submission bundle has been deleted, remove the entry from
-                # the leaderboard and try fetching all the bundles again
-                missing_uuid = re.search(UUID_STR, e.message).group(0)
-                logger.info("Removing submission %s", missing_uuid)
-                self.untag([submit2eval[missing_uuid]], self.config['evaluate']['tag'])
-                eval_uuid = submit2eval[missing_uuid]['id']
-                del eval_bundles[eval_uuid]
-                del submit2eval[missing_uuid]
+                missing_submit_uuid = re.search(UUID_STR, e.message).group(0)
+                eval_uuid = submit2eval[missing_submit_uuid]['id']
+
+                # If a submission bundle (missing_uuid) has been deleted...
+                if self.config['allow_orphans']:
+                    # Just clear the competition metadata on the eval bundle,
+                    # thus removing the reference to the original submit bundle
+                    logger.info("Clearing reference to deleted submission %s", missing_submit_uuid)
+                    self.clear_competition_metadata(eval_bundles[eval_uuid])
+                    pass
+                else:
+                    # Untag and remove entry from the leaderboard entirely
+                    logger.info("Removing submission %s", missing_submit_uuid)
+                    self.untag([submit2eval[missing_submit_uuid]], self.config['evaluate']['tag'])
+                    del eval_bundles[eval_uuid]
+
+                # Drop from list of submit bundles and try fetching batch again
+                del submit2eval[missing_submit_uuid]
                 continue
 
         # Build map from eval bundle id => submission bundle
@@ -546,12 +599,10 @@ class Competition(object):
         logger.debug('Fetching scores and building leaderboard table')
         leaderboard = []
         for bundle in eval_bundles.itervalues():
-            submit_bundle = eval2submit[bundle['id']]
-            leaderboard.append({
-                'bundle': bundle,
-                'scores': scores[bundle['id']],
-                'submission': {
-                    # Can include any information you want from the submission
+            if bundle['id'] in eval2submit:
+                submit_bundle = eval2submit[bundle['id']]
+                submission_info = {
+                    # Can include any information we want from the submission
                     # within bounds of reason (since submitter may want to
                     # keep some of the metadata private).
                     'description': submit_bundle['metadata']['description'],
@@ -561,6 +612,21 @@ class Competition(object):
                     'num_period_submissions': num_period_submissions[submit_bundle['owner']['id']],
                     'created': submit_bundle['metadata']['created'],
                 }
+            else:
+                # If there isn't a corresponding submit bundle, use some sane
+                # defaults based on just the eval bundle.
+                submission_info = {
+                    'description': bundle['metadata']['description'],
+                    'public': None,
+                    'user_name': None,
+                    'num_total_submissions': 0,
+                    'num_period_submissions': 0,
+                    'created': bundle['metadata']['created'],
+                }
+            leaderboard.append({
+                'bundle': bundle,
+                'scores': scores[bundle['id']],
+                'submission': submission_info,
             })
 
         # Sort by the scores, descending
@@ -587,7 +653,7 @@ class Competition(object):
 
         if not self.leaderboard_only:
             for owner_id, submit_bundle in submissions.items():
-                logger.info("Running submission for "
+                logger.info("Mimicking submission for "
                             "{owner[user_name]}".format(**submit_bundle))
                 predict_bundle = self.run_prediction(submit_bundle)
                 if predict_bundle is None:
@@ -595,7 +661,7 @@ class Competition(object):
                                 "{owner[user_name]}".format(**submit_bundle))
                     continue
                 self.run_evaluation(submit_bundle, predict_bundle)
-                logger.info("Finished running submission for "
+                logger.info("Finished mimicking submission for "
                             "{owner[user_name]}".format(**submit_bundle))
                 num_total_submissions[owner_id] += 1
                 num_period_submissions[owner_id] += 1

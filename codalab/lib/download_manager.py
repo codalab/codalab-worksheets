@@ -1,8 +1,8 @@
 from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, State, UsageError, NotFoundError
-from worker import download_util
-from worker import file_util
+from codalabworker import download_util
+from codalabworker import file_util
 
 
 def retry_if_no_longer_running(f):

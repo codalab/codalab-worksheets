@@ -11,7 +11,7 @@ from codalab.common import State
 from codalab.lib import path_util
 from codalab.worker.bundle_manager import BundleManager
 from codalab.worker.worker_info_accessor import WorkerInfoAccessor
-from worker.file_util import remove_path
+from codalabworker.file_util import remove_path
 
 
 logger = logging.getLogger(__name__)

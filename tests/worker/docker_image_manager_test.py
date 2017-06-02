@@ -3,9 +3,9 @@ import time
 import unittest
 from mock import Mock
 
-from worker.docker_client import DockerClient
-from worker.docker_image_manager import DockerImageManager
-from worker.file_util import remove_path
+from codalabworker.docker_client import DockerClient
+from codalabworker.docker_image_manager import DockerImageManager
+from codalabworker.file_util import remove_path
 
 
 class DockerImageManagerTest(unittest.TestCase):
