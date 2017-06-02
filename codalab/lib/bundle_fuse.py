@@ -13,7 +13,7 @@ from contextlib import closing
 try:
     from fuse import FUSE, FuseOSError, Operations
     fuse_is_available = True
-except ImportError:
+except EnvironmentError:
     fuse_is_available = False
 from codalab.client.json_api_client import JsonApiRelationship
 from codalab.lib.path_util import normalize
