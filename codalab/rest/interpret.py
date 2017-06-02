@@ -174,8 +174,11 @@ def fetch_interpreted_worksheet(uuid):
 
     # Shim in additional data for the frontend
     worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
-    owner = local.model.get_user(user_id=worksheet_info['owner_id'])
-    worksheet_info['owner_name'] = owner.user_name
+    if worksheet_info['owner_id'] is None:
+        worksheet_info['owner_name'] = None
+    else:
+        owner = local.model.get_user(user_id=worksheet_info['owner_id'])
+        worksheet_info['owner_name'] = owner.user_name
 
     # Fetch items.
     worksheet_info['raw'] = get_worksheet_lines(worksheet_info)

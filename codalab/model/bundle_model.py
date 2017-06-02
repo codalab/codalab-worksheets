@@ -856,7 +856,6 @@ class BundleModel(object):
                   cl_worksheet_item.c.worksheet_uuid.in_(uuids)
                 )).fetchall()
 
-
         # Make a dictionary for each worksheet with both its main row and its items.
         worksheet_values = {row.uuid: str_key_dict(row) for row in worksheet_rows}
         # Set tags

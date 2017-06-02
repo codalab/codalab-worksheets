@@ -256,16 +256,20 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
 
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
+    is_anonymous = worksheet.is_anonymous and not permission >= GROUP_OBJECT_PERMISSION_ALL
 
     # Mask owner identity on anonymous worksheet if don't have ALL permission
-    if permission < GROUP_OBJECT_PERMISSION_ALL and worksheet.is_anonymous:
+    if is_anonymous:
         result['owner_id'] = None
 
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
     if fetch_permission:
-        result['group_permissions'] = local.model.get_group_worksheet_permissions(
-            request.user.user_id, worksheet.uuid)
+        if is_anonymous:
+            result['group_permissions'] = []
+        else:
+            result['group_permissions'] = local.model.get_group_worksheet_permissions(
+                request.user.user_id, worksheet.uuid)
         result['permission'] = permission
 
     return result
