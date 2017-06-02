@@ -256,7 +256,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
 
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
-    is_anonymous = worksheet.is_anonymous and not permission >= GROUP_OBJECT_PERMISSION_ALL
+    is_anonymous = permission < GROUP_OBJECT_PERMISSION_READ or (worksheet.is_anonymous and not permission >= GROUP_OBJECT_PERMISSION_ALL)
 
     # Mask owner identity on anonymous worksheet if don't have ALL permission
     if is_anonymous:

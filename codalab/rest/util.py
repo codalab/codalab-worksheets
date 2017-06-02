@@ -63,8 +63,8 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
 
     # Implement permissions policies
     perms = _get_user_bundle_permissions(uuids)
-    readable = set(u for u, perm in perms.iteritems() if perm >= GROUP_OBJECT_PERMISSION_READ)
-    anonymous = set(u for u, perm in perms.iteritems() if perm < GROUP_OBJECT_PERMISSION_ALL and bundle_infos[u]['is_anonymous'])
+    readable = {u for u, perm in perms.iteritems() if perm >= GROUP_OBJECT_PERMISSION_READ}
+    anonymous = {u for u, perm in perms.iteritems() if u in bundle_infos and (perm < GROUP_OBJECT_PERMISSION_READ or bundle_infos[u]['is_anonymous'])}
     for uuid in uuids:
         bundle = bundle_infos.get(uuid)
         # Bundle doesn't exist; abort or skip
@@ -105,7 +105,7 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
 
     if get_host_worksheets:
         # bundle_uuids -> list of worksheet_uuids
-        host_worksheets = local.model.get_host_worksheet_uuids(uuids)
+        host_worksheets = local.model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
         worksheet_uuids = [uuid for l in host_worksheets.itervalues() for uuid in l]
         wpermissions = local.model.get_user_worksheet_permissions(
@@ -119,26 +119,26 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
                 fetch_items=False,
                 uuid=readable_worksheet_uuids))
         # Fill the info
-        for uuid, info in bundle_infos.items():
-            info['host_worksheets'] = [
+        for bundle_uuid, host_uuids in host_worksheets.iteritems():
+            bundle_infos[bundle_uuid]['host_worksheets'] = [
                 {
-                    'uuid': worksheet_uuid,
-                    'name': worksheets[worksheet_uuid].name
+                    'uuid': host_uuid,
+                    'name': worksheets[host_uuid].name
                 }
-                for worksheet_uuid in host_worksheets[uuid]
-                if worksheet_uuid in readable_worksheet_uuids]
+                for host_uuid in host_uuids
+                if host_uuid in readable_worksheet_uuids]
 
     if get_permissions:
         # Fill the permissions info
-        group_perms = local.model.batch_get_group_bundle_permissions(
-                request.user.user_id, uuids)
-        for uuid, info in bundle_infos.items():
+        bundle2group_perms = local.model.batch_get_group_bundle_permissions(
+                request.user.user_id, readable)
+        for uuid, group_perms in bundle2group_perms.items():
             # Only show group permissions to the user is they have
             # at least read permission on this bundle.
-            if uuid in anonymous or uuid not in readable:
-                info['group_permissions'] = []
+            if uuid in anonymous:
+                bundle_infos[uuid]['group_permissions'] = []
             else:
-                info['group_permissions'] = group_perms[uuid]
+                bundle_infos[uuid]['group_permissions'] = group_perms
 
     return bundle_infos
 

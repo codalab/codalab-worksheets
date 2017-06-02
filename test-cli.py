@@ -95,6 +95,9 @@ def run_command(args, expected_exit_code=0):
     except subprocess.CalledProcessError, e:
         output = e.output
         exitcode = e.returncode
+    except Exception, e:
+        output = traceback.format_exc()
+        exitcode = 'test-cli exception'
     print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
     print(sanitize(output))
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
@@ -163,7 +166,7 @@ def wait_until_substring(fp, substr):
             return
 
 
-class Colorizer:
+class Colorizer(object):
     RED = "\033[31;1m"
     GREEN = "\033[32;1m"
     YELLOW = "\033[33;1m"
@@ -236,6 +239,8 @@ def temp_instance():
     os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
     FNULL = open(os.devnull, 'w')
 
+    error_occurred = False
+
     try:
         # Start auxiliary servers for the new auxiliary host
         rest_server_proc = subprocess.Popen([cl, 'server'], stdout=FNULL, stderr=subprocess.PIPE)
@@ -264,14 +269,24 @@ def temp_instance():
 
         yield CodaLabInstance(remote_host, remote_worksheet, test_username, test_password)
 
+    except:
+        error_occurred = True
+        raise
+
     finally:
         # Kill any processes started in reverse order
-        if worker_proc:
-            worker_proc.kill()
-        if bundle_manager_proc:
-            bundle_manager_proc.kill()
-        if rest_server_proc:
-            rest_server_proc.kill()
+        def cleanup_process(proc, name):
+            if proc:
+                proc.kill()
+                if error_occurred:
+                    _, stderr = proc.communicate()
+                    if stderr:
+                        print(Colorizer.yellow('[!] stderr captured from %s' % name))
+                        print(stderr)
+
+        cleanup_process(worker_proc, 'worker')
+        cleanup_process(bundle_manager_proc, 'bundle-manager')
+        cleanup_process(rest_server_proc, 'server')
 
         # Clean up temporary data
         shutil.rmtree(remote_home)
