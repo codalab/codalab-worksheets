@@ -251,7 +251,9 @@ def mimic_bundles(client,
                 host_worksheet_uuid = host_worksheet_uuids[0]
 
             # Fetch the worksheet
-            worksheet_info = client.fetch('worksheets', host_worksheet_uuid)
+            worksheet_info = client.fetch('worksheets', host_worksheet_uuid, params={
+                'include': ['items', 'items.bundle']
+            })
 
             prelude_items = []  # The prelude that we're building up
             for item in worksheet_info['items']:

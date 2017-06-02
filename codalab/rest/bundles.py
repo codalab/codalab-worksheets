@@ -15,7 +15,6 @@ from codalab.bundles import (
 from codalab.common import precondition, State, UsageError
 from codalab.lib import (
     canonicalize,
-    formatting,
     spec_util,
     worksheet_util,
 )

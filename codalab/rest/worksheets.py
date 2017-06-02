@@ -15,8 +15,9 @@ from codalab.lib.canonicalize import HOME_WORKSHEET
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
-    query_get_list,
     query_get_bool,
+    query_get_json_api_include_set,
+    query_get_list,
 )
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_ALL,
@@ -39,38 +40,47 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 @get('/worksheets/<uuid:re:%s>' % spec_util.UUID_STR)
 def fetch_worksheet(uuid):
+    include_set = query_get_json_api_include_set(supported={'owner', 'group_permissions', 'items', 'items.bundle', 'items.bundle.owner', 'items.subworksheet'})
     worksheet = get_worksheet_info(
         uuid,
-        fetch_items=True,
-        fetch_permission=True,
+        fetch_items='items' in include_set,
+        fetch_permissions='group_permissions' in include_set,
     )
 
     # Build response document
     document = WorksheetSchema().dump(worksheet).data
 
     # Include items
-    json_api_include(document, WorksheetItemSchema(), worksheet['items'])
+    if 'items' in include_set:
+        json_api_include(document, WorksheetItemSchema(), worksheet['items'])
+
+    user_ids = set()
 
     # Include bundles
-    bundle_uuids = {item['bundle_uuid'] for item in worksheet['items']
-                    if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None}
-    bundle_infos = get_bundle_infos(bundle_uuids).values()
-    json_api_include(document, BundleSchema(), bundle_infos)
+    if 'items.bundle' in include_set:
+        bundle_uuids = {item['bundle_uuid'] for item in worksheet['items']
+                        if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None}
+        bundle_infos = get_bundle_infos(bundle_uuids).values()
+        json_api_include(document, BundleSchema(), bundle_infos)
+        if 'items.bundle.owner' in include_set:
+            user_ids.update({b['owner_id'] for b in bundle_infos})
 
     # Include users
-    user_ids = {b['owner_id'] for b in bundle_infos}
-    user_ids.add(worksheet['owner_id'])
+    if 'owner' in include_set:
+        user_ids.add(worksheet['owner_id'])
     if user_ids:
         json_api_include(document, UserSchema(), local.model.get_users(user_ids))
 
     # Include subworksheets
-    subworksheet_uuids = {item['subworksheet_uuid']
-                          for item in worksheet['items']
-                          if item['type'] == worksheet_util.TYPE_WORKSHEET and item['subworksheet_uuid'] is not None}
-    json_api_include(document, WorksheetSchema(), local.model.batch_get_worksheets(fetch_items=False, uuid=subworksheet_uuids))
+    if 'items.subworksheets' in include_set:
+        subworksheet_uuids = {item['subworksheet_uuid']
+                              for item in worksheet['items']
+                              if item['type'] == worksheet_util.TYPE_WORKSHEET and item['subworksheet_uuid'] is not None}
+        json_api_include(document, WorksheetSchema(), local.model.batch_get_worksheets(fetch_items=False, uuid=subworksheet_uuids))
 
     # Include permissions
-    json_api_include(document, WorksheetPermissionSchema(), worksheet['group_permissions'])
+    if 'group_permissions' in include_set:
+        json_api_include(document, WorksheetPermissionSchema(), worksheet['group_permissions'])
 
     return document
 
@@ -83,6 +93,7 @@ def fetch_worksheets():
     keywords = query_get_list('keywords')
     specs = query_get_list('specs')
     base_worksheet_uuid = request.query.get('base')
+    include_set = query_get_json_api_include_set(supported={'owner', 'group_permissions'})
 
     if specs:
         uuids = [get_worksheet_uuid_or_create(base_worksheet_uuid, spec) for spec in specs]
@@ -95,14 +106,16 @@ def fetch_worksheets():
     document = WorksheetSchema(many=True).dump(worksheets).data
 
     # Include users
-    owner_ids = {w['owner_id'] for w in worksheets}
-    if owner_ids:
-        json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
+    if 'owner' in include_set:
+        owner_ids = {w['owner_id'] for w in worksheets}
+        if owner_ids:
+            json_api_include(document, UserSchema(), local.model.get_users(owner_ids))
 
     # Include permissions
-    for w in worksheets:
-        if 'group_permissions' in w:
-            json_api_include(document, WorksheetPermissionSchema(), w['group_permissions'])
+    if 'group_permissions' in include_set:
+        for w in worksheets:
+            if 'group_permissions' in w:
+                json_api_include(document, WorksheetPermissionSchema(), w['group_permissions'])
 
     return document
 
@@ -244,7 +257,7 @@ def get_worksheets_landing():
 #############################################################
 
 
-def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
+def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
     """
     The returned info object contains items which are (bundle_info, subworksheet_info, value_obj, type).
     """
@@ -256,6 +269,7 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
 
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
+    result['permission'] = permission
     is_anonymous = permission < GROUP_OBJECT_PERMISSION_READ or (worksheet.is_anonymous and not permission >= GROUP_OBJECT_PERMISSION_ALL)
 
     # Mask owner identity on anonymous worksheet if don't have ALL permission
@@ -264,13 +278,12 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permission=True):
 
     # Note that these group_permissions is universal and permissions are relative to the current user.
     # Need to make another database query.
-    if fetch_permission:
+    if fetch_permissions:
         if is_anonymous:
             result['group_permissions'] = []
         else:
             result['group_permissions'] = local.model.get_group_worksheet_permissions(
                 request.user.user_id, worksheet.uuid)
-        result['permission'] = permission
 
     return result
 

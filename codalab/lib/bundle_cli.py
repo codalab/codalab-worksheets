@@ -1418,7 +1418,7 @@ class BundleCLI(object):
         # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
         bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
-        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid, params={'include': ['items', 'items.bundle']})
 
         # Number the bundles: c c a b c => 3 2 1 1 1
         items = worksheet_info['items']
@@ -1570,7 +1570,9 @@ class BundleCLI(object):
     )
     def do_ls_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid, params={
+            'include': ['owner', 'group_permissions', 'items', 'items.bundle', 'items.bundle.owner']
+        })
         if not args.uuid_only:
             print >>self.stdout, self._worksheet_description(worksheet_info)
         bundle_info_list = [item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle']
@@ -2220,7 +2222,9 @@ class BundleCLI(object):
     )
     def do_wedit_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid, params={
+            'include': ['items', 'items.bundle', 'items.subworksheet']
+        })
         if args.freeze or any(arg is not None for arg in (args.name, args.title, args.tags, args.owner_spec, args.anonymous)):
             # Update the worksheet metadata.
             info = {
@@ -2288,7 +2292,9 @@ class BundleCLI(object):
         self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+        worksheet_info = client.fetch('worksheets', worksheet_uuid, params={
+            'include': ['owner', 'group_permissions', 'items', 'items.bundle', 'items.bundle.owner', 'items.subworksheet']
+        })
         worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
 
         if args.raw:
@@ -2358,7 +2364,10 @@ class BundleCLI(object):
         else:
             client = self.manager.current_client()
 
-        worksheet_dicts = client.fetch('worksheets', params={'keywords': args.keywords})
+        worksheet_dicts = client.fetch('worksheets', params={
+            'keywords': args.keywords,
+            'include': ['owner', 'group_permissions'],
+        })
         if args.uuid_only:
             for row in worksheet_dicts:
                 print >>self.stdout, row['uuid']
@@ -2413,7 +2422,9 @@ class BundleCLI(object):
     def do_wadd_command(self, args):
         # Source worksheet
         (source_client, source_worksheet_uuid) = self.parse_client_worksheet_uuid(args.source_worksheet_spec)
-        source_items = source_client.fetch('worksheets', source_worksheet_uuid)['items']
+        source_items = source_client.fetch('worksheets', source_worksheet_uuid, params={
+            'include': ['items', 'items.bundle']
+        })['items']
 
         # Destination worksheet
         (dest_client, dest_worksheet_uuid) = self.parse_client_worksheet_uuid(args.dest_worksheet_spec)

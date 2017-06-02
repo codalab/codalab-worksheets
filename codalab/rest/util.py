@@ -49,7 +49,7 @@ def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_p
     """
     Return a map from bundle uuid to info.
 
-    :param list[str] uuids: uuids of bundles to fetch
+    :param Collection[str] uuids: uuids of bundles to fetch
     :param bool get_children: include children
     :param bool get_host_worksheets: include host worksheets
     :param bool get_permissions: include group permissions

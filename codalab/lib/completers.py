@@ -92,7 +92,9 @@ class BundlesCompleter(CodaLabCompleter):
             })
         else:
             # Names are matched locally on worksheet
-            worksheet_info = client.fetch('worksheets', worksheet_uuid)
+            worksheet_info = client.fetch('worksheets', worksheet_uuid, params={
+                'include': ['items', 'items.bundle']
+            })
             bundle_infos = [item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle']
             return (b['metadata']['name'] for b in bundle_infos if b['metadata']['name'].startswith(prefix))
 

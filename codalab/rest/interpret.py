@@ -170,7 +170,7 @@ def fetch_interpreted_worksheet(uuid):
     that we can render something basic.
     """
     bundle_uuids = request.query.getall('bundle_uuid')
-    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True)
+    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
 
     # Shim in additional data for the frontend
     worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
