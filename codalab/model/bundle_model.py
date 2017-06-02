@@ -560,7 +560,7 @@ class BundleModel(object):
     def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
         '''
         Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle
-        and last_updated metadata. 
+        and last_updated metadata.
         '''
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -575,7 +575,7 @@ class BundleModel(object):
                      'job_handle': job_handle,
                      'last_updated': int(time.time())
                 },
-            } 
+            }
             self.update_bundle(bundle, bundle_update, connection)
 
     def set_starting_bundle(self, bundle, user_id, worker_id):
@@ -607,6 +607,23 @@ class BundleModel(object):
 
             return True
 
+    def set_offline_bundle(self, bundle):
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return False
+
+            bundle_update = {
+                'state': State.WORKER_OFFLINE,
+                'metadata': {
+                    'last_updated': int(time.time()),
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+            return True
+
     def restage_bundle(self, bundle):
         '''
         Sets a bundle back from STARTING to STAGED, returning False if the
@@ -626,7 +643,7 @@ class BundleModel(object):
             update_message = {
                 'state': State.STAGED,
                 'metadata': {
-                    'job_handle': None, 
+                    'job_handle': None,
                 },
             }
             self.update_bundle(bundle, update_message, connection)
@@ -667,14 +684,55 @@ class BundleModel(object):
 
         return True
 
+    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+        '''
+        Marks the bundle as running but only if it is still scheduled to run
+        #on the given worker (done by checking the worker_run table). Returns
+        True if it is. Updates a few metadata fields and the events log.
+        '''
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return False
+            if row.state != State.WORKER_OFFLINE:
+                return False
+
+            worker_run_row = {
+                'user_id': user_id,
+                'worker_id': worker_id,
+                'run_uuid': bundle.uuid,
+            }
+            connection.execute(cl_worker_run.insert().values(worker_run_row))
+
+            bundle_update = {
+                'state': State.RUNNING,
+                'metadata': {
+                    'last_updated': start_time,
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+
+        self.update_events_log(
+            user_id=bundle.owner_id,
+            user_name=None,  # Don't know
+            command='resume_bundle',
+            args=(bundle.uuid),
+            uuid=bundle.uuid)
+
+        return True
+
     def finalize_bundle(self, bundle, user_id, exitcode=None, failure_message=None):
         '''
-        Marks the bundle as READY / FAILED, updating a few metadata fields, the
+        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields, the
         events log and removing the worker_run row. Additionally, if the user
         running the bundle was the CodaLab root user, increments the time
         used by the bundle owner.
         '''
         state = State.FAILED if failure_message or exitcode else State.READY
+        if failure_message == 'Kill requested':
+            state = State.KILLED
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
@@ -1559,7 +1617,7 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
-    def date_handler(self, obj): 
+    def date_handler(self, obj):
         '''
         Helper function to serialize DataTime
         '''
@@ -1826,7 +1884,7 @@ class BundleModel(object):
             }))
 
         return code
-    
+
     def get_reset_code_user_id(self, code, delete=False):
         """
         Check if reset code is valid.

@@ -1,9 +1,12 @@
+import logging
+import sys
 from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, State, UsageError, NotFoundError
 from worker import download_util
 from worker import file_util
 
+logger = logging.getLogger(__name__)
 
 def retry_if_no_longer_running(f):
     """
@@ -77,8 +80,10 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
                 with closing(self._worker_model.start_listening(response_socket_id)) as sock:
                     result = self._worker_model.get_json_message(sock, 60)
-                precondition(result is not None, 'Unable to reach worker')
-                if 'error_code' in result:
+                if result is None: # dead workers are a fact of life now
+                    logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
+                    return None
+                elif 'error_code' in result:
                     raise http_error_to_exception(result['error_code'], result['error_message'])
                 return result['target_info']
             finally:
@@ -225,9 +230,8 @@ class DownloadManager(object):
             'path': path,
             'read_args': read_args,
         }
-        precondition(
-            self._worker_model.send_json_message(worker['socket_id'], message, 60),
-            'Unable to reach worker')
+        if not self._worker_model.send_json_message(worker['socket_id'], message, 60): # dead workers are a fact of life now
+            logging.info('Unable to reach worker')
 
     def _get_read_response_stream(self, response_socket_id):
         with closing(self._worker_model.start_listening(response_socket_id)) as sock:

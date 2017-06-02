@@ -325,7 +325,7 @@ class WorkerModel(object):
 
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
-                    time.sleep(0.003)
+                    time.sleep(0.3) # changed from 0.003 to keep from rate-limiting due to dead workers
                     continue
 
                 if not autoretry:
