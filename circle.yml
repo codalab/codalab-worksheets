@@ -12,6 +12,7 @@ dependencies:
     - sudo apt-get install -y sshpass
     - ./setup.sh dev
     - ./venv/bin/pip install --upgrade pip
+    - ./venv/bin/pip install --upgrade setuptools
 
 test:
   override:
