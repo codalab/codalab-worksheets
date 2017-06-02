@@ -245,7 +245,7 @@ def temp_instance():
 
         # Start worker after servers are up
         worker_proc = subprocess.Popen([os.path.join(base_path, 'venv/bin/python'),
-                                        os.path.join(base_path, 'codalabworker/main.py'),
+                                        os.path.join(base_path, 'worker/codalabworker/main.py'),
                                         '--server=' + remote_host,
                                         '--slots=1',
                                         '--work-dir=' + remote_worker_scratch,
@@ -489,7 +489,8 @@ def test(ctx):
 
     # run and check the data_hash
     uuid = run_command([cl, 'run', 'echo hello'])
-    run_command([cl, 'wait', uuid])
+    wait(uuid)
+#    run_command([cl, 'wait', uuid])
     check_contains('0x', get_info(uuid, 'data_hash'))
 
 

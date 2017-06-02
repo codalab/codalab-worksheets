@@ -10,6 +10,7 @@ machine:
 dependencies:
   override:
     - sudo apt-get install -y sshpass
+    - ./venv/bin/pip install --upgrade setuptools
     - ./setup.sh dev
     - ./venv/bin/pip install --upgrade pip
 
@@ -26,7 +27,7 @@ test:
         background: true
     - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/ubuntu/.codalab/root.password
     - chmod 600 /home/ubuntu/.codalab/root.password
-    - './codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/root.password --verbose':
+    - './worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/root.password --verbose':
         background: true
     - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
     - ./codalab/bin/cl upload -c stuff
