@@ -318,10 +318,6 @@ class BundleManager(object):
                 # We don't know how to handle this type of request queue
                 # argument.
                 return []
-        else: 
-            # if no tag specified, filter out workers that have a tag -- only jobs that 
-            # specifically request a tag will run on the workers with that tag
-            workers_list = filter(lambda worker: worker['tag'] == request_queue, workers_list)
 
         # Sort workers list according to these keys in the following succession:
         #  - if the bundle doesn't request GPUs (only requests CPUs), prioritize workers that don't have GPUs
