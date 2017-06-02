@@ -160,9 +160,10 @@ Name | Type
 
 Name | Type
 --- | ---
-`host_worksheets` | List
+`host_worksheets` | Relationship([worksheets](#worksheets))
 `data_hash` | String
 `uuid` | String
+`is_anonymous` | Boolean
 `permission` | Integer
 `group_permissions` | Relationship([bundle-permissions](#bundle-permissions))
 `args` | String
@@ -232,12 +233,13 @@ Name | Type
 
 Name | Type
 --- | ---
-`name` | String
 `last_item_id` | Integer
-`tags` | List
+`name` | String
+`is_anonymous` | Boolean
+`title` | String
 `frozen` | DateTime
 `group_permissions` | Relationship([worksheet-permissions](#worksheet-permissions))
-`title` | String
+`tags` | List
 `items` | Relationship([worksheet-items](#worksheet-items))
 `owner` | Relationship([users](#users))
 `permission` | Integer
@@ -454,6 +456,7 @@ Query parameters:
 
  - `include_display_metadata`: `1` to include additional metadata helpful
    for displaying the bundle info, `0` to omit them. Default is `0`.
+ - `include`: comma-separated list of related resources to include, such as "owner"
 
 ### `GET /bundles`
 
@@ -483,6 +486,7 @@ Query parameters:
     - `.limit=10              ` : Limit the number of results to the top 10.
  - `include_display_metadata`: `1` to include additional metadata helpful
    for displaying the bundle info, `0` to omit them. Default is `0`.
+ - `include`: comma-separated list of related resources to include, such as "owner"
 
 When aggregation keywords such as `.count` are used, the resulting value
 is returned as:
@@ -815,9 +819,20 @@ action string to the bundle metadata.
 &uarr; [Back to Top](#table-of-contents)
 ## Worksheets API
 ### `GET /worksheets/<uuid:re:0x[0-9a-f]{32}>`
+
+Fetch a single worksheet by UUID.
+
+Query parameters:
+
+ - `include`: comma-separated list of related resources to include, such as "owner"
+
 ### `GET /worksheets`
 
-Fetch bundles by bundle specs OR search keywords.
+Fetch worksheets by worksheet specs (names) OR search keywords.
+
+Query parameters:
+
+ - `include`: comma-separated list of related resources to include, such as "owner"
 
 ### `POST /worksheets`
 ### `POST /worksheets/<uuid:re:0x[0-9a-f]{32}>/raw`

@@ -57,6 +57,7 @@ def _fetch_bundle(uuid):
 
      - `include_display_metadata`: `1` to include additional metadata helpful
        for displaying the bundle info, `0` to omit them. Default is `0`.
+     - `include`: comma-separated list of related resources to include, such as "owner"
     """
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
@@ -93,6 +94,7 @@ def _fetch_bundles():
         - `.limit=10              ` : Limit the number of results to the top 10.
      - `include_display_metadata`: `1` to include additional metadata helpful
        for displaying the bundle info, `0` to omit them. Default is `0`.
+     - `include`: comma-separated list of related resources to include, such as "owner"
 
     When aggregation keywords such as `.count` are used, the resulting value
     is returned as:

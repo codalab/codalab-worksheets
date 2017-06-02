@@ -40,6 +40,13 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 @get('/worksheets/<uuid:re:%s>' % spec_util.UUID_STR)
 def fetch_worksheet(uuid):
+    """
+    Fetch a single worksheet by UUID.
+
+    Query parameters:
+
+     - `include`: comma-separated list of related resources to include, such as "owner"
+    """
     include_set = query_get_json_api_include_set(supported={'owner', 'group_permissions', 'items', 'items.bundle', 'items.bundle.owner', 'items.subworksheet'})
     worksheet = get_worksheet_info(
         uuid,
@@ -88,7 +95,11 @@ def fetch_worksheet(uuid):
 @get('/worksheets')
 def fetch_worksheets():
     """
-    Fetch bundles by bundle specs OR search keywords.
+    Fetch worksheets by worksheet specs (names) OR search keywords.
+
+    Query parameters:
+
+     - `include`: comma-separated list of related resources to include, such as "owner"
     """
     keywords = query_get_list('keywords')
     specs = query_get_list('specs')
