@@ -64,7 +64,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
 
     # Location where MultiDiskBundleStore data and temp data is kept relative to CODALAB_HOME
     DATA_SUBDIRECTORY = 'bundles'
-    TEMP_SUBDIRECTORY = 'temp'
     CACHE_SIZE = 1 * 1000 * 1000 # number of entries to cache
     MISC_TEMP_SUBDIRECTORY = 'misc_temp' # BundleServer writes out to here, so should have a different name
 
@@ -144,7 +143,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         if self.__get_num_partitions() == 0:
             # Create a default partition that links to the codalab_home
             path_util.make_directory(os.path.join(self.codalab_home, MultiDiskBundleStore.DATA_SUBDIRECTORY))
-            path_util.make_directory(os.path.join(self.codalab_home, MultiDiskBundleStore.TEMP_SUBDIRECTORY))
             default_partition = os.path.join(self.partitions, 'default')
             path_util.soft_link(self.codalab_home, default_partition)
 
@@ -169,8 +167,6 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             sys.exit(1)
 
         self.nodes.append(new_partition_name)
-        new_mtemp = os.path.join(new_partition_location, MultiDiskBundleStore.TEMP_SUBDIRECTORY)
-        path_util.make_directory(new_mtemp)
 
         print >> sys.stderr, "Successfully added partition '%s' to the pool." % new_partition_name
 
