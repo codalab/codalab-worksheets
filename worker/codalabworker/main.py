@@ -17,7 +17,7 @@ from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument('--tag',
                         help='Tag that allows for scheduling runs on specific '
@@ -95,3 +95,6 @@ chmod 600 %s""" % args.password_file
 
     print 'Worker started.'
     worker.run()
+
+if __name__ == '__main__':
+    main()

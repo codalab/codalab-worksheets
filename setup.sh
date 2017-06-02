@@ -42,6 +42,8 @@ if [ ! -e $env ]; then
   echo
 fi
 
+$env/bin/pip install -U setuptools
+
 echo -e "${info}[*] Installing Python packages into $env...${reset}"
 if [ "$1" == "server" ]; then
   $env/bin/pip install -r $codalabdir/requirements-server.txt
