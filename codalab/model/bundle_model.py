@@ -813,9 +813,10 @@ class BundleModel(object):
     #############################################################################
 
     def get_worksheet(self, uuid, fetch_items):
-        '''
+        """
         Get a worksheet given its uuid.
-        '''
+        :rtype: Worksheet
+        """
         worksheets = self.batch_get_worksheets(fetch_items=fetch_items, uuid=uuid)
         if not worksheets:
             raise NotFoundError('Could not find worksheet with uuid %s' % (uuid,))
@@ -824,9 +825,10 @@ class BundleModel(object):
         return worksheets[0]
 
     def batch_get_worksheets(self, fetch_items, **kwargs):
-        '''
+        """
         Get a list of worksheets, all of which satisfy the clause given by kwargs.
-        '''
+        :rtype: list[Worksheet]
+        """
         base_worksheet_uuid = kwargs.pop('base_worksheet_uuid', None)
         clause = self.make_kwargs_clause(cl_worksheet, kwargs)
         # Handle base_worksheet_uuid specially

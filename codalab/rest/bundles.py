@@ -232,6 +232,7 @@ def _create_bundles():
                            if issubclass(bundle_class, UploadedBundle)
                            or query_get_bool('wait_for_upload', False)
                            else State.CREATED)
+        bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
         bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
             dep['child_uuid'] = bundle_uuid
