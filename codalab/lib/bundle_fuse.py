@@ -17,6 +17,7 @@ except EnvironmentError:
     fuse_is_available = False
 
 if fuse_is_available:
+    from codalab.common import NotFoundError
     from codalab.client.json_api_client import JsonApiRelationship
     from codalab.lib.path_util import normalize
 
@@ -100,8 +101,9 @@ if fuse_is_available:
         @Memoize(timeout=5)
         def _get_info(self, path):
             ''' Set a request through the json api client to get info about the bundle '''
-            info = self.client.fetch_contents_info(self.bundle_uuid, path, 1)
-            if info is None:
+            try:
+                info = self.client.fetch_contents_info(self.bundle_uuid, path, 1)
+            except NotFoundError:
                 raise FuseOSError(errno.ENOENT)
             return info
 
