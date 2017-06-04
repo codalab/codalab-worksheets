@@ -7,6 +7,7 @@ import sys
 import errno
 import stat
 import time
+from collections import OrderedDict
 
 from contextlib import closing
 
@@ -19,6 +20,69 @@ except EnvironmentError:
 if fuse_is_available:
     from codalab.client.json_api_client import JsonApiRelationship
     from codalab.lib.path_util import normalize
+
+    class ByteRangeReader(object):
+        '''
+        Manages Byte Ranges for BundleFuse and operates like a cache, fetching via the client
+        to refresh or obtain new byte ranges through the REST api whenever it needs to.
+        One reader for one bundle at a time (same as BundleFuse)
+        '''
+
+        def __init__(self, client, bundle_uuid, timeout=60, max_num_chunks=100, chunk_size=None):
+            if chunk_size is None:
+                chunk_size = 1 * 1000 * 1000 # 1 MB
+
+            self.chunk_size = chunk_size
+            self.max_num_chunks = max_num_chunks
+            self.timeout = timeout
+            self.client = client
+            self.bundle_uuid = bundle_uuid
+            self.cache = OrderedDict() # (path, chunk_id) -> (time, bytearray)
+
+        def read(self, path, length, offset):
+            start_offset = offset
+            end_offset = offset + length - 1
+
+            start_chunk = self._get_chunk_id(start_offset)
+            end_chunk = self._get_chunk_id(end_offset)
+            arr = ''
+            for chunk_id in range(start_chunk, end_chunk + 1):
+                arr += self._fetch_chunk(path, chunk_id)
+            return arr[offset - start_chunk * self.chunk_size:offset - start_chunk * self.chunk_size + length]
+
+        def _fetch_chunk(self, path, chunk_id):
+            '''
+            Fetch and return a chunk from the cache, or with the client as necessary.
+            Refreshes chunks that are older than self.timeout
+            Only save full chunks to the cache.
+            Partial chunks (i.e. at the end of a file) are not cached because they could grow.
+            '''
+
+            now = int(time.time())
+            key = (path, chunk_id)
+
+            if key in self.cache:
+                t, arr = self.cache[key]
+                if now - t < self.timeout:
+                    return arr # return chunk from cache
+                else:
+                    self.cache.pop(key) # pop out expired entry
+
+            # grab from client
+            byte_range = (chunk_id * self.chunk_size, chunk_id * self.chunk_size + self.chunk_size - 1)
+            with closing(self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)) as contents:
+                arr = contents.read()
+
+            if len(arr) == self.chunk_size: # only cache if fetched full chunk
+                if len(self.cache) >= self.max_num_chunks: # if full, remove the oldest item
+                    self.cache.popitem(last=False)
+                self.cache[key] = (now, arr)
+
+            return arr
+
+        def _get_chunk_id(self, offset):
+            ''' Return chunk id given offset '''
+            return offset / self.chunk_size
 
     class MWT(object):
         """
@@ -89,6 +153,7 @@ if fuse_is_available:
             self.bundle_metadata = self.client.fetch('bundles', self.bundle_uuid)['metadata']
 
             self.single_file_bundle = False
+            self.reader = ByteRangeReader(self.client, self.bundle_uuid)
             info = self._get_info('/')
             if info['type'] == 'file':
                 self.single_file_bundle = True
@@ -209,9 +274,7 @@ if fuse_is_available:
             if self.single_file_bundle:
                 path = '/'
 
-            byte_range = (offset, offset + length - 1)
-            with closing(self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)) as contents:
-                result = contents.read()
+            result = self.reader.read(path, length, offset)
 
             self.verbose_print('read path={}, length={}, offset={}'.format(path, length, offset))
             return result
