@@ -1216,7 +1216,7 @@ class BundleCLI(object):
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-            Commands.Argument('--local', action='store_true', help='Simulate a run bundle locally. This means any dependencies provided are local files/directories mounted to a temporary container (read-only).'),
+            Commands.Argument('--local', action='store_true', help='Beta feature: this command may change in a future release. Simulate a run bundle locally. This means any dependencies provided are local files/directories mounted to a temporary container (read-only).'),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
@@ -1266,7 +1266,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'edit-image',
-        help='Start an interactive shell with an image to allow edits to that image locally. This means any dependencies provided are also local files/directories mounted to a temporary container (read-only).',
+        help='Beta feature: this command may change in a future release. Start an interactive shell with an image to allow edits to that image locally. This means any dependencies provided are also local files/directories mounted to a temporary container (read-only).',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('--request-docker-image', help='The docker image to edit', required=True),
@@ -1328,7 +1328,7 @@ class BundleCLI(object):
 
     @Commands.command(
         'push-image',
-        help='Push a (committed) image to a docker registry. Deprecated and disabled. Please use docker push instead.',
+        help='Beta feature: this command may change in a future release. Push a (committed) image to a docker registry. Deprecated and disabled. Please use docker push instead.',
         arguments=(
             Commands.Argument('image_tag', help='Image tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu'),
         )
@@ -1736,7 +1736,7 @@ class BundleCLI(object):
     @Commands.command(
         'mount',
         help=[
-            'Mount the contents of a bundle at a read-only mountpoint.',
+            'Beta feature: this command may change in a future release. Mount the contents of a bundle at a read-only mountpoint.',
         ],
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
