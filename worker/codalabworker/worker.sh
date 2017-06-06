@@ -16,7 +16,7 @@ else
 fi
 
 while [ 1 ]; do
-    python $WORKER_CODE_DIR/main.py $ID_ARG $WORKER_ARGS "$@" >$STDOUT 2>$STDERR
+    python $WORKER_CODE_DIR/codalabworker/main.py $ID_ARG $WORKER_ARGS "$@" >$STDOUT 2>$STDERR
     if [ "$?" -ne "123" ]; then
         break
     fi
