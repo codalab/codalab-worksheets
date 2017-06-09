@@ -188,6 +188,7 @@ SCHEMA_DOC = '''\
     from textwrap import dedent
     from codalab.lib import spec_util
 %>
+
 % if issubclass(schema, JsonApiSchema):
 ## {{schema.Meta.type_}}
 % else:
