@@ -119,6 +119,7 @@ target resource, or is otherwise invalid, the Bundle Service will respond with
 a `401 Unauthorized` or `403 Forbidden` status.
 
 # Resource Object Schemas
+
 ## worksheet-items
 
 
@@ -131,6 +132,7 @@ Name | Type
 `value` | String
 `type` | String
 `id` | Integer
+
 ## users
 
 
@@ -150,6 +152,7 @@ Name | Type
 `user_name` | String
 `id` | String
 `date_joined` | LocalDateTime
+
 ## bundles
 
 
@@ -170,6 +173,7 @@ Name | Type
 `children` | Relationship([bundles](#bundles))
 `permission_spec` | PermissionSpec
 `metadata` | Dict
+
 ## worksheet-permissions
 
 
@@ -181,6 +185,7 @@ Name | Type
 `group_name` | String
 `id` | Integer
 `permission_spec` | PermissionSpec
+
 ## bundle-permissions
 
 
@@ -192,6 +197,7 @@ Name | Type
 `group_name` | String
 `id` | Integer
 `permission_spec` | PermissionSpec
+
 ## BundleDependencySchema
 
 
@@ -207,6 +213,7 @@ Name | Type
 `parent_uuid` | String
 `child_path` | String
 `parent_path` | String
+
 ## bundle-actions
 
 
@@ -217,6 +224,7 @@ Name | Type
 `subpath` | String
 `string` | String
 `id` | Integer
+
 ## worksheets
 
 
@@ -234,6 +242,7 @@ Name | Type
 `id` | String
 `permission_spec` | PermissionSpec
 `uuid` | String
+
 ## groups
 
 
@@ -245,6 +254,7 @@ Name | Type
 `members` | Relationship([users](#users))
 `owner` | Relationship([users](#users))
 `id` | String
+
 ## users
 
 
@@ -313,7 +323,45 @@ Example successful response:
     }
 
 ### `POST /oauth2/revoke`
-Revoke OAuth2 token.
+Provide secure services using OAuth2.
+    The server should provide an authorize handler and a token handler,
+
+    But before the handlers are implemented, the server should provide
+    some getters for the validation.
+    There are two usage modes. One is binding the Bottle app instance:
+
+        app = Bottle()
+        oauth = OAuth2Provider(app)
+
+    The second possibility is to bind the Bottle app later:
+
+        oauth = OAuth2Provider()
+
+        def create_app():
+            app = Bottle()
+            oauth.app = app
+            return app
+
+    Configure :meth:`tokengetter` and :meth:`tokensetter` to get and
+    set tokens. Configure :meth:`grantgetter` and :meth:`grantsetter`
+    to get and set grant tokens. Configure :meth:`clientgetter` to
+    get the client.
+
+    Configure :meth:`usergetter` if you need password credential
+    authorization.
+
+    With everything ready, implement the authorization workflow:
+
+        * :meth:`authorize_handler` for consumer to confirm the grant
+        * :meth:`token_handler` for client to exchange access token
+
+    And now you can protect the resource with scopes::
+
+        @app.route('/api/user')
+        @oauth.check_oauth('email', 'username')
+        def user():
+            return jsonify(request.user)
+
 ### `GET /oauth2/errors`
 
 &uarr; [Back to Top](#table-of-contents)
