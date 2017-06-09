@@ -14,6 +14,7 @@ from marshmallow import Schema
 from marshmallow_jsonapi import Schema as JsonApiSchema
 from textwrap import dedent
 
+from codalab.common import CODALAB_VERSION
 # Ensure all REST modules are loaded
 from codalab.server import rest_server
 
@@ -67,6 +68,8 @@ def get_codalab_schemas():
 
 INDEX_DOC = '''\
 # REST API Reference
+
+_version {{version}}_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -254,7 +257,7 @@ def main():
         os.makedirs(os.path.dirname(REST_DOCS_PATH))
 
     with open(REST_DOCS_PATH, 'wb') as out:
-        out.write(template(dedent(INDEX_DOC), api_specs=get_api_routes()))
+        out.write(template(dedent(INDEX_DOC), api_specs=get_api_routes(), version=CODALAB_VERSION))
         out.write(dedent(INTRODUCTION_DOC))
 
         out.write('# Resource Object Schemas\n')
