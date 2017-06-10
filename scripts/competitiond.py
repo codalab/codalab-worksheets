@@ -82,12 +82,13 @@ import argparse
 import getpass
 import json
 import logging
+import random
 import re
 import signal
 import sys
 import time
 import traceback
-from collections import defaultdict
+from collections import defaultdict, namedtuple
 
 from marshmallow import Schema, fields, ValidationError
 
@@ -111,25 +112,28 @@ from codalab.server.auth import RestOAuthHandler
 logger = logging.getLogger(__name__)
 
 
-class ThrottledJsonApiClientWithRetry(JsonApiClient):
+class JsonApiClientWithRetry(JsonApiClient):
     """
     JsonApiClient with a retry block around every request.
     """
     def __init__(self, *args, **kwargs):
-        self.__num_retries = kwargs.pop('num_retries', 2)
+        self.__num_retries = kwargs.pop('num_retries', 4)
         self.__wait_seconds = kwargs.pop('wait_seconds', 1)
-        super(ThrottledJsonApiClientWithRetry, self).__init__(*args, **kwargs)
+        super(JsonApiClientWithRetry, self).__init__(*args, **kwargs)
 
     def _make_request(self, *args, **kwargs):
         num_retries_left = self.__num_retries
+        wait_seconds = self.__wait_seconds
         while True:
             try:
-                return super(ThrottledJsonApiClientWithRetry, self)._make_request(*args, **kwargs)
+                return super(JsonApiClientWithRetry, self)._make_request(*args, **kwargs)
             except JsonApiException:
                 if num_retries_left > 0:
                     num_retries_left -= 1
                     logger.exception('Request failed, retrying in %s second(s)...', self.__wait_seconds)
-                    time.sleep(self.__wait_seconds)
+                    time.sleep(wait_seconds)
+                    wait_seconds *= 5  # exponential backoff
+                    wait_seconds += random.uniform(-1, 1)  # small jitter
                     continue
                 else:
                     raise
@@ -169,6 +173,7 @@ class ConfigSchema(Schema):
     count_failed_submissions = fields.Boolean(missing=True)  # default count everything toward quota
     make_predictions_public = fields.Boolean(missing=False)  # default keep predictions private
     allow_orphans = fields.Boolean(missing=True)  # default allow leaderboard entries that no longer have corresponding submission bundles
+    allow_multiple_models = fields.Boolean(missing=False)  # whether to distinguish multiple models per user by bundle name, default is no
     host = fields.Url(required=True)
     username = fields.String()
     password = fields.String()
@@ -202,7 +207,7 @@ class AuthHelper(object):
         return self.grant['access_token']
 
 
-PREDICT_RUN_PREFIX = 'predict-run-'
+SubmissionKey = namedtuple('SubmissionKey', 'owner_id bundle_name')
 
 
 class Competition(object):
@@ -217,7 +222,7 @@ class Competition(object):
     the prediction bundles maintain the record of all submissions.
     """
     def __init__(self, config_path, output_path, leaderboard_only):
-        self.config = self.load_config(config_path)
+        self.config = self._load_config(config_path)
         self.output_path = output_path
         self.leaderboard_only = leaderboard_only
         auth = AuthHelper(
@@ -230,11 +235,11 @@ class Competition(object):
         self.config.pop('username', None)
         self.config.pop('password', None)
 
-        self.client = ThrottledJsonApiClientWithRetry(self.config['host'], auth.get_access_token)
+        self.client = JsonApiClientWithRetry(self.config['host'], auth.get_access_token)
         self.should_stop = False
 
     @staticmethod
-    def load_config(config_path):
+    def _load_config(config_path):
         with open(config_path, 'r') as fp:
             config = json.load(fp)
         try:
@@ -245,13 +250,20 @@ class Competition(object):
         return config
 
     @staticmethod
-    def get_competition_metadata(bundle):
+    def _get_competition_metadata(bundle):
+        """
+        Load competition-specific metadata from a bundle dict.
+        Returns metadata dict, or None if no metadata found.
+        """
         try:
             return json.loads(bundle['metadata']['description'])
         except ValueError:
             return None
 
-    def clear_competition_metadata(self, bundle):
+    def _clear_competition_metadata(self, bundle):
+        """
+        Clears competition-specific metadata from a bundle on the server.
+        """
         bundle['metadata']['description'] = ''
         self.client.update('bundles', {
             'id': bundle['id'],
@@ -276,7 +288,10 @@ class Competition(object):
             'permission': 0,
         })
 
-    def make_public_readable(self, bundle):
+    def _make_public_readable(self, bundle):
+        """
+        Make the given bundle readable to the public.
+        """
         # Get public group info
         public = self.client.fetch('groups', 'public')
 
@@ -287,14 +302,16 @@ class Competition(object):
             'permission': 1,
         })
 
-    def untag(self, bundles, tag):
+    def _untag(self, bundles, tag):
+        """
+        Remove the given `tag` from each of the bundles in `bundles`.
+        """
         self.client.update('bundles', [{
             'id': b['id'],
             'metadata': {'tags': [t for t in b['metadata']['tags'] if t != tag]}
         } for b in bundles])
 
-    def collect_submissions(self):
-        logger.debug("Collecting latest submissions")
+    def _fetch_latest_submissions(self):
         # Fetch all submissions
         all_submissions = self.client.fetch('bundles', params={
             'keywords': [
@@ -304,15 +321,24 @@ class Competition(object):
             ]
         })
 
-        # Drop all but the latest submission for each user.
+        # Drop all but the latest submission for each user
+        # (or for each model, as distinguished by the bundle name)
         submissions = {}
         for bundle in reversed(all_submissions):
             owner_id = bundle['owner']['id']
             created = bundle['metadata']['created']
-            if owner_id not in submissions or \
-                    created > submissions[owner_id]['metadata']['created']:
-                submissions[owner_id] = bundle
 
+            # If multiple models are allowed for each user, subsect by submission bundle name as well
+            if self.config['allow_multiple_models']:
+                key = SubmissionKey(owner_id, bundle['metadata']['name'])
+            else:
+                key = SubmissionKey(owner_id, None)
+
+            if key not in submissions or created > submissions[key]['metadata']['created']:
+                submissions[key] = bundle
+        return submissions
+
+    def _fetch_submission_history(self):
         # Fetch latest evaluation bundles
         last_tests = self.client.fetch('bundles', params={
             'keywords': [
@@ -324,13 +350,13 @@ class Competition(object):
 
         # Collect data in preparation for computing submission counts
         submission_times = defaultdict(list)  # map from submitter_user_id -> UNIX timestamps of submissions, sorted
-        submission_ids = set()                # set of submission bundle uuids
+        previous_submission_ids = set()                # set of submission bundle uuids
         for eval_bundle in last_tests:
-            submit_info = self.get_competition_metadata(eval_bundle)
+            submit_info = self._get_competition_metadata(eval_bundle)
             if submit_info is None:
                 continue
             timestamp = eval_bundle['metadata']['created']
-            submission_ids.add(submit_info['submit_id'])
+            previous_submission_ids.add(submit_info['submit_id'])
             # Only count toward quota if not failed or configured to count failed submissions
             # if predict_bundle['state'] != State.FAILED or self.config['count_failed_submissions']:
             submission_times[submit_info['submitter_id']].append(timestamp)
@@ -346,36 +372,48 @@ class Competition(object):
             # Count the number of submissions in the past 24 hours
             num_period_submissions[owner_id] = sum(t > period_start for t in timestamps)
 
+        return previous_submission_ids, num_total_submissions, num_period_submissions
+
+    def _filter_submissions(self, submissions, previous_submission_ids, num_total_submissions, num_period_submissions):
         # Drop submission if user has exceeded their quota
-        for owner_id, bundle in submissions.items():
+        for key, bundle in submissions.items():
             # Drop submission if we already ran it before
-            if bundle['id'] in submission_ids:
+            if bundle['id'] in previous_submission_ids:
                 logger.debug('Already mimicked last submission by '
                              '{owner[user_name]}.'.format(**bundle))
-                del submissions[owner_id]
+                del submissions[key]
                 continue
 
-            if num_total_submissions[owner_id] >= self.config['max_submissions_total']:
+            if num_total_submissions[key.owner_id] >= self.config['max_submissions_total']:
                 logger.debug(
                     "{owner[user_name]} exceeded quota "
                     "({used}/{allowed} total submissions)".format(
-                        used=num_total_submissions[owner_id],
+                        used=num_total_submissions[key.owner_id],
                         allowed=self.config['max_submissions_total'],
                         **bundle))
-                del submissions[owner_id]
+                del submissions[key]
                 continue
 
-            if num_period_submissions[owner_id] >= self.config['max_submissions_per_period']:
+            if num_period_submissions[key.owner_id] >= self.config['max_submissions_per_period']:
                 logger.debug(
                     "{owner[user_name]} exceeded quota "
                     "({used}/{allowed} submissions per day)".format(
-                        used=num_period_submissions[owner_id],
+                        used=num_period_submissions[key.owner_id],
                         allowed=self.config['max_submissions_per_period'],
                         **bundle))
-                del submissions[owner_id]
+                del submissions[key]
                 continue
+        return submissions
 
-        return submissions, num_total_submissions, num_period_submissions
+    def collect_submissions(self):
+        """
+        Collect all valid submissions, along with the latest quota counts.
+        """
+        logger.debug("Collecting latest submissions")
+        submissions = self._fetch_latest_submissions()
+        previous_submission_ids, num_total_submissions, num_period_submissions = self._fetch_submission_history()
+        submissions = self._filter_submissions(submissions, previous_submission_ids, num_total_submissions, num_period_submissions)
+        return submissions.values(), num_total_submissions, num_period_submissions
 
     def run_prediction(self, submit_bundle):
         """
@@ -388,7 +426,7 @@ class Competition(object):
 
         Returns None if the submission does not meet requirements.
         """
-        predict_bundle_name = PREDICT_RUN_PREFIX + submit_bundle['owner']['id']
+        predict_bundle_name = '{owner[user_name]}-{metadata[name]}-predict'.format(**submit_bundle)
         predict_config = self.config['predict']
         to_be_replaced = [spec['old'] for spec in predict_config['mimic']]
         replacements = [spec['new'] for spec in predict_config['mimic']]
@@ -432,7 +470,7 @@ class Competition(object):
         return predict_bundle
 
     def run_evaluation(self, submit_bundle, predict_bundle):
-        eval_bundle_name = '{owner[user_name]}-results'.format(**submit_bundle)
+        eval_bundle_name = '{owner[user_name]}-{metadata[name]}-results'.format(**submit_bundle)
 
         # Untag any old evaluation run(s) for this submitter
         old_evaluations = self.client.fetch('bundles', params={
@@ -443,7 +481,7 @@ class Competition(object):
                 ]
         })
         if old_evaluations:
-            self.untag(old_evaluations, self.config['evaluate']['tag'])
+            self._untag(old_evaluations, self.config['evaluate']['tag'])
 
         # Create evaluation runs on the predictions with leaderboard tag
         # Build up metadata
@@ -471,7 +509,7 @@ class Competition(object):
             'dependencies': dependencies,
             'metadata': metadata,
         }, params={'worksheet': self.config['log_worksheet_uuid']})
-        self.make_public_readable(eval_bundle)
+        self._make_public_readable(eval_bundle)
         return eval_bundle
 
     @staticmethod
@@ -507,7 +545,7 @@ class Competition(object):
         # Build map from submission bundle id => eval bundle
         submit2eval = {}
         for bundle in eval_bundles.itervalues():
-            submit_info = self.get_competition_metadata(bundle)
+            submit_info = self._get_competition_metadata(bundle)
             # Eval bundles that are missing competition metadata are simply
             # skipped; code downstream must handle the case where eval2submit
             # does not contain an entry for a given eval bundle
@@ -542,12 +580,12 @@ class Competition(object):
                     # Just clear the competition metadata on the eval bundle,
                     # thus removing the reference to the original submit bundle
                     logger.info("Clearing reference to deleted submission %s", missing_submit_uuid)
-                    self.clear_competition_metadata(eval_bundles[eval_uuid])
+                    self._clear_competition_metadata(eval_bundles[eval_uuid])
                     pass
                 else:
                     # Untag and remove entry from the leaderboard entirely
                     logger.info("Removing submission %s", missing_submit_uuid)
-                    self.untag([submit2eval[missing_submit_uuid]], self.config['evaluate']['tag'])
+                    self._untag([submit2eval[missing_submit_uuid]], self.config['evaluate']['tag'])
                     del eval_bundles[eval_uuid]
 
                 # Drop from list of submit bundles and try fetching batch again
@@ -562,7 +600,7 @@ class Competition(object):
 
         return eval_bundles, eval2submit
 
-    def fetch_scores(self, eval_bundles):
+    def _fetch_scores(self, eval_bundles):
         """
         Fetch scores from server.
 
@@ -593,7 +631,7 @@ class Competition(object):
 
     def generate_leaderboard(self, num_total_submissions, num_period_submissions):
         eval_bundles, eval2submit = self._fetch_leaderboard()
-        scores = self.fetch_scores(eval_bundles)
+        scores = self._fetch_scores(eval_bundles)
 
         # Build leaderboard table
         logger.debug('Fetching scores and building leaderboard table')
@@ -652,7 +690,7 @@ class Competition(object):
             logger.debug('No new submissions.')
 
         if not self.leaderboard_only:
-            for owner_id, submit_bundle in submissions.items():
+            for submit_bundle in submissions:
                 logger.info("Mimicking submission for "
                             "{owner[user_name]}".format(**submit_bundle))
                 predict_bundle = self.run_prediction(submit_bundle)
@@ -663,6 +701,9 @@ class Competition(object):
                 self.run_evaluation(submit_bundle, predict_bundle)
                 logger.info("Finished mimicking submission for "
                             "{owner[user_name]}".format(**submit_bundle))
+
+                # Update local counts for the leaderboard
+                owner_id = submit_bundle['owner']['id']
                 num_total_submissions[owner_id] += 1
                 num_period_submissions[owner_id] += 1
 
