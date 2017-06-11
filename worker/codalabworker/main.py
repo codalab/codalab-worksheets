@@ -78,6 +78,9 @@ chmod 600 %s""" % args.password_file
     if args.verbose:
         logging.basicConfig(format='%(asctime)s %(message)s',
                             level=logging.DEBUG)
+    else:
+        logging.basicConfig(format='%(asctime)s %(message)s',
+                            level=logging.INFO)
 
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
     if args.max_image_cache_size is None:
