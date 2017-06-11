@@ -1736,13 +1736,13 @@ class BundleCLI(object):
 
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
-        info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
+        info = self.print_target_info(client, (bundle_uuid, ''), head=10)
         if info is not None and info['type'] == 'directory':
             for item in info['contents']:
                 if item['name'] not in ['stdout', 'stderr']:
                     continue
                 print >>self.stdout, wrap(item['name'])
-                self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
+                self.print_target_info(client, (bundle_uuid, item['name']), head=10)
 
     @Commands.command(
         'mount',
@@ -1781,6 +1781,8 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
+            Commands.Argument('--head', type=int, metavar='NUM', help='Display first NUM lines of contents.'),  # `-h` conflicts with help flag
+            Commands.Argument('-t', '--tail', type=int, metavar='NUM', help='Display last NUM lines of contents'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1789,10 +1791,10 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        self.print_target_info(client, target, decorate=False, fail_if_not_exist=True)
+        self.print_target_info(client, target, head=args.head, tail=args.tail)
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
+    def print_target_info(self, client, target, head=None, tail=None):
         info = client.fetch_contents_info(target[0], target[1], 1)
         info_type = info.get('type')
 
@@ -1800,10 +1802,12 @@ class BundleCLI(object):
             print >>self.stdout, formatting.verbose_contents_str(None)
 
         if info_type == 'file':
-            if decorate:
-                contents = client.fetch_contents_blob(target[0], target[1], head=maxlines)
-            else:
-                contents = client.fetch_contents_blob(target[0], target[1])
+            kwargs = {}
+            if head is not None:
+                kwargs['head'] = head
+            if tail is not None:
+                kwargs['tail'] = tail
+            contents = client.fetch_contents_blob(target[0], target[1], **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout)
 
@@ -2321,7 +2325,7 @@ class BundleCLI(object):
                     if maxlines:
                         maxlines = int(maxlines)
                     try:
-                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                        self.print_target_info(client, data, head=maxlines)
                     except UsageError, e:
                         print >>self.stdout, 'ERROR:', e
                 else:
