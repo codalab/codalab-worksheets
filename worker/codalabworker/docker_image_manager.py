@@ -90,15 +90,17 @@ class DockerImageManager(object):
     def _remove_stalest_image(self):
         with self._lock:
             digest = min(self._last_used, key=lambda i: self._last_used[i])
-            self._docker.remove_image(digest)
-            del self._last_used[digest]
-            self._save_state()
+            try:
+                self._docker.remove_image(digest)
+            finally:
+                del self._last_used[digest]
+                self._save_state()
 
     def _do_cleanup(self):
         """
         Periodically clean up the oldest images when the disk is close to full.
         """
-        logging.debug('image cleanup thread started')
+        logger.info('Image cleanup thread started.')
         while not self._should_stop_cleanup():
             # Start disk usage reduction loop
             # Iteratively try to remove the oldest images until the disk usage
@@ -107,7 +109,7 @@ class DockerImageManager(object):
                 while True:
                     total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
                     if total_bytes > self._max_images_bytes and len(self._last_used) > 0 and reclaimable_bytes > 0:
-                        logging.debug('Docker images disk usage: %s (max %s)',
+                        logger.debug('Docker images disk usage: %s (max %s)',
                                       size_str(total_bytes),
                                       size_str(self._max_images_bytes))
                         self._remove_stalest_image()
