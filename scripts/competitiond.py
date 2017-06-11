@@ -2,7 +2,6 @@
 """
 Competition leaderboard evaluation daemon.
 
-Does the following in a loop, every {refresh_period_seconds}:
     1. Find bundles tagged with {submission_tag} and filter them.
     2. Run the {predict} command with the submitted bundle to generate
        predictions on the test set.
@@ -12,70 +11,18 @@ Does the following in a loop, every {refresh_period_seconds}:
     5. Tag the resulting evaluation bundle with {evaluate.tag}, untagging
        any previous evaluation bundles for the same submitter.
 
+If in daemon mode, performs the above steps in a loop every
+{refresh_period_seconds} seconds. Otherwise, just runs through them once.
+
 All bundles created by this daemon are added to {log_worksheet_uuid}.
 Each user will be limited to {max_submissions_per_period} every
 {quota_period_seconds}, and {max_submissions_total} ever.
 
-Example config file:
-
-{
-    "max_submissions_per_period": 5,
-    "max_submissions_total": 10000,
-    "refresh_period_seconds": 10,
-    "host": "https://worksheets.codalab.org",
-    "username": "xxxxxxxxxxxx",
-    "password": "xxxxxxxxxxxx",
-    "submission_tag": "xxxx-submit",
-    "log_worksheet_uuid": "0x2263f854a967abcabade0b6c88f51f29",
-    "predict": {
-        "mimic": [
-            {
-                "old": "0x4870af25abc94b0687a1927fcec66392",
-                "new": "0xbcd57bee090b421c982906709c8c27e1"
-            }
-        ],
-        "metadata": {
-            "request_queue": ""
-        },
-        "tag": "xxxx-predict"
-    },
-    "evaluate": {
-        "dependencies": [
-            {
-                "parent_uuid": "0x089063eb85b64b239b342405b5ebab57",
-                "child_path": "evaluate.py"
-            },
-            {
-                "parent_uuid": "0x5538cba32e524fad8b005cd19abb9f95",
-                "child_path": "dev.json"
-            },
-            {
-                "parent_uuid": "{predict}",
-                "parent_path": "predictions.json",
-                "child_path": "predictions.json"
-            }
-        ],
-        "command": "python evaluate.py dev.json predictions.json",
-        "tag": "xxxx-eval"
-    },
-    "score_specs": [
-        {
-            "name": "f1",
-            "key": "/stdout:f1"
-        },
-        {
-            "name": "exact_match",
-            "key": "/stdout:exact_match"
-        }
-    ],
-    "metadata": {
-        "name": "Cool Competition Leaderboard"
-    }
-}
-
 The following string substitutions will be made in the dependency specs:
 
     {predict} => UUID of the resulting test run bundle
+
+Config file keys:
 
 """
 import argparse
@@ -90,7 +37,8 @@ import time
 import traceback
 from collections import defaultdict, namedtuple
 
-from marshmallow import Schema, fields, ValidationError
+from marshmallow import Schema, fields, ValidationError, missing
+import yaml
 
 sys.path.append('.')
 from codalab.bundles import RunBundle
@@ -140,51 +88,50 @@ class JsonApiClientWithRetry(JsonApiClient):
 
 
 class RunConfigSchema(Schema):
-    command = fields.String(required=True)
+    command = fields.String(required=True, metadata='bash command')
     dependencies = fields.List(fields.Nested(BundleDependencySchema), required=True)
-    tag = fields.String(required=True)
-    metadata = fields.Dict(missing=dict)
+    tag = fields.String(missing='competition-evaluate', metadata='how to tag new evaluation bundles')
+    metadata = fields.Dict(missing={}, metadata='metadata keys for new evaluation bundles')
 
 
 class MimicReplacementSchema(Schema):
-    old = fields.String(validate=validate_uuid)
-    new = fields.String(validate=validate_uuid)
+    old = fields.String(validate=validate_uuid, required=True, metadata='uuid of bundle to swap out')
+    new = fields.String(validate=validate_uuid, required=True, metadata='uuid of bundle to swap in')
 
 
 class MimicConfigSchema(Schema):
-    tag = fields.String(required=True)
-    metadata = fields.Dict(missing=dict)
+    tag = fields.String(missing='competition-predict', metadata='how to tag new prediction bundles')
+    metadata = fields.Dict(missing={}, metadata='overwrite metadata keys in mimicked bundles')
+    depth = fields.Integer(missing=10, metadata='how far up the dependency tree to look for replacements')
     mimic = fields.List(fields.Nested(MimicReplacementSchema), required=True)
-    # How far up the ancestor tree do we look for replacements?
-    depth = fields.Integer(missing=1)
 
 
 class ScoreSpecSchema(Schema):
-    name = fields.String(required=True)
-    key = fields.String(required=True)
+    name = fields.String(required=True, metadata='name of the score (for convenience)')
+    key = fields.String(required=True, metadata='target path of the score in the evaluate bundle (e.g. \"/results.json:f1_score\")')
 
 
 class ConfigSchema(Schema):
-    max_submissions_per_period = fields.Integer(missing=1)
-    max_submissions_total = fields.Integer(missing=1e10)
-    refresh_period_seconds = fields.Integer(missing=60)
-    max_leaderboard_size = fields.Integer(missing=10000)
-    quota_period_seconds = fields.Integer(missing=24*60*60)  # default 1 day
-    count_failed_submissions = fields.Boolean(missing=True)  # default count everything toward quota
-    make_predictions_public = fields.Boolean(missing=False)  # default keep predictions private
-    allow_orphans = fields.Boolean(missing=True)  # default allow leaderboard entries that no longer have corresponding submission bundles
-    allow_multiple_models = fields.Boolean(missing=False)  # whether to distinguish multiple models per user by bundle name, default is no
-    host = fields.Url(required=True)
-    username = fields.String()
-    password = fields.String()
-    submission_tag = fields.String(required=True)
-    log_worksheet_uuid = fields.String(validate=validate_uuid)
+    max_submissions_per_period = fields.Integer(missing=1, metadata='number of submissions allowed per user per quota period')
+    max_submissions_total = fields.Integer(missing=10000, metadata='number of submissions allowed per user for eternity')
+    refresh_period_seconds = fields.Integer(missing=60, metadata='(for daemon mode) number of seconds to wait before checking for new submissions again')
+    max_leaderboard_size = fields.Integer(missing=10000, metadata='maximum number of bundles you expect to have on the log worksheet')
+    quota_period_seconds = fields.Integer(missing=24*60*60, metadata='window size for the user submission quotas in seconds')
+    count_failed_submissions = fields.Boolean(missing=True, metadata='whether to count failed evaluations toward submission quotas')
+    make_predictions_public = fields.Boolean(missing=False, metadata='whether to make newly-created prediction bundles publicly readable')
+    allow_orphans = fields.Boolean(missing=True, metadata='whether to keep leaderboard entries that no longer have corresponding submission bundles')
+    allow_multiple_models = fields.Boolean(missing=False, metadata='whether to distinguish multiple models per user by bundle name')
+    host = fields.Url(missing='https://worksheets.codalab.org', metadata='address of the CodaLab instance to connect to')
+    username = fields.String(metadata='username for CodaLab account to use')
+    password = fields.String(metadata='password for CodaLab account to use')
+    submission_tag = fields.String(required=True, metadata='tag for searching for submissions')
+    log_worksheet_uuid = fields.String(validate=validate_uuid, metadata='UUID of worksheet to create new bundles in')
     predict = fields.Nested(MimicConfigSchema, required=True)
     evaluate = fields.Nested(RunConfigSchema, required=True)
     # Leaderboard sorted by the first key in this list
     score_specs = fields.List(fields.Nested(ScoreSpecSchema), required=True)
     # Gets passed directly to the output JSON
-    metadata = fields.Dict(missing=dict)
+    metadata = fields.Dict(missing={}, metadata='additional metadata to include in the leaderboard file')
 
 
 class AuthHelper(object):
@@ -241,7 +188,7 @@ class Competition(object):
     @staticmethod
     def _load_config(config_path):
         with open(config_path, 'r') as fp:
-            config = json.load(fp)
+            config = yaml.load(fp)
         try:
             config = ConfigSchema(strict=True).load(config).data
         except ValidationError as e:
@@ -728,14 +675,42 @@ class Competition(object):
         self.should_stop = True
 
 
+def generate_description():
+    def display_schema(schema, doc, indent, first_indent=None):
+        saved_indent = indent
+        if first_indent is not None:
+            indent = first_indent
+        for field_name, field in schema._declared_fields.items():
+            field_help = field.metadata.get('metadata', '')
+            field_class = field.__class__
+            if field_class is fields.Nested:
+                doc += indent + '%s:\n' % field_name
+                doc = display_schema(field.nested, doc, (indent + '  '))
+            elif field_class is fields.List:
+                doc += indent + '%s:\n' % field_name
+                doc = display_schema(field.container.nested, doc, (indent + '    '), first_indent=(indent + '  - '))
+                doc += indent + '  - ...\n'
+            else:
+                field_type = field.__class__.__name__.lower()
+                if field.missing is missing and field.required:
+                    doc += indent + '%s: %s, %s [required]\n' % (field_name, field_type, field_help)
+                elif field.missing is missing and not field.required:
+                    doc += indent + '%s: %s, %s\n' % (field_name, field_type, field_help)
+                else:
+                    doc += indent + '%s: %s, %s [default: %s]\n' % (field_name, field_type, field_help, json.dumps(field.missing).strip())
+            indent = saved_indent
+        return doc
+    return display_schema(ConfigSchema, __doc__, ' '*4)
+
+
 def main():
     # Support all configs as command line arguments too
-    parser = argparse.ArgumentParser(description=__doc__,
+    parser = argparse.ArgumentParser(description=generate_description(),
                                      formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument('config_file',
-                        help='JSON file containing configurations.')
+                        help='YAML/JSON file containing configurations.')
     parser.add_argument('output_path',
-                        help='path to write json file containing leaderboard.')
+                        help='path to write JSON file containing leaderboard.')
     parser.add_argument('-l', '--leaderboard-only', action='store_true',
                         help='Generate a new leaderboard but without creating any new runs.')
     parser.add_argument('-d', '--daemon', action='store_true',
