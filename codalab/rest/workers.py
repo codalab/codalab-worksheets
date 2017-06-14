@@ -7,7 +7,7 @@ import subprocess
 import time
 import logging 
 #import tempfile
-#from __future__ import print_function
+from __future__ import print_function
 
 from bottle import abort, get, local, post, put, request, response
 
@@ -30,10 +30,10 @@ def checkin(worker_id):
     torque_worker = ('torque' in local.config['workers'] and
                      request.user.user_id == local.model.root_user_id)
 
-#    with tempfile.NamedTemporaryFile('w', delete=False) as file_handle:
-#        print('Checking in...', file=file_handle)
-#        print('Worker version: ', request.json['version'], file=file_handle)
-#        print('Server version: ', VERSION, file=file_handle)
+    with open('temp.temp', 'w') as file_handle:
+        print('Checking in...', file=file_handle)
+        print('Worker version: ', request.json['version'], file=file_handle)
+        print('Server version: ', VERSION, file=file_handle)
 
     logger = logging.getLogger(__name__)
     logger.info('Checking in...')
