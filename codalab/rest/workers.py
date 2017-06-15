@@ -30,7 +30,7 @@ def checkin(worker_id):
                      request.user.user_id == local.model.root_user_id)
 
     with open('temp.temp', 'w') as file_handle:
-        file_handle.writelines(['Checking in...', 'Worker version: ' + request.json['version'], 'Server version: ' + VERSION])
+        file_handle.writelines(['Checking in...', 'Worker version: ' + str(request.json['version']), 'Server version: ' + str(VERSION)])
 
     logger = logging.getLogger(__name__)
     logger.info('Checking in...')
