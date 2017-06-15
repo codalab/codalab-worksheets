@@ -46,6 +46,7 @@ $env/bin/pip install -U setuptools
 
 echo -e "${info}[*] Installing Python packages into $env...${reset}"
 if [ "$1" == "server" ]; then
+  $env/bin/pip install -e $codalabdir/worker
   $env/bin/pip install -r $codalabdir/requirements-server.txt
 elif [ "$1" == "dev" ]; then
   $env/bin/pip install -r $codalabdir/requirements-dev.txt
