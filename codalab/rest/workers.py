@@ -5,8 +5,6 @@ import json
 import os
 import subprocess
 import time
-import logging 
-import tempfile
 
 from bottle import abort, get, local, post, put, request, response
 
@@ -29,13 +27,6 @@ def checkin(worker_id):
     torque_worker = ('torque' in local.config['workers'] and
                      request.user.user_id == local.model.root_user_id)
 
-    with open('temp.temp', 'w') as file_handle:
-        file_handle.writelines(['Checking in...', 'Worker version: ' + str(request.json['version']), 'Server version: ' + str(VERSION)])
-
-    logger = logging.getLogger(__name__)
-    logger.info('Checking in...')
-    logger.info('Worker version: ', request.json['version'])
-    logger.info('Server version: ', VERSION)
     if (not torque_worker and
         request.json['version'] != VERSION and
         not request.json['will_upgrade']):

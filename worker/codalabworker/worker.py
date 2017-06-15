@@ -15,7 +15,7 @@ from file_util import remove_path, un_tar_directory
 from run import Run
 from docker_image_manager import DockerImageManager
 
-VERSION = 13
+VERSION = 12
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +268,8 @@ class Worker(object):
         logger.debug('Upgrading')
         worker_dir = os.path.dirname(os.path.realpath(__file__))
 
+        with open('temp.temp', 'w') as file_handle:
+            file_handle.writelines(['untarring code...'])
         while True:
             try:
                 with closing(self._bundle_service.get_code()) as code:
