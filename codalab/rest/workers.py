@@ -29,7 +29,7 @@ def checkin(worker_id):
     torque_worker = ('torque' in local.config['workers'] and
                      request.user.user_id == local.model.root_user_id)
 
-    with tempfile.TemporaryFile('w') as file_handle:
+    with open('temp.temp', 'w') as file_handle:
         file_handle.writelines(['Checking in...', 'Worker version: ' + request.json['version'], 'Server version: ' + VERSION])
 
     logger = logging.getLogger(__name__)
