@@ -16,7 +16,6 @@ else
 fi
 
 while [ 1 ]; do
-    ls $WORKER_CODE_DIR
     python $WORKER_CODE_DIR/main.py $ID_ARG $WORKER_ARGS "$@" >$STDOUT 2>$STDERR
     if [ "$?" -ne "123" ]; then
         break
