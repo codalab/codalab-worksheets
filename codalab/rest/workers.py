@@ -183,7 +183,7 @@ def code():
     response.set_header('Content-Disposition', 'filename="code.tar.gz"')
     response.set_header('Content-Type', 'application/gzip')
     codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    code_dir = os.path.join(codalab_cli, 'worker')
+    code_dir = os.path.join(codalab_cli, 'worker', 'codalabworker')
     args = ['tar', 'czf', '-', '-C', code_dir]
     for filename in os.listdir(code_dir):
         if filename.endswith('.py') or filename.endswith('.sh'):
