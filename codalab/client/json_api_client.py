@@ -172,7 +172,7 @@ class JsonApiClient(RestClient):
 
         result = []
 
-        # `include` query parameter is a comma-spearated list, as defined by:
+        # `include` query parameter is a comma-separated list, as defined by:
         # http://jsonapi.org/format/#fetching-includes
         include = params.pop('include', None)
         if include is not None:

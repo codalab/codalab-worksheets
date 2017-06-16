@@ -1355,7 +1355,7 @@ class BundleCLI(object):
             Commands.Argument('-T', '--tags', help='Change tags (must appear after worksheet_spec).', nargs='*'),
             Commands.Argument('-d', '--description', help='New bundle description.'),
             Commands.Argument('--anonymous', help='Set bundle to be anonymous (identity of the owner will NOT \n'
-                              'be visisble to users without \'all\' permission on the bundle).',
+                              'be visible to users without \'all\' permission on the bundle).',
                               dest='anonymous', action='store_true', default=None),
             Commands.Argument('--not-anonymous', help='Set bundle to be NOT anonymous.', dest='anonymous', action='store_false'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
@@ -2214,7 +2214,7 @@ class BundleCLI(object):
             Commands.Argument('-o', '--owner-spec', help='Change owner of worksheet.'),
             Commands.Argument('--freeze', help='Freeze worksheet to prevent future modification (PERMANENT!).', action='store_true'),
             Commands.Argument('--anonymous', help='Set worksheet to be anonymous (identity of the owner will NOT \n'
-                                                  'be visisble to users without \'all\' permission on the worksheet).',
+                                                  'be visible to users without \'all\' permission on the worksheet).',
                               dest='anonymous', action='store_true', default=None),
             Commands.Argument('--not-anonymous', help='Set bundle to be NOT anonymous.', dest='anonymous', action='store_false'),
             Commands.Argument('-f', '--file', help='Replace the contents of the current worksheet with this file.', completer=require_not_headless(FilesCompleter(directories=False))),
