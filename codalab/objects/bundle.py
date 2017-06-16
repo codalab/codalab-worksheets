@@ -19,7 +19,7 @@ from codalab.objects.metadata import Metadata
 
 
 class Bundle(ORMObject):
-    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state', 'owner_id')
+    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state', 'owner_id', 'is_anonymous')
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type
     #   - METADATA_SPECS: a list of MetadataSpec objects

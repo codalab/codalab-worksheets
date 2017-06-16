@@ -8,13 +8,10 @@ bundle itself, call request_missing_metadata to pop up an editor to get the
 missing metadata values.
 '''
 import os
-import subprocess
-import sys
-import tempfile
 
 from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
-from codalab.lib import path_util, editor_util
+from codalab.lib import editor_util
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
 

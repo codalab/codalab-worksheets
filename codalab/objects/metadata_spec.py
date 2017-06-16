@@ -28,6 +28,7 @@ class MetadataSpec(object):
         generated=False,
         formatting=None,
         completer=None,
+        hide_when_anonymous=False,
     ):
         self.key = key
         self.type = type
@@ -38,6 +39,7 @@ class MetadataSpec(object):
         self.generated = generated
         self.formatting = formatting
         self.completer = completer
+        self.hide_when_anonymous = hide_when_anonymous
 
     def get_constructor(self):
         # Convert from string to type
