@@ -89,6 +89,7 @@ class WorksheetSchema(Schema):
     owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
     title = fields.String()
     frozen = fields.DateTime(allow_none=True)
+    is_anonymous = fields.Bool()
     tags = fields.List(fields.String)
     group_permissions = fields.Relationship(include_data=True, type_='worksheet-permissions', id_field='id', many=True)
     items = fields.Relationship(include_data=True, type_='worksheet-items', id_field='id', many=True)
@@ -144,11 +145,12 @@ class BundleSchema(Schema):
     data_hash = fields.String()
     state = fields.String()
     owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
+    is_anonymous = fields.Bool()
     metadata = fields.Dict()
     dependencies = fields.Nested(BundleDependencySchema, many=True)
     children = fields.Relationship(include_data=True, type_='bundles', id_field='uuid', many=True)
     group_permissions = fields.Relationship(include_data=True, type_='bundle-permissions', id_field='id', many=True)
-    host_worksheets = fields.List(fields.Dict)
+    host_worksheets = fields.Relationship(include_data=True, type_='worksheets', id_field='uuid', many=True)
     args = fields.String()
 
     # Bundle permission of the authenticated user for convenience, read-only

@@ -162,12 +162,22 @@ class JsonApiClient(RestClient):
     @staticmethod
     def _pack_params(params):
         """
-        Process lists into comma-separated strings, and booleans into 1/0.
+        Convert query parameters into the canonical format expected by the server.
+
+        :param dict[str, *] params: map from query parameter key to value
+        :rtype: list[(str, str)]
         """
         if params is None:
             return None
 
         result = []
+
+        # `include` query parameter is a comma-separated list, as defined by:
+        # http://jsonapi.org/format/#fetching-includes
+        include = params.pop('include', None)
+        if include is not None:
+            result.append(('include', ','.join(include)))
+
         for k, v in (params.iteritems() if isinstance(params, dict) else params):
             if isinstance(v, list):
                 for item in map(unicode, v):
@@ -176,6 +186,7 @@ class JsonApiClient(RestClient):
                 result.append((k, int(v)))
             else:
                 result.append((k, v))
+
         return result
 
     def _unpack_document(self, document):
@@ -380,13 +391,14 @@ class JsonApiClient(RestClient):
         }
 
     @wrap_exception('Unable to fetch {1}')
-    def fetch(self, resource_type, resource_id=None, params=None):
+    def fetch(self, resource_type, resource_id=None, params=None, include=None):
         """
         Request to fetch a resource or resources.
 
         :param resource_type: resource type as string
         :param resource_id: id of resource to fetch, or None if bulk fetch
         :param params: dict of query parameters
+        :param include: iterable of related resources to include
         :return: the fetched objects
         """
         return self._unpack_document(

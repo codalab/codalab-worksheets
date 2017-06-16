@@ -9,7 +9,11 @@ from bottle import abort, local, request
 
 from codalab.bundles import PrivateBundle
 from codalab.lib import bundle_util
-from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
+from codalab.model.tables import (
+    GROUP_OBJECT_PERMISSION_ALL,
+    GROUP_OBJECT_PERMISSION_NONE,
+    GROUP_OBJECT_PERMISSION_READ,
+)
 from codalab.objects.permission import (
     check_bundles_have_read_permission,
     unique_group,
@@ -40,102 +44,108 @@ def resolve_owner_in_keywords(keywords):
 # BUNDLES
 #############################################################
 
-
-def get_bundle_info(uuid, get_children=False, get_host_worksheets=False, get_permissions=False):
-    return get_bundle_infos([uuid], get_children, get_host_worksheets, get_permissions).get(uuid)
-
-
-# Placed here to prevent cyclic imports between rest.bundles and rest.worksheets
-def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_permissions=False):
+# Placed in this module to prevent cyclic imports between rest.bundles and rest.worksheets
+def get_bundle_infos(uuids, get_children=False, get_host_worksheets=False, get_permissions=False, ignore_not_found=True):
     """
-    get_children, get_host_worksheets, get_permissions:
-        whether we want to return more detailed information.
-    Return map from bundle uuid to info.
+    Return a map from bundle uuid to info.
+
+    :param Collection[str] uuids: uuids of bundles to fetch
+    :param bool get_children: include children
+    :param bool get_host_worksheets: include host worksheets
+    :param bool get_permissions: include group permissions
+    :param bool ignore_not_found: abort with 404 NOT FOUND when False and bundle doesn't exist
+    :rtype: dict[str, dict]
     """
     if len(uuids) == 0:
         return {}
     bundles = local.model.batch_get_bundles(uuid=uuids)
-    bundle_dict = {bundle.uuid: bundle_util.bundle_to_bundle_info(local.model, bundle) for bundle in bundles}
+    bundle_infos = {bundle.uuid: bundle_util.bundle_to_bundle_info(local.model, bundle) for bundle in bundles}
 
-    # Filter out bundles that we don't have read permission on
-    def select_unreadable_bundles(uuids):
-        permissions = local.model.get_user_bundle_permissions(request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
-        return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
+    # Implement permissions policies
+    perms = _get_user_bundle_permissions(uuids)
+    readable = {u for u, perm in perms.iteritems() if perm >= GROUP_OBJECT_PERMISSION_READ}
+    anonymous = {u for u, perm in perms.iteritems() if u in bundle_infos and (perm < GROUP_OBJECT_PERMISSION_READ or bundle_infos[u]['is_anonymous'])}
+    for uuid in uuids:
+        bundle = bundle_infos.get(uuid)
+        # Bundle doesn't exist; abort or skip
+        if bundle is None:
+            if ignore_not_found:
+                continue
+            else:
+                abort(httplib.NOT_FOUND, "Bundle %s not found" % uuid)
+        # Replace bundles that the user does not have read access to
+        elif uuid not in readable:
+            bundle_infos[uuid] = bundle_util.bundle_to_bundle_info(local.model, PrivateBundle.construct(uuid))
+        # Mask owners of anonymous bundles that user does not have all acccess to
+        elif uuid in anonymous:
+            bundle['owner_id'] = None
 
-    def select_unreadable_worksheets(uuids):
-        permissions = local.model.get_user_worksheet_permissions(request.user.user_id, uuids, local.model.get_worksheet_owner_ids(uuids))
-        return [uuid for uuid, permission in permissions.items() if permission < GROUP_OBJECT_PERMISSION_READ]
-
-    # Lookup the user names of all the owners
-    user_ids = [info['owner_id'] for info in bundle_dict.values()]
-    users = local.model.get_users(user_ids=user_ids) if len(user_ids) > 0 else []
-    users = {u.user_id: u for u in users}
-    if users:
-        for info in bundle_dict.values():
-            user = users[info['owner_id']]
-            info['owner_name'] = user.user_name if user else None
-            info['owner'] = '%s(%s)' % (info['owner_name'], info['owner_id'])
-
-    # Mask bundles that we can't access
-    for uuid in select_unreadable_bundles(uuids):
-        if uuid in bundle_dict:
-            bundle_dict[uuid] = bundle_util.bundle_to_bundle_info(local.model, PrivateBundle.construct(uuid))
+        # Set permission
+        bundle['permission'] = perms[uuid]
 
     if get_children:
-        result = local.model.get_children_uuids(uuids)
-        # Gather all children bundle uuids
-        children_uuids = [uuid for l in result.values() for uuid in l]
-        unreadable = set(select_unreadable_bundles(children_uuids))
+        parent2children = local.model.get_children_uuids(readable)
+
+        # Gather all children bundle uuids and fetch permissions
+        child_uuids = [uuid for l in parent2children.values() for uuid in l]
+        child_perms = _get_user_bundle_permissions(child_uuids)
+
         # Lookup bundle names
-        names = local.model.get_bundle_names(children_uuids)
-        # Fill in info
-        for uuid, info in bundle_dict.items():
-            info['children'] = [
+        child_names = local.model.get_bundle_names(child_uuids)
+
+        # Set children infos
+        for parent_uuid, children in parent2children.iteritems():
+            bundle_infos[parent_uuid]['children'] = [
                 {
                     'uuid': child_uuid,
-                    'metadata': {'name': names[child_uuid]}
+                    'metadata': {'name': child_names[child_uuid]}
                 }
-                for child_uuid in result[uuid] if child_uuid not in unreadable]
+                for child_uuid in children
+                if child_perms[child_uuid] >= GROUP_OBJECT_PERMISSION_READ]
 
     if get_host_worksheets:
         # bundle_uuids -> list of worksheet_uuids
-        result = local.model.get_host_worksheet_uuids(uuids)
+        host_worksheets = local.model.get_host_worksheet_uuids(readable)
         # Gather all worksheet uuids
-        worksheet_uuids = [uuid for l in result.values() for uuid in l]
-        unreadable = set(select_unreadable_worksheets(worksheet_uuids))
-        worksheet_uuids = [uuid for uuid in worksheet_uuids if uuid not in unreadable]
+        worksheet_uuids = [uuid for l in host_worksheets.itervalues() for uuid in l]
+        wpermissions = local.model.get_user_worksheet_permissions(
+            request.user.user_id, worksheet_uuids, local.model.get_worksheet_owner_ids(worksheet_uuids))
+        readable_worksheet_uuids = set(uuid for uuid, permission in wpermissions.iteritems()
+                                       if permission >= GROUP_OBJECT_PERMISSION_READ)
         # Lookup names
         worksheets = dict(
             (worksheet.uuid, worksheet)
             for worksheet in local.model.batch_get_worksheets(
                 fetch_items=False,
-                uuid=worksheet_uuids))
+                uuid=readable_worksheet_uuids))
         # Fill the info
-        for uuid, info in bundle_dict.items():
-            info['host_worksheets'] = [
+        for bundle_uuid, host_uuids in host_worksheets.iteritems():
+            bundle_infos[bundle_uuid]['host_worksheets'] = [
                 {
-                    'uuid': worksheet_uuid,
-                    'name': worksheets[worksheet_uuid].name
+                    'uuid': host_uuid,
+                    'name': worksheets[host_uuid].name
                 }
-                for worksheet_uuid in result[uuid]
-                if worksheet_uuid not in unreadable]
+                for host_uuid in host_uuids
+                if host_uuid in readable_worksheet_uuids]
 
     if get_permissions:
         # Fill the permissions info
-        group_perms = local.model.batch_get_group_bundle_permissions(
-                request.user.user_id, uuids)
-        user_perm = local.model.get_user_bundle_permissions(
-                request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
-        for uuid, info in bundle_dict.items():
-            info['permission'] = user_perm[uuid]
+        bundle2group_perms = local.model.batch_get_group_bundle_permissions(
+                request.user.user_id, readable)
+        for uuid, group_perms in bundle2group_perms.items():
             # Only show group permissions to the user is they have
             # at least read permission on this bundle.
-            if user_perm[uuid] >= GROUP_OBJECT_PERMISSION_READ:
-                info['group_permissions'] = group_perms[uuid]
+            if uuid in anonymous:
+                bundle_infos[uuid]['group_permissions'] = []
             else:
-                info['group_permissions'] = []
+                bundle_infos[uuid]['group_permissions'] = group_perms
 
-    return bundle_dict
+    return bundle_infos
+
+
+def _get_user_bundle_permissions(uuids):
+    return local.model.get_user_bundle_permissions(
+        request.user.user_id, uuids, local.model.get_bundle_owner_ids(uuids))
 
 
 def check_target_has_read_permission(target):

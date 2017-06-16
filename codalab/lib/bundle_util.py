@@ -18,12 +18,13 @@ def bundle_to_bundle_info(model, bundle):
         'command': bundle.command,
         'data_hash': bundle.data_hash,
         'state': bundle.state,
+        'is_anonymous': bundle.is_anonymous,
         'metadata': bundle.metadata.to_dict(),
         'dependencies': [dep.to_dict() for dep in bundle.dependencies],
     }
     if result['dependencies']:
         dep_names = model.get_bundle_names(
-            map(lambda dep: dep['parent_uuid'], result['dependencies']))
+            [dep['parent_uuid'] for dep in result['dependencies']])
         for dep in result['dependencies']:
             dep['parent_name'] = dep_names.get(dep['parent_uuid'])
 
@@ -250,7 +251,9 @@ def mimic_bundles(client,
                 host_worksheet_uuid = host_worksheet_uuids[0]
 
             # Fetch the worksheet
-            worksheet_info = client.fetch('worksheets', host_worksheet_uuid)
+            worksheet_info = client.fetch('worksheets', host_worksheet_uuid, params={
+                'include': ['items', 'items.bundle']
+            })
 
             prelude_items = []  # The prelude that we're building up
             for item in worksheet_info['items']:

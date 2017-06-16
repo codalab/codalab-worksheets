@@ -170,12 +170,15 @@ def fetch_interpreted_worksheet(uuid):
     that we can render something basic.
     """
     bundle_uuids = request.query.getall('bundle_uuid')
-    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permission=True)
+    worksheet_info = get_worksheet_info(uuid, fetch_items=True, fetch_permissions=True)
 
     # Shim in additional data for the frontend
     worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
-    owner = local.model.get_user(user_id=worksheet_info['owner_id'])
-    worksheet_info['owner_name'] = owner.user_name
+    if worksheet_info['owner_id'] is None:
+        worksheet_info['owner_name'] = None
+    else:
+        owner = local.model.get_user(user_id=worksheet_info['owner_id'])
+        worksheet_info['owner_name'] = owner.user_name
 
     # Fetch items.
     worksheet_info['raw'] = get_worksheet_lines(worksheet_info)

@@ -36,6 +36,7 @@ bundle = Table(
   Column('data_hash', String(63), nullable=True),
   Column('state', String(63), nullable=False),
   Column('owner_id', String(255), nullable=True),
+  Column('is_anonymous', Boolean, nullable=False, default=False),
   UniqueConstraint('uuid', name='uix_1'),
   Index('bundle_data_hash_index', 'data_hash'),
   Index('state_index', 'state'),  # Needed for the bundle manager.
@@ -79,6 +80,7 @@ worksheet = Table(
   Column('owner_id', String(255), nullable=True),
   Column('title', String(255), nullable=True),  # Short human-readable description of the worksheet
   Column('frozen', DateTime, nullable=True),  # When the worksheet was frozen (forever immutable) if it is.
+  Column('is_anonymous', Boolean, nullable=False, default=False),
   UniqueConstraint('uuid', name='uix_1'),
   Index('worksheet_name_index', 'name'),
   Index('worksheet_owner_index', 'owner_id'),
