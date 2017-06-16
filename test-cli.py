@@ -1072,11 +1072,21 @@ def test(ctx):
         run_command([cl, 'wadd', remote_worksheet, source_worksheet])
 
 
-
 @TestModule.register('groups')
 def test(ctx):
     # Should not crash
     run_command([cl, 'ginfo', 'public'])
+
+
+@TestModule.register('anonymous')
+def test(ctx):
+    # Should not crash
+    # TODO: multi-user tests that check that owner is hidden for anonymous objects
+    run_command([cl, 'wedit', '--anonymous'])
+    run_command([cl, 'wedit', '--not-anonymous'])
+    uuid = run_command([cl, 'upload', test_path('a.txt')])
+    run_command([cl, 'edit', '--anonymous', uuid])
+    run_command([cl, 'edit', '--not-anonymous', uuid])
 
 
 @TestModule.register('docker', default=False)
