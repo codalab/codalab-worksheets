@@ -38,6 +38,8 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
+def tar_single_file(fileobj, file_path, compressions=''):
+    pass
 
 def un_tar_directory(fileobj, directory_path, compression=''):
     """
