@@ -16,7 +16,6 @@ results in the following:
 """
 # TODO(sckoo): Move this into a separate CLI directory/package
 import argparse
-import copy
 import datetime
 import inspect
 import itertools
@@ -26,6 +25,7 @@ import shutil
 import sys
 import time
 import textwrap
+from collections import defaultdict
 from contextlib import closing
 from StringIO import StringIO
 
@@ -424,41 +424,45 @@ class Commands(object):
         Build arguments to a command-line argument parser for all metadata keys
         needed by the given bundle subclasses.
         """
-        arguments = []
-        added_keys = set()
+        arguments = {}
+        key_to_classes = defaultdict(list)
         for bundle_subclass in bundle_subclasses:
-            help_suffix = ' (for %ss)' % (bundle_subclass.BUNDLE_TYPE,) if bundle_subclass.BUNDLE_TYPE else ''
-
             for spec in bundle_subclass.get_user_defined_metadata():
-                if spec.key not in added_keys:
-                    added_keys.add(spec.key)
+                key_to_classes[spec.key].append(bundle_subclass)
 
-                    args = []
-                    if spec.short_key:
-                        args.append('-%s' % spec.short_key)
-                    args.append('--%s' % spec.key.replace('_', '-'))
+                # If multiple provided types have the same key, suffix might look like: " (for makes and runs)"
+                help_suffix = ''
+                if len(bundle_subclasses) > 1:
+                    types_list = ' and '.join(['%ss' % cls.BUNDLE_TYPE for cls in key_to_classes[spec.key] if cls.BUNDLE_TYPE])
+                    help_suffix = ' (for %s)' % types_list
 
-                    kwargs = {
-                        'dest': metadata_util.metadata_key_to_argument(spec.key),
-                        'help': spec.description + help_suffix,
-                    }
-                    if spec.completer is not None:
-                        kwargs['completer'] = spec.completer
-                    if issubclass(spec.type, list):
-                        kwargs['type'] = str
-                        kwargs['nargs'] = '*'
-                        kwargs['metavar'] = spec.metavar
-                    elif issubclass(spec.type, basestring):
-                        kwargs['type'] = str
-                        kwargs['metavar'] = spec.metavar
-                    elif spec.type is bool:
-                        kwargs['action'] = 'store_true'
-                    else:
-                        kwargs['type'] = spec.type
-                        kwargs['metavar'] = spec.metavar
-                    arguments.append(Commands.Argument(*args, **kwargs))
+                args = []
+                if spec.short_key:
+                    args.append('-%s' % spec.short_key)
+                args.append('--%s' % spec.key.replace('_', '-'))
 
-        return tuple(arguments)
+                kwargs = {
+                    'dest': metadata_util.metadata_key_to_argument(spec.key),
+                    'help': spec.description + help_suffix,
+                }
+                if spec.completer is not None:
+                    kwargs['completer'] = spec.completer
+                if issubclass(spec.type, list):
+                    kwargs['type'] = str
+                    kwargs['nargs'] = '*'
+                    kwargs['metavar'] = spec.metavar
+                elif issubclass(spec.type, basestring):
+                    kwargs['type'] = str
+                    kwargs['metavar'] = spec.metavar
+                elif spec.type is bool:
+                    kwargs['action'] = 'store_true'
+                    kwargs['default'] = None
+                else:
+                    kwargs['type'] = spec.type
+                    kwargs['metavar'] = spec.metavar
+                arguments[spec.key] = Commands.Argument(*args, **kwargs)
+
+        return tuple(arguments.values())
 
 
 class BundleCLI(object):
@@ -653,6 +657,16 @@ class BundleCLI(object):
             }
         return metadata_util.fill_missing_metadata(bundle_subclass, args, initial_metadata)
 
+    @staticmethod
+    def get_provided_metadata(args):
+        """
+        Return a dictionary of only the metadata specified by the user in the arguments.
+        """
+        return {
+            metadata_util.metadata_argument_to_key(key): value
+            for key, value in vars(args).iteritems() if key.startswith('md_') and value is not None
+        }
+
     #############################################################################
     # CLI methods
     #############################################################################
@@ -670,8 +684,7 @@ class BundleCLI(object):
     )
 
     MIMIC_ARGUMENTS = (
-        Commands.Argument('-n', '--name', help='Name of the output bundle.'),
-        Commands.Argument('-d', '--depth', type=int, default=10, help='Number of parents to look back from the old output in search of the old input.'),
+        Commands.Argument('--depth', type=int, default=10, help='Number of parents to look back from the old output in search of the old input.'),
         Commands.Argument('-s', '--shadow', action='store_true', help='Add the newly created bundles right after the old bundles that are being mimicked.'),
         Commands.Argument('-i', '--dry-run', help='Perform a dry run (just show what will be done without doing it)', action='store_true'),
         Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
@@ -918,7 +931,7 @@ class BundleCLI(object):
             Commands.Argument('-p', '--pack', help='If path is an archive file (e.g., zip, tar.gz), keep it packed.', action='store_true', default=False),
             Commands.Argument('-z', '--force-compression', help='Always use compression (this may speed up single-file uploads over a slow network).', action='store_true', default=False),
             Commands.Argument('-w', '--worksheet-spec', help='Upload to this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ) + Commands.metadata_arguments([UploadedBundle] + [get_bundle_subclass(bundle_type) for bundle_type in UPLOADED_TYPES])
+        ) + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
@@ -1948,10 +1961,11 @@ class BundleCLI(object):
             '  mimic <run>      : Rerun the <run> bundle.',
             '  mimic A B        : For all run bundles downstream of A, rerun with B instead.',
             '  mimic A X B -n Y : For all run bundles used to produce X depending on A, rerun with B instead to produce Y.',
+            'Any provided metadata arguments will override the original metadata in mimicked bundles.'
         ],
         arguments=(
             Commands.Argument('bundles', help='Bundles: old_input_1 ... old_input_n old_output new_input_1 ... new_input_n (%s).' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
-        ) + MIMIC_ARGUMENTS,
+        ) + Commands.metadata_arguments([MakeBundle, RunBundle]) + MIMIC_ARGUMENTS,
     )
     def do_mimic_command(self, args):
         self.mimic(args)
@@ -1965,7 +1979,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('macro_name', help='Name of the macro (look for <macro_name>-in1, ..., and <macro_name>-out bundles).'),
             Commands.Argument('bundles', help='Bundles: new_input_1 ... new_input_n (%s)' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
-        ) + MIMIC_ARGUMENTS,
+        ) + Commands.metadata_arguments([MakeBundle, RunBundle]) + MIMIC_ARGUMENTS,
     )
     def do_macro_command(self, args):
         """
@@ -1974,7 +1988,8 @@ class BundleCLI(object):
         # For a macro, it's important that the name be not-null, so that we
         # don't create bundles called '<macro_name>-out', which would clash
         # next time we try to use the macro.
-        if not args.name: args.name = 'new'
+        if not getattr(args, metadata_util.metadata_key_to_argument('name')):
+            setattr(args, metadata_util.metadata_key_to_argument('name'), 'new')
         # Reduce to the mimic case
         args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
                        [args.macro_name + '-out'] + args.bundles
@@ -1988,8 +2003,9 @@ class BundleCLI(object):
         Use args.bundles to generate a call to bundle_util.mimic_bundles()
         """
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-
         bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundles)
+        metadata = self.get_provided_metadata(args)
+        output_name = metadata.pop('name', None)
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -1999,15 +2015,16 @@ class BundleCLI(object):
             old_inputs = bundle_uuids[0:n]
             old_output = None
             new_inputs = bundle_uuids[n:]
-        else: # (B)
+        else:  # (B)
             old_inputs = bundle_uuids[0:n]
             old_output = bundle_uuids[n]
             new_inputs = bundle_uuids[n+1:]
 
         plan = bundle_util.mimic_bundles(
             client,
-            old_inputs, old_output, new_inputs, args.name,
-            worksheet_uuid, args.depth, args.shadow, args.dry_run)
+            old_inputs, old_output, new_inputs, output_name,
+            worksheet_uuid, args.depth, args.shadow, args.dry_run,
+            metadata_override=metadata)
         for (old, new) in plan:
             print >>self.stderr, '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new))
         if len(plan) > 0:
