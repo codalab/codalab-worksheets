@@ -398,7 +398,7 @@ class Competition(object):
             'worksheet_uuid': self.config['log_worksheet_uuid'],
             'depth': predict_config['depth'],
             'shadow': False,
-            'metadata_update': metadata,
+            'metadata_override': metadata,
             'skip_prelude': True,
         }
 
