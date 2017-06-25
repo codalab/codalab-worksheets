@@ -14,6 +14,7 @@ from codalab.lib.metadata_defaults import MetadataDefaults
 from codalab.lib import editor_util
 
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
+metadata_argument_to_key = lambda arg_key: arg_key[3:]
 
 def fill_missing_metadata(bundle_subclass, args, initial_metadata):
     '''
