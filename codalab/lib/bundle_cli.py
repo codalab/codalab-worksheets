@@ -384,6 +384,7 @@ class Commands(object):
         """
         parser = CodaLabArgumentParser(prog='cl', cli=cli, add_help=False, formatter_class=argparse.RawTextHelpFormatter)
         parser.register('action', 'parsers', AliasedSubParsersAction)
+        parser.add_argument('-v', '--version', dest='print_version', action='store_true')
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         # Build subparser for each subcommand
@@ -730,6 +731,9 @@ class BundleCLI(object):
 
         # Parse arguments
         argv = self.collapse_bare_command(argv)
+        if argv[0] == '-v' or argv[0] == '--version':
+            self.print_version()
+            return
         args = parser.parse_args(argv)
 
         # Bind self (BundleCLI instance) and args to command function
@@ -762,6 +766,9 @@ class BundleCLI(object):
                 self.exit('%s: %s' % (e.__class__.__name__, e))
         return structured_result
 
+    def print_version(self):
+        print >>self.stdout, 'CodaLab CLI version %s' % CODALAB_VERSION
+
     @Commands.command(
         'help',
         help=[
@@ -776,7 +783,7 @@ class BundleCLI(object):
         ),
     )
     def do_help_command(self, args):
-        print >>self.stdout, 'CodaLab CLI version %s' % CODALAB_VERSION
+        self.print_version()
         if args.command:
             self.do_command([args.command, '--help'])
             return
