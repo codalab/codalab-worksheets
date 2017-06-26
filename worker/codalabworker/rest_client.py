@@ -54,7 +54,7 @@ class RestClient(object):
         # Everything needs to be utf-8 encoded or urllib2 will complain
         if 'Content-Type' in headers:
             headers['Content-Type'] += '; charset=utf-8'
-        if data:
+        if data and isinstance(data, unicode):
             data = data.encode('utf-8')
         request_url = (self._base_url + path).encode('utf-8')
         request = urllib2.Request(request_url, data=data, headers=headers)
