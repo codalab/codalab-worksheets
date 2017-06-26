@@ -22,6 +22,8 @@ def contents_str(input_string):
     if input_string is None:
         return ''
 
+    if isinstance(input_string, unicode):
+        return input_string
     try:
         input_string.decode('utf-8')
     except UnicodeDecodeError:
@@ -38,6 +40,8 @@ def verbose_contents_str(input_string):
     if input_string is None:
         return NONE_PLACEHOLDER
 
+    if isinstance(input_string, unicode):
+        return input_string
     try:
         input_string.decode('utf-8')
     except UnicodeDecodeError:

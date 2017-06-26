@@ -19,6 +19,7 @@ from sqlalchemy.types import (
   LargeBinary,
   String,
   Text,
+  Unicode,
 )
 from sqlalchemy.sql.schema import ForeignKeyConstraint
 
@@ -78,7 +79,7 @@ worksheet = Table(
   Column('uuid', String(63), nullable=False),
   Column('name', String(255), nullable=False),
   Column('owner_id', String(255), nullable=True),
-  Column('title', String(255), nullable=True),  # Short human-readable description of the worksheet
+  Column('title', Unicode(255), nullable=True),  # Short human-readable description of the worksheet
   Column('frozen', DateTime, nullable=True),  # When the worksheet was frozen (forever immutable) if it is.
   Column('is_anonymous', Boolean, nullable=False, default=False),
   UniqueConstraint('uuid', name='uix_1'),
