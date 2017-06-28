@@ -1,7 +1,7 @@
-'''
+"""
 MySQLModel is a subclass of BundleModel that stores metadata on a MySQL
 server that it connects to with the given connect parameters.
-'''
+"""
 from sqlalchemy import (
     create_engine,
     event,
@@ -14,9 +14,10 @@ from codalab.common import (
     UsageError,
 )
 
+
 @event.listens_for(Pool, "checkout")
 def ping_connection(dbapi_connection, connection_record, connection_proxy):
-    '''
+    """
     Checkout listener that ping the connection to check if it is alive.
     If there is a problem (i.e. "MySQL server has gone away"), will raise a
     sqlalchemy.DisconnectionError, which is caught internally by SQLALchemy and
@@ -25,7 +26,7 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
     Adapted from:
     http://stackoverflow.com/questions/18054224/python-sqlalchemy-mysql-server-has-gone-away
     http://docs.sqlalchemy.org/en/latest/core/pooling.html#disconnect-handling-optimistic
-    '''
+    """
     try:
         try:
             # MySQLdb exposes a non-standard ping() method
@@ -40,6 +41,7 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
         else:
             raise
 
+
 class MySQLModel(BundleModel):
     def __init__(self, engine_url, default_user_info):
         if not engine_url.startswith('mysql://'):
@@ -51,6 +53,10 @@ class MySQLModel(BundleModel):
         # MySQL allows for more efficient multi-row insertions.
         if values:
             connection.execute(table.insert().values(values))
+
+    # TODO: Remove these methods below when all appropriate table columns have
+    # been converted to the appropriate types that perform automatic encoding.
+    # (See tables.py for more details.)
 
     def encode_str(self, value):
         return value.encode('utf-8')

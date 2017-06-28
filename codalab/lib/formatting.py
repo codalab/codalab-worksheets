@@ -10,44 +10,37 @@ import pipes
 from codalabworker import formatting as worker_formatting
 
 
-NONE_PLACEHOLDER = '<none>'
-BINARY_PLACEHOLDER = '<binary>'
+NONE_PLACEHOLDER = u'<none>'
+BINARY_PLACEHOLDER = u'<binary>'
 
 
-def contents_str(input_string):
+def contents_str(input_string, verbose=False):
     """
-    input_string: raw string (may be None)
-    Return a friendly string (if input_string is None, replace with '' for now).
+    :param input_string: any string (may be None)
+    :param bool verbose: should use human-readable placeholders instead of empty
+                         string to render unprintable string
+    Return a printable unicode string.
     """
     if input_string is None:
-        return ''
+        return NONE_PLACEHOLDER if verbose else u''
 
+    # Unicode is always printable
     if isinstance(input_string, unicode):
         return input_string
-    try:
-        input_string.decode('utf-8')
-    except UnicodeDecodeError:
-        return ''
 
-    return input_string
+    # Assume string is UTF-8 or else it contains arbitrary binary data that should not be rendered
+    try:
+        return input_string.decode('utf-8')
+    except UnicodeDecodeError:
+        return BINARY_PLACEHOLDER if verbose else u''
 
 
 def verbose_contents_str(input_string):
     """
-    input_string: raw string (may be None)
-    Return a friendly string (which is more verbose than contents_str).
+    :param input_string: any string (may be None)
+    Return a printable unicode string.
     """
-    if input_string is None:
-        return NONE_PLACEHOLDER
-
-    if isinstance(input_string, unicode):
-        return input_string
-    try:
-        input_string.decode('utf-8')
-    except UnicodeDecodeError:
-        return BINARY_PLACEHOLDER
-
-    return input_string
+    return contents_str(input_string, verbose=True)
 
 
 size_str = worker_formatting.size_str
