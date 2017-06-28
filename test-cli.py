@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 """
 Tests all the CLI functionality end-to-end.
 
@@ -727,6 +728,8 @@ def test(ctx):
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
+    run_command([cl, 'wedit', wuuid, '--title', u'fáncy ünicode'])  # try unicode in worksheet title
+    run_command([cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')])  # try unicode in worksheet contents
     run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
 
 

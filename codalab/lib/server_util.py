@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import urllib
+import re
 
 from bottle import abort, request, HTTPResponse, redirect, app
 from oauthlib.common import to_unicode, bytes_type
@@ -83,6 +84,23 @@ def rate_limited(max_calls_per_hour):
         return rate_limited_function
 
     return decorate
+
+
+def decoded_body():
+    """
+    Return the request body decoded into Unicode string according to the
+    charset specified in the Content-Type header of the request.
+    """
+    # e.g. Content-Type: text/plain; charset=utf-8
+    #        -> content_type = 'text/plain'
+    #        -> charset = 'utf-8'
+    m = re.match(r'([^;]+)(?:;\s*charset=(.+))?', request.content_type)
+    if m is not None:
+        content_type = m.group(1)  # unused
+        charset = m.group(2) or 'iso-8859-1'  # could be None
+    else:
+        charset = 'iso-8859-1'
+    return request.body.read().decode(charset)
 
 
 def query_get_list(key):

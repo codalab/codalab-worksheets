@@ -9,7 +9,6 @@ bundle subclass code.
 import os
 import platform
 
-from codalab.bundles import UPLOADED_TYPES
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
