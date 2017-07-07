@@ -16,7 +16,12 @@ class SQLiteModel(BundleModel):
         engine = create_engine(engine_url, strategy='threadlocal')
         super(SQLiteModel, self).__init__(engine, default_user_info)
 
+    # TODO: Remove these methods below when all appropriate table columns have
+    # been converted to the appropriate types that perform automatic encoding.
+    # (See tables.py for more details.)
+
     def encode_str(self, value):
         return value
+
     def decode_str(self, value):
         return value

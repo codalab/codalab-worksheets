@@ -16,7 +16,7 @@ results in the following:
 """
 # TODO(sckoo): Move this into a separate CLI directory/package
 import argparse
-import copy
+import codecs
 import datetime
 import inspect
 import itertools
@@ -26,16 +26,14 @@ import shutil
 import sys
 import time
 import textwrap
+from collections import defaultdict
 from contextlib import closing
 from StringIO import StringIO
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
 
-from codalab.bundles import (
-    get_bundle_subclass,
-    UPLOADED_TYPES,
-)
+from codalab.bundles import get_bundle_subclass
 from codalab.bundles.make_bundle import MakeBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.run_bundle import RunBundle
@@ -384,6 +382,7 @@ class Commands(object):
         """
         parser = CodaLabArgumentParser(prog='cl', cli=cli, add_help=False, formatter_class=argparse.RawTextHelpFormatter)
         parser.register('action', 'parsers', AliasedSubParsersAction)
+        parser.add_argument('-v', '--version', dest='print_version', action='store_true')
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         # Build subparser for each subcommand
@@ -424,41 +423,45 @@ class Commands(object):
         Build arguments to a command-line argument parser for all metadata keys
         needed by the given bundle subclasses.
         """
-        arguments = []
-        added_keys = set()
+        arguments = {}
+        key_to_classes = defaultdict(list)
         for bundle_subclass in bundle_subclasses:
-            help_suffix = ' (for %ss)' % (bundle_subclass.BUNDLE_TYPE,) if bundle_subclass.BUNDLE_TYPE else ''
-
             for spec in bundle_subclass.get_user_defined_metadata():
-                if spec.key not in added_keys:
-                    added_keys.add(spec.key)
+                key_to_classes[spec.key].append(bundle_subclass)
 
-                    args = []
-                    if spec.short_key:
-                        args.append('-%s' % spec.short_key)
-                    args.append('--%s' % spec.key.replace('_', '-'))
+                # If multiple provided types have the same key, suffix might look like: " (for makes and runs)"
+                help_suffix = ''
+                if len(bundle_subclasses) > 1:
+                    types_list = ' and '.join(['%ss' % cls.BUNDLE_TYPE for cls in key_to_classes[spec.key] if cls.BUNDLE_TYPE])
+                    help_suffix = ' (for %s)' % types_list
 
-                    kwargs = {
-                        'dest': metadata_util.metadata_key_to_argument(spec.key),
-                        'help': spec.description + help_suffix,
-                    }
-                    if spec.completer is not None:
-                        kwargs['completer'] = spec.completer
-                    if issubclass(spec.type, list):
-                        kwargs['type'] = str
-                        kwargs['nargs'] = '*'
-                        kwargs['metavar'] = spec.metavar
-                    elif issubclass(spec.type, basestring):
-                        kwargs['type'] = str
-                        kwargs['metavar'] = spec.metavar
-                    elif spec.type is bool:
-                        kwargs['action'] = 'store_true'
-                    else:
-                        kwargs['type'] = spec.type
-                        kwargs['metavar'] = spec.metavar
-                    arguments.append(Commands.Argument(*args, **kwargs))
+                args = []
+                if spec.short_key:
+                    args.append('-%s' % spec.short_key)
+                args.append('--%s' % spec.key.replace('_', '-'))
 
-        return tuple(arguments)
+                kwargs = {
+                    'dest': metadata_util.metadata_key_to_argument(spec.key),
+                    'help': spec.description + help_suffix,
+                }
+                if spec.completer is not None:
+                    kwargs['completer'] = spec.completer
+                if issubclass(spec.type, list):
+                    kwargs['type'] = str
+                    kwargs['nargs'] = '*'
+                    kwargs['metavar'] = spec.metavar
+                elif issubclass(spec.type, basestring):
+                    kwargs['type'] = str
+                    kwargs['metavar'] = spec.metavar
+                elif spec.type is bool:
+                    kwargs['action'] = 'store_true'
+                    kwargs['default'] = None
+                else:
+                    kwargs['type'] = spec.type
+                    kwargs['metavar'] = spec.metavar
+                arguments[spec.key] = Commands.Argument(*args, **kwargs)
+
+        return tuple(arguments.values())
 
 
 class BundleCLI(object):
@@ -653,6 +656,16 @@ class BundleCLI(object):
             }
         return metadata_util.fill_missing_metadata(bundle_subclass, args, initial_metadata)
 
+    @staticmethod
+    def get_provided_metadata(args):
+        """
+        Return a dictionary of only the metadata specified by the user in the arguments.
+        """
+        return {
+            metadata_util.metadata_argument_to_key(key): value
+            for key, value in vars(args).iteritems() if key.startswith('md_') and value is not None
+        }
+
     #############################################################################
     # CLI methods
     #############################################################################
@@ -670,8 +683,7 @@ class BundleCLI(object):
     )
 
     MIMIC_ARGUMENTS = (
-        Commands.Argument('-n', '--name', help='Name of the output bundle.'),
-        Commands.Argument('-d', '--depth', type=int, default=10, help='Number of parents to look back from the old output in search of the old input.'),
+        Commands.Argument('--depth', type=int, default=10, help='Number of parents to look back from the old output in search of the old input.'),
         Commands.Argument('-s', '--shadow', action='store_true', help='Add the newly created bundles right after the old bundles that are being mimicked.'),
         Commands.Argument('-i', '--dry-run', help='Perform a dry run (just show what will be done without doing it)', action='store_true'),
         Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
@@ -717,6 +729,9 @@ class BundleCLI(object):
 
         # Parse arguments
         argv = self.collapse_bare_command(argv)
+        if argv[0] == '-v' or argv[0] == '--version':
+            self.print_version()
+            return
         args = parser.parse_args(argv)
 
         # Bind self (BundleCLI instance) and args to command function
@@ -749,6 +764,9 @@ class BundleCLI(object):
                 self.exit('%s: %s' % (e.__class__.__name__, e))
         return structured_result
 
+    def print_version(self):
+        print >>self.stdout, 'CodaLab CLI version %s' % CODALAB_VERSION
+
     @Commands.command(
         'help',
         help=[
@@ -763,7 +781,7 @@ class BundleCLI(object):
         ),
     )
     def do_help_command(self, args):
-        print >>self.stdout, 'CodaLab CLI version %s' % CODALAB_VERSION
+        self.print_version()
         if args.command:
             self.do_command([args.command, '--help'])
             return
@@ -775,17 +793,20 @@ class BundleCLI(object):
         help='Show current client status.'
     )
     def do_status_command(self, args):
+        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
+        worksheet_info = client.fetch('worksheets', worksheet_uuid)
+
         if not self.headless:
             print >>self.stdout, "codalab_home: %s" % self.manager.codalab_home
             print >>self.stdout, "session: %s" % self.manager.session_name()
             address = self.manager.session()['address']
+            print >>self.stdout, "client_version: %s" % CODALAB_VERSION
+            print >>self.stdout, "server_version: %s" % worksheet_info['meta']['version']
             print >>self.stdout, "address: %s" % address
             state = self.manager.state['auth'].get(address, {})
             if 'username' in state:
                 print >>self.stdout, "username: %s" % state['username']
 
-        client, worksheet_uuid = self.manager.get_current_worksheet_uuid()
-        worksheet_info = client.fetch('worksheets', worksheet_uuid)
         print >>self.stdout, "current_worksheet: %s" % self.simple_worksheet_str(worksheet_info)
         print >>self.stdout, "user: %s" % self.simple_user_str(client.fetch('user'))
 
@@ -915,7 +936,7 @@ class BundleCLI(object):
             Commands.Argument('-p', '--pack', help='If path is an archive file (e.g., zip, tar.gz), keep it packed.', action='store_true', default=False),
             Commands.Argument('-z', '--force-compression', help='Always use compression (this may speed up single-file uploads over a slow network).', action='store_true', default=False),
             Commands.Argument('-w', '--worksheet-spec', help='Upload to this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-        ) + Commands.metadata_arguments([UploadedBundle] + [get_bundle_subclass(bundle_type) for bundle_type in UPLOADED_TYPES])
+        ) + Commands.metadata_arguments([UploadedBundle])
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
@@ -1733,13 +1754,13 @@ class BundleCLI(object):
 
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
-        info = self.print_target_info(client, (bundle_uuid, ''), decorate=True)
+        info = self.print_target_info(client, (bundle_uuid, ''), head=10)
         if info is not None and info['type'] == 'directory':
             for item in info['contents']:
                 if item['name'] not in ['stdout', 'stderr']:
                     continue
                 print >>self.stdout, wrap(item['name'])
-                self.print_target_info(client, (bundle_uuid, item['name']), decorate=True)
+                self.print_target_info(client, (bundle_uuid, item['name']), head=10)
 
     @Commands.command(
         'mount',
@@ -1778,6 +1799,8 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument('target_spec', help=TARGET_SPEC_FORMAT, completer=TargetsCompleter),
+            Commands.Argument('--head', type=int, metavar='NUM', help='Display first NUM lines of contents.'),  # `-h` conflicts with help flag
+            Commands.Argument('-t', '--tail', type=int, metavar='NUM', help='Display last NUM lines of contents'),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
         ),
     )
@@ -1786,10 +1809,10 @@ class BundleCLI(object):
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        self.print_target_info(client, target, decorate=False, fail_if_not_exist=True)
+        self.print_target_info(client, target, head=args.head, tail=args.tail)
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, target, decorate, maxlines=10, fail_if_not_exist=False):
+    def print_target_info(self, client, target, head=None, tail=None):
         info = client.fetch_contents_info(target[0], target[1], 1)
         info_type = info.get('type')
 
@@ -1797,10 +1820,12 @@ class BundleCLI(object):
             print >>self.stdout, formatting.verbose_contents_str(None)
 
         if info_type == 'file':
-            if decorate:
-                contents = client.fetch_contents_blob(target[0], target[1], head=maxlines)
-            else:
-                contents = client.fetch_contents_blob(target[0], target[1])
+            kwargs = {}
+            if head is not None:
+                kwargs['head'] = head
+            if tail is not None:
+                kwargs['tail'] = tail
+            contents = client.fetch_contents_blob(target[0], target[1], **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout)
 
@@ -1941,10 +1966,11 @@ class BundleCLI(object):
             '  mimic <run>      : Rerun the <run> bundle.',
             '  mimic A B        : For all run bundles downstream of A, rerun with B instead.',
             '  mimic A X B -n Y : For all run bundles used to produce X depending on A, rerun with B instead to produce Y.',
+            'Any provided metadata arguments will override the original metadata in mimicked bundles.'
         ],
         arguments=(
             Commands.Argument('bundles', help='Bundles: old_input_1 ... old_input_n old_output new_input_1 ... new_input_n (%s).' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
-        ) + MIMIC_ARGUMENTS,
+        ) + Commands.metadata_arguments([MakeBundle, RunBundle]) + MIMIC_ARGUMENTS,
     )
     def do_mimic_command(self, args):
         self.mimic(args)
@@ -1958,7 +1984,7 @@ class BundleCLI(object):
         arguments=(
             Commands.Argument('macro_name', help='Name of the macro (look for <macro_name>-in1, ..., and <macro_name>-out bundles).'),
             Commands.Argument('bundles', help='Bundles: new_input_1 ... new_input_n (%s)' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
-        ) + MIMIC_ARGUMENTS,
+        ) + Commands.metadata_arguments([MakeBundle, RunBundle]) + MIMIC_ARGUMENTS,
     )
     def do_macro_command(self, args):
         """
@@ -1967,7 +1993,8 @@ class BundleCLI(object):
         # For a macro, it's important that the name be not-null, so that we
         # don't create bundles called '<macro_name>-out', which would clash
         # next time we try to use the macro.
-        if not args.name: args.name = 'new'
+        if not getattr(args, metadata_util.metadata_key_to_argument('name')):
+            setattr(args, metadata_util.metadata_key_to_argument('name'), 'new')
         # Reduce to the mimic case
         args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
                        [args.macro_name + '-out'] + args.bundles
@@ -1981,8 +2008,9 @@ class BundleCLI(object):
         Use args.bundles to generate a call to bundle_util.mimic_bundles()
         """
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-
         bundle_uuids = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundles)
+        metadata = self.get_provided_metadata(args)
+        output_name = metadata.pop('name', None)
 
         # Two cases for args.bundles
         # (A) old_input_1 ... old_input_n            new_input_1 ... new_input_n [go to all outputs]
@@ -1992,15 +2020,16 @@ class BundleCLI(object):
             old_inputs = bundle_uuids[0:n]
             old_output = None
             new_inputs = bundle_uuids[n:]
-        else: # (B)
+        else:  # (B)
             old_inputs = bundle_uuids[0:n]
             old_output = bundle_uuids[n]
             new_inputs = bundle_uuids[n+1:]
 
         plan = bundle_util.mimic_bundles(
             client,
-            old_inputs, old_output, new_inputs, args.name,
-            worksheet_uuid, args.depth, args.shadow, args.dry_run)
+            old_inputs, old_output, new_inputs, output_name,
+            worksheet_uuid, args.depth, args.shadow, args.dry_run,
+            metadata_override=metadata)
         for (old, new) in plan:
             print >>self.stderr, '%s => %s' % (self.simple_bundle_str(old), self.simple_bundle_str(new))
         if len(plan) > 0:
@@ -2253,10 +2282,11 @@ class BundleCLI(object):
             # Either get a list of lines from the given file or request it from the user in an editor.
             if args.file:
                 if args.file == '-':
-                    infile = sys.stdin
+                    lines = sys.stdin.readlines()
                 else:
-                    infile = open(args.file)
-                lines = [line.rstrip() for line in infile.readlines()]
+                    with codecs.open(args.file, encoding='utf-8', mode='r') as infile:
+                        lines = infile.readlines()
+                lines = [line.rstrip() for line in lines]
             else:
                 worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
                 lines = worksheet_util.request_lines(worksheet_info)
@@ -2318,7 +2348,7 @@ class BundleCLI(object):
                     if maxlines:
                         maxlines = int(maxlines)
                     try:
-                        self.print_target_info(client, data, decorate=True, maxlines=maxlines)
+                        self.print_target_info(client, data, head=maxlines)
                     except UsageError, e:
                         print >>self.stdout, 'ERROR:', e
                 else:

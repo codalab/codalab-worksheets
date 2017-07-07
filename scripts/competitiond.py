@@ -398,7 +398,7 @@ class Competition(object):
             'worksheet_uuid': self.config['log_worksheet_uuid'],
             'depth': predict_config['depth'],
             'shadow': False,
-            'metadata_update': metadata,
+            'metadata_override': metadata,
             'skip_prelude': True,
         }
 
@@ -473,11 +473,11 @@ class Competition(object):
         Fetches the evaluation bundles tagged for the leaderboard, along with
         the corresponding submission bundles if they exist.
 
-        :return: (eval_bundles, eval2submit) where eval_bundles is a list of the
-                 evaluation bundles, and eval2submit is a dict mapping evaluation
-                 bundle id to the original submission bundle. The id will not be
-                 a key in eval2submit if a corresponding submission bundle does
-                 not exist.
+        :return: (eval_bundles, eval2submit) where eval_bundles is a dict mapping
+                 evaluation bundle ids to the evaluation bundles themselves, and
+                 eval2submit is a dict mapping evaluation bundle id to the
+                 original submission bundle. The id will not be a key in
+                 eval2submit if a corresponding submission bundle does not exist.
         """
         logger.debug('Fetching the leaderboard')
         # Fetch bundles on current leaderboard
@@ -492,13 +492,16 @@ class Competition(object):
 
         # Build map from submission bundle id => eval bundle
         submit2eval = {}
-        for bundle in eval_bundles.itervalues():
-            submit_info = self._get_competition_metadata(bundle)
+        for eval_id, eval_bundle in eval_bundles.iteritems():
+            meta = self._get_competition_metadata(eval_bundle)
             # Eval bundles that are missing competition metadata are simply
             # skipped; code downstream must handle the case where eval2submit
             # does not contain an entry for a given eval bundle
-            if submit_info is not None:
-                submit2eval[submit_info['submit_id']] = bundle
+            if meta is not None:
+                # Allow manual hiding
+                if meta.get('hide', False):
+                    del eval_bundles[eval_id]
+                submit2eval[meta['submit_id']] = eval_bundle
 
         # Fetch the original submission bundles.
         # A NotFoundError will be thrown if a bundle no longer exists.
@@ -585,14 +588,15 @@ class Competition(object):
         # Build leaderboard table
         logger.debug('Fetching scores and building leaderboard table')
         leaderboard = []
-        for bundle in eval_bundles.itervalues():
-            if bundle['id'] in eval2submit:
-                submit_bundle = eval2submit[bundle['id']]
+        for eval_bundle in eval_bundles.itervalues():
+            meta = self._get_competition_metadata(eval_bundle)
+            if eval_bundle['id'] in eval2submit:
+                submit_bundle = eval2submit[eval_bundle['id']]
                 submission_info = {
                     # Can include any information we want from the submission
                     # within bounds of reason (since submitter may want to
                     # keep some of the metadata private).
-                    'description': submit_bundle['metadata']['description'],
+                    'description': meta.get('description', None) or submit_bundle['metadata']['description'],  # Allow description override
                     'public': self._is_publicly_readable(submit_bundle),
                     'user_name': submit_bundle['owner']['user_name'],
                     'num_total_submissions': num_total_submissions[submit_bundle['owner']['id']],
@@ -603,16 +607,16 @@ class Competition(object):
                 # If there isn't a corresponding submit bundle, use some sane
                 # defaults based on just the eval bundle.
                 submission_info = {
-                    'description': bundle['metadata']['description'],
+                    'description': eval_bundle['metadata']['description'],
                     'public': None,
                     'user_name': None,
                     'num_total_submissions': 0,
                     'num_period_submissions': 0,
-                    'created': bundle['metadata']['created'],
+                    'created': eval_bundle['metadata']['created'],
                 }
             leaderboard.append({
-                'bundle': bundle,
-                'scores': scores[bundle['id']],
+                'bundle': eval_bundle,
+                'scores': scores[eval_bundle['id']],
                 'submission': submission_info,
             })
 
