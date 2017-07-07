@@ -489,7 +489,7 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
     |post| function to apply to the resulting value.
     Return the string value.
     """
-    MAX_LINES = 1000  # Maximum number of lines we need to read from a file.
+    MAX_LINES = 10000  # Maximum number of lines we need to read from a file.
 
     # Load the file
     if not is_file_genpath(genpath):
