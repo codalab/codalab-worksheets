@@ -1,7 +1,7 @@
 import copy
 
 from codalab.bundles import get_bundle_subclass
-from codalab.client.json_api_client import JsonApiRelationship
+from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship
 from codalab.common import UsageError
 from codalab.lib import worksheet_util
 
@@ -37,20 +37,22 @@ def bundle_to_bundle_info(model, bundle):
 def mimic_bundles(client,
                   old_inputs, old_output, new_inputs, new_output_name,
                   worksheet_uuid, depth, shadow, dry_run,
-                  metadata_update=None, skip_prelude=False):
+                  metadata_override=None, skip_prelude=False):
     """
-    client: JsonApiClient
-    old_inputs: list of bundle uuids
-    old_output: bundle uuid that we produced
-    new_inputs: list of bundle uuids that are analogous to old_inputs
-    new_output_name: name of the bundle to create to be analogous to old_output (possibly None)
-    worksheet_uuid: add newly created bundles to this worksheet
-    depth: how far to do a BFS up from old_output.
-    shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
-    metadata_update: new metadata fields replace old ones in the newly mimicked bundles.
+    :param JsonApiClient client: client
+    :param old_inputs: list of bundle uuids
+    :param old_output: bundle uuid that we produced
+    :param new_inputs: list of bundle uuids that are analogous to old_inputs
+    :param new_output_name: name of the bundle to create to be analogous to old_output (possibly None)
+    :param worksheet_uuid: add newly created bundles to this worksheet
+    :param depth: how far to do a BFS up from old_output.
+    :param shadow: whether to add the new inputs right after all occurrences of the old inputs in worksheets.
+    :param dry_run: return plan without executing anything if True.
+    :param skip_prelude: don't include preludes in mimicked items if True.
+    :param metadata_override: new metadata fields replace old ones in the newly mimicked bundles.
     """
-    if metadata_update is None:
-        metadata_update = {}
+    if metadata_override is None:
+        metadata_override = {}
 
     # Build the graph (get all the infos).
     # If old_output is given, look at ancestors of old_output until we
@@ -162,13 +164,14 @@ def mimic_bundles(client,
                 # Put docker_image in requested_docker_image if it is present and this is a run bundle
                 new_metadata['request_docker_image'] = new_metadata['docker_image']
 
-            # Remove all the automatically generated keys
             cls = get_bundle_subclass(new_info['bundle_type'])
             for spec in cls.METADATA_SPECS:
+                # Remove automatically generated keys
                 if spec.generated and spec.key in new_metadata:
                     del new_metadata[spec.key]
-
-            new_metadata.update(metadata_update)
+                # Override original metadata keys
+                if spec.key in metadata_override:
+                    new_metadata[spec.key] = metadata_override[spec.key]
 
             # Set up info dict
             new_info['metadata'] = new_metadata
