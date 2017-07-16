@@ -492,7 +492,7 @@ class Competition(object):
 
         # Build map from submission bundle id => eval bundle
         submit2eval = {}
-        for eval_id, eval_bundle in eval_bundles.iteritems():
+        for eval_id, eval_bundle in eval_bundles.items():
             meta = self._get_competition_metadata(eval_bundle)
             # Eval bundles that are missing competition metadata are simply
             # skipped; code downstream must handle the case where eval2submit
@@ -501,7 +501,8 @@ class Competition(object):
                 # Allow manual hiding
                 if meta.get('hide', False):
                     del eval_bundles[eval_id]
-                submit2eval[meta['submit_id']] = eval_bundle
+                else:
+                    submit2eval[meta['submit_id']] = eval_bundle
 
         # Fetch the original submission bundles.
         # A NotFoundError will be thrown if a bundle no longer exists.
