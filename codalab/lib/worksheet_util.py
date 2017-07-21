@@ -219,7 +219,7 @@ def request_lines(worksheet_info):
 
     lines = editor_util.open_and_edit(suffix='.md', template=template)
     # Process the result
-    form_result = [line.rstrip() for line in lines]
+    form_result = [line.rstrip('\n') for line in lines]
     if form_result == template_lines:
         raise UsageError('No change made; aborting')
     return form_result
