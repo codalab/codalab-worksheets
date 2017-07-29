@@ -119,7 +119,7 @@ def get_worksheet_lines(worksheet_info):
         if item_type == TYPE_MARKUP:
             lines.append(value_obj)
         elif item_type == TYPE_DIRECTIVE:
-            if value_obj[0] == DIRECTIVE_CHAR:
+            if len(value_obj) > 0 and value_obj[0] == DIRECTIVE_CHAR:
                 # A comment directive
                 lines.append('//' + ' '.join(value_obj[1:]))
             else:
