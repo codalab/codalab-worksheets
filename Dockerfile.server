@@ -1,30 +1,31 @@
-FROM ubuntu:14.04
+FROM ubuntu:16.04
 MAINTAINER Fabian Chan <fabianc@stanford.edu>
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt-get update && apt-get install -y \
-  build-essential \
-  git \
-  libfuse-dev \
-  libjpeg-dev \
-  libmysqlclient-dev \
-  mysql-client \
-  python-dev \
-  python-pip \
-  python-software-properties \
-  python-virtualenv \
-  software-properties-common \
-  zip
+RUN apt-get update
+RUN apt-get install -y build-essential git
+RUN apt-get install -y libfuse-dev libjpeg-dev
+RUN apt-get install -y libmysqlclient-dev mysql-client
+RUN apt-get install -y python-dev python-pip
+RUN apt-get install -y python-software-properties python-virtualenv software-properties-common
+RUN apt-get install -y zip
 
-RUN pip install -U setuptools
+# Install dependencies
+RUN mkdir /opt/codalab-cli
+COPY worker /opt/codalab-cli/worker
+COPY requirements.txt /opt/codalab-cli
+COPY requirements-server.txt /opt/codalab-cli
+COPY setup.sh /opt/codalab-cli
+#RUN cd /opt && pip install -r requirements-server.txt
+RUN cd /opt/codalab-cli && ./setup.sh server
 
+# Install code
 COPY . /opt/codalab-cli
 
 ENV PATH="/opt/codalab-cli/codalab/bin:${PATH}"
 ENV CODALAB_HOME=/home/codalab
-RUN cd /opt/codalab-cli && ./setup.sh server
 
 EXPOSE 2900
 
-CMD ["/opt/codalab-cli/codalab/bin/cl", "server"]
+ENTRYPOINT ["/opt/codalab-cli/codalab/bin/cl"]

@@ -42,14 +42,16 @@ args = parser.parse_args()
 config_path = os.path.join(args.codalab_home, 'config.json')
 config = json.loads(open(config_path).read())
 engine_url = config['server']['engine_url']
-m = re.match('mysql://(.+):(.+)@(.+)(?::3306)?/(.+)', engine_url)
+m = re.match('mysql://(.+):(.+)@([^:]+)(:(\d+))?/(.+)', engine_url)
 if not m:
     print 'Can\'t extract server.engine_url from %s' % config_path
     sys.exit(1)
-bundles_db = m.group(3)
 bundles_user = m.group(1)
 bundles_password = m.group(2)
-print 'bundles DB: %s; user: %s' % (bundles_db, bundles_user)
+bundles_host = m.group(3)
+bundles_port = m.group(5) or 3306
+bundles_db = m.group(6)
+print 'user = {}, password = {}, db = {}, host = {}, port = {}'.format(bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port)
 
 hostname = config['server'].get('instance_name', socket.gethostname())
 
@@ -174,17 +176,23 @@ def email_time():
     global timer
     return timer % args.email_interval == 0
 
-def backup_db(db, user, password):
+def backup_db():
+    log('Backup DB (note that errors are not detected due to shell pipes)')
     date = get_date()
     mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
     with open(mysql_conf_path, 'w') as f:
         print >>f, '[client]'
-        print >>f, 'user="%s"' % user
-        print >>f, 'password="%s"' % password
-    run_command(['bash', '-c', 'mysqldump --defaults-file=%s --single-transaction --quick %s | gzip > %s/%s-%s.mysqldump.gz' % \
-        (mysql_conf_path, db, args.backup_path, db, date)],
-        600, 600)  # Backup might take a while.
+        print >>f, 'host="%s"' % bundles_host
+        print >>f, 'port="%s"' % bundles_port
+        print >>f, 'user="%s"' % bundles_user
+        print >>f, 'password="%s"' % bundles_password
+    path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_db, date)
+    run_command(['bash', '-c', 'mysqldump --defaults-file=%s --single-transaction --quick %s | gzip > %s' % (mysql_conf_path, bundles_db, path)], 600, 600)  # Backup might take a while.
     os.unlink(mysql_conf_path)
+    size = os.path.getsize(path)
+    log('Size of backup {} is {}'.format(path, size))
+    if size < 100:
+        log('Size is suspiciously small!')
 
 def check_disk_space(path):
     result = int(run_command(['df', path]).split('\n')[1].split()[3])
@@ -205,8 +213,7 @@ while True:
     try:
         # Backup DB
         if email_time():
-            log('Backup DB')
-            backup_db(bundles_db, bundles_user, bundles_password)
+            backup_db()
 
         # Check remaining disk space
         if ping_time():
