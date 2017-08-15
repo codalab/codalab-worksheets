@@ -22,7 +22,7 @@ def main():
     parser.add_argument('--tag',
                         help='Tag that allows for scheduling runs on specific '
                              'workers.')
-    parser.add_argument('--server', required=True,
+    parser.add_argument('--server', default='https://worksheets.codalab.org',
                         help='URL of the CodaLab server, in the format '
                              '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)')
     parser.add_argument('--work-dir', default='codalab-worker-scratch',
@@ -71,8 +71,12 @@ chmod 600 %s""" % args.password_file
             username = f.readline().strip()
             password = f.readline().strip()
     else:
-        username = raw_input('Username: ')
-        password = getpass.getpass()
+        username = os.environ.get('CODALAB_USERNAME')
+        if username is None:
+            username = raw_input('Username: ')
+        password = os.environ.get('CODALAB_PASSWORD')
+        if password is None:
+            password = getpass.getpass()
 
     # Set up logging.
     if args.verbose:

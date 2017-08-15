@@ -58,3 +58,9 @@ build/
 codalab_env/
 *.egg-info
 venv/
+.git
+
+doc
+codalab/tests
+codalab/tags
+notes.otl

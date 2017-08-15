@@ -729,7 +729,7 @@ class BundleCLI(object):
 
         # Parse arguments
         argv = self.collapse_bare_command(argv)
-        if argv[0] == '-v' or argv[0] == '--version':
+        if len(argv) > 0 and (argv[0] == '-v' or argv[0] == '--version'):
             self.print_version()
             return
         args = parser.parse_args(argv)
