@@ -9,7 +9,6 @@ from formatting import size_str
 
 logger = logging.getLogger(__name__)
 
-
 class DockerImageManager(object):
     """
     Manages the Docker images available on the worker, and ensures that they
@@ -68,7 +67,7 @@ class DockerImageManager(object):
             now = time.time()
             self._last_used[digest] = now
             self._save_state()
-        logger.debug('touched image %s at %f', digest, now)
+        logger.debug('Touched image digest=%s at %f', digest, now)
 
     def start_cleanup_thread(self):
         self._stop_cleanup = False
@@ -103,7 +102,7 @@ class DockerImageManager(object):
         logger.info('Image cleanup thread started.')
         while not self._should_stop_cleanup():
             # Start disk usage reduction loop
-            # Iteratively try to remove the oldest images until the disk usage
+            # Iteratively try to remove the oldest *used* images until the disk usage
             # is within the limit.
             try:
                 while True:

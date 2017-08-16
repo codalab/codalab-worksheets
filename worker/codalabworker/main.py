@@ -17,6 +17,8 @@ from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
 
+logger = logging.getLogger(__name__)
+
 def main():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument('--tag',
@@ -58,10 +60,10 @@ def main():
     args = parser.parse_args()
 
     # Get the username and password.
-    print 'Connecting to %s' % args.server
+    logger.info('Connecting to %s' % args.server)
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            print >> sys.stderr, """
+            print >>sys.stderr, """
 Permissions on password file are too lax.
 Only the user should be allowed to access the file.
 On Linux, run:
@@ -100,7 +102,7 @@ chmod 600 %s""" % args.password_file
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: worker.signal())
 
-    print 'Worker started.'
+    logger.info('Worker started.')
     worker.run()
 
 if __name__ == '__main__':

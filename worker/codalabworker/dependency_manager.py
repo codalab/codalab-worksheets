@@ -1,11 +1,14 @@
 import json
+import logging
 import os
 import threading
 import time
 
 from file_util import get_path_size, remove_path
 from docker_image_manager import DockerImageManager
+from formatting import size_str
 
+logger = logging.getLogger(__name__)
 
 class DependencyManager(object):
     """
@@ -42,6 +45,7 @@ class DependencyManager(object):
             dep = self._dependencies[tuple(dependency['target'])] = (
                 Dependency.load(dependency, self._lock))
             self._paths.add(dep.path)
+        logger.info('{} dependencies in cache.'.format(len(self._dependencies)))
 
         # Remove paths that aren't complete (e.g. interrupted downloads and runs).
         for path in set(os.listdir(self._work_dir)) - self._paths - \
@@ -99,6 +103,7 @@ class DependencyManager(object):
 
                 if (total_size_bytes > self._max_work_dir_size_bytes and
                     first_used_target is not None):
+                    logger.info('used ({}) exceeds capacity ({}), removing oldest bundle from cache'.format(size_str(total_size_bytes), size_str(self._max_work_dir_size_bytes)))
                     with self._lock:
                         dependency = self._dependencies[first_used_target]
                         if dependency.has_children():
