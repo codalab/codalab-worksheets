@@ -219,7 +219,7 @@ while True:
 
         # Check remaining disk space
         if ping_time():
-            check_disk_space(['/'])
+            check_disk_space(['/var/lib/docker'])
             base_path = os.path.join(args.codalab_home, 'partitions')
             paths = [os.path.join(base_path, fname) for fname in os.listdir(base_path)]
             check_disk_space(paths)
