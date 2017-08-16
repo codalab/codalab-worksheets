@@ -15,12 +15,12 @@ import json
 CODALAB_CLI = os.path.dirname(__file__)
 
 # This script runs in a loop monitoring the health of the CodaLab instance.
-# It reads config.json and website-config.json in your CodaLab Home (~/.codalab).
+# It reads config.json in your CODALAB_HOME (~/.codalab).
 # Here are some of the things the script does:
 # - Make sure we don't run out of disk space.
 # - Backup the database.
 # - Make sure runs finish in a reasonable amount of time.
-# - Email if anything goes wrong.
+# - Email if anything goes wrong (but bound the number of emails as not to spam).
 # - Email a daily report.
 
 # Parse arguments
@@ -67,7 +67,7 @@ report = []  # Build up the current report to send in an email
 
 # message is a list
 def send_email(subject, message):
-    # Not enough information to send email
+    # Not enough information to send email?
     if not recipient or not sender_info:
         print 'send_email; subject: %s; message contains %d lines' % (subject, len(message))
         return
@@ -90,7 +90,7 @@ def send_email(subject, message):
     s.quit()
 
 def get_date():
-    # Only save a backup for every month
+    # Only save a backup for every month to save space
     return datetime.datetime.now().strftime('%Y-%m')
     #return datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
 
