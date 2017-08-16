@@ -226,6 +226,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             return info['RepoDigests'][0]
         except (KeyError, IndexError):
             # If this happens, need to upgrade docker and delete the images and re-get them.
+            logger.debug('ERROR: empty RepoDigests for image {}, need to upgrade docker and delete image'.format(request_docker_image))
             return ''
 
     @wrap_exception('Unable to remove Docker image')
