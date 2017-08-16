@@ -194,11 +194,13 @@ def backup_db():
     if size < 100:
         log('Size is suspiciously small!')
 
-def check_disk_space(path):
-    result = int(run_command(['df', path]).split('\n')[1].split()[3])
+def check_disk_space(paths):
+    lines = run_command(['df'] + paths).split('\n')[1:]
+    results = [int(line.split()[3]) for line in lines]
     # Flag an error if disk space running low
-    if result < 1000 * 1024:
-        error_logs('low disk space', 'Only %s MB of disk space left!' % (result / 1024))
+    total = sum(results)
+    if total < 1000 * 1024:
+        error_logs('low disk space', 'Only %s MB of disk space left on %s!' % (total / 1024, ' '.join(paths)))
 
 # Make sure we can connect (might prompt for username/password)
 if subprocess.call(['cl', 'work', 'localhost::']) != 0:
@@ -217,8 +219,10 @@ while True:
 
         # Check remaining disk space
         if ping_time():
-            check_disk_space('/')
-            check_disk_space(os.path.join(args.codalab_home, 'bundles'))
+            check_disk_space(['/'])
+            base_path = os.path.join(args.codalab_home, 'partitions')
+            paths = [os.path.join(base_path, fname) for fname in os.listdir(base_path)]
+            check_disk_space(paths)
 
         # Get statistics on bundles
         if ping_time():
