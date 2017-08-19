@@ -31,6 +31,6 @@ def get_bundle_title_js(uuid):
     """
     Returns Javascript code that updates the bundle title.
     """
-    check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
     return template('title_setter_js', title=bundle.metadata.name)
