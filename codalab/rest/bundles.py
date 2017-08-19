@@ -169,15 +169,15 @@ def build_bundles_document(bundle_uuids):
 
     if 'group_permissions' in include_set:
         for bundle in bundles:
-            json_api_include(document, BundlePermissionSchema(), bundle['group_permissions'])
+            json_api_include(document, BundlePermissionSchema(), bundle.get('group_permissions', []))
 
     if 'children' in include_set:
         for bundle in bundles:
-            json_api_include(document, BundleSchema(), bundle['children'])
+            json_api_include(document, BundleSchema(), bundle.get('children', []))
 
     if 'host_worksheets' in include_set:
         for bundle in bundles:
-            json_api_include(document, WorksheetSchema(), bundle['host_worksheets'])
+            json_api_include(document, WorksheetSchema(), bundle.get('host_worksheets', []))
 
     return document
 

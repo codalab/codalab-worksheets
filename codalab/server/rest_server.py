@@ -59,7 +59,7 @@ ROUTES_NOT_LOGGED_REGEXES = [
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
     api = 2
-    
+
     def __init__(self, manager):
         self.manager = manager
 
