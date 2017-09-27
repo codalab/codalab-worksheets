@@ -248,8 +248,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 for action, target in line.items():
                     logger.debug('docker image %s: %s', action.lower(), target)
 
+    ''' Download the specified docker image with tag/digest. If no tag is specified, downloads the latest '''
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
+        if len(docker_image.split(":")) < 2:
+            logger.debug('Missing tag/digest on request docker image "%s", defaulting to latest', docker_image)
+            docker_image = ":".join([docker_image, "latest"])
+
         logger.debug('Downloading Docker image %s', docker_image)
         with closing(self._create_connection()) as conn:
             conn.request('POST',
