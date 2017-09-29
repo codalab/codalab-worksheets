@@ -253,7 +253,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     def download_image(self, docker_image, loop_callback):
         if len(docker_image.split(":")) < 2:
             logger.debug('Missing tag/digest on request docker image "%s", defaulting to latest', docker_image)
-            docker_image = ":".join([docker_image, "latest"])
+            docker_image = ':'.join([docker_image, 'latest'])
 
         logger.debug('Downloading Docker image %s', docker_image)
         with closing(self._create_connection()) as conn:
