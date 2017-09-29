@@ -175,22 +175,15 @@ class Run(object):
                     self._resources['request_network'],
                     dependencies)
 
-            try:
-                self._container_id = do_start()
-            except DockerException as e:
-                # The download image call is slow, even if the image is already
-                # available. Thus, we only make it if we know the image is not
-                # available. Start-up is much faster that way.
-                if 'No such image' in e.message:
-                    updater = self._throttled_updater()
-                    def update_status_and_check_killed(status):
-                        updater('Downloading Docker image: ' + status)
-                        check_killed()
-                    self._docker.download_image(self._resources['docker_image'],
-                                                update_status_and_check_killed)
-                    self._container_id = do_start()
-                else:
-                    raise
+            # Pull the docker image regardless of whether or not we already have it
+            # This will make sure we pull updated versions of the image
+            updater = self._throttled_updater()
+            def update_status_and_check_killed(status):
+                updater('Pulling docker image: ' + status)
+                check_killed()
+            self._docker.download_image(self._resources['docker_image'],
+                                        update_status_and_check_killed)
+            self._container_id = do_start()
 
             digest = self._docker.get_image_repo_digest(self._resources['docker_image'])
             self._safe_update_docker_image(digest)
