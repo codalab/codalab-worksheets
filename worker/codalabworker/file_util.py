@@ -38,8 +38,16 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
-def tar_single_file(fileobj, file_path, compressions=''):
-    pass
+def tar_single_file(file_path):
+    abs_path = os.path.abspath(file_path)
+    base_dir_path = os.path.dirname(abs_path)
+    file_basename = os.path.basename(abs_path)
+    args = ['tar', 'czfp', '-', file_basename, '-C', base_dir_path]
+    try:
+        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
+        return proc.stdout
+    except subprocess.CalledProcessError as e:
+        raise IOError(e.output)
 
 def un_tar_directory(fileobj, directory_path, compression=''):
     """
