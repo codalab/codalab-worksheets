@@ -65,6 +65,7 @@ def un_tar_directory(fileobj, directory_path, compression=''):
         for member in tar:
             # Make sure that there is no trickery going on (see note in
             # TarFile.extractall() documentation.
+            print member.name, member.mode
             member_path = os.path.realpath(os.path.join(directory_path, member.name))
             if not member_path.startswith(directory_path):
                 raise tarfile.TarError('Archive member extracts outside the directory.')
