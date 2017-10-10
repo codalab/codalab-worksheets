@@ -570,7 +570,7 @@ class BundleModel(object):
     def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
         """
         Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle
-        and last_updated metadata. 
+        and last_updated metadata.
         """
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -585,7 +585,7 @@ class BundleModel(object):
                      'job_handle': job_handle,
                      'last_updated': int(time.time())
                 },
-            } 
+            }
             self.update_bundle(bundle, bundle_update, connection)
 
     def set_starting_bundle(self, bundle, user_id, worker_id):
@@ -636,7 +636,7 @@ class BundleModel(object):
             update_message = {
                 'state': State.STAGED,
                 'metadata': {
-                    'job_handle': None, 
+                    'job_handle': None,
                 },
             }
             self.update_bundle(bundle, update_message, connection)
@@ -1214,6 +1214,8 @@ class BundleModel(object):
         Get a list of groups, all of which satisfy the clause given by kwargs.
         """
         clause = self.make_kwargs_clause(cl_group, kwargs)
+        with open("/opt/a.txt", "w") as f:
+            f.write("QUERY: %s" % str(cl_group.select().where(clause)))
         with self.engine.begin() as connection:
             rows = connection.execute(
               cl_group.select().where(clause)
@@ -1261,11 +1263,19 @@ class BundleModel(object):
                 q2 = select(fetch_cols2).where(cl_group.c.uuid == cl_user_group.c.group_uuid)
             q2 = q2.where(user_group_clause)
 
+        with open("/opt/a.txt", "w") as f:
+            f.write("QUERY: %s\n" % str(q0))
+            f.write("QUERY: %s\n" % str(q1))
+            f.write("QUERY: %s\n" % str(q2))
+
         # Union
-        q0 = union(*filter(lambda q : q is not None, [q0, q1, q2]))
+        #q0 = union(*filter(lambda q : q is not None, [q0, q1, q2]))
+        q0 = q2
 
         with self.engine.begin() as connection:
             rows = connection.execute(q0).fetchall()
+            with open("/opt/b.txt", "w") as f:
+                f.write("ROWS: %s\n" % str(rows))
             if not rows:
                 return []
             for i, row in enumerate(rows):
@@ -1570,7 +1580,7 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
-    def date_handler(self, obj): 
+    def date_handler(self, obj):
         """
         Helper function to serialize DataTime
         """
@@ -1837,7 +1847,7 @@ class BundleModel(object):
             }))
 
         return code
-    
+
     def get_reset_code_user_id(self, code, delete=False):
         """
         Check if reset code is valid.

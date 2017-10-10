@@ -115,7 +115,7 @@ def add_group_members(group_spec):
 def add_group_members_helper(group_spec, is_admin):
     user_ids = get_resource_ids(request.json, 'users')
     group_uuid = get_group_info(group_spec, need_admin=True,
-                                access_all_groups=True)['uuid']
+                                access_all_groups=False)['uuid']
     members = set(m['user_id'] for m in local.model.batch_get_user_in_group(
         user_id=user_ids, group_uuid=group_uuid))
     for user_id in user_ids:

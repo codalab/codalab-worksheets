@@ -186,12 +186,14 @@ def get_group_info(group_spec, need_admin, access_all_groups=False):
 
     # If we're root, then we can access any group.
     if is_root_user or access_all_groups:
+        # note: this object will NOT contain the 'is_admin' column
         group_info = unique_group(local.model, group_spec, user_id=None)
     else:
+        # note: this object will contain the 'is_admin' column
         group_info = unique_group(local.model, group_spec, user_id=user_id)
 
     # If not root and need admin access, but don't have it, raise error.
-    if not is_root_user and need_admin and not group_info['is_admin'] and user_id != group_info['owner_id']:
+    if not is_root_user and need_admin and 'is_admin' in group_info and not group_info['is_admin']:
         abort(httplib.FORBIDDEN, 'You are not the admin of group %s.' % group_spec)
 
     # No one can admin the public group (not even root), because it's a special group.
