@@ -184,12 +184,12 @@ def get_group_info(group_spec, need_admin, access_all_groups=False):
     user_id = request.user.user_id
     is_root_user = (user_id == local.model.root_user_id)
 
-    # If we're root, then we can access any group.
+    # If we're root, then we can access any group, otherwise get is_admin column with group_info
     if is_root_user or access_all_groups:
-        # note: this object will NOT contain the 'is_admin' column
+        # note: the returned object will NOT contain the 'is_admin' column
         group_info = unique_group(local.model, group_spec, user_id=None)
     else:
-        # note: this object will contain the 'is_admin' column
+        # note: the returned object will contain the 'is_admin' column
         group_info = unique_group(local.model, group_spec, user_id=user_id)
 
     # If not root and need admin access, but don't have it, raise error.
