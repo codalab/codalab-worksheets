@@ -97,7 +97,7 @@ def create_group():
         group['owner_id'] = request.user.user_id
         group['user_defined'] = True
         group = local.model.create_group(group)
-        local.model.add_user_in_group(request.user.user_id, group['uuid'], True)
+        local.model.add_user_in_group(request.user.user_id, group['uuid'], is_admin=True)
         created_groups.append(group)
     return GroupSchema(many=True).dump(created_groups).data
 

@@ -1214,8 +1214,6 @@ class BundleModel(object):
         Get a list of groups, all of which satisfy the clause given by kwargs.
         """
         clause = self.make_kwargs_clause(cl_group, kwargs)
-        with open("/opt/a.txt", "w") as f:
-            f.write("QUERY: %s" % str(cl_group.select().where(clause)))
         with self.engine.begin() as connection:
             rows = connection.execute(
               cl_group.select().where(clause)
@@ -1263,19 +1261,11 @@ class BundleModel(object):
                 q2 = select(fetch_cols2).where(cl_group.c.uuid == cl_user_group.c.group_uuid)
             q2 = q2.where(user_group_clause)
 
-        with open("/opt/a.txt", "w") as f:
-            f.write("QUERY: %s\n" % str(q0))
-            f.write("QUERY: %s\n" % str(q1))
-            f.write("QUERY: %s\n" % str(q2))
-
         # Union
-        #q0 = union(*filter(lambda q : q is not None, [q0, q1, q2]))
-        q0 = q2
+        q0 = union(*filter(lambda q : q is not None, [q0, q1, q2]))
 
         with self.engine.begin() as connection:
             rows = connection.execute(q0).fetchall()
-            with open("/opt/b.txt", "w") as f:
-                f.write("ROWS: %s\n" % str(rows))
             if not rows:
                 return []
             for i, row in enumerate(rows):
