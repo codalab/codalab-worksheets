@@ -97,7 +97,7 @@ def create_group():
         group['owner_id'] = request.user.user_id
         group['user_defined'] = True
         group = local.model.create_group(group)
-        local.model.add_user_in_group(request.user.user_id, group['uuid'], True)
+        local.model.add_user_in_group(request.user.user_id, group['uuid'], is_admin=True)
         created_groups.append(group)
     return GroupSchema(many=True).dump(created_groups).data
 
@@ -115,7 +115,7 @@ def add_group_members(group_spec):
 def add_group_members_helper(group_spec, is_admin):
     user_ids = get_resource_ids(request.json, 'users')
     group_uuid = get_group_info(group_spec, need_admin=True,
-                                access_all_groups=True)['uuid']
+                                access_all_groups=False)['uuid']
     members = set(m['user_id'] for m in local.model.batch_get_user_in_group(
         user_id=user_ids, group_uuid=group_uuid))
     for user_id in user_ids:
