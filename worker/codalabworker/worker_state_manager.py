@@ -53,6 +53,10 @@ class WorkerStateManager(object):
         with self._runs_lock:
             self._runs[uuid] = run
 
+    def map_runs(self, process):
+        with self._runs_lock:
+            return [process(run) for run in self._runs.itervalues()]
+
     def resume_previous_runs(self, run_deserializer):
         if self.shared_file_system:
             return
