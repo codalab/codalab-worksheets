@@ -102,7 +102,7 @@ chmod 600 %s""" % args.password_file
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: worker.signal())
 
-    logger.info('Worker started.')
+    print('Worker started.')
     worker.run()
 
 if __name__ == '__main__':
