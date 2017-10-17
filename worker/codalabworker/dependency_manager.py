@@ -16,12 +16,13 @@ class DependencyManager(object):
     runs download the same dependency at the same time. Ensures that the total
     size of all the dependencies doesn't exceed the given limit.
     """
-    STATE_FILENAME = 'state.json'
+    STATE_FILENAME = 'dependency-state.json'
 
-    def __init__(self, work_dir, max_work_dir_size_bytes):
-        self._work_dir = work_dir
+    def __init__(self, work_dir, max_work_dir_size_bytes, prevous_runs=[]):
         self._max_work_dir_size_bytes = max_work_dir_size_bytes
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
+        self._work_dir = work_dir
+        self._bundles_dir = os.path.join(work_dir, 'bundles')
         self._lock = threading.Lock()
         self._stop_cleanup = False
         self._cleanup_thread = None
@@ -30,13 +31,14 @@ class DependencyManager(object):
         self._paths = set()
 
         if os.path.exists(self._state_file):
-            self._load_state()
+            self._load_state(prevous_runs)
         else:
-            remove_path(work_dir)
-            os.makedirs(work_dir, 0770)
+            remove_path(self._work_dir)
+            os.makedirs(self._work_dir, 0770)
+            os.makedirs(self._bundles_dir, 0770)
             self._save_state()
 
-    def _load_state(self):
+    def _load_state(self, prevous_runs):
         with open(self._state_file, 'r') as f:
             loaded_state = json.loads(f.read())
 
@@ -47,10 +49,12 @@ class DependencyManager(object):
             self._paths.add(dep.path)
         logger.info('{} dependencies in cache.'.format(len(self._dependencies)))
 
+        for uuid in prevous_runs:
+            self._paths.add(uuid)
+
         # Remove paths that aren't complete (e.g. interrupted downloads and runs).
-        for path in set(os.listdir(self._work_dir)) - self._paths - \
-                {DependencyManager.STATE_FILENAME, DockerImageManager.STATE_FILENAME}:
-            remove_path(os.path.join(self._work_dir, path))
+        for path in set(os.listdir(self._bundles_dir)) - self._paths:
+            remove_path(os.path.join(self._bundles_dir, path))
 
     def _save_state(self):
         """
@@ -88,7 +92,7 @@ class DependencyManager(object):
                     # that adds new bundles to the dependency manager simpler.
                     if dependency.size_bytes is None:
                         self._lock.release()
-                        size_bytes = get_path_size(os.path.join(self._work_dir,
+                        size_bytes = get_path_size(os.path.join(self._bundles_dir,
                                                                 dependency.path))
                         self._lock.acquire()
                         dependency.size_bytes = size_bytes
@@ -113,7 +117,7 @@ class DependencyManager(object):
                         del self._dependencies[first_used_target]
                         self._paths.remove(dependency.path)
                         self._save_state()
-                        remove_path(os.path.join(self._work_dir, dependency.path))
+                        remove_path(os.path.join(self._bundles_dir, dependency.path))
                 else:
                     break
 
@@ -170,7 +174,7 @@ class DependencyManager(object):
                     else:
                         # Already downloaded.
                         dependency.add_child(uuid)
-                        return os.path.join(self._work_dir, dependency.path), False
+                        return os.path.join(self._bundles_dir, dependency.path), False
                 else:
                     if parent_path:
                         path = os.path.join(parent_uuid, parent_path)
@@ -187,7 +191,7 @@ class DependencyManager(object):
                         Dependency(path, True, self._lock))
                     self._paths.add(path)
                     dependency.add_child(uuid)
-                    return os.path.join(self._work_dir, path), True
+                    return os.path.join(self._bundles_dir, path), True
 
     def finish_download(self, uuid, path, success):
         """
@@ -222,7 +226,7 @@ class DependencyManager(object):
                 self._save_state()
 
     def get_run_path(self, uuid):
-        return os.path.join(self._work_dir, uuid)
+        return os.path.join(self._bundles_dir, uuid)
 
     def finish_run(self, uuid):
         """

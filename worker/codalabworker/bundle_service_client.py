@@ -135,6 +135,12 @@ class BundleServiceClient(RestClient):
             'POST', self._worker_url_prefix(worker_id) + '/start_bundle/' + uuid,
             data=request_data)
 
+    @wrap_exception('Unable to resume bundle in bundle service')
+    def resume_bundle(self, worker_id, uuid, request_data):
+        return self._make_request(
+            'POST', self._worker_url_prefix(worker_id) + '/resume_bundle/' + uuid,
+            data=request_data)
+
     @wrap_exception('Unable to update bundle metadata in bundle service')
     def update_bundle_metadata(self, worker_id, uuid, new_metadata):
         self._make_request(

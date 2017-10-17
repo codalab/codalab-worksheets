@@ -120,6 +120,22 @@ def start_bundle(worker_id, uuid):
         return json.dumps(True)
     return json.dumps(False)
 
+@post('/workers/<worker_id>/resume_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
+      name='worker_start_bundle', apply=AuthenticatedPlugin())
+def resume_bundle(worker_id, uuid):
+    """
+    Checks whether the bundle is still assigned to run on the worker with the
+    given ID. If so, reports that it's starting to run and returns True.
+    Otherwise, returns False, meaning the worker shouldn't run the bundle.
+    """
+    bundle = local.model.get_bundle(uuid)
+    check_run_permission(bundle)
+    response.content_type = 'application/json'
+    if local.model.resume_bundle(bundle, request.user.user_id, worker_id,
+                                request.json['hostname'],
+                                request.json['start_time']):
+        return json.dumps(True)
+    return json.dumps(False)
 
 @put('/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
      name='worker_update_bundle_metadata', apply=AuthenticatedPlugin())

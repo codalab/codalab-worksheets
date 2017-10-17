@@ -8,7 +8,7 @@ import httplib
 
 # Increment this on the develop branch when develop is merged into master.
 # http://semver.org/
-CODALAB_VERSION = '0.2.15'
+CODALAB_VERSION = '0.2.16'
 
 class IntegrityError(ValueError):
     """
@@ -101,10 +101,12 @@ class State(object):
     RUNNING = 'running'   # Actually running
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
+    KILLED = 'killed'     # Killed by user
+    WORKER_OFFLINE = 'worker_offline'
 
     OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED}
     ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING}
-    FINAL_STATES = {READY, FAILED}
+    FINAL_STATES = {READY, FAILED, KILLED}
 
 
 def precondition(condition, message):
