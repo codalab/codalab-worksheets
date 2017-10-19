@@ -368,8 +368,8 @@ class CodaLabManager(object):
         if 'email' in self.config:
             return SMTPEmailer(
                 host=self.config['email']['host'],
-                user=self.config['email']['user'],
-                password=self.config['email']['password'],
+                user=self.config['email'].get('user','noreply@codalab.org'),#['user'],
+                password=self.config['email'].get('password',None),#['password'],
                 use_tls=True,
                 default_sender='CodaLab <noreply@codalab.org>',
                 server_email='noreply@codalab.org',
