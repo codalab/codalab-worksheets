@@ -30,6 +30,13 @@ def unique_group(model, group_spec, user_id):
     If |user_id| is given, only search only group that the user is involved in
     (either as an owner or just as a regular member).
     Otherwise, search all groups (this happens when we're root).
+
+    Caution:
+    if user_id is None: returns columns of cl_group
+    if user_id is not None: returns columns of cl_group natural join cl_user_group
+
+    TODO: function returning different columns based on a flag is not good design
+
     '''
     def search_all(model, **spec_filters):
         return model.batch_get_groups(**spec_filters)
