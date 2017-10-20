@@ -139,7 +139,9 @@ def general_command(worksheet_uuid, command):
     if isinstance(command, basestring):
         # shlex throws ValueError on incorrectly formatted commands
         try:
-            args = shlex.split(command)
+            lexer = shlex.shlex(command, posix=True)
+            lexer.escapedquotes = '\'"'
+            args = list(lexer)
         except ValueError as e:
             raise UsageError(e.message)
     else:

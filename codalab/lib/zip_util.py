@@ -16,6 +16,7 @@ from codalabworker.file_util import (
     tar_gzip_directory,
     un_gzip_stream,
     un_tar_directory,
+    tar_single_file,
 )
 
 
@@ -168,8 +169,8 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
                 'fileobj': open(source),
                 'filename': filename,
                 'filesize': os.path.getsize(source),
-                'should_unpack': False,
-                'should_simplify': False,
+                'should_unpack': True,
+                'should_simplify': True,
             }
 
     # Build archive file incrementally from all sources

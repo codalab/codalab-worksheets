@@ -64,6 +64,7 @@ class DockerClient(object):
     MIN_API_VERSION = '1.17'
 
     def __init__(self):
+        print "INITING DOCKER CLIENT"
         self._docker_host = os.environ.get('DOCKER_HOST') or None
         if self._docker_host:
             self._docker_host = self._docker_host.replace('tcp://', '')
@@ -120,6 +121,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     def _test_nvidia_docker(self):
         """Throw exception if nvidia-docker-plugin is not available."""
+        print "TESTING NVIDIA DOCKER"
         try:
             # Test the API call directly
             # Will catch any errors (such as CUDA_VISIBLE_DEVICES format)
@@ -309,8 +311,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
         # Set up the volumes.
         volume_bindings = ['%s:%s' % (bundle_path, docker_bundle_path)]
+        print "EXECUTING THIS COMMAND"
         for dependency_path, docker_dependency_path in dependencies:
-            volume_bindings.append('%s:%s:ro' % (
+            volume_bindings.append('%s:%s' % (
                 os.path.abspath(dependency_path),
                 docker_dependency_path))
 
@@ -396,12 +399,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     def _get_volume_bindings(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies):
+        print "GET VOLUME BINDINGS"
         docker_bundle_path = '/' + uuid
 
         # Set up the volumes.
         volume_bindings = ['%s:%s' % (bundle_path, docker_bundle_path)]
         for dependency_path, docker_dependency_path in dependencies:
-            volume_bindings.append('%s:%s:ro' % (
+            volume_bindings.append('%s:%s' % (
                 os.path.abspath(dependency_path),
                 docker_dependency_path))
         return volume_bindings
@@ -435,7 +439,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 },
             # TODO: Fix potential permissions issues arising from this setting
             # This can cause problems if users expect to run as a specific user
-            'User': '%s:%s' % (uid, gid),
+#            'User': '%s:%s' % (uid, gid),
         }
 
         # TODO: Allocate the requested number of GPUs and isolate
