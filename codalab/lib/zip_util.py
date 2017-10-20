@@ -164,17 +164,10 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
                 'should_unpack': True,
                 'should_simplify': False,
             }
-        else: # path is single file
-            """
-            archived = tar_gzip_directory(
-                source, follow_symlinks=follow_symlinks,
-                exclude_patterns=exclude_patterns
-            )
-            """
-            archived = tar_single_file(source)
+        else:
             return {
-                'fileobj': archived,
-                'filename': filename + '.tar.gz',
+                'fileobj': open(source),
+                'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': True,
                 'should_simplify': True,
