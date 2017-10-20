@@ -20,7 +20,7 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     """
-    args = ['tar', 'czfp', '-', '-C', directory_path]
+    args = ['tar', 'czf', '-', '-C', directory_path]
     if follow_symlinks:
         args.append('-h')
     if exclude_patterns:
