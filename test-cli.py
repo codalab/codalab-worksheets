@@ -256,8 +256,8 @@ def temp_instance():
                                         '--slots=1',
                                         '--work-dir=' + remote_worker_scratch,
                                         '--password-file=' + password_file],
-                                       stdout=subprocess.PIPE, stderr=FNULL)
-        wait_until_substring(worker_proc.stdout, 'Worker started')
+                                       stdout=FNULL, stderr=subprocess.PIPE)
+        wait_until_substring(worker_proc.stderr, 'Worker started')
 
         # Restore original config
         os.environ['CODALAB_HOME'] = old_home
