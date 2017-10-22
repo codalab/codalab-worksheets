@@ -139,12 +139,13 @@ def general_command(worksheet_uuid, command):
     if isinstance(command, basestring):
         # shlex throws ValueError on incorrectly formatted commands
         try:
-            # see https://docs.python.org/2/library/shlex.html#shlex.shlex.escapedquotes
+    	    # see https://docs.python.org/2/library/shlex.html#shlex.shlex.escapedquotes
             # By default, the double quote can be escaped. By setting the
             # escapedquotes property, we are able to escape single quotes as well
-            # examples: run '\''
+    	    # examples: run '\''
             lexer = shlex.shlex(command, posix=True)
             lexer.escapedquotes = '\'"'
+            lexer.whitespace_split = True
             args = list(lexer)
         except ValueError as e:
             raise UsageError(e.message)
