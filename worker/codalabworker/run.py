@@ -111,13 +111,17 @@ class Run(object):
         return True
 
     def resume(self):
-        # Report that the bundle is running. We note the start time here for
-        # accurate accounting of time used, since the clock on the bundle
-        # service and on the worker could be different.
+        """
+        Report that the bundle is running. We note the start time here for
+        accurate accounting of time used, since the clock on the bundle
+        service and on the worker could be different.
+        """
         start_message = {
             'hostname': socket.gethostname(),
             'start_time': int(self._start_time),
         }
+        logger.debug("Resuming bundle {}, container {}".format(self._uuid, self._container_id))
+
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
                                                  start_message):
             return False
@@ -127,7 +131,6 @@ class Run(object):
             Run._safe_update_run_status(self, 'Running')
             Run._monitor(self)
 
-        logger.debug("resuming bundle {}, container {}".format(self._uuid, self._container_id))
         threading.Thread(target=resume_run, args=[self]).start()
 
 

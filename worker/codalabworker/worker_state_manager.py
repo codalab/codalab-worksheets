@@ -19,6 +19,7 @@ class WorkerStateManager(object):
 
     def __init__(self, work_dir, shared_file_system=False):
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
+        self.shared_file_system = shared_file_system
         self._lock = threading.Lock()
 
         # Dictionary from UUID to Run that keeps track of bundles currently
@@ -28,11 +29,13 @@ class WorkerStateManager(object):
         self._runs_lock = threading.Lock()
 
         self.previous_runs = {}
-        if not os.path.exists(self._state_file):
-            if not os.path.exists(work_dir):
-                os.makedirs(work_dir, 0770)
-            self.save_state()
-        self.load_state()
+
+        if not self.shared_file_system: # disable saving Run states on shared file systems until we are sure it works
+            if not os.path.exists(self._state_file):
+                if not os.path.exists(work_dir):
+                    os.makedirs(work_dir, 0770)
+                self.save_state()
+            self.load_state()
 
     def _get_run(self, uuid):
         with self._runs_lock:
@@ -51,14 +54,22 @@ class WorkerStateManager(object):
             self._runs[uuid] = run
 
     def resume_previous_runs(self, run_deserializer):
+        if self.shared_file_system:
+            return
+
         with self._runs_lock:
-            for uuid, run_info in self.previous_runs.items():
+            while self.previous_runs:
+                # try once per previous run only
+                # TODO: try many times?
+                uuid, run_info = self.previous_runs.popitem()
                 run = run_deserializer(run_info)
                 run.resume()
                 self._runs[uuid] = run
-        self.previous_runs = {}
 
     def load_state(self):
+        if self.shared_file_system:
+            return
+
         with self._lock:
             with open(self._state_file, 'r') as f:
                 state = json.load(f)
@@ -66,6 +77,9 @@ class WorkerStateManager(object):
                     self.previous_runs[uuid] = run_info
 
     def save_state(self):
+        if self.shared_file_system:
+            return
+
         # In case we're initializing the state for the first time
         state = {
             'runs': {}
