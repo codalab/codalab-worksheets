@@ -21,6 +21,15 @@ VERSION = 14
 
 logger = logging.getLogger(__name__)
 
+"""
+Resumable Workers
+
+    If the worker process of a worker machine terminates and restarts while a
+    bundle is running, the worker process is able to keep track of the running
+    bundle once again, as long as the state is intact and the bundle container
+    is still running or has finished running.
+"""
+
 class Worker(object):
     """
     This class is responsible for:
