@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class WorkerStateManager(object):
     """
-    Manages the state of Runs on the worker
+    Manages the state of Runs on the worker.
     DependencyManager should be instantiated before DockerImageManager, to
     ensure that the work directory already exists.
     """

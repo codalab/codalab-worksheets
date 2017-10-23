@@ -58,11 +58,11 @@ class Run(object):
     def serialize(self):
         """ Output a dictionary able to be serialized into json """
         run_info = {
-                'bundle': self._bundle,
-                'bundle_path': self._bundle_path,
-                'resources': self._resources,
-                'container_id': self._container_id,
-                'start_time': self._start_time,
+            'bundle': self._bundle,
+            'bundle_path': self._bundle_path,
+            'resources': self._resources,
+            'container_id': self._container_id,
+            'start_time': self._start_time,
         }
         return run_info
 

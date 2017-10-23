@@ -618,21 +618,24 @@ class BundleModel(object):
             return True
 
     def set_offline_bundle(self, bundle):
-       with self.engine.begin() as connection:
-           # Check that it still exists.
-           row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
-           if not row:
-               # The user deleted the bundle.
-               return False
+        """
+        Sets the bundle to WORKER_OFFLINE, updating the last_updated metadata.
+        """
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return False
 
-           bundle_update = {
-               'state': State.WORKER_OFFLINE,
-               'metadata': {
-                   'last_updated': int(time.time()),
-               },
-           }
-           self.update_bundle(bundle, bundle_update, connection)
-           return True
+            bundle_update = {
+                'state': State.WORKER_OFFLINE,
+                'metadata': {
+                    'last_updated': int(time.time()),
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+            return True
 
     def restage_bundle(self, bundle):
         """
@@ -706,7 +709,8 @@ class BundleModel(object):
             if not row:
                 # The user deleted the bundle.
                 return False
-            if row.state != State.WORKER_OFFLINE:
+            if row.state != State.WORKER_OFFLINE: # this should never happen
+                print "Warning: resume_bundle is called on a bundle that is not of state OFFLINE"
                 return False
 
             worker_run_row = {

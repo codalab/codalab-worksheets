@@ -15,6 +15,7 @@ from codalabworker.file_util import remove_path
 
 logger = logging.getLogger(__name__)
 
+WORKER_TIMEOUT_SECONDS = 30
 
 class BundleManager(object):
     """
@@ -225,11 +226,11 @@ class BundleManager(object):
 
     def _cleanup_dead_workers(self, workers, callback=None):
         """
-        Clean-up workers that we haven't heard from for more than 30 seconds.
+        Clean-up workers that we haven't heard from for more than WORKER_TIMEOUT_SECONDS seconds.
         Such workers probably died without checking out properly.
         """
         for worker in workers.workers():
-            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(seconds=30):
+            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(seconds=WORKER_TIMEOUT_SECONDS):
                 logger.info('Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id'])
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker)
@@ -248,13 +249,13 @@ class BundleManager(object):
                 if self._model.restage_bundle(bundle):
                     workers.restage(bundle.uuid)
 
-    def _fail_stuck_running_bundles(self, workers):
+    def _bring_offline_stuck_running_bundles(self, workers):
         """
         Make bundles that got stuck in the RUNNING state into WORKER_OFFLINE state.
         """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
-                time.time() - bundle.metadata.last_updated > 1 * 30):  # Shouldn't really happen, but let's be safe.
+                time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):  # Shouldn't really happen, but let's be safe.
                 failure_message = 'Worker offline'
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
                 self._model.set_offline_bundle(bundle)

@@ -16,9 +16,9 @@ class DependencyManager(object):
     runs download the same dependency at the same time. Ensures that the total
     size of all the dependencies doesn't exceed the given limit.
     """
-    STATE_FILENAME = 'dependency-state.json'
+    STATE_FILENAME = 'dependencies-state.json'
 
-    def __init__(self, work_dir, max_work_dir_size_bytes, prevous_runs=[]):
+    def __init__(self, work_dir, max_work_dir_size_bytes, previous_runs=[]):
         self._max_work_dir_size_bytes = max_work_dir_size_bytes
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
         self._work_dir = work_dir
@@ -31,14 +31,14 @@ class DependencyManager(object):
         self._paths = set()
 
         if os.path.exists(self._state_file):
-            self._load_state(prevous_runs)
+            self._load_state(previous_runs)
         else:
             remove_path(self._work_dir)
             os.makedirs(self._work_dir, 0770)
             os.makedirs(self._bundles_dir, 0770)
             self._save_state()
 
-    def _load_state(self, prevous_runs):
+    def _load_state(self, previous_runs):
         with open(self._state_file, 'r') as f:
             loaded_state = json.loads(f.read())
 
@@ -49,7 +49,7 @@ class DependencyManager(object):
             self._paths.add(dep.path)
         logger.info('{} dependencies in cache.'.format(len(self._dependencies)))
 
-        for uuid in prevous_runs:
+        for uuid in previous_runs:
             self._paths.add(uuid)
 
         # Remove paths that aren't complete (e.g. interrupted downloads and runs).

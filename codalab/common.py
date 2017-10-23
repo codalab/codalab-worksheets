@@ -8,7 +8,7 @@ import httplib
 
 # Increment this on the develop branch when develop is merged into master.
 # http://semver.org/
-CODALAB_VERSION = '0.2.16'
+CODALAB_VERSION = '0.2.15'
 
 class IntegrityError(ValueError):
     """
@@ -102,7 +102,7 @@ class State(object):
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
     KILLED = 'killed'     # Killed by user
-    WORKER_OFFLINE = 'worker_offline'
+    WORKER_OFFLINE = 'worker_offline' # Assigned worker has gone offline
 
     OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED}
     ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING}
