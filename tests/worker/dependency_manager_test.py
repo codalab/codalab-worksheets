@@ -25,7 +25,7 @@ class DependencyManagerTest(unittest.TestCase):
         self.assertIn('random_file', os.listdir(self.bundles_dir))
         new_manager = DependencyManager(self.work_dir, 1 * 1024 * 1024)
         self.check_state([('uuid1', ''), ('uuid2', '')], new_manager)
-        self.assertIn('dependency-state.json', os.listdir(self.work_dir))
+        self.assertIn(DependencyManager.STATE_FILENAME, os.listdir(self.work_dir))
         self.assertNotIn('random_file', os.listdir(self.bundles_dir))
 
     def test_downloading(self):
@@ -82,7 +82,7 @@ class DependencyManagerTest(unittest.TestCase):
 
         self.check_state([('uuid1', ''), ('uuid3', '')])
         self.assertIn(('uuid2', ''), self.manager._dependencies)
-        self.assertItemsEqual(['dependency-state.json', 'bundles'], os.listdir(self.work_dir))
+        self.assertItemsEqual([DependencyManager.STATE_FILENAME, 'bundles'], os.listdir(self.work_dir))
         self.assertItemsEqual(['uuid1', 'uuid2', 'uuid3'], os.listdir(self.bundles_dir))
 
     def check_state(self, expected_targets, manager=None):
