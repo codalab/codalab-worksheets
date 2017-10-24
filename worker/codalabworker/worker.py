@@ -8,16 +8,27 @@ import threading
 import time
 import traceback
 import re
+import json
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import DependencyManager
+from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
 from run import Run
 from docker_image_manager import DockerImageManager
 
-VERSION = 13
+VERSION = 14
 
 logger = logging.getLogger(__name__)
+
+"""
+Resumable Workers
+
+    If the worker process of a worker machine terminates and restarts while a
+    bundle is running, the worker process is able to keep track of the running
+    bundle once again, as long as the state is intact and the bundle container
+    is still running or has finished running.
+"""
 
 class Worker(object):
     """
@@ -33,6 +44,7 @@ class Worker(object):
            their dependencies) and the cache of Docker images.
         4) Upgrading the worker.
     """
+
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
                  max_images_bytes, shared_file_system,
                  slots, bundle_service, docker):
@@ -43,17 +55,14 @@ class Worker(object):
         self._docker = docker
         self._slots = slots
 
+        self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
+
         if not self.shared_file_system:
             # Manages which dependencies are available.
-            self._dependency_manager = DependencyManager(work_dir, max_work_dir_size_bytes)
+            self._dependency_manager = DependencyManager(
+                    work_dir, max_work_dir_size_bytes, self._worker_state_manager.previous_runs.keys())
         self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
         self._max_images_bytes = max_images_bytes
-
-        # Dictionary from UUID to Run that keeps track of bundles currently
-        # running. These runs are added to this dict inside _run, and removed
-        # when the Run class calls finish_run.
-        self._runs_lock = threading.Lock()
-        self._runs = {}
 
         self._exiting_lock = threading.Lock()
         self._exiting = False
@@ -69,6 +78,11 @@ class Worker(object):
         while self._should_run():
             try:
                 self._checkin()
+                self._worker_state_manager.resume_previous_runs(
+                        lambda run_info: Run.deserialize(
+                            self._bundle_service, self._docker, self._image_manager, self, run_info)
+                )
+                self._worker_state_manager.save_state()
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in.')
                 self._last_checkin_successful = True
@@ -79,6 +93,7 @@ class Worker(object):
                 time.sleep(1)
 
         self._checkout()
+        self._worker_state_manager.save_state()
 
         if self._max_images_bytes is not None:
             self._image_manager.stop_cleanup_thread()
@@ -100,10 +115,7 @@ class Worker(object):
     def _should_run(self):
         if not self._is_exiting():
             return True
-        with self._runs_lock:
-            if self._runs:
-                return True
-        return False
+        return self._worker_state_manager.has_runs()
 
     def _get_memory_bytes(self):
         try:
@@ -160,8 +172,7 @@ class Worker(object):
         run = Run(self._bundle_service, self._docker, self._image_manager, self,
                   bundle, bundle_path, resources)
         if run.run():
-            with self._runs_lock:
-                self._runs[bundle['uuid']] = run
+            self._worker_state_manager.add_run(bundle['uuid'], run)
 
     def add_dependency(self, parent_uuid, parent_path, uuid, loop_callback):
         """
@@ -225,7 +236,7 @@ class Worker(object):
         self._dependency_manager.remove_dependency(parent_uuid, parent_path, uuid)
 
     def _read(self, socket_id, uuid, path, read_args):
-        run = self._get_run(uuid)
+        run = self._worker_state_manager._get_run(uuid)
         if run is None:
             Run.read_run_missing(self._bundle_service, self, socket_id)
         else:
@@ -234,25 +245,20 @@ class Worker(object):
                              args=(run, socket_id, path, read_args)).start()
 
     def _write(self, uuid, subpath, string):
-        run = self._get_run(uuid)
+        run = self._worker_state_manager._get_run(uuid)
         if run is not None:
             run.write(subpath, string)
 
     def _kill(self, uuid):
-        run = self._get_run(uuid)
+        run = self._worker_state_manager._get_run(uuid)
         if run is not None:
             run.kill('Kill requested')
-
-    def _get_run(self, uuid):
-        with self._runs_lock:
-            return self._runs.get(uuid)
 
     def finish_run(self, uuid):
         """
         Registers that the run with the given UUID has finished.
         """
-        with self._runs_lock:
-            del self._runs[uuid]
+        self._worker_state_manager.finish_run(uuid)
         if not self.shared_file_system:
             self._dependency_manager.finish_run(uuid)
 

@@ -66,7 +66,7 @@ class TorqueBundleManager(BundleManager):
         WAITING_FOR_WORKER_STARTUP, has job_handle, worker starting, no worker_run DB entry:
             Waiting for the Torque worker to start before sending a run message.
         STARTING, has job_handle, worker running, has worker_run DB entry:
-            Run message sent, waiting for the run to start. 
+            Run message sent, waiting for the run to start.
         RUNNING, has job_handle, worker running, has worker_run DB entry:
             Worker reported that the run has started.
         READY / FAILED, has job_handle, worker running, no worker_run DB entry:
@@ -80,7 +80,7 @@ class TorqueBundleManager(BundleManager):
         self._cleanup_dead_workers(workers,
                                    lambda worker: self._clear_torque_logs(worker['worker_id']))
         self._restage_stuck_starting_bundles(workers)
-        self._fail_stuck_running_bundles(workers)
+        self._bring_offline_stuck_running_bundles(workers)
         self._fail_on_bad_torque_start()
 
         # Prefer user-owned workers.
@@ -97,7 +97,7 @@ class TorqueBundleManager(BundleManager):
         failed to start. This would happen if:
             1) The Torque worker outputs some errors.
             2) If Torque fails to schedule the worker at all, for example, when
-               the user has requested too many resources. 
+               the user has requested too many resources.
         """
         for bundle in self._model.batch_get_bundles(state=State.WAITING_FOR_WORKER_STARTUP, bundle_type='run'):
             failure_message = self._read_torque_error_log(bundle.metadata.job_handle)
@@ -141,15 +141,15 @@ class TorqueBundleManager(BundleManager):
         """
         for bundle in self._model.batch_get_bundles(state=State.STAGED, bundle_type='run'):
             resource_args = []
-            
+
             request_cpus = self._compute_request_cpus(bundle)
             if request_cpus:
                 resource_args.extend(['-l', 'nodes=1:ppn=%d' % request_cpus])
-            
+
             request_memory = self._compute_request_memory(bundle)
             if request_memory:
                 resource_args.extend(['-l', 'mem=%d' % request_memory])
-            
+
             request_queue = bundle.metadata.request_queue or self._default_request_queue
             if request_queue:
                 # Either host=<host-name> or <queue-name>, but not tag=<tag>
@@ -159,24 +159,24 @@ class TorqueBundleManager(BundleManager):
                     resource_args.extend(['-l', 'host=' + m.group(1)])
                 elif not tagm:
                     resource_args.extend(['-q', request_queue])
-            
+
             request_priority = bundle.metadata.request_priority or self._default_request_priority
             if request_priority:
                 resource_args.extend(['-p', str(request_priority)])
-            
+
             script_args = [
                 '--server',  self._torque_bundle_service_url,
                 '--password-file', self._torque_password_file,
                 '--shared-file-system',
             ]
-            
+
             script_env = {
                 'LOG_DIR': self._torque_log_dir,
                 'WORKER_CODE_DIR': self._torque_worker_code_dir,
                 # -v doesn't work with spaces, so we have to hack it.
                 'WORKER_ARGS': '|'.join(script_args),
             }
-            
+
             command = self._torque_ssh_command(
                 ['qsub',
                  '-k', 'n',  # do not keep stdout/stderr streams (we redirect them manually to the configured log_dir)
