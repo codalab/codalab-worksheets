@@ -256,8 +256,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 for action, target in line.items():
                     logger.debug('docker image %s: %s', action.lower(), target)
 
+    ''' Download the specified docker image with tag/digest. If no tag is specified, downloads the latest '''
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
+        if len(docker_image.split(":")) < 2:
+            logger.debug('Missing tag/digest on request docker image "%s", defaulting to latest', docker_image)
+            docker_image = ':'.join([docker_image, 'latest'])
+
         logger.debug('Downloading Docker image %s', docker_image)
         for response in self.client.api.pull(docker_image, stream=True, decode=True):
             if 'error' in response:
@@ -493,7 +498,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             conn.request('GET', '/containers/%s/json' % container_id)
             inspect_response = conn.getresponse()
             if inspect_response.status == 404:
-                return (True, None, 'Lost by Docker')
+                return (True, None, 'Container {} Lost by Docker'.format(container_id))
             if inspect_response.status != 200:
                 raise DockerException(inspect_response.read())
 

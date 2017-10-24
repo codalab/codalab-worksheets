@@ -12,6 +12,7 @@ class DependencyManagerTest(unittest.TestCase):
     def setUp(self):
         self.work_dir = tempfile.mkdtemp()
         self.manager = DependencyManager(self.work_dir, None)
+        self.bundles_dir = os.path.join(self.work_dir, 'bundles')
 
     def tearDown(self):
         remove_path(self.work_dir)
@@ -19,13 +20,13 @@ class DependencyManagerTest(unittest.TestCase):
     def test_load_state(self):
         self.manager.finish_run('uuid1')
         self.manager.finish_run('uuid2')
-        with open(os.path.join(self.work_dir, 'random_file'), 'w'):
+        with open(os.path.join(self.bundles_dir, 'random_file'), 'w'):
             pass
-        self.assertIn('random_file', os.listdir(self.work_dir))
+        self.assertIn('random_file', os.listdir(self.bundles_dir))
         new_manager = DependencyManager(self.work_dir, 1 * 1024 * 1024)
         self.check_state([('uuid1', ''), ('uuid2', '')], new_manager)
-        self.assertIn('state.json', os.listdir(self.work_dir))
-        self.assertNotIn('random_file', os.listdir(self.work_dir))
+        self.assertIn(DependencyManager.STATE_FILENAME, os.listdir(self.work_dir))
+        self.assertNotIn('random_file', os.listdir(self.bundles_dir))
 
     def test_downloading(self):
         self.manager.add_dependency('uuid1', '', 'uuid2')
@@ -33,16 +34,16 @@ class DependencyManagerTest(unittest.TestCase):
         # Check cases that should not block.
         self.check_add_dependency_blocks('uuid1', 'a', 'uuid5', False, True)  # Different path
         self.check_add_dependency_blocks('uuid6', '', 'uuid7', False, True)  # Different UUID
-        
+
         # This call will block until the failed download. Then, it will be asked
         # to retry the download.
         self.check_add_dependency_blocks('uuid1', '', 'uuid3', True, True)
-        
+
         self.manager.finish_download('uuid1', '', False)
         self.check_state([])
         time.sleep(0.01)
 
-        # This call will block until both attempts to download are done. Then, 
+        # This call will block until both attempts to download are done. Then,
         # it will not be asked to retry the download.
         self.check_add_dependency_blocks('uuid1', '', 'uuid4', True, False)
 
@@ -51,9 +52,9 @@ class DependencyManagerTest(unittest.TestCase):
 
     def test_download_path_conflict(self):
         self.assertEqual(self.manager.add_dependency('uuid1', 'a/b_c', 'uuid2')[0],
-                         os.path.join(self.work_dir, 'uuid1_a_b_c'))
+                         os.path.join(self.bundles_dir, 'uuid1_a_b_c'))
         self.assertEqual(self.manager.add_dependency('uuid1', 'a_b/c', 'uuid2')[0],
-                         os.path.join(self.work_dir, 'uuid1_a_b_c_'))
+                         os.path.join(self.bundles_dir, 'uuid1_a_b_c_'))
 
     def test_cleanup(self):
         self.manager = DependencyManager(self.work_dir, 2 * 1024 * 1024)
@@ -62,7 +63,7 @@ class DependencyManagerTest(unittest.TestCase):
         self.manager.add_dependency('uuid1', '', 'uuid100')
 
         self.manager.add_dependency('uuid2', '', 'uuid100') # Downloading, so will not be removed.
-    
+
         self.manager.finish_run('uuid3')  # Used after uuid4, so will be left.
         self.manager.finish_run('uuid4')  # Will be removed.
         self.manager.add_dependency('uuid4', '', 'uuid100')
@@ -81,8 +82,8 @@ class DependencyManagerTest(unittest.TestCase):
 
         self.check_state([('uuid1', ''), ('uuid3', '')])
         self.assertIn(('uuid2', ''), self.manager._dependencies)
-        self.assertItemsEqual(['uuid1', 'uuid2', 'uuid3', 'state.json'],
-                              os.listdir(self.work_dir))
+        self.assertItemsEqual([DependencyManager.STATE_FILENAME, 'bundles'], os.listdir(self.work_dir))
+        self.assertItemsEqual(['uuid1', 'uuid2', 'uuid3'], os.listdir(self.bundles_dir))
 
     def check_state(self, expected_targets, manager=None):
         if manager is None:
