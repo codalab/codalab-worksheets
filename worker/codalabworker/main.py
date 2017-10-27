@@ -31,6 +31,8 @@ def main():
                         help='Directory where to store temporary bundle data, '
                              'including dependencies and the data from run '
                              'bundles.')
+    parser.add_argument('--network-name', default='codalab_worker_network',
+                        help='Docker network name')
     parser.add_argument('--max-work-dir-size', type=str, metavar='SIZE', default='10g',
                         help='Maximum size of the temporary bundle data '
                              '(e.g., 3, 3k, 3m, 3g, 3t).')
@@ -96,7 +98,7 @@ chmod 600 %s""" % args.password_file
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     max_images_bytes, args.shared_file_system, args.slots,
                     BundleServiceClient(args.server, username, password),
-                    DockerClient())
+                    DockerClient(), args.network_name)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:

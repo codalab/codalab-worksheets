@@ -423,6 +423,19 @@ class JsonApiClient(RestClient):
         else:
             return results[0]
 
+    @wrap_exception('Unable to netcat {1}')
+    def netcat(self, bundle_id, port, data):
+        """
+        Request to send data to a running bundle
+
+        :param bundle_id: running bundle uuid
+        :param data: bytestring
+        :param port: service port running on bundle
+        :return: the response
+        """
+        request_path = '/bundles/%s/netcat/%s/' % (bundle_id, port)
+        return self._make_request('PUT', request_path, data=data)
+
     @wrap_exception('Unable to create {1}')
     def create(self, resource_type, data, params=None):
         """

@@ -213,6 +213,41 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 raise DockerException(create_image_response.read())
             return json.loads(create_image_response.read())
 
+    @wrap_exception('Unable to fetch Docker network list')
+    def list_networks(self):
+        with closing(self._create_connection()) as conn:
+            conn.request('GET', '/networks');
+            response = conn.getresponse()
+            if response.status != 200:
+                raise DockerException(response.read())
+            return [t["Name"] for t in json.loads(response.read())]
+
+    @wrap_exception('Unable to create Docker network')
+    def create_network(self, network_name):
+        logger.debug('Creating Docker network: %s', network_name)
+        if not network_name:
+            raise Exception("empty docker network name")
+
+        create_request = {"Name": network_name}
+        with closing(self._create_connection()) as conn:
+            conn.request('POST', '/networks/create',
+                    json.dumps(create_request), {'Content-Type': 'application/json'}
+            );
+            response = conn.getresponse()
+            if response.status != 201:
+                raise DockerException(response.read())
+            return json.loads(response.read())["Id"]
+
+    @wrap_exception('Unable to fetch Docker container ip')
+    def get_container_ip(self, network_name, container_id):
+        logger.debug('Fetching Docker container ip for %s', container_id)
+        with closing(self._create_connection()) as conn:
+            conn.request('GET', '/containers/%s/json' % container_id)
+            response = conn.getresponse()
+            if response.status != 200:
+                raise DockerException(response.read())
+            return json.loads(response.read())["NetworkSettings"]["Networks"][network_name]["IPAddress"]
+
     @wrap_exception('Unable to fetch Docker image metadata')
     def get_image_repo_digest(self, request_docker_image):
         info = self._inspect_image(request_docker_image)
@@ -383,7 +418,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         return container_id
 
     def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
-                        request_network, dependencies):
+                        dependencies):
         # Set up the command.
         docker_bundle_path = '/' + uuid
         docker_commands = [
@@ -395,7 +430,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         return docker_commands
 
     def _get_volume_bindings(self, bundle_path, uuid, command, docker_image,
-                        request_network, dependencies):
+                        dependencies):
         docker_bundle_path = '/' + uuid
 
         # Set up the volumes.
@@ -408,12 +443,12 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
-                        request_network, dependencies):
+                        network_name, dependencies):
         docker_commands = self._get_docker_commands(
-            bundle_path, uuid, command, docker_image, request_network, dependencies)
+            bundle_path, uuid, command, docker_image, dependencies)
 
         volume_bindings = self._get_volume_bindings(
-            bundle_path, uuid, command, docker_image, request_network, dependencies)
+            bundle_path, uuid, command, docker_image, dependencies)
 
         # Get user/group that owns the bundle directory
         # Then we can ensure that any created files are owned by the user/group
@@ -431,8 +466,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'WorkingDir': docker_bundle_path,
             'Env': ['HOME=%s' % docker_bundle_path],
             'HostConfig': {
-                'Binds': volume_bindings,
-                },
+                'Binds': volume_bindings
+            },
             # TODO: Fix potential permissions issues arising from this setting
             # This can cause problems if users expect to run as a specific user
             'User': '%s:%s' % (uid, gid),
@@ -441,8 +476,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # TODO: Allocate the requested number of GPUs and isolate
         if self._use_nvidia_docker:
             self._add_nvidia_docker_arguments(create_request)
-        if not request_network:
-            create_request['HostConfig']['NetworkMode'] = 'none'
+
+        create_request['HostConfig']['NetworkMode'] = network_name
 
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',

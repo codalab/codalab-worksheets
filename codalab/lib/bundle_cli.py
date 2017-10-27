@@ -118,6 +118,7 @@ BUNDLE_COMMANDS = (
     'kill',
     'write',
     'mount',
+    'netcat',
 )
 
 DOCKER_IMAGE_COMMANDS = (
@@ -1790,6 +1791,25 @@ class BundleCLI(object):
             print >>self.stdout, 'BundleFUSE shutting down.'
         else:
             print >>self.stdout, 'fuse is not installed'
+
+    @Commands.command(
+        'netcat',
+        help=[
+            'Beta feature: this command may change in a future release. Send raw data into a port of a running bundle',
+        ],
+        arguments=(
+            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, completer=BundlesCompleter),
+            Commands.Argument('port', type=int, help='Port'),
+            Commands.Argument('message', metavar='[---] message', help='Arbitrary message to send.', completer=NullCompleter),
+            Commands.Argument('--verbose', help='Verbose mode for BundleFUSE.', action='store_true', default=False),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ),
+    )
+    def do_netcat_command(self, args):
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuid = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)[0]
+        info = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
+        print >>self.stdout, info
 
     @Commands.command(
         'cat',
