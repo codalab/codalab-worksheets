@@ -101,10 +101,12 @@ class State(object):
     RUNNING = 'running'   # Actually running
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
+    KILLED = 'killed'     # Killed by user
+    WORKER_OFFLINE = 'worker_offline' # Assigned worker has gone offline
 
     OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED}
     ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING}
-    FINAL_STATES = {READY, FAILED}
+    FINAL_STATES = {READY, FAILED, KILLED}
 
 
 def precondition(condition, message):

@@ -27,7 +27,7 @@ class DefaultBundleManager(BundleManager):
         # Handle some exceptional cases.
         self._cleanup_dead_workers(workers)
         self._restage_stuck_starting_bundles(workers)
-        self._fail_stuck_running_bundles(workers)
+        self._bring_offline_stuck_running_bundles(workers)
         self._fail_on_too_many_resources(workers)
 
         # Schedule, preferring user-owned workers.
@@ -43,7 +43,7 @@ class DefaultBundleManager(BundleManager):
                             workers.user_owned_workers(self._model.root_user_id))
 
             failure_message = None
-            
+
             request_cpus = self._compute_request_cpus(bundle)
             if request_cpus:
                 max_cpus = max(map(lambda worker: worker['cpus'], workers_list))

@@ -40,6 +40,7 @@ class Run(object):
         self._resources = resources
         self._uuid = bundle['uuid']
         self._container_id = None
+        self._start_time = None # start time of container
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
@@ -53,6 +54,27 @@ class Run(object):
 
         self._finished_lock = threading.Lock()
         self._finished = False
+
+    def serialize(self):
+        """ Output a dictionary able to be serialized into json """
+        run_info = {
+            'bundle': self._bundle,
+            'bundle_path': self._bundle_path,
+            'resources': self._resources,
+            'container_id': self._container_id,
+            'start_time': self._start_time,
+        }
+        return run_info
+
+    @staticmethod
+    def deserialize(bundle_service, docker, image_manager, worker, run_info):
+        """ Create a new Run object and populate it based on given run_info dictionary """
+        run = Run(bundle_service, docker, image_manager, worker,
+                run_info['bundle'], run_info['bundle_path'], run_info['resources'])
+        run._container_id = run_info['container_id']
+        run._start_time = run_info['start_time']
+        return run
+
 
     def run(self):
         """
@@ -87,6 +109,30 @@ class Run(object):
         threading.Thread(target=Run._start, args=[self]).start()
 
         return True
+
+    def resume(self):
+        """
+        Report that the bundle is running. We note the start time here for
+        accurate accounting of time used, since the clock on the bundle
+        service and on the worker could be different.
+        """
+        start_message = {
+            'hostname': socket.gethostname(),
+            'start_time': int(self._start_time),
+        }
+        logger.debug("Resuming bundle {}, container {}".format(self._uuid, self._container_id))
+
+        if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
+                                                 start_message):
+            return False
+
+        # Start a thread for this run.
+        def resume_run(self):
+            Run._safe_update_run_status(self, 'Running')
+            Run._monitor(self)
+
+        threading.Thread(target=resume_run, args=[self]).start()
+
 
     def _safe_update_docker_image(self, docker_image):
         """ Update the docker_image metadata field for the run bundle """
