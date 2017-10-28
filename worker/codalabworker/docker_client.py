@@ -310,7 +310,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # Set up the volumes.
         volume_bindings = ['%s:%s' % (bundle_path, docker_bundle_path)]
         for dependency_path, docker_dependency_path in dependencies:
-            volume_bindings.append('%s:%s:ro' % (
+            volume_bindings.append('%s:%s' % (
                 os.path.abspath(dependency_path),
                 docker_dependency_path))
 
@@ -401,9 +401,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # Set up the volumes.
         volume_bindings = ['%s:%s' % (bundle_path, docker_bundle_path)]
         for dependency_path, docker_dependency_path in dependencies:
-            volume_bindings.append('%s:%s:ro' % (
+            volume_bindings.append('%s:%s' % (
                 os.path.abspath(dependency_path),
                 docker_dependency_path))
+        print volume_bindings
         return volume_bindings
 
     @wrap_exception('Unable to start Docker container')

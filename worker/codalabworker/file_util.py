@@ -43,6 +43,7 @@ def tar_single_file(file_path):
     base_dir_path = os.path.dirname(abs_path)
     file_basename = os.path.basename(abs_path)
     args = ['tar', 'czfp', '-', file_basename, '-C', base_dir_path]
+    print args
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         return proc.stdout
