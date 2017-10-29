@@ -19,7 +19,7 @@ class SMTPEmailer(Emailer):
         """
         :param host: SMTP server hostname
         :param user: SMTP user name
-        :param password:  SMTP password
+        :param password:  SMTP password, or None to disable SMTP authentication
         :param default_sender: default 'From' header
         :param server_email: email address to send from
         :param port: SMTP server port
@@ -33,6 +33,7 @@ class SMTPEmailer(Emailer):
         self.server_email = server_email
         self.port = port
         self.use_tls = use_tls
+        self.do_login = (self.password != None)
 
     def send_email(self, subject, body, recipient, sender=None,
                    mime_type='plain', charset='us-ascii'):
@@ -59,7 +60,8 @@ class SMTPEmailer(Emailer):
                 mail_server.starttls()
                 mail_server.ehlo()
 
-            mail_server.login(self.user, self.password)
+            if self.do_login: 
+                mail_server.login(self.user, self.password)
 
             message = MIMEText(body, mime_type, charset)
             message["From"] = sender or self.default_sender

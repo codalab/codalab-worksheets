@@ -73,8 +73,13 @@ def send_email(subject, message):
         return
 
     sender_host = sender_info['host']
-    sender_user = sender_info['user']
-    sender_password = sender_info['password']
+    
+    # Default to authless SMTP (supported by some servers) if user/password is unspecified.
+    #   Default sender_user has to be a valid RFC 822 from-address string for transport (distinct from msg headers)
+    #   Ref: https://docs.python.org/2/library/smtplib.html#smtplib.SMTP.sendmail
+    sender_user = sender_info.get('user', 'noreply@codalab.org') 
+    sender_password = sender_info.get('password', None)
+    do_login = (sender_password != None)
     print 'send_email to %s from %s@%s; subject: %s; message contains %d lines' % \
         (recipient, sender_user, sender_host, subject, len(message))
     s = SMTP(sender_host, 587)
@@ -85,7 +90,8 @@ def send_email(subject, message):
     msg['Subject'] = 'CodaLab on %s: %s' % (hostname, subject)
     msg['To'] = recipient
     msg['From'] = 'noreply@codalab.org'
-    s.login(sender_user, sender_password)
+    if do_login: 
+        s.login(sender_user, sender_password)
     s.sendmail(sender_user, recipient, msg.as_string())
     s.quit()
 
