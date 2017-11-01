@@ -8,7 +8,7 @@ import httplib
 
 # Increment this on the develop branch when develop is merged into master.
 # http://semver.org/
-CODALAB_VERSION = '0.2.18'
+CODALAB_VERSION = '0.2.19'
 
 class IntegrityError(ValueError):
     """
