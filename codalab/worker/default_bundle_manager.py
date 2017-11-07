@@ -50,12 +50,6 @@ class DefaultBundleManager(BundleManager):
                 if request_cpus > max_cpus:
                     failure_message = 'No workers with enough CPUs'
 
-            request_memory = self._compute_request_memory(bundle)
-            if request_memory:
-                max_memory = max(map(lambda worker: worker['memory_bytes'], workers_list))
-                if request_memory > max_memory:
-                    failure_message = 'No workers with enough memory'
-
             if failure_message is not None:
                 logger.info('Failing %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(
