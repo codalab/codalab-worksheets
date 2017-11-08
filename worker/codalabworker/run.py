@@ -262,6 +262,7 @@ class Run(object):
             else:
                 report = False
             self._check_and_report_resource_utilization(report)
+            self.resume()
 
             # TODO(klopyrev): Upload the contents of the running bundle to the
             #                 bundle service every few hours, so that they are
