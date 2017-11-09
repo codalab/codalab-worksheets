@@ -120,7 +120,6 @@ class Run(object):
             'hostname': socket.gethostname(),
             'start_time': int(self._start_time),
         }
-        logger.debug("Resuming bundle {}, container {}".format(self._uuid, self._container_id))
 
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
                                                  start_message):
@@ -262,7 +261,11 @@ class Run(object):
             else:
                 report = False
             self._check_and_report_resource_utilization(report)
-            self.resume()
+
+            try:
+                self.resume()
+            except BundleServiceException:
+                pass
 
             # TODO(klopyrev): Upload the contents of the running bundle to the
             #                 bundle service every few hours, so that they are
