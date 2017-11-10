@@ -252,10 +252,12 @@ class BundleManager(object):
     def _bring_offline_stuck_running_bundles(self, workers):
         """
         Make bundles that got stuck in the RUNNING state into WORKER_OFFLINE state.
+        Bundles in WORKER_OFFLINE state can be moved back to the RUNNING state if a
+        worker resumes the bundle, indicating that it's still RUNNING.
         """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
-                time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):  # Shouldn't really happen, but let's be safe.
+                time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):
                 failure_message = 'Worker offline'
                 logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
                 self._model.set_offline_bundle(bundle)

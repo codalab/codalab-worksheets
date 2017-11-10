@@ -25,8 +25,11 @@ class Run(object):
         2) Starting the Docker container.
         3) Reporting running container resource utilization to the bundle
            service, and killing the container if it uses too many resources.
-        4) Handling any messages related to the run.
-        5) Reporting to the bundle service that the run has finished.
+        4) Periodically informing the server that the job is still running (think of this as a heartbeat,
+           if the server does not receive one for more than WORKER_TIMEOUT_SECONDS, the job is moved to
+           the WORKER_OFFLINE state)
+        5) Handling any messages related to the run.
+        6) Reporting to the bundle service that the run has finished.
     """
     def __init__(self, bundle_service, docker, image_manager, worker,
                  bundle, bundle_path, resources):
