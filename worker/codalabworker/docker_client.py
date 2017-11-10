@@ -8,7 +8,6 @@ import ssl
 import struct
 import sys
 import subprocess
-import docker
 
 from formatting import size_str
 
@@ -25,10 +24,6 @@ def wrap_exception(message):
                     DockerException(message + ': ' + e.message), \
                     sys.exc_info()[2]
             except (httplib.HTTPException, socket.error) as e:
-                raise DockerException, \
-                    DockerException(message + ': ' + str(e)), \
-                    sys.exc_info()[2]
-            except docker.errors.APIError as e:
                 raise DockerException, \
                     DockerException(message + ': ' + str(e)), \
                     sys.exc_info()[2]
@@ -111,9 +106,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             self._use_nvidia_docker = False
         else:
             self._use_nvidia_docker = True
-
-        # TODO: switch everything over to use this client
-        self.client = docker.from_env()
 
     def _create_nvidia_docker_connection(self):
         return httplib.HTTPConnection(self.NV_HOST)
@@ -264,22 +256,48 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             docker_image = ':'.join([docker_image, 'latest'])
 
         logger.debug('Downloading Docker image %s', docker_image)
-        for response in self.client.api.pull(docker_image, stream=True, decode=True):
-            if 'error' in response:
-                raise DockerException(response['error'])
+        with closing(self._create_connection()) as conn:
+            conn.request('POST',
+                         '/images/create?fromImage=%s' % docker_image)
+            create_image_response = conn.getresponse()
+            if create_image_response.status != 200:
+                raise DockerException(create_image_response.read())
 
-            status = ''
-            try:
-                status = response['status']
-            except KeyError:
-                pass
-            try:
-                status += ' (%s / %s)' % (
-                    size_str(response['progressDetail']['current']),
-                    size_str(response['progressDetail']['total']))
-            except KeyError:
-                pass
-            loop_callback(status)
+            # Wait for the download to finish. Docker sends a stream of JSON
+            # objects. Since we don't know how long each one is we read a
+            # character at a time until what we have so far parses as a valid
+            # JSON object.
+            while True:
+                response = None
+                line = ''
+                while True:
+                    ch = create_image_response.read(1)
+                    if not ch:
+                        break
+                    line += ch
+                    try:
+                        response = json.loads(line)
+                        logger.debug(line.strip())
+                        break
+                    except ValueError:
+                        pass
+                if not response:
+                    break
+                if 'error' in response:
+                    raise DockerException(response['error'])
+
+                status = ''
+                try:
+                    status = response['status']
+                except KeyError:
+                    pass
+                try:
+                    status += ' (%s / %s)' % (
+                        size_str(response['progressDetail']['current']),
+                        size_str(response['progressDetail']['total']))
+                except KeyError:
+                    pass
+                loop_callback(status)
 
     def create_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies, extra_args=[]):
