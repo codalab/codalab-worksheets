@@ -710,7 +710,6 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
             if row.state != State.WORKER_OFFLINE: # this should never happen
-                print "Warning: resume_bundle is called on a bundle that is not of state OFFLINE"
                 return False
 
             worker_run_row = {
@@ -723,7 +722,7 @@ class BundleModel(object):
             bundle_update = {
                 'state': State.RUNNING,
                 'metadata': {
-                    'last_updated': start_time,
+                    'last_updated': int(time.time()),
                 },
             }
             self.update_bundle(bundle, bundle_update, connection)

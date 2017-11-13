@@ -134,7 +134,6 @@ def resume_bundle(worker_id, uuid):
     if local.model.resume_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'],
                                 request.json['start_time']):
-        print 'Resumed bundle %s' % uuid
         return json.dumps(True)
     return json.dumps(False)
 
