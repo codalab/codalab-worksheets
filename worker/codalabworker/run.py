@@ -25,8 +25,11 @@ class Run(object):
         2) Starting the Docker container.
         3) Reporting running container resource utilization to the bundle
            service, and killing the container if it uses too many resources.
-        4) Handling any messages related to the run.
-        5) Reporting to the bundle service that the run has finished.
+        4) Periodically informing the server that the job is still running (think of this as a heartbeat,
+           if the server does not receive one for more than WORKER_TIMEOUT_SECONDS, the job is moved to
+           the WORKER_OFFLINE state)
+        5) Handling any messages related to the run.
+        6) Reporting to the bundle service that the run has finished.
     """
     def __init__(self, bundle_service, docker, image_manager, worker,
                  bundle, bundle_path, resources):
@@ -120,7 +123,6 @@ class Run(object):
             'hostname': socket.gethostname(),
             'start_time': int(self._start_time),
         }
-        logger.debug("Resuming bundle {}, container {}".format(self._uuid, self._container_id))
 
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
                                                  start_message):
@@ -262,6 +264,11 @@ class Run(object):
             else:
                 report = False
             self._check_and_report_resource_utilization(report)
+
+            try:
+                self.resume()
+            except BundleServiceException:
+                pass
 
             # TODO(klopyrev): Upload the contents of the running bundle to the
             #                 bundle service every few hours, so that they are
