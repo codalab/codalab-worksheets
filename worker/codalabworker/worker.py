@@ -130,7 +130,7 @@ class Worker(object):
     def _get_memory_bytes(self):
         return max(0, self._get_installed_memory_bytes() - self._get_allocated_memory_bytes())
 
-u   def _get_gpu_count(self):
+    def _get_gpu_count(self):
         if not self._docker._use_nvidia_docker:
             return 0
 
