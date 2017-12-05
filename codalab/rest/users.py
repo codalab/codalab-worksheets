@@ -79,13 +79,15 @@ def fetch_user(user_spec):
 @get('/users')
 def fetch_users():
     """
-    Fetch list of users, filterable by username and email.
+    Fetch list of users, filterable by username and email OR search keywords.
 
+    If fetching (i.e. `keywords` query parameter not present):
     Takes the following query parameters:
         filter[user_name]=name1,name2,...
         filter[email]=email1,email2,...
 
     Fetches all users that match any of these usernames or emails.
+
     """
     keywords = query_get_list('keywords')
     if keywords:
