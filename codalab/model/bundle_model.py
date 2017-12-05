@@ -1754,10 +1754,8 @@ class BundleModel(object):
             cl_user.c.disk_used,
             cl_user.c.disk_quota,
         ]
-        print clause
         query = select(cols_to_select).distinct().where(clause).limit(limit)
         with self.engine.begin() as connection:
-            print 'connection: {}'.format(connection)
             rows = connection.execute(query).fetchall()
             if not rows:
                 return []
