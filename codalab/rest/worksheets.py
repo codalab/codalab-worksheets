@@ -112,7 +112,6 @@ def fetch_worksheets():
         worksheets = [w.to_dict() for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
     else:
         keywords = resolve_owner_in_keywords(keywords)
-        print keywords
         worksheets = local.model.search_worksheets(request.user.user_id, keywords)
 
     # Build response document

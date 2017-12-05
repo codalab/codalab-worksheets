@@ -88,14 +88,11 @@ def fetch_users():
     Fetches all users that match any of these usernames or emails.
     """
     keywords = query_get_list('keywords')
-    print 'fetch_users'
     if keywords:
-        print 'keywords'
         users = local.model.search_users(request.user.user_id, keywords)
-        print 'finished searching'
         return allowed_user_schema()(many=True).dump(users).data
-    # Combine username and email filters
     else:
+        # Combine username and email filters
         usernames = set(request.query.get('filter[user_name]', '').split(','))
         usernames |= set(request.query.get('filter[email]', '').split(','))
         usernames.discard('')  # str.split(',') will return '' on empty strings

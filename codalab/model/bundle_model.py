@@ -955,7 +955,6 @@ class BundleModel(object):
         their existing worksheets.
         Note: keywords has basically same semantics as search_bundle_uuids.
         """
-        
         clauses = []
         offset = 0
         limit = 1000
@@ -1729,13 +1728,14 @@ class BundleModel(object):
         return None
     
     def search_users(self, user_id, keywords):
-        print 'search_users: keywords: {}'.format(keywords)
         clauses = []
         limit = 5
         for keyword in keywords:
             if '.limit' not in keyword:
                 clause = or_(
                     cl_user.c.user_name.like('%' + keyword + '%'),
+                    cl_user.c.first_name.like('%' + keyword + '%'),
+                    cl_user.c.last_name.like('%' + keyword + '%'),
                 )
                 clauses.append(clause)
         clause = and_(*clauses)
@@ -1761,9 +1761,6 @@ class BundleModel(object):
             rows = connection.execute(query).fetchall()
             if not rows:
                 return []
-            print '-----'
-            print rows
-            print '-----'
             return rows
 
 
