@@ -346,9 +346,14 @@ class Run(object):
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((container_ip, port))
             s.sendall(message)
-            data = s.recv(1024) # TODO: loop to receive larger data
+
+            total_data=[]
+            while True:
+                data = s.recv(1024)
+                if not data: break
+                total_data.append(data)
             s.close()
-            self._bundle_service.reply_data(self._worker.id, socket_id, {}, data)
+            self._bundle_service.reply_data(self._worker.id, socket_id, {}, ''.join(total_data))
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
