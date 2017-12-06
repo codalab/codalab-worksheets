@@ -223,12 +223,12 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             return [t["Name"] for t in json.loads(response.read())]
 
     @wrap_exception('Unable to create Docker network')
-    def create_network(self, network_name):
+    def create_network(self, network_name, internal=True):
         logger.debug('Creating Docker network: %s', network_name)
         if not network_name:
             raise Exception("empty docker network name")
 
-        create_request = {"Name": network_name}
+        create_request = {"Name": network_name, "Internal": internal}
         with closing(self._create_connection()) as conn:
             conn.request('POST', '/networks/create',
                     json.dumps(create_request), {'Content-Type': 'application/json'}

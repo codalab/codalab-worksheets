@@ -47,13 +47,13 @@ class Worker(object):
 
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
                  max_images_bytes, shared_file_system,
-                 slots, bundle_service, docker, docker_network_name=None):
+                 slots, bundle_service, docker, docker_network_prefix='codalab_worker_network'):
         self.id = id
         self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._docker = docker
-        self._docker_network_name = docker_network_name
+        self._docker_network_prefix = docker_network_prefix
         self._slots = slots
 
         self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
@@ -70,9 +70,20 @@ class Worker(object):
         self._should_upgrade = False
         self._last_checkin_successful = False
 
-        # set up docker network for running bundles
-        if self._docker_network_name and self._docker_network_name not in self._docker.list_networks():
-            self._docker.create_network(self._docker_network_name)
+        # set up docker networks for running bundles: one with external network access and one without
+        self.docker_network_external_name = self._docker_network_prefix + "_ext"
+        if self.docker_network_external_name not in self._docker.list_networks():
+            logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
+            self._docker.create_network(self.docker_network_external_name, internal=False)
+        else:
+            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_external_name))
+
+        self.docker_network_internal_name = self._docker_network_prefix + "_int"
+        if self.docker_network_internal_name not in self._docker.list_networks():
+            logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
+            self._docker.create_network(self.docker_network_internal_name)
+        else:
+            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_internal_name))
 
     def run(self):
         if self._max_images_bytes is not None:
