@@ -1,0 +1,56 @@
+version: 2
+
+jobs:
+  build:
+    docker:
+      - image: circleci/python:2.7.14
+      - image: circleci/mysql:5.7
+        ports:
+          - 3306:3306
+    environment:
+      CODALAB_USERNAME: codalab
+      CODALAB_PASSWORD: testpassword
+
+    steps:
+      - checkout
+      - run:
+          command: |
+            sudo apt-get install -y sshpass
+            sudo apt-get install -y mysql-client libmysqlclient-dev
+            sudo apt-get install -y python2.7 python2.7-dev python-virtualenv python-pip
+            python -m virtualenv venv
+            ./venv/bin/pip install --upgrade setuptools
+            ./setup.sh server
+            ./venv/bin/pip install --upgrade pip
+
+      - run:
+          command: |
+            mysql --protocol tcp -u root -h localhost -P 3306 -e "CREATE DATABASE codalab_bundles;"
+            ./codalab/bin/cl config server/engine_url mysql://root@127.0.0.1:3306/codalab_bundles
+            ./codalab/bin/cl config cli/default_address http://localhost:2900
+            ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04
+            ./scripts/create-root-user.py $CODALAB_PASSWORD
+
+      - run:
+          background: true
+          command: |
+            ./codalab/bin/cl server
+
+      - run:
+          background: true
+          command: |
+            ./codalab/bin/cl bundle-manager
+
+      - run:
+          background: true
+          command: |
+            printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/ubuntu/.codalab/root.password
+            chmod 600 /home/ubuntu/.codalab/root.password
+            ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/ubuntu/.codalab/worker-scratch --slots 4 --password-file /home/ubuntu/.codalab/root.password --verbose
+
+      - run:
+          command: |
+            printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
+            ./codalab/bin/cl upload -c stuff
+            printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
+            ./venv/bin/python test-cli.py default
