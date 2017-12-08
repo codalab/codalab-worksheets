@@ -51,6 +51,7 @@ jobs:
 
       - run:
           command: |
+            sleep 60
             printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
             ./codalab/bin/cl upload -c stuff
             printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
