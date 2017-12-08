@@ -47,11 +47,11 @@ jobs:
           command: |
             printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/circleci/.codalab/root.password
             chmod 600 /home/circleci/.codalab/root.password
-            ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/circleci/.codalab/worker-scratch --slots 4 --password-file /home/circleci/.codalab/root.password --verbose
+            sudo ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/circleci/.codalab/worker-scratch --slots 4 --password-file /home/circleci/.codalab/root.password --verbose
 
       - run:
           command: |
-            sleep 60
+            sleep 10
             printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
             ./codalab/bin/cl upload -c stuff
             printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
