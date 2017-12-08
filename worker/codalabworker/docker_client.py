@@ -246,7 +246,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             response = conn.getresponse()
             if response.status != 200:
                 raise DockerException(response.read())
-            return json.loads(response.read())["NetworkSettings"]["Networks"][network_name]["IPAddress"]
+            try:
+                return json.loads(response.read())["NetworkSettings"]["Networks"][network_name]["IPAddress"]
+            except KeyError: # if container ip cannot be found in provided network, return None
+                return None
 
     @wrap_exception('Unable to fetch Docker image metadata')
     def get_image_repo_digest(self, request_docker_image):

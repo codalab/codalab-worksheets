@@ -1809,7 +1809,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         bundle_uuid = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)[0]
         info = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
-        print >>self.stdout, info
+        print >>self.stdout, info['data']
 
     @Commands.command(
         'cat',

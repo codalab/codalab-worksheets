@@ -6,6 +6,7 @@ import socket
 import threading
 import time
 import traceback
+import sys
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
@@ -342,7 +343,11 @@ class Run(object):
             self._bundle_service.reply(self._worker.id, socket_id, message)
 
         try:
-            container_ip = self._worker._docker.get_container_ip(self._worker._docker_network_name, self._container_id)
+            container_ip = self._worker._docker.get_container_ip(
+                    self._worker.docker_network_external_name, self._container_id)
+            if not container_ip:
+                container_ip = self._worker._docker.get_container_ip(
+                        self._worker.docker_network_internal_name, self._container_id)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.connect((container_ip, port))
             s.sendall(message)

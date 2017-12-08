@@ -397,7 +397,7 @@ def _netcat_bundle(uuid, port):
     if bundle.state in State.FINAL_STATES:
         abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle already finalized.')
     info = local.download_manager.netcat(uuid, port, request.json['message'])
-    return info
+    return {'data': info}
 
 @post('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
 @put('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
