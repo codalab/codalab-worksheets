@@ -10,7 +10,7 @@ jobs:
     environment:
       CODALAB_USERNAME: codalab
       CODALAB_PASSWORD: testpassword
-
+    working_directory: /root/project
     steps:
       - checkout
       - setup_remote_docker
