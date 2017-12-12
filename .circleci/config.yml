@@ -16,6 +16,7 @@ jobs:
       - setup_remote_docker
       - run:
           command: |
+            apt-get update
             apt-get install -y sshpass
             apt-get install -y mysql-client libmysqlclient-dev
             apt-get install -y python2.7 python2.7-dev python-virtualenv python-pip
