@@ -16,9 +16,9 @@ jobs:
       - setup_remote_docker
       - run:
           command: |
-            sudo apt-get install -y sshpass
-            sudo apt-get install -y mysql-client libmysqlclient-dev
-            sudo apt-get install -y python2.7 python2.7-dev python-virtualenv python-pip
+            apt-get install -y sshpass
+            apt-get install -y mysql-client libmysqlclient-dev
+            apt-get install -y python2.7 python2.7-dev python-virtualenv python-pip
             python -m virtualenv venv
             ./venv/bin/pip install --upgrade setuptools
             ./setup.sh server
@@ -45,9 +45,9 @@ jobs:
       - run:
           background: true
           command: |
-            printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/circleci/.codalab/root.password
-            chmod 600 /home/circleci/.codalab/root.password
-            ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/circleci/.codalab/worker-scratch --slots 4 --password-file /home/circleci/.codalab/root.password --verbose
+            printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /root/.codalab/root.password
+            chmod 600 /root/.codalab/root.password
+            ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /root/.codalab/worker-scratch --slots 4 --password-file /root/.codalab/root.password --verbose
 
       - run:
           command: |
