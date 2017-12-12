@@ -1081,6 +1081,22 @@ def test(ctx):
     run_command([cl, 'ginfo', 'public'])
 
 
+@TestModule.register('netcat')
+def test(ctx):
+    script_uuid = run_command([cl, 'upload', test_path('netcat-test.py')])
+    uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    wait_until_running(uuid)
+    time.sleep(5)
+    output = run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
+    check_equals('No, this is dawg', output) 
+
+    uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    wait_until_running(uuid)
+    time.sleep(5)
+    output = run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
+    check_equals('Hi this is dawg', output) 
+
+
 @TestModule.register('anonymous')
 def test(ctx):
     # Should not crash
