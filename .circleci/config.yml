@@ -3,7 +3,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:2.7.14
+      - image: ubuntu:16.04
       - image: circleci/mysql:5.7
         ports:
           - 3306:3306
