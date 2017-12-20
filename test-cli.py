@@ -964,9 +964,8 @@ def test(ctx):
     if 'localhost' in run_command([cl, 'work']):
         run_command([cl, 'events'])
         run_command([cl, 'events', '-n'])
-        run_command([cl, 'events', '-g', 'user'])
         run_command([cl, 'events', '-g', 'user', '-n'])
-        run_command([cl, 'events', '-g', 'command'])
+        run_command([cl, 'events', '-g', 'command', '-n'])
         run_command([cl, 'events', '-o', '1', '-l', '2'])
         run_command([cl, 'events', '-a', '%true%', '-n'])
     else:

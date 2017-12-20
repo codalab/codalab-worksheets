@@ -91,7 +91,7 @@ def check_isfile(path, fn_name):
 
 def path_is_url(path):
     if isinstance(path, basestring):
-        for prefix in ['http', 'https', 'ftp', 'file']:
+        for prefix in ['http', 'https', 'ftp']:
             if path.startswith(prefix + '://'):
                 return True
     return False
