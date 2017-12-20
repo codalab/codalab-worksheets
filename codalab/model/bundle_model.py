@@ -1572,12 +1572,13 @@ class BundleModel(object):
         if query_info.get('count'):
             # Sort by decreasing count
             query = query.order_by('cnt DESC')
+            if field is not None:
+                query = query.group_by(field)
         else:
             # Sort from latest event to earliest
             query = query.order_by(cl_event.c.id.desc())
-
-        if field is not None:
-            query = query.group_by(field)
+            if field is not None:
+                raise UsageError('If specify field, must count')
 
         if offset != None:
             query = query.offset(offset)
