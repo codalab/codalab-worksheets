@@ -1742,17 +1742,9 @@ class BundleModel(object):
         cols_to_select = [
             cl_user.c.user_id,
             cl_user.c.user_name,
-            cl_user.c.email,
-            cl_user.c.last_login,
-            cl_user.c.is_active,
             cl_user.c.first_name,
             cl_user.c.last_name,
             cl_user.c.affiliation,
-            cl_user.c.time_quota,
-            cl_user.c.time_used,
-            cl_user.c.disk_quota,
-            cl_user.c.disk_used,
-            cl_user.c.disk_quota,
         ]
         query = select(cols_to_select).distinct().where(clause).limit(limit)
         with self.engine.begin() as connection:
