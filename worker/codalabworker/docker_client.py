@@ -68,6 +68,7 @@ class DockerClient(object):
         if self._docker_host:
             self._docker_host = self._docker_host.replace('tcp://', '')
 
+        self._ssl_context = None
         cert_path = os.environ.get('DOCKER_CERT_PATH') or None
         if cert_path:
             self._ssl_context = ssl.create_default_context(
