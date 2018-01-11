@@ -397,6 +397,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'Image': docker_image,
             'WorkingDir': docker_bundle_path,
             'Env': ['HOME=%s' % docker_bundle_path],
+            'Entrypoint': [""], # unset entry point regardless of image
             'HostConfig': {
                 'Binds': volume_bindings,
                 },
