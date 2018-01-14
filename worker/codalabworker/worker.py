@@ -11,6 +11,7 @@ import re
 import json
 
 from bundle_service_client import BundleServiceException
+from codalabworker.aws_batch import AwsBatchRun
 from dependency_manager import DependencyManager
 from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
@@ -79,7 +80,9 @@ class Worker(object):
             try:
                 self._checkin()
                 self._worker_state_manager.resume_previous_runs(
-                        lambda run_info: Run.deserialize(
+                        # lambda run_info: Run.deserialize(
+                        #     self._bundle_service, self._docker, self._image_manager, self, run_info)
+                        lambda run_info: AwsBatchRun.deserialize(
                             self._bundle_service, self._docker, self._image_manager, self, run_info)
                 )
                 self._worker_state_manager.save_state()
@@ -175,8 +178,10 @@ class Worker(object):
             bundle_path = bundle['location']
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
-        run = Run(self._bundle_service, self._docker, self._image_manager, self,
-                  bundle, bundle_path, resources)
+        # run = Run(self._bundle_service, self._docker, self._image_manager, self,
+        #           bundle, bundle_path, resources)
+        run = AwsBatchRun(bundle_service=self._bundle_service, batch_client=None, worker=self, bundle=bundle,
+                          bundle_path=bundle_path, resources=resources)
         if run.run():
             self._worker_state_manager.add_run(bundle['uuid'], run)
 
@@ -247,7 +252,9 @@ class Worker(object):
             Run.read_run_missing(self._bundle_service, self, socket_id)
         else:
             # Reads may take a long time, so do the read in a separate thread.
-            threading.Thread(target=Run.read,
+            # threading.Thread(target=Run.read,
+            #                  args=(run, socket_id, path, read_args)).start()
+            threading.Thread(target=AwsBatchRun.read,
                              args=(run, socket_id, path, read_args)).start()
 
     def _write(self, uuid, subpath, string):
