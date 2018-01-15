@@ -235,7 +235,7 @@ class AwsBatchRunState(fsm.State):
         outputs = outputs + [status_event] if outputs is not None else [status_event]
         new_state = NewState(bundle=self._bundle, batch_client=self._batch_client, worker=self._worker,
                              bundle_service=self._bundle_service, bundle_path=self._bundle_path)
-        self.logger.info("Job %s transitioning %s -> %s", self.uuid, self.name, new_state.name)
+        self.logger.info("[%] Transitioning %s -> %s", self.uuid, self.name, new_state.name)
         return new_state, outputs
 
     def noop(self):
@@ -256,8 +256,16 @@ class AwsBatchRunState(fsm.State):
 # TODO If there is really nothing to do here, then just go straight to setup
 class Initial(AwsBatchRunState):
     def update(self, events):
-        return self.transition(Setup)
+        transition = None
+        # If this job has previously made some progress, then pickup where we left off
+        if self.metadata.get('batch_job_id'):
+            transition = self.transition(Running)
+        elif self.metadata.get('batch_job_definition'):
+            transition = self.transition(Submit)
+        else:
+            transition = self.transition(Setup)
 
+        return transition
 
 class Setup(AwsBatchRunState):
     def update(self, events):
@@ -462,23 +470,24 @@ class Running(AwsBatchRunState):
         runtime = stopped - started if stopped and started else 0
         now = int(time.time())
 
-        if status == BatchStatus.Failed or status == BatchStatus.Succeeded:
+        if status in [BatchStatus.Failed, BatchStatus.Succeeded]:
             finalize_message = {
                 'exitcode': job.get('exitCode'),
                 'failure_message': job.get('reason')
             }
+            run_status = 'Succeeded' if status == BatchStatus.Succeeded else 'Failed'
 
-            self.update_metadata(run_status=status, last_updated=now, time=runtime)
+            self.update_metadata(run_status=run_status, last_updated=now, time=runtime)
             self._bundle_service.finalize_bundle(self._worker.id, self.uuid, finalize_message)
 
             return self.transition(Cleanup)
 
         updates = {
-            'run_status': status,
+            'run_status': 'Batch Status: %s' % status,
             'last_updated': now
         }
+
         if started:
-            # TODO Double check these are both utc and give a meaningful number
             updates['time'] = now - started
 
         self.update_metadata(**updates)
