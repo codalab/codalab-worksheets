@@ -11,7 +11,7 @@ import re
 import json
 
 from bundle_service_client import BundleServiceException
-from codalabworker.aws_batch import AwsBatchRun
+from aws_batch import AwsBatchRun
 from dependency_manager import DependencyManager
 from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
