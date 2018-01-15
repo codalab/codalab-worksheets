@@ -235,7 +235,7 @@ class AwsBatchRunState(fsm.State):
         outputs = outputs + [status_event] if outputs is not None else [status_event]
         new_state = NewState(bundle=self._bundle, batch_client=self._batch_client, worker=self._worker,
                              bundle_service=self._bundle_service, bundle_path=self._bundle_path)
-        self.logger.info("[%] Transitioning %s -> %s", self.uuid, self.name, new_state.name)
+        self.logger.info("Job %s transitioning %s -> %s", self.uuid, self.name, new_state.name)
         return new_state, outputs
 
     def noop(self):
@@ -312,6 +312,8 @@ class Setup(AwsBatchRunState):
                 parent_bundle_path = os.path.realpath(parent_bundle_path)
                 dependency_path = os.path.realpath(os.path.join(parent_bundle_path, dep['parent_path']))
                 if not (dependency_path.startswith(parent_bundle_path) and os.path.exists(dependency_path)):
+                    if not dependency_path.startswith(parent_bundle_path): logging.debug("%s did not start with %s", dependency_path, parent_bundle_path)
+                    if not os.path.exists(dependency_path): logging.debug("%s did not exist", dependency_path)
                     raise Exception('Invalid dependency %s/%s' % (dep['parent_uuid'], dep['parent_path']))
             else:
                 raise Exception('Only shared file system is supported for now')
