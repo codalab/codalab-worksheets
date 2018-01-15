@@ -128,6 +128,17 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         except Exception as e:
             raise DockerException(e.message)
 
+    def get_nvidia_devices_info(self):
+        """Queries the GPU devices information (akin to nvidia-smi -q). Return json."""
+        with closing(self._create_nvidia_docker_connection()) as conn:
+            path = '/v1.0/gpu/info/json'
+            conn.request('GET', path)
+            cli_response = conn.getresponse()
+            if cli_response.status != 200:
+                raise DockerException(cli_response.read())
+            cli_args = json.loads(cli_response.read())
+            return cli_args
+
     def _add_nvidia_docker_arguments(self, request):
         """Add the arguments supplied by nvidia-docker-plugin REST API"""
         # nvidia-docker-plugin REST API documentation:
@@ -335,51 +346,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             raise
 
         container_id = output
-        return container_id
-
-    @wrap_exception('Unable to start Docker container with nvidia-smi')
-    def run_nvidia_smi(self, args, docker_image):
-        # Create the container.
-        create_request = {
-            'Cmd': ['nvidia-smi', args],
-            'Image': docker_image
-        }
-        if self._use_nvidia_docker:
-            self._add_nvidia_docker_arguments(create_request)
-
-        def _start_nvidia_smi():
-            with closing(self._create_connection()) as create_conn:
-                create_conn.request('POST', '/containers/create',
-                                    json.dumps(create_request),
-                                    {'Content-Type': 'application/json'})
-                create_response = create_conn.getresponse()
-                if create_response.status != 201:
-                    raise DockerException(create_response.read())
-                container_id = json.loads(create_response.read())['Id']
-
-            # Start the container.
-            logger.debug('Starting Docker container for running nvidia-smi')
-            with closing(self._create_connection()) as start_conn:
-                start_conn.request('POST', '/containers/%s/start' % container_id)
-                start_response = start_conn.getresponse()
-                if start_response.status != 204:
-                    raise DockerException(start_response.read())
-            return container_id
-
-        try:
-            container_id = _start_nvidia_smi()
-        except DockerException as e:
-            # The download image call is slow, even if the image is already
-            # available. Thus, we only make it if we know the image is not
-            # available. Start-up is much faster that way.
-            if 'No such image' in e.message:
-                def update_status(status):
-                    logger.info('Downloading Docker image for running nvidia-smi: ' + status)
-                self.download_image(docker_image, update_status)
-                container_id = _start_nvidia_smi()
-            else:
-                raise
-
         return container_id
 
     def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
