@@ -18,6 +18,21 @@ from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get
 from file_util import get_path_size, gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory, remove_path
 from formatting import duration_str, size_str
 
+try:
+    import boto3
+except ImportError:
+    print("Missing dependencies, please install boto3 to enable AWS support.")
+    import sys
+
+    sys.exit(1)
+
+
+def parse_int(to_parse, default_value):
+    try:
+        return int(to_parse)
+    except (ValueError, TypeError):
+        return default_value
+
 
 class AwsBatchRun(object):
     """
@@ -30,6 +45,7 @@ class AwsBatchRun(object):
 
     """
     def __init__(self, bundle_service, batch_client, worker, bundle, bundle_path, resources, state=None):
+        batch_client = batch_client if batch_client is not None else boto3.client('batch')
         self._bundle_service = bundle_service
         self._batch_client = batch_client
         self._worker = worker
@@ -45,7 +61,12 @@ class AwsBatchRun(object):
         self._dep_paths = []  # TODO Do this for deps somehow
 
     def run(self):
-        self._fsm.thread.run()
+        self._fsm.thread.start()
+        return True
+
+    def resume(self):
+        # TODO Do we need to do anything special here? We already deserialized to the correct state presumably
+        self._fsm.thread.start()
         return True
 
     def read(self, socket_id, path, read_args):
@@ -127,20 +148,38 @@ class AwsBatchRun(object):
         run_info = {
             'bundle': self._bundle,
             'bundle_path': self._bundle_path,
-            'resources': self._resources
+            'resources': self._resources,
+            'state': self._fsm._state.__class__.__name__  # TODO Make states serializable
         }
         return run_info
 
     @staticmethod
     def deserialize(bundle_service, docker, image_manager, worker, run_info):
         """ Create a new Run object and populate it based on given run_info dictionary """
+
+        state_class = globals().get(run_info.get('state', Initial.__class__.__name__))
+        state = state_class(bundle=run_info['bundle'],
+                            batch_client=boto3.client('batch'),
+                            worker=worker,
+                            bundle_service=bundle_service,
+                            bundle_path=run_info['bundle_path'])
+
         run = AwsBatchRun(bundle_service=bundle_service,
                           batch_client=None,
                           worker=worker,
                           bundle=run_info['bundle'],
                           bundle_path=run_info['bundle_path'],
-                          resources=run_info['resources'])
+                          resources=run_info['resources'],
+                          state=state)
         return run
+
+    @property
+    def requested_memory_bytes(self):
+        """
+        If request_memory is defined, then return that.
+        Otherwise, this run's memory usage does not get checked, so return inf.
+        """
+        return self._resources.get('request_memory') or float('inf')
 
 
 def event(name, **payload):
@@ -160,10 +199,15 @@ class Event(object):
 class AwsBatchRunState(fsm.State):
     def __init__(self, bundle, batch_client, worker, bundle_service, bundle_path):
         self._bundle = bundle
-        self._batch_client = batch_client
+        self._batch_client = batch_client if batch_client else boto3.client('batch')
         self._worker = worker
         self._bundle_service = bundle_service
         self._bundle_path = bundle_path
+        self._logger = logging.getLogger(self.uuid)
+
+    @property
+    def logger(self):
+        return self._logger
 
     @property
     def uuid(self):
@@ -172,7 +216,7 @@ class AwsBatchRunState(fsm.State):
     @property
     def batch_queue(self):
         # TODO Get this from somewhere meaningful, probably the worker
-        return 'default'
+        return 'scarecrow-training'
 
     @property
     def is_shared_file_system(self):
@@ -182,21 +226,23 @@ class AwsBatchRunState(fsm.State):
     def metadata(self):
         return self._bundle['metadata']
 
-    def transition(self, NewState, outputs=None):
-        status_event = event(Event.UPDATE_METADATA, run_status=self.status(), last_updated=int(time.time()))
-        outputs = outputs + [status_event] if outputs is not None else [status_event]
-        new_state = NewState(bundle=self._bundle, batch_client=self._batch_client,
-                             worker=self._worker, bundle_service=self._bundle_service)
+    @property
+    def name(self):
+        return self.__class__.__name__
 
+    def transition(self, NewState, outputs=None):
+        status_event = event(Event.UPDATE_METADATA, run_status=self.name, last_updated=int(time.time()))
+        outputs = outputs + [status_event] if outputs is not None else [status_event]
+        new_state = NewState(bundle=self._bundle, batch_client=self._batch_client, worker=self._worker,
+                             bundle_service=self._bundle_service, bundle_path=self._bundle_path)
+        self.logger.info("Job %s transitioning %s -> %s", self.uuid, self.name, new_state.name)
         return new_state, outputs
 
     def noop(self):
         return self, []
 
-    def status(self):
-        return self.__class__.__name__
-
     def update_metadata(self, **kwargs):
+        self.logger.debug("Updating metadata: %s", kwargs)
         # Update the bundle locally
         self._bundle['metadata'].update(kwargs)
         # Update the bundle on the bundle service
@@ -268,16 +314,26 @@ class Setup(AwsBatchRunState):
 
         return dependencies
 
+    @property
+    def docker_command(self):
+        bash_commands = [
+            'cd %s' % self.docker_working_directory,
+            '(%s) >stdout 2>stderr' % self._bundle['command'],
+            ]
+
+        return ['bash', '-c', '; '.join(bash_commands)]
+
     def create_job_definition(self, dependencies):
         """
         Create the Batch job definition.
         Each run has its own job definition which it cleans up when the run is complete.
         """
         bundle = self._bundle
-        image = self.metadata('docker_image')
-        command = [bundle.command]
-        memory = self.metadata['request_memory']
-        cpus = self.metadata['cpus']
+        # TODO Get defaults from config
+        image = self.metadata.get('docker_image', 'bash')
+        # TODO Need a better way to do this, maybe a bootstrap script or something?
+        memory = parse_int(self.metadata.get('request_memory'), 1024)
+        cpus = parse_int(self.metadata.get('cpus'), 1)
 
         # TODO All of this mounting only works on shared file systems.
         #      Figure out a strategy for when this isn't the case (e.g. s3, transfer beforehand, etc)
@@ -304,9 +360,14 @@ class Setup(AwsBatchRunState):
                 'image': image,
                 'vcpus': cpus,
                 'memory': memory,
-                'command': command,  # array of strings
+                'command': self.docker_command,
                 'volumes': map(lambda pair: pair[0], volumes_and_mounts),
-                'environment': [],  # TODO Should the env be set?
+                'environment': [
+                    {
+                        'name': 'HOME',
+                        'value': self.docker_working_directory
+                    }
+                ],  # TODO Should the env be set?
                 'mountPoints': map(lambda pair: pair[1], volumes_and_mounts),
                 'readonlyRootFilesystem': False,
             },
@@ -315,8 +376,13 @@ class Setup(AwsBatchRunState):
             }
         }
 
-        response = self._batch_client.register_job_definition(job_definition)
-        return response['jobDefinitionArn']
+        self.logger.debug(job_definition)
+
+        response = self._batch_client.register_job_definition(**job_definition)
+        arn = response['jobDefinitionArn']
+
+        self.logger.debug("Job %s registered job definition arn %s", self.uuid, arn)
+        return arn
 
     def volume_and_mount(self, host_path, container_path, name, read_only):
         volume_definition = {
@@ -396,15 +462,15 @@ class Running(AwsBatchRunState):
         runtime = stopped - started if stopped and started else 0
         now = int(time.time())
 
-        if status == BatchStatus.Failed:
-            exitcode = job.get('exitCode')
-            failure_message = job.get('reason')
-            self.update_metadata(run_status=status, last_updated=now, time=runtime,
-                                 exitcode=exitcode, failure_message=failure_message)
-            return self.transition(Cleanup)
+        if status == BatchStatus.Failed or status == BatchStatus.Succeeded:
+            finalize_message = {
+                'exitcode': job.get('exitCode'),
+                'failure_message': job.get('reason')
+            }
 
-        if status == BatchStatus.Succeeded:
             self.update_metadata(run_status=status, last_updated=now, time=runtime)
+            self._bundle_service.finalize_bundle(self._worker.id, self.uuid, finalize_message)
+
             return self.transition(Cleanup)
 
         updates = {

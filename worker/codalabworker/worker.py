@@ -18,7 +18,7 @@ from file_util import remove_path, un_tar_directory
 from run import Run
 from docker_image_manager import DockerImageManager
 
-VERSION = 15
+VERSION = 14 # HACK TO STOP UPGRADE
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +169,7 @@ class Worker(object):
             elif type == 'kill':
                 self._kill(response['uuid'])
             elif type == 'upgrade':
+                logging.error('ignoring upgrade message')
                 with self._exiting_lock:
                     self._exiting = True
                 self._should_upgrade = True

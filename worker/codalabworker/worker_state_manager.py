@@ -47,10 +47,12 @@ class WorkerStateManager(object):
 
     def finish_run(self, uuid):
         with self._runs_lock:
+            logging.debug("Worker state manager finishing run for %s", uuid)
             del self._runs[uuid]
 
     def add_run(self, uuid, run):
         with self._runs_lock:
+            logging.debug("Worker state manager adding run for %s", uuid)
             self._runs[uuid] = run
 
     def map_runs(self, process):
