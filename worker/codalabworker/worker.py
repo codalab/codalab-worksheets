@@ -148,10 +148,15 @@ class Worker(object):
             'version': VERSION,
             'will_upgrade': self._should_upgrade,
             'tag': self._tag,
+            # 'slots': self._slots if not self._is_exiting() else 0,
+            # 'cpus': multiprocessing.cpu_count(),
+            # 'gpus': self._get_gpu_count(),
+            # 'memory_bytes': self._get_memory_bytes(),
+            # TODO Move these to RunFactory and compute based on work queue (or just make infinite)
             'slots': self._slots if not self._is_exiting() else 0,
-            'cpus': multiprocessing.cpu_count(),
-            'gpus': self._get_gpu_count(),
-            'memory_bytes': self._get_memory_bytes(),
+            'cpus': 100000,
+            'gpus': 0,
+            'memory_bytes': 100000000000,
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
         response = self._bundle_service.checkin(self.id, request)
