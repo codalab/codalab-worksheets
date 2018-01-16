@@ -31,8 +31,9 @@ BYTES_PER_MEGABYTE = 1024 * 1024
 
 
 class AwsBatchRunManager(RunManagerBase):
-    def __init__(self, bundle_service, worker, batch_client):
+    def __init__(self, batch_client, queue_name, bundle_service, worker):
         self._bundle_service = bundle_service
+        self._queue_name = queue_name
         self._worker = worker
         self._batch_client = batch_client
 
@@ -42,7 +43,7 @@ class AwsBatchRunManager(RunManagerBase):
         return 100000
 
     @property
-    def memory(self):
+    def memory_bytes(self):
         # TODO Compute this from the batch queue
         return 1000 * 1000 * BYTES_PER_MEGABYTE
 
@@ -55,6 +56,7 @@ class AwsBatchRunManager(RunManagerBase):
         run = AwsBatchRun(
             bundle_service=self._bundle_service,
             batch_client=self._batch_client,
+            queue_name=self._queue_name,
             worker=self._worker,
             bundle=bundle,
             bundle_path=bundle_path,
@@ -67,6 +69,7 @@ class AwsBatchRunManager(RunManagerBase):
         data = {
             'bundle': run._bundle,
             'bundle_path': run._bundle_path,
+            'queue_name': run._queue_name,
             'resources': run._resources,
         }
         return data
@@ -75,9 +78,11 @@ class AwsBatchRunManager(RunManagerBase):
         bundle = run_data['bundle']
         bundle_path = run_data['bundle_path']
         resources = run_data['resources']
+        queue_name = run_data['queue_name']
         run = AwsBatchRun(
             bundle_service=self._bundle_service,
             batch_client=self._batch_client,
+            queue_name=queue_name,
             worker=self._worker,
             bundle=bundle,
             bundle_path=bundle_path,
@@ -96,10 +101,11 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
     For an article on how to achieve this, see:
     """
 
-    def __init__(self, bundle_service, batch_client, worker, bundle, bundle_path, resources):
+    def __init__(self, bundle_service, batch_client, queue_name, worker, bundle, bundle_path, resources):
         super(AwsBatchRun, self).__init__()
         self._bundle_service = bundle_service
         self._batch_client = batch_client
+        self._queue_name = queue_name
         self._worker = worker
         self._bundle = bundle
         self._uuid = bundle['uuid']
@@ -134,7 +140,7 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         if not self._bundle_service.start_bundle(self._worker.id, self._uuid, start_message):
             return False
 
-        if self._worker.shared_file_system:
+        if self.is_shared_file_system:
             # On a shared file system we create the path in the bundle manager
             # to avoid NFS directory cache issues. Here, we wait for the cache
             # on this machine to expire and for the path to appear.
@@ -145,7 +151,7 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
             remove_path(self._bundle_path)
             os.mkdir(self._bundle_path)
 
-        self.get_or_create_fsm().thread.start()
+        self.create_fsm().start()
         return True
 
     def resume(self):
@@ -162,22 +168,36 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid, start_message):
             return False
         # TODO Do we need to do anything special here? We already deserialized to the correct state presumably
-        self.get_or_create_fsm().thread.start()
+        self.create_fsm().start()
         return True
 
     def kill(self):
-        raise NotImplementedError
+        if self._fsm:
+            self._fsm.stop()
 
-    def get_or_create_fsm(self):
-        if self._fsm is not None:
-            return self._fsm
+        job_id = self.bundle['metadata'].get('batch_job_id')
+        if job_id:
+            self._batch_client.terminate_job(jobId=job_id, reason='Codalab kill requested.')
+
+        job_definition = self.bundle['metadata'].get('batch_job_definition')
+        if job_definition:
+            self._batch_client.deregister_job_definition(jobDefinition=job_definition)
+
+
+    def create_fsm(self):
+        assert self._fsm is None, "FSM was already created."
         # TODO Can this be replaced by just mounting dependencies directly?
         dependencies = self.setup_dependencies()
 
         # TODO Add a cleanup state which is used when exceptions are thrown from anything
-        state = Initial(bundle=self._bundle, batch_client=self._batch_client, worker=self._worker,
+        state = Initial(bundle=self._bundle,
+                        batch_client=self._batch_client,
+                        queue_name=self._queue_name,
+                        worker=self._worker,
                         bundle_service=self._bundle_service,
-                        bundle_path=self._bundle_path, resources=self._resources, dependencies=dependencies)
+                        bundle_path=self._bundle_path,
+                        resources=self._resources,
+                        dependencies=dependencies)
         self._fsm = fsm.ThreadedFiniteStateMachine(state, sleep_time=5.0)
         return self._fsm
 
@@ -197,9 +217,10 @@ class Event(object):
 
 
 class AwsBatchRunState(fsm.State):
-    def __init__(self, bundle, batch_client, worker, bundle_service, bundle_path, resources, dependencies):
+    def __init__(self, bundle, batch_client, queue_name, worker, bundle_service, bundle_path, resources, dependencies):
         self._bundle = bundle
         self._batch_client = batch_client if batch_client else boto3.client('batch')
+        self._queue_name = queue_name
         self._worker = worker
         self._bundle_service = bundle_service
         self._bundle_path = bundle_path
@@ -217,8 +238,7 @@ class AwsBatchRunState(fsm.State):
 
     @property
     def batch_queue(self):
-        # TODO Get this from somewhere meaningful, probably the worker
-        return 'scarecrow-training'
+        return self._queue_name
 
     @property
     def is_shared_file_system(self):
@@ -239,9 +259,14 @@ class AwsBatchRunState(fsm.State):
     def transition(self, NewState, outputs=None):
         status_event = event(Event.UPDATE_METADATA, run_status=self.name, last_updated=current_time())
         outputs = outputs + [status_event] if outputs is not None else [status_event]
-        new_state = NewState(bundle=self._bundle, batch_client=self._batch_client, worker=self._worker,
-                             bundle_service=self._bundle_service, bundle_path=self._bundle_path,
-                             resources=self.resources, dependencies=self._dependencies)
+        new_state = NewState(bundle=self._bundle,
+                             batch_client=self._batch_client,
+                             queue_name=self._queue_name,
+                             worker=self._worker,
+                             bundle_service=self._bundle_service,
+                             bundle_path=self._bundle_path,
+                             resources=self.resources,
+                             dependencies=self._dependencies)
         self.logger.info("Job %s transitioning %s -> %s", self.uuid, self.name, new_state.name)
         return new_state, outputs
 
@@ -254,10 +279,6 @@ class AwsBatchRunState(fsm.State):
         self._bundle['metadata'].update(kwargs)
         # Update the bundle on the bundle service
         self._bundle_service.update_bundle_metadata(self._worker.id, self._bundle['uuid'], kwargs)
-
-    # TODO Support this
-    def should_kill(self, events):
-        return any([e['name'] == Event.Kill for e in events])
 
 
 # TODO If there is really nothing to do here, then just go straight to setup
