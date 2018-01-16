@@ -85,6 +85,13 @@ class RunBase(object):
         raise NotImplementedError
 
     @property
+    def dependency_paths(self):
+        """
+        :return: A list of filesystem paths to all dependencies.
+        """
+        return set([dep['child_path'] for dep in self.bundle['dependencies']])
+
+    @property
     def requested_memory_bytes(self):
         """
         If request_memory is defined, then return that.
@@ -141,14 +148,6 @@ class FilesystemRunMixin(object):
     """
     def __init__(self):
         self._dependencies = None
-
-    @property
-    def dependency_paths(self):
-        """
-        :return: A list of filesystem paths to all dependencies.
-        """
-        # TODO Figure out why dependencies are still showing in codalab UI
-        return map(lambda dep: dep[0], self._dependencies)
 
     @property
     def bundle(self):
