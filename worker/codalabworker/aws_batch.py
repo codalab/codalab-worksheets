@@ -44,7 +44,7 @@ class AwsBatchRunManager(RunManagerBase):
     @property
     def memory(self):
         # TODO Compute this from the batch queue
-        return 10000
+        return 1000 * 1000 * BYTES_PER_MEGABYTE
 
     @property
     def gpus(self):
