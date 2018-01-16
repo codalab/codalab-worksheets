@@ -147,7 +147,8 @@ class FilesystemRunMixin(object):
         """
         :return: A list of filesystem paths to all dependencies.
         """
-        raise map(lambda dep: dep[0], self._dependencies)
+        # TODO Figure out why dependencies are still showing in codalab UI
+        return map(lambda dep: dep[0], self._dependencies)
 
     @property
     def bundle(self):
