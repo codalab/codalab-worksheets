@@ -69,17 +69,12 @@ class ThreadedFiniteStateMachine(object):
     def __init__(self, initial_state, sleep_time=0.1):
         self._state = initial_state
         self._sleep_time = sleep_time
+        # TODO Remove these as they are unneeded
         self._input = MessageQueue()
         self._output = MessageQueue()
         # The thread for running this FSM
-        self.thread = threading.Thread(target=ThreadedFiniteStateMachine._run, args=[self])
-
-    def send_input(self, event):
-        self._input.put(event)
-
-    def receive_outputs(self):
-        # Get events from the output queue until it is empty
-        self._output.get_all()
+        self._thread = threading.Thread(target=ThreadedFiniteStateMachine._run, args=[self])
+        self._should_run = True
 
     def _loop(self):
         input_events = self._input.get_all()
@@ -88,6 +83,12 @@ class ThreadedFiniteStateMachine(object):
         self._state = state
 
     def _run(self):
-        while self._state is not None:
+        while self._should_run and self._state is not None:
             self._loop()
             time.sleep(self._sleep_time)
+
+    def start(self):
+        return self._thread.start()
+
+    def stop(self):
+        self._should_run = False

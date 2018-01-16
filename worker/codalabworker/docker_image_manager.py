@@ -70,6 +70,8 @@ class DockerImageManager(object):
         logger.debug('Touched image digest=%s at %f', digest, now)
 
     def start_cleanup_thread(self):
+        if self._max_images_bytes is None:
+            return
         self._stop_cleanup = False
         self._cleanup_thread = threading.Thread(target=DockerImageManager._do_cleanup, args=[self])
         self._cleanup_thread.start()

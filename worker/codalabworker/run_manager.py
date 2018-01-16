@@ -28,9 +28,9 @@ class RunManagerBase(object):
         raise NotImplementedError
 
     @property
-    def memory(self):
+    def memory_bytes(self):
         """
-        :return: The total available memory, in megabytes, for this RunManager.
+        :return: The total available memory, in bytes, for this RunManager.
         """
         raise NotImplementedError
 
@@ -68,6 +68,14 @@ class RunManagerBase(object):
         :return: a new run instance which was represented by the data
         """
         raise NotImplementedError
+
+    def worker_did_start(self):
+        """Provides hook which can be overwritten to do something when the worker starts"""
+        pass
+
+    def worker_will_stop(self):
+        """Provides hook which can be overwritten to do something when the worker will be stopping"""
+        pass
 
 
 class RunBase(object):

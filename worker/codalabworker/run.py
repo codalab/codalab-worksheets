@@ -6,7 +6,11 @@ import socket
 import threading
 import time
 import traceback
+import multiprocessing
+import re
+from subprocess import check_output
 
+from run_manager import RunManagerBase, RunBase
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
@@ -17,7 +21,71 @@ from formatting import duration_str, size_str
 logger = logging.getLogger(__name__)
 
 
-class Run(object):
+class DockerRunManager(RunManagerBase):
+    def __init__(self, docker, bundle_service, image_manager, worker):
+        self._docker = docker
+        self._bundle_service = bundle_service
+        self._image_manager = image_manager
+        self._worker = worker
+
+    @property
+    def cpus(self):
+        return multiprocessing.cpu_count()
+
+    @property
+    def memory_bytes(self):
+        try:
+            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+        except ValueError:
+            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
+            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+
+    @property
+    def gpus(self):
+        if not self._docker._use_nvidia_docker:
+            return 0
+
+        container_id = self._docker.run_nvidia_smi('-L', 'nvidia/cuda:8.0-runtime')
+        out, err = self._docker.get_logs(container_id)
+        count = len(re.findall('^GPU \d', out))
+        self._docker.delete_container(container_id)
+        return count
+
+    def create_run(self, bundle, bundle_path, resources):
+        run = Run(self._bundle_service, self._docker, self._image_manager, self._worker, bundle, bundle_path, resources)
+        return run
+
+    def serialize(self, run):
+        """ Output a dictionary able to be serialized into json """
+        run_info = {
+            'bundle': run._bundle,
+            'bundle_path': run._bundle_path,
+            'resources': run._resources,
+            'container_id': run._container_id,
+            'start_time': run._start_time,
+        }
+        return run_info
+
+    def deserialize(self, data):
+        """ Create a new Run object and populate it based on given run_info dictionary """
+        bundle = data['bundle']
+        bundle_path = data['bundle_path']
+        resources = data['resources']
+        run = Run(self._bundle_service, self._docker, self._image_manager, self._worker,
+                  bundle, bundle_path, resources)
+        run._container_id = data['container_id']
+        run._start_time = data['start_time']
+        return run
+
+    def worker_did_start(self):
+        self._image_manager.start_cleanup_thread()
+
+    def worker_will_stop(self):
+        self._image_manager.stop_cleanup_thread()
+
+
+# TODO Support local dependencies in FileSystemMixin and then use it here and remove read/write
+class Run(RunBase):
     """
     This class manages a single run, including
 
@@ -31,6 +99,7 @@ class Run(object):
         5) Handling any messages related to the run.
         6) Reporting to the bundle service that the run has finished.
     """
+
     def __init__(self, bundle_service, docker, image_manager, worker,
                  bundle, bundle_path, resources):
         self._bundle_service = bundle_service
@@ -58,28 +127,19 @@ class Run(object):
         self._finished_lock = threading.Lock()
         self._finished = False
 
-    def serialize(self):
-        """ Output a dictionary able to be serialized into json """
-        run_info = {
-            'bundle': self._bundle,
-            'bundle_path': self._bundle_path,
-            'resources': self._resources,
-            'container_id': self._container_id,
-            'start_time': self._start_time,
-        }
-        return run_info
+    @property
+    def bundle(self):
+        return self._bundle
 
-    @staticmethod
-    def deserialize(bundle_service, docker, image_manager, worker, run_info):
-        """ Create a new Run object and populate it based on given run_info dictionary """
-        run = Run(bundle_service, docker, image_manager, worker,
-                run_info['bundle'], run_info['bundle_path'], run_info['resources'])
-        run._container_id = run_info['container_id']
-        run._start_time = run_info['start_time']
-        return run
+    @property
+    def resources(self):
+        return self._resources
 
+    @property
+    def bundle_path(self):
+        return self._bundle_path
 
-    def run(self):
+    def start(self):
         """
         Starts running the bundle. First, it checks in with the bundle service
         and sees if the bundle is still assigned to this worker. If not, returns
@@ -134,6 +194,7 @@ class Run(object):
             Run._monitor(self)
 
         threading.Thread(target=resume_run, args=[self]).start()
+        return True
 
 
     def _safe_update_docker_image(self, docker_image):
@@ -407,10 +468,10 @@ class Run(object):
         with open(os.path.join(self._bundle_path, subpath), 'w') as f:
             f.write(string)
 
-    def kill(self, message):
+    def kill(self):
         with self._kill_lock:
             self._killed = True
-            self._kill_message = message
+            self._kill_message = 'Kill requested.'
 
     def _is_killed(self):
         with self._kill_lock:

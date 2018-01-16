@@ -13,7 +13,6 @@ import stat
 import sys
 
 from bundle_service_client import BundleServiceClient
-from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
 
@@ -57,6 +56,11 @@ def main():
                         help='Internal use: Whether the file system containing '
                              'bundle data is shared between the bundle service '
                              'and the worker.')
+    parser.add_argument('--batch-queue',
+                        help='Name of the AWS Batch queue to use for run submission. '
+                             'Providing this option will cause runs to be submitted to Batch rather than local docker. '
+                             'The queue must already exist and you must have AWS credentials to submit to it.'
+                        )
     args = parser.parse_args()
 
     # Get the username and password.
@@ -93,10 +97,33 @@ chmod 600 %s""" % args.password_file
         max_images_bytes = None
     else:
         max_images_bytes = parse_size(args.max_image_cache_size)
+
+    bundle_service = BundleServiceClient(args.server, username, password)
+
+    # TODO Break the dependency of RunManagers on Worker to make this initialization nicer
+    def create_run_manager(w):
+        if args.batch_queue is None:
+            # We defer importing the run managers so their dependencies are lazily loaded
+            from run import DockerRunManager
+            from docker_client import DockerClient
+            from docker_image_manager import DockerImageManager
+
+            logging.info("Using local docker client for run submission.")
+
+            docker = DockerClient()
+            image_manager = DockerImageManager(docker, args.work_dir, max_images_bytes)
+            return DockerRunManager(docker, bundle_service, image_manager, w)
+        else:
+            import boto3
+            from aws_batch import AwsBatchRunManager
+
+            logging.info("Using AWS Batch queue %s for run submission.", args.batch_queue)
+
+            batch_client = boto3.client('batch')
+            return AwsBatchRunManager(batch_client, bundle_service, w)
+
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
-                    max_images_bytes, args.shared_file_system, args.slots,
-                    BundleServiceClient(args.server, username, password),
-                    DockerClient())
+                    args.shared_file_system, args.slots, bundle_service, create_run_manager)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
@@ -108,6 +135,7 @@ chmod 600 %s""" % args.password_file
     # END
 
     worker.run()
+
 
 if __name__ == '__main__':
     main()

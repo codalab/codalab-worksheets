@@ -13,12 +13,10 @@ import json
 import boto3
 
 from bundle_service_client import BundleServiceException
-from aws_batch import AwsBatchRunManager
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from dependency_manager import DependencyManager
 from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
-from docker_image_manager import DockerImageManager
 
 VERSION = 14 # HACK TO STOP UPGRADE
 
@@ -32,6 +30,7 @@ Resumable Workers
     bundle once again, as long as the state is intact and the bundle container
     is still running or has finished running.
 """
+
 
 class Worker(object):
     """
@@ -48,14 +47,12 @@ class Worker(object):
         4) Upgrading the worker.
     """
 
-    def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
-                 max_images_bytes, shared_file_system,
-                 slots, bundle_service, docker):
-        self.id = id
+    def __init__(self, worker_id, tag, work_dir, max_work_dir_size_bytes, shared_file_system, slots, bundle_service,
+                 create_run_manager):
+        self.id = worker_id
         self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
-        self._docker = docker
         self._slots = slots
 
         self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
@@ -64,20 +61,18 @@ class Worker(object):
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(
                     work_dir, max_work_dir_size_bytes, self._worker_state_manager.previous_runs.keys())
-        self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
-        self._max_images_bytes = max_images_bytes
 
         self._exiting_lock = threading.Lock()
         self._exiting = False
         self._should_upgrade = False
         self._last_checkin_successful = False
-        self._run_manager = AwsBatchRunManager(bundle_service, self, boto3.client('batch'))
+        self._run_manager = create_run_manager(self)
 
     def run(self):
-        if self._max_images_bytes is not None:
-            self._image_manager.start_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
+
+        self._run_manager.worker_did_start()
 
         while self._should_run():
             try:
@@ -96,10 +91,10 @@ class Worker(object):
         self._checkout()
         self._worker_state_manager.save_state()
 
-        if self._max_images_bytes is not None:
-            self._image_manager.stop_cleanup_thread()
         if not self.shared_file_system:
             self._dependency_manager.stop_cleanup_thread()
+
+        self._run_manager.worker_will_stop()
 
         if self._should_upgrade:
             self._upgrade()
@@ -118,43 +113,21 @@ class Worker(object):
             return True
         return self._worker_state_manager.has_runs()
 
-    def _get_installed_memory_bytes(self):
-        try:
-            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
-        except ValueError:
-            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
-            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
-
     def _get_allocated_memory_bytes(self):
         return sum(self._worker_state_manager.map_runs(lambda run: run.requested_memory_bytes))
 
     def _get_memory_bytes(self):
-        return max(0, self._get_installed_memory_bytes() - self._get_allocated_memory_bytes())
-
-    def _get_gpu_count(self):
-        if not self._docker._use_nvidia_docker:
-            return 0
-
-        container_id = self._docker.run_nvidia_smi('-L', 'nvidia/cuda:8.0-runtime')
-        out, err = self._docker.get_logs(container_id)
-        count = len(re.findall('^GPU \d', out))
-        self._docker.delete_container(container_id)
-        return count
+        return max(0, self._run_manager.memory_bytes - self._get_allocated_memory_bytes())
 
     def _checkin(self):
         request = {
             'version': VERSION,
             'will_upgrade': self._should_upgrade,
             'tag': self._tag,
-            # 'slots': self._slots if not self._is_exiting() else 0,
-            # 'cpus': multiprocessing.cpu_count(),
-            # 'gpus': self._get_gpu_count(),
-            # 'memory_bytes': self._get_memory_bytes(),
-            # TODO Move these to RunFactory and compute based on work queue (or just make infinite)
             'slots': self._slots if not self._is_exiting() else 0,
             'cpus': self._run_manager.cpus,
             'gpus': self._run_manager.gpus,
-            'memory_bytes': self._run_manager.memory * (1024*1024),
+            'memory_bytes': self._get_memory_bytes(),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
         response = self._bundle_service.checkin(self.id, request)
