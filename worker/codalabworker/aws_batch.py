@@ -34,7 +34,12 @@ def parse_int(to_parse, default_value):
         return default_value
 
 
+def current_time():
+    return int(time.time())
+
+
 BYTES_PER_MEGABYTE = 1024 * 1024
+
 
 class AwsBatchRun(object):
     """
@@ -63,10 +68,43 @@ class AwsBatchRun(object):
         self._dep_paths = []  # TODO Do this for deps somehow
 
     def run(self):
+        # Report that the bundle is running. We note the start time here for
+        # accurate accounting of time used, since the clock on the bundle
+        # service and on the worker could be different.
+        start_message = {
+            'hostname': socket.gethostname(),
+            'start_time': current_time(),
+        }
+        if not self._bundle_service.start_bundle(self._worker.id, self._uuid, start_message):
+            return False
+
+        if self._worker.shared_file_system:
+            # On a shared file system we create the path in the bundle manager
+            # to avoid NFS directory cache issues. Here, we wait for the cache
+            # on this machine to expire and for the path to appear.
+            while not os.path.exists(self._bundle_path):
+                time.sleep(0.5)
+        else:
+            # Set up a directory to store the bundle.
+            remove_path(self._bundle_path)
+            os.mkdir(self._bundle_path)
+
         self._fsm.thread.start()
         return True
 
     def resume(self):
+        """
+        Report that the bundle is running. We note the start time here for
+        accurate accounting of time used, since the clock on the bundle
+        service and on the worker could be different.
+        """
+        start_message = {
+            'hostname': socket.gethostname(),
+            'start_time': current_time(),
+        }
+
+        if not self._bundle_service.resume_bundle(self._worker.id, self._uuid, start_message):
+            return False
         # TODO Do we need to do anything special here? We already deserialized to the correct state presumably
         self._fsm.thread.start()
         return True
@@ -229,7 +267,7 @@ class AwsBatchRunState(fsm.State):
         return self.__class__.__name__
 
     def transition(self, NewState, outputs=None):
-        status_event = event(Event.UPDATE_METADATA, run_status=self.name, last_updated=int(time.time()))
+        status_event = event(Event.UPDATE_METADATA, run_status=self.name, last_updated=current_time())
         outputs = outputs + [status_event] if outputs is not None else [status_event]
         new_state = NewState(bundle=self._bundle, batch_client=self._batch_client, worker=self._worker,
                              bundle_service=self._bundle_service, bundle_path=self._bundle_path,
@@ -265,6 +303,7 @@ class Initial(AwsBatchRunState):
             transition = self.transition(Setup)
 
         return transition
+
 
 class Setup(AwsBatchRunState):
     def update(self, events):
@@ -425,7 +464,7 @@ class Submit(AwsBatchRunState):
 
         job_id = response['jobId']
 
-        self.update_metadata(batch_job_id=job_id, submit_time=int(time.time()))
+        self.update_metadata(batch_job_id=job_id, submit_time=current_time())
 
         return self.transition(Running)
 
@@ -448,7 +487,7 @@ class Running(AwsBatchRunState):
         self._job = None
 
     def should_refresh(self):
-        now = int(time.time())
+        now = current_time()
         if now - self._last_check_time > self._check_frequency:
             self._last_check_time = now
             return True
@@ -467,7 +506,7 @@ class Running(AwsBatchRunState):
         job = self.get_job()
         status = job['status']
 
-        now = int(time.time())
+        now = current_time()
         started = job.get('startedAt')
         stopped = job.get('stoppedAt', now * 1000)
         runtime = (stopped - started if started else 0) / 1000
