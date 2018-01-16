@@ -92,6 +92,13 @@ class RunBase(object):
         return set([dep['child_path'] for dep in self.bundle['dependencies']])
 
     @property
+    def bundle_path(self):
+        """
+        :return: The filesystem path to the bundle.
+        """
+        raise NotImplementedError
+
+    @property
     def requested_memory_bytes(self):
         """
         If request_memory is defined, then return that.
@@ -150,18 +157,7 @@ class FilesystemRunMixin(object):
         self._dependencies = None
 
     @property
-    def bundle(self):
-        raise NotImplementedError
-
-    @property
     def is_shared_file_system(self):
-        raise NotImplementedError
-
-    @property
-    def bundle_path(self):
-        """
-        :return: The filesystem path to the bundle.
-        """
         raise NotImplementedError
 
     def setup_dependencies(self):
