@@ -317,8 +317,8 @@ class Setup(AwsBatchRunState):
         bundle = self._bundle
         # The docker image is always specified
         image = self.resources['docker_image']
-        # Request memory is in bytes. Convert to mb. Batch requires at least 4 mb allocated.
-        memory = int(max(self.resources.get('request_memory', 0), 4*BYTES_PER_MEGABYTE) / BYTES_PER_MEGABYTE)
+        # Default to 100 MB so we have some breathing room.
+        memory_bytes = self.resources.get('request_memory') or 100*BYTES_PER_MEGABYTE
         cpus = max(self.resources.get('cpus', 0), 1)
 
         # TODO All of this mounting only works on shared file systems.
@@ -345,7 +345,7 @@ class Setup(AwsBatchRunState):
             'containerProperties': {
                 'image': image,
                 'vcpus': cpus,
-                'memory': memory,
+                'memory': int(memory_bytes / BYTES_PER_MEGABYTE),
                 'command': self.docker_command,
                 'volumes': map(lambda pair: pair[0], volumes_and_mounts),
                 'environment': [
@@ -442,6 +442,8 @@ class Running(AwsBatchRunState):
     """
     def update(self, events):
         job = self.get_job()
+        # The contain contains information about the most recent docker container used to run the job
+        container = job['container']
         status = job['status']
 
         now = current_time()
@@ -455,14 +457,14 @@ class Running(AwsBatchRunState):
         if status == BatchStatus.Failed:
             run_status = 'Failed'
             finalize_message = {
-                'exitcode': job.get('exitCode', 1),
-                'failure_message': job.get('reason', job.get('statusReason', "Failed for unknown reason."))
+                'exitcode': container.get('exitCode', 1),
+                'failure_message': container.get('reason', job.get('statusReason', "Failed for unknown reason."))
             }
         elif status == BatchStatus.Succeeded:
             run_status = 'Succeeded'
             finalize_message = {
-                'exitcode': job.get('exitCode'),
-                'failure_message': job.get('reason')
+                'exitcode': container.get('exitCode'),
+                'failure_message': container.get('reason')
             }
 
         self.update_metadata(run_status=run_status, last_updated=now, time=runtime)
