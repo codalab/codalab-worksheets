@@ -60,6 +60,7 @@ class WorkerStateManager(object):
             return [process(run) for run in self._runs.itervalues()]
 
     def resume_previous_runs(self, run_deserializer):
+        # TODO Why do nothing on a shared file system?
         if self.shared_file_system:
             return
 

@@ -1,3 +1,4 @@
+import httplib
 from contextlib import closing
 from subprocess import check_output
 import logging
@@ -9,13 +10,14 @@ import time
 import traceback
 import re
 import json
+import boto3
 
 from bundle_service_client import BundleServiceException
-from aws_batch import AwsBatchRun
+from aws_batch import AwsBatchRunManager
+from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from dependency_manager import DependencyManager
 from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
-from run import Run
 from docker_image_manager import DockerImageManager
 
 VERSION = 14 # HACK TO STOP UPGRADE
@@ -69,6 +71,7 @@ class Worker(object):
         self._exiting = False
         self._should_upgrade = False
         self._last_checkin_successful = False
+        self._run_manager = AwsBatchRunManager(bundle_service, self, boto3.client('batch'))
 
     def run(self):
         if self._max_images_bytes is not None:
@@ -79,12 +82,7 @@ class Worker(object):
         while self._should_run():
             try:
                 self._checkin()
-                self._worker_state_manager.resume_previous_runs(
-                        # lambda run_info: Run.deserialize(
-                        #     self._bundle_service, self._docker, self._image_manager, self, run_info)
-                        lambda run_info: AwsBatchRun.deserialize(
-                            self._bundle_service, self._docker, self._image_manager, self, run_info)
-                )
+                self._worker_state_manager.resume_previous_runs(self._run_manager.deserialize)
                 self._worker_state_manager.save_state()
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in.')
@@ -154,9 +152,9 @@ class Worker(object):
             # 'memory_bytes': self._get_memory_bytes(),
             # TODO Move these to RunFactory and compute based on work queue (or just make infinite)
             'slots': self._slots if not self._is_exiting() else 0,
-            'cpus': 100000,
-            'gpus': 0,
-            'memory_bytes': 100000000000,
+            'cpus': self._run_manager.cpus,
+            'gpus': self._run_manager.gpus,
+            'memory_bytes': self._run_manager.memory * (1024*1024),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
         response = self._bundle_service.checkin(self.id, request)
@@ -184,11 +182,13 @@ class Worker(object):
             bundle_path = bundle['location']
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
-        # run = Run(self._bundle_service, self._docker, self._image_manager, self,
-        #           bundle, bundle_path, resources)
-        run = AwsBatchRun(bundle_service=self._bundle_service, batch_client=None, worker=self, bundle=bundle,
-                          bundle_path=bundle_path, resources=resources)
-        if run.run():
+
+        run = self._run_manager.create_run(
+            bundle=bundle,
+            bundle_path=bundle_path,
+            resources=resources
+        )
+        if run.start():
             self._worker_state_manager.add_run(bundle['uuid'], run)
 
     def add_dependency(self, parent_uuid, parent_path, uuid, loop_callback):
@@ -253,15 +253,22 @@ class Worker(object):
         self._dependency_manager.remove_dependency(parent_uuid, parent_path, uuid)
 
     def _read(self, socket_id, uuid, path, read_args):
+        socket = self._bundle_service.socket(worker_id=self.id, socket_id=socket_id)
         run = self._worker_state_manager._get_run(uuid)
         if run is None:
-            Run.read_run_missing(self._bundle_service, self, socket_id)
+            message = {
+                'error_code': httplib.INTERNAL_SERVER_ERROR,
+                'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
+            }
+            socket.reply(message)
+        elif run.read(path=path, read_args=read_args, socket=socket):
+            pass
         else:
-            # Reads may take a long time, so do the read in a separate thread.
-            # threading.Thread(target=Run.read,
-            #                  args=(run, socket_id, path, read_args)).start()
-            threading.Thread(target=AwsBatchRun.read,
-                             args=(run, socket_id, path, read_args)).start()
+            message = {
+                'error_code': httplib.INTERNAL_SERVER_ERROR,
+                'error_message': 'Read failed for unknown reason.',
+            }
+            socket.reply(message)
 
     def _write(self, uuid, subpath, string):
         run = self._worker_state_manager._get_run(uuid)
@@ -271,7 +278,7 @@ class Worker(object):
     def _kill(self, uuid):
         run = self._worker_state_manager._get_run(uuid)
         if run is not None:
-            run.kill('Kill requested')
+            run.kill()
 
     def finish_run(self, uuid):
         """
