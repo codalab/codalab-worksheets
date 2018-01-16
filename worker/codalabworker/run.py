@@ -10,7 +10,7 @@ import multiprocessing
 import re
 from subprocess import check_output
 
-from run_manager import RunManagerBase, RunBase
+from run_manager import RunManagerBase, RunBase, FilesystemRunMixin
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
@@ -84,8 +84,8 @@ class DockerRunManager(RunManagerBase):
         self._image_manager.stop_cleanup_thread()
 
 
-# TODO Support local dependencies in FileSystemMixin and then use it here and remove read/write
-class Run(RunBase):
+# TODO once setup_dependencies supports not shared_file_system then switch to using it
+class Run(FilesystemRunMixin, RunBase):
     """
     This class manages a single run, including
 
@@ -100,8 +100,8 @@ class Run(RunBase):
         6) Reporting to the bundle service that the run has finished.
     """
 
-    def __init__(self, bundle_service, docker, image_manager, worker,
-                 bundle, bundle_path, resources):
+    def __init__(self, bundle_service, docker, image_manager, worker, bundle, bundle_path, resources):
+        super(Run, self).__init__()
         self._bundle_service = bundle_service
         self._docker = docker
         self._image_manager = image_manager
@@ -138,6 +138,10 @@ class Run(RunBase):
     @property
     def bundle_path(self):
         return self._bundle_path
+
+    @property
+    def is_shared_file_system(self):
+        return self._worker.shared_file_system
 
     def start(self):
         """
@@ -396,77 +400,6 @@ class Run(RunBase):
             'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         bundle_service.reply(worker.id, socket_id, message)
-
-    def read(self, socket_id, path, read_args):
-        def reply_error(code, message):
-            message = {
-                'error_code': code,
-                'error_message': message,
-            }
-            self._bundle_service.reply(self._worker.id, socket_id, message)
-
-        try:
-            read_type = read_args['type']
-            if read_type == 'get_target_info':
-                # At the top-level directory, we should ignore dependencies.
-                if path and os.path.normpath(path) in self._dep_paths:
-                    target_info = None
-                else:
-                    try:
-                        target_info = get_target_info(
-                            self._bundle_path, self._uuid, path, read_args['depth'])
-                    except PathException as e:
-                        reply_error(httplib.BAD_REQUEST, e.message)
-                        return
-
-                    if not path and read_args['depth'] > 0:
-                        target_info['contents'] = [
-                            child for child in target_info['contents']
-                            if child['name'] not in self._dep_paths]
-
-                self._bundle_service.reply(self._worker.id, socket_id,
-                                           {'target_info': target_info})
-            else:
-                try:
-                    final_path = get_target_path(self._bundle_path, self._uuid, path)
-                except PathException as e:
-                    reply_error(httplib.BAD_REQUEST, e.message)
-                    return
-
-                if read_type == 'stream_directory':
-                    if path:
-                        exclude_names = []
-                    else:
-                        exclude_names = self._dep_paths
-                    with closing(tar_gzip_directory(final_path, exclude_names=exclude_names)) as fileobj:
-                        self._bundle_service.reply_data(self._worker.id, socket_id, {}, fileobj)
-                elif read_type == 'stream_file':
-                    with closing(gzip_file(final_path)) as fileobj:
-                        self._bundle_service.reply_data(self._worker.id, socket_id, {}, fileobj)
-                elif read_type == 'read_file_section':
-                    string = gzip_string(read_file_section(
-                        final_path, read_args['offset'], read_args['length']))
-                    self._bundle_service.reply_data(self._worker.id, socket_id, {}, string)
-                elif read_type == 'summarize_file':
-                    string = gzip_string(summarize_file(
-                        final_path, read_args['num_head_lines'],
-                        read_args['num_tail_lines'], read_args['max_line_length'],
-                        read_args['truncation_text']))
-                    self._bundle_service.reply_data(self._worker.id, socket_id, {}, string)
-        except BundleServiceException:
-            traceback.print_exc()
-        except Exception as e:
-            traceback.print_exc()
-            reply_error(httplib.INTERNAL_SERVER_ERROR, e.message)
-
-    def write(self, subpath, string):
-        # Make sure you're not trying to write over a dependency.
-        if os.path.normpath(subpath) in self._dep_paths:
-            return
-
-        # Do the write.
-        with open(os.path.join(self._bundle_path, subpath), 'w') as f:
-            f.write(string)
 
     def kill(self):
         with self._kill_lock:

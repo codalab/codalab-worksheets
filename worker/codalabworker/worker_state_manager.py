@@ -17,7 +17,8 @@ class WorkerStateManager(object):
     """
     STATE_FILENAME = 'worker-state.json'
 
-    def __init__(self, work_dir, shared_file_system=False):
+    def __init__(self, work_dir, run_serialize_func, shared_file_system=False):
+        self._run_serialize_func = run_serialize_func
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
         self.shared_file_system = shared_file_system
         self._lock = threading.Lock()
@@ -94,7 +95,7 @@ class WorkerStateManager(object):
 
         with self._lock:
             for uuid, run in self._runs.items():
-                state['runs'][uuid] = run.serialize()
+                state['runs'][uuid] = self._run_serialize_func(run)
 
             with open(self._state_file, 'w') as f:
                 json.dump(state, f)

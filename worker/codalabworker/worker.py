@@ -54,8 +54,13 @@ class Worker(object):
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._slots = slots
+        self._run_manager = create_run_manager(self)
 
-        self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
+        self._worker_state_manager = WorkerStateManager(
+            work_dir=work_dir,
+            run_serialize_func=self._run_manager.serialize,
+            shared_file_system=self.shared_file_system
+        )
 
         if not self.shared_file_system:
             # Manages which dependencies are available.
@@ -66,7 +71,7 @@ class Worker(object):
         self._exiting = False
         self._should_upgrade = False
         self._last_checkin_successful = False
-        self._run_manager = create_run_manager(self)
+
 
     def run(self):
         if not self.shared_file_system:
