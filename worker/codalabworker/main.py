@@ -120,7 +120,7 @@ chmod 600 %s""" % args.password_file
             logging.info("Using AWS Batch queue %s for run submission.", args.batch_queue)
 
             batch_client = boto3.client('batch')
-            return AwsBatchRunManager(batch_client, bundle_service, w)
+            return AwsBatchRunManager(batch_client, args.batch_queue, bundle_service, w)
 
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     args.shared_file_system, args.slots, bundle_service, create_run_manager)
