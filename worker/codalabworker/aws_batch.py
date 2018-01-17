@@ -17,14 +17,8 @@ except ImportError:
     sys.exit(1)
 
 
-def parse_int(to_parse, default_value):
-    try:
-        return int(to_parse)
-    except (ValueError, TypeError):
-        return default_value
-
-
 def current_time():
+    """Helper to get the current time as Codalab likes it"""
     return int(time.time())
 
 
@@ -233,11 +227,18 @@ def event(name, **payload):
     }
 
 
-class Event(object):
-    UPDATE_METADATA = 'update_metadata'
-    FAILED = 'failed'
-    SUCCESS = 'success'
-    Kill = 'kill'
+class BatchStatus(object):
+    """
+    Constants for the statuses a Batch job can be in.
+    see: https://docs.aws.amazon.com/batch/latest/APIReference/API_JobDetail.html
+    """
+    Submitted = 'SUBMITTED'
+    Pending = 'PENDING'
+    Runnable = 'RUNNABLE'
+    Starting = 'STARTING'
+    Running = 'RUNNING'
+    Succeeded = 'SUCCEEDED'
+    Failed = 'FAILED'
 
 
 class AwsBatchRunState(fsm.State):
@@ -281,8 +282,6 @@ class AwsBatchRunState(fsm.State):
         return self.__class__.__name__
 
     def transition(self, NewState, outputs=None):
-        status_event = event(Event.UPDATE_METADATA, run_status=self.name, last_updated=current_time())
-        outputs = outputs + [status_event] if outputs is not None else [status_event]
         new_state = NewState(bundle=self._bundle,
                              batch_client=self._batch_client,
                              queue_name=self._queue_name,
@@ -292,7 +291,7 @@ class AwsBatchRunState(fsm.State):
                              resources=self.resources,
                              dependencies=self._dependencies)
         self.logger.info("Job %s transitioning %s -> %s", self.uuid, self.name, new_state.name)
-        return new_state, outputs
+        return new_state, []
 
     def noop(self):
         return self, []
@@ -333,10 +332,6 @@ class Setup(AwsBatchRunState):
     @property
     def docker_working_directory(self):
         return '/' + self.uuid
-
-    @property
-    def docker_dependencies_directory(self):
-        return '/' + self.uuid + '_dependencies'
 
     @property
     def docker_command(self):
@@ -441,16 +436,6 @@ class Submit(AwsBatchRunState):
         self.update_metadata(batch_job_id=job_id, submit_time=current_time())
 
         return self.transition(Running)
-
-
-class BatchStatus(object):
-    Submitted = 'SUBMITTED'
-    Pending = 'PENDING'
-    Runnable = 'RUNNABLE'
-    Starting = 'STARTING'
-    Running = 'RUNNING'
-    Succeeded = 'SUCCEEDED'
-    Failed = 'FAILED'
 
 
 class JobFetcher(object):
@@ -563,4 +548,3 @@ class Complete(AwsBatchRunState):
         self._worker.finish_run(self.uuid)
 
         return None, []
-
