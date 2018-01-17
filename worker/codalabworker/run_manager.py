@@ -201,6 +201,10 @@ class FilesystemRunMixin(object):
         self._dependencies = dependencies
         return self._dependencies
 
+    def cleanup_dependencies(self):
+        # TODO Both implement this and add setup/cleanup hooks to RunBase and use them to call these
+        pass
+
     def path_for_dependency(self, dep):
         if self.is_shared_file_system:
             parent_bundle_path = os.path.realpath(dep['location'])

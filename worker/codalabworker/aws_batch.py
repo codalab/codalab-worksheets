@@ -6,6 +6,7 @@ import time
 import fsm
 from file_util import remove_path
 from run_manager import RunManagerBase, RunBase, FilesystemRunMixin
+from formatting import size_str
 
 try:
     import boto3
@@ -184,7 +185,11 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
 
     def download_dependency(self, uuid, path):
         # TODO Implement a better shared spot for this
-        raise NotImplementedError
+        def update_status_and_check_killed(bytes_downloaded):
+            logging.debug('Downloading dependency %s/%s: %s done (archived size)' %
+                          (uuid, path, size_str(bytes_downloaded)))
+        dependency_path = self._worker.add_dependency(uuid, path, self._uuid, update_status_and_check_killed)
+        return dependency_path
 
     def create_fsm(self):
         assert self._fsm is None, "FSM was already created."
@@ -317,11 +322,6 @@ class Setup(AwsBatchRunState):
         return '/' + self.uuid + '_dependencies'
 
     @property
-    def shared_batch_efs_directory(self):
-        # TODO This is the filesystem shared between the worker and the compute cluster. For now hard-code
-        return '/data/codalab-home/bundles'
-
-    @property
     def docker_command(self):
         bash_commands = [
             'cd %s' % self.docker_working_directory,
@@ -342,11 +342,9 @@ class Setup(AwsBatchRunState):
         memory_bytes = self.resources.get('request_memory') or 100*BYTES_PER_MEGABYTE
         cpus = max(self.resources.get('cpus', 0), 1)
 
-        # TODO All of this mounting only works on shared file systems.
-        #      Figure out a strategy for when this isn't the case (e.g. s3, transfer beforehand, etc)
-
+        # Note: The bundle path MUST be on a shared mount between the worker machine and the compute environment nodes.
         volumes_and_mounts = [self.volume_and_mount(
-            host_path=os.path.join(self.shared_batch_efs_directory, self.uuid),
+            host_path=self._bundle_path,
             container_path=self.docker_working_directory,
             name=self.uuid,
             read_only=False
@@ -438,12 +436,13 @@ class BatchStatus(object):
     Failed = 'FAILED'
 
 
-class Running(AwsBatchRunState):
-    def __init__(self, *args, **kwargs):
-        super(Running, self).__init__(*args, **kwargs)
+class JobFetcher(object):
+    def __init__(self, job_id, batch_client):
         self._last_check_time = 0
         self._check_frequency = 30  # seconds
         self._job = None
+        self._job_id = job_id
+        self._batch_client = batch_client
 
     def should_refresh(self):
         now = current_time()
@@ -452,46 +451,34 @@ class Running(AwsBatchRunState):
             return True
         return False
 
-    def get_job(self):
+    def fetch_job(self):
         if self.should_refresh() or self._job is None:
-            response = self._batch_client.describe_jobs(jobs=[self.metadata['batch_job_id']])
+            response = self._batch_client.describe_jobs(jobs=[self._job_id])
             self._job = response['jobs'][0]
         return self._job
+
+
+class Running(AwsBatchRunState):
+    def __init__(self, *args, **kwargs):
+        super(Running, self).__init__(*args, **kwargs)
+        self._job_fetcher = JobFetcher(self._bundle['metadata']['batch_job_id'], self._batch_client)
 
     """
     Waiting for Batch to schedule the job
     """
     def update(self, events):
-        job = self.get_job()
-        # The contain contains information about the most recent docker container used to run the job
-        container = job['container']
+        job = self._job_fetcher.fetch_job()
         status = job['status']
 
         now = current_time()
         started = job.get('startedAt')
-        stopped = job.get('stoppedAt', now * 1000)
-        runtime = (stopped - started if started else 0) / 1000
+        runtime = now - (started / 1000) if started else 0
 
-        finalize_message = None
         run_status = 'Batch Status: %s' % status
-
-        if status == BatchStatus.Failed:
-            run_status = 'Failed'
-            finalize_message = {
-                'exitcode': container.get('exitCode', 1),
-                'failure_message': container.get('reason', job.get('statusReason', "Failed for unknown reason."))
-            }
-        elif status == BatchStatus.Succeeded:
-            run_status = 'Succeeded'
-            finalize_message = {
-                'exitcode': container.get('exitCode'),
-                'failure_message': container.get('reason')
-            }
 
         self.update_metadata(run_status=run_status, last_updated=now, time=runtime)
 
-        if finalize_message:
-            self._bundle_service.finalize_bundle(self._worker.id, self.uuid, finalize_message)
+        if status in [BatchStatus.Succeeded, BatchStatus.Failed]:
             return self.transition(Cleanup)
 
         return self.noop()
@@ -503,13 +490,60 @@ class Cleanup(AwsBatchRunState):
             jobDefinition=self.metadata['batch_job_definition']
         )
 
-        # TODO Cleanup <bundle_uuid>_dependencies folder
+        # TODO Cleanup the empty directories made by mounting the dependencies
         return self.transition(Complete)
 
 
 class Complete(AwsBatchRunState):
+    def __init__(self, *args, **kwargs):
+        super(Complete, self).__init__(*args, **kwargs)
+        self._job_fetcher = JobFetcher(self._bundle['metadata']['batch_job_id'], self._batch_client)
+
     def update(self, events):
+        job = self._job_fetcher.fetch_job()
+        status = job['status']
+        # The contain contains information about the most recent docker container used to run the job
+        container = job['container']
+
+        started = job.get('startedAt')
+        stopped = job.get('stoppedAt')
+
+        metadata_updates = {
+            'last_updated': current_time()
+        }
+
+        if started and stopped:
+            metadata_updates['time'] = (stopped - started) / 1000
+
+        if status == BatchStatus.Succeeded:
+            run_status = 'Succeeded'
+            finalize_message = {
+                'exitcode': container.get('exitCode'),
+                'failure_message': container.get('reason')
+            }
+        else:
+            run_status = 'Failed'
+            finalize_message = {
+                'exitcode': container.get('exitCode', 1),
+                'failure_message': container.get('reason', job.get('statusReason', "Failed for unknown reason."))
+            }
+
+        metadata_updates['run_status'] = run_status
+        self.update_metadata(**metadata_updates)
+
+        # Upload the data if needed
+        if not self._worker.shared_file_system:
+            self.logger.debug('Uploading results for run with UUID %s', self.uuid)
+
+            def update_status(bytes_uploaded):
+                self.logger.debug('Uploading results: %s done (archived size)' % size_str(bytes_uploaded))
+
+            self._bundle_service.update_bundle_contents(self._worker.id, self.uuid, self._bundle_path, update_status)
+
+        self._bundle_service.finalize_bundle(self._worker.id, self.uuid, finalize_message)
+
+        # Notify the worker that we are finished
         self._worker.finish_run(self.uuid)
-        # TODO Maybe we should set the final success/failed status here instead of above
+
         return None, []
 
