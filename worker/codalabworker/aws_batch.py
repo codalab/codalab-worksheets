@@ -100,7 +100,6 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
     on the compute cluster which is serving the Batch queue.
     For an article on how to achieve this, see:
     """
-
     def __init__(self, bundle_service, batch_client, queue_name, worker, bundle, bundle_path, resources):
         super(AwsBatchRun, self).__init__()
         self._bundle_service = bundle_service
@@ -183,6 +182,9 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         if job_definition:
             self._batch_client.deregister_job_definition(jobDefinition=job_definition)
 
+    def download_dependency(self, uuid, path):
+        # TODO Implement a better shared spot for this
+        raise NotImplementedError
 
     def create_fsm(self):
         assert self._fsm is None, "FSM was already created."

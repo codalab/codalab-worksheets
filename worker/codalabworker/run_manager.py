@@ -168,9 +168,17 @@ class FilesystemRunMixin(object):
     def is_shared_file_system(self):
         raise NotImplementedError
 
+    @property
+    def docker_working_directory(self):
+        return os.path.join('/', self.bundle['uuid'])
+
     def setup_dependencies(self):
         """
         Set up and return the dependencies for this run bundle.
+
+        For example, a run bundle with uuid 0x111111 with dependencies foo:0xaaaa 0xbbbbb
+        would return [(BUNDLE_DIR/0xaaaa, /0x111111/foo, 0xaaaa), (BUNDLE_DIR/0xbbbbb, /0x111111/0xbbbbb, 0xbbbbb)]
+
         :return: A list of dependencies which are tuples of the form (local_path, docker_path, bundle_uuid)
         """
         # If dependencies have already been setup, just return them
@@ -178,30 +186,39 @@ class FilesystemRunMixin(object):
             return self._dependencies
 
         dependencies = []
-        docker_dependencies_directory = os.path.join('/', self.bundle['uuid'] + '_dependencies')
+        # Mount the dependencies directly into the working directory
         for dep in self.bundle['dependencies']:
             child_path = os.path.normpath(os.path.join(self.bundle_path, dep['child_path']))
             if not child_path.startswith(self.bundle_path):
                 raise Exception('Invalid key for dependency: %s' % dep['child_path'])
 
-            if self.is_shared_file_system:
-                parent_bundle_path = dep['location']
+            dependency_path = self.path_for_dependency(dep)
 
-                # Check that the dependency is valid (i.e. points inside the
-                # bundle and isn't a broken symlink).
-                parent_bundle_path = os.path.realpath(parent_bundle_path)
-                dependency_path = os.path.realpath(os.path.join(parent_bundle_path, dep['parent_path']))
-                if not (dependency_path.startswith(parent_bundle_path) and os.path.exists(dependency_path)):
-                    raise Exception('Invalid dependency %s/%s' % (dep['parent_uuid'], dep['parent_path']))
-            else:
-                raise Exception('Only shared file system is supported for now')
-
-            docker_dependency_path = os.path.join(docker_dependencies_directory, dep['child_path'])
-            os.symlink(docker_dependency_path, child_path)
-            dependencies.append((dependency_path, docker_dependency_path, dep['parent_uuid']))
+            docker_dependency_path = os.path.join(self.docker_working_directory, dep['child_path'])
+            dependency_name = dep['child_path']
+            dependencies.append((dependency_path, docker_dependency_path, dependency_name))
 
         self._dependencies = dependencies
         return self._dependencies
+
+    def path_for_dependency(self, dep):
+        if self.is_shared_file_system:
+            parent_bundle_path = os.path.realpath(dep['location'])
+            dep_path = os.path.realpath(os.path.join(parent_bundle_path, dep['parent_path']))
+            if not (dep_path.startswith(parent_bundle_path) and os.path.exists(dep_path)):
+                raise Exception('Invalid dep %s/%s' % (dep['parent_uuid'], dep['parent_path']))
+            return dep_path
+        else:
+            return self.download_dependency(dep['parent_uuid'], dep['parent_path'])
+
+    def download_dependency(self, uuid, path):
+        """
+        Download the specified uuid/path and return the path it was downloaded to.
+        :param uuid: bundle uuid to download from
+        :param path: the path into the bundle to download
+        :return: the path the data was downloaded to
+        """
+        raise NotImplementedError
 
     def read(self, path, read_args, socket):
         # Reads may take a long time, so do the read in a separate thread.

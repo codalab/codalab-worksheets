@@ -231,6 +231,10 @@ class Run(FilesystemRunMixin, RunBase):
                 self._safe_update_run_status(status)
         return update
 
+    def _check_killed(self):
+        if self._is_killed():
+            raise Exception(self._get_kill_message())
+
     def _start(self):
         """
         Starts the Docker container and then passes execution on to the _monitor
@@ -240,60 +244,26 @@ class Run(FilesystemRunMixin, RunBase):
         try:
             # Used to ensure that we can kill the run while it's downloading
             # dependencies or the Docker image.
-            def check_killed():
-                if self._is_killed():
-                    raise Exception(self._get_kill_message())
 
-            dependencies = []
-            docker_dependencies_path = '/' + self._uuid + '_dependencies'
-            for dep in self._bundle['dependencies']:
-                child_path = os.path.normpath(
-                    os.path.join(self._bundle_path, dep['child_path']))
-                if not child_path.startswith(self._bundle_path):
-                    raise Exception('Invalid key for dependency: %s' % (
-                        dep['child_path']))
-
-                if self._worker.shared_file_system:
-                    parent_bundle_path = dep['location']
-
-                    # Check that the dependency is valid (i.e. points inside the
-                    # bundle and isn't a broken symlink).
-                    parent_bundle_path = os.path.realpath(parent_bundle_path)
-                    dependency_path = os.path.realpath(
-                        os.path.join(parent_bundle_path, dep['parent_path']))
-                    if (not dependency_path.startswith(parent_bundle_path) or
-                        not os.path.exists(dependency_path)):
-                        raise Exception('Invalid dependency %s/%s' % (
-                            dep['parent_uuid'], dep['parent_path']))
-                else:
-                    updater = self._throttled_updater()
-                    def update_status_and_check_killed(bytes_downloaded):
-                        updater('Downloading dependency %s: %s done (archived size)' % (
-                            dep['child_path'], size_str(bytes_downloaded)))
-                        check_killed()
-                    dependency_path = self._worker.add_dependency(
-                        dep['parent_uuid'], dep['parent_path'], self._uuid,
-                        update_status_and_check_killed)
-
-                docker_dependency_path = os.path.join(
-                    docker_dependencies_path, dep['child_path'])
-                os.symlink(docker_dependency_path, child_path)
-                dependencies.append((dependency_path, docker_dependency_path))
+            dependencies = self.setup_dependencies()
 
             def do_start():
                 self._safe_update_run_status('Starting Docker container')
+                # The docker client only wants the pair of paths
+                docker_dependencies = [(dep[0], dep[1]) for dep in dependencies]
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
                     self._resources['docker_image'],
                     self._resources['request_network'],
-                    dependencies)
+                    docker_dependencies)
 
             # Pull the docker image regardless of whether or not we already have it
             # This will make sure we pull updated versions of the image
             updater = self._throttled_updater()
+
             def update_status_and_check_killed(status):
                 updater('Pulling docker image: ' + status)
-                check_killed()
+                self._check_killed()
             self._docker.download_image(self._resources['docker_image'],
                                         update_status_and_check_killed)
             self._container_id = do_start()
@@ -310,6 +280,17 @@ class Run(FilesystemRunMixin, RunBase):
 
         self._safe_update_run_status('Running')
         self._monitor()
+
+    def download_dependency(self, uuid, path):
+        updater = self._throttled_updater()
+
+        def update_status_and_check_killed(bytes_downloaded):
+            updater('Downloading dependency %s/%s: %s done (archived size)' %
+                    (uuid, path, size_str(bytes_downloaded)))
+            self._check_killed()
+
+        dependency_path = self._worker.add_dependency(uuid, path, self._uuid, update_status_and_check_killed)
+        return dependency_path
 
     def _monitor(self):
         # We measure the disk utilization in another thread, since that could be
