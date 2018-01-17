@@ -32,6 +32,23 @@ BYTES_PER_MEGABYTE = 1024 * 1024
 
 
 class AwsBatchRunManager(RunManagerBase):
+    """
+    A run manager which schedules runs on the AWS Batch service: https://aws.amazon.com/batch/.
+    Batch allows machines to be dynamically allocated on your behalf.
+    These machines will ultimately be what executes the runs created by this run manager.
+
+    In order to use this run manager, the following things must be true:
+    1) The Python package boto3 must be installed
+    2) AWS credentials must be accessible by boto3 which have permission to submit Batch jobs
+    3) A Batch Job Queue must exist with the name `queue_name`
+    4) The Job Queue must use a Compute Environment whose AMI has a shared filesystem mounted (e.g. AWS EFS)
+    5) The shared filesystem must also be mounted on the worker machine
+    6) The absolute path to the shared filesystem must be the same on the worker and Compute Environment machines
+    7) The workers work-dir, and hence bundle_paths, must be on this shared filesystem
+
+    If used with the worker --shared-file-system, then that filesystem must be mounted by both the worker and the
+    Compute Environment rather then requirements 5-7 above.
+    """
     def __init__(self, batch_client, queue_name, bundle_service, worker):
         self._bundle_service = bundle_service
         self._queue_name = queue_name
