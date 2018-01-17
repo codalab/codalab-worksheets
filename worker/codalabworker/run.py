@@ -84,7 +84,6 @@ class DockerRunManager(RunManagerBase):
         self._image_manager.stop_cleanup_thread()
 
 
-# TODO once setup_dependencies supports not shared_file_system then switch to using it
 class Run(FilesystemRunMixin, RunBase):
     """
     This class manages a single run, including
