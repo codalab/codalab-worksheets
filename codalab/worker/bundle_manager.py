@@ -171,9 +171,6 @@ class BundleManager(object):
                 target=BundleManager._make_bundle, args=[self, bundle]
             ).start()
 
-    def _schedule_run_bundles(self):
-        raise NotImplementedError("Subclass of BundleManager must implement _schedule_run_bundles")
-
     def _is_making_bundles(self):
         with self._make_uuids_lock:
             return bool(self._make_uuids)
