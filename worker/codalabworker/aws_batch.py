@@ -8,14 +8,6 @@ from file_util import remove_path
 from run_manager import RunManagerBase, RunBase, FilesystemRunMixin
 from formatting import size_str
 
-try:
-    import boto3
-except ImportError:
-    print("Missing dependencies, please install boto3 to enable AWS support.")
-    import sys
-
-    sys.exit(1)
-
 
 def current_time():
     """Helper to get the current time as Codalab likes it"""
@@ -244,7 +236,7 @@ class BatchStatus(object):
 class AwsBatchRunState(fsm.State):
     def __init__(self, bundle, batch_client, queue_name, worker, bundle_service, bundle_path, resources, dependencies):
         self._bundle = bundle
-        self._batch_client = batch_client if batch_client else boto3.client('batch')
+        self._batch_client = batch_client
         self._queue_name = queue_name
         self._worker = worker
         self._bundle_service = bundle_service

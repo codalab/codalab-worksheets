@@ -114,7 +114,13 @@ chmod 600 %s""" % args.password_file
             image_manager = DockerImageManager(docker, args.work_dir, max_images_bytes)
             return DockerRunManager(docker, bundle_service, image_manager, w)
         else:
-            import boto3
+            try:
+                import boto3
+            except ImportError:
+                print("Missing dependencies, please install boto3 to enable AWS support.")
+                import sys
+                sys.exit(1)
+
             from aws_batch import AwsBatchRunManager
 
             logging.info("Using AWS Batch queue %s for run submission.", args.batch_queue)
