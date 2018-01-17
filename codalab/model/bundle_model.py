@@ -710,7 +710,6 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
             if row.state != State.WORKER_OFFLINE: # this should never happen
-                print "Warning: resume_bundle is called on a bundle that is not of state OFFLINE"
                 return False
 
             worker_run_row = {
@@ -723,7 +722,7 @@ class BundleModel(object):
             bundle_update = {
                 'state': State.RUNNING,
                 'metadata': {
-                    'last_updated': start_time,
+                    'last_updated': int(time.time()),
                 },
             }
             self.update_bundle(bundle, bundle_update, connection)
@@ -1573,12 +1572,13 @@ class BundleModel(object):
         if query_info.get('count'):
             # Sort by decreasing count
             query = query.order_by('cnt DESC')
+            if field is not None:
+                query = query.group_by(field)
         else:
             # Sort from latest event to earliest
             query = query.order_by(cl_event.c.id.desc())
-
-        if field is not None:
-            query = query.group_by(field)
+            if field is not None:
+                raise UsageError('If specify field, must count')
 
         if offset != None:
             query = query.offset(offset)

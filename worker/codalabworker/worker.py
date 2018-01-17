@@ -17,7 +17,7 @@ from file_util import remove_path, un_tar_directory
 from run import Run
 from docker_image_manager import DockerImageManager
 
-VERSION = 14
+VERSION = 15
 
 logger = logging.getLogger(__name__)
 
@@ -117,12 +117,18 @@ class Worker(object):
             return True
         return self._worker_state_manager.has_runs()
 
-    def _get_memory_bytes(self):
+    def _get_installed_memory_bytes(self):
         try:
             return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
         except ValueError:
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+
+    def _get_allocated_memory_bytes(self):
+        return sum(self._worker_state_manager.map_runs(lambda run: run.requested_memory_bytes))
+
+    def _get_memory_bytes(self):
+        return max(0, self._get_installed_memory_bytes() - self._get_allocated_memory_bytes())
 
     def _get_gpu_count(self):
         if not self._docker._use_nvidia_docker:

@@ -29,7 +29,7 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
-    
+
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
         Exceptions:
@@ -57,7 +57,7 @@ class UploadManager(object):
                 elif is_local_path:
                     source_path = path_util.normalize(source)
                     path_util.check_isvalid(source_path, 'upload')
-                    
+
                     if unpack and self._can_unpack_file(source_path):
                         self._unpack_file(
                             source_path, zip_util.strip_archive_ext(source_output_path),
@@ -82,7 +82,7 @@ class UploadManager(object):
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
-    
+
     def _interpret_source(self, source):
         is_url, is_local_path, is_fileobj = False, False, False
         if isinstance(source, basestring):
@@ -98,7 +98,7 @@ class UploadManager(object):
 
     def _can_unpack_file(self, path):
         return os.path.isfile(path) and zip_util.path_is_archive(path)
-    
+
     def _unpack_file(self, source_path, dest_path, remove_source, simplify_archive):
         zip_util.unpack(zip_util.get_archive_ext(source_path), source_path, dest_path)
         if remove_source:

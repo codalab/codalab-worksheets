@@ -16,7 +16,6 @@ def get_requirements(*requirements_file_paths):
                 if line[0:2] != '-r' and line.find('git') == -1:
                     requirements.append(line.strip())
     return requirements
-
 setup(name='codalab',
     version=CODALAB_VERSION,
     description='CLI for CodaLab, a platform for reproducible computation',
@@ -29,7 +28,7 @@ setup(name='codalab',
     keywords='codalab reproducible computation worksheets competitions',
     packages=find_packages(exclude=["codalabworker", "tests*"]),
     include_package_data=True,
-    install_requires=get_requirements('./requirements.txt'),
+    install_requires=get_requirements('worker/requirements.txt'),
     entry_points={
         'console_scripts': [
             'cl=codalab.bin.cl:main',
