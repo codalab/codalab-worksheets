@@ -283,10 +283,8 @@ class AwsBatchRunState(fsm.State):
         self._bundle_service.update_bundle_metadata(self._worker.id, self._bundle['uuid'], kwargs)
 
 
-# TODO If there is really nothing to do here, then just go straight to setup
 class Initial(AwsBatchRunState):
     def update(self, events):
-        transition = None
         # If this job has previously made some progress, then pickup where we left off
         if self.metadata.get('batch_job_id'):
             transition = self.transition(Running)
