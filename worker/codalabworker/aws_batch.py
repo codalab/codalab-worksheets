@@ -281,7 +281,7 @@ class AwsBatchRunState(fsm.State):
     def name(self):
         return self.__class__.__name__
 
-    def transition(self, NewState, outputs=None):
+    def transition(self, NewState):
         new_state = NewState(bundle=self._bundle,
                              batch_client=self._batch_client,
                              queue_name=self._queue_name,
@@ -291,10 +291,7 @@ class AwsBatchRunState(fsm.State):
                              resources=self.resources,
                              dependencies=self._dependencies)
         self.logger.info("Job %s transitioning %s -> %s", self.uuid, self.name, new_state.name)
-        return new_state, []
-
-    def noop(self):
-        return self, []
+        return new_state
 
     def update_metadata(self, **kwargs):
         self.logger.debug("Updating metadata: %s", kwargs)
@@ -305,7 +302,7 @@ class AwsBatchRunState(fsm.State):
 
 
 class Initial(AwsBatchRunState):
-    def update(self, events):
+    def update(self):
         # If this job has previously made some progress, then pickup where we left off
         if self.metadata.get('batch_job_id'):
             transition = self.transition(Running)
@@ -318,7 +315,7 @@ class Initial(AwsBatchRunState):
 
 
 class Setup(AwsBatchRunState):
-    def update(self, events):
+    def update(self):
         # Create job definition
         job_definition = self.create_job_definition(self._dependencies)
 
@@ -421,7 +418,7 @@ class Setup(AwsBatchRunState):
 
 
 class Submit(AwsBatchRunState):
-    def update(self, events):
+    def update(self):
         job_definition = self._bundle['metadata']['batch_job_definition']
 
         # Submit job to AWS Batch
@@ -468,7 +465,7 @@ class Running(AwsBatchRunState):
     """
     Waiting for Batch to schedule the job
     """
-    def update(self, events):
+    def update(self):
         job = self._job_fetcher.fetch_job()
         status = job['status']
 
@@ -483,11 +480,11 @@ class Running(AwsBatchRunState):
         if status in [BatchStatus.Succeeded, BatchStatus.Failed]:
             return self.transition(Cleanup)
 
-        return self.noop()
+        return self.transition_noop()
 
 
 class Cleanup(AwsBatchRunState):
-    def update(self, events):
+    def update(self):
         self._batch_client.deregister_job_definition(
             jobDefinition=self.metadata['batch_job_definition']
         )
@@ -501,7 +498,7 @@ class Complete(AwsBatchRunState):
         super(Complete, self).__init__(*args, **kwargs)
         self._job_fetcher = JobFetcher(self._bundle['metadata']['batch_job_id'], self._batch_client)
 
-    def update(self, events):
+    def update(self):
         job = self._job_fetcher.fetch_job()
         status = job['status']
         # The contain contains information about the most recent docker container used to run the job
@@ -547,4 +544,4 @@ class Complete(AwsBatchRunState):
         # Notify the worker that we are finished
         self._worker.finish_run(self.uuid)
 
-        return None, []
+        return self.transition_done()
