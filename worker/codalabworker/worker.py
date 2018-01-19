@@ -17,7 +17,7 @@ from dependency_manager import DependencyManager
 from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
 
-VERSION = 14 # HACK TO STOP UPGRADE
+VERSION = 15
 
 logger = logging.getLogger(__name__)
 
