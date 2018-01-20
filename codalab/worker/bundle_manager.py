@@ -139,6 +139,7 @@ class BundleManager(object):
             acceptable_states = [State.READY]
             if bundle.metadata.allow_failed_dependencies:
                 acceptable_states.append(State.FAILED)
+                acceptable_states.append(State.KILLED)
             else:
                 failed_uuids = [
                     uuid for uuid, state in parent_states.iteritems()
