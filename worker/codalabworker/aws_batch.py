@@ -2,8 +2,10 @@ import logging
 import os
 import socket
 import time
+import traceback
 
 import fsm
+from bundle_service_client import BundleServiceException
 from file_util import remove_path
 from run_manager import RunManagerBase, RunBase, FilesystemRunMixin
 from formatting import size_str
@@ -20,20 +22,27 @@ BYTES_PER_MEGABYTE = 1024 * 1024
 class AwsBatchRunManager(RunManagerBase):
     """
     A run manager which schedules runs on the AWS Batch service: https://aws.amazon.com/batch/.
-    Batch allows machines to be dynamically allocated on your behalf.
-    These machines will ultimately be what executes the runs created by this run manager.
+    Batch allows machines to be dynamically allocated on your behalf, we will call these Computes.
+    We will refer to the machine you are running this worker code on, as the Worker.
+
+    The Worker essentially serves as an intermediary between Codalab and Batch.
+    From the Codalab master's perspective, the Worker is a single large machine.
+    The Worker then submits the jobs it receives to Batch which creates new Computes to run the jobs.
+    Computes will ultimately be what executes the runs.
 
     In order to use this run manager, the following things must be true:
-    1) The Python package boto3 must be installed
-    2) AWS credentials must be accessible by boto3 which have permission to submit Batch jobs
-    3) A Batch Job Queue must exist with the name `queue_name`
-    4) The Job Queue must use a Compute Environment whose AMI has a shared filesystem mounted (e.g. AWS EFS)
-    5) The shared filesystem must also be mounted on the worker machine
-    6) The absolute path to the shared filesystem must be the same on the worker and Compute Environment machines
-    7) The workers work-dir, and hence bundle_paths, must be on this shared filesystem
+    1) The Python package boto3 must be installed.
+    2) AWS credentials must be accessible by boto3 which have permission to submit Batch jobs.
+     see: http://boto3.readthedocs.io/en/latest/guide/configuration.html
+    3) A Batch Job Queue must exist with the name passed in as `queue_name`.
+    4) The Job Queue must use a Compute Environment whose AMI has a shared filesystem mounted (e.g. AWS EFS).
+       This will cause the Computes created to mount the filesystem.
+    5) The shared filesystem must also be mounted on the Worker.
+    6) The absolute path to the shared filesystem must be the same on the Worker and the Computes.
+    7) The Worker's work-dir, and hence bundle_paths, must be on this shared filesystem.
 
-    If used with the worker --shared-file-system, then that filesystem must be mounted by both the worker and the
-    Compute Environment rather then requirements 5-7 above.
+    If used with the --shared-file-system option, then the shared filesystem from the steps above must be the same
+    filesystem that the bundle service has mounted.
     """
     def __init__(self, batch_client, queue_name, bundle_service, worker):
         self._bundle_service = bundle_service
@@ -134,6 +143,7 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         return self._bundle_path
 
     def start(self):
+        # TODO Much of this setup logic needs deduplicated with Run.
         # Report that the bundle is running. We note the start time here for
         # accurate accounting of time used, since the clock on the bundle
         # service and on the worker could be different.
@@ -155,33 +165,27 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
             remove_path(self._bundle_path)
             os.mkdir(self._bundle_path)
 
-        self.create_fsm().start()
+        self._start_fsm()
         return True
 
     def resume(self):
-        """
-        Report that the bundle is running. We note the start time here for
-        accurate accounting of time used, since the clock on the bundle
-        service and on the worker could be different.
-        """
         start_message = {
-            'hostname': socket.gethostname(),
-            'start_time': current_time(),
+            'hostname': socket.gethostname()
         }
 
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid, start_message):
             return False
-        # TODO Do we need to do anything special here? We already deserialized to the correct state presumably
-        self.create_fsm().start()
+        # The FSM handles transitioning from the initial state to the correct state according to the state of Batch.
+        self._start_fsm()
         return True
 
-    def kill(self):
+    def kill(self, reason):
         if self._fsm:
             self._fsm.stop()
 
         job_id = self.bundle['metadata'].get('batch_job_id')
         if job_id:
-            self._batch_client.terminate_job(jobId=job_id, reason='Codalab kill requested.')
+            self._batch_client.terminate_job(jobId=job_id, reason=reason)
 
         job_definition = self.bundle['metadata'].get('batch_job_definition')
         if job_definition:
@@ -195,9 +199,9 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         dependency_path = self._worker.add_dependency(uuid, path, self._uuid, update_status_and_check_killed)
         return dependency_path
 
-    def create_fsm(self):
+    def _start_fsm(self):
         assert self._fsm is None, "FSM was already created."
-        # TODO Can this be replaced by just mounting dependencies directly?
+
         dependencies = self.setup_dependencies()
 
         # TODO Add a cleanup state which is used when exceptions are thrown from anything
@@ -209,20 +213,13 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
                         bundle_path=self._bundle_path,
                         resources=self._resources,
                         dependencies=dependencies)
-        self._fsm = fsm.ThreadedFiniteStateMachine(state, sleep_time=5.0)
-        return self._fsm
-
-
-def event(name, **payload):
-    return {
-        'name': name,
-        'payload': payload
-    }
+        self._fsm = fsm.ThreadedFiniteStateMachine(state)
+        self._fsm.start()
 
 
 class BatchStatus(object):
     """
-    Constants for the statuses a Batch job can be in.
+    Constants for the statuses a Batch job can be in.293
     see: https://docs.aws.amazon.com/batch/latest/APIReference/API_JobDetail.html
     """
     Submitted = 'SUBMITTED'
@@ -245,6 +242,10 @@ class AwsBatchRunState(fsm.State):
         self._logger = logging.getLogger(self.uuid)
         self._resources = resources
         self._dependencies = dependencies
+
+    @property
+    def update_period(self):
+        return 5.0
 
     @property
     def logger(self):
@@ -289,9 +290,12 @@ class AwsBatchRunState(fsm.State):
     def update_metadata(self, **kwargs):
         self.logger.debug("Updating metadata: %s", kwargs)
         # Update the bundle locally
-        self._bundle['metadata'].update(kwargs)
+        self.metadata.update(kwargs)
         # Update the bundle on the bundle service
-        self._bundle_service.update_bundle_metadata(self._worker.id, self._bundle['uuid'], kwargs)
+        try:
+            self._bundle_service.update_bundle_metadata(self._worker.id, self._bundle['uuid'], kwargs)
+        except BundleServiceException:
+            traceback.print_exc()
 
 
 class Initial(AwsBatchRunState):
@@ -316,15 +320,12 @@ class Setup(AwsBatchRunState):
         return self.transition(Submit)
 
     @property
-    def docker_image(self):
-        return self._bundle['metadata']['docker_image']
-
-    @property
     def docker_working_directory(self):
         return '/' + self.uuid
 
     @property
     def docker_command(self):
+        # TODO Cleanup the duplication between here and docker_client
         bash_commands = [
             'cd %s' % self.docker_working_directory,
             '(%s) >stdout 2>stderr' % self._bundle['command'],
@@ -368,16 +369,16 @@ class Setup(AwsBatchRunState):
                 'vcpus': cpus,
                 'memory': int(memory_bytes / BYTES_PER_MEGABYTE),
                 'command': self.docker_command,
-                'volumes': map(lambda pair: pair[0], volumes_and_mounts),
+                'volumes': [vol for vol, _ in volumes_and_mounts],
                 'environment': [
                     {
                         'name': 'HOME',
                         'value': self.docker_working_directory
                     }
                 ],  # TODO Should the env be set?
-                'mountPoints': map(lambda pair: pair[1], volumes_and_mounts),
+                'mountPoints': [mount for _, mount in volumes_and_mounts],
                 'readonlyRootFilesystem': False,
-                'user': 'root'  # TODO Figure out what to do here
+                'user': 'root'  # TODO Figure out what to do here, running as root is bad for file permissions
             },
             'retryStrategy': {
                 'attempts': 1
@@ -412,7 +413,7 @@ class Setup(AwsBatchRunState):
 
 class Submit(AwsBatchRunState):
     def update(self):
-        job_definition = self._bundle['metadata']['batch_job_definition']
+        job_definition = self.metadata['batch_job_definition']
 
         # Submit job to AWS Batch
         response = self._batch_client.submit_job(
@@ -428,45 +429,24 @@ class Submit(AwsBatchRunState):
         return self.transition(Running)
 
 
-class JobFetcher(object):
-    def __init__(self, job_id, batch_client):
-        self._last_check_time = 0
-        self._check_frequency = 30  # seconds
-        self._job = None
-        self._job_id = job_id
-        self._batch_client = batch_client
-
-    def should_refresh(self):
-        now = current_time()
-        if now - self._last_check_time > self._check_frequency:
-            self._last_check_time = now
-            return True
-        return False
-
-    def fetch_job(self):
-        if self.should_refresh() or self._job is None:
-            response = self._batch_client.describe_jobs(jobs=[self._job_id])
-            self._job = response['jobs'][0]
-        return self._job
+def fetch_batch_job(batch_client, job_id):
+    response = batch_client.describe_jbos(jobs=[job_id])
+    return response['jobs'][0]
 
 
 class Running(AwsBatchRunState):
-    def __init__(self, *args, **kwargs):
-        super(Running, self).__init__(*args, **kwargs)
-        self._job_fetcher = JobFetcher(self._bundle['metadata']['batch_job_id'], self._batch_client)
-
-    """
-    Waiting for Batch to schedule the job
-    """
     def update(self):
-        job = self._job_fetcher.fetch_job()
+        job = fetch_batch_job(self.metadata['batch_job_id'])
         status = job['status']
+        status_reason = job.get('statusReason')
 
         now = current_time()
         started = job.get('startedAt')
         runtime = now - (started / 1000) if started else 0
 
-        run_status = 'Batch Status: %s' % status
+        run_status = 'Batch: %s' % status
+        if status_reason:
+            run_status = '%s - %s' % (run_status, status_reason)
 
         self.update_metadata(run_status=run_status, last_updated=now, time=runtime)
 
@@ -474,6 +454,11 @@ class Running(AwsBatchRunState):
             return self.transition(Cleanup)
 
         return self
+
+    @property
+    def update_period(self):
+        # Update less frequently when in the run state so we don't spam the Batch API quite so much.
+        return 30.0
 
 
 class Cleanup(AwsBatchRunState):
@@ -487,14 +472,10 @@ class Cleanup(AwsBatchRunState):
 
 
 class Complete(AwsBatchRunState):
-    def __init__(self, *args, **kwargs):
-        super(Complete, self).__init__(*args, **kwargs)
-        self._job_fetcher = JobFetcher(self._bundle['metadata']['batch_job_id'], self._batch_client)
-
     def update(self):
-        job = self._job_fetcher.fetch_job()
+        job = fetch_batch_job(self.metadata['batch_job_id'])
         status = job['status']
-        # The contain contains information about the most recent docker container used to run the job
+        # The container contains information about the most recent docker container used to run the job
         container = job['container']
 
         started = job.get('startedAt')
@@ -510,7 +491,7 @@ class Complete(AwsBatchRunState):
         if status == BatchStatus.Succeeded:
             run_status = 'Succeeded'
             finalize_message = {
-                'exitcode': container.get('exitCode'),
+                'exitcode': container.get('exitCode', 0),
                 'failure_message': container.get('reason')
             }
         else:

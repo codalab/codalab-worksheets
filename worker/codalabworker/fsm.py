@@ -17,15 +17,22 @@ class State(object):
         """
         return self
 
+    @property
+    def update_period(self):
+        """
+        How frequently `update` should be called while in this state
+        :return: the period in seconds
+        """
+        return 0.1
+
 
 # TODO Make an implementation which uses a single thread to manage many FSMs
 class ThreadedFiniteStateMachine(object):
     """
     A FSM which will run on a separate thread.
     """
-    def __init__(self, initial_state, sleep_time=0.1):
+    def __init__(self, initial_state):
         self._state = initial_state
-        self._sleep_time = sleep_time
         # The thread for running this FSM
         self._thread = threading.Thread(target=ThreadedFiniteStateMachine._run, args=[self])
         self._should_run = True
@@ -37,7 +44,8 @@ class ThreadedFiniteStateMachine(object):
     def _run(self):
         while self._should_run and self._state is not None:
             self._loop()
-            time.sleep(self._sleep_time)
+            if self._state:
+                time.sleep(self._state.update_period)
 
     def start(self):
         """

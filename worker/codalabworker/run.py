@@ -57,6 +57,7 @@ class DockerRunManager(RunManagerBase):
 
     def serialize(self, run):
         """ Output a dictionary able to be serialized into json """
+        assert isinstance(run, Run), "Could not serialize run which was from different run manager."
         run_info = {
             'bundle': run._bundle,
             'bundle_path': run._bundle_path,
