@@ -7,7 +7,7 @@ import traceback
 import fsm
 from bundle_service_client import BundleServiceException
 from file_util import remove_path
-from run_manager import RunManagerBase, RunBase, FilesystemRunMixin
+from run import RunManagerBase, RunBase, FilesystemRunMixin
 from formatting import size_str
 
 

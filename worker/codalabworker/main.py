@@ -104,7 +104,7 @@ chmod 600 %s""" % args.password_file
     def create_run_manager(w):
         if args.batch_queue is None:
             # We defer importing the run managers so their dependencies are lazily loaded
-            from run import DockerRunManager
+            from docker_run import DockerRunManager
             from docker_client import DockerClient
             from docker_image_manager import DockerImageManager
 
