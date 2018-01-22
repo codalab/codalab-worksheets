@@ -17,8 +17,8 @@ class WorkerStateManager(object):
     """
     STATE_FILENAME = 'worker-state.json'
 
-    def __init__(self, work_dir, run_serialize_func, shared_file_system=False):
-        self._run_serialize_func = run_serialize_func
+    def __init__(self, work_dir, run_manager, shared_file_system=False):
+        self._run_manager = run_manager
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
         self.shared_file_system = shared_file_system
         self._lock = threading.Lock()
@@ -60,7 +60,7 @@ class WorkerStateManager(object):
         with self._runs_lock:
             return [process(run) for run in self._runs.itervalues()]
 
-    def resume_previous_runs(self, run_deserializer):
+    def resume_previous_runs(self):
         # TODO Why do nothing on a shared file system?
         if self.shared_file_system:
             return
@@ -70,7 +70,7 @@ class WorkerStateManager(object):
                 # try once per previous run only
                 # TODO: try many times?
                 uuid, run_info = self.previous_runs.popitem()
-                run = run_deserializer(run_info)
+                run = self._run_manager.deserialize(run_info)
                 run.resume()
                 self._runs[uuid] = run
 
@@ -95,7 +95,7 @@ class WorkerStateManager(object):
 
         with self._lock:
             for uuid, run in self._runs.items():
-                state['runs'][uuid] = self._run_serialize_func(run)
+                state['runs'][uuid] = self._run_manager.serialize(run)
 
             with open(self._state_file, 'w') as f:
                 json.dump(state, f)

@@ -373,14 +373,6 @@ class Run(FilesystemRunMixin, RunBase):
             # there are lots of files, we run it at most 10% of the time.
             time.sleep(max((end_time - start_time) * 10, 1.0))
 
-    @staticmethod
-    def read_run_missing(bundle_service, worker, socket_id):
-        message = {
-            'error_code': httplib.INTERNAL_SERVER_ERROR,
-            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
-        }
-        bundle_service.reply(worker.id, socket_id, message)
-
     def kill(self):
         with self._kill_lock:
             self._killed = True

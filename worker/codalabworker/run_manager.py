@@ -129,9 +129,10 @@ class RunBase(object):
         """
         raise NotImplementedError
 
-    def kill(self):
+    def kill(self, reason):
         """
         Kill this run if it is started.
+        :param reason: The reason the run is being killed
         :return: True if the run was killed, False otherwise
         """
         raise NotImplementedError
@@ -140,10 +141,10 @@ class RunBase(object):
         """
         Read the data at the path and send it back over the socket.
         More than likely this is done asynchronously.
+        It is the responsibility of the implementor of this method to send pertinent error information.
         :param path: The path to the data to be read. Refers to a path from this runs bundle.
         :param read_args: A dict with parameters about how to read the data.
         :param socket: A SocketConnection to send the read data to.
-        :return: True if success, False otherwise
         """
         raise NotImplementedError
 
@@ -192,7 +193,7 @@ class FilesystemRunMixin(object):
             if not child_path.startswith(self.bundle_path):
                 raise Exception('Invalid key for dependency: %s' % dep['child_path'])
 
-            dependency_path = self.path_for_dependency(dep)
+            dependency_path = self._get_or_download_dependency(dep)
 
             docker_dependency_path = os.path.join(self.docker_working_directory, dep['child_path'])
             dependency_name = dep['child_path']
@@ -205,7 +206,10 @@ class FilesystemRunMixin(object):
         # TODO Both implement this and add setup/cleanup hooks to RunBase and use them to call these
         pass
 
-    def path_for_dependency(self, dep):
+    def _get_or_download_dependency(self, dep):
+        """
+        Gets the path to the dependency, possibly downloading it if need be.
+        """
         if self.is_shared_file_system:
             parent_bundle_path = os.path.realpath(dep['location'])
             dep_path = os.path.realpath(os.path.join(parent_bundle_path, dep['parent_path']))
@@ -227,7 +231,6 @@ class FilesystemRunMixin(object):
     def read(self, path, read_args, socket):
         # Reads may take a long time, so do the read in a separate thread.
         threading.Thread(target=read_from_filesystem, args=(self, path, read_args, socket)).start()
-        return True
 
     def write(self, subpath, string):
         # Make sure you're not trying to write over a dependency.

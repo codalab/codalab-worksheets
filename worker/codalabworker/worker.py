@@ -57,7 +57,7 @@ class Worker(object):
 
         self._worker_state_manager = WorkerStateManager(
             work_dir=work_dir,
-            run_serialize_func=self._run_manager.serialize,
+            run_serde=self._run_manager,
             shared_file_system=self.shared_file_system
         )
 
@@ -81,7 +81,7 @@ class Worker(object):
         while self._should_run():
             try:
                 self._checkin()
-                self._worker_state_manager.resume_previous_runs(self._run_manager.deserialize)
+                self._worker_state_manager.resume_previous_runs()
                 self._worker_state_manager.save_state()
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in.')
@@ -149,7 +149,6 @@ class Worker(object):
             elif type == 'kill':
                 self._kill(response['uuid'])
             elif type == 'upgrade':
-                logging.error('ignoring upgrade message')
                 with self._exiting_lock:
                     self._exiting = True
                 self._should_upgrade = True
@@ -238,14 +237,8 @@ class Worker(object):
                 'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
             }
             socket.reply(message)
-        elif run.read(path=path, read_args=read_args, socket=socket):
-            pass
         else:
-            message = {
-                'error_code': httplib.INTERNAL_SERVER_ERROR,
-                'error_message': 'Read failed for unknown reason.',
-            }
-            socket.reply(message)
+            run.read(path=path, read_args=read_args, socket=socket)
 
     def _write(self, uuid, subpath, string):
         run = self._worker_state_manager._get_run(uuid)
@@ -255,7 +248,7 @@ class Worker(object):
     def _kill(self, uuid):
         run = self._worker_state_manager._get_run(uuid)
         if run is not None:
-            run.kill()
+            run.kill('Kill requested.')
 
     def finish_run(self, uuid):
         """

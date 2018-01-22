@@ -6,26 +6,16 @@ class State(object):
     """
     The base class for a state in a finite state machine (FSM).
     """
+
+    # The state to return from update when the FSM is complete
+    DONE = None
+
     def update(self):
         """
         The update method which is called as part of the primary run loop of a FSM.
         :return: a tuple of a new state for the FSM and a list of output messages
         """
-        return self.transition_noop()
-
-    def transition_noop(self):
-        """
-        Transition to use when the state machine should make no changes.
-        :return: this state
-        """
         return self
-
-    def transition_done(self):
-        """
-        Transition to use when the state machine is done.
-        :return: the 'done' state which will cause the state machine to be complete
-        """
-        return None
 
 
 # TODO Make an implementation which uses a single thread to manage many FSMs

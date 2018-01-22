@@ -117,7 +117,7 @@ chmod 600 %s""" % args.password_file
             try:
                 import boto3
             except ImportError:
-                print("Missing dependencies, please install boto3 to enable AWS support.")
+                logging.exception("Missing dependencies, please install boto3 to enable AWS support.")
                 import sys
                 sys.exit(1)
 

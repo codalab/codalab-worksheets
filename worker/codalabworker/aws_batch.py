@@ -101,8 +101,9 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
     This is similar to the standard Run, but all execution happens in a Batch job rather than locally on the worker.
 
     It also has the added constraint for the shared file system option, that the file system must be shared properly
-    on the compute cluster which is serving the Batch queue.
-    For an article on how to achieve this, see:
+    on the compute cluster which is serving the Batch queue. The easiest way to achieve this is to create a custom ami
+    which mounts your shared file system.
+    For an article on how to achieve this, see: https://docs.aws.amazon.com/batch/latest/userguide/create-batch-ami.html
     """
     def __init__(self, bundle_service, batch_client, queue_name, worker, bundle, bundle_path, resources):
         super(AwsBatchRun, self).__init__()
@@ -472,7 +473,7 @@ class Running(AwsBatchRunState):
         if status in [BatchStatus.Succeeded, BatchStatus.Failed]:
             return self.transition(Cleanup)
 
-        return self.transition_noop()
+        return self
 
 
 class Cleanup(AwsBatchRunState):
@@ -536,4 +537,4 @@ class Complete(AwsBatchRunState):
         # Notify the worker that we are finished
         self._worker.finish_run(self.uuid)
 
-        return self.transition_done()
+        return fsm.State.DONE
