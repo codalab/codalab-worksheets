@@ -430,7 +430,7 @@ class Submit(AwsBatchRunState):
 
 
 def fetch_batch_job(batch_client, job_id):
-    response = batch_client.describe_jbos(jobs=[job_id])
+    response = batch_client.describe_jobs(jobs=[job_id])
     return response['jobs'][0]
 
 
