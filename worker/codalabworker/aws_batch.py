@@ -245,7 +245,7 @@ class AwsBatchRunState(fsm.State):
 
     @property
     def update_period(self):
-        return 5.0
+        return 1.0
 
     @property
     def logger(self):
@@ -458,7 +458,7 @@ class Running(AwsBatchRunState):
     @property
     def update_period(self):
         # Update less frequently when in the run state so we don't spam the Batch API quite so much.
-        return 30.0
+        return 5.0
 
 
 class Cleanup(AwsBatchRunState):
