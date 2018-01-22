@@ -436,7 +436,7 @@ def fetch_batch_job(batch_client, job_id):
 
 class Running(AwsBatchRunState):
     def update(self):
-        job = fetch_batch_job(self.metadata['batch_job_id'])
+        job = fetch_batch_job(self._batch_client, self.metadata['batch_job_id'])
         status = job['status']
         status_reason = job.get('statusReason')
 
@@ -473,7 +473,7 @@ class Cleanup(AwsBatchRunState):
 
 class Complete(AwsBatchRunState):
     def update(self):
-        job = fetch_batch_job(self.metadata['batch_job_id'])
+        job = fetch_batch_job(self._batch_client, self.metadata['batch_job_id'])
         status = job['status']
         # The container contains information about the most recent docker container used to run the job
         container = job['container']
