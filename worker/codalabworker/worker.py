@@ -57,7 +57,7 @@ class Worker(object):
 
         self._worker_state_manager = WorkerStateManager(
             work_dir=work_dir,
-            run_serde=self._run_manager,
+            run_manager=self._run_manager,
             shared_file_system=self.shared_file_system
         )
 
