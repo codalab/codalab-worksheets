@@ -343,7 +343,8 @@ class Setup(AwsBatchRunState):
         image = self.resources['docker_image']
         # Default to 100 MB so we have some breathing room.
         memory_bytes = self.resources.get('request_memory') or 100*BYTES_PER_MEGABYTE
-        cpus = max(self.resources.get('cpus', 0), 1)
+        # TODO CPUs should really be in resources, but for some reason it isn't so use it or default in metadata
+        cpus = max(self.metadata.get('request_cpus', 0), 1)
 
         # Note: The bundle path MUST be on a shared mount between the worker machine and the compute environment nodes.
         volumes_and_mounts = [self.volume_and_mount(
