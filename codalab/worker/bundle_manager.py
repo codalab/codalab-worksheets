@@ -292,14 +292,33 @@ class BundleManager(object):
                 else:
                     continue  # Try the next worker.
 
+    def _deduct_worker_resources(self, workers_list):
+        """
+        From each worker, subtract resources used by running bundles. Modifies the list.
+        """
+        for worker in workers_list:
+            for uuid in worker['run_uuids']:
+                bundle = self._model.get_bundle(uuid)
+                worker['cpus'] -= self._compute_request_cpus(bundle) or 1
+                worker['gpus'] -= self._compute_request_gpus(bundle) or 0
+                #TODO: memory_bytes
+
     def _filter_and_sort_workers(self, workers_list, bundle):
         """
-        Filters the workers to those than can run the given bundle and returns
+        Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
+
+        Note: the worker slots field is no longer in use so it is effectively ignored
         """
-        # Filter by slots.
-        workers_list = filter(lambda worker: worker['slots'] - len(worker['run_uuids']) > 0,
-                              workers_list)
+
+        # keep track of which workers have GPUs
+        has_gpu = {}
+        for worker in workers_list:
+            worker_id = worker['worker_id']
+            has_gpu[worker_id] = True if worker['gpus'] > 0 else False
+
+        # deduct worker resources based on running bundles
+        self._deduct_worker_resources(workers_list)
 
         # Filter by CPUs.
         request_cpus = self._compute_request_cpus(bundle)
@@ -332,10 +351,11 @@ class BundleManager(object):
                 return []
 
         # Sort workers list according to these keys in the following succession:
-        #  - if the bundle doesn't request GPUs (only requests CPUs), prioritize workers that don't have GPUs
+        #  - whether the worker is a CPU-only worker, if the bundle doesn't request GPUs
         #  - number of dependencies available, descending
-        #  - number of free slots, descending
+        #  - number of free cpus, descending
         #  - random key
+        #
         # Breaking ties randomly is important, since multiple workers frequently
         # have the same number of dependencies and free slots for a given bundle
         # (in particular, bundles with no dependencies) and we may end up
@@ -347,11 +367,11 @@ class BundleManager(object):
                               bundle.dependencies))
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
+            worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            if not self._compute_request_gpus(bundle):
-                return (-worker['gpus'], len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
-            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
+            t = not self._compute_request_gpus(bundle) and has_gpu[worker_id]
+            return (t, len(needed_deps & deps), worker['cpus'], random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list
