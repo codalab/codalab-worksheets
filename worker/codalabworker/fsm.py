@@ -26,37 +26,44 @@ class State(object):
         return 0.1
 
 
+class FiniteStateMachine(object):
+    """
+    A FSM which will run until it reaches the State.DONE state
+    """
+    def __init__(self, initial_state, done_check=lambda s: s == State.DONE):
+        self._state = initial_state
+        self._should_run = True
+        self._done_check = done_check
+
+    def run(self):
+        """
+        Run this finite state machine until it reaches the State.DONE state
+        """
+        while self._should_run and not self._done_check(self._state):
+            state = self._state.update()
+            self._state = state
+            if state:
+                time.sleep(float(self._state.update_period))
+
+    def stop(self):
+        """
+        Make this FSM stop gracefully.
+        """
+        self._should_run = False
+
+
 # TODO Make an implementation which uses a single thread to manage many FSMs
-class ThreadedFiniteStateMachine(object):
+class ThreadedFiniteStateMachine(FiniteStateMachine):
     """
     A FSM which will run on a separate thread.
     """
     def __init__(self, initial_state):
-        self._state = initial_state
+        super(ThreadedFiniteStateMachine, self).__init__(initial_state)
         # The thread for running this FSM
-        self._thread = threading.Thread(target=ThreadedFiniteStateMachine._run, args=[self])
-        self._should_run = True
-
-    def _loop(self):
-        state = self._state.update()
-        self._state = state
-
-    def _run(self):
-        while self._should_run and self._state is not None:
-            self._loop()
-            if self._state:
-                time.sleep(self._state.update_period)
+        self._thread = threading.Thread(target=FiniteStateMachine.run, args=[self])
 
     def start(self):
         """
-        Start the thread which runs the FSM
-        :return:
+        Start the thread which runs the FSM asynchronously
         """
         return self._thread.start()
-
-    def stop(self):
-        """
-        Indicate to the thread which is running the FSM that it should stop
-        :return:
-        """
-        self._should_run = False
