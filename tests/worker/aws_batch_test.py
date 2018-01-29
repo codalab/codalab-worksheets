@@ -9,10 +9,10 @@ import mock
 class AwsBatchRunManagerTest(RunManagerBaseTestMixin, unittest.TestCase):
     def create_run_manager(self):
         # TODO Mock these out better
-        batch_client = object()
+        batch_client = mock.MagicMock()
         queue_name = 'test'
-        bundle_service = object()
-        worker = object()
+        bundle_service = mock.create_autospec(BundleServiceClient)
+        worker = mock.create_autospec(Worker)
         return AwsBatchRunManager(batch_client, queue_name, bundle_service, worker)
 
 
@@ -35,13 +35,13 @@ def create_state(NewState):
 class InitialStateTest(unittest.TestCase):
     def test_transition(self):
         state = create_state(Initial)
-        self.assertIsInstance(Setup, state.update(), "when no previous state: initial -> setup")
+        self.assertIsInstance(state.update(), Setup, "when no previous state: initial -> setup")
         state = create_state(Initial)
         state.metadata['batch_job_id'] = 'fake id'
-        self.assertIsInstance(Running, state.update(), "when job id exists: initial -> running ")
+        self.assertIsInstance(state.update(), Running, "when job id exists: initial -> running ")
         state = create_state(Initial)
         state.metadata['batch_job_definition'] = 'fake arn'
-        self.assertIsInstance(Submit, state.update(), "when job id exists: initial -> submit ")
+        self.assertIsInstance(state.update(), Submit, "when job id exists: initial -> submit ")
 
 
 class SetupStateTest(unittest.TestCase):
