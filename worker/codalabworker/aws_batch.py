@@ -9,6 +9,7 @@ from bundle_service_client import BundleServiceException
 from file_util import remove_path
 from run import RunManagerBase, RunBase, FilesystemRunMixin
 from formatting import size_str
+from worker import VERSION
 
 
 def current_time():
@@ -314,9 +315,17 @@ class Initial(AwsBatchRunState):
 class Setup(AwsBatchRunState):
     def update(self):
         # Create job definition
-        job_definition = self.create_job_definition(self._dependencies)
+        job_definition = self.get_job_definition()
 
-        self.update_metadata(batch_job_definition=job_definition)
+        self.logger.debug(job_definition)
+
+        response = self._batch_client.register_job_definition(**job_definition)
+        job_definition_arn = response['jobDefinitionArn']
+
+        self.logger.debug("Job %s registered job definition arn %s", self.uuid, job_definition_arn)
+
+        self.update_metadata(batch_job_definition=job_definition_arn)
+
         return self.transition(Submit)
 
     @property
@@ -333,11 +342,12 @@ class Setup(AwsBatchRunState):
 
         return ['bash', '-c', '; '.join(bash_commands)]
 
-    def create_job_definition(self, dependencies):
+    def get_job_definition(self):
         """
         Create the Batch job definition.
         Each run has its own job definition which it cleans up when the run is complete.
         """
+        dependencies = self._dependencies
         bundle = self._bundle
         # The docker image is always specified
         image = self.resources['docker_image']
@@ -362,7 +372,7 @@ class Setup(AwsBatchRunState):
             ))
 
         job_definition = {
-            'jobDefinitionName': bundle['uuid'],
+            'jobDefinitionName': 'codalab-worker-%s-%s' % (VERSION, bundle['uuid']),
             'type': 'container',
             'parameters': {},
             'containerProperties': {
@@ -386,13 +396,7 @@ class Setup(AwsBatchRunState):
             }
         }
 
-        self.logger.debug(job_definition)
-
-        response = self._batch_client.register_job_definition(**job_definition)
-        arn = response['jobDefinitionArn']
-
-        self.logger.debug("Job %s registered job definition arn %s", self.uuid, arn)
-        return arn
+        return job_definition
 
     def volume_and_mount(self, host_path, container_path, name, read_only):
         volume_definition = {
@@ -449,6 +453,7 @@ class Running(AwsBatchRunState):
         if status_reason:
             run_status = '%s - %s' % (run_status, status_reason)
 
+        # While running, we continually update the metadata to let the master know we are still online
         self.update_metadata(run_status=run_status, last_updated=now, time=runtime)
 
         if status in [BatchStatus.Succeeded, BatchStatus.Failed]:

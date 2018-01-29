@@ -40,7 +40,7 @@ class FiniteStateMachineTest(unittest.TestCase):
         fsm.run()
         self.assertIsNotNone(fsm._state, "should not have reached State.DONE due to custom done check")
         self.assertIsInstance(fsm._state, B, "should have stopped at state B")
-        self.assertEqual(fsm._state.value, [1, 1], "should have expected value")
+        self.assertEqual([1, 1], fsm._state.value, "should have expected value")
 
 
 class ThreadedFiniteStateMachineTest(unittest.TestCase):
