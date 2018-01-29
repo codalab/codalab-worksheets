@@ -192,14 +192,6 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         if job_definition:
             self._batch_client.deregister_job_definition(jobDefinition=job_definition)
 
-    def download_dependency(self, uuid, path):
-        # TODO Implement a better shared spot for this
-        def update_status_and_check_killed(bytes_downloaded):
-            logging.debug('Downloading dependency %s/%s: %s done (archived size)' %
-                          (uuid, path, size_str(bytes_downloaded)))
-        dependency_path = self._worker.add_dependency(uuid, path, self._uuid, update_status_and_check_killed)
-        return dependency_path
-
     def _start_fsm(self):
         assert self._fsm is None, "FSM was already created."
 
@@ -255,6 +247,10 @@ class AwsBatchRunState(fsm.State):
     @property
     def uuid(self):
         return self._bundle['uuid']
+
+    @property
+    def docker_working_directory(self):
+        return '/' + self.uuid
 
     @property
     def batch_queue(self):
@@ -327,10 +323,6 @@ class Setup(AwsBatchRunState):
         self.update_metadata(batch_job_definition=job_definition_arn)
 
         return self.transition(Submit)
-
-    @property
-    def docker_working_directory(self):
-        return '/' + self.uuid
 
     @property
     def docker_command(self):
@@ -473,7 +465,14 @@ class Cleanup(AwsBatchRunState):
             jobDefinition=self.metadata['batch_job_definition']
         )
 
-        # TODO Cleanup the empty directories made by mounting the dependencies
+        # Since we mount the dependencies directly, it creates extra folders which we need to cleanup
+        for _, _, child_path in self._dependencies:
+            dependency_mount_folder = '%s/%s' % (self.docker_working_directory, child_path)
+            try:
+                os.rmdir(dependency_mount_folder)
+            except OSError:
+                logging.exception("Failed to remove dependency folder %s", dependency_mount_folder)
+
         return self.transition(Complete)
 
 

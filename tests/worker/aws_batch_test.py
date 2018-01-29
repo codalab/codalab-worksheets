@@ -164,12 +164,24 @@ class CleanupStateTest(unittest.TestCase):
         state = create_state(Cleanup)
         state.metadata['batch_job_definition'] = 'fake def'
 
-        next_state = state.update()
+        with mock.patch('os.rmdir'):
+            next_state = state.update()
 
         self.assertIsInstance(next_state, Complete, 'should move to complete state')
         state._batch_client.deregister_job_definition.assert_called_once_with(
             jobDefinition='fake def'
         )
+
+    def test_dependencies_cleanup(self):
+        state = create_state(Cleanup)
+        state.metadata['batch_job_definition'] = 'fake def'
+        state._dependencies = [
+            ['/tmp/fsdfd', '/fsdfd', 'fsdfd']
+        ]
+
+        with mock.patch('os.rmdir'):
+            state.update()
+            os.rmdir.assert_called_once_with('%s/%s' % (state.docker_working_directory, 'fsdfd'))
 
 
 class CompleteStateTest(unittest.TestCase):
