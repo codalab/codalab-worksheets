@@ -53,7 +53,8 @@ class SetupStateTest(unittest.TestCase):
         bundle_service = setup._bundle_service
 
         def update_bundle_metadata(worker_id, bundle_uuid, updates):
-            self.assertEqual(updates.get('batch_job_definition'), arn, 'batch_job_definition should be submitted to bundle service')
+            self.assertEqual(updates.get('batch_job_definition'), arn,
+                             'batch_job_definition should be submitted to bundle service')
 
         bundle_service.update_bundle_metadata.side_effect = update_bundle_metadata
 
@@ -62,7 +63,8 @@ class SetupStateTest(unittest.TestCase):
 
         batch_client.register_job_definition.assert_called_once()
         bundle_service.update_bundle_metadata.assert_called_once()
-        self.assertEqual(next_state.metadata.get('batch_job_definition'), arn, 'batch_job_definition should be set in next state')
+        self.assertEqual(next_state.metadata.get('batch_job_definition'), arn,
+                         'batch_job_definition should be set in next state')
 
     def test_specific_resources(self):
         setup = create_state(Setup)
@@ -115,7 +117,7 @@ class SubmitStateTest(unittest.TestCase):
 
         self.assertIsInstance(next_state, Running, 'should transition to running state')
         batch_client.submit_job.assert_called_once_with(jobName='fake_uuid', jobQueue='fake queue',
-                                                          jobDefinition='fake arn')
+                                                        jobDefinition='fake arn')
         self.assertEqual(next_state.metadata.get('batch_job_id'), 'fake job', 'job id should be set in next state')
 
 
