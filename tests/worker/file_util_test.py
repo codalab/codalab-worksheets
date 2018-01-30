@@ -1,8 +1,9 @@
 import os
 import tempfile
 import unittest
+import bz2
 
-from codalabworker.file_util import gzip_file, gzip_string, remove_path, tar_gzip_directory, un_gzip_stream, un_gzip_string, un_tar_directory
+from codalabworker.file_util import gzip_file, gzip_string, remove_path, tar_gzip_directory, un_gzip_stream, un_bz2_file, un_gzip_string, un_tar_directory
 
 
 class FileUtilTest(unittest.TestCase):
@@ -35,12 +36,21 @@ class FileUtilTest(unittest.TestCase):
 
     def test_gzip_stream(self):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-            self.addCleanup(lambda: os.remove(temp_file.name))    
+            self.addCleanup(lambda: os.remove(temp_file.name))
             temp_file.write('contents')
             name = temp_file.name
 
         self.assertEquals(un_gzip_stream(gzip_file(name)).read(), 'contents')
 
+    def test_bz2_file(self):
+        with tempfile.NamedTemporaryFile(delete=False) as source, tempfile.NamedTemporaryFile(delete=False) as temp_file_2:
+            self.addCleanup(lambda: os.remove(source.name))
+            destination = temp_file_2.name
+            self.addCleanup(lambda: os.remove(destination))
+            source.write(bz2.compress('contents'))
+            un_bz2_file(source, destination)
+            self.assertEquals(temp_file_2.read(), 'contents')
+
     def test_gzip_string(self):
         self.assertEqual(un_gzip_string(gzip_string('contents')), 'contents')
-    
+

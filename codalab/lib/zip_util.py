@@ -14,13 +14,14 @@ from codalab.lib import path_util
 from codalabworker.file_util import (
     gzip_file,
     tar_gzip_directory,
+    un_bz2_file,
     un_gzip_stream,
     un_tar_directory,
 )
 
 
 # Files with these extensions are considered archive.
-ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz']
+ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz', '.bz2']
 
 
 def path_is_archive(path):
@@ -63,6 +64,8 @@ def unpack(ext, source, dest_path):
                 un_tar_directory(source, dest_path, 'gz')
             elif ext == '.tar.bz2':
                 un_tar_directory(source, dest_path, 'bz2')
+            elif ext == '.bz2':
+                un_bz2_file(source, dest_path)
             elif ext == '.gz':
                 with open(dest_path, 'wb') as f:
                     shutil.copyfileobj(un_gzip_stream(source), f)
