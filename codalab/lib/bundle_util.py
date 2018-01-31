@@ -216,13 +216,6 @@ def mimic_bundles(client,
 
     # Add to worksheet
     if not dry_run and not shadow:
-        def newline():
-            if not skip_prelude:
-                client.create('worksheet-items', data={
-                    'type': worksheet_util.TYPE_MARKUP,
-                    'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
-                    'value': '',
-                })
 
         # A prelude of a bundle on a worksheet is the set of items (markup, directives, etc.)
         # that occur immediately before it, until the last preceding newline.
@@ -240,8 +233,6 @@ def mimic_bundles(client,
         })
         host_worksheet_uuids = [hw['id'] for hw in host_worksheets]
         new_bundle_uuids_added = set()
-
-        # Whether there were items that we didn't include in the prelude (in which case we want to put '')
 
         if len(host_worksheet_uuids) > 0:
             # Choose a single worksheet.
