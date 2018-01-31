@@ -1083,18 +1083,20 @@ def test(ctx):
 
 @TestModule.register('netcat')
 def test(ctx):
+    run_command(['docker', 'pull', 'codalab/python:0.1']) # pull image in order to run python script
+
     script_uuid = run_command([cl, 'upload', test_path('netcat-test.py')])
-    uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/python:0.1',  'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_running(uuid)
     time.sleep(5)
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
-    check_equals('No, this is dawg', output) 
+    check_equals('No, this is dawg', output)
 
-    uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/python:0.1', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_running(uuid)
     time.sleep(5)
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
-    check_equals('Hi this is dawg', output) 
+    check_equals('Hi this is dawg', output)
 
 
 @TestModule.register('anonymous')
