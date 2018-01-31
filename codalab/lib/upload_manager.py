@@ -13,6 +13,9 @@ class UploadManager(object):
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
 
+    # exclude these patterns by default
+    DEFAULT_EXCLUDE_PATTERNS = ['\.DS_Store', '__MACOSX', '^\._.*']
+
     def upload_to_bundle_store(self, bundle, sources, follow_symlinks, exclude_patterns, remove_sources, git, unpack, simplify_archives):
         """
         Uploads contents for the given bundle to the bundle store.
@@ -36,6 +39,7 @@ class UploadManager(object):
         - If |git|, then each source is replaced with the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
+        exclude_patterns = DEFAULT_EXCLUDE_PATTERNS + exclude_patterns
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
@@ -124,15 +128,11 @@ class UploadManager(object):
         if len(files) == 1:
             self._simplify_directory(path, files[0])
 
-    # ... ignore files that match any of these exactly
-    IGNORE_FILE_EXACT = ['.DS_Store', '__MACOSX']
-    # ... ignore files that match any of these patterns
-    IGNORE_FILE_PATTERNS = [re.compile(s) for s in ['^\._.*']]
+    # ... ignore files that match any of the default ignore patterns
+    IGNORE_FILE_MATCHERS = [re.compile(s) for s in DEFAULT_EXCLUDE_PATTERNS]
 
     def _ignore_file_in_archive(self, filename):
-        if filename in self.IGNORE_FILE_EXACT:
-            return True
-        return any([pattern.match(filename) for pattern in self.IGNORE_FILE_PATTERNS])
+        return any([matcher.match(filename) for matcher in self.IGNORE_FILE_MATCHERS])
 
     def _simplify_directory(self, path, child_path=None):
         """
