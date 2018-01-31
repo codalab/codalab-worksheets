@@ -40,7 +40,7 @@ class UploadManager(object):
         - If |git|, then each source is replaced with the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
-        exclude_patterns = self._default_exclude_patterns + exclude_patterns
+        exclude_patterns = self._default_exclude_patterns + exclude_patterns if exclude_patterns else self._default_exclude_patterns
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
