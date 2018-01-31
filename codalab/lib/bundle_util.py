@@ -242,7 +242,6 @@ def mimic_bundles(client,
         new_bundle_uuids_added = set()
 
         # Whether there were items that we didn't include in the prelude (in which case we want to put '')
-        skipped = True
 
         if len(host_worksheet_uuids) > 0:
             # Choose a single worksheet.
@@ -268,10 +267,6 @@ def mimic_bundles(client,
                         # Flush the prelude gathered so far.
                         new_bundle_uuid = old_to_new[old_bundle_uuid]
                         if new_bundle_uuid in created_uuids:  # Only add novel bundles
-                            # Stand in for things skipped (this is important so directives have proper extent).
-                            if skipped:
-                                newline()
-
                             # Add prelude
                             if not skip_prelude:
                                 for item2 in prelude_items:
@@ -292,18 +287,13 @@ def mimic_bundles(client,
                 if ((item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or
                             item['type'] == worksheet_util.TYPE_DIRECTIVE):
                     prelude_items.append(item)  # Include in prelude
-                    skipped = False
                 else:
                     prelude_items = []  # Reset
-                    skipped = not just_added
 
         # Add the bundles that haven't been added yet
         for info, new_info in plan:
             new_bundle_uuid = new_info['uuid']
             if new_bundle_uuid not in new_bundle_uuids_added:
-                if skipped:
-                    newline()
-                    skipped = False
                 print 'adding: ' + new_bundle_uuid
                 client.create('worksheet-items', data={
                     'type': worksheet_util.TYPE_BUNDLE,
