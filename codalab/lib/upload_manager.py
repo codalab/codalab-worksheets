@@ -11,7 +11,7 @@ class UploadManager(object):
     """
     def __init__(self, bundle_model, bundle_store):
         # exclude these patterns by default
-        DEFAULT_EXCLUDE_PATTERNS = ['\.DS_Store', '__MACOSX', '^\._.*']
+        DEFAULT_EXCLUDE_PATTERNS = ['.DS_Store', '__MACOSX', '^\._.*']
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
         self._default_exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
