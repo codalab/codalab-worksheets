@@ -40,6 +40,16 @@ class UploadManagerTest(unittest.TestCase):
         self.assertTrue(os.path.exists(source))
         self.check_file_contains_string(self.bundle_location, 'testing')
 
+    def test_ignored_files(self):
+        dsstore_file = os.path.join(self.temp_dir, '.DS_Store')
+        self.write_string_to_file('testing', dsstore_file)
+        source = os.path.join(self.temp_dir, 'filename')
+        self.write_string_to_file('testing', source)
+        self.do_upload([self.temp_dir])
+        self.assertTrue(os.path.exists(os.path.join(self.bundle_location, 'filename')))
+        self.assertFalse(os.path.exists(os.path.join(self.bundle_location, '.DS_Store')))
+        self.check_file_contains_string(os.path.join(self.bundle_location, 'filename'), 'testing')
+
     def test_single_local_gzip_path(self):
         source = os.path.join(self.temp_dir, 'filename.gz')
         self.write_string_to_file(gzip_string('testing'), source)
