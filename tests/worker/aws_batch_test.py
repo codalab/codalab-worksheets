@@ -15,6 +15,26 @@ class AwsBatchRunManagerTest(RunManagerBaseTestMixin, unittest.TestCase):
         worker = mock.create_autospec(Worker)
         return AwsBatchRunManager(batch_client, queue_name, bundle_service, worker)
 
+    def test_start(self):
+        with mock.patch('threading.Thread') as Thread, \
+                mock.patch('socket.gethostname') as gethostname, \
+                mock.patch('time.time') as timetime:
+            gethostname.return_value = 'fakehost'
+            timetime.return_value = 1000
+
+            run_manager = self.create_run_manager()
+            run_manager._bundle_service.start_bundle.return_value = True
+            run_manager._worker.id = 'fake worker'
+            run_manager._worker.shared_file_system = True
+
+            run = run_manager.create_run({'uuid': 'fake_uuid'}, '/tmp', {})
+            run.setup_dependencies = mock.MagicMock()
+            run.start()
+            run._bundle_service.start_bundle.assert_called_once_with('fake worker', 'fake_uuid',
+                                                                     {'hostname': 'fakehost', 'start_time': 1000})
+            run.setup_dependencies.assert_called_once()
+            Thread.assert_called_once()
+
 
 def create_state(NewState):
     worker = mock.create_autospec(Worker)
@@ -184,6 +204,7 @@ class CleanupStateTest(unittest.TestCase):
         with mock.patch('os.rmdir'):
             state.update()
             os.rmdir.assert_called_once_with('%s/%s' % (state.docker_working_directory, 'fsdfd'))
+            state._worker.remove_dependency.assert_called_once_with('fsdfd', '/tmp/fsdfd', 'fake_uuid')
 
 
 class CompleteStateTest(unittest.TestCase):

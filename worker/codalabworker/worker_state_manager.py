@@ -9,6 +9,7 @@ from formatting import size_str
 
 logger = logging.getLogger(__name__)
 
+
 class WorkerStateManager(object):
     """
     Manages the state of Runs on the worker.
@@ -31,12 +32,11 @@ class WorkerStateManager(object):
 
         self.previous_runs = {}
 
-        if not self.shared_file_system: # disable saving Run states on shared file systems until we are sure it works
-            if not os.path.exists(self._state_file):
-                if not os.path.exists(work_dir):
-                    os.makedirs(work_dir, 0770)
-                self.save_state()
-            self.load_state()
+        if not os.path.exists(self._state_file):
+            if not os.path.exists(work_dir):
+                os.makedirs(work_dir, 0770)
+            self.save_state()
+        self.load_state()
 
     def _get_run(self, uuid):
         with self._runs_lock:

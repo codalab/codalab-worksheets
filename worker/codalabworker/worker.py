@@ -164,8 +164,13 @@ class Worker(object):
             bundle_path=bundle_path,
             resources=resources
         )
-        if run.start():
-            self._worker_state_manager.add_run(bundle['uuid'], run)
+        try:
+            if run.start():
+                self._worker_state_manager.add_run(bundle['uuid'], run)
+        except Exception as e:
+            run.kill()
+            run.post_stop()
+            raise e
 
     def add_dependency(self, parent_uuid, parent_path, uuid, loop_callback):
         """
@@ -254,9 +259,12 @@ class Worker(object):
         """
         Registers that the run with the given UUID has finished.
         """
-        self._worker_state_manager.finish_run(uuid)
-        if not self.shared_file_system:
-            self._dependency_manager.finish_run(uuid)
+        run = self._worker_state_manager._get_run(uuid)
+        if run:
+            run.post_stop()
+            self._worker_state_manager.finish_run(uuid)
+            if not self.shared_file_system:
+                self._dependency_manager.finish_run(uuid)
 
     def _checkout(self):
         try:

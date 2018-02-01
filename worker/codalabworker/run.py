@@ -3,13 +3,13 @@ import httplib
 import os
 import traceback
 import threading
+import logging
 
 from bundle_service_client import BundleServiceException
 from download_util import get_target_info, get_target_path, PathException
 from file_util import gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory
 
 
-# TODO Should this be run factory instead if all it does is creation?
 class RunManagerBase(object):
     """
     Base class for classes which manages individual runs on a worker.
@@ -157,6 +157,18 @@ class RunBase(object):
         """
         raise NotImplementedError
 
+    def pre_start(self):
+        """
+        Hook which can be overwritten to run some logic before the run starts
+        """
+        pass
+
+    def post_stop(self):
+        """
+        Hook which can be overwritten to run some logic after the run stops
+        """
+        pass
+
 
 class FilesystemRunMixin(object):
     """
@@ -203,8 +215,25 @@ class FilesystemRunMixin(object):
         return self._dependencies
 
     def cleanup_dependencies(self):
-        # TODO Both implement this and add setup/cleanup hooks to RunBase and use them to call these
-        pass
+        logging.debug('Cleaning up dependencies for run %s' % (self.bundle['uuid']))
+
+        for dep in self.bundle['dependencies']:
+            dependency_mount_folder = '%s/%s' % (self.docker_working_directory, dep['child_path'])
+            try:
+                os.rmdir(dependency_mount_folder)
+            except OSError:
+                logging.exception("Failed to remove dependency folder %s", dependency_mount_folder)
+
+            # Remove any dependencies added if not shared filesystem
+            if not self.is_shared_file_system:
+                self._worker.remove_dependency(dep['parent_uuid'], dep['parent_path'], self.bundle['uuid'])
+
+            # Since we mount the dependencies directly, it creates extra folders which we need to cleanup
+            dependency_mount_folder = '%s/%s' % (self.docker_working_directory, dep['child_path'])
+            try:
+                os.rmdir(dependency_mount_folder)
+            except OSError:
+                logging.exception("Failed to remove dependency folder %s", dependency_mount_folder)
 
     def _get_or_download_dependency(self, dep):
         """
@@ -241,6 +270,14 @@ class FilesystemRunMixin(object):
         with open(os.path.join(self.bundle_path, subpath), 'w') as f:
             f.write(string)
         return True
+
+    def pre_start(self):
+        self.setup_dependencies()
+
+    def post_stop(self):
+        self.cleanup_dependencies()
+
+        # TODO Consolidate uploading bundle data code here too
 
 
 def read_from_filesystem(run, path, read_args, socket):

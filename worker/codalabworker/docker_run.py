@@ -200,6 +200,14 @@ class Run(FilesystemRunMixin, RunBase):
         threading.Thread(target=resume_run, args=[self]).start()
         return True
 
+    # Override pre-start and post-stop to do nothing.
+    # This prevents the filesystem run from setting up dependencies until this code is migrated to use it
+    # TODO Migrate to use FilesystemRunMixin to setup dependencies
+    def pre_start(self):
+        pass
+
+    def post_stop(self):
+        pass
 
     def _safe_update_docker_image(self, docker_image):
         """ Update the docker_image metadata field for the run bundle """
@@ -282,6 +290,7 @@ class Run(FilesystemRunMixin, RunBase):
         self._monitor()
 
     def download_dependency(self, uuid, path):
+        # TODO This should be implemented in run rather than here, but it include lots of code which needs cleaned up
         updater = self._throttled_updater()
 
         def update_status_and_check_killed(bytes_downloaded):
@@ -374,10 +383,10 @@ class Run(FilesystemRunMixin, RunBase):
             # there are lots of files, we run it at most 10% of the time.
             time.sleep(max((end_time - start_time) * 10, 1.0))
 
-    def kill(self):
+    def kill(self, reason):
         with self._kill_lock:
             self._killed = True
-            self._kill_message = 'Kill requested.'
+            self._kill_message = reason
 
     def _is_killed(self):
         with self._kill_lock:
