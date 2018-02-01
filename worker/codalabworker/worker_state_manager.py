@@ -61,10 +61,6 @@ class WorkerStateManager(object):
             return [process(run) for run in self._runs.itervalues()]
 
     def resume_previous_runs(self):
-        # TODO Why do nothing on a shared file system?
-        if self.shared_file_system:
-            return
-
         with self._runs_lock:
             while self.previous_runs:
                 # try once per previous run only
@@ -75,9 +71,6 @@ class WorkerStateManager(object):
                 self._runs[uuid] = run
 
     def load_state(self):
-        if self.shared_file_system:
-            return
-
         with self._lock:
             with open(self._state_file, 'r') as f:
                 state = json.load(f)
@@ -85,9 +78,6 @@ class WorkerStateManager(object):
                     self.previous_runs[uuid] = run_info
 
     def save_state(self):
-        if self.shared_file_system:
-            return
-
         # In case we're initializing the state for the first time
         state = {
             'runs': {}
