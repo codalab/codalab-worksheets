@@ -85,6 +85,7 @@ class AwsBatchRunManager(RunManagerBase):
             'bundle_path': run._bundle_path,
             'queue_name': run._queue_name,
             'resources': run._resources,
+            'dependencies': run._dependencies
         }
         return data
 
@@ -93,6 +94,7 @@ class AwsBatchRunManager(RunManagerBase):
         bundle_path = run_data['bundle_path']
         resources = run_data['resources']
         queue_name = run_data['queue_name']
+        dependencies = run_data['dependencies']
         run = AwsBatchRun(
             bundle_service=self._bundle_service,
             batch_client=self._batch_client,
@@ -100,7 +102,8 @@ class AwsBatchRunManager(RunManagerBase):
             worker=self._worker,
             bundle=bundle,
             bundle_path=bundle_path,
-            resources=resources
+            resources=resources,
+            dependencies=dependencies
         )
         return run
 
@@ -115,7 +118,8 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
     which mounts your shared file system.
     For an article on how to achieve this, see: https://docs.aws.amazon.com/batch/latest/userguide/create-batch-ami.html
     """
-    def __init__(self, bundle_service, batch_client, queue_name, worker, bundle, bundle_path, resources):
+    def __init__(self, bundle_service, batch_client, queue_name, worker, bundle, bundle_path, resources,
+                 dependencies=None):
         super(AwsBatchRun, self).__init__()
         self._bundle_service = bundle_service
         self._batch_client = batch_client
@@ -126,6 +130,9 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         self._bundle_path = bundle_path
         self._resources = resources
         self._fsm = None
+        # When resuming a bundle, we pass the dependencies in since they have already been setup
+        if dependencies:
+            self._dependencies = dependencies
 
     @property
     def is_shared_file_system(self):
@@ -144,6 +151,9 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         return self._bundle_path
 
     def start(self):
+        assert self._dependencies is not None, \
+            "Tried to start FSM before dependencies were setup. Probably pre_start was not called."
+
         # TODO Much of this setup logic needs deduplicated with Run.
         # Report that the bundle is running. We note the start time here for
         # accurate accounting of time used, since the clock on the bundle
@@ -196,8 +206,6 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
     def _start_fsm(self):
         assert self._fsm is None, "FSM was already created."
 
-        dependencies = self.setup_dependencies()
-
         # TODO Add a cleanup state which is used when exceptions are thrown from anything
         state = Initial(bundle=self._bundle,
                         batch_client=self._batch_client,
@@ -206,7 +214,7 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
                         bundle_service=self._bundle_service,
                         bundle_path=self._bundle_path,
                         resources=self._resources,
-                        dependencies=dependencies)
+                        dependencies=self._dependencies)
         self._fsm = fsm.ThreadedFiniteStateMachine(state)
         self._fsm.start()
 

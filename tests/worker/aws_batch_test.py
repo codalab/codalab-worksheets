@@ -27,12 +27,13 @@ class AwsBatchRunManagerTest(RunManagerBaseTestMixin, unittest.TestCase):
             run_manager._worker.id = 'fake worker'
             run_manager._worker.shared_file_system = True
 
-            run = run_manager.create_run({'uuid': 'fake_uuid'}, '/tmp', {})
-            run.setup_dependencies = mock.MagicMock()
+            run = run_manager.create_run({'uuid': 'fake_uuid', 'dependencies': []}, '/tmp', {})
+
+            self.assertRaises(AssertionError, run.start)
+            run.pre_start()
             run.start()
             run._bundle_service.start_bundle.assert_called_once_with('fake worker', 'fake_uuid',
                                                                      {'hostname': 'fakehost', 'start_time': 1000})
-            run.setup_dependencies.assert_called_once()
             Thread.assert_called_once()
 
     def test_post_stop(self):
