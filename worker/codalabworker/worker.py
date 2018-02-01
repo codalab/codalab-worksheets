@@ -168,7 +168,7 @@ class Worker(object):
             if run.start():
                 self._worker_state_manager.add_run(bundle['uuid'], run)
         except Exception as e:
-            run.kill()
+            run.kill('Problem starting run.')
             run.post_stop()
             raise e
 
