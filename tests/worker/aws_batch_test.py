@@ -35,6 +35,24 @@ class AwsBatchRunManagerTest(RunManagerBaseTestMixin, unittest.TestCase):
             run.setup_dependencies.assert_called_once()
             Thread.assert_called_once()
 
+    def test_post_stop(self):
+        with mock.patch('os.rmdir'):
+            run_manager = self.create_run_manager()
+            run_manager._worker.shared_file_system = False
+            run_manager._worker.id = 'fake worker'
+            dependencies = [{
+                'parent_uuid': 'foo',
+                'uuid': 'fake_uuid',
+                'parent_path': '/tmp/foo',
+                'child_path': 'foo'
+            }]
+            bundle_path = '/tmp/fake_uuid'
+            run = run_manager.create_run({'uuid': 'fake_uuid', 'dependencies': dependencies}, bundle_path, {})
+            run.post_stop()
+            os.rmdir.assert_called_with('%s/%s' % (bundle_path, 'foo'))
+            run_manager._worker.remove_dependency.assert_called_once_with('foo', '/tmp/foo', 'fake_uuid')
+
+            run_manager._bundle_service.update_bundle_contents.assert_called_once()
 
 def create_state(NewState):
     worker = mock.create_autospec(Worker)
@@ -215,11 +233,6 @@ class CleanupStateTest(unittest.TestCase):
             ['/tmp/fsdfd', '/fsdfd', 'fsdfd']
         ]
 
-        with mock.patch('os.rmdir'):
-            state.update()
-            os.rmdir.assert_called_once_with('%s/%s' % (state.docker_working_directory, 'fsdfd'))
-            state._worker.remove_dependency.assert_called_once_with('fsdfd', '/tmp/fsdfd', 'fake_uuid')
-
 
 class CompleteStateTest(unittest.TestCase):
     def test_succeeded(self):
@@ -243,7 +256,6 @@ class CompleteStateTest(unittest.TestCase):
 
         bundle_service = state._bundle_service
         bundle_service.update_bundle_metadata.assert_called_once()
-        bundle_service.update_bundle_contents.assert_called_once()
         bundle_service.finalize_bundle.assert_called_once_with('fake worker', 'fake_uuid',
                                                                {'exitcode': 0, 'failure_message': None})
         worker.finish_run.assert_called_once_with('fake_uuid')
@@ -266,7 +278,6 @@ class CompleteStateTest(unittest.TestCase):
         bundle_service = state._bundle_service
         bundle_service.finalize_bundle.assert_called_once_with('fake worker', 'fake_uuid',
                                                                {'exitcode': 1, 'failure_message': 'just cause'})
-        bundle_service.update_bundle_contents.assert_called_once()
         worker.finish_run.assert_called_once_with('fake_uuid')
 
     def test_shared_filesystem(self):

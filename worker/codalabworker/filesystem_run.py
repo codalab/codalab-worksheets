@@ -61,7 +61,8 @@ class FilesystemRunMixin(object):
         logging.debug('Cleaning up dependencies for run %s' % (self.bundle['uuid']))
 
         for dep in self.bundle['dependencies']:
-            dependency_mount_folder = '%s/%s' % (self.docker_working_directory, dep['child_path'])
+            # Since we mount the dependencies directly, it creates extra folders which we need to cleanup
+            dependency_mount_folder = '%s/%s' % (self._bundle_path, dep['child_path'])
             try:
                 os.rmdir(dependency_mount_folder)
             except OSError:
@@ -70,13 +71,6 @@ class FilesystemRunMixin(object):
             # Remove any dependencies added if not shared filesystem
             if not self.is_shared_file_system:
                 self._worker.remove_dependency(dep['parent_uuid'], dep['parent_path'], self.bundle['uuid'])
-
-            # Since we mount the dependencies directly, it creates extra folders which we need to cleanup
-            dependency_mount_folder = '%s/%s' % (self.docker_working_directory, dep['child_path'])
-            try:
-                os.rmdir(dependency_mount_folder)
-            except OSError:
-                logging.exception("Failed to remove dependency folder %s", dependency_mount_folder)
 
     def _get_or_download_dependency(self, dep):
         """
