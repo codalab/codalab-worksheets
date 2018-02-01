@@ -506,14 +506,6 @@ class Cleanup(AwsBatchRunState):
             jobDefinition=self.metadata['batch_job_definition']
         )
 
-        # Since we mount the dependencies directly, it creates extra folders which we need to cleanup
-        for _, _, child_path in self._dependencies:
-            dependency_mount_folder = '%s/%s' % (self.docker_working_directory, child_path)
-            try:
-                os.rmdir(dependency_mount_folder)
-            except OSError:
-                logging.exception("Failed to remove dependency folder %s", dependency_mount_folder)
-
         return self.transition(Complete)
 
 
