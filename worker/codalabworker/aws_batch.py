@@ -171,7 +171,8 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
 
     def resume(self):
         start_message = {
-            'hostname': socket.gethostname()
+            'hostname': socket.gethostname(),
+            'start_time': current_time(),
         }
 
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid, start_message):
