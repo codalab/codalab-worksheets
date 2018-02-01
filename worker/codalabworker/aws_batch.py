@@ -2,13 +2,13 @@ import logging
 import os
 import socket
 import time
-import traceback
 
 import fsm
 from bundle_service_client import BundleServiceException
 from file_util import remove_path
-from run import RunManagerBase, RunBase, FilesystemRunMixin
-from formatting import size_str
+from run import RunManagerBase, RunBase
+from filesystem_run import FilesystemRunMixin, FilesystemBundleMonitor
+from formatting import *
 from worker import VERSION
 
 
@@ -304,9 +304,9 @@ class AwsBatchRunState(fsm.State):
         self.metadata.update(kwargs)
         # Update the bundle on the bundle service
         try:
-            self._bundle_service.update_bundle_metadata(self._worker.id, self._bundle['uuid'], kwargs)
+            self._bundle_service.update_bundle_metadata(self._worker.id, self.uuid, kwargs)
         except BundleServiceException:
-            traceback.print_exc()
+            self.logger.exception('Failure updating bundle metadata for bundle.', self.uuid)
 
 
 class Initial(AwsBatchRunState):
@@ -407,7 +407,6 @@ class Setup(AwsBatchRunState):
     def volume_and_mount(self, host_path, container_path, name, read_only):
         volume_definition = {
             'host': {
-                # TODO Figure out how to break assumption about shared file system
                 'sourcePath': host_path
             },
             'name': name
@@ -446,8 +445,22 @@ def fetch_batch_job(batch_client, job_id):
 
 
 class Running(AwsBatchRunState):
+    def __init__(self, *args, **kwargs):
+        super(Running, self).__init__(*args, **kwargs)
+        self._fs_monitor = FilesystemBundleMonitor(
+            bundle_path=self.docker_working_directory,
+            dependencies=self._dependencies
+        )
+
+    @property
+    def job_id(self):
+        return self.metadata['batch_job_id']
+
     def update(self):
-        job = fetch_batch_job(self._batch_client, self.metadata['batch_job_id'])
+        if not self._fs_monitor.is_alive:
+            self._fs_monitor.start()
+
+        job = fetch_batch_job(self._batch_client, self.job_id)
         status = job['status']
         status_reason = job.get('statusReason')
 
@@ -459,11 +472,22 @@ class Running(AwsBatchRunState):
         if status_reason:
             run_status = '%s - %s' % (run_status, status_reason)
 
+        disk_utilization = self._fs_monitor.disk_utilization
+
         # While running, we continually update the metadata to let the master know we are still online
-        self.update_metadata(run_status=run_status, last_updated=now, time=runtime)
+        self.update_metadata(run_status=run_status, last_updated=now, time=runtime, data_size=disk_utilization)
 
         if status in [BatchStatus.Succeeded, BatchStatus.Failed]:
+            self._fs_monitor.stop()
             return self.transition(Cleanup)
+
+        # Check if the job needs killed for resource constraint reasons
+        request_time = self._resources.get('request_time')
+        request_disk = self._resources.get('request_disk')
+        if request_time is not None and runtime > request_time:
+            self.kill('Time limit %s exceeded.' % duration_str(request_time))
+        elif request_disk is not None and disk_utilization > request_disk:
+            self.kill('Disk limit %sb exceeded.' % size_str(request_disk))
 
         return self
 
@@ -471,6 +495,9 @@ class Running(AwsBatchRunState):
     def update_period(self):
         # Update less frequently when in the run state so we don't spam the Batch API quite so much.
         return 5.0
+
+    def kill(self, reason):
+        self._batch_client.terminate_job(jobId=self.job_id, reason=reason)
 
 
 class Cleanup(AwsBatchRunState):

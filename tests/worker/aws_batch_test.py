@@ -142,13 +142,16 @@ class SubmitStateTest(unittest.TestCase):
 
 
 class RunningStateTest(unittest.TestCase):
-    def test_running(self):
+    def create_state(self, **describe_jobs_return):
         state = create_state(Running)
+        state._fs_monitor = mock.MagicMock()
         state.metadata['batch_job_id'] = 'fake job'
         batch_client = state._batch_client
-        batch_client.describe_jobs.return_value = {'jobs': [{
-            'status': BatchStatus.Running,
-        }]}
+        batch_client.describe_jobs.return_value = {'jobs': [describe_jobs_return]}
+        return state, batch_client
+
+    def test_running(self):
+        state, batch_client = self.create_state(status=BatchStatus.Running)
         next_state = state.update()
 
         self.assertIsInstance(next_state, Running, 'should continue running when batch it')
@@ -159,26 +162,33 @@ class RunningStateTest(unittest.TestCase):
         state._bundle_service.update_bundle_metadata.assert_called_once()
 
     def test_failed(self):
-        state = create_state(Running)
-        state.metadata['batch_job_id'] = 'fake job'
-        batch_client = state._batch_client
-        batch_client.describe_jobs.return_value = {'jobs': [{
-            'status': BatchStatus.Failed,
-        }]}
+        state, batch_client = self.create_state(status=BatchStatus.Failed)
         next_state = state.update()
 
         self.assertIsInstance(next_state, Cleanup, 'should continue running when batch it')
 
     def test_succeeded(self):
-        state = create_state(Running)
-        state.metadata['batch_job_id'] = 'fake job'
-        batch_client = state._batch_client
-        batch_client.describe_jobs.return_value = {'jobs': [{
-            'status': BatchStatus.Succeeded,
-        }]}
+        state, batch_client = self.create_state(status=BatchStatus.Succeeded)
         next_state = state.update()
 
         self.assertIsInstance(next_state, Cleanup, 'should continue running when batch it')
+
+    def test_too_much_time(self):
+        state, batch_client = self.create_state(status=BatchStatus.Running, startedAt=100)
+        state._resources['request_time'] = 1
+        with mock.patch('time.time') as timetime:
+            timetime.return_value = 200
+            next_state = state.update()
+        self.assertIsInstance(next_state, Running, 'should continue so that batch can handle killing gracefully')
+        batch_client.terminate_job.assert_called_once()
+
+    def test_too_much_disk(self):
+        state, batch_client = self.create_state(status=BatchStatus.Running)
+        state._resources['request_disk'] = 100
+        state._fs_monitor.disk_utilization = 200
+        next_state = state.update()
+        self.assertIsInstance(next_state, Running, 'should continue so that batch can handle killing gracefully')
+        batch_client.terminate_job.assert_called_once()
 
 
 class CleanupStateTest(unittest.TestCase):

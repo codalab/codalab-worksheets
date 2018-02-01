@@ -10,7 +10,8 @@ import multiprocessing
 import re
 from subprocess import check_output
 
-from run import RunManagerBase, RunBase, FilesystemRunMixin
+from run import RunManagerBase, RunBase
+from filesystem_run import FilesystemRunMixin
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException

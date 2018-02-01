@@ -57,13 +57,18 @@ class ThreadedFiniteStateMachine(FiniteStateMachine):
     """
     A FSM which will run on a separate thread.
     """
-    def __init__(self, initial_state):
+    def __init__(self, initial_state, daemonic=False):
         super(ThreadedFiniteStateMachine, self).__init__(initial_state)
         # The thread for running this FSM
         self._thread = threading.Thread(target=FiniteStateMachine.run, args=[self])
+        self._thread.setDaemon(daemonic)
 
     def start(self):
         """
         Start the thread which runs the FSM asynchronously
         """
         return self._thread.start()
+
+    @property
+    def is_alive(self):
+        return self._thread.isAlive()
