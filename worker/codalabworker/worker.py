@@ -165,6 +165,7 @@ class Worker(object):
             resources=resources
         )
         try:
+            run.pre_start()
             if run.start():
                 self._worker_state_manager.add_run(bundle['uuid'], run)
         except Exception as e:
