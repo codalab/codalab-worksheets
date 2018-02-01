@@ -486,7 +486,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     # Set headers.
     response.set_header('Content-Type', mimetype or 'text/plain')
     response.set_header('Content-Encoding', 'gzip' if gzipped_stream else 'identity')
-    response.set_header('Content-Disposition', 'filename="%s"' % filename)
+    response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
     response.set_header('Target-Type', target_info['type'])
 
     return fileobj
