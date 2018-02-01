@@ -192,20 +192,6 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         if job_definition:
             self._batch_client.deregister_job_definition(jobDefinition=job_definition)
 
-    # TODO Share this with docker_run
-    def post_stop(self):
-        super(AwsBatchRun, self).post_stop()
-
-        # Upload the data if needed
-        if not self._worker.shared_file_system:
-            uuid = self.bundle['uuid']
-            logging.debug('Uploading results for run with UUID %s', uuid)
-
-            def update_status(bytes_uploaded):
-                logging.debug('Uploading results: %s done (archived size)' % size_str(bytes_uploaded))
-
-            self._bundle_service.update_bundle_contents(self._worker.id, uuid, self._bundle_path, update_status)
-
     def _start_fsm(self):
         assert self._fsm is None, "FSM was already created."
 

@@ -9,6 +9,7 @@ import time
 from bundle_service_client import BundleServiceException
 from download_util import get_target_info, get_target_path, PathException
 from file_util import gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory, get_path_size
+from formatting import *
 from fsm import State, ThreadedFiniteStateMachine
 
 
@@ -119,7 +120,15 @@ class FilesystemRunMixin(object):
     def post_stop(self):
         self.cleanup_dependencies()
 
-        # TODO Consolidate uploading bundle data code here too
+        # Upload the data if needed
+        if not self._worker.shared_file_system:
+            uuid = self.bundle['uuid']
+            logging.debug('Uploading results for run with UUID %s', uuid)
+
+            def update_status(bytes_uploaded):
+                logging.debug('Uploading results: %s done (archived size)' % size_str(bytes_uploaded))
+
+            self._bundle_service.update_bundle_contents(self._worker.id, uuid, self._bundle_path, update_status)
 
 
 def read_from_filesystem(run, path, read_args, socket):
