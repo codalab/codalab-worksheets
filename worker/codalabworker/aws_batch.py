@@ -448,7 +448,7 @@ class Running(AwsBatchRunState):
     def __init__(self, *args, **kwargs):
         super(Running, self).__init__(*args, **kwargs)
         self._fs_monitor = FilesystemBundleMonitor(
-            bundle_path=self.docker_working_directory,
+            bundle_path=self._bundle_path,
             dependencies=self._dependencies
         )
 

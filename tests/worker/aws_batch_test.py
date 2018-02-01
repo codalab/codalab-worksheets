@@ -45,7 +45,7 @@ def create_state(NewState):
         'queue_name': 'fake queue',
         'worker': worker,
         'bundle_service': mock.create_autospec(BundleServiceClient),
-        'bundle_path': '/tmp/foo',  # TODO Probably have a random path joined with test name
+        'bundle_path': '/tmp/fake_uuid',  # TODO Probably have a random path joined with test name
         'resources': {'docker_image': 'fake image'},
         'dependencies': {}
     }
@@ -149,6 +149,10 @@ class RunningStateTest(unittest.TestCase):
         batch_client = state._batch_client
         batch_client.describe_jobs.return_value = {'jobs': [describe_jobs_return]}
         return state, batch_client
+
+    def test_fs_monitor_setup(self):
+        state = create_state(Running)
+        self.assertEqual('/tmp/fake_uuid', state._fs_monitor._fsm._state._bundle_path)
 
     def test_running(self):
         state, batch_client = self.create_state(status=BatchStatus.Running)
