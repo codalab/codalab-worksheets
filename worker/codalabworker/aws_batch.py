@@ -225,6 +225,10 @@ class BatchStatus(object):
     Failed = 'FAILED'
 
 
+def batch_name_for_uuid(uuid):
+    return 'codalab-worker-%s-%s' % (VERSION, uuid)
+
+
 class AwsBatchRunState(fsm.State):
     def __init__(self, bundle, batch_client, queue_name, worker, bundle_service, bundle_path, resources, dependencies):
         self._bundle = bundle
@@ -365,7 +369,7 @@ class Setup(AwsBatchRunState):
             ))
 
         job_definition = {
-            'jobDefinitionName': 'codalab-worker-%s-%s' % (VERSION, bundle['uuid']),
+            'jobDefinitionName': batch_name_for_uuid(self.uuid),
             'type': 'container',
             'parameters': {},
             'containerProperties': {
@@ -414,7 +418,7 @@ class Submit(AwsBatchRunState):
 
         # Submit job to AWS Batch
         response = self._batch_client.submit_job(
-            jobName=self.uuid,
+            jobName=batch_name_for_uuid(self.uuid),
             jobQueue=self.batch_queue,
             jobDefinition=job_definition
         )

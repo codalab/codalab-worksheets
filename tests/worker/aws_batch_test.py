@@ -154,7 +154,7 @@ class SubmitStateTest(unittest.TestCase):
         next_state = state.update()
 
         self.assertIsInstance(next_state, Running, 'should transition to running state')
-        batch_client.submit_job.assert_called_once_with(jobName='fake_uuid', jobQueue='fake queue',
+        batch_client.submit_job.assert_called_once_with(jobName=batch_name_for_uuid('fake_uuid'), jobQueue='fake queue',
                                                         jobDefinition='fake arn')
         self.assertEqual(next_state.metadata.get('batch_job_id'), 'fake job', 'job id should be set in next state')
 
