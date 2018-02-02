@@ -104,6 +104,7 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
+    'docker',
     'edit',
     'detach',
     'rm',
@@ -118,12 +119,6 @@ BUNDLE_COMMANDS = (
     'kill',
     'write',
     'mount',
-)
-
-DOCKER_IMAGE_COMMANDS = (
-    'edit-image',
-    'commit-image',
-    'push-image',
 )
 
 WORKSHEET_COMMANDS = (
@@ -298,7 +293,6 @@ class Commands(object):
         max_length = max(
           len(command_name(command)) for command in itertools.chain(
               BUNDLE_COMMANDS,
-              DOCKER_IMAGE_COMMANDS,
               WORKSHEET_COMMANDS,
               GROUP_AND_PERMISSION_COMMANDS,
               USER_COMMANDS,
@@ -356,9 +350,6 @@ class Commands(object):
         Commands for users:
         {user_commands}
 
-        Commands for building Docker images:
-        {docker_image_commands}
-
         Commands for managing server:
         {server_commands}
 
@@ -366,7 +357,6 @@ class Commands(object):
         {other_commands}
         """).format(
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
-            docker_image_commands=command_group_help_text(DOCKER_IMAGE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
             user_commands=command_group_help_text(USER_COMMANDS),
@@ -1229,12 +1219,11 @@ class BundleCLI(object):
 
     @Commands.command(
         'run',
-        help='Create a bundle by running a program bundle on an input bundle. If local mode is specified, simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
+        help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-            Commands.Argument('--local', action='store_true', help='Beta feature: this command may change in a future release. Simulate a run bundle locally. This means any dependencies provided are local files/directories mounted to a temporary container (read-only).'),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
@@ -1242,61 +1231,37 @@ class BundleCLI(object):
         args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
 
-        if args.local:
-            self._fail_if_headless(args)  # Disable on headless systems
-            docker_image = metadata.get('request_docker_image', None)
-            if not docker_image:
-                raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
+        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
+        new_bundle = client.create(
+            'bundles',
+            self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+            params={'worksheet': worksheet_uuid},
+        )
 
-            uuid = generate_uuid()
-            bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
-            command = args.command
-            request_network = None
-            dependencies = [
-                (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
-            ]
-
-            # Set up a directory to store the bundle.
-            remove_path(bundle_path)
-            os.makedirs(bundle_path)
-
-            for dependency_path, docker_dependency_path in dependencies:
-                child_path = os.path.join(bundle_path, dependency_path)
-                os.symlink(docker_dependency_path, child_path)
-
-            dc = DockerClient()
-            container_id = dc.start_container(bundle_path, uuid, command, docker_image, request_network, dependencies)
-            print >>self.stdout, '===='
-            print >>self.stdout, 'ContainerID: ', container_id
-            print >>self.stdout, 'Local Bundle ID: ', uuid
-            print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
-            print >>self.stdout, '===='
-        else:
-            targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
-            new_bundle = client.create(
-                'bundles',
-                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-                params={'worksheet': worksheet_uuid},
-            )
-
-            print >>self.stdout, new_bundle['uuid']
-            self.wait(client, args, new_bundle['uuid'])
+        print >>self.stdout, new_bundle['uuid']
+        self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
-        'edit-image',
-        help='Beta feature: this command may change in a future release. Start an interactive shell with an image to allow edits to that image locally. This means any dependencies provided are also local files/directories mounted to a temporary container (read-only).',
+        'docker',
+        help='Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
-            Commands.Argument('--request-docker-image', help='The docker image to edit', required=True),
-        )
+            Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
-    def do_edit_image_command(self, args):
+    def do_docker_command(self, args):
         self._fail_if_headless(args)  # Disable on headless systems
-        docker_image = args.request_docker_image
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
+        metadata = self.get_missing_metadata(RunBundle, args)
+
+        docker_image = metadata.get('request_docker_image', None)
+        if not docker_image:
+            raise UsageError('--request-docker-image [docker-image] must be specified')
 
         uuid = generate_uuid()
         bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
-        command = '/bin/bash'
         request_network = None
         dependencies = [
             (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
@@ -1311,55 +1276,13 @@ class BundleCLI(object):
             os.symlink(docker_dependency_path, child_path)
 
         dc = DockerClient()
-        container_id = dc.create_container(bundle_path, uuid, command, docker_image, request_network, dependencies, ['-it'])
-
+        container_id = dc.create_container(bundle_path, uuid, args.command, docker_image, request_network, dependencies, ['-it'])
         print >>self.stdout, '===='
-        print >>self.stdout, 'Entering container {}'.format(container_id[:8])
-        print >>self.stdout, 'Once you are happy with the changes, please exit the container (ctrl-D)'
-        print >>self.stdout, 'and commit your changes to a new image by running:'
-        print >>self.stdout, ''
-        print >>self.stdout, '\tcl commit-image {} [image-tag]'.format(container_id[:8])
-        print >>self.stdout, ''
+        print >>self.stdout, 'Container ID: ', container_id[:12]
+        print >>self.stdout, 'Local Bundle UUID: ', uuid
+        print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
         print >>self.stdout, '===='
         os.system('docker start -ai {}'.format(container_id))
-        print >>self.stdout, '===='
-        print >>self.stdout, 'Exited from container {}'.format(container_id[:8])
-        print >>self.stdout, 'If you are happy with the changes, please commit your changes to a new'
-        print >>self.stdout, 'image by running:'
-        print >>self.stdout, ''
-        print >>self.stdout, '\tcl commit-image {} [image-tag]'.format(container_id[:8])
-        print >>self.stdout, ''
-        print >>self.stdout, '===='
-
-    @Commands.command(
-        'commit-image',
-        help='Create an image from a container.',
-        arguments=(
-            Commands.Argument('container', help='Container to commit.'),
-            Commands.Argument('image_tag', help='Image tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu'),
-        )
-    )
-    def do_commit_image_command(self, args):
-        self._fail_if_headless(args)  # Disable on headless systems
-        cli_command = 'docker commit {} {}'.format(args.container, args.image_tag)
-        os.system(cli_command)
-
-    @Commands.command(
-        'push-image',
-        help='Beta feature: this command may change in a future release. Push a (committed) image to a docker registry. Deprecated and disabled. Please use docker push instead.',
-        arguments=(
-            Commands.Argument('image_tag', help='Image tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu'),
-        )
-    )
-    def do_push_image_command(self, args):
-        self._fail_if_headless(args)  # Disable on headless systems
-        print >>self.stdout, '===='
-        print >>self.stdout, 'cl push-image has been deprecated and disabled. Please use docker push instead:'
-        print >>self.stdout, ''
-        print >>self.stdout, '\tdocker push [image-tag]'
-        print >>self.stdout, ''
-        print >>self.stdout, '===='
-
 
     @Commands.command(
         'edit',

@@ -327,8 +327,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 docker_dependency_path))
 
         # Create the container.
-        command = 'bash'
-
         try:
             cli_command = 'docker {} {} {} {} {} {} {}'.format(
                 'create',
