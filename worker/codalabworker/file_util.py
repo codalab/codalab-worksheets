@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import tarfile
 import zlib
+import bz2
 
 
 def tar_gzip_directory(directory_path, follow_symlinks=False,
@@ -73,6 +74,20 @@ def gzip_file(file_path):
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
+def un_bz2_file(source, dest_path):
+    """
+    Unzips the source bz2 file object and writes the output to the file at
+    dest_path
+    """
+    # Note, that we don't use bz2.BZ2File or the bunzip2 shell command since
+    # they require the input file-like object to support either tell() or
+    # fileno(). Our version requires only read() and close().
+
+    BZ2_BUFFER_SIZE = 100 * 1024 * 1024 # Unzip in chunks of 100MB
+    with open(dest_path, 'wb') as dest:
+        decompressor = bz2.BZ2Decompressor()
+        for data in iter(lambda : source.read(BZ2_BUFFER_SIZE), b''):
+            dest.write(decompressor.decompress(data))
 
 def un_gzip_stream(fileobj):
     """
@@ -87,7 +102,7 @@ def un_gzip_stream(fileobj):
             self._decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
             self._buffer = ''
             self._finished = False
-    
+
         def read(self, num_bytes=None):
             # Read more data, if we need to.
             while not self._finished and (num_bytes is None or len(self._buffer) < num_bytes):
@@ -114,7 +129,7 @@ def un_gzip_stream(fileobj):
             attempted through this proxy.
             """
             return getattr(self._fileobj, name)
-    
+
     # Note, that we don't use gzip.GzipFile or the gunzip shell command since
     # they require the input file-like object to support either tell() or
     # fileno(). Our version requires only read() and close().
