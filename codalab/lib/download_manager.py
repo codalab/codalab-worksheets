@@ -205,6 +205,20 @@ class DownloadManager(object):
                 string = file_util.un_gzip_string(string)
             return string
 
+    def netcat(self, uuid, port, message):
+        """
+        Sends a raw bytestring into the specified port of a running bundle, then return the response.
+        """
+        worker = self._worker_model.get_bundle_worker(uuid)
+        response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
+        try:
+            self._send_netcat_message(worker, response_socket_id, uuid, port, message)
+            string = self._get_read_response_string(response_socket_id)
+        finally:
+            self._worker_model.deallocate_socket(response_socket_id)
+
+        return string
+
     def _is_available_locally(self, uuid):
         if self._bundle_model.get_bundle_state(uuid) == State.RUNNING:
             if self._worker_model.shared_file_system:
@@ -229,6 +243,17 @@ class DownloadManager(object):
             'uuid': uuid,
             'path': path,
             'read_args': read_args,
+        }
+        if not self._worker_model.send_json_message(worker['socket_id'], message, 60): # dead workers are a fact of life now
+            logging.info('Unable to reach worker')
+
+    def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
+        message = {
+            'type': 'netcat',
+            'socket_id': response_socket_id,
+            'uuid': uuid,
+            'port': port,
+            'message': message,
         }
         if not self._worker_model.send_json_message(worker['socket_id'], message, 60): # dead workers are a fact of life now
             logging.info('Unable to reach worker')

@@ -47,12 +47,13 @@ class Worker(object):
 
     def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
                  max_images_bytes, shared_file_system,
-                 slots, bundle_service, docker):
+                 slots, bundle_service, docker, docker_network_prefix='codalab_worker_network'):
         self.id = id
         self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._docker = docker
+        self._docker_network_prefix = docker_network_prefix
         self._slots = slots
 
         self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
@@ -68,6 +69,21 @@ class Worker(object):
         self._exiting = False
         self._should_upgrade = False
         self._last_checkin_successful = False
+
+        # set up docker networks for running bundles: one with external network access and one without
+        self.docker_network_external_name = self._docker_network_prefix + "_ext"
+        if self.docker_network_external_name not in self._docker.list_networks():
+            logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
+            self._docker.create_network(self.docker_network_external_name, internal=False)
+        else:
+            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_external_name))
+
+        self.docker_network_internal_name = self._docker_network_prefix + "_int"
+        if self.docker_network_internal_name not in self._docker.list_networks():
+            logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
+            self._docker.create_network(self.docker_network_internal_name)
+        else:
+            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_internal_name))
 
     def run(self):
         if self._max_images_bytes is not None:
@@ -158,6 +174,9 @@ class Worker(object):
             elif type == 'read':
                 self._read(response['socket_id'], response['uuid'], response['path'],
                            response['read_args'])
+            elif type == 'netcat':
+                self._netcat(response['socket_id'], response['uuid'], response['port'],
+                           response['message'])
             elif type == 'write':
                 self._write(response['uuid'], response['subpath'],
                             response['string'])
@@ -247,6 +266,15 @@ class Worker(object):
             # Reads may take a long time, so do the read in a separate thread.
             threading.Thread(target=Run.read,
                              args=(run, socket_id, path, read_args)).start()
+
+    def _netcat(self, socket_id, uuid, port, message):
+        run = self._worker_state_manager._get_run(uuid)
+        if run is None:
+            Run.read_run_missing(self._bundle_service, self, socket_id)
+        else:
+            # Reads may take a long time, so do the read in a separate thread.
+            threading.Thread(target=Run.netcat,
+                             args=(run, socket_id, port, message)).start()
 
     def _write(self, uuid, subpath, string):
         run = self._worker_state_manager._get_run(uuid)

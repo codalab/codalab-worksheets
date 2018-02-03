@@ -6,13 +6,13 @@ import socket
 import threading
 import time
 import traceback
+import sys
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
 from file_util import get_path_size, gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory, remove_path
 from formatting import duration_str, size_str
-
 
 logger = logging.getLogger(__name__)
 
@@ -217,11 +217,14 @@ class Run(object):
 
             def do_start():
                 self._safe_update_run_status('Starting Docker container')
+                if self._resources['request_network']:
+                    docker_network = self._worker.docker_network_external_name
+                else:
+                    docker_network = self._worker.docker_network_internal_name
+
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
-                    self._resources['docker_image'],
-                    self._resources['request_network'],
-                    dependencies)
+                    self._resources['docker_image'], docker_network, dependencies)
 
             # Pull the docker image regardless of whether or not we already have it
             # This will make sure we pull updated versions of the image
@@ -335,6 +338,39 @@ class Run(object):
             'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         bundle_service.reply(worker.id, socket_id, message)
+
+    def netcat(self, socket_id, port, message):
+        """ Set up a unix socket to the running container, send the message and retrieve the response. """
+
+        def reply_error(code, message):
+            message = {
+                'error_code': code,
+                'error_message': message,
+            }
+            self._bundle_service.reply(self._worker.id, socket_id, message)
+
+        try:
+            container_ip = self._worker._docker.get_container_ip(
+                    self._worker.docker_network_external_name, self._container_id)
+            if not container_ip:
+                container_ip = self._worker._docker.get_container_ip(
+                        self._worker.docker_network_internal_name, self._container_id)
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((container_ip, port))
+            s.sendall(message)
+
+            total_data=[]
+            while True:
+                data = s.recv(1024)
+                if not data: break
+                total_data.append(data)
+            s.close()
+            self._bundle_service.reply_data(self._worker.id, socket_id, {}, ''.join(total_data))
+        except BundleServiceException:
+            traceback.print_exc()
+        except Exception as e:
+            traceback.print_exc()
+            reply_error(httplib.INTERNAL_SERVER_ERROR, e.message)
 
     def read(self, socket_id, path, read_args):
         def reply_error(code, message):
