@@ -10,7 +10,6 @@ from codalab.common import (
     UsageError,
 )
 from codalabworker.rest_client import RestClient, RestClientException
-from codalabworker.file_util import un_gzip_stream
 
 
 def wrap_exception(message):
