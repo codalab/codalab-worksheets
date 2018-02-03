@@ -11,7 +11,6 @@ from bottle import (
 
 from codalab.server.authenticated_plugin import user_is_authenticated
 
-
 class LoginCookie(object):
     """
     Represents the user's session cookie after logging in.
