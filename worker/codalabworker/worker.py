@@ -45,7 +45,7 @@ class Worker(object):
         4) Upgrading the worker.
     """
 
-    def __init__(self, id, tag, work_dir, max_work_dir_size_bytes,
+    def __init__(self, id, tag, work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length,
                  max_images_bytes, shared_file_system,
                  slots, bundle_service, docker, docker_network_prefix='codalab_worker_network'):
         self.id = id
@@ -61,7 +61,8 @@ class Worker(object):
         if not self.shared_file_system:
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(
-                    work_dir, max_work_dir_size_bytes, self._worker_state_manager.previous_runs.keys())
+                    work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length,
+                    self._worker_state_manager.previous_runs.keys())
         self._image_manager = DockerImageManager(self._docker, work_dir, max_images_bytes)
         self._max_images_bytes = max_images_bytes
 
