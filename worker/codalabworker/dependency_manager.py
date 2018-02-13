@@ -20,7 +20,7 @@ class DependencyManager(object):
 
     def __init__(self, work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length, previous_runs=[]):
         self._max_work_dir_size_bytes = max_work_dir_size_bytes
-        self._max_dependencies_serialized_length = max_dependencies_serialized_length
+        self._max_dependencies_serialized_length = max_dependencies_serialized_length or float('inf')
         self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
         self._work_dir = work_dir
         self._bundles_dir = os.path.join(work_dir, 'bundles')

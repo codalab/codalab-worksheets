@@ -11,7 +11,7 @@ from codalabworker.file_util import remove_path
 class DependencyManagerTest(unittest.TestCase):
     def setUp(self):
         self.work_dir = tempfile.mkdtemp()
-        self.manager = DependencyManager(self.work_dir, None)
+        self.manager = DependencyManager(self.work_dir, None, None)
         self.bundles_dir = os.path.join(self.work_dir, 'bundles')
 
     def tearDown(self):
@@ -23,7 +23,7 @@ class DependencyManagerTest(unittest.TestCase):
         with open(os.path.join(self.bundles_dir, 'random_file'), 'w'):
             pass
         self.assertIn('random_file', os.listdir(self.bundles_dir))
-        new_manager = DependencyManager(self.work_dir, 1 * 1024 * 1024)
+        new_manager = DependencyManager(self.work_dir, 1 * 1024 * 1024, None)
         self.check_state([('uuid1', ''), ('uuid2', '')], new_manager)
         self.assertIn(DependencyManager.STATE_FILENAME, os.listdir(self.work_dir))
         self.assertNotIn('random_file', os.listdir(self.bundles_dir))
@@ -57,7 +57,7 @@ class DependencyManagerTest(unittest.TestCase):
                          os.path.join(self.bundles_dir, 'uuid1_a_b_c_'))
 
     def test_cleanup(self):
-        self.manager = DependencyManager(self.work_dir, 2 * 1024 * 1024)
+        self.manager = DependencyManager(self.work_dir, 2 * 1024 * 1024, None)
 
         self.manager.finish_run('uuid1') # Has dependency, so will not be removed.
         self.manager.add_dependency('uuid1', '', 'uuid100')
@@ -84,6 +84,32 @@ class DependencyManagerTest(unittest.TestCase):
         self.assertIn(('uuid2', ''), self.manager._dependencies)
         self.assertItemsEqual([DependencyManager.STATE_FILENAME, 'bundles'], os.listdir(self.work_dir))
         self.assertItemsEqual(['uuid1', 'uuid2', 'uuid3'], os.listdir(self.bundles_dir))
+
+    def test_cleanup_serialization(self):
+        self.manager = DependencyManager(self.work_dir, 5 * 1024 * 1024, 50)
+        self.manager.finish_run('uuid1') # Has dependency, so will not be removed.
+        self.manager.add_dependency('uuid1', '', 'uuid100')
+
+        self.manager.add_dependency('uuid2', '', 'uuid100') # Downloading, so will not be removed.
+
+        self.manager.finish_run('uuid3')  # Used after uuid4, so will be left.
+        self.manager.finish_run('uuid4')  # Will be removed.
+        self.manager.add_dependency('uuid4', '', 'uuid100')
+        self.manager.remove_dependency('uuid4', '', 'uuid100')
+        self.manager.add_dependency('uuid3', '', 'uuid100')
+        self.manager.remove_dependency('uuid3', '', 'uuid100')
+
+        for uuid in ['uuid1', 'uuid2', 'uuid3', 'uuid4']:
+            with open(self.manager.get_run_path(uuid), 'wb') as f:
+                f.write(' ' * 1024 * 1024)
+
+        self.manager._cleanup_sleep_secs = 0
+        self.manager.start_cleanup_thread()
+        time.sleep(0.1)
+        self.manager.stop_cleanup_thread()
+
+        self.check_state([('uuid1', ''), ('uuid3', '')])
+        self.assertIn(('uuid2', ''), self.manager._dependencies)
 
     def check_state(self, expected_targets, manager=None):
         if manager is None:
