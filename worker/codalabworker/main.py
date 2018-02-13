@@ -99,7 +99,7 @@ chmod 600 %s""" % args.password_file
     else:
         max_images_bytes = parse_size(args.max_image_cache_size)
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
-                    args.max_dependencies_serialized_length
+                    args.max_dependencies_serialized_length,
                     max_images_bytes, args.shared_file_system, args.slots,
                     BundleServiceClient(args.server, username, password),
                     DockerClient(), args.network_prefix)
