@@ -127,14 +127,7 @@ class Run(object):
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
                                                  start_message):
             return False
-
-        # Start a thread for this run.
-        def resume_run(self):
-            Run._safe_update_run_status(self, 'Running')
-            Run._monitor(self)
-
-        threading.Thread(target=resume_run, args=[self]).start()
-
+        return True
 
     def _safe_update_docker_image(self, docker_image):
         """ Update the docker_image metadata field for the run bundle """
@@ -164,6 +157,7 @@ class Run(object):
             if (time.time() - last_update_time[0] >= PROGRESS_UPDATE_FREQ_SECS):
                 last_update_time[0] = time.time()
                 self._safe_update_run_status(status)
+                self.resume()
         return update
 
     def _start(self):
