@@ -931,15 +931,11 @@ class BundleCLI(object):
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
-        # Uploading from local filesystem not allowed for headless CLI (i.e. web terminal)
-        if self.headless and args.path:
-            raise UsageError("Upload from local filesystem not supported in headless CLI.")
-
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
 
         if args.contents is not None and args.path:
-            raise UsageError("Upload does not support mixing content strings and local files.")
+            raise UsageError("Upload does not support mixing content strings and paths(local files and URLs).")
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
@@ -968,8 +964,6 @@ class BundleCLI(object):
 
         # Option 2: Upload URL(s)
         elif any(map(path_util.path_is_url, args.path)):
-            if self.headless:
-                raise UsageError("Local file paths not allowed without a filesystem.")
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
 
@@ -983,6 +977,8 @@ class BundleCLI(object):
 
         # Option 3: Upload file(s) from the local filesystem
         else:
+            if self.headless:
+                raise UsageError("Local file paths not allowed without a filesystem.")
             # Check that the upload paths exist
             for path in args.path:
                 path_util.check_isvalid(path_util.normalize(path), 'upload')
