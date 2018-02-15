@@ -46,9 +46,6 @@ def main():
                              'the least recently used images are removed first. '
                              'Worker will not remove any images if this option '
                              'is not specified.')
-    parser.add_argument('--slots', type=int, default=1,
-                        help='Number of slots to use for running bundles. '
-                             'A single bundle takes up a single slot.')
     parser.add_argument('--password-file',
                         help='Path to the file containing the username and '
                              'password for logging into the bundle service, '
@@ -100,7 +97,7 @@ chmod 600 %s""" % args.password_file
         max_images_bytes = parse_size(args.max_image_cache_size)
     worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     args.max_dependencies_serialized_length,
-                    max_images_bytes, args.shared_file_system, args.slots,
+                    max_images_bytes, args.shared_file_system,
                     BundleServiceClient(args.server, username, password),
                     DockerClient(), args.network_prefix)
 

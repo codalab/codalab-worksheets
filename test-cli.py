@@ -253,7 +253,6 @@ def temp_instance():
         worker_proc = subprocess.Popen([os.path.join(base_path, 'venv/bin/python'),
                                         os.path.join(base_path, 'worker/codalabworker/main.py'),
                                         '--server=' + remote_host,
-                                        '--slots=1',
                                         '--work-dir=' + remote_worker_scratch,
                                         '--password-file=' + password_file],
                                        stdout=subprocess.PIPE, stderr=FNULL)

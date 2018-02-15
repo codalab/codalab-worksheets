@@ -307,8 +307,6 @@ class BundleManager(object):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
-
-        Note: the worker slots field is no longer in use so it is effectively ignored
         """
 
         # keep track of which workers have GPUs
@@ -357,7 +355,7 @@ class BundleManager(object):
         #  - random key
         #
         # Breaking ties randomly is important, since multiple workers frequently
-        # have the same number of dependencies and free slots for a given bundle
+        # have the same number of dependencies and free CPUs for a given bundle
         # (in particular, bundles with no dependencies) and we may end up
         # selecting the same worker over and over again for new jobs. While this
         # is not a problem for the performance of the jobs themselves, this can
