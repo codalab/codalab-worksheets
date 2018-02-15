@@ -218,7 +218,9 @@ class Run(object):
 
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
-                    self._resources['docker_image'], docker_network, dependencies)
+                    self._resources['docker_image'], docker_network, dependencies,
+                    self._resources['request_memory'] or 0
+                )
 
             # Pull the docker image regardless of whether or not we already have it
             # This will make sure we pull updated versions of the image
@@ -280,8 +282,7 @@ class Run(object):
 
         # Get wall clock time.
         new_metadata['time'] = time.time() - self._start_time
-        if (self._resources['request_time'] and
-            new_metadata['time'] > self._resources['request_time']):
+        if (self._resources['request_time'] and new_metadata['time'] > self._resources['request_time']):
             self.kill('Time limit %s exceeded.' % duration_str(self._resources['request_time']))
 
         # Get memory, time_user and time_system.
@@ -289,10 +290,6 @@ class Run(object):
         if 'memory' in new_metadata and new_metadata['memory'] > self._max_memory:
             self._max_memory = new_metadata['memory']
         new_metadata['memory_max'] = self._max_memory
-        if (self._resources['request_memory'] and
-            'memory' in new_metadata and
-            new_metadata['memory'] > self._resources['request_memory']):
-            self.kill('Memory limit %sb exceeded.' % size_str(self._resources['request_memory']))
 
         # Get disk utilization.
         with self._disk_utilization_lock:
