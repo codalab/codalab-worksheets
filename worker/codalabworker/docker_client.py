@@ -411,7 +411,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
-                        network_name, dependencies):
+                        network_name, dependencies, memory_bytes=0):
         docker_commands = self._get_docker_commands(
             bundle_path, uuid, command, docker_image, dependencies)
 
@@ -435,7 +435,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'Env': ['HOME=%s' % docker_bundle_path],
             'Entrypoint': [""], # unset entry point regardless of image
             'HostConfig': {
-                'Binds': volume_bindings
+                'Binds': volume_bindings,
+                'Memory': memory_bytes, # hard memory limit
             },
             # TODO: Fix potential permissions issues arising from this setting
             # This can cause problems if users expect to run as a specific user
