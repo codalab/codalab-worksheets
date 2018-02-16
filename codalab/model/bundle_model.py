@@ -1984,6 +1984,12 @@ class BundleModel(object):
     def _get_disk_used(self, user_id):
         return self.search_bundle_uuids(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
 
+    def get_user_disk_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        disk_quota = user_info['disk_quota']
+        disk_used = self._get_disk_used(user_id)
+        return disk_quota - disk_used
+
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)
         # Compute from scratch for simplicity
