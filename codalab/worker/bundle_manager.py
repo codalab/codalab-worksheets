@@ -470,10 +470,13 @@ class BundleManager(object):
                                                     bundle.metadata.request_memory,
                                                     self._default_request_memory,
                                                     self._max_request_memory)
+
+        user_disk_left = self._model.get_user_disk_quota_left(bundle.owner_id)
+        max_disk = min(user_disk_left, self._max_request_disk)
         resources['request_disk'] = parse_and_min(formatting.parse_size,
                                                   bundle.metadata.request_disk,
                                                   self._default_request_disk,
-                                                  self._max_request_disk)
+                                                  max_disk)
 
         resources['request_network'] = (bundle.metadata.request_network or
                                         self._default_request_network)
