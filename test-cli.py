@@ -924,21 +924,39 @@ def test(ctx):
 
 @TestModule.register('mimic')
 def test(ctx):
-    name = random_name()
-
     def data_hash(uuid):
         run_command([cl, 'wait', uuid])
         return get_info(uuid, 'data_hash')
-    uuid1 = run_command([cl, 'upload', test_path('a.txt'), '-n', name + '-in1'])
-    uuid2 = run_command([cl, 'make', uuid1, '-n', name + '-out'])
-    uuid3 = run_command([cl, 'upload', test_path('a.txt')])
+
+    simple_name = random_name()
+
+    input_uuid = run_command([cl, 'upload', test_path('a.txt'), '-n', simple_name + '-in1'])
+    simple_out_uuid = run_command([cl, 'make', input_uuid, '-n', simple_name + '-out'])
+
+    new_input_uuid = run_command([cl, 'upload', test_path('a.txt')])
+
     # Try three ways of mimicing, should all produce the same answer
-    uuid4 = run_command([cl, 'mimic', uuid1, uuid3, '-n', 'new'])
-    check_equals(data_hash(uuid2), data_hash(uuid4))
-    uuid5 = run_command([cl, 'mimic', uuid1, uuid2, uuid3, '-n', 'new'])
-    check_equals(data_hash(uuid2), data_hash(uuid5))
-    uuid6 = run_command([cl, 'macro', name, uuid3, '-n', 'new'])
-    check_equals(data_hash(uuid2), data_hash(uuid6))
+    input_mimic_uuid = run_command([cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new'])
+    check_equals(data_hash(simple_out_uuid), data_hash(input_mimic_uuid))
+
+    full_mimic_uuid = run_command([cl, 'mimic',input_uuid, simple_out_uuid, new_input_uuid, '-n', 'new'])
+    check_equals(data_hash(simple_out_uuid), data_hash(full_mimic_uuid))
+
+    simple_macro_uuid = run_command([cl, 'macro', simple_name, new_input_uuid, '-n', 'new'])
+    check_equals(data_hash(simple_out_uuid), data_hash(simple_macro_uuid))
+
+    complex_name = random_name()
+
+    numbered_input_uuid = run_command([cl, 'upload', test_path('a.txt'), '-n', complex_name + '-in1'])
+    named_input_uuid = run_command([cl, 'upload', test_path('b.txt'), '-n', complex_name + '-in-named'])
+    out_uuid = run_command([cl, 'make', 'numbered:' + numbered_input_uuid, 'named:' + named_input_uuid, '-n', complex_name + '-out'])
+
+    new_numbered_input_uuid = run_command([cl, 'upload', test_path('a.txt')])
+    new_named_input_uuid = run_command([cl, 'upload', test_path('b.txt')])
+
+    # Try running macro with numbered and named inputs
+    macro_out_uuid = run_command([cl, 'macro', complex_name, new_numbered_input_uuid, 'named:' + new_named_input_uuid, '-n', 'new'])
+    check_equals(data_hash(out_uuid), data_hash(macro_out_uuid))
 
     # Another basic test
     uuidA = run_command([cl, 'upload', test_path('a.txt')])

@@ -1922,11 +1922,11 @@ class BundleCLI(object):
         'macro',
         help=[
             'Use mimicry to simulate macros.',
-            '  macro M A B   <=>   mimic M-in1 M-in2 M-out A B'
+            '  macro M A B named-input:C <=> mimic M-in1 M-in2 M-in-named-input M-out A B C'
         ],
         arguments=(
-            Commands.Argument('macro_name', help='Name of the macro (look for <macro_name>-in1, ..., and <macro_name>-out bundles).'),
-            Commands.Argument('bundles', help='Bundles: new_input_1 ... new_input_n (%s)' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
+            Commands.Argument('macro_name', help='Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., and <macro_name>-out bundles).'),
+            Commands.Argument('bundles', help='Bundles: new_input_1 ... new_input_n named_input_name:named_input_bundle other_named_input_name:other_named_input_bundle (%s)' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
         ) + Commands.metadata_arguments([MakeBundle, RunBundle]) + MIMIC_ARGUMENTS,
     )
     def do_macro_command(self, args):
@@ -1939,8 +1939,21 @@ class BundleCLI(object):
         if not getattr(args, metadata_util.metadata_key_to_argument('name')):
             setattr(args, metadata_util.metadata_key_to_argument('name'), 'new')
         # Reduce to the mimic case
-        args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
-                       [args.macro_name + '-out'] + args.bundles
+        named_inputs = [bundle for bundle in args.bundles if ':' in bundle]
+        named_input_names = [bundle.split(':',1)[0] for bundle in named_inputs]
+
+        named_user_inputs = [bundle.split(':',1)[1] for bundle in named_inputs]
+        named_macro_inputs = [args.macro_name + '-in-' + named_in for named_in in named_input_names]
+
+        numbered_user_inputs = [bundle for bundle in args.bundles if ':' not in bundle]
+        numbered_macro_inputs = [args.macro_name + '-in' + str(i+1) for i in range(len(numbered_user_inputs))]
+
+        args.bundles = numbered_macro_inputs + \
+                       named_macro_inputs + \
+                       [args.macro_name + '-out'] + \
+                       numbered_user_inputs + \
+                       named_user_inputs
+
         self.mimic(args)
 
     def add_mimic_args(self, parser):
