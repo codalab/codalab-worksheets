@@ -29,7 +29,7 @@ script:
   - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/travis/.codalab/root.password
   - chmod 600 /home/travis/.codalab/root.password
   - sleep 15
-  - ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --slots 4 --password-file /home/travis/.codalab/root.password --verbose &
+  - (source ./venv/bin/activate && ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --slots 4 --password-file /home/travis/.codalab/root.password --verbose &)
   - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
   - ./codalab/bin/cl upload -c stuff
   - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
