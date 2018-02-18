@@ -196,7 +196,7 @@ def code():
     """
     Returns .tar.gz archive containing the code of the worker.
     """
-    response.set_header('Content-Disposition', 'filename="code.tar.gz"')
+    response.set_header('Content-Disposition', 'attachment; filename="code.tar.gz"')
     response.set_header('Content-Type', 'application/gzip')
     codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     code_dir = os.path.join(codalab_cli, 'worker', 'codalabworker')
