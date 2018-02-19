@@ -21,7 +21,7 @@ def current_time():
 BYTES_PER_MEGABYTE = 1024 * 1024
 
 # AWS Batch always requires the amount of memory to be specified. We provide a reasonable default here.
-BATCH_DEFAULT_MEMORY = 100 * BYTES_PER_MEGABYTE
+BATCH_DEFAULT_MEMORY = 1024 * BYTES_PER_MEGABYTE
 
 
 class AwsBatchRunManager(RunManagerBase):
