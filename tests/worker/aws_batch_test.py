@@ -160,7 +160,13 @@ class SetupStateTest(unittest.TestCase):
             ['/tmp/fsdfd', '/fsdfd', 'fsdfd'],
             # Contains illegal characters
             ['/tmp/foo.bar.*', '/foo.bar.*', 'foo.bar.*'],
-            ['/tmp/%s' % long_name, '/%s' % long_name, long_name]
+            # Long name
+            ['/tmp/%s' % long_name, '/%s' % long_name, long_name],
+            # Duplicate names after cleaning
+            ['/tmp/a', '/a', 'a!'],
+            ['/tmp/ab', '/ab', 'a@'],
+            ['/tmp/ac', '/ac', 'a#'],
+            ['/tmp/ad', '/ad', 'a.'],
         ]
         job_definition = setup.get_job_definition()
         check_volume_sanity(job_definition)

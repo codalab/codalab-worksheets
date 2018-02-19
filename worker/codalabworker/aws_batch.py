@@ -374,10 +374,26 @@ class Setup(AwsBatchRunState):
             name=self.uuid,
             read_only=False
         )]
+        volume_names = set()
+        max_clean_name_length = 244
         for host_path, docker_path, name in dependencies:
             # Batch has some restrictions with the name, so force it to conform
             # See: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#volumes
-            clean_name = re.sub(r'[^a-zA-Z0-9_-]', '', name)[:244]
+            clean_name = re.sub(r'[^a-zA-Z0-9_-]', '', name)[:max_clean_name_length]
+
+            # Find a unique clean name in case our cleaning created duplicates
+            if clean_name in volume_names:
+                unique_index = 1
+
+                def unique_name():
+                    return ('%d-%s' % (unique_index, clean_name))[:max_clean_name_length]
+                while unique_name() in volume_names:
+                    unique_index += 1
+
+                clean_name = unique_name()
+
+            volume_names.add(clean_name)
+
             volumes_and_mounts.append(self.volume_and_mount(
                 host_path=host_path,
                 container_path=docker_path,
