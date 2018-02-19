@@ -2,6 +2,7 @@ import logging
 import os
 import socket
 import time
+import re
 
 import fsm
 from bundle_service_client import BundleServiceException
@@ -18,6 +19,9 @@ def current_time():
 
 
 BYTES_PER_MEGABYTE = 1024 * 1024
+
+# AWS Batch always requires the amount of memory to be specified. We provide a reasonable default here.
+BATCH_DEFAULT_MEMORY = 1024 * BYTES_PER_MEGABYTE
 
 
 class AwsBatchRunManager(RunManagerBase):
@@ -67,6 +71,7 @@ class AwsBatchRunManager(RunManagerBase):
         return 0
 
     def create_run(self, bundle, bundle_path, resources):
+        resources['request_memory'] = resources.get('request_memory') or BATCH_DEFAULT_MEMORY
         run = AwsBatchRun(
             bundle_service=self._bundle_service,
             batch_client=self._batch_client,
@@ -121,6 +126,7 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
     def __init__(self, bundle_service, batch_client, queue_name, worker, bundle, bundle_path, resources,
                  dependencies=None):
         super(AwsBatchRun, self).__init__()
+        assert 'request_memory' in resources, "AWS Batch runs require request_memory to be specified."
         self._bundle_service = bundle_service
         self._batch_client = batch_client
         self._queue_name = queue_name
@@ -357,7 +363,7 @@ class Setup(AwsBatchRunState):
         # The docker image is always specified
         image = self.resources['docker_image']
         # Default to 100 MB so we have some breathing room.
-        memory_bytes = self.resources.get('request_memory') or 100*BYTES_PER_MEGABYTE
+        memory_bytes = self.resources['request_memory']
         # TODO CPUs should really be in resources, but for some reason it isn't so use it or default in metadata
         cpus = max(self.metadata.get('request_cpus', 0), 1)
 
@@ -368,11 +374,30 @@ class Setup(AwsBatchRunState):
             name=self.uuid,
             read_only=False
         )]
-        for host_path, docker_path, uuid in dependencies:
+        volume_names = set()
+        max_clean_name_length = 244
+        for host_path, docker_path, name in dependencies:
+            # Batch has some restrictions with the name, so force it to conform
+            # See: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#volumes
+            clean_name = re.sub(r'[^a-zA-Z0-9_-]', '', name)[:max_clean_name_length]
+
+            # Find a unique clean name in case our cleaning created duplicates
+            if clean_name in volume_names:
+                unique_index = 1
+
+                def unique_name():
+                    return ('%d-%s' % (unique_index, clean_name))[:max_clean_name_length]
+                while unique_name() in volume_names:
+                    unique_index += 1
+
+                clean_name = unique_name()
+
+            volume_names.add(clean_name)
+
             volumes_and_mounts.append(self.volume_and_mount(
                 host_path=host_path,
                 container_path=docker_path,
-                name='dependency_'+uuid,
+                name='dependency_'+clean_name,
                 read_only=True
             ))
 

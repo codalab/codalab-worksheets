@@ -4,6 +4,7 @@ from codalabworker.worker import Worker
 from codalabworker.bundle_service_client import BundleServiceClient
 from run_test import RunManagerBaseTestMixin
 import mock
+import re
 
 
 class AwsBatchRunManagerTest(RunManagerBaseTestMixin, unittest.TestCase):
@@ -65,10 +66,22 @@ def create_state(NewState):
         'worker': worker,
         'bundle_service': mock.create_autospec(BundleServiceClient),
         'bundle_path': '/tmp/fake_uuid',  # TODO Probably have a random path joined with test name
-        'resources': {'docker_image': 'fake image'},
+        'resources': {'docker_image': 'fake image', 'request_memory': BATCH_DEFAULT_MEMORY},
         'dependencies': {}
     }
     return NewState(**kwargs)
+
+
+class AwsBatchRunTest(unittest.TestCase):
+    def test_requires_memory(self):
+        def create(resources):
+            AwsBatchRun(bundle_service=None, batch_client=None, queue_name=None, worker=None, bundle={'uuid': 'foo'},
+                        bundle_path=None, resources=resources)
+
+        with self.assertRaises(AssertionError):
+            create(resources={})
+
+        create({'request_memory': BATCH_DEFAULT_MEMORY})
 
 
 class InitialStateTest(unittest.TestCase):
@@ -127,7 +140,10 @@ class SetupStateTest(unittest.TestCase):
 
             mount_points = job_definition['containerProperties']['mountPoints']
             for mount_point in mount_points:
-                self.assertTrue(mount_point['sourceVolume'] in volume_names, 'all mount points must be from a volume')
+                name = mount_point['sourceVolume']
+                self.assertTrue(name in volume_names, 'all mount points must be from a volume')
+                self.assertTrue(len(name) <= 255, 'volume name %s is longer than 255 characters' % name)
+                self.assertTrue(re.match(r'^[a-zA-Z0-9_-]+$', name), 'volume name %s contains illegal characters' % name)
 
             mount_paths = set([m['containerPath'] for m in mount_points])
             self.assertEqual(len(mount_points), len(mount_paths), 'mount points must have unique paths')
@@ -138,8 +154,19 @@ class SetupStateTest(unittest.TestCase):
         self.assertEqual(job_definition['containerProperties']['mountPoints'][0]['containerPath'],
                          '/' + setup._bundle['uuid'], 'bundle should have a mount for itself')
 
+        long_name = ''.join(['ha']*500)
         setup._dependencies = [
-            ['/tmp/fsdfd', '/fsdfd', 'fsdfd']
+            # Normal dependency
+            ['/tmp/fsdfd', '/fsdfd', 'fsdfd'],
+            # Contains illegal characters
+            ['/tmp/foo.bar.*', '/foo.bar.*', 'foo.bar.*'],
+            # Long name
+            ['/tmp/%s' % long_name, '/%s' % long_name, long_name],
+            # Duplicate names after cleaning
+            ['/tmp/a', '/a', 'a!'],
+            ['/tmp/ab', '/ab', 'a@'],
+            ['/tmp/ac', '/ac', 'a#'],
+            ['/tmp/ad', '/ad', 'a.'],
         ]
         job_definition = setup.get_job_definition()
         check_volume_sanity(job_definition)
