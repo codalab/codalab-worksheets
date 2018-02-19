@@ -66,10 +66,22 @@ def create_state(NewState):
         'worker': worker,
         'bundle_service': mock.create_autospec(BundleServiceClient),
         'bundle_path': '/tmp/fake_uuid',  # TODO Probably have a random path joined with test name
-        'resources': {'docker_image': 'fake image'},
+        'resources': {'docker_image': 'fake image', 'request_memory': BATCH_DEFAULT_MEMORY},
         'dependencies': {}
     }
     return NewState(**kwargs)
+
+
+class AwsBatchRunTest(unittest.TestCase):
+    def test_requires_memory(self):
+        def create(resources):
+            AwsBatchRun(bundle_service=None, batch_client=None, queue_name=None, worker=None, bundle={'uuid': 'foo'},
+                        bundle_path=None, resources=resources)
+
+        with self.assertRaises(AssertionError):
+            create(resources={})
+
+        create({'request_memory': BATCH_DEFAULT_MEMORY})
 
 
 class InitialStateTest(unittest.TestCase):

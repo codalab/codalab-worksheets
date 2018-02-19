@@ -155,6 +155,8 @@ class Worker(object):
 
     def _run(self, bundle, resources):
         if self.shared_file_system:
+            assert 'location' in bundle, \
+                "Bundle location not provided by master with shared file system. Are you running as the master user?"
             bundle_path = bundle['location']
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])

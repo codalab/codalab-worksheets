@@ -20,6 +20,9 @@ def current_time():
 
 BYTES_PER_MEGABYTE = 1024 * 1024
 
+# AWS Batch always requires the amount of memory to be specified. We provide a reasonable default here.
+BATCH_DEFAULT_MEMORY = 100 * BYTES_PER_MEGABYTE
+
 
 class AwsBatchRunManager(RunManagerBase):
     """
@@ -68,6 +71,7 @@ class AwsBatchRunManager(RunManagerBase):
         return 0
 
     def create_run(self, bundle, bundle_path, resources):
+        resources['request_memory'] = resources.get('request_memory') or BATCH_DEFAULT_MEMORY
         run = AwsBatchRun(
             bundle_service=self._bundle_service,
             batch_client=self._batch_client,
@@ -122,6 +126,7 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
     def __init__(self, bundle_service, batch_client, queue_name, worker, bundle, bundle_path, resources,
                  dependencies=None):
         super(AwsBatchRun, self).__init__()
+        assert 'request_memory' in resources, "AWS Batch runs require request_memory to be specified."
         self._bundle_service = bundle_service
         self._batch_client = batch_client
         self._queue_name = queue_name
@@ -358,7 +363,7 @@ class Setup(AwsBatchRunState):
         # The docker image is always specified
         image = self.resources['docker_image']
         # Default to 100 MB so we have some breathing room.
-        memory_bytes = self.resources.get('request_memory') or 100*BYTES_PER_MEGABYTE
+        memory_bytes = self.resources['request_memory']
         # TODO CPUs should really be in resources, but for some reason it isn't so use it or default in metadata
         cpus = max(self.metadata.get('request_cpus', 0), 1)
 
