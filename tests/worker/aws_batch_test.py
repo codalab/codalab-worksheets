@@ -4,6 +4,7 @@ from codalabworker.worker import Worker
 from codalabworker.bundle_service_client import BundleServiceClient
 from run_test import RunManagerBaseTestMixin
 import mock
+import re
 
 
 class AwsBatchRunManagerTest(RunManagerBaseTestMixin, unittest.TestCase):
@@ -127,7 +128,10 @@ class SetupStateTest(unittest.TestCase):
 
             mount_points = job_definition['containerProperties']['mountPoints']
             for mount_point in mount_points:
-                self.assertTrue(mount_point['sourceVolume'] in volume_names, 'all mount points must be from a volume')
+                name = mount_point['sourceVolume']
+                self.assertTrue(name in volume_names, 'all mount points must be from a volume')
+                self.assertTrue(len(name) <= 255, 'volume name %s is longer than 255 characters' % name)
+                self.assertTrue(re.match(r'^[a-zA-Z0-9_-]+$', name), 'volume name %s contains illegal characters' % name)
 
             mount_paths = set([m['containerPath'] for m in mount_points])
             self.assertEqual(len(mount_points), len(mount_paths), 'mount points must have unique paths')
@@ -138,8 +142,13 @@ class SetupStateTest(unittest.TestCase):
         self.assertEqual(job_definition['containerProperties']['mountPoints'][0]['containerPath'],
                          '/' + setup._bundle['uuid'], 'bundle should have a mount for itself')
 
+        long_name = ''.join(['ha']*500)
         setup._dependencies = [
-            ['/tmp/fsdfd', '/fsdfd', 'fsdfd']
+            # Normal dependency
+            ['/tmp/fsdfd', '/fsdfd', 'fsdfd'],
+            # Contains illegal characters
+            ['/tmp/foo.bar.*', '/foo.bar.*', 'foo.bar.*'],
+            ['/tmp/%s' % long_name, '/%s' % long_name, long_name]
         ]
         job_definition = setup.get_job_definition()
         check_volume_sanity(job_definition)

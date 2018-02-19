@@ -2,6 +2,7 @@ import logging
 import os
 import socket
 import time
+import re
 
 import fsm
 from bundle_service_client import BundleServiceException
@@ -368,11 +369,14 @@ class Setup(AwsBatchRunState):
             name=self.uuid,
             read_only=False
         )]
-        for host_path, docker_path, uuid in dependencies:
+        for host_path, docker_path, name in dependencies:
+            # Batch has some restrictions with the name, so force it to conform
+            # See: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task_definition_parameters.html#volumes
+            clean_name = re.sub(r'[^a-zA-Z0-9_-]', '', name)[:244]
             volumes_and_mounts.append(self.volume_and_mount(
                 host_path=host_path,
                 container_path=docker_path,
-                name='dependency_'+uuid,
+                name='dependency_'+clean_name,
                 read_only=True
             ))
 
