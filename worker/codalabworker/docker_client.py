@@ -130,7 +130,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             raise DockerException(e.message)
 
     def get_nvidia_devices_info(self):
-        """Queries the GPU devices information (akin to nvidia-smi -q). Return json."""
+        """Queries the GPU devices information (akin to nvidia-smi -q). Return json or None"""
+        if not self._use_nvidia_docker:
+            return None
+
         with closing(self._create_nvidia_docker_connection()) as conn:
             path = '/v1.0/gpu/info/json'
             conn.request('GET', path)

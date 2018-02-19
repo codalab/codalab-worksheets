@@ -11,6 +11,8 @@ import signal
 import socket
 import stat
 import sys
+import multiprocessing
+import re
 
 from bundle_service_client import BundleServiceClient
 from docker_client import DockerClient
@@ -33,6 +35,12 @@ def main():
                              'bundles.')
     parser.add_argument('--network-prefix', default='codalab_worker_network',
                         help='Docker network name prefix')
+    parser.add_argument('--cpuset', type=str, metavar='CPUSET_STR', default='ALL',
+                        help='Comma-separated list of CPUs in which to allow bundle execution, '
+                             '(e.g., \"0,2,3\", \"1\").')
+    parser.add_argument('--gpuset', type=str, metavar='GPUSET_STR', default='ALL',
+                        help='Comma-separated list of GPUs in which to allow bundle execution '
+                             '(e.g., \"0,1\", \"1\").')
     parser.add_argument('--max-work-dir-size', type=str, metavar='SIZE', default='10g',
                         help='Maximum size of the temporary bundle data '
                              '(e.g., 3, 3k, 3m, 3g, 3t).')
@@ -95,11 +103,18 @@ chmod 600 %s""" % args.password_file
         max_images_bytes = None
     else:
         max_images_bytes = parse_size(args.max_image_cache_size)
-    worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
-                    args.max_dependencies_serialized_length,
+
+    docker_client = DockerClient()
+
+    # transform/verify cpuset and gpuset
+    cpuset = parse_cpuset_args(args.cpuset)
+    gpuset = parse_gpuset_args(docker_client, args.gpuset)
+
+    worker = Worker(args.id, args.tag, args.work_dir, cpuset, gpuset,
+                    max_work_dir_size_bytes, args.max_dependencies_serialized_length,
                     max_images_bytes, args.shared_file_system,
                     BundleServiceClient(args.server, username, password),
-                    DockerClient(), args.network_prefix)
+                    docker_client, args.network_prefix)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
@@ -111,6 +126,51 @@ chmod 600 %s""" % args.password_file
     # END
 
     worker.run()
+
+def parse_cpuset_args(arg):
+    cpu_count = multiprocessing.cpu_count()
+    if arg == 'ALL':
+        cpuset = range(cpu_count)
+    else:
+        try:
+            cpuset = [int(s) for s in arg.split(',')]
+        except Exception, e:
+            raise ValueError("CPUSET_STR invalid format: must be a string of comma-separated integers")
+
+        if not len(cpuset) == len(set(cpuset)):
+            raise ValueError("CPUSET_STR invalid: CPUs not distinct values")
+        if not all(cpu in range(cpu_count) for cpu in cpuset):
+            raise ValueError("CPUSET_STR invalid: CPUs out of range")
+    return cpuset
+
+def parse_gpuset_args(docker_client, arg):
+    if arg == '':
+        return []
+
+    info = docker_client.get_nvidia_devices_info()
+    all_gpus = []
+    if info is not None:
+        for d in info['Devices']:
+            m = re.search('^/dev/nvidia(\d+)$', d['Path'])
+            all_gpus.append(int(m.group(1)))
+
+    if arg == 'ALL':
+        if info is None:
+            return []
+        else:
+            return all_gpus
+    else:
+        try:
+            gpuset = [int(s) for s in arg.split(',')]
+        except Exception, e:
+            raise ValueError("GPUSET_STR invalid format: must be a string of comma-separated integers")
+
+        if not len(gpuset) == len(set(gpuset)):
+            raise ValueError("GPUSET_STR invalid: GPUs not distinct values")
+        if not all(gpu in all_gpus for gpu in gpuset):
+            raise ValueError("GPUSET_STR invalid: GPUs out of range")
+        return gpuset
+
 
 if __name__ == '__main__':
     main()

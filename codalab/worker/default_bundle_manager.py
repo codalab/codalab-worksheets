@@ -46,7 +46,7 @@ class DefaultBundleManager(BundleManager):
 
             request_cpus = self._compute_request_cpus(bundle)
             if request_cpus:
-                max_cpus = max(map(lambda worker: worker['cpus'], workers_list))
+                max_cpus = max(map(lambda worker: len(worker['cpuset']), workers_list))
                 if request_cpus > max_cpus:
                     failure_message = 'No workers with enough CPUs'
 

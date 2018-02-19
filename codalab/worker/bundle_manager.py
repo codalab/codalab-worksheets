@@ -62,8 +62,8 @@ class BundleManager(object):
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
-        self._default_request_cpus = config.get('default_request_cpus')
-        self._default_request_gpus = config.get('default_request_gpus')
+        self._default_request_cpus = config.get('default_request_cpus', 1)
+        self._default_request_gpus = config.get('default_request_gpus', 0)
         self._default_request_network = config.get('default_request_network')
         self._default_request_queue = config.get('default_request_queue')
         self._default_request_priority = config.get('default_request_priority')
@@ -292,42 +292,39 @@ class BundleManager(object):
                 else:
                     continue  # Try the next worker.
 
-    def _deduct_worker_resources(self, workers_list):
-        """
-        From each worker, subtract resources used by running bundles. Modifies the list.
-        """
-        for worker in workers_list:
-            for uuid in worker['run_uuids']:
-                bundle = self._model.get_bundle(uuid)
-                worker['cpus'] -= self._compute_request_cpus(bundle) or 1
-                worker['gpus'] -= self._compute_request_gpus(bundle) or 0
-                #TODO: memory_bytes
-
     def _filter_and_sort_workers(self, workers_list, bundle):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
 
-        # keep track of which workers have GPUs
-        has_gpu = {}
+        worker_has_gpu = {} # keep track of which workers have GPUs
+        worker_free_cpus = {}
+        worker_free_gpus = {}
+
+        # From each worker, initialize with the cpuset/gpuset lengths
         for worker in workers_list:
             worker_id = worker['worker_id']
-            has_gpu[worker_id] = True if worker['gpus'] > 0 else False
+            worker_free_cpus[worker_id] = len(worker['cpuset'])
+            worker_free_gpus[worker_id] = len(worker['gpuset'])
+            worker_has_gpu[worker_id] = True if len(worker['gpuset']) > 0 else False
 
-        # deduct worker resources based on running bundles
-        self._deduct_worker_resources(workers_list)
+            # subtract resources used by running bundles to get free cpu/gpu counts
+            for uuid in worker['run_uuids']:
+                bundle = self._model.get_bundle(uuid)
+                worker_free_cpus[worker_id] -= self._compute_request_cpus(bundle)
+                worker_free_gpus[worker_id] -= self._compute_request_gpus(bundle)
 
         # Filter by CPUs.
         request_cpus = self._compute_request_cpus(bundle)
         if request_cpus:
-            workers_list = filter(lambda worker: worker['cpus'] >= request_cpus,
+            workers_list = filter(lambda worker: worker_free_cpus[worker['worker_id']] >= request_cpus,
                                   workers_list)
 
         # Filter by GPUs.
         request_gpus = self._compute_request_gpus(bundle)
         if request_gpus:
-            workers_list = filter(lambda worker: worker['gpus'] >= request_gpus,
+            workers_list = filter(lambda worker: worker_free_gpus[worker['worker_id']] >= request_gpus,
                                   workers_list)
 
         # Filter by memory.
@@ -368,8 +365,8 @@ class BundleManager(object):
             worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            gpu_priority = self._compute_request_gpus(bundle) or not has_gpu[worker_id]
-            return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
+            gpu_priority = self._compute_request_gpus(bundle) or not worker_has_gpu[worker_id]
+            return (gpu_priority, len(needed_deps & deps), worker_free_cpus[worker_id], random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list
