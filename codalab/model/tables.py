@@ -372,6 +372,9 @@ worker_run = Table(
 
     Column('run_uuid', String(63), ForeignKey(bundle.c.uuid), nullable=False),
     Index('uuid_index', 'run_uuid'),
+
+    Column('cpuset', LargeBinary, nullable=False),
+    Column('gpuset', LargeBinary, nullable=False),
 )
 
 # Store information about the dependencies available on each worker.
