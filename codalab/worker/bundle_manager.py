@@ -305,9 +305,9 @@ class BundleManager(object):
         # From each worker, initialize with the cpuset/gpuset lengths
         for worker in workers_list:
             worker_id = worker['worker_id']
+            worker_has_gpu[worker_id] = len(worker['gpuset']) > 0
             worker_free_cpus[worker_id] = len(worker['cpuset'])
             worker_free_gpus[worker_id] = len(worker['gpuset'])
-            worker_has_gpu[worker_id] = True if len(worker['gpuset']) > 0 else False
 
             # subtract resources used by running bundles to get free cpu/gpu counts
             for uuid in worker['run_uuids']:
