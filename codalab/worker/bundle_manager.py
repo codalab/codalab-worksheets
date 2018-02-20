@@ -298,6 +298,12 @@ class BundleManager(object):
         the list sorted in order of preference for running the bundle.
         """
 
+        # save _compute_request_Xpus values because somehow they get mutated somewhere down the line (bug!)
+        # i.e. multiple calls may return different values; which screws up scheduling really badly
+        # TODO: hunt down this bug
+        request_cpus = self._compute_request_cpus(bundle)
+        request_gpus = self._compute_request_gpus(bundle)
+
         worker_has_gpu = {} # keep track of which workers have GPUs
         worker_free_cpus = {}
         worker_free_gpus = {}
@@ -316,13 +322,11 @@ class BundleManager(object):
                 worker_free_gpus[worker_id] -= self._compute_request_gpus(bundle)
 
         # Filter by CPUs.
-        request_cpus = self._compute_request_cpus(bundle)
         if request_cpus:
             workers_list = filter(lambda worker: worker_free_cpus[worker['worker_id']] >= request_cpus,
                                   workers_list)
 
         # Filter by GPUs.
-        request_gpus = self._compute_request_gpus(bundle)
         if request_gpus:
             workers_list = filter(lambda worker: worker_free_gpus[worker['worker_id']] >= request_gpus,
                                   workers_list)

@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 
 def upgrade():
-    op.add_column('worker_run', sa.Column('cpuset', sa.LargeBinary(), nullable=False))
-    op.add_column('worker_run', sa.Column('gpuset', sa.LargeBinary(), nullable=False))
+    op.add_column('worker_run', sa.Column('cpuset', sa.LargeBinary(), nullable=False, default=''))
+    op.add_column('worker_run', sa.Column('gpuset', sa.LargeBinary(), nullable=False, default=''))
 
 
 def downgrade():
