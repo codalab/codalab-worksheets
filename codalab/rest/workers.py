@@ -133,7 +133,8 @@ def resume_bundle(worker_id, uuid):
     response.content_type = 'application/json'
     if local.model.resume_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'],
-                                request.json['start_time']):
+                                request.json['start_time'],
+                                request.json['cpuset'], request.json['gpuset']):
         return json.dumps(True)
     return json.dumps(False)
 

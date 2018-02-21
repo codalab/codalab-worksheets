@@ -718,12 +718,12 @@ class BundleModel(object):
 
         return True
 
-    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time):
-        '''
+    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time, cpuset, gpuset):
+        """
         Marks the bundle as running but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
         True if it is. Updates a few metadata fields and the events log.
-        '''
+        """
         with self.engine.begin() as connection:
             # Check that it still exists.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
@@ -737,6 +737,8 @@ class BundleModel(object):
                 'user_id': user_id,
                 'worker_id': worker_id,
                 'run_uuid': bundle.uuid,
+                'cpuset': cpuset,
+                'gpuset': gpuset,
             }
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 

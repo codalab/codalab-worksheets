@@ -138,6 +138,8 @@ class Run(object):
         start_message = {
             'hostname': socket.gethostname(),
             'start_time': int(self._start_time),
+            'cpuset': self._resources['cpuset'],
+            'gpuset': self._resources['gpuset'],
         }
 
         if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
