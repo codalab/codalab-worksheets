@@ -1,4 +1,5 @@
 import logging
+import sys
 
 from codalab.common import State
 from codalab.worker.bundle_manager import BundleManager

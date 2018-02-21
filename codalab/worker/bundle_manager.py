@@ -285,13 +285,15 @@ class BundleManager(object):
             else:
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            # save _compute_request_Xpus values because somehow they get mutated somewhere down the line (bug!)
+            # save _compute_request_X values because somehow they get mutated somewhere down the line (wtf!)
             # i.e. multiple calls may return different values; which screws up scheduling really badly
             # TODO: hunt down this bug
             request_cpus = self._compute_request_cpus(bundle)
             request_gpus = self._compute_request_gpus(bundle)
+            request_memory = self._compute_request_memory(bundle)
 
-            workers_list = self._filter_and_sort_workers(workers_list, bundle, request_cpus, request_gpus)
+            workers_list = self._filter_and_sort_workers(workers_list, bundle,
+                    request_cpus, request_gpus, request_memory)
 
             for worker in workers_list:
                 if self._try_start_bundle(workers, worker, bundle, request_cpus, request_gpus):
@@ -299,7 +301,7 @@ class BundleManager(object):
                 else:
                     continue  # Try the next worker.
 
-    def _filter_and_sort_workers(self, workers_list, bundle, request_cpus, request_gpus):
+    def _filter_and_sort_workers(self, workers_list, bundle, request_cpus, request_gpus, request_memory):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
@@ -333,7 +335,6 @@ class BundleManager(object):
                                   workers_list)
 
         # Filter by memory.
-        request_memory = self._compute_request_memory(bundle)
         if request_memory:
             workers_list = filter(lambda worker: worker['memory_bytes'] >= request_memory,
                                   workers_list)
