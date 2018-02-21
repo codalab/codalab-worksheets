@@ -588,12 +588,29 @@ class BundleModel(object):
             }
             self.update_bundle(bundle, bundle_update, connection)
 
-    def set_starting_bundle(self, bundle, user_id, worker_id):
+    def set_starting_bundle(self, bundle, worker, request_cpus, request_gpus):
         """
         Sets the bundle to STARTING, updating the last_updated metadata. Adds
         a worker_run row that tracks which worker will run the bundle.
         """
+        user_id = worker['user_id']
+        worker_id = worker['worker_id']
+
+        unused_cpuset = set(worker['cpuset'])
+        unused_gpuset = set(worker['gpuset'])
+
         with self.engine.begin() as connection:
+
+            # fill in occupied cpu/gpuset lists
+            for uuid in worker['run_uuids']:
+                row = connection.execute(cl_worker_run.select().where(cl_worker_run.c.run_uuid == uuid)).fetchone()
+                unused_cpuset -= set(json.loads(row.cpuset))
+                unused_gpuset -= set(json.loads(row.gpuset))
+
+            # check that the worker still has enough cpu/gpus left
+            if len(unused_cpuset) < request_cpus or len(unused_gpuset) < request_gpus:
+                return False
+
             # Check that it still exists.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
             if not row:
@@ -612,6 +629,8 @@ class BundleModel(object):
                 'user_id': user_id,
                 'worker_id': worker_id,
                 'run_uuid': bundle.uuid,
+                'cpuset': json.dumps([unused_cpuset.pop() for i in range(request_cpus)]),
+                'gpuset': json.dumps([unused_gpuset.pop() for i in range(request_gpus)]),
             }
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 

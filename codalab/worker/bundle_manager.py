@@ -284,25 +284,25 @@ class BundleManager(object):
             else:
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            workers_list = self._filter_and_sort_workers(workers_list, bundle)
+            # save _compute_request_Xpus values because somehow they get mutated somewhere down the line (bug!)
+            # i.e. multiple calls may return different values; which screws up scheduling really badly
+            # TODO: hunt down this bug
+            request_cpus = self._compute_request_cpus(bundle)
+            request_gpus = self._compute_request_gpus(bundle)
+
+            workers_list = self._filter_and_sort_workers(workers_list, bundle, request_cpus, request_gpus)
 
             for worker in workers_list:
-                if self._try_start_bundle(workers, worker, bundle):
+                if self._try_start_bundle(workers, worker, bundle, request_cpus, request_gpus):
                     break
                 else:
                     continue  # Try the next worker.
 
-    def _filter_and_sort_workers(self, workers_list, bundle):
+    def _filter_and_sort_workers(self, workers_list, bundle, request_cpus, request_gpus):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
-
-        # save _compute_request_Xpus values because somehow they get mutated somewhere down the line (bug!)
-        # i.e. multiple calls may return different values; which screws up scheduling really badly
-        # TODO: hunt down this bug
-        request_cpus = self._compute_request_cpus(bundle)
-        request_gpus = self._compute_request_gpus(bundle)
 
         worker_has_gpu = {} # keep track of which workers have GPUs
         worker_free_cpus = {}
@@ -375,12 +375,12 @@ class BundleManager(object):
 
         return workers_list
 
-    def _try_start_bundle(self, workers, worker, bundle):
+    def _try_start_bundle(self, workers, worker, bundle, request_cpus, request_gpus):
         """
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
+        if self._model.set_starting_bundle(bundle, worker, request_cpus, request_gpus):
             workers.set_starting(bundle.uuid, worker)
             if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
                 # On a shared file system we create the path here to avoid NFS
@@ -410,7 +410,6 @@ class BundleManager(object):
         Compute the GPU limit used for scheduling the run.
         """
         return bundle.metadata.request_gpus or self._default_request_gpus
-
 
     def _compute_request_memory(self, bundle):
         """
