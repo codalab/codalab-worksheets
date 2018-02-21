@@ -414,7 +414,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
-                        network_name, dependencies, memory_bytes=0):
+                        network_name, dependencies, cpuset, gpuset, memory_bytes=0):
         docker_commands = self._get_docker_commands(
             bundle_path, uuid, command, docker_image, dependencies)
 
@@ -439,7 +439,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'Entrypoint': [""], # unset entry point regardless of image
             'HostConfig': {
                 'Binds': volume_bindings,
+                'NetworkMode': network_name,
                 'Memory': memory_bytes, # hard memory limit
+                'CpusetCpus': ','.join([str(k) for k in cpuset]),
             },
             # TODO: Fix potential permissions issues arising from this setting
             # This can cause problems if users expect to run as a specific user
@@ -449,8 +451,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # TODO: Allocate the requested number of GPUs and isolate
         if self._use_nvidia_docker:
             self._add_nvidia_docker_arguments(create_request)
-
-        create_request['HostConfig']['NetworkMode'] = network_name
 
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',

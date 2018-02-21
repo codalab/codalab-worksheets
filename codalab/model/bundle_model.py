@@ -592,6 +592,8 @@ class BundleModel(object):
         """
         Sets the bundle to STARTING, updating the last_updated metadata. Adds
         a worker_run row that tracks which worker will run the bundle.
+
+        Return a dict consisting of the updated worker_run_row if success or None otherwise
         """
         user_id = worker['user_id']
         worker_id = worker['worker_id']
@@ -609,13 +611,13 @@ class BundleModel(object):
 
             # check that the worker still has enough cpu/gpus left
             if len(unused_cpuset) < request_cpus or len(unused_gpuset) < request_gpus:
-                return False
+                return None
 
             # Check that it still exists.
             row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
             if not row:
                 # The user deleted the bundle.
-                return False
+                return None
 
             bundle_update = {
                 'state': State.STARTING,
@@ -634,7 +636,7 @@ class BundleModel(object):
             }
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-            return True
+            return worker_run_row
 
     def set_offline_bundle(self, bundle):
         """

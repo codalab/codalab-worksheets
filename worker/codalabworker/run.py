@@ -7,6 +7,7 @@ import threading
 import time
 import traceback
 import sys
+import json
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
@@ -234,6 +235,8 @@ class Run(object):
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
                     self._resources['docker_image'], docker_network, dependencies,
+                    json.loads(self._resources['cpuset']),
+                    json.loads(self._resources['gpuset']),
                     self._resources['request_memory'] or 0
                 )
 

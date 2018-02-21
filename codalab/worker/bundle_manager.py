@@ -7,6 +7,7 @@ import sys
 import threading
 import time
 import traceback
+import json
 
 from codalab.objects.permission import check_bundles_have_read_permission
 from codalab.common import State, PermissionError
@@ -380,7 +381,8 @@ class BundleManager(object):
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        if self._model.set_starting_bundle(bundle, worker, request_cpus, request_gpus):
+        worker_run_row = self._model.set_starting_bundle(bundle, worker, request_cpus, request_gpus)
+        if worker_run_row is not None:
             workers.set_starting(bundle.uuid, worker)
             if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
                 # On a shared file system we create the path here to avoid NFS
@@ -389,7 +391,7 @@ class BundleManager(object):
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
-                worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
+                worker['socket_id'], self._construct_run_message(worker, bundle, worker_run_row), 0.2):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
@@ -419,7 +421,7 @@ class BundleManager(object):
             return formatting.parse_size(bundle.metadata.request_memory)
         return self._default_request_memory
 
-    def _construct_run_message(self, worker, bundle):
+    def _construct_run_message(self, worker, bundle, worker_run_row):
         """
         Constructs the run message that is sent to the given worker to tell it
         to run the given bundle.
@@ -434,6 +436,9 @@ class BundleManager(object):
 
         # Figure out the resource requirements.
         resources = message['resources'] = {}
+
+        resources['cpuset'] = worker_run_row['cpuset']
+        resources['gpuset'] = worker_run_row['gpuset']
 
         resources['docker_image'] = (bundle.metadata.request_docker_image or
                                      self._default_docker_image)
