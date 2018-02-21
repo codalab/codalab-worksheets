@@ -143,14 +143,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             cli_args = json.loads(cli_response.read())
             return cli_args
 
-    def _add_nvidia_docker_arguments(self, request):
+    def _add_nvidia_docker_arguments(self, request, gpuset):
         """Add the arguments supplied by nvidia-docker-plugin REST API"""
         # nvidia-docker-plugin REST API documentation:
         # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin#rest-api
         with closing(self._create_nvidia_docker_connection()) as conn:
             path = '/v1.0/docker/cli/json?dev='
-            if self._cuda_visible_devices is not None:
-                path += '+'.join(self._cuda_visible_devices)
+            path += '+'.join(gpuset)
             conn.request('GET', path)
             cli_response = conn.getresponse()
             if cli_response.status != 200:
@@ -450,7 +449,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
         # TODO: Allocate the requested number of GPUs and isolate
         if self._use_nvidia_docker:
-            self._add_nvidia_docker_arguments(create_request)
+            self._add_nvidia_docker_arguments(create_request, [str(k) for k in gpuset])
 
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',
