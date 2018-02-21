@@ -143,7 +143,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             cli_args = json.loads(cli_response.read())
             return cli_args
 
-    def _add_nvidia_docker_arguments(self, request, gpuset):
+    def _add_nvidia_docker_arguments(self, request, gpuset=[]):
         """Add the arguments supplied by nvidia-docker-plugin REST API"""
         # nvidia-docker-plugin REST API documentation:
         # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin#rest-api
