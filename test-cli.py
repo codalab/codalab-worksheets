@@ -939,7 +939,7 @@ def test(ctx):
     input_mimic_uuid = run_command([cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new'])
     check_equals(data_hash(simple_out_uuid), data_hash(input_mimic_uuid))
 
-    full_mimic_uuid = run_command([cl, 'mimic',input_uuid, simple_out_uuid, new_input_uuid, '-n', 'new'])
+    full_mimic_uuid = run_command([cl, 'mimic', input_uuid, simple_out_uuid, new_input_uuid, '-n', 'new'])
     check_equals(data_hash(simple_out_uuid), data_hash(full_mimic_uuid))
 
     simple_macro_uuid = run_command([cl, 'macro', simple_name, new_input_uuid, '-n', 'new'])
@@ -1136,7 +1136,7 @@ def test(ctx):
     uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
     wait(uuid)
     check_equals('/opt/scala/current', run_command([cl, 'cat', uuid+'/stdout']))
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1','echo $LUA_PATH'])
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1', 'echo $LUA_PATH'])
     wait(uuid)
     check_contains('/user/.luarocks/share/lua/5.1/?.lua', run_command([cl, 'cat', uuid+'/stdout']))
 

@@ -1922,7 +1922,7 @@ class BundleCLI(object):
         'macro',
         help=[
             'Use mimicry to simulate macros.',
-            '  macro M A B named-input:C <=> mimic M-in1 M-in2 M-in-named-input M-out A B C'
+            '  macro M A B <name1>:C <name2>:D <=> mimic M-in1 M-in2 M-in-name1 M-in-name2 M-out A B C D'
         ],
         arguments=(
             Commands.Argument('macro_name', help='Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., and <macro_name>-out bundles).'),
@@ -1938,14 +1938,18 @@ class BundleCLI(object):
         # next time we try to use the macro.
         if not getattr(args, metadata_util.metadata_key_to_argument('name')):
             setattr(args, metadata_util.metadata_key_to_argument('name'), 'new')
+
         # Reduce to the mimic case
-        named_inputs = [bundle for bundle in args.bundles if ':' in bundle]
-        named_input_names = [bundle.split(':',1)[0] for bundle in named_inputs]
+        named_user_inputs, named_macro_inputs, numbered_user_inputs = [], [], []
 
-        named_user_inputs = [bundle.split(':',1)[1] for bundle in named_inputs]
-        named_macro_inputs = [args.macro_name + '-in-' + named_in for named_in in named_input_names]
+        for bundle in args.bundles:
+            if ':' in bundle:
+                input_name, input_bundle = bundle.split(':', 1)
+                named_user_inputs.append(input_bundle)
+                named_macro_inputs.append(args.macro_name + '-in-' + input_name)
+            else:
+                numbered_user_inputs.append(bundle)
 
-        numbered_user_inputs = [bundle for bundle in args.bundles if ':' not in bundle]
         numbered_macro_inputs = [args.macro_name + '-in' + str(i+1) for i in range(len(numbered_user_inputs))]
 
         args.bundles = numbered_macro_inputs + \
