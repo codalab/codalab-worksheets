@@ -371,7 +371,7 @@ class BundleManager(object):
             worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            gpu_priority = self._compute_request_gpus(bundle) or not worker_has_gpu[worker_id]
+            gpu_priority = request_gpus or not worker_has_gpu[worker_id]
             return (gpu_priority, len(needed_deps & deps), worker_free_cpus[worker_id], random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
