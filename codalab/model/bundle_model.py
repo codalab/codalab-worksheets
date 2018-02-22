@@ -1972,6 +1972,12 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
+    def get_user_time_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        time_quota = user_info['time_quota']
+        time_used = user_info['time_used']
+        return time_quota - time_used
+
     def update_user_last_login(self, user_id):
         """
         Update user's last login date to now.

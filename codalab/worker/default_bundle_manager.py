@@ -59,6 +59,18 @@ class DefaultBundleManager(BundleManager):
                 if request_gpus > max_gpus:
                     failure_message = 'No workers with enough GPUs'
 
+            request_disk = self._compute_request_disk(bundle)
+            user_disk_left = self._model.get_user_disk_quota_left(bundle.owner_id)
+            max_disk = min(user_disk_left, self._max_request_disk)
+            if request_disk > max_disk:
+                failure_message = 'Requested disk %f more than disk quota left (%f) or max disk allowed (%f)' % (request_disk, user_disk_left, self._max_request_disk)
+
+            request_time = self._compute_request_time(bundle)
+            user_time_left = self._model.get_user_time_quota_left(bundle.owner_id)
+            max_time = min(user_time_left, self._max_request_time)
+            if request_time > max_time:
+                failure_message = 'Requested time %f more than time quota left (%d) or max time allowed (%d)' % (request_time, user_time_left, self._max_request_time)
+
             if failure_message is not None:
                 logger.info('Failing %s: %s', bundle.uuid, failure_message)
                 self._model.update_bundle(

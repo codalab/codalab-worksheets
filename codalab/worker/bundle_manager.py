@@ -418,6 +418,22 @@ class BundleManager(object):
             return formatting.parse_size(bundle.metadata.request_memory)
         return self._default_request_memory
 
+    def _compute_request_disk(self, bundle):
+        """
+        Compute the disk limit used for scheduling the run.
+        """
+        if bundle.metadata.request_disk:
+            return formatting.parse_size(bundle.metadata.request_disk)
+        return self._default_request_disk
+
+    def _compute_request_time(self, bundle):
+        """
+        Compute the time limit used for scheduling the run.
+        """
+        if bundle.metadata.request_time:
+            return formatting.parse_duration(bundle.metadata.request_time)
+        return self._default_request_time
+
     def _construct_run_message(self, worker, bundle):
         """
         Constructs the run message that is sent to the given worker to tell it
@@ -439,45 +455,9 @@ class BundleManager(object):
 
         resources['docker_image'] = (bundle.metadata.request_docker_image or
                                      self._default_docker_image)
-
-        # Parse |request_string| using |to_value|, but don't exceed |max_value|.
-        def parse_and_min(to_value, request_string, default_value, max_value):
-            # On user-owned workers, ignore the maximum value. Users are free to
-            # use as many resources as they wish on their own machines.
-            if worker['user_id'] != self._model.root_user_id:
-                max_value = None
-
-            # Use default if request value doesn't exist
-            if request_string:
-                request_value = to_value(request_string)
-            else:
-                request_value = default_value
-            if request_value and max_value:
-                return int(min(request_value, max_value))
-            elif request_value:
-                return int(request_value)
-            elif max_value:
-                return int(max_value)
-            else:
-                return None
-
-        # These limits are used for killing runs that use too many resources.
-        resources['request_time'] = parse_and_min(formatting.parse_duration,
-                                                  bundle.metadata.request_time,
-                                                  self._default_request_time,
-                                                  self._max_request_time)
-        resources['request_memory'] = parse_and_min(formatting.parse_size,
-                                                    bundle.metadata.request_memory,
-                                                    self._default_request_memory,
-                                                    self._max_request_memory)
-
-        user_disk_left = self._model.get_user_disk_quota_left(bundle.owner_id)
-        max_disk = min(user_disk_left, self._max_request_disk)
-        resources['request_disk'] = parse_and_min(formatting.parse_size,
-                                                  bundle.metadata.request_disk,
-                                                  self._default_request_disk,
-                                                  max_disk)
-
+        resources['request_time'] = self._compute_request_time(bundle)
+        resources['request_memory'] = self._compute_request_memory(bundle)
+        resources['request_disk'] = self._compute_request_disk(bundle)
         resources['request_network'] = (bundle.metadata.request_network or
                                         self._default_request_network)
 
