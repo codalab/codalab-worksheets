@@ -51,23 +51,27 @@ class BundleManagerTest(unittest.TestCase):
         pass
 
     def test__filter_and_sort_workers(self):
+        req_cpus, req_gpus, req_mem = 1, 0, '1000'
         bundle = Mock(spec=RunBundle, metadata=Mock(spec=MetadataSpec))
         bundle.dependencies = []
-        bundle.metadata.request_cpus = 1
-        bundle.metadata.request_gpus = 0
-        bundle.metadata.request_memory = '1000'
+        bundle.metadata.request_cpus = req_cpus
+        bundle.metadata.request_gpus = req_gpus
+        bundle.metadata.request_memory = req_mem
         bundle.metadata.request_queue = None
 
         # gpu worker should be last in the filtered and sorted list
-        sorted_workers_list = self.manager._filter_and_sort_workers(self.get_sample_workers_list(), bundle)
+        sorted_workers_list = self.manager._filter_and_sort_workers(
+                self.get_sample_workers_list(), bundle, req_cpus, req_gpus, req_mem)
         self.assertEqual(len(sorted_workers_list), 3)
         self.assertEqual(len(sorted_workers_list[0]['gpuset']), 0)
         self.assertEqual(len(sorted_workers_list[1]['gpuset']), 0)
         self.assertEqual(len(sorted_workers_list[-1]['gpuset']), 1)
 
         # gpu worker should be the only worker in the filtered and sorted list
-        bundle.metadata.request_gpus = 1
-        sorted_workers_list = self.manager._filter_and_sort_workers(self.get_sample_workers_list(), bundle)
+        req_gpus = 1
+        bundle.metadata.request_gpus = req_gpus
+        sorted_workers_list = self.manager._filter_and_sort_workers(
+                self.get_sample_workers_list(), bundle, req_cpus, req_gpus, req_mem)
         self.assertEqual(len(sorted_workers_list), 1)
         self.assertEqual(len(sorted_workers_list[0]['gpuset']), 1)
 
