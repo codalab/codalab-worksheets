@@ -130,7 +130,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             raise DockerException(e.message)
 
     def get_nvidia_devices_info(self):
-        """Queries the GPU devices information (akin to nvidia-smi -q). Return json."""
+        """Queries the GPU devices information (akin to nvidia-smi -q). Return json or None"""
+        if not self._use_nvidia_docker:
+            return None
+
         with closing(self._create_nvidia_docker_connection()) as conn:
             path = '/v1.0/gpu/info/json'
             conn.request('GET', path)
@@ -140,14 +143,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             cli_args = json.loads(cli_response.read())
             return cli_args
 
-    def _add_nvidia_docker_arguments(self, request):
+    def _add_nvidia_docker_arguments(self, request, gpuset=[]):
         """Add the arguments supplied by nvidia-docker-plugin REST API"""
         # nvidia-docker-plugin REST API documentation:
         # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin#rest-api
         with closing(self._create_nvidia_docker_connection()) as conn:
             path = '/v1.0/docker/cli/json?dev='
-            if self._cuda_visible_devices is not None:
-                path += '+'.join(self._cuda_visible_devices)
+            path += '+'.join(gpuset)
             conn.request('GET', path)
             cli_response = conn.getresponse()
             if cli_response.status != 200:
@@ -411,7 +413,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
-                        network_name, dependencies, memory_bytes=0):
+                        network_name, dependencies, cpuset, gpuset, memory_bytes=0):
         docker_commands = self._get_docker_commands(
             bundle_path, uuid, command, docker_image, dependencies)
 
@@ -436,7 +438,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'Entrypoint': [""], # unset entry point regardless of image
             'HostConfig': {
                 'Binds': volume_bindings,
+                'NetworkMode': network_name,
                 'Memory': memory_bytes, # hard memory limit
+                'CpusetCpus': ','.join([str(k) for k in cpuset]),
             },
             # TODO: Fix potential permissions issues arising from this setting
             # This can cause problems if users expect to run as a specific user
@@ -445,9 +449,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
         # TODO: Allocate the requested number of GPUs and isolate
         if self._use_nvidia_docker:
-            self._add_nvidia_docker_arguments(create_request)
-
-        create_request['HostConfig']['NetworkMode'] = network_name
+            self._add_nvidia_docker_arguments(create_request, [str(k) for k in gpuset])
 
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',

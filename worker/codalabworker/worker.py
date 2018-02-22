@@ -45,17 +45,18 @@ class Worker(object):
         4) Upgrading the worker.
     """
 
-    def __init__(self, id, tag, work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length,
+    def __init__(self, id, tag, work_dir, cpuset, gpuset,
+                 max_work_dir_size_bytes, max_dependencies_serialized_length,
                  max_images_bytes, shared_file_system,
-                 slots, bundle_service, docker, docker_network_prefix='codalab_worker_network'):
+                 bundle_service, docker, docker_network_prefix='codalab_worker_network'):
         self.id = id
         self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._docker = docker
         self._docker_network_prefix = docker_network_prefix
-        self._slots = slots
-
+        self.cpuset = cpuset
+        self.gpuset = gpuset
         self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
 
         if not self.shared_file_system:
@@ -148,11 +149,8 @@ class Worker(object):
         return max(0, self._get_installed_memory_bytes() - self._get_allocated_memory_bytes())
 
     def _get_gpu_count(self):
-        if not self._docker._use_nvidia_docker:
-            return 0
-
         info = self._docker.get_nvidia_devices_info()
-        count = len(info['Devices'])
+        count = 0 if info is None else len(info['Devices'])
         return count
 
     def _checkin(self):
@@ -160,9 +158,8 @@ class Worker(object):
             'version': VERSION,
             'will_upgrade': self._should_upgrade,
             'tag': self._tag,
-            'slots': self._slots if not self._is_exiting() else 0,
-            'cpus': multiprocessing.cpu_count(),
-            'gpus': self._get_gpu_count(),
+            'cpuset': self.cpuset,
+            'gpuset': self.gpuset, # add validation?
             'memory_bytes': self._get_memory_bytes(),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }

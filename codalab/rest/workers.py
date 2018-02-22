@@ -33,7 +33,7 @@ def checkin(worker_id):
 
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
-        request.json['slots'], request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
+        request.json['cpuset'], request.json['gpuset'], request.json['memory_bytes'],
         request.json['dependencies'])
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
@@ -133,7 +133,8 @@ def resume_bundle(worker_id, uuid):
     response.content_type = 'application/json'
     if local.model.resume_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'],
-                                request.json['start_time']):
+                                request.json['start_time'],
+                                request.json['cpuset'], request.json['gpuset']):
         return json.dumps(True)
     return json.dumps(False)
 
