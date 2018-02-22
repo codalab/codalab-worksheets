@@ -115,6 +115,21 @@ class Run(object):
 
     def resume(self):
         """
+        Report that the bundle is running, and spawn a thread to monitor it
+        """
+        if self._send_resume_message():
+            # Start a thread for this run.
+            def resume_run(self):
+                Run._safe_update_run_status(self, 'Running')
+                Run._monitor(self)
+
+            threading.Thread(target=resume_run, args=[self]).start()
+            return True
+        else:
+            return False
+
+    def _send_resume_message(self):
+        """
         Report that the bundle is running. We note the start time here for
         accurate accounting of time used, since the clock on the bundle
         service and on the worker could be different.
@@ -157,7 +172,7 @@ class Run(object):
             if (time.time() - last_update_time[0] >= PROGRESS_UPDATE_FREQ_SECS):
                 last_update_time[0] = time.time()
                 self._safe_update_run_status(status)
-                self.resume()
+                self._send_resume_message()
         return update
 
     def _start(self):
