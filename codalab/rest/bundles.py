@@ -591,7 +591,7 @@ def _update_bundle_contents_blob(uuid):
             unpack=query_get_bool('unpack', default=True),
             simplify_archives=query_get_bool('simplify', default=True)) # See UploadManager for full explanation of 'simplify'
 
-        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False, enforce_disk_quota=True)
+        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error

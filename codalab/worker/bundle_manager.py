@@ -223,7 +223,7 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-            self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+            self._upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
