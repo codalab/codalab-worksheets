@@ -63,8 +63,8 @@ class BundleManager(object):
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
-        self._default_request_cpus = config.get('default_request_cpus', 1)
-        self._default_request_gpus = config.get('default_request_gpus', 0)
+        self._default_request_cpus = config.get('default_request_cpus')
+        self._default_request_gpus = config.get('default_request_gpus')
         self._default_request_network = config.get('default_request_network')
         self._default_request_queue = config.get('default_request_queue')
         self._default_request_priority = config.get('default_request_priority')

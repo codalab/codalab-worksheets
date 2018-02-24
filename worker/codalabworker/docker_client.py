@@ -435,7 +435,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'Image': docker_image,
             'WorkingDir': docker_bundle_path,
             'Env': ['HOME=%s' % docker_bundle_path],
-            'Entrypoint': [""], # unset entry point regardless of image
+            'Entrypoint': [''], # unset entry point regardless of image
             'HostConfig': {
                 'Binds': volume_bindings,
                 'NetworkMode': network_name,
@@ -447,8 +447,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'User': '%s:%s' % (uid, gid),
         }
 
-        # TODO: Allocate the requested number of GPUs and isolate
         if self._use_nvidia_docker:
+            # Allocate the requested number of GPUs and isolate
             self._add_nvidia_docker_arguments(create_request, [str(k) for k in gpuset])
 
         with closing(self._create_connection()) as create_conn:
