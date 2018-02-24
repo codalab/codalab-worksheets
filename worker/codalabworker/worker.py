@@ -218,6 +218,7 @@ class Worker(object):
                 resources['request_cpus'], resources['request_gpus'])
 
         if not success: # revert self._cpuset_free and self._gpuset_free in-place
+            logger.debug('Unsuccessful allocation of cpu and gpu sets for bundle %s', bundle['uuid'])
             self._cpuset_free |= cpuset
             self._gpuset_free |= gpuset
             return
