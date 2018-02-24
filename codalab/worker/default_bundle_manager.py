@@ -42,6 +42,9 @@ class DefaultBundleManager(BundleManager):
             workers_list = (workers.user_owned_workers(bundle.owner_id) +
                             workers.user_owned_workers(self._model.root_user_id))
 
+            if len(workers_list) == 0:
+                return
+
             failure_message = None
 
             request_cpus = self._compute_request_cpus(bundle)
