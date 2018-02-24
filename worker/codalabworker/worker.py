@@ -55,6 +55,7 @@ class Worker(object):
         self._docker = docker
         self._docker_network_prefix = docker_network_prefix
 
+        self._resource_lock = threading.Lock() # lock for cpuset and gpuset
         self._cpuset = cpuset
         self._gpuset = gpuset
         self._cpuset_free = set(cpuset)
@@ -96,13 +97,30 @@ class Worker(object):
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
 
+        self._worker_state_manager.resume_previous_runs(
+                lambda run_info: Run.deserialize(
+                    self._bundle_service, self._docker, self._image_manager, self, run_info)
+        )
+        with self._resource_lock:
+            run_sets = self._worker_state_manager.map_runs(lambda run: (run._cpuset, run._gpuset))
+            for cpuset, gpuset in run_sets:
+                for k in cpuset:
+                    if k in self._cpuset:
+                        self._cpuset_free.add(k)
+                    else:
+                        logger.debug('Warning: cpu {} not in worker cpuset'.format(k))
+
+                for k in gpuset:
+                    if k in self._gpuset:
+                        self._gpuset_free.add(k)
+                    else:
+                        logger.debug('Warning: gpu {} not in worker gpuset'.format(k))
+
+        self._worker_state_manager.save_state()
+
         while self._should_run():
             try:
                 self._checkin()
-                self._worker_state_manager.resume_previous_runs(
-                        lambda run_info: Run.deserialize(
-                            self._bundle_service, self._docker, self._image_manager, self, run_info)
-                )
                 self._worker_state_manager.save_state()
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in.')
@@ -199,14 +217,21 @@ class Worker(object):
             gpuset: Allocated gpuset. Empty set if success is False
         """
         cpuset, gpuset = set(), set()
-        if len(self._cpuset_free) < request_cpus or len(self._gpuset_free) < request_gpus:
-            return False, cpuset, gpuset
 
-        for i in range(request_cpus):
-            cpuset.add(self._cpuset_free.pop())
-        for j in range(request_gpus):
-            gpuset.add(self._gpuset_free.pop())
-        return True, cpuset, gpuset
+        with self._resource_lock:
+            if len(self._cpuset_free) < request_cpus or len(self._gpuset_free) < request_gpus:
+                return False, cpuset, gpuset
+
+            for i in range(request_cpus):
+                cpuset.add(self._cpuset_free.pop())
+            for j in range(request_gpus):
+                gpuset.add(self._gpuset_free.pop())
+            return True, cpuset, gpuset
+
+    def _deallocate_cpu_and_sets(self, cpuset, gpuset):
+        with self._resource_lock:
+            self._cpuset_free |= cpuset
+            self._gpuset_free |= gpuset
 
     def _run(self, bundle, resources):
         if self.shared_file_system:
@@ -219,8 +244,7 @@ class Worker(object):
 
         if not success: # revert self._cpuset_free and self._gpuset_free in-place
             logger.debug('Unsuccessful allocation of cpu and gpu sets for bundle %s', bundle['uuid'])
-            self._cpuset_free |= cpuset
-            self._gpuset_free |= gpuset
+            self._deallocate_cpu_and_sets(cpuset, gpuset)
             return
 
         run = Run(self._bundle_service, self._docker, self._image_manager, self,
@@ -228,8 +252,7 @@ class Worker(object):
         if run.run():
             self._worker_state_manager.add_run(bundle['uuid'], run)
         else: # revert self._cpuset_free and self._gpuset_free in-place
-            self._cpuset_free |= cpuset
-            self._gpuset_free |= gpuset
+            self._deallocate_cpu_and_sets(cpuset, gpuset)
 
     def add_dependency(self, parent_uuid, parent_path, uuid, loop_callback):
         """

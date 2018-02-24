@@ -287,7 +287,7 @@ class Run(object):
             self._check_and_report_resource_utilization(report)
 
             try:
-                self.resume()
+                self._send_resume_message()
             except BundleServiceException:
                 pass
 
@@ -503,6 +503,9 @@ class Run(object):
                     except DockerException:
                         traceback.print_exc()
                         time.sleep(1)
+
+            # Release held up cpus and gpus
+            self._worker._deallocate_cpu_and_sets(self._cpuset, self._gpuset)
 
             # Clean-up dependencies.
             for dep in self._bundle['dependencies']:
