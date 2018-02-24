@@ -7,7 +7,6 @@ import sys
 import threading
 import time
 import traceback
-import json
 
 from codalab.objects.permission import check_bundles_have_read_permission
 from codalab.common import State, PermissionError
@@ -63,8 +62,8 @@ class BundleManager(object):
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
-        self._default_request_cpus = config.get('default_request_cpus')
-        self._default_request_gpus = config.get('default_request_gpus')
+        self._default_request_cpus = config.get('default_request_cpus', 1)
+        self._default_request_gpus = config.get('default_request_gpus', 0)
         self._default_request_network = config.get('default_request_network')
         self._default_request_queue = config.get('default_request_queue')
         self._default_request_priority = config.get('default_request_priority')
@@ -285,56 +284,53 @@ class BundleManager(object):
             else:
                 workers_list = workers.user_owned_workers(self._model.root_user_id)
 
-            # save _compute_request_X values because somehow they get mutated somewhere down the line (wtf!)
-            # i.e. multiple calls may return different values; which screws up scheduling really badly
-            # TODO: hunt down this bug
-            request_cpus = self._compute_request_cpus(bundle)
-            request_gpus = self._compute_request_gpus(bundle)
-            request_memory = self._compute_request_memory(bundle)
-
-            workers_list = self._filter_and_sort_workers(workers_list, bundle,
-                    request_cpus, request_gpus, request_memory)
+            workers_list = self._filter_and_sort_workers(workers_list, bundle)
 
             for worker in workers_list:
-                if self._try_start_bundle(workers, worker, bundle, request_cpus, request_gpus):
+                if self._try_start_bundle(workers, worker, bundle):
                     break
                 else:
                     continue  # Try the next worker.
 
-    def _filter_and_sort_workers(self, workers_list, bundle, request_cpus, request_gpus, request_memory):
+    def _deduct_worker_resources(self, workers_list):
+        """
+        From each worker, subtract resources used by running bundles. Modifies the list.
+        """
+        for worker in workers_list:
+            for uuid in worker['run_uuids']:
+                bundle = self._model.get_bundle(uuid)
+                worker['cpus'] -= self._compute_request_cpus(bundle)
+                worker['gpus'] -= self._compute_request_gpus(bundle)
+
+    def _filter_and_sort_workers(self, workers_list, bundle):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
 
-        worker_has_gpu = {} # keep track of which workers have GPUs
-        worker_free_cpus = {}
-        worker_free_gpus = {}
-
-        # From each worker, initialize with the cpuset/gpuset lengths
+        # keep track of which workers have GPUs
+        has_gpu = {}
         for worker in workers_list:
             worker_id = worker['worker_id']
-            worker_has_gpu[worker_id] = len(worker['gpuset']) > 0
-            worker_free_cpus[worker_id] = len(worker['cpuset'])
-            worker_free_gpus[worker_id] = len(worker['gpuset'])
+            has_gpu[worker_id] = worker['gpus'] > 0
 
-            # subtract resources used by running bundles to get free cpu/gpu counts
-            for uuid in worker['run_uuids']:
-                bundle = self._model.get_bundle(uuid)
-                worker_free_cpus[worker_id] -= self._compute_request_cpus(bundle)
-                worker_free_gpus[worker_id] -= self._compute_request_gpus(bundle)
+        # deduct worker resources based on running bundles
+        self._deduct_worker_resources(workers_list)
 
         # Filter by CPUs.
+        request_cpus = self._compute_request_cpus(bundle)
         if request_cpus:
-            workers_list = filter(lambda worker: worker_free_cpus[worker['worker_id']] >= request_cpus,
+            workers_list = filter(lambda worker: worker['cpus'] >= request_cpus,
                                   workers_list)
 
         # Filter by GPUs.
+        request_gpus = self._compute_request_gpus(bundle)
         if request_gpus:
-            workers_list = filter(lambda worker: worker_free_gpus[worker['worker_id']] >= request_gpus,
+            workers_list = filter(lambda worker: worker['gpus'] >= request_gpus,
                                   workers_list)
 
         # Filter by memory.
+        request_memory = self._compute_request_memory(bundle)
         if request_memory:
             workers_list = filter(lambda worker: worker['memory_bytes'] >= request_memory,
                                   workers_list)
@@ -371,19 +367,18 @@ class BundleManager(object):
             worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            gpu_priority = request_gpus or not worker_has_gpu[worker_id]
-            return (gpu_priority, len(needed_deps & deps), worker_free_cpus[worker_id], random.random())
+            gpu_priority = self._compute_request_gpus(bundle) or not has_gpu[worker_id]
+            return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list
 
-    def _try_start_bundle(self, workers, worker, bundle, request_cpus, request_gpus):
+    def _try_start_bundle(self, workers, worker, bundle):
         """
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        worker_run_row = self._model.set_starting_bundle(bundle, worker, request_cpus, request_gpus)
-        if worker_run_row is not None:
+        if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
             if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
                 # On a shared file system we create the path here to avoid NFS
@@ -392,7 +387,7 @@ class BundleManager(object):
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
-                worker['socket_id'], self._construct_run_message(worker, bundle, worker_run_row), 0.2):
+                worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
@@ -422,7 +417,7 @@ class BundleManager(object):
             return formatting.parse_size(bundle.metadata.request_memory)
         return self._default_request_memory
 
-    def _construct_run_message(self, worker, bundle, worker_run_row):
+    def _construct_run_message(self, worker, bundle):
         """
         Constructs the run message that is sent to the given worker to tell it
         to run the given bundle.
@@ -438,8 +433,8 @@ class BundleManager(object):
         # Figure out the resource requirements.
         resources = message['resources'] = {}
 
-        resources['cpuset'] = worker_run_row['cpuset']
-        resources['gpuset'] = worker_run_row['gpuset']
+        resources['request_cpus'] = self._compute_request_cpus(bundle)
+        resources['request_gpus'] = self._compute_request_gpus(bundle)
 
         resources['docker_image'] = (bundle.metadata.request_docker_image or
                                      self._default_docker_image)

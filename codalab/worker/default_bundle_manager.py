@@ -1,5 +1,4 @@
 import logging
-import sys
 
 from codalab.common import State
 from codalab.worker.bundle_manager import BundleManager
@@ -47,13 +46,13 @@ class DefaultBundleManager(BundleManager):
 
             request_cpus = self._compute_request_cpus(bundle)
             if request_cpus:
-                max_cpus = max(map(lambda worker: len(worker['cpuset']), workers_list))
+                max_cpus = max(map(lambda worker: worker['cpus'], workers_list))
                 if request_cpus > max_cpus:
                     failure_message = 'No workers with enough CPUs'
 
             request_gpus = self._compute_request_gpus(bundle)
             if request_gpus:
-                max_gpus = max(map(lambda worker: len(worker['gpuset']), workers_list))
+                max_gpus = max(map(lambda worker: worker['gpus'], workers_list))
                 if request_gpus > max_gpus:
                     failure_message = 'No workers with enough GPUs'
 

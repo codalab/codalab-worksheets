@@ -141,11 +141,11 @@ def parse_cpuset_args(arg):
             raise ValueError("CPUSET_STR invalid: CPUs not distinct values")
         if not all(cpu in range(cpu_count) for cpu in cpuset):
             raise ValueError("CPUSET_STR invalid: CPUs out of range")
-    return cpuset
+    return set(cpuset)
 
 def parse_gpuset_args(docker_client, arg):
     if arg == '':
-        return []
+        return set()
 
     info = docker_client.get_nvidia_devices_info()
     all_gpus = []
@@ -156,9 +156,9 @@ def parse_gpuset_args(docker_client, arg):
 
     if arg == 'ALL':
         if info is None:
-            return []
+            return set()
         else:
-            return all_gpus
+            return set(all_gpus)
     else:
         try:
             gpuset = [int(s) for s in arg.split(',')]
@@ -169,7 +169,7 @@ def parse_gpuset_args(docker_client, arg):
             raise ValueError("GPUSET_STR invalid: GPUs not distinct values")
         if not all(gpu in all_gpus for gpu in gpuset):
             raise ValueError("GPUSET_STR invalid: GPUs out of range")
-        return gpuset
+        return set(gpuset)
 
 
 if __name__ == '__main__':

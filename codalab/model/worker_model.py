@@ -33,7 +33,7 @@ class WorkerModel(object):
         self._socket_dir = socket_dir
         self.shared_file_system = shared_file_system
 
-    def worker_checkin(self, user_id, worker_id, tag, cpuset, gpuset, memory_bytes, dependencies):
+    def worker_checkin(self, user_id, worker_id, tag, cpus, gpus, memory_bytes, dependencies):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
@@ -41,8 +41,8 @@ class WorkerModel(object):
         with self._engine.begin() as conn:
             worker_row = {
                 'tag': tag,
-                'cpuset': cpuset,
-                'gpuset': gpuset,
+                'cpus': cpus,
+                'gpus': gpus,
                 'memory_bytes': memory_bytes,
                 'checkin_time': datetime.datetime.now(),
             }
@@ -64,8 +64,6 @@ class WorkerModel(object):
                     'user_id': user_id,
                     'worker_id': worker_id,
                     'socket_id': socket_id,
-                    'cpuset': cpuset,
-                    'gpuset': gpuset,
                 })
                 conn.execute(cl_worker.insert().values(worker_row))
 
@@ -136,8 +134,8 @@ class WorkerModel(object):
             'user_id': row.user_id,
             'worker_id': row.worker_id,
             'tag': row.tag,
-            'cpuset': json.loads(row.cpuset),
-            'gpuset': json.loads(row.gpuset),
+            'cpus': row.cpus,
+            'gpus': row.gpus,
             'memory_bytes': row.memory_bytes,
             'checkin_time': row.checkin_time,
             'socket_id': row.socket_id,
