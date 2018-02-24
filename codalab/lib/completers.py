@@ -15,7 +15,7 @@ from argcomplete import warn
 from codalab.lib import spec_util, worksheet_util
 
 
-KEY_TARGET_SPEC_FORMAT = r"(?:([^:]*):)?([^/]*)(?:/(.*))?"
+KEY_TARGET_SPEC_FORMAT = r"(?:([^:]*):)?(?:([^/]*)//)?([^/]*)(?:/(.*))?"
 GLOBAL_WORKSHEET_SPEC_FORMAT = r"(?:(.*)::)?(.*)"
 
 
@@ -81,7 +81,7 @@ class BundlesCompleter(CodaLabCompleter):
     Complete bundle specs with suggestions from the current worksheet, or from the
     worksheet specified in the current arguments if one exists.
     """
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parsed_args=None, worksheet_uuid=None):
         worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
         client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
@@ -148,25 +148,28 @@ def UnionCompleter(*completers):
 # TODO: https://github.com/codalab/codalab-cli/issues/223
 class TargetsCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
-        worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
-        client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
-
         m = re.match(KEY_TARGET_SPEC_FORMAT, prefix)
         if m is None:
             return ()
 
-        key, bundle_spec, subpath = m.groups()
+        key, worksheet_spec, bundle_spec, subpath = m.groups()
+
+        if worksheet_spec is None:
+            worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
+
+        client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
         # Build parameterizable format string for suggestions
         suggestion_format = ''.join([
             (key + ':') if key is not None else '',
+            (worksheet_spec + '//') if worksheet_spec is not None else '',
             (bundle_spec + '/') if subpath is not None else '',
             '{}',
         ])
 
         if subpath is None:
             # then suggest completions for bundle_spec
-            return (suggestion_format.format(b) for b in BundlesCompleter(self.cli)(bundle_spec, action, parsed_args))
+            return (suggestion_format.format(b) for b in BundlesCompleter(self.cli)(bundle_spec, action, parsed_args, worksheet_uuid))
         else:
             # then suggest completions for subpath
             target = self.cli.parse_target(client, worksheet_uuid, bundle_spec + '/' + subpath)

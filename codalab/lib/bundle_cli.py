@@ -88,13 +88,15 @@ from codalabworker.docker_client import DockerClient
 from codalabworker.file_util import remove_path
 
 # Formatting Constants
-GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
-TARGET_SPEC_FORMAT = '(<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
-ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
+BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
 BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
-GLOBAL_BUNDLE_SPEC_FORMAT = '((<uuid>|<name>|^<index>)|(<alias>|<address>)::(<uuid>|<name>))'
+GLOBAL_SPEC_FORMAT = "[%s::]%s" % (ADDRESS_SPEC_FORMAT, BASIC_SPEC_FORMAT)
 WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
+REMOTE_BUNDLE_SPEC_FORMAT = '(%s//%s)' % (WORKSHEET_SPEC_FORMAT, BUNDLE_SPEC_FORMAT)
+GLOBAL_BUNDLE_SPEC_FORMAT = '(%s|%s|%s)' % (BUNDLE_SPEC_FORMAT, GLOBAL_SPEC_FORMAT, REMOTE_BUNDLE_SPEC_FORMAT)
+TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (GLOBAL_BUNDLE_SPEC_FORMAT, os.sep)
+ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
@@ -497,12 +499,19 @@ class BundleCLI(object):
     @staticmethod
     def parse_target(client, worksheet_uuid, target_spec):
         """
-        Helper: A target_spec is a bundle_spec[/subpath].
+        Helper: A target_spec is a [worksheet_spec//]bundle_spec[/subpath].
         """
+        worksheet_spec = None
+        if '//' in target_spec:
+            worksheet_spec, target_spec = target_spec.split('//', 1)
         if os.sep in target_spec:
             bundle_spec, subpath = tuple(target_spec.split(os.sep, 1))
         else:
             bundle_spec, subpath = target_spec, ''
+
+        if worksheet_spec:
+            worksheet_uuid = BundleCLI.resolve_worksheet_uuid(client, '', worksheet_spec)
+
         # Resolve the bundle_spec to a particular bundle_uuid.
         bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
@@ -510,13 +519,15 @@ class BundleCLI(object):
     def parse_target_specs(self, items):
         targets = []
         for item in items:
-            if ':' in item:
-                (key, target) = item.split(':', 1)
+            pre_ws, target_suffix = item.split('::', 1) if '::' in item else item, None
+            if ':' in pre_ws:
+                key, target_prefix = pre_ws.split(':', 1)
+                target = target_prefix if target_suffix is None else target_prefix + "::" + target_suffix
                 if key == '':
-                    key = target  # Set default key to be same as target
+                    key == target  # Set default key to be same as target
             else:
                 # Provide syntactic sugar for a make bundle with a single anonymous target.
-                (key, target) = ('', item)
+                (key, target) = ('', pre_ws)
 
             targets.append((key, target))
         return targets

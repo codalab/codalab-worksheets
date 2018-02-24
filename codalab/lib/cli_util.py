@@ -36,7 +36,9 @@ def desugar_command(orig_target_spec, command):
     Examples:
     - %a.txt% => [b1:a.txt], b1
     - %:a.txt% => [:a.txt], a.txt (implicit key is a.txt)
+    - %instance::ws//a.txt% => [b1:instance::ws//a.txt], b1
     - %corenlp%/run %a.txt% => [b1:corenlp, b2:a.txt], b1/run b2
+    - %:word-vectors//glove.6B%/vector.txt => [:word-vectors//glove.6B], :word-vectors//glove.6B/vector.txt
     """
     # If key is not specified, use b1, b2, b3 by default.
     pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
@@ -46,8 +48,10 @@ def desugar_command(orig_target_spec, command):
     val2key = {}  # e.g., a.txt => b1 (use first key)
 
     def get(dep):  # Return the key
-        if ':' in dep:  # :<bundle_spec> or <key>:<bundle_spec>
-            key, val = dep.split(':', 1)
+        pre_ws, val_suffix = dep.split('::', 1) if '::' in dep else dep, None
+        if ':' in pre_ws:  # :<bundle_spec> or <key>:<bundle_spec>
+            key, val_suffix = pre_ws.split(':', 1)
+            val = val_prefix if val_suffix is None else val_prefix + "::" + val_suffix
             if key == '':
                 key = val
         else:  # <bundle_spec>
