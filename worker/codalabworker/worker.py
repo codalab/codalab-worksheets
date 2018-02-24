@@ -206,7 +206,7 @@ class Worker(object):
             cpuset.add(self._cpuset_free.pop())
         for j in range(request_gpus):
             gpuset.add(self._gpuset_free.pop())
-        return False, cpuset, gpuset
+        return True, cpuset, gpuset
 
     def _run(self, bundle, resources):
         if self.shared_file_system:
