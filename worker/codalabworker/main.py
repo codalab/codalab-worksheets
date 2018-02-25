@@ -128,6 +128,12 @@ chmod 600 %s""" % args.password_file
     worker.run()
 
 def parse_cpuset_args(arg):
+    """
+    Parse given arg into a set of integers representing cpus
+
+    Arguments:
+        arg: comma seperated string of ints, or "ALL" representing all available cpus
+    """
     cpu_count = multiprocessing.cpu_count()
     if arg == 'ALL':
         cpuset = range(cpu_count)
@@ -144,6 +150,13 @@ def parse_cpuset_args(arg):
     return set(cpuset)
 
 def parse_gpuset_args(docker_client, arg):
+    """
+    Parse given arg into a set of integers representing gpu devices
+
+    Arguments:
+        docker_client: DockerClient instance
+        arg: comma seperated string of ints, or "ALL" representing all gpus
+    """
     if arg == '':
         return set()
 
@@ -155,10 +168,7 @@ def parse_gpuset_args(docker_client, arg):
             all_gpus.append(int(m.group(1)))
 
     if arg == 'ALL':
-        if info is None:
-            return set()
-        else:
-            return set(all_gpus)
+        return set(all_gpus)
     else:
         try:
             gpuset = [int(s) for s in arg.split(',')]

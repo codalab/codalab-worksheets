@@ -58,8 +58,8 @@ class Worker(object):
         self._resource_lock = threading.Lock() # lock for cpuset and gpuset
         self._cpuset = cpuset
         self._gpuset = gpuset
-        self._cpuset_free = set(cpuset)
-        self._gpuset_free = set(gpuset)
+        self._cpuset_free = set(self._cpuset) # make a copy of self._cpuset as initial value
+        self._gpuset_free = set(self._gpuset) # make a copy of self._gpuset as initial value
 
         self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
 
@@ -97,22 +97,25 @@ class Worker(object):
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
 
+        # resume previous runs
         self._worker_state_manager.resume_previous_runs(
                 lambda run_info: Run.deserialize(
                     self._bundle_service, self._docker, self._image_manager, self, run_info)
         )
+
+        # for each resumed run, remove the assigned cpu and gpus from the free sets
         with self._resource_lock:
             run_sets = self._worker_state_manager.map_runs(lambda run: (run._cpuset, run._gpuset))
             for cpuset, gpuset in run_sets:
                 for k in cpuset:
                     if k in self._cpuset:
-                        self._cpuset_free.add(k)
+                        self._cpuset_free.remove(k)
                     else:
                         logger.debug('Warning: cpu {} not in worker cpuset'.format(k))
 
                 for k in gpuset:
                     if k in self._gpuset:
-                        self._gpuset_free.add(k)
+                        self._gpuset_free.remove(k)
                     else:
                         logger.debug('Warning: gpu {} not in worker gpuset'.format(k))
 
@@ -209,7 +212,11 @@ class Worker(object):
     def _allocate_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
         Allocate a cpuset and gpuset to assign to a bundle based on given requested resources.
-        Side effects: updated self._cpuset_free and self._gpuset_free
+        Side effects: updates the free sets, self._cpuset_free and self._gpuset_free
+
+        Arguments:
+            request_cpus: integer
+            request_gpus: integer
 
         Returns a 3-tuple:
             success: True if returned cpuset and gpuset are valid, False if cannot allocate resources
@@ -229,6 +236,11 @@ class Worker(object):
             return True, cpuset, gpuset
 
     def _deallocate_cpu_and_sets(self, cpuset, gpuset):
+        """
+        Release held up cpus and gpus
+
+        Re-add cpuset and gpuset back to their respective free sets
+        """
         with self._resource_lock:
             self._cpuset_free |= cpuset
             self._gpuset_free |= gpuset
