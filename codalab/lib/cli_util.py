@@ -48,9 +48,12 @@ def desugar_command(orig_target_spec, command):
     val2key = {}  # e.g., a.txt => b1 (use first key)
 
     def get(dep):  # Return the key
-        pre_ws, val_suffix = dep.split('::', 1) if '::' in dep else dep, None
-        if ':' in pre_ws:  # :<bundle_spec> or <key>:<bundle_spec>
-            key, val_suffix = pre_ws.split(':', 1)
+        if '::' in dep:
+            val_prefix, val_suffix = dep.split('::')
+        else:
+            val_prefix, val_suffix = dep, None
+        if ':' in val_prefix:  # :<bundle_spec> or <key>:<bundle_spec>
+            key, val_prefix = val_prefix.split(':', 1)
             val = val_prefix if val_suffix is None else val_prefix + "::" + val_suffix
             if key == '':
                 key = val

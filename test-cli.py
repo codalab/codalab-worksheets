@@ -849,6 +849,35 @@ def test(ctx):
     # invalid child path
     run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
 
+    # test running with a reference to this worksheet
+    source_worksheet_full = current_worksheet()
+    source_worksheet_name = source_worksheet_full.split('::')[1]
+
+    # Create new worksheet
+    new_wname = random_name()
+    new_wuuid = run_command([cl, 'new', new_wname])
+    ctx.collect_worksheet(new_wuuid)
+    check_contains(['Switched', new_wname, new_wuuid], run_command([cl, 'work', new_wuuid]))
+
+    remote_name = random_name()
+    remote_uuid = run_command([cl, 'run', 'k:%s//%s' % (source_worksheet_name, name), "cat k/stdout", '-n', remote_name])
+    wait(remote_uuid)
+    check_contains(remote_name, run_command([cl, 'search', remote_name]))
+    check_equals(remote_uuid, run_command([cl, 'search', remote_name, '-u']))
+    check_equals('ready', run_command([cl, 'info', '-f', 'state', remote_uuid]))
+    check_equals('hello', run_command([cl, 'cat', remote_uuid+'/stdout']))
+
+    sugared_remote_name = random_name()
+    sugared_remote_uuid = run_command([cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_name, name), '-n', sugared_remote_name])
+    wait(sugared_remote_uuid)
+    check_contains(sugared_remote_name, run_command([cl, 'search', sugared_remote_name]))
+    check_equals(sugared_remote_uuid, run_command([cl, 'search', sugared_remote_name, '-u']))
+    check_equals('ready', run_command([cl, 'info', '-f', 'state', sugared_remote_uuid]))
+    check_equals('hello', run_command([cl, 'cat', sugared_remote_uuid+'/stdout']))
+
+    # Explicitly fail when a remote instance name with : in it is supplied
+    run_command([cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1)
+
 
 @TestModule.register('read')
 def test(ctx):

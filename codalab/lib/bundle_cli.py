@@ -519,12 +519,16 @@ class BundleCLI(object):
     def parse_target_specs(self, items):
         targets = []
         for item in items:
-            pre_ws, target_suffix = item.split('::', 1) if '::' in item else item, None
+            if '::' in item:
+                pre_ws, target_suffix = item.split('::', 1)
+            else:
+                pre_ws, target_suffix = item, None
+
             if ':' in pre_ws:
                 key, target_prefix = pre_ws.split(':', 1)
                 target = target_prefix if target_suffix is None else target_prefix + "::" + target_suffix
                 if key == '':
-                    key == target  # Set default key to be same as target
+                    key = target  # Set default key to be same as target
             else:
                 # Provide syntactic sugar for a make bundle with a single anonymous target.
                 (key, target) = ('', pre_ws)
