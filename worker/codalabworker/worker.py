@@ -45,16 +45,21 @@ class Worker(object):
         4) Upgrading the worker.
     """
 
-    def __init__(self, id, tag, work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length,
-                 max_images_bytes, shared_file_system,
-                 slots, bundle_service, docker, docker_network_prefix='codalab_worker_network'):
+    def __init__(self, id, tag, work_dir, cpuset, gpuset,
+                 max_work_dir_size_bytes, max_dependencies_serialized_length, max_images_bytes,
+                 shared_file_system, bundle_service, docker, docker_network_prefix='codalab_worker_network'):
         self.id = id
         self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
         self._docker = docker
         self._docker_network_prefix = docker_network_prefix
-        self._slots = slots
+
+        self._resource_lock = threading.Lock() # lock for cpuset and gpuset
+        self._cpuset = cpuset
+        self._gpuset = gpuset
+        self._cpuset_free = set(self._cpuset) # make a copy of self._cpuset as initial value
+        self._gpuset_free = set(self._gpuset) # make a copy of self._gpuset as initial value
 
         self._worker_state_manager = WorkerStateManager(work_dir, self.shared_file_system)
 
@@ -92,13 +97,33 @@ class Worker(object):
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
 
+        # resume previous runs
+        self._worker_state_manager.resume_previous_runs(
+                lambda run_info: Run.deserialize(
+                    self._bundle_service, self._docker, self._image_manager, self, run_info)
+        )
+
+        # for each resumed run, remove the assigned cpu and gpus from the free sets
+        with self._resource_lock:
+            run_sets = self._worker_state_manager.map_runs(lambda run: (run._cpuset, run._gpuset))
+            for cpuset, gpuset in run_sets:
+                for k in cpuset:
+                    if k in self._cpuset:
+                        self._cpuset_free.remove(k)
+                    else:
+                        logger.debug('Warning: cpu {} not in worker cpuset'.format(k))
+
+                for k in gpuset:
+                    if k in self._gpuset:
+                        self._gpuset_free.remove(k)
+                    else:
+                        logger.debug('Warning: gpu {} not in worker gpuset'.format(k))
+
+        self._worker_state_manager.save_state()
+
         while self._should_run():
             try:
                 self._checkin()
-                self._worker_state_manager.resume_previous_runs(
-                        lambda run_info: Run.deserialize(
-                            self._bundle_service, self._docker, self._image_manager, self, run_info)
-                )
                 self._worker_state_manager.save_state()
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in.')
@@ -148,11 +173,8 @@ class Worker(object):
         return max(0, self._get_installed_memory_bytes() - self._get_allocated_memory_bytes())
 
     def _get_gpu_count(self):
-        if not self._docker._use_nvidia_docker:
-            return 0
-
         info = self._docker.get_nvidia_devices_info()
-        count = len(info['Devices'])
+        count = 0 if info is None else len(info['Devices'])
         return count
 
     def _checkin(self):
@@ -160,9 +182,8 @@ class Worker(object):
             'version': VERSION,
             'will_upgrade': self._should_upgrade,
             'tag': self._tag,
-            'slots': self._slots if not self._is_exiting() else 0,
-            'cpus': multiprocessing.cpu_count(),
-            'gpus': self._get_gpu_count(),
+            'cpus': len(self._cpuset),
+            'gpus': len(self._gpuset),
             'memory_bytes': self._get_memory_bytes(),
             'dependencies': [] if self.shared_file_system else self._dependency_manager.dependencies()
         }
@@ -188,15 +209,60 @@ class Worker(object):
                     self._exiting = True
                 self._should_upgrade = True
 
+    def _allocate_cpu_and_gpu_sets(self, request_cpus, request_gpus):
+        """
+        Allocate a cpuset and gpuset to assign to a bundle based on given requested resources.
+        Side effects: updates the free sets, self._cpuset_free and self._gpuset_free
+
+        Arguments:
+            request_cpus: integer
+            request_gpus: integer
+
+        Returns a 2-tuple:
+            cpuset: Allocated cpuset. Empty set if allocation was unsuccessful
+            gpuset: Allocated gpuset. Empty set if allocation was unsuccessful
+        """
+        cpuset, gpuset = set(), set()
+
+        with self._resource_lock:
+            if len(self._cpuset_free) < request_cpus or len(self._gpuset_free) < request_gpus:
+                return cpuset, gpuset
+
+            for i in range(request_cpus):
+                cpuset.add(self._cpuset_free.pop())
+            for j in range(request_gpus):
+                gpuset.add(self._gpuset_free.pop())
+            return cpuset, gpuset
+
+    def _deallocate_cpu_and_sets(self, cpuset, gpuset):
+        """
+        Release held up cpus and gpus
+
+        Re-add cpuset and gpuset back to their respective free sets
+        """
+        with self._resource_lock:
+            self._cpuset_free |= cpuset
+            self._gpuset_free |= gpuset
+
     def _run(self, bundle, resources):
         if self.shared_file_system:
             bundle_path = bundle['location']
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
+
+        cpuset, gpuset = self._allocate_cpu_and_gpu_sets(
+                resources['request_cpus'], resources['request_gpus'])
+
+        if len(cpuset) == 0 and len(gpuset) == 0: # revert self._cpuset_free and self._gpuset_free in-place
+            logger.debug('Unsuccessful allocation of cpu and gpu sets for bundle %s', bundle['uuid'])
+            return
+
         run = Run(self._bundle_service, self._docker, self._image_manager, self,
-                  bundle, bundle_path, resources)
+                  bundle, bundle_path, resources, cpuset, gpuset)
         if run.run():
             self._worker_state_manager.add_run(bundle['uuid'], run)
+        else: # revert self._cpuset_free and self._gpuset_free in-place
+            self._deallocate_cpu_and_sets(cpuset, gpuset)
 
     def add_dependency(self, parent_uuid, parent_path, uuid, loop_callback):
         """

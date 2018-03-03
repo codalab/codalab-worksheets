@@ -7,6 +7,7 @@ import threading
 import time
 import traceback
 import sys
+import json
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
@@ -32,7 +33,7 @@ class Run(object):
         6) Reporting to the bundle service that the run has finished.
     """
     def __init__(self, bundle_service, docker, image_manager, worker,
-                 bundle, bundle_path, resources):
+                 bundle, bundle_path, resources, cpuset, gpuset):
         self._bundle_service = bundle_service
         self._docker = docker
         self._image_manager = image_manager
@@ -41,6 +42,8 @@ class Run(object):
         self._bundle_path = os.path.realpath(bundle_path)
         self._dep_paths = set([dep['child_path'] for dep in self._bundle['dependencies']])
         self._resources = resources
+        self._cpuset = cpuset
+        self._gpuset = gpuset
         self._uuid = bundle['uuid']
         self._container_id = None
         self._start_time = None # start time of container
@@ -66,6 +69,8 @@ class Run(object):
             'resources': self._resources,
             'container_id': self._container_id,
             'start_time': self._start_time,
+            'cpuset': list(self._cpuset),
+            'gpuset': list(self._gpuset),
         }
         return run_info
 
@@ -76,6 +81,8 @@ class Run(object):
                 run_info['bundle'], run_info['bundle_path'], run_info['resources'])
         run._container_id = run_info['container_id']
         run._start_time = run_info['start_time']
+        run._cpuset = set(run_info.get('cpuset', [])) # default value for backwards compatibility
+        run._gpuset = set(run_info.get('gpuset', [])) # default value for backwards compatibility
         return run
 
 
@@ -125,8 +132,8 @@ class Run(object):
 
             threading.Thread(target=resume_run, args=[self]).start()
             return True
-        else:
-            return False
+
+        return False
 
     def _send_resume_message(self):
         """
@@ -234,7 +241,7 @@ class Run(object):
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
                     self._resources['docker_image'], docker_network, dependencies,
-                    self._resources['request_memory'] or 0
+                    self._cpuset, self._gpuset, self._resources['request_memory'] or 0
                 )
 
             # Pull the docker image regardless of whether or not we already have it
@@ -280,7 +287,7 @@ class Run(object):
             self._check_and_report_resource_utilization(report)
 
             try:
-                self.resume()
+                self._send_resume_message()
             except BundleServiceException:
                 pass
 
@@ -496,6 +503,9 @@ class Run(object):
                     except DockerException:
                         traceback.print_exc()
                         time.sleep(1)
+
+            # Release held up cpus and gpus
+            self._worker._deallocate_cpu_and_sets(self._cpuset, self._gpuset)
 
             # Clean-up dependencies.
             for dep in self._bundle['dependencies']:
