@@ -10,7 +10,7 @@ from codalab.objects.metadata_spec import MetadataSpec
 
 class DerivedBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
-    METADATA_SPECS.append(MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed dependencies.', default=False))
+    METADATA_SPECS.append(MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed or killed dependencies.', default=False))
 
     @classmethod
     def construct(cls, targets, command, metadata, owner_id, uuid, data_hash, state):
