@@ -62,8 +62,8 @@ class BundleManager(object):
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
-        self._default_request_cpus = config.get('default_request_cpus')
-        self._default_request_gpus = config.get('default_request_gpus')
+        self._default_request_cpus = config.get('default_request_cpus', 1)
+        self._default_request_gpus = config.get('default_request_gpus', 0)
         self._default_request_network = config.get('default_request_network')
         self._default_request_queue = config.get('default_request_queue')
         self._default_request_priority = config.get('default_request_priority')
@@ -300,23 +300,20 @@ class BundleManager(object):
         for worker in workers_list:
             for uuid in worker['run_uuids']:
                 bundle = self._model.get_bundle(uuid)
-                worker['cpus'] -= self._compute_request_cpus(bundle) or 1
-                worker['gpus'] -= self._compute_request_gpus(bundle) or 0
-                #TODO: memory_bytes
+                worker['cpus'] -= self._compute_request_cpus(bundle)
+                worker['gpus'] -= self._compute_request_gpus(bundle)
 
     def _filter_and_sort_workers(self, workers_list, bundle):
         """
         Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
-
-        Note: the worker slots field is no longer in use so it is effectively ignored
         """
 
         # keep track of which workers have GPUs
         has_gpu = {}
         for worker in workers_list:
             worker_id = worker['worker_id']
-            has_gpu[worker_id] = True if worker['gpus'] > 0 else False
+            has_gpu[worker_id] = worker['gpus'] > 0
 
         # deduct worker resources based on running bundles
         self._deduct_worker_resources(workers_list)
@@ -358,7 +355,7 @@ class BundleManager(object):
         #  - random key
         #
         # Breaking ties randomly is important, since multiple workers frequently
-        # have the same number of dependencies and free slots for a given bundle
+        # have the same number of dependencies and free CPUs for a given bundle
         # (in particular, bundles with no dependencies) and we may end up
         # selecting the same worker over and over again for new jobs. While this
         # is not a problem for the performance of the jobs themselves, this can
@@ -413,7 +410,6 @@ class BundleManager(object):
         """
         return bundle.metadata.request_gpus or self._default_request_gpus
 
-
     def _compute_request_memory(self, bundle):
         """
         Compute the memory limit used for scheduling the run.
@@ -437,6 +433,9 @@ class BundleManager(object):
 
         # Figure out the resource requirements.
         resources = message['resources'] = {}
+
+        resources['request_cpus'] = self._compute_request_cpus(bundle)
+        resources['request_gpus'] = self._compute_request_gpus(bundle)
 
         resources['docker_image'] = (bundle.metadata.request_docker_image or
                                      self._default_docker_image)

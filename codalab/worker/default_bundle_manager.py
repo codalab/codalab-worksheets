@@ -42,6 +42,9 @@ class DefaultBundleManager(BundleManager):
             workers_list = (workers.user_owned_workers(bundle.owner_id) +
                             workers.user_owned_workers(self._model.root_user_id))
 
+            if len(workers_list) == 0:
+                return
+
             failure_message = None
 
             request_cpus = self._compute_request_cpus(bundle)
@@ -49,6 +52,12 @@ class DefaultBundleManager(BundleManager):
                 max_cpus = max(map(lambda worker: worker['cpus'], workers_list))
                 if request_cpus > max_cpus:
                     failure_message = 'No workers with enough CPUs'
+
+            request_gpus = self._compute_request_gpus(bundle)
+            if request_gpus:
+                max_gpus = max(map(lambda worker: worker['gpus'], workers_list))
+                if request_gpus > max_gpus:
+                    failure_message = 'No workers with enough GPUs'
 
             if failure_message is not None:
                 logger.info('Failing %s: %s', bundle.uuid, failure_message)
