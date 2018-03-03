@@ -218,22 +218,21 @@ class Worker(object):
             request_cpus: integer
             request_gpus: integer
 
-        Returns a 3-tuple:
-            success: True if returned cpuset and gpuset are valid, False if cannot allocate resources
-            cpuset: Allocated cpuset. Empty set if success is False
-            gpuset: Allocated gpuset. Empty set if success is False
+        Returns a 2-tuple:
+            cpuset: Allocated cpuset. Empty set if allocation was unsuccessful
+            gpuset: Allocated gpuset. Empty set if allocation was unsuccessful
         """
         cpuset, gpuset = set(), set()
 
         with self._resource_lock:
             if len(self._cpuset_free) < request_cpus or len(self._gpuset_free) < request_gpus:
-                return False, cpuset, gpuset
+                return cpuset, gpuset
 
             for i in range(request_cpus):
                 cpuset.add(self._cpuset_free.pop())
             for j in range(request_gpus):
                 gpuset.add(self._gpuset_free.pop())
-            return True, cpuset, gpuset
+            return cpuset, gpuset
 
     def _deallocate_cpu_and_sets(self, cpuset, gpuset):
         """
@@ -251,12 +250,11 @@ class Worker(object):
         else:
             bundle_path = self._dependency_manager.get_run_path(bundle['uuid'])
 
-        success, cpuset, gpuset = self._allocate_cpu_and_gpu_sets(
+        cpuset, gpuset = self._allocate_cpu_and_gpu_sets(
                 resources['request_cpus'], resources['request_gpus'])
 
-        if not success: # revert self._cpuset_free and self._gpuset_free in-place
+        if len(cpuset) == 0 and len(gpuset) == 0: # revert self._cpuset_free and self._gpuset_free in-place
             logger.debug('Unsuccessful allocation of cpu and gpu sets for bundle %s', bundle['uuid'])
-            self._deallocate_cpu_and_sets(cpuset, gpuset)
             return
 
         run = Run(self._bundle_service, self._docker, self._image_manager, self,
