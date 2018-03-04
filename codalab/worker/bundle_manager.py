@@ -17,6 +17,19 @@ from codalabworker.file_util import remove_path
 logger = logging.getLogger(__name__)
 
 WORKER_TIMEOUT_SECONDS = 30
+"""
+Since 'request_x' metadata fields act as the ultimate resource constraints on
+run bundles, we need to always have a default value on them. These can be specified
+by the user on a per bundle basis, or the global defaults can be set in codalab config
+to be backwards compatible with old codalab configs we hard code these defaults that
+should only be used if these values are not in the codalab config read from disk
+"""
+GLOBAL_REQUEST_DEFAULTS = {
+    'default_request_cpus': 1,
+    'default_request_disk': '5g',
+    'default_request_memory': '4g',
+    'default_request_time': '1d'
+    }
 
 class BundleManager(object):
     """
@@ -54,7 +67,13 @@ class BundleManager(object):
         self._default_docker_image = config['default_docker_image']
 
         def parse(to_value, field):
-            return to_value(config[field]) if field in config else None
+            if field in config:
+                return to_value(config[field])
+            elif field in GLOBAL_REQUEST_DEFAULTS:
+                return to_value(GLOBAL_REQUEST_DEFAULTS[field])
+            else:
+                return None
+
         self._default_request_time = parse(formatting.parse_duration, 'default_request_time')
         self._default_request_memory = parse(formatting.parse_size, 'default_request_memory')
         self._default_request_disk = parse(formatting.parse_size, 'default_request_disk')
