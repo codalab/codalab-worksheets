@@ -97,33 +97,38 @@ class Worker(object):
         if not self.shared_file_system:
             self._dependency_manager.start_cleanup_thread()
 
-        # resume previous runs
-        self._worker_state_manager.resume_previous_runs(
-                lambda run_info: Run.deserialize(
-                    self._bundle_service, self._docker, self._image_manager, self, run_info)
-        )
+        resumed_prev_runs = False
+        def resume_previous_runs():
+            # resume previous runs
+            self._worker_state_manager.resume_previous_runs(
+                    lambda run_info: Run.deserialize(
+                        self._bundle_service, self._docker, self._image_manager, self, run_info)
+            )
 
-        # for each resumed run, remove the assigned cpu and gpus from the free sets
-        with self._resource_lock:
-            run_sets = self._worker_state_manager.map_runs(lambda run: (run._cpuset, run._gpuset))
-            for cpuset, gpuset in run_sets:
-                for k in cpuset:
-                    if k in self._cpuset:
-                        self._cpuset_free.remove(k)
-                    else:
-                        logger.debug('Warning: cpu {} not in worker cpuset'.format(k))
+            # for each resumed run, remove the assigned cpu and gpus from the free sets
+            with self._resource_lock:
+                run_sets = self._worker_state_manager.map_runs(lambda run: (run._cpuset, run._gpuset))
+                for cpuset, gpuset in run_sets:
+                    for k in cpuset:
+                        if k in self._cpuset:
+                            self._cpuset_free.remove(k)
+                        else:
+                            logger.debug('Warning: cpu {} not in worker cpuset'.format(k))
 
-                for k in gpuset:
-                    if k in self._gpuset:
-                        self._gpuset_free.remove(k)
-                    else:
-                        logger.debug('Warning: gpu {} not in worker gpuset'.format(k))
+                    for k in gpuset:
+                        if k in self._gpuset:
+                            self._gpuset_free.remove(k)
+                        else:
+                            logger.debug('Warning: gpu {} not in worker gpuset'.format(k))
 
-        self._worker_state_manager.save_state()
+            self._worker_state_manager.save_state()
 
         while self._should_run():
             try:
                 self._checkin()
+                if not resumed_prev_runs: # do this once in the beginning, but after checkin
+                    resume_previous_runs()
+                    resumed_prev_runs = True
                 self._worker_state_manager.save_state()
                 if not self._last_checkin_successful:
                     logger.info('Connected! Successful check in.')
