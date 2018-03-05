@@ -126,7 +126,12 @@ class Worker(object):
         while self._should_run():
             try:
                 self._checkin()
-                if not resumed_prev_runs: # do this once in the beginning, but after checkin
+
+                # resume previous runs once in the beginning, but after checkin
+                # this is not an ideal design because initial checkin can assign worker with new runs
+                # but resources from previous runs are not re-allocated to the worker yet; this can cause
+                # performance problems
+                if not resumed_prev_runs:
                     resume_previous_runs()
                     resumed_prev_runs = True
                 self._worker_state_manager.save_state()
