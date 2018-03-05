@@ -79,11 +79,9 @@ class Run(object):
         """ Create a new Run object and populate it based on given run_info dictionary """
         run = Run(bundle_service, docker, image_manager, worker,
                 run_info['bundle'], run_info['bundle_path'], run_info['resources'],
-                run_info['cpuset'], run_info['gpuset'])
+                set(run_info.get('cpuset', [])), set(run_info.get('gpuset', []))) # default values for backwards compatibility
         run._container_id = run_info['container_id']
         run._start_time = run_info['start_time']
-        run._cpuset = set(run_info.get('cpuset', [])) # default value for backwards compatibility
-        run._gpuset = set(run_info.get('gpuset', [])) # default value for backwards compatibility
         return run
 
 
