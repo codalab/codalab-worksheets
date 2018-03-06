@@ -9,7 +9,7 @@ import struct
 import sys
 import subprocess
 
-from formatting import size_str
+from formatting import size_str, parse_size
 
 logger = logging.getLogger(__name__)
 
@@ -414,6 +414,14 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     @wrap_exception('Unable to start Docker container')
     def start_container(self, bundle_path, uuid, command, docker_image,
                         network_name, dependencies, cpuset, gpuset, memory_bytes=0):
+
+        # Impose a minimum container request memory 4mb, same as docker's minimum allowed value
+        # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
+        # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
+        # access to the host machine's memory, which we have decided to not allow
+        if memory_bytes < parse_size('4m'):
+            raise DockerException('Minimum memory must be 4m ({} bytes)'.format(parse_size('4m')))
+
         docker_commands = self._get_docker_commands(
             bundle_path, uuid, command, docker_image, dependencies)
 
