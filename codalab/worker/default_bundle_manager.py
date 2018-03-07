@@ -34,6 +34,14 @@ class DefaultBundleManager(BundleManager):
         self._schedule_run_bundles_on_workers(workers, user_owned=True)
         self._schedule_run_bundles_on_workers(workers, user_owned=False)
 
+    def _check_resource_failure(self, value, user_fail_string=None, global_fail_string=None, user_max=None, global_max=None):
+        if value:
+            if user_max and value > user_max:
+                return user_fail_string % (value, user_max)
+            elif global_max and value > global_max:
+                return global_fail_string % (value, global_max)
+        return None
+
     def _fail_on_too_many_resources(self, workers):
         """
         Fails bundles that request more resources than available on any worker.
@@ -45,22 +53,36 @@ class DefaultBundleManager(BundleManager):
             if len(workers_list) == 0:
                 return
 
-            failure_message = None
+            failures = []
 
-            request_cpus = self._compute_request_cpus(bundle)
-            if request_cpus:
-                max_cpus = max(map(lambda worker: worker['cpus'], workers_list))
-                if request_cpus > max_cpus:
-                    failure_message = 'No workers with enough CPUs'
+            failures.append(self._check_resource_failure(
+                    self._compute_request_cpus(bundle),
+                    global_fail_string='No workers available with %d CPUs, max available: %d',
+                    global_max=max(map(lambda worker: worker['cpus'], workers_list))))
 
-            request_gpus = self._compute_request_gpus(bundle)
-            if request_gpus:
-                max_gpus = max(map(lambda worker: worker['gpus'], workers_list))
-                if request_gpus > max_gpus:
-                    failure_message = 'No workers with enough GPUs'
+            failures.append(self._check_resource_failure(
+                    self._compute_request_gpus(bundle),
+                    global_fail_string='No workers available with %d GPUs, max available: %d',
+                    global_max=max(map(lambda worker: worker['gpus'], workers_list))))
 
-            if failure_message is not None:
-                logger.info('Failing %s: %s', bundle.uuid, failure_message)
+            failures.append(self._check_resource_failure(
+                    self._compute_request_disk(bundle),
+                    user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
+                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
+                    global_fail_string='Maximum job disk size (%s) exceeded (%s)',
+                    global_max=self._max_request_disk))
+
+            failures.append(self._check_resource_failure(
+                    self._compute_request_time(bundle),
+                    user_fail_string='Requested more time (%s) than user time quota left (%s)',
+                    user_max=self._model.get_user_time_quota_left(bundle.owner_id),
+                    global_fail_string='Maximum job time (%s) exceeded (%s)',
+                    global_max=self._max_request_time))
+
+            failures = [f for f in failures if f is not None]
+
+            if len(failures) > 0:
+                logger.info('Failing %s: %s', bundle.uuid, '. '.join(failures))
                 self._model.update_bundle(
                     bundle, {'state': State.FAILED,
                              'metadata': {'failure_message': failure_message}})

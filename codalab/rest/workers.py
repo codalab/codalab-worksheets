@@ -183,7 +183,7 @@ def finalize_bundle(worker_id, uuid):
         # If the directory still doesn't exist after 2 minutes, the following
         # call will return an error.
 
-        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
     print 'Finalized bundle %s' % uuid
     local.model.finalize_bundle(bundle, request.user.user_id,

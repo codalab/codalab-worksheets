@@ -148,7 +148,7 @@ class UploadManager(object):
         path_util.rename(child_path, path)
         path_util.remove(temp_path)
 
-    def update_metadata_and_save(self, bundle, new_bundle):
+    def update_metadata_and_save(self, bundle, enforce_disk_quota=False):
         """
         Updates the metadata about the contents of the bundle, including
         data_size as well as the total amount of disk used by the user.
@@ -166,20 +166,18 @@ class UploadManager(object):
 
         data_hash = '0x%s' % (path_util.hash_directory(bundle_path, dirs_and_files))
         data_size = path_util.get_size(bundle_path, dirs_and_files)
+        if enforce_disk_quota:
+            disk_left = self._bundle_model.get_user_disk_quota_left(bundle.owner_id)
+            if data_size > disk_left:
+                raise UsageError("Can't save bundle, bundle size %s greater than user's disk quota left: %s" % (data_size, disk_left))
 
-        if new_bundle:
-            bundle.data_hash = data_hash
-            bundle.metadata.set_metadata_key('data_size', data_size)
-            self._bundle_model.save_bundle(bundle)
-        else:
-            bundle_update = {
-               'data_hash': data_hash,
-               'metadata': {
-                    'data_size': data_size,             
-                },
-            }
-            self._bundle_model.update_bundle(bundle, bundle_update)
-
+        bundle_update = {
+           'data_hash': data_hash,
+           'metadata': {
+                'data_size': data_size,
+            },
+        }
+        self._bundle_model.update_bundle(bundle, bundle_update)
         self._bundle_model.update_user_disk_used(bundle.owner_id)
 
     def has_contents(self, bundle):
@@ -190,7 +188,7 @@ class UploadManager(object):
         bundle_update = {
             'data_hash': None,
             'metadata': {
-                'data_size': 0,             
+                'data_size': 0,
             },
         }
         self._bundle_model.update_bundle(bundle, bundle_update)
