@@ -82,7 +82,9 @@ class DefaultBundleManager(BundleManager):
             failures = [f for f in failures if f is not None]
 
             if len(failures) > 0:
-                logger.info('Failing %s: %s', bundle.uuid, '. '.join(failures))
+                failure_message = '. '.join(failures)
+                logger.info('Failing %s: %s', bundle.uuid, failure_message)
+
                 self._model.update_bundle(
                     bundle, {'state': State.FAILED,
                              'metadata': {'failure_message': failure_message}})
