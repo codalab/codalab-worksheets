@@ -732,20 +732,6 @@ class BundleCLI(object):
             structured_result = command_fn()
         else:
             try:
-                """
-                # Profiling (off by default)
-                if False:
-                    import hotshot
-                    import hotshot.stats
-                    prof_path = 'codalab.prof'
-                    prof = hotshot.Profile(prof_path)
-                    prof.runcall(command_fn)
-                    prof.close()
-                    stats = hotshot.stats.load(prof_path)
-                    stats.sort_stats('time', 'calls')
-                    stats.print_stats(20)
-                else:
-                """
                 structured_result = command_fn()
             except PermissionError, e:
                 if self.headless:
