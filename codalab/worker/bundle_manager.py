@@ -48,25 +48,11 @@ class BundleManager(object):
         self._make_uuids_lock = threading.Lock()
         self._make_uuids = set()
 
-        if 'default_docker_image' not in config:
-            print >> sys.stderr, 'default_docker_image missing from workers section of config.json.'
-            exit(1)
-        self._default_docker_image = config['default_docker_image']
-
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
-        self._default_request_time = parse(formatting.parse_duration, 'default_request_time')
-        self._default_request_memory = parse(formatting.parse_size, 'default_request_memory')
-        self._default_request_disk = parse(formatting.parse_size, 'default_request_disk')
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time')
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
-
-        self._default_request_cpus = config.get('default_request_cpus', 1)
-        self._default_request_gpus = config.get('default_request_gpus', 0)
-        self._default_request_network = config.get('default_request_network')
-        self._default_request_queue = config.get('default_request_queue')
-        self._default_request_priority = config.get('default_request_priority')
 
         logging.basicConfig(format='%(asctime)s %(message)s',
                             level=logging.INFO)
@@ -337,7 +323,7 @@ class BundleManager(object):
                                   workers_list)
 
         # Filter by tag.
-        request_queue = bundle.metadata.request_queue or self._default_request_queue
+        request_queue = bundle.metadata.request_queue
         if request_queue:
             tagm = re.match('tag=(.+)', request_queue)
             if tagm:
@@ -402,37 +388,31 @@ class BundleManager(object):
         """
         Compute the CPU limit used for scheduling the run.
         """
-        return bundle.metadata.request_cpus or self._default_request_cpus
+        return bundle.metadata.request_cpus
 
     def _compute_request_gpus(self, bundle):
         """
         Compute the GPU limit used for scheduling the run.
         """
-        return bundle.metadata.request_gpus or self._default_request_gpus
+        return bundle.metadata.request_gpus
 
     def _compute_request_memory(self, bundle):
         """
         Compute the memory limit used for scheduling the run.
         """
-        if bundle.metadata.request_memory:
-            return formatting.parse_size(bundle.metadata.request_memory)
-        return self._default_request_memory
+        return formatting.parse_size(bundle.metadata.request_memory)
 
     def _compute_request_disk(self, bundle):
         """
         Compute the disk limit used for scheduling the run.
         """
-        if bundle.metadata.request_disk:
-            return formatting.parse_size(bundle.metadata.request_disk)
-        return self._default_request_disk
+        return formatting.parse_size(bundle.metadata.request_disk)
 
     def _compute_request_time(self, bundle):
         """
         Compute the time limit used for scheduling the run.
         """
-        if bundle.metadata.request_time:
-            return formatting.parse_duration(bundle.metadata.request_time)
-        return self._default_request_time
+        return formatting.parse_duration(bundle.metadata.request_time)
 
     def _construct_run_message(self, worker, bundle):
         """
@@ -453,12 +433,10 @@ class BundleManager(object):
         resources['request_cpus'] = self._compute_request_cpus(bundle)
         resources['request_gpus'] = self._compute_request_gpus(bundle)
 
-        resources['docker_image'] = (bundle.metadata.request_docker_image or
-                                     self._default_docker_image)
+        resources['docker_image'] = bundle.metadata.request_docker_image
         resources['request_time'] = self._compute_request_time(bundle)
         resources['request_memory'] = self._compute_request_memory(bundle)
         resources['request_disk'] = self._compute_request_disk(bundle)
-        resources['request_network'] = (bundle.metadata.request_network or
-                                        self._default_request_network)
+        resources['request_network'] = bundle.metadata.request_network
 
         return message
