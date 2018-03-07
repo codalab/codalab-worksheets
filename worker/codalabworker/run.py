@@ -240,7 +240,7 @@ class Run(object):
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
                     self._resources['docker_image'], docker_network, dependencies,
-                    self._cpuset, self._gpuset, self._resources['request_memory'] or 0
+                    self._cpuset, self._gpuset, self._resources['request_memory']
                 )
 
             # Pull the docker image regardless of whether or not we already have it
@@ -565,8 +565,5 @@ class Run(object):
 
     @property
     def requested_memory_bytes(self):
-        """
-        If request_memory is defined, then return that.
-        Otherwise, this run's memory usage does not get checked, so return inf.
-        """
-        return self._resources['request_memory'] or float('inf')
+        """ Return request_memory """
+        return self._resources['request_memory']
