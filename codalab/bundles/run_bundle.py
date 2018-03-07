@@ -25,7 +25,7 @@ class RunBundle(DerivedBundle):
     # Request a machine with this much resources and don't let run exceed these resources
     METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (either tag or digest, e.g., codalab/ubuntu:1.9) we wish to use.', completer=DockerImagesCompleter, hide_when_anonymous=True, default='codalab/ubuntu:1.9'))
     METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run.', formatting='duration', default='1d'))
-    METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='4g'))
+    METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='2g'))
     METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='4g'))
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'Number of CPUs allowed for this run.', default=1))
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'Number of GPUs allowed for this run.', default=0))
