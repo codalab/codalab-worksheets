@@ -3,7 +3,7 @@ import re
 from codalab.common import precondition, UsageError
 
 
-def nested_dict_get(o, *args, **kwargs):
+def nested_dict_get(obj, *args, **kwargs):
     """
     Get a value from a nested dictionary.
 
@@ -24,11 +24,26 @@ def nested_dict_get(o, *args, **kwargs):
     precondition(not kwargs, 'unsupported kwargs %s' % kwargs.keys())
     try:
         for arg in args:
-            o = o[arg]
-        return o
+            obj = obj[arg]
+        return obj
     except (KeyError, TypeError):
         return default
 
+def parse_target_spec(spec):
+    key = ''
+    bundle_spec = ''
+    if '::' in spec:
+        prefix, suffix = spec.split('::')
+    else:
+        prefix, suffix = spec, None
+    if ':' in prefix:  # :<bundle_spec> or <key>:<bundle_spec>
+        key, bundle_prefix = prefix.split(':', 1)
+        bundle_spec = bundle_prefix if suffix is None else bundle_prefix + "::" + suffix
+        if key == '':
+            key = bundle_spec
+    else:  # <bundle_spec>
+        bundle_spec = spec
+    return key, bundle_spec
 
 def desugar_command(orig_target_spec, command):
     """
@@ -48,16 +63,8 @@ def desugar_command(orig_target_spec, command):
     val2key = {}  # e.g., a.txt => b1 (use first key)
 
     def get(dep):  # Return the key
-        if '::' in dep:
-            val_prefix, val_suffix = dep.split('::')
-        else:
-            val_prefix, val_suffix = dep, None
-        if ':' in val_prefix:  # :<bundle_spec> or <key>:<bundle_spec>
-            key, val_prefix = val_prefix.split(':', 1)
-            val = val_prefix if val_suffix is None else val_prefix + "::" + val_suffix
-            if key == '':
-                key = val
-        else:  # <bundle_spec>
+        key, val = parse_target_spec(dep)
+        if key == '':
             val = dep
             if val in val2key:
                 key = val2key[val]
@@ -75,15 +82,15 @@ def desugar_command(orig_target_spec, command):
         return key
 
     target_spec = []
-    for x in orig_target_spec:
-        get(x)
+    for spec in orig_target_spec:
+        get(spec)
 
     while True:
-        m = pattern.match(command)
-        if not m:
+        match = pattern.match(command)
+        if not match:
             break
 
-        buf += m.group(1) + get(m.group(2))
-        command = m.group(3)
+        buf += match.group(1) + get(match.group(2))
+        command = match.group(3)
 
     return (target_spec, buf + command)

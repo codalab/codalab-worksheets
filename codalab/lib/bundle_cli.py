@@ -47,7 +47,6 @@ from codalab.common import (
 )
 from codalab.lib import (
     bundle_util,
-    cli_util,
     file_util,
     formatting,
     metadata_util,
@@ -58,7 +57,11 @@ from codalab.lib import (
     zip_util,
     bundle_fuse,
 )
-from codalab.lib.cli_util import nested_dict_get
+from codalab.lib.cli_util import (
+    nested_dict_get,
+    parse_target_spec,
+    desugar_command
+)
 from codalab.objects.permission import (
     group_permissions_str,
     parse_permission,
@@ -90,12 +93,14 @@ from codalabworker.file_util import remove_path
 # Formatting Constants
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
 BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
-BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
+BASIC_BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
+
 GLOBAL_SPEC_FORMAT = "[%s::]%s" % (ADDRESS_SPEC_FORMAT, BASIC_SPEC_FORMAT)
 WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
-REMOTE_BUNDLE_SPEC_FORMAT = '(%s//%s)' % (WORKSHEET_SPEC_FORMAT, BUNDLE_SPEC_FORMAT)
-GLOBAL_BUNDLE_SPEC_FORMAT = '(%s|%s|%s)' % (BUNDLE_SPEC_FORMAT, GLOBAL_SPEC_FORMAT, REMOTE_BUNDLE_SPEC_FORMAT)
-TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (GLOBAL_BUNDLE_SPEC_FORMAT, os.sep)
+
+BUNDLE_SPEC_FORMAT = '[%s//]%s' % (WORKSHEET_SPEC_FORMAT, BASIC_BUNDLE_SPEC_FORMAT)
+
+TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
 ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
@@ -497,17 +502,17 @@ class BundleCLI(object):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
     @staticmethod
-    def parse_target(client, worksheet_uuid, target_spec):
+    def parse_target_bundle(client, worksheet_uuid, target_bundle_spec):
         """
         Helper: A target_spec is a [worksheet_spec//]bundle_spec[/subpath].
         """
         worksheet_spec = None
-        if '//' in target_spec:
-            worksheet_spec, target_spec = target_spec.split('//', 1)
-        if os.sep in target_spec:
-            bundle_spec, subpath = tuple(target_spec.split(os.sep, 1))
+        if '//' in target_bundle_spec:
+            worksheet_spec, target_bundle_spec = target_bundle_spec.split('//', 1)
+        if os.sep in target_bundle_spec:
+            bundle_spec, subpath = tuple(target_bundle_spec.split(os.sep, 1))
         else:
-            bundle_spec, subpath = target_spec, ''
+            bundle_spec, subpath = target_bundle_spec, ''
 
         if worksheet_spec:
             worksheet_uuid = BundleCLI.resolve_worksheet_uuid(client, '', worksheet_spec)
@@ -516,40 +521,20 @@ class BundleCLI(object):
         bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, bundle_spec)
         return (bundle_uuid, subpath)
 
-    def parse_target_specs(self, items):
-        targets = []
-        for item in items:
-            if '::' in item:
-                pre_ws, target_suffix = item.split('::', 1)
-            else:
-                pre_ws, target_suffix = item, None
-
-            if ':' in pre_ws:
-                key, target_prefix = pre_ws.split(':', 1)
-                target = target_prefix if target_suffix is None else target_prefix + "::" + target_suffix
-                if key == '':
-                    key = target  # Set default key to be same as target
-            else:
-                # Provide syntactic sugar for a make bundle with a single anonymous target.
-                (key, target) = ('', pre_ws)
-
-            targets.append((key, target))
-        return targets
-
-    def parse_key_targets(self, client, worksheet_uuid, items):
+    def parse_key_targets(self, client, worksheet_uuid, target_specs):
         """
-        Helper: items is a list of strings which are [<key>]:<target>
+        Helper: target_specs is a list of strings which are [<key>]:<target>
         """
         targets = []
         # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
-
-        for key, target in self.parse_target_specs(items):
+        target_specs = [parse_target_spec(spec) for spec in target_specs]
+        for key, target_bundle in target_specs:
             if key in targets:
                 if key:
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            targets.append((key, self.parse_target(client, worksheet_uuid, target)))
+            targets.append((key, self.parse_target_bundle(client, worksheet_uuid, target_bundle)))
         return targets
 
     @staticmethod
@@ -747,6 +732,7 @@ class BundleCLI(object):
             structured_result = command_fn()
         else:
             try:
+                """
                 # Profiling (off by default)
                 if False:
                     import hotshot
@@ -759,7 +745,8 @@ class BundleCLI(object):
                     stats.sort_stats('time', 'calls')
                     stats.print_stats(20)
                 else:
-                    structured_result = command_fn()
+                """
+                structured_result = command_fn()
             except PermissionError, e:
                 if self.headless:
                     raise e
@@ -1052,7 +1039,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
         bundle_uuid, subpath = target
 
         # Figure out where to download.
@@ -1244,7 +1231,7 @@ class BundleCLI(object):
     )
     def do_run_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
+        args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
 
         targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
@@ -1269,7 +1256,7 @@ class BundleCLI(object):
     def do_docker_command(self, args):
         self._fail_if_headless(args)  # Disable on headless systems
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
+        args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
 
         docker_image = metadata.get('request_docker_image', None)
@@ -1279,8 +1266,9 @@ class BundleCLI(object):
         uuid = generate_uuid()
         bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
         request_network = None
+        target_specs = [parse_target_spec(spec) for spec in args.target_spec]
         dependencies = [
-            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
+            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in target_specs
         ]
 
         # Set up a directory to store the bundle.
@@ -1718,7 +1706,7 @@ class BundleCLI(object):
             self._fail_if_headless(args)  # Disable on headless systems
 
             client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-            target = self.parse_target(client, worksheet_uuid, args.target_spec)
+            target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
             uuid, path = target
 
             mountpoint = path_util.normalize(args.mountpoint)
@@ -1766,7 +1754,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)  # Files might be too big
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
         self.print_target_info(client, target, head=args.head, tail=args.tail)
 
     # Helper: shared between info and cat
@@ -1826,7 +1814,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
         (bundle_uuid, subpath) = target
 
         # Figure files to display
@@ -1975,9 +1963,6 @@ class BundleCLI(object):
 
         self.mimic(args)
 
-    def add_mimic_args(self, parser):
-        self.add_wait_args(parser)
-
     def mimic(self, args):
         """
         Use args.bundles to generate a call to bundle_util.mimic_bundles()
@@ -2045,7 +2030,7 @@ class BundleCLI(object):
     )
     def do_write_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
         client.create('bundle-actions', {
             'type': 'write',
             'uuid': target[0],
@@ -2082,7 +2067,7 @@ class BundleCLI(object):
     Item specifications, with the format depending on the specified item_type.
         text:      (<text>|%%<directive>)
         bundle:    {0}
-        worksheet: {1}""").format(GLOBAL_BUNDLE_SPEC_FORMAT, WORKSHEET_SPEC_FORMAT).strip()
+        worksheet: {1}""").format(BUNDLE_SPEC_FORMAT, WORKSHEET_SPEC_FORMAT).strip()
 
     @Commands.command(
         'add',
