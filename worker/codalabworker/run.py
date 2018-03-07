@@ -565,5 +565,5 @@ class Run(object):
 
     @property
     def requested_memory_bytes(self):
-        """ Return request_memory """
-        return self._resources['request_memory']
+        """ Return request_memory, or 4 megabytes if None (this is for backwards compatibility  """
+        return self._resources['request_memory'] or parse_size('4m')
