@@ -256,7 +256,7 @@ class BundleManager(object):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):
                 failure_message = 'Worker offline'
-                logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
+                logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.set_offline_bundle(bundle)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):

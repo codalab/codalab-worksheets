@@ -620,6 +620,7 @@ class BundleModel(object):
     def set_offline_bundle(self, bundle):
         """
         Sets the bundle to WORKER_OFFLINE, updating the last_updated metadata.
+        Remove the corresponding row from worker_run if it exists.
         """
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -627,6 +628,10 @@ class BundleModel(object):
             if not row:
                 # The user deleted the bundle.
                 return False
+
+            # Delete row in worker_run
+            connection.execute(
+                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
 
             bundle_update = {
                 'state': State.WORKER_OFFLINE,
@@ -699,9 +704,9 @@ class BundleModel(object):
 
     def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time):
         '''
-        Marks the bundle as running but only if it is still scheduled to run
-        on the given worker (done by checking the worker_run table). Returns
-        True if it is. Updates a few metadata fields and the events log.
+        Marks the bundle as running and returns True. If bundle was WORKER_OFFLINE, also inserts a row
+        into worker_run.
+        Updates a few metadata fields and the events log.
         '''
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -709,15 +714,22 @@ class BundleModel(object):
             if not row:
                 # The user deleted the bundle.
                 return False
-            if row.state != State.WORKER_OFFLINE: # this should never happen
-                return False
 
-            worker_run_row = {
-                'user_id': user_id,
-                'worker_id': worker_id,
-                'run_uuid': bundle.uuid,
-            }
-            connection.execute(cl_worker_run.insert().values(worker_run_row))
+            if row.state == State.WORKER_OFFLINE:
+                # check that worker_run row doesn't already exist
+                run_row = connection.execute(
+                    cl_worker_run.select().where(cl_worker_run.c.run_uuid == bundle.uuid)).fetchone()
+                if run_row:
+                    # we should never get to this point: panic
+                    raise IntegrityError('worker_run row exists for a bundle in WORKER_OFFLINE state, uuid %s'
+                            % (bundle.uuid,))
+
+                worker_run_row = {
+                    'user_id': user_id,
+                    'worker_id': worker_id,
+                    'run_uuid': bundle.uuid,
+                }
+                connection.execute(cl_worker_run.insert().values(worker_run_row))
 
             bundle_update = {
                 'state': State.RUNNING,
