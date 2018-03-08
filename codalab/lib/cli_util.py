@@ -65,7 +65,8 @@ def desugar_command(orig_target_spec, command):
     - %:a.txt% => [:a.txt], a.txt (implicit key is a.txt)
     - %instance::ws//a.txt% => [b1:instance::ws//a.txt], b1
     - %corenlp%/run %a.txt% => [b1:corenlp, b2:a.txt], b1/run b2
-    - %:word-vectors//glove.6B%/vector.txt => [:word-vectors//glove.6B], :word-vectors//glove.6B/vector.txt
+    - %:word-vectors//glove.6B%/vector.txt =>
+        [glove.6B/vector.txt:word-vectors//glove.6B/vector.txt], glove.6B/vector.txt
     """
     # If key is not specified, use b1, b2, b3 by default.
     pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
