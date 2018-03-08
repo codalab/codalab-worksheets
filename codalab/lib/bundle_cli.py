@@ -502,17 +502,20 @@ class BundleCLI(object):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
     @staticmethod
-    def parse_target_bundle(client, worksheet_uuid, target_bundle_spec):
+    def parse_target(client, worksheet_uuid, target_spec):
         """
         Helper: A target_spec is a [worksheet_spec//]bundle_spec[/subpath].
+        Returns: (bundle_uuid, subpath) where the bundle_uuid is the uuid of the
+        bundle matching the bundle spec, from the worksheet matching the given
+        worksheet spec if one is provided
         """
         worksheet_spec = None
-        if '//' in target_bundle_spec:
-            worksheet_spec, target_bundle_spec = target_bundle_spec.split('//', 1)
-        if os.sep in target_bundle_spec:
-            bundle_spec, subpath = tuple(target_bundle_spec.split(os.sep, 1))
+        if '//' in target_spec:
+            worksheet_spec, target_spec = target_spec.split('//', 1)
+        if os.sep in target_spec:
+            bundle_spec, subpath = tuple(target_spec.split(os.sep, 1))
         else:
-            bundle_spec, subpath = target_bundle_spec, ''
+            bundle_spec, subpath = target_spec, ''
 
         if worksheet_spec:
             worksheet_uuid = BundleCLI.resolve_worksheet_uuid(client, '', worksheet_spec)
@@ -534,7 +537,7 @@ class BundleCLI(object):
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            targets.append((key, self.parse_target_bundle(client, worksheet_uuid, target_bundle)))
+            targets.append((key, self.parse_target(client, worksheet_uuid, target_bundle)))
         return targets
 
     @staticmethod
@@ -1025,7 +1028,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
         bundle_uuid, subpath = target
 
         # Figure out where to download.
@@ -1692,7 +1695,7 @@ class BundleCLI(object):
             self._fail_if_headless(args)  # Disable on headless systems
 
             client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-            target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
+            target = self.parse_target(client, worksheet_uuid, args.target_spec)
             uuid, path = target
 
             mountpoint = path_util.normalize(args.mountpoint)
@@ -1740,7 +1743,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)  # Files might be too big
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
         self.print_target_info(client, target, head=args.head, tail=args.tail)
 
     # Helper: shared between info and cat
@@ -1800,7 +1803,7 @@ class BundleCLI(object):
         self._fail_if_headless(args)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
         (bundle_uuid, subpath) = target
 
         # Figure files to display
@@ -2016,7 +2019,7 @@ class BundleCLI(object):
     )
     def do_write_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target_bundle(client, worksheet_uuid, args.target_spec)
+        target = self.parse_target(client, worksheet_uuid, args.target_spec)
         client.create('bundle-actions', {
             'type': 'write',
             'uuid': target[0],

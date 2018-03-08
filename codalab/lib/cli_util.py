@@ -30,20 +30,31 @@ def nested_dict_get(obj, *args, **kwargs):
         return default
 
 def parse_target_spec(spec):
+    """
+    Helper: takes in a target spec in the form of
+        [[<key>]:][<instance>::][<worksheet_spec>//]<bundle_spec>[/<subpath>]
+    where <bundle_spec> is required and the rest are optional.
+    Returns a (<key>, <value_spec>) tuple where <value_spec> is everything after
+        the key and <key> is one of the following:
+        - if <spec> starts with '<key>:', <key> is returned as the key
+        - if <spec> starts with ':' (without a key before the ':'), <value_spec>
+            is returned as the key
+        - if <spec> doesn't include a ':', empty string is returned as the key
+    """
     key = ''
-    bundle_spec = ''
+    value_spec = ''
     if '::' in spec:
         prefix, suffix = spec.split('::')
     else:
         prefix, suffix = spec, None
-    if ':' in prefix:  # :<bundle_spec> or <key>:<bundle_spec>
+    if ':' in prefix:  # :<value_spec> or <key>:<value_spec>
         key, bundle_prefix = prefix.split(':', 1)
-        bundle_spec = bundle_prefix if suffix is None else bundle_prefix + "::" + suffix
+        value_spec = bundle_prefix if suffix is None else bundle_prefix + "::" + suffix
         if key == '':
-            key = bundle_spec
-    else:  # <bundle_spec>
-        bundle_spec = spec
-    return key, bundle_spec
+            key = value_spec
+    else:  # <value_spec>
+        value_spec = spec
+    return key, value_spec
 
 def desugar_command(orig_target_spec, command):
     """
