@@ -855,7 +855,7 @@ def test(ctx):
     uuid = run_command([cl, 'run',
                         'dir:' + dep_uuid,
                         'file:' + dep_uuid + '/a.txt',
-                        'ls dir; cat file; seq 1 10; touch done; sleep 60'])
+                        'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done'])
     wait_until_running(uuid)
 
     # Tests reading first while the bundle is running and then after it is
@@ -901,7 +901,7 @@ def test(ctx):
 
 @TestModule.register('kill')
 def test(ctx):
-    uuid = run_command([cl, 'run', 'sleep 1000'])
+    uuid = run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_running(uuid)
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
