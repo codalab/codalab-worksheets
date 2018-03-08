@@ -37,8 +37,8 @@ def parse_target_spec(spec):
     Returns a (<key>, <value_spec>) tuple where <value_spec> is everything after
         the key and <key> is one of the following:
         - if <spec> starts with '<key>:', <key> is returned as the key
-        - if <spec> starts with ':' (without a key before the ':'), <value_spec>
-            is returned as the key
+        - if <spec> starts with ':' (without a key before the ':'),
+            <bundle_spec>[/subpath] is returned as the key
         - if <spec> doesn't include a ':', empty string is returned as the key
     """
     key = ''
@@ -51,7 +51,8 @@ def parse_target_spec(spec):
         key, bundle_prefix = prefix.split(':', 1)
         value_spec = bundle_prefix if suffix is None else bundle_prefix + "::" + suffix
         if key == '':
-            key = value_spec
+            bundle_spec = value_spec.split('//', 1)[1] if '//' in value_spec else value_spec
+            key = bundle_spec
     else:  # <value_spec>
         value_spec = spec
     return key, value_spec
