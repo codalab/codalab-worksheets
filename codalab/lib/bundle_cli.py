@@ -933,7 +933,7 @@ class BundleCLI(object):
         # Build bundle info
         metadata = self.get_missing_metadata(UploadedBundle, args, initial_metadata={})
         # name = 'test.zip' => name = 'test'
-        if args.contents is not None:
+        if args.contents is not None and metadata['name'] is None:
             metadata['name'] = 'contents'
         if not args.pack and zip_util.path_is_archive(metadata['name']):
             metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
