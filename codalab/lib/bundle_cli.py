@@ -2093,13 +2093,14 @@ class BundleCLI(object):
             for bundle_spec in args.item_spec:
                 if '//' in bundle_spec:
                     source_worksheet_spec, source_bundle_spec = tuple(bundle_spec.split('//', 1))
-                    source_client, source_ws = self.parse_spec(source_worksheet_spec)
+                    source_client, source_worksheet = self.parse_spec(source_worksheet_spec)
+                    source_worksheet_uuid = self.resolve_worksheet_uuid(source_client, None, source_worksheet)
                 else:
                     source_client, source_bundle_spec = self.parse_spec(bundle_spec)
                     # a base_worksheet_uuid is only applicable if we're on the source client
-                    source_ws = curr_worksheet_uuid if source_client is curr_client else None
+                    source_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
 
-                source_bundle_uuid = self.resolve_bundle_uuid(source_client, source_ws, source_bundle_spec)
+                source_bundle_uuid = self.resolve_bundle_uuid(source_client, source_worksheet_uuid, source_bundle_spec)
 
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(source_client, source_bundle_uuid,
