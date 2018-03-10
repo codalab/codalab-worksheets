@@ -1760,6 +1760,9 @@ class BundleCLI(object):
 
     # Helper: shared between info and cat
     def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
+        # target spec parsing returns None for subpath if it doesn't exist but API
+        # calls below break if subpath is None, thus we convert to empty string
+        subpath = '' if subpath is None else subpath
         info = client.fetch_contents_info(bundle_uuid, subpath, 1)
         info_type = info.get('type')
 
