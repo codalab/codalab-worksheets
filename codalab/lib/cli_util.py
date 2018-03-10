@@ -2,6 +2,12 @@ import re
 
 from codalab.common import precondition, UsageError
 
+INSTANCE_SEPARATOR = "::"
+WORKSHEET_SEPARATOR = "//"
+
+TARGET_KEY_REGEX = r"(?<=^)(?:([^:]*?)\:(?!:))?(.*(?=$))"
+TARGET_REGEX = r"(?<=^)(?:(.*?)\:\:)?(?:(.*?)\/\/)?(.+?)(?:\/(.*?))?(?=$)"
+
 
 def nested_dict_get(obj, *args, **kwargs):
     """
@@ -13,7 +19,7 @@ def nested_dict_get(obj, *args, **kwargs):
     And turns them into:
         safe_get(bundle_info, 'owner', 'user_name')
 
-    :param o: dict-like object to 'get' value from
+    :param obj: dict-like object to 'get' value from
     :param args: variable list of nested keys
     :param kwargs: supports the kwarg 'default' to specify the default value to
                    return if any of the keys don't exist. (default is None)
@@ -29,33 +35,40 @@ def nested_dict_get(obj, *args, **kwargs):
     except (KeyError, TypeError):
         return default
 
-def parse_target_spec(spec):
+def parse_key_target(spec):
     """
-    Helper: takes in a target spec in the form of
+    Parses a keyed target spec into its key and the rest of the target spec
+    :param spec: a target spec in the form of
         [[<key>]:][<instance>::][<worksheet_spec>//]<bundle_spec>[/<subpath>]
     where <bundle_spec> is required and the rest are optional.
-    Returns a (<key>, <value_spec>) tuple where <value_spec> is everything after
-        the key and <key> is one of the following:
-        - if <spec> starts with '<key>:', <key> is returned as the key
-        - if <spec> starts with ':' (without a key before the ':'),
-            <bundle_spec>[/subpath] is returned as the key
-        - if <spec> doesn't include a ':', empty string is returned as the key
+
+    :return: a tuple of the following in that order:
+        - <key>: (<key> if present,
+                    empty string if ':' in spec but no <key>,
+                    None otherwise)
+        - <value> (where value is everyhing after a <key>: (or everything if no key specified)
     """
-    key = ''
-    value_spec = ''
-    if '::' in spec:
-        prefix, suffix = spec.split('::')
-    else:
-        prefix, suffix = spec, None
-    if ':' in prefix:  # :<value_spec> or <key>:<value_spec>
-        key, bundle_prefix = prefix.split(':', 1)
-        value_spec = bundle_prefix if suffix is None else bundle_prefix + "::" + suffix
-        if key == '':
-            bundle_spec = value_spec.split('//', 1)[1] if '//' in value_spec else value_spec
-            key = bundle_spec
-    else:  # <value_spec>
-        value_spec = spec
-    return key, value_spec
+
+    match = re.match(TARGET_KEY_REGEX, spec)
+    return match.groups() if match else (None, None)
+
+
+def parse_target_spec(spec):
+    """
+    Parses a (non-keyed) target spec into its components
+        :param spec: a target spec in the form of
+            [<instance>::][<worksheet_spec>//]<bundle_spec>[/<subpath>]
+    where <bundle_spec> is required and the rest are optional.
+
+    :return: a tuple of the following in that order:
+        - <instance>
+        - <worksheet_spec>
+        - <bundle_spec>
+        - <subpath>
+    """
+
+    match = re.match(TARGET_REGEX, spec)
+    return match.groups() if match else (None, None, None, None)
 
 def desugar_command(orig_target_spec, command):
     """
@@ -76,13 +89,14 @@ def desugar_command(orig_target_spec, command):
     val2key = {}  # e.g., a.txt => b1 (use first key)
 
     def get(dep):  # Return the key
-        key, val = parse_target_spec(dep)
+        key, val = parse_key_target(dep)
         if key == '':
-            val = dep
-            if val in val2key:
-                key = val2key[val]
-            else:
-                key = 'b' + str(len(target_spec) + 1)  # new key
+            # key only matches empty string if ':' present
+            _, _, bundle, subpath = parse_target_spec(val)
+            key = subpath if subpath is not None else bundle
+        elif key is None:
+            # key only returns None if ':' not present in original spec
+            key = val2key[val] if val in val2key else 'b' + str(len(target_spec) + 1)
 
         if val not in val2key:
             val2key[val] = key

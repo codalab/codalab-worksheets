@@ -10,13 +10,9 @@ import re
 
 from argcomplete import warn
 
-from codalab.lib import spec_util, worksheet_util
+from codalab.lib import spec_util, worksheet_util, cli_util
 
 from .docker_util import Docker
-
-
-KEY_TARGET_SPEC_FORMAT = r"(?:([^:]*):)?(?:([^/]*)//)?([^/]*)(?:/(.*))?"
-GLOBAL_WORKSHEET_SPEC_FORMAT = r"(?:(.*)::)?(.*)"
 
 class CodaLabCompleter(object):
     """
@@ -120,11 +116,11 @@ def UnionCompleter(*completers):
 # TODO: https://github.com/codalab/codalab-cli/issues/223
 class TargetsCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
-        m = re.match(KEY_TARGET_SPEC_FORMAT, prefix)
-        if m is None:
+        key, target = cli_util.parse_key_target(prefix, allow_incomplete=True)
+        if target is None:
             return ()
 
-        key, worksheet_spec, bundle_spec, subpath = m.groups()
+        instance, worksheet_spec, bundle_spec, subpath = cli_util.parse_target_spec(target)
 
         if worksheet_spec is None:
             worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
@@ -144,8 +140,9 @@ class TargetsCompleter(CodaLabCompleter):
             return (suggestion_format.format(b) for b in BundlesCompleter(self.cli)(bundle_spec, action, parsed_args, worksheet_uuid))
         else:
             # then suggest completions for subpath
-            target = self.cli.parse_target_bundle(client, worksheet_uuid, bundle_spec + '/' + subpath)
-            dir_target = (target[0], os.path.dirname(subpath))
+            resolved_target = self.cli.resolve_target(client, worksheet_uuid, target)
+            bundle_uuid = resolved_target[2]
+            dir_target = (bundle_uuid, os.path.dirname(subpath))
             info = client.fetch_contents_info(dir_target[0], dir_target[1], depth=1)
             if info is not None and info['type'] == 'directory':
                 matching_child_names = []
