@@ -1683,13 +1683,13 @@ class BundleCLI(object):
 
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
-        info = self.print_target_info(client, (bundle_uuid, ''), head=10)
+        info = self.print_target_info(client, bundle_uuid, '', head=10)
         if info is not None and info['type'] == 'directory':
             for item in info['contents']:
                 if item['name'] not in ['stdout', 'stderr']:
                     continue
                 print >>self.stdout, wrap(item['name'])
-                self.print_target_info(client, (bundle_uuid, item['name']), head=10)
+                self.print_target_info(client, bundle_uuid, item['name'], head=10)
 
     @Commands.command(
         'mount',
@@ -1756,7 +1756,7 @@ class BundleCLI(object):
 
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
-        self.print_target_info(client, (bundle_uuid, subpath), head=args.head, tail=args.tail)
+        self.print_target_info(client, bundle_uuid, subpath, head=args.head, tail=args.tail)
 
     # Helper: shared between info and cat
     def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
@@ -2303,7 +2303,7 @@ class BundleCLI(object):
                     if maxlines:
                         maxlines = int(maxlines)
                     try:
-                        self.print_target_info(client, data, head=maxlines)
+                        self.print_target_info(client, data[0], data[1], head=maxlines)
                     except UsageError, e:
                         print >>self.stdout, 'ERROR:', e
                 else:

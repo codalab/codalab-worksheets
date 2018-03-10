@@ -91,10 +91,14 @@ def desugar_command(orig_target_spec, command):
     def get(dep):  # Return the key
         key, val = parse_key_target(dep)
         if key == '':
+            # key only matches empty string if ':' present
+            _, _, bundle, subpath = parse_target_spec(val)
+            key = subpath if subpath is not None else bundle
+        elif key is None:
+            # key only returns None if ':' not present in original spec
             if val in val2key:
                 key = val2key[val]
-            else:
-                key = 'b' + str(len(target_spec) + 1)  # new key
+            key = 'b' + str(len(target_spec) + 1)  # new key
 
         if val not in val2key:
             val2key[val] = key
