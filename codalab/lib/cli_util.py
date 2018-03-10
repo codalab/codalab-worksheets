@@ -90,7 +90,6 @@ def desugar_command(orig_target_spec, command):
 
     def get(dep):  # Return the key
         key, val = parse_key_target(dep)
-        __import__('pdb').set_trace()
         if key == '':
             # key only matches empty string if ':' present
             _, _, bundle, subpath = parse_target_spec(val)
