@@ -544,7 +544,7 @@ class BundleCLI(object):
     def resolve_key_targets(self, client, worksheet_uuid, target_specs):
         """
         Helper: target_specs is a list of strings which are [<key>]:<target>
-        Returns: List<Tuple<key, Tuple<bundle_uuid, subpath>>>
+        Returns: [(key, (bundle_uuid, subpath)), ...]
         """
         targets = []
         target_keys_values = [parse_key_target(spec) for spec in target_specs]
