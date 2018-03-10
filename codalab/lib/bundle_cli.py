@@ -59,8 +59,11 @@ from codalab.lib import (
 )
 from codalab.lib.cli_util import (
     nested_dict_get,
+    parse_key_target,
     parse_target_spec,
-    desugar_command
+    desugar_command,
+    INSTANCE_SEPARATOR,
+    WORKSHEET_SEPARATOR
 )
 from codalab.objects.permission import (
     group_permissions_str,
@@ -95,10 +98,10 @@ ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
 BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
 BASIC_BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
 
-GLOBAL_SPEC_FORMAT = "[%s::]%s" % (ADDRESS_SPEC_FORMAT, BASIC_SPEC_FORMAT)
+GLOBAL_SPEC_FORMAT = "[%s%s]%s" % (ADDRESS_SPEC_FORMAT, INSTANCE_SEPARATOR, BASIC_SPEC_FORMAT)
 WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
 
-BUNDLE_SPEC_FORMAT = '[%s//]%s' % (WORKSHEET_SPEC_FORMAT, BASIC_BUNDLE_SPEC_FORMAT)
+BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (WORKSHEET_SPEC_FORMAT, WORKSHEET_SEPARATOR, BASIC_BUNDLE_SPEC_FORMAT)
 
 TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
 ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
@@ -501,43 +504,58 @@ class BundleCLI(object):
     def simple_group_str(info):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
-    @staticmethod
-    def parse_target(client, worksheet_uuid, target_spec):
+    def resolve_target(self, default_client, default_worksheet_uuid, target_spec, allow_remote=True):
         """
-        Helper: A target_spec is a [worksheet_spec//]bundle_spec[/subpath].
-        Returns: (bundle_uuid, subpath) where the bundle_uuid is the uuid of the
-        bundle matching the bundle spec, from the worksheet matching the given
-        worksheet spec if one is provided
-        """
-        worksheet_spec = None
-        if '//' in target_spec:
-            worksheet_spec, target_spec = target_spec.split('//', 1)
-        if os.sep in target_spec:
-            bundle_spec, subpath = tuple(target_spec.split(os.sep, 1))
-        else:
-            bundle_spec, subpath = target_spec, ''
+        Input: Target spec in the form of
+        [<instance>::][<worksheet_spec>//]<bundle_spec>[/<subpath>]
+            where <bundle_spec> is required and the rest are optional.
 
-        if worksheet_spec:
+        Returns:
+            - client: A client connected to the instance the target is from if allow_remote is True and an instance is specified,
+                otherwise default_client
+            - worksheet_uuid: The uuid of the worksheet the target bundle is from,
+                a new uuid if the target spec includes a worksheet spec
+                same as default_worksheet_uuid otherwise
+            - bundle_uuid: The uuid of the target bundle
+            - subpath: The subpath from the target_spec
+        Raises UsageError if allow_remote is False but an instance is specified in the target_spec
+        """
+        instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
+
+        if instance is not None:
+            if not allow_remote:
+                raise UsageError('Cannot execute command on a target on a remote instance. Please remove the instance reference (i.e. "prod::" in prod::worksheet//bundle)')
+            aliases = self.manager.config['aliases']
+            if instance in aliases:
+                instance = aliases.get(instance)
+            client = self.manager.client(instance)
+        else:
+            client = default_client
+        if worksheet_spec is not None:
             worksheet_uuid = BundleCLI.resolve_worksheet_uuid(client, '', worksheet_spec)
+        else:
+            worksheet_uuid = default_worksheet_uuid
 
         # Resolve the bundle_spec to a particular bundle_uuid.
         bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, bundle_spec)
-        return (bundle_uuid, subpath)
 
-    def parse_key_targets(self, client, worksheet_uuid, target_specs):
+        return (client, worksheet_uuid, bundle_uuid, subpath)
+
+    def resolve_key_targets(self, client, worksheet_uuid, target_specs):
         """
         Helper: target_specs is a list of strings which are [<key>]:<target>
+        Returns: List<Tuple<key, Tuple<bundle_uuid, subpath>>>
         """
         targets = []
-        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
-        target_specs = [parse_target_spec(spec) for spec in target_specs]
-        for key, target_bundle in target_specs:
+        target_keys_values = [parse_key_target(spec) for spec in target_specs]
+        for key, target_spec in target_keys_values:
             if key in targets:
                 if key:
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            targets.append((key, self.parse_target(client, worksheet_uuid, target_bundle)))
+            _, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(client, worksheet_uuid, target_spec, allow_remote=False)
+            targets.append((key, (bundle_uuid, subpath)))
         return targets
 
     @staticmethod
@@ -609,7 +627,7 @@ class BundleCLI(object):
         Example: https://worksheets.codalab.org/bundleservice::wine
         Return (client, spec)
         """
-        tokens = spec.split('::')
+        tokens = spec.split(INSTANCE_SEPARATOR)
         if len(tokens) == 1:
             address = self.manager.session()['address']
             spec = tokens[0]
@@ -1023,9 +1041,8 @@ class BundleCLI(object):
     def do_download_command(self, args):
         self._fail_if_headless(args)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        bundle_uuid, subpath = target
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
 
         # Figure out where to download.
         info = client.fetch('bundles', bundle_uuid)
@@ -1039,7 +1056,7 @@ class BundleCLI(object):
             return
 
         # Do the download.
-        target_info = client.fetch_contents_info(target[0], target[1], 0)
+        target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
@@ -1047,7 +1064,7 @@ class BundleCLI(object):
 
         progress = FileTransferProgress('Received ', f=self.stderr)
         contents = file_util.tracked(
-            client.fetch_contents_blob(target[0], target[1]), progress.update)
+            client.fetch_contents_blob(bundle_uuid, subpath), progress.update)
         with progress, closing(contents):
             if target_info['type'] == 'directory':
                 un_tar_directory(contents, final_path, 'gz')
@@ -1160,7 +1177,7 @@ class BundleCLI(object):
     )
     def do_make_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
+        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         metadata = self.get_missing_metadata(MakeBundle, args)
         new_bundle = client.create(
             'bundles',
@@ -1219,7 +1236,7 @@ class BundleCLI(object):
         args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
 
-        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
+        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
         new_bundle = client.create(
             'bundles',
             self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
@@ -1251,9 +1268,9 @@ class BundleCLI(object):
         uuid = generate_uuid()
         bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
         request_network = None
-        target_specs = [parse_target_spec(spec) for spec in args.target_spec]
+        target_specs = [parse_key_target(spec) for spec in args.target_spec]
         dependencies = [
-            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in target_specs
+            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
         ]
 
         # Set up a directory to store the bundle.
@@ -1690,9 +1707,8 @@ class BundleCLI(object):
         if bundle_fuse.fuse_is_available:
             self._fail_if_headless(args)  # Disable on headless systems
 
-            client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-            target = self.parse_target(client, worksheet_uuid, args.target_spec)
-            uuid, path = target
+            default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+            client, worksheet_uuid, uuid, path = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
 
             mountpoint = path_util.normalize(args.mountpoint)
             path_util.check_isvalid(mountpoint, 'mount')
@@ -1738,13 +1754,13 @@ class BundleCLI(object):
     def do_cat_command(self, args):
         self._fail_if_headless(args)  # Files might be too big
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        self.print_target_info(client, target, head=args.head, tail=args.tail)
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
+        self.print_target_info(client, (bundle_uuid, subpath), head=args.head, tail=args.tail)
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, target, head=None, tail=None):
-        info = client.fetch_contents_info(target[0], target[1], 1)
+    def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
+        info = client.fetch_contents_info(bundle_uuid, subpath, 1)
         info_type = info.get('type')
 
         if info_type is None:
@@ -1756,7 +1772,7 @@ class BundleCLI(object):
                 kwargs['head'] = head
             if tail is not None:
                 kwargs['tail'] = tail
-            contents = client.fetch_contents_blob(target[0], target[1], **kwargs)
+            contents = client.fetch_contents_blob(bundle_uuid, subpath, **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout)
 
@@ -1798,9 +1814,8 @@ class BundleCLI(object):
     def do_wait_command(self, args):
         self._fail_if_headless(args)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        (bundle_uuid, subpath) = target
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
 
         # Figure files to display
         subpaths = []
@@ -2014,22 +2029,22 @@ class BundleCLI(object):
         ),
     )
     def do_write_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
         client.create('bundle-actions', {
             'type': 'write',
-            'uuid': target[0],
-            'subpath': target[1],
+            'uuid': bundle_uuid,
+            'subpath': subpath,
             'string': args.string,
         })
-        print >>self.stdout, target[0]
+        print >>self.stdout, bundle_uuid
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################
 
     def worksheet_str(self, worksheet_info):
-        return '%s::%s(%s)' % (self.manager.session()['address'], worksheet_info['name'], worksheet_info['uuid'])
+        return '%s%s%s(%s)' % (self.manager.session()['address'], INSTANCE_SEPARATOR, worksheet_info['name'], worksheet_info['uuid'])
 
     @Commands.command(
         'new',
@@ -2091,17 +2106,7 @@ class BundleCLI(object):
 
         elif args.item_type == 'bundle':
             for bundle_spec in args.item_spec:
-                if '//' in bundle_spec:
-                    source_worksheet_spec, source_bundle_spec = tuple(bundle_spec.split('//', 1))
-                    source_client, source_worksheet = self.parse_spec(source_worksheet_spec)
-                    source_worksheet_uuid = self.resolve_worksheet_uuid(source_client, None, source_worksheet)
-                else:
-                    source_client, source_bundle_spec = self.parse_spec(bundle_spec)
-                    # a base_worksheet_uuid is only applicable if we're on the source client
-                    source_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
-
-                source_bundle_uuid = self.resolve_bundle_uuid(source_client, source_worksheet_uuid, source_bundle_spec)
-
+                source_client, source_worksheet_uuid, source_bundle_uuid, subpath = self.resolve_target(curr_client, curr_worksheet_uuid, bundle_spec)
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(source_client, source_bundle_uuid,
                                  dest_client, dest_worksheet_uuid,
