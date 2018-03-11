@@ -388,30 +388,45 @@ class BundleManager(object):
         """
         Compute the CPU limit used for scheduling the run.
         """
+        #TODO: Remove this once we want to deprecate old versions
+        if bundle.metadata.request_cpus is None:
+            return 1
         return bundle.metadata.request_cpus
 
     def _compute_request_gpus(self, bundle):
         """
         Compute the GPU limit used for scheduling the run.
         """
+        #TODO: Remove this once we want to deprecate old versions
+        if bundle.metadata.request_gpus is None:
+            return 0
         return bundle.metadata.request_gpus
 
     def _compute_request_memory(self, bundle):
         """
         Compute the memory limit used for scheduling the run.
         """
+        #TODO: Remove this once we want to deprecate old versions
+        if not bundle.metadata.request_memory:
+            return formatting.parse_size('2g')
         return formatting.parse_size(bundle.metadata.request_memory)
 
     def _compute_request_disk(self, bundle):
         """
         Compute the disk limit used for scheduling the run.
         """
+        #TODO: Remove this once we want to deprecate old versions
+        if not bundle.metadata.request_disk:
+            return formatting.parse_size('4g')
         return formatting.parse_size(bundle.metadata.request_disk)
 
     def _compute_request_time(self, bundle):
         """
         Compute the time limit used for scheduling the run.
         """
+        #TODO: Remove this once we want to deprecate old versions
+        if not bundle.metadata.request_time:
+            return formatting.parse_duration('1d')
         return formatting.parse_duration(bundle.metadata.request_time)
 
     def _construct_run_message(self, worker, bundle):
