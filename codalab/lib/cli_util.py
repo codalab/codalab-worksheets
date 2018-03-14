@@ -105,7 +105,7 @@ def desugar_command(orig_target_spec, command):
                 raise UsageError('key %s exists with multiple values: %s and %s' % (key, key2val[key], val))
         else:
             key2val[key] = val
-            target_spec.append((key if key != val else '') + ':' + val)
+            target_spec.append(key + ':' + val)
         return key
 
     target_spec = []
