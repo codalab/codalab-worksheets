@@ -558,9 +558,6 @@ class BundleCLI(object):
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
             _, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(client, worksheet_uuid, target_spec, allow_remote=False)
-            if not key:
-                instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
-                key = subpath if subpath is not None else bundle_spec
             targets.append((key, (bundle_uuid, subpath)))
         return targets
 
