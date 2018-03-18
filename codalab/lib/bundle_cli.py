@@ -162,6 +162,7 @@ USER_COMMANDS = (
 
 SERVER_COMMANDS = (
     'server',
+    'workers',
     'bundle-manager',
     'bs-add-partition',
     'bs-rm-partition',
@@ -918,6 +919,35 @@ class BundleCLI(object):
             self.manager.save_config()
         else:  # Print out value
             print config[key]
+
+    @Commands.command(
+        'workers',
+        help=[
+            'Display worker information of this CodaLab instance. Root user only.',
+        ],
+        arguments=(
+        ),
+    )
+    def do_workers_command(self, args):
+        client = self.manager.current_client()
+        raw_info = client.get_workers_info()
+
+        columns = ['worker_id', 'cpus', 'gpus', 'memory_bytes', 'last_checkin', 'tag']
+
+        data = []
+
+        for worker in raw_info:
+            data.append({
+                'worker_id': worker['worker_id'],
+                'cpus': '{}/{}'.format(worker['cpus_in_use'], worker['cpus']),
+                'gpus': '{}/{}'.format(worker['gpus_in_use'], worker['gpus']),
+                'memory_bytes': formatting.size_str(worker['memory_bytes']),
+                'last_checkin': '{} ago'.format(formatting.duration_str(int(time.time()) - worker['checkin_time'])),
+                'tag': worker['tag'],
+            })
+
+        print >>self.stdout, 'Workers Info:'
+        self.print_table(columns, data)
 
     @Commands.command(
         'upload',
