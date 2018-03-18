@@ -678,3 +678,10 @@ class JsonApiClient(RestClient):
             path='/worksheets/%s/raw' % worksheet_id,
             headers={'Content-Type': 'text/plain'},
             data='\n'.join(lines))
+
+    @wrap_exception('Unable to fetch worker information')
+    def get_workers_info(self):
+        request_path = '/workers/info'
+        response = self._make_request('GET', request_path)
+        return response['data']
+
