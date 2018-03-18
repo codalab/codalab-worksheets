@@ -389,7 +389,7 @@ class BundleManager(object):
         Compute the CPU limit used for scheduling the run.
         """
         #TODO: Remove this once we want to deprecate old versions
-        if bundle.metadata.request_cpus is None:
+        if not bundle.metadata.request_cpus:
             return 1
         return bundle.metadata.request_cpus
 
