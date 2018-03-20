@@ -2,6 +2,7 @@ import re
 import os
 import shutil
 
+from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
 
 class UploadManager(object):
