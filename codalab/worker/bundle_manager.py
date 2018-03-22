@@ -8,7 +8,8 @@ import threading
 import time
 import traceback
 
-from codalab.common import State
+from codalab.objects.permission import check_bundles_have_read_permission
+from codalab.common import State, PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalabworker.file_util import remove_path
 
@@ -47,25 +48,11 @@ class BundleManager(object):
         self._make_uuids_lock = threading.Lock()
         self._make_uuids = set()
 
-        if 'default_docker_image' not in config:
-            print >> sys.stderr, 'default_docker_image missing from workers section of config.json.'
-            exit(1)
-        self._default_docker_image = config['default_docker_image']
-
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
-        self._default_request_time = parse(formatting.parse_duration, 'default_request_time')
-        self._default_request_memory = parse(formatting.parse_size, 'default_request_memory')
-        self._default_request_disk = parse(formatting.parse_size, 'default_request_disk')
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time')
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
-
-        self._default_request_cpus = config.get('default_request_cpus')
-        self._default_request_gpus = config.get('default_request_gpus')
-        self._default_request_network = config.get('default_request_network')
-        self._default_request_queue = config.get('default_request_queue')
-        self._default_request_priority = config.get('default_request_priority')
 
         logging.basicConfig(format='%(asctime)s %(message)s',
                             level=logging.INFO)
@@ -108,6 +95,7 @@ class BundleManager(object):
         parent_uuids = set(
             dep.parent_uuid for bundle in bundles for dep in bundle.dependencies)
         parents = self._model.batch_get_bundles(uuid=parent_uuids)
+
         all_parent_states = {parent.uuid: parent.state for parent in parents}
         all_parent_uuids = set(all_parent_states)
 
@@ -115,6 +103,14 @@ class BundleManager(object):
         bundles_to_stage = []
         for bundle in bundles:
             parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
+
+            try:
+                check_bundles_have_read_permission(self._model, self._model.get_user(bundle.owner_id), parent_uuids)
+            except PermissionError as e:
+                bundles_to_fail.append(
+                    (bundle, str(e))
+                )
+                continue
 
             missing_uuids = parent_uuids - all_parent_uuids
             if missing_uuids:
@@ -129,6 +125,7 @@ class BundleManager(object):
             acceptable_states = [State.READY]
             if bundle.metadata.allow_failed_dependencies:
                 acceptable_states.append(State.FAILED)
+                acceptable_states.append(State.KILLED)
             else:
                 failed_uuids = [
                     uuid for uuid, state in parent_states.iteritems()
@@ -212,7 +209,7 @@ class BundleManager(object):
                 for dependency_path, child_path in deps:
                     path_util.copy(dependency_path, child_path, follow_symlinks=False)
 
-            self._upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+            self._upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
             logger.info('Finished making bundle %s', bundle.uuid)
             self._model.update_bundle(bundle, {'state': State.READY})
         except Exception as e:
@@ -259,7 +256,7 @@ class BundleManager(object):
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):
                 failure_message = 'Worker offline'
-                logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
+                logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.set_offline_bundle(bundle)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
@@ -282,14 +279,30 @@ class BundleManager(object):
                 else:
                     continue  # Try the next worker.
 
+    def _deduct_worker_resources(self, workers_list):
+        """
+        From each worker, subtract resources used by running bundles. Modifies the list.
+        """
+        for worker in workers_list:
+            for uuid in worker['run_uuids']:
+                bundle = self._model.get_bundle(uuid)
+                worker['cpus'] -= self._compute_request_cpus(bundle)
+                worker['gpus'] -= self._compute_request_gpus(bundle)
+
     def _filter_and_sort_workers(self, workers_list, bundle):
         """
-        Filters the workers to those than can run the given bundle and returns
+        Filters the workers to those that can run the given bundle and returns
         the list sorted in order of preference for running the bundle.
         """
-        # Filter by slots.
-        workers_list = filter(lambda worker: worker['slots'] - len(worker['run_uuids']) > 0,
-                              workers_list)
+
+        # keep track of which workers have GPUs
+        has_gpu = {}
+        for worker in workers_list:
+            worker_id = worker['worker_id']
+            has_gpu[worker_id] = worker['gpus'] > 0
+
+        # deduct worker resources based on running bundles
+        self._deduct_worker_resources(workers_list)
 
         # Filter by CPUs.
         request_cpus = self._compute_request_cpus(bundle)
@@ -310,7 +323,7 @@ class BundleManager(object):
                                   workers_list)
 
         # Filter by tag.
-        request_queue = bundle.metadata.request_queue or self._default_request_queue
+        request_queue = bundle.metadata.request_queue
         if request_queue:
             tagm = re.match('tag=(.+)', request_queue)
             if tagm:
@@ -322,12 +335,13 @@ class BundleManager(object):
                 return []
 
         # Sort workers list according to these keys in the following succession:
-        #  - if the bundle doesn't request GPUs (only requests CPUs), prioritize workers that don't have GPUs
+        #  - whether the worker is a CPU-only worker, if the bundle doesn't request GPUs
         #  - number of dependencies available, descending
-        #  - number of free slots, descending
+        #  - number of free cpus, descending
         #  - random key
+        #
         # Breaking ties randomly is important, since multiple workers frequently
-        # have the same number of dependencies and free slots for a given bundle
+        # have the same number of dependencies and free CPUs for a given bundle
         # (in particular, bundles with no dependencies) and we may end up
         # selecting the same worker over and over again for new jobs. While this
         # is not a problem for the performance of the jobs themselves, this can
@@ -337,11 +351,11 @@ class BundleManager(object):
                               bundle.dependencies))
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
+            worker_id = worker['worker_id']
 
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
-            if not self._compute_request_gpus(bundle):
-                return (-worker['gpus'], len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
-            return (len(needed_deps & deps), worker['slots'] - len(worker['run_uuids']), random.random())
+            gpu_priority = self._compute_request_gpus(bundle) or not has_gpu[worker_id]
+            return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list
@@ -374,22 +388,46 @@ class BundleManager(object):
         """
         Compute the CPU limit used for scheduling the run.
         """
-        return bundle.metadata.request_cpus or self._default_request_cpus
+        #TODO: Remove this once we want to deprecate old versions
+        if not bundle.metadata.request_cpus:
+            return 1
+        return bundle.metadata.request_cpus
 
     def _compute_request_gpus(self, bundle):
         """
         Compute the GPU limit used for scheduling the run.
         """
-        return bundle.metadata.request_gpus or self._default_request_gpus
-
+        #TODO: Remove this once we want to deprecate old versions
+        if bundle.metadata.request_gpus is None:
+            return 0
+        return bundle.metadata.request_gpus
 
     def _compute_request_memory(self, bundle):
         """
         Compute the memory limit used for scheduling the run.
         """
-        if bundle.metadata.request_memory:
-            return formatting.parse_size(bundle.metadata.request_memory)
-        return self._default_request_memory
+        #TODO: Remove this once we want to deprecate old versions
+        if not bundle.metadata.request_memory:
+            return formatting.parse_size('2g')
+        return formatting.parse_size(bundle.metadata.request_memory)
+
+    def _compute_request_disk(self, bundle):
+        """
+        Compute the disk limit used for scheduling the run.
+        """
+        #TODO: Remove this once we want to deprecate old versions
+        if not bundle.metadata.request_disk:
+            return formatting.parse_size('4g')
+        return formatting.parse_size(bundle.metadata.request_disk)
+
+    def _compute_request_time(self, bundle):
+        """
+        Compute the time limit used for scheduling the run.
+        """
+        #TODO: Remove this once we want to deprecate old versions
+        if not bundle.metadata.request_time:
+            return formatting.parse_duration('1d')
+        return formatting.parse_duration(bundle.metadata.request_time)
 
     def _construct_run_message(self, worker, bundle):
         """
@@ -407,45 +445,13 @@ class BundleManager(object):
         # Figure out the resource requirements.
         resources = message['resources'] = {}
 
-        resources['docker_image'] = (bundle.metadata.request_docker_image or
-                                     self._default_docker_image)
+        resources['request_cpus'] = self._compute_request_cpus(bundle)
+        resources['request_gpus'] = self._compute_request_gpus(bundle)
 
-        # Parse |request_string| using |to_value|, but don't exceed |max_value|.
-        def parse_and_min(to_value, request_string, default_value, max_value):
-            # On user-owned workers, ignore the maximum value. Users are free to
-            # use as many resources as they wish on their own machines.
-            if worker['user_id'] != self._model.root_user_id:
-                max_value = None
-
-            # Use default if request value doesn't exist
-            if request_string:
-                request_value = to_value(request_string)
-            else:
-                request_value = default_value
-            if request_value and max_value:
-                return int(min(request_value, max_value))
-            elif request_value:
-                return int(request_value)
-            elif max_value:
-                return int(max_value)
-            else:
-                return None
-
-        # These limits are used for killing runs that use too many resources.
-        resources['request_time'] = parse_and_min(formatting.parse_duration,
-                                                  bundle.metadata.request_time,
-                                                  self._default_request_time,
-                                                  self._max_request_time)
-        resources['request_memory'] = parse_and_min(formatting.parse_size,
-                                                    bundle.metadata.request_memory,
-                                                    self._default_request_memory,
-                                                    self._max_request_memory)
-        resources['request_disk'] = parse_and_min(formatting.parse_size,
-                                                  bundle.metadata.request_disk,
-                                                  self._default_request_disk,
-                                                  self._max_request_disk)
-
-        resources['request_network'] = (bundle.metadata.request_network or
-                                        self._default_request_network)
+        resources['docker_image'] = bundle.metadata.request_docker_image
+        resources['request_time'] = self._compute_request_time(bundle)
+        resources['request_memory'] = self._compute_request_memory(bundle)
+        resources['request_disk'] = self._compute_request_disk(bundle)
+        resources['request_network'] = bundle.metadata.request_network
 
         return message

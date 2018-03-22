@@ -253,7 +253,6 @@ def temp_instance():
         worker_proc = subprocess.Popen([os.path.join(base_path, 'venv/bin/python'),
                                         os.path.join(base_path, 'worker/codalabworker/main.py'),
                                         '--server=' + remote_host,
-                                        '--slots=1',
                                         '--work-dir=' + remote_worker_scratch,
                                         '--password-file=' + password_file],
                                        stdout=subprocess.PIPE, stderr=FNULL)
@@ -849,6 +848,35 @@ def test(ctx):
     # invalid child path
     run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
 
+    # test running with a reference to this worksheet
+    source_worksheet_full = current_worksheet()
+    source_worksheet_name = source_worksheet_full.split('::')[1]
+
+    # Create new worksheet
+    new_wname = random_name()
+    new_wuuid = run_command([cl, 'new', new_wname])
+    ctx.collect_worksheet(new_wuuid)
+    check_contains(['Switched', new_wname, new_wuuid], run_command([cl, 'work', new_wuuid]))
+
+    remote_name = random_name()
+    remote_uuid = run_command([cl, 'run', 'k:%s//%s' % (source_worksheet_name, name), "cat k/stdout", '-n', remote_name])
+    wait(remote_uuid)
+    check_contains(remote_name, run_command([cl, 'search', remote_name]))
+    check_equals(remote_uuid, run_command([cl, 'search', remote_name, '-u']))
+    check_equals('ready', run_command([cl, 'info', '-f', 'state', remote_uuid]))
+    check_equals('hello', run_command([cl, 'cat', remote_uuid+'/stdout']))
+
+    sugared_remote_name = random_name()
+    sugared_remote_uuid = run_command([cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_name, name), '-n', sugared_remote_name])
+    wait(sugared_remote_uuid)
+    check_contains(sugared_remote_name, run_command([cl, 'search', sugared_remote_name]))
+    check_equals(sugared_remote_uuid, run_command([cl, 'search', sugared_remote_name, '-u']))
+    check_equals('ready', run_command([cl, 'info', '-f', 'state', sugared_remote_uuid]))
+    check_equals('hello', run_command([cl, 'cat', sugared_remote_uuid+'/stdout']))
+
+    # Explicitly fail when a remote instance name with : in it is supplied
+    run_command([cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1)
+
 
 @TestModule.register('read')
 def test(ctx):
@@ -856,7 +884,7 @@ def test(ctx):
     uuid = run_command([cl, 'run',
                         'dir:' + dep_uuid,
                         'file:' + dep_uuid + '/a.txt',
-                        'ls dir; cat file; seq 1 10; touch done; sleep 60'])
+                        'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done'])
     wait_until_running(uuid)
 
     # Tests reading first while the bundle is running and then after it is
@@ -902,7 +930,7 @@ def test(ctx):
 
 @TestModule.register('kill')
 def test(ctx):
-    uuid = run_command([cl, 'run', 'sleep 1000'])
+    uuid = run_command([cl, 'run', 'while true; do sleep 100; done'])
     wait_until_running(uuid)
     check_equals(uuid, run_command([cl, 'kill', uuid]))
     run_command([cl, 'wait', uuid], 1)
@@ -924,21 +952,39 @@ def test(ctx):
 
 @TestModule.register('mimic')
 def test(ctx):
-    name = random_name()
-
     def data_hash(uuid):
         run_command([cl, 'wait', uuid])
         return get_info(uuid, 'data_hash')
-    uuid1 = run_command([cl, 'upload', test_path('a.txt'), '-n', name + '-in1'])
-    uuid2 = run_command([cl, 'make', uuid1, '-n', name + '-out'])
-    uuid3 = run_command([cl, 'upload', test_path('a.txt')])
+
+    simple_name = random_name()
+
+    input_uuid = run_command([cl, 'upload', test_path('a.txt'), '-n', simple_name + '-in1'])
+    simple_out_uuid = run_command([cl, 'make', input_uuid, '-n', simple_name + '-out'])
+
+    new_input_uuid = run_command([cl, 'upload', test_path('a.txt')])
+
     # Try three ways of mimicing, should all produce the same answer
-    uuid4 = run_command([cl, 'mimic', uuid1, uuid3, '-n', 'new'])
-    check_equals(data_hash(uuid2), data_hash(uuid4))
-    uuid5 = run_command([cl, 'mimic', uuid1, uuid2, uuid3, '-n', 'new'])
-    check_equals(data_hash(uuid2), data_hash(uuid5))
-    uuid6 = run_command([cl, 'macro', name, uuid3, '-n', 'new'])
-    check_equals(data_hash(uuid2), data_hash(uuid6))
+    input_mimic_uuid = run_command([cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new'])
+    check_equals(data_hash(simple_out_uuid), data_hash(input_mimic_uuid))
+
+    full_mimic_uuid = run_command([cl, 'mimic', input_uuid, simple_out_uuid, new_input_uuid, '-n', 'new'])
+    check_equals(data_hash(simple_out_uuid), data_hash(full_mimic_uuid))
+
+    simple_macro_uuid = run_command([cl, 'macro', simple_name, new_input_uuid, '-n', 'new'])
+    check_equals(data_hash(simple_out_uuid), data_hash(simple_macro_uuid))
+
+    complex_name = random_name()
+
+    numbered_input_uuid = run_command([cl, 'upload', test_path('a.txt'), '-n', complex_name + '-in1'])
+    named_input_uuid = run_command([cl, 'upload', test_path('b.txt'), '-n', complex_name + '-in-named'])
+    out_uuid = run_command([cl, 'make', 'numbered:' + numbered_input_uuid, 'named:' + named_input_uuid, '-n', complex_name + '-out'])
+
+    new_numbered_input_uuid = run_command([cl, 'upload', test_path('a.txt')])
+    new_named_input_uuid = run_command([cl, 'upload', test_path('b.txt')])
+
+    # Try running macro with numbered and named inputs
+    macro_out_uuid = run_command([cl, 'macro', complex_name, new_numbered_input_uuid, 'named:' + new_named_input_uuid, '-n', 'new'])
+    check_equals(data_hash(out_uuid), data_hash(macro_out_uuid))
 
     # Another basic test
     uuidA = run_command([cl, 'upload', test_path('a.txt')])
@@ -1080,6 +1126,24 @@ def test(ctx):
     run_command([cl, 'ginfo', 'public'])
 
 
+@TestModule.register('netcat')
+def test(ctx):
+    run_command(['docker', 'pull', 'codalab/python:0.1']) # pull image in order to run python script
+
+    script_uuid = run_command([cl, 'upload', test_path('netcat-test.py')])
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/python:0.1',  'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    wait_until_running(uuid)
+    time.sleep(5)
+    output = run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
+    check_equals('No, this is dawg', output)
+
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/python:0.1', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    wait_until_running(uuid)
+    time.sleep(5)
+    output = run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
+    check_equals('Hi this is dawg', output)
+
+
 @TestModule.register('anonymous')
 def test(ctx):
     # Should not crash
@@ -1100,7 +1164,7 @@ def test(ctx):
     uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
     wait(uuid)
     check_equals('/opt/scala/current', run_command([cl, 'cat', uuid+'/stdout']))
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1','echo $LUA_PATH'])
+    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1', 'echo $LUA_PATH'])
     wait(uuid)
     check_contains('/user/.luarocks/share/lua/5.1/?.lua', run_command([cl, 'cat', uuid+'/stdout']))
 

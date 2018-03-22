@@ -23,7 +23,7 @@ class MetadataDefaults(object):
         if fn:
             return fn(bundle_subclass, args)
 
-        result = spec.get_constructor()()
+        result = spec.default if isinstance(spec.default, spec.type) else spec.get_constructor()()
 
         # We need to return a list instead of a set because command-line values for
         # set metadata objects must be JSON-able. When the metadata is marshalled

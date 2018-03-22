@@ -17,7 +17,7 @@ from dependency_manager import DependencyManager
 from worker_state_manager import WorkerStateManager
 from file_util import remove_path, un_tar_directory
 
-VERSION = 15
+VERSION = 18
 
 logger = logging.getLogger(__name__)
 
@@ -46,13 +46,14 @@ class Worker(object):
         4) Upgrading the worker.
     """
 
-    def __init__(self, worker_id, tag, work_dir, max_work_dir_size_bytes, shared_file_system, slots, bundle_service,
-                 create_run_manager):
+    def __init__(self, worker_id, tag, work_dir,
+                 max_work_dir_size_bytes, max_dependencies_serialized_length,
+                 shared_file_system, bundle_service, create_run_manager):
         self.id = worker_id
         self._tag = tag
         self.shared_file_system = shared_file_system
         self._bundle_service = bundle_service
-        self._slots = slots
+        self._resource_lock = threading.Lock() # lock for cpuset and gpuset
         self._run_manager = create_run_manager(self)
 
         self._worker_state_manager = WorkerStateManager(
@@ -64,7 +65,11 @@ class Worker(object):
         if not self.shared_file_system:
             # Manages which dependencies are available.
             self._dependency_manager = DependencyManager(
-                    work_dir, max_work_dir_size_bytes, self._worker_state_manager.previous_runs.keys())
+                work_dir,
+                max_work_dir_size_bytes,
+                max_dependencies_serialized_length,
+                self._worker_state_manager.previous_runs.keys()
+            )
 
         self._exiting_lock = threading.Lock()
         self._exiting = False
@@ -143,6 +148,9 @@ class Worker(object):
             elif type == 'read':
                 self._read(response['socket_id'], response['uuid'], response['path'],
                            response['read_args'])
+            elif type == 'netcat':
+                self._netcat(response['socket_id'], response['uuid'], response['port'],
+                           response['message'])
             elif type == 'write':
                 self._write(response['uuid'], response['subpath'],
                             response['string'])
@@ -247,6 +255,15 @@ class Worker(object):
             socket.reply(message)
         else:
             run.read(path=path, read_args=read_args, socket=socket)
+
+    def _netcat(self, socket_id, uuid, port, message):
+        run = self._worker_state_manager._get_run(uuid)
+        if run is None:
+            Run.read_run_missing(self._bundle_service, self, socket_id)
+        else:
+            # Reads may take a long time, so do the read in a separate thread.
+            threading.Thread(target=Run.netcat,
+                             args=(run, socket_id, port, message)).start()
 
     def _write(self, uuid, subpath, string):
         run = self._worker_state_manager._get_run(uuid)

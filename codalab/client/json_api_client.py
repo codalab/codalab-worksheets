@@ -10,7 +10,6 @@ from codalab.common import (
     UsageError,
 )
 from codalabworker.rest_client import RestClient, RestClientException
-from codalabworker.file_util import un_gzip_stream
 
 
 def wrap_exception(message):
@@ -423,6 +422,19 @@ class JsonApiClient(RestClient):
         else:
             return results[0]
 
+    @wrap_exception('Unable to netcat {1}')
+    def netcat(self, bundle_id, port, data):
+        """
+        Request to send data to a running bundle
+
+        :param bundle_id: running bundle uuid
+        :param data: bytestring
+        :param port: service port running on bundle
+        :return: the response
+        """
+        request_path = '/bundles/%s/netcat/%s/' % (bundle_id, port)
+        return self._make_request('PUT', request_path, data=data)
+
     @wrap_exception('Unable to create {1}')
     def create(self, resource_type, data, params=None):
         """
@@ -666,3 +678,10 @@ class JsonApiClient(RestClient):
             path='/worksheets/%s/raw' % worksheet_id,
             headers={'Content-Type': 'text/plain'},
             data='\n'.join(lines))
+
+    @wrap_exception('Unable to fetch worker information')
+    def get_workers_info(self):
+        request_path = '/workers/info'
+        response = self._make_request('GET', request_path)
+        return response['data']
+

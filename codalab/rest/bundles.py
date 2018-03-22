@@ -386,6 +386,51 @@ def _fetch_bundle_contents_info(uuid, path=''):
         'data': info
     }
 
+@put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
+def _netcat_bundle(uuid, port):
+    """
+    Send a raw bytestring into the specified port of the running bundle with uuid.
+    Return the response from this bundle.
+    """
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
+    bundle = local.model.get_bundle(uuid)
+    if bundle.state in State.FINAL_STATES:
+        abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle already finalized.')
+    info = local.download_manager.netcat(uuid, port, request.json['message'])
+    return {'data': info}
+
+@post('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
+@put('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
+@delete('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
+@get('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
+@patch('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
+def _netcurl_bundle(uuid, port, path=''):
+    """
+    Forward an HTTP request into the specified port of the running bundle with uuid.
+    Return the HTTP response from this bundle.
+    """
+    check_bundles_have_read_permission(local.model, request.user, [uuid])
+    bundle = local.model.get_bundle(uuid)
+    if bundle.state in State.FINAL_STATES:
+        abort(httplib.FORBIDDEN, 'Cannot netcurl bundle, bundle already finalized.')
+
+    try:
+        request.path_shift(4) # shift away the routing parts of the URL
+
+        headers_string = ['{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()]
+        message = "{} {} HTTP/1.1\r\n".format(request.method, request.path)
+        message += "\r\n".join(headers_string) + "\r\n"
+        message += "\r\n"
+        message += request.body.read()
+
+        info = local.download_manager.netcat(uuid, port, message)
+    except:
+        print >>sys.stderr, "{}".format(request.environ)
+        raise
+    finally:
+        request.path_shift(-4) # restore the URL
+
+    return info
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
 @get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
@@ -546,7 +591,7 @@ def _update_bundle_contents_blob(uuid):
             unpack=query_get_bool('unpack', default=True),
             simplify_archives=query_get_bool('simplify', default=True)) # See UploadManager for full explanation of 'simplify'
 
-        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error
