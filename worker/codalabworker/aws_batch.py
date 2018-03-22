@@ -198,16 +198,10 @@ class AwsBatchRun(FilesystemRunMixin, RunBase):
         return True
 
     def kill(self, reason):
-        if self._fsm:
-            self._fsm.stop()
-
+        # Tell Batch to kill the job, but let the run's FSM continue to gracefully stop and cleanup resources
         job_id = self.bundle['metadata'].get('batch_job_id')
         if job_id:
             self._batch_client.terminate_job(jobId=job_id, reason=reason)
-
-        job_definition = self.bundle['metadata'].get('batch_job_definition')
-        if job_definition:
-            self._batch_client.deregister_job_definition(jobDefinition=job_definition)
 
     def _start_fsm(self):
         assert self._fsm is None, "FSM was already created."
