@@ -18,10 +18,10 @@ def current_time():
     return int(time.time())
 
 
-BYTES_PER_MEGABYTE = 1024 * 1024
+BYTES_PER_MEGABYTE = parse_size('1m')
 
 # AWS Batch always requires the amount of memory to be specified. We provide a reasonable default here.
-BATCH_DEFAULT_MEMORY = 1024 * BYTES_PER_MEGABYTE
+BATCH_DEFAULT_MEMORY = parse_size('1g')
 
 
 class AwsBatchRunManager(RunManagerBase):
@@ -63,7 +63,7 @@ class AwsBatchRunManager(RunManagerBase):
     @property
     def memory_bytes(self):
         # TODO Compute this from the batch queue
-        return 1000 * 1000 * BYTES_PER_MEGABYTE
+        return parse_size('10t')
 
     @property
     def gpus(self):

@@ -21,13 +21,33 @@ from formatting import duration_str, size_str
 
 logger = logging.getLogger(__name__)
 
-
+# TODO This needs finished fixing after merge and needs tested much better
 class DockerRunManager(RunManagerBase):
-    def __init__(self, docker, bundle_service, image_manager, worker):
+    def __init__(self, docker, bundle_service, image_manager, worker, docker_network_prefix, cpuset, gpuset):
         self._docker = docker
         self._bundle_service = bundle_service
         self._image_manager = image_manager
         self._worker = worker
+        self._cpuset = cpuset
+        self._gpuset = gpuset
+        self._cpuset_free = set(self._cpuset)  # make a copy of self._cpuset as initial value
+        self._gpuset_free = set(self._gpuset)  # make a copy of self._gpuset as initial value
+        self._docker_network_prefix = docker_network_prefix
+
+        # set up docker networks for running bundles: one with external network access and one without
+        self.docker_network_external_name = self._docker_network_prefix + "_ext"
+        if self.docker_network_external_name not in self._docker.list_networks():
+            logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
+            self._docker.create_network(self.docker_network_external_name, internal=False)
+        else:
+            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_external_name))
+
+        self.docker_network_internal_name = self._docker_network_prefix + "_int"
+        if self.docker_network_internal_name not in self._docker.list_networks():
+            logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
+            self._docker.create_network(self.docker_network_internal_name)
+        else:
+            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_internal_name))
 
     @property
     def cpus(self):
@@ -43,13 +63,12 @@ class DockerRunManager(RunManagerBase):
 
     @property
     def gpus(self):
-        if not self._docker._use_nvidia_docker:
-            return 0
+        # TODO use gpu set thing
+        return 0
 
-        container_id = self._docker.run_nvidia_smi('-L', 'nvidia/cuda:8.0-runtime')
-        out, err = self._docker.get_logs(container_id)
-        count = len(re.findall('^GPU \d', out))
-        self._docker.delete_container(container_id)
+    def total_gpu_count(self):
+        info = self._docker.get_nvidia_devices_info()
+        count = 0 if info is None else len(info['Devices'])
         return count
 
     def create_run(self, bundle, bundle_path, resources):

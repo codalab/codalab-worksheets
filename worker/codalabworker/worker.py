@@ -133,7 +133,6 @@ class Worker(object):
             'version': VERSION,
             'will_upgrade': self._should_upgrade,
             'tag': self._tag,
-            'slots': self._slots if not self._is_exiting() else 0,
             'cpus': self._run_manager.cpus,
             'gpus': self._run_manager.gpus,
             'memory_bytes': self._get_memory_bytes(),
@@ -257,13 +256,8 @@ class Worker(object):
             run.read(path=path, read_args=read_args, socket=socket)
 
     def _netcat(self, socket_id, uuid, port, message):
-        run = self._worker_state_manager._get_run(uuid)
-        if run is None:
-            Run.read_run_missing(self._bundle_service, self, socket_id)
-        else:
-            # Reads may take a long time, so do the read in a separate thread.
-            threading.Thread(target=Run.netcat,
-                             args=(run, socket_id, port, message)).start()
+        # TODO Netcat isn't supported because it cannot be by a general execution framework; this shouldn't be allowed.
+        pass
 
     def _write(self, uuid, subpath, string):
         run = self._worker_state_manager._get_run(uuid)

@@ -1,3 +1,6 @@
+from formatting import parse_size
+
+
 class RunManagerBase(object):
     """
     Base class for classes which manages individual runs on a worker.
@@ -97,10 +100,9 @@ class RunBase(object):
     @property
     def requested_memory_bytes(self):
         """
-        If request_memory is defined, then return that.
-        Otherwise, this run's memory usage does not get checked, so return inf.
+        If request_memory is defined, then return that, otherwise return 4m (for backwards compatibility)
         """
-        return self.resources.get('request_memory') or float('inf')
+        return self.resources.get('request_memory') or parse_size('4m')
 
     def start(self):
         """

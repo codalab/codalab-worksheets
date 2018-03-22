@@ -111,16 +111,6 @@ chmod 600 %s""" % args.password_file
 
     bundle_service = BundleServiceClient(args.server, username, password)
 
-    # TODO Break this up better
-    if args.batch_queue is None:
-        docker = DockerClient()
-        # transform/verify cpuset and gpuset
-        cpuset = parse_cpuset_args(args.cpuset)
-        gpuset = parse_gpuset_args(docker_client, args.gpuset)
-    else:
-        cpuset = range(0, 1000000)
-        gpuset = [0]
-
     # TODO Break the dependency of RunManagers on Worker to make this initialization nicer
     def create_run_manager(w):
         if args.batch_queue is None:
@@ -133,7 +123,9 @@ chmod 600 %s""" % args.password_file
 
             docker = DockerClient()
             image_manager = DockerImageManager(docker, args.work_dir, max_images_bytes)
-            return DockerRunManager(docker, bundle_service, image_manager, w)
+            cpuset = parse_cpuset_args(args.cpuset)
+            gpuset = parse_gpuset_args(docker, args.gpuset)
+            return DockerRunManager(docker, bundle_service, image_manager, w, cpuset, gpuset)
         else:
             try:
                 import boto3
@@ -149,7 +141,7 @@ chmod 600 %s""" % args.password_file
             batch_client = boto3.client('batch')
             return AwsBatchRunManager(batch_client, args.batch_queue, bundle_service, w)
 
-    worker = Worker(args.id, args.tag, args.work_dir, cpuset, gpuset, max_work_dir_size_bytes,
+    worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
                     args.shared_file_system, args.slots, bundle_service, create_run_manager)
 
     # Register a signal handler to ensure safe shutdown.
@@ -162,6 +154,7 @@ chmod 600 %s""" % args.password_file
     # END
 
     worker.run()
+
 
 def parse_cpuset_args(arg):
     """
@@ -184,6 +177,7 @@ def parse_cpuset_args(arg):
         if not all(cpu in range(cpu_count) for cpu in cpuset):
             raise ValueError("CPUSET_STR invalid: CPUs out of range")
     return set(cpuset)
+
 
 def parse_gpuset_args(docker_client, arg):
     """
