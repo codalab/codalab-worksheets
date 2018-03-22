@@ -104,6 +104,7 @@ chmod 600 %s""" % args.password_file
                             level=logging.INFO)
 
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
+    max_dependencies_serialized_length = args.max_dependencies_serialized_length
     if args.max_image_cache_size is None:
         max_images_bytes = None
     else:
@@ -141,8 +142,8 @@ chmod 600 %s""" % args.password_file
             batch_client = boto3.client('batch')
             return AwsBatchRunManager(batch_client, args.batch_queue, bundle_service, w)
 
-    worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
-                    args.shared_file_system, args.slots, bundle_service, create_run_manager)
+    worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes, max_dependencies_serialized_length,
+                    args.shared_file_system, bundle_service, create_run_manager)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
