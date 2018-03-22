@@ -362,6 +362,7 @@ class Setup(AwsBatchRunState):
         bundle = self._bundle
         # The docker image is always specified
         image = self.resources['docker_image']
+        assert image, "Docker image must be specified for submitting to AWS Batch."
         # Default to 100 MB so we have some breathing room.
         memory_bytes = self.resources['request_memory']
         # TODO CPUs should really be in resources, but for some reason it isn't so use it or default in metadata
