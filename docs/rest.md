@@ -407,11 +407,6 @@ Checks in with the bundle service, storing information about the worker.
 Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
 message or None if there isn't one.
 
-### `POST /workers/<worker_id>/checkout`
-
-Checks out from the bundle service, cleaning up any state related to the
-worker.
-
 ### `POST /workers/<worker_id>/reply/<socket_id:int>`
 
 Replies with a single JSON message to the given socket ID.

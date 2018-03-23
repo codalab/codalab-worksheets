@@ -40,16 +40,6 @@ def checkin(worker_id):
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 
 
-@post('/workers/<worker_id>/checkout',
-      name='worker_checkout', apply=AuthenticatedPlugin())
-def checkout(worker_id):
-    """
-    Checks out from the bundle service, cleaning up any state related to the
-    worker.
-    """
-    local.worker_model.worker_cleanup(request.user.user_id, worker_id)
-
-
 def check_reply_permission(worker_id, socket_id):
     """
     Checks if the authenticated user running a worker with the given ID can

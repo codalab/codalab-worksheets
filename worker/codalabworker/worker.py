@@ -144,7 +144,6 @@ class Worker(object):
                 traceback.print_exc()
                 time.sleep(1)
 
-        self._checkout()
         self._worker_state_manager.save_state()
 
         if self._max_images_bytes is not None:
@@ -370,12 +369,6 @@ class Worker(object):
         self._worker_state_manager.finish_run(uuid)
         if not self.shared_file_system:
             self._dependency_manager.finish_run(uuid)
-
-    def _checkout(self):
-        try:
-            self._bundle_service.checkout(self.id)
-        except BundleServiceException:
-            traceback.print_exc()
 
     def _upgrade(self):
         logger.debug('Upgrading')
