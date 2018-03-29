@@ -81,7 +81,6 @@ class Worker(object):
 
     def _get_memory_bytes(self):
         return self._get_installed_memory_bytes()
->>>>>>> Got it to run locally
 
     def signal(self):
         self._stop = True
