@@ -104,11 +104,6 @@ class BundleServiceClient(RestClient):
             'POST', self._worker_url_prefix(worker_id) + '/checkin',
             data=request_data)
 
-    @wrap_exception('Unable to check out from bundle service')
-    def checkout(self, worker_id):
-        return self._make_request(
-            'POST', self._worker_url_prefix(worker_id) + '/checkout')
-
     @wrap_exception('Unable to reply to message from bundle service')
     def reply(self, worker_id, socket_id, message):
         self._make_request(
