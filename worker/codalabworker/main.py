@@ -18,6 +18,9 @@ from bundle_service_client import BundleServiceClient
 from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
+from dependency_manager import LocalFileSystemDependencyManager
+from docker_image_manager import DockerImageManager
+from fsm import JsonStateCommitter
 
 logger = logging.getLogger(__name__)
 
@@ -110,11 +113,19 @@ chmod 600 %s""" % args.password_file
     cpuset = parse_cpuset_args(args.cpuset)
     gpuset = parse_gpuset_args(docker_client, args.gpuset)
 
-    worker = Worker(args.id, args.tag, args.work_dir, cpuset, gpuset,
-                    max_work_dir_size_bytes, args.max_dependencies_serialized_length,
-                    max_images_bytes, args.shared_file_system,
-                    BundleServiceClient(args.server, username, password),
-                    docker_client, args.network_prefix)
+    state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'worker-state.json'))
+    dependency_manager = LocalFileSystemDependencyManager(
+            JsonStateCommitter(os.path.join(args.work_dir, 'dependencies-state.json')),
+            args.work_dir, max_work_dir_size_bytes, args.max_dependencies_serialized_length)
+    image_manager = DockerImageManager(
+            docker_client,
+            JsonStateCommitter(os.path.join(args.work_dir, 'images-state.json')),
+            max_images_bytes
+    )
+    worker = Worker(state_committer, dependency_manager, image_manager,
+                args.id, args.tag, args.work_dir, cpuset, gpuset,
+                BundleServiceClient(args.server, username, password),
+                docker_client, args.network_prefix)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:

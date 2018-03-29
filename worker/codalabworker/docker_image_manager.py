@@ -1,3 +1,4 @@
+from collections import namedtuple
 import threading
 import os
 import time
@@ -6,121 +7,151 @@ import logging
 import json
 
 from formatting import size_str
+from synchronized import synchronized
+from fsm import (
+    BaseDependencyManager,
+    JsonStateCommitter,
+    BaseStateHandler,
+)
 
 logger = logging.getLogger(__name__)
 
-class DockerImageManager(object):
-    """
-    Manages the Docker images available on the worker, and ensures that they
-    do not fill up the disk.
+DockerImageState = namedtuple('DockerImageState', 'status digest last_used message')
 
-    The last-used dates are only tracked for images on which
-    `DockerImageManager.touch_image()` has been called. All other images will
-    be left untouched by the cleanup thread.
+class DockerImageManager(BaseDependencyManager):
 
-    DependencyManager should be instantiated before DockerImageManager, to
-    ensure that the work directory already exists.
-    """
-    STATE_FILENAME = 'images-state.json'
-
-    def __init__(self, docker, work_dir, max_images_bytes):
-        """
-        :param docker: DockerClient
-        :param work_dir: worker scratch directory, where the state file lives
-        :param max_images_bytes: maximum bytes that images should use
-        """
+    def __init__(self, docker, state_committer, max_images_bytes):
+        self._state_committer = state_committer
         self._docker = docker
-        self._work_dir = work_dir
-        self._cleanup_thread = None
-        self._stop_cleanup = False
-        self._lock = threading.Lock()
-        self._last_used = {}
-        self._state_file = os.path.join(work_dir, self.STATE_FILENAME)
+        self._images = {} # digest -> DockerImageState
         self._max_images_bytes = max_images_bytes
 
-        if os.path.exists(self._state_file):
-            self._load_state()
-        else:
-            # When using shared filesystem, work_dir might not exist yet
-            if not os.path.exists(work_dir):
-                os.makedirs(work_dir, 0770)
-            self._save_state()
-
-    def _load_state(self):
-        with open(self._state_file, 'r') as f:
-            state = json.load(f)
-        self._last_used = state['last_used']
+        self._stop = False
+        self._cleanup_sleep_secs = 10
+        self._main_thread = None
 
     def _save_state(self):
-        # In case we're initializing the state for the first time
-        state = {
-            'last_used': self._last_used,
-        }
-        with open(self._state_file, 'w') as f:
-            json.dump(state, f)
+        with synchronized(self):
+            self._state_committer.commit(self._images)
 
-    def touch_image(self, digest):
+    def _load_state(self):
+        with synchronized(self):
+            self._images = self._state_committer.load()
+            self.reset()
+
+    def run(self):
+        def loop(self):
+            while not self._stop:
+                try:
+                    self._process_images()
+                    self._save_state()
+                    # cleanup
+                except Exception:
+                    traceback.print_exc()
+                time.sleep(self._cleanup_sleep_secs)
+        self._main_thread = threading.Thread(target=loop, args=[self])
+        self._main_thread.start()
+
+    def stop(self):
+        self._stop_cleanup = True
+        self._main_thread.join()
+
+    def _process_images(self):
+        with synchronized(self):
+            for entry in self._images.keys():
+                image_state = self._images[entry]
+                self._images[entry] = self._transition_image_state(image_state)
+
+    def _reset_image_state(self, image_state):
+        status = image_state.status
+        fns = [val for key, val in vars().items() if key == '_reset_image_state_from_' + status]
+        return fns[0]
+
+    def _transition_image_state(self, image_state):
+        status = image_state.status
+        fns = [val for key, val in vars().items() if key == '_transition_image_state_from_' + status]
+        return fns[0]
+
+    def reset(self):
+        with synchronized(self):
+            for entry in self._images.keys():
+                image_state = self._images[entry]
+                self._images[entry] = self._reset_image_state(image_state)
+
+    def touch_image(self, digest): #TODO
         """
         Update the last-used date of an image to be the current date.
         """
-        with self._lock:
+        with synchronized(self):
             now = time.time()
-            self._last_used[digest] = now
+            self._images[digest] = self._images[digest]._replace(last_used=now)
             self._save_state()
         logger.debug('Touched image digest=%s at %f', digest, now)
 
-    def start_cleanup_thread(self):
-        self._stop_cleanup = False
-        self._cleanup_thread = threading.Thread(target=DockerImageManager._do_cleanup, args=[self])
-        self._cleanup_thread.start()
+    def has(self, digest):
+        with synchronized(self):
+            return (digest in self._images)
 
-    def stop_cleanup_thread(self):
-        if self._cleanup_thread is None:
-            return
-        with self._lock:
-            self._stop_cleanup = True
-        self._cleanup_thread.join()
-        self._cleanup_thread = None
+    def get(self, digest):
+        with synchronized(self):
+            if not self.has(digest):
+                self._images[digest] = DockerImageState(DependencyStatus.STARTING, digest, None, "")
+            return self._images[digest]
 
-    def _should_stop_cleanup(self):
-        with self._lock:
-            return self._stop_cleanup
+    def list_all(self):
+        with synchronized(self):
+            return list(self._images.keys())
 
-    def _remove_stalest_image(self):
-        with self._lock:
-            digest = min(self._last_used, key=lambda i: self._last_used[i])
+    def _reset_image_state_from_STARTING(self, image_state):
+        return image_state
+
+    def _transition_dependency_state_from_STARTING(self, image_state):
+        return image_state._replace(status=RunStatus.DOWNLOADING)
+
+    def _reset_dependency_state_from_DOWNLOADING(self, image_state):
+        return image_state
+
+    def _transition_dependency_state_from_DOWNLOADING(self, image_state):
+        def download():
+            def update_status_message_and_check_killed(status_message):
+                with synchronized(self):
+                    image_state = self.get(digest)
+                    self._images[digest] = image_state._replace(message=status_message)
+                #check_killed()
+
             try:
-                self._docker.remove_image(digest)
+                self._docker.download_image(digest, update_status_message_and_check_killed)
+                with synchronized(self):
+                    self._downloading[digest]['success'] = True
             finally:
-                del self._last_used[digest]
-                self._save_state()
+                logger.debug('Finished downloading image %s', digest) #TODO?
 
-    def _do_cleanup(self):
-        """
-        Periodically clean up the oldest images when the disk is close to full.
-        """
-        logger.info('Image cleanup thread started.')
-        while not self._should_stop_cleanup():
-            # Start disk usage reduction loop
-            # Iteratively try to remove the oldest *used* images until the disk usage
-            # is within the limit.
-            try:
-                while True:
-                    total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
-                    if total_bytes > self._max_images_bytes and len(self._last_used) > 0 and reclaimable_bytes > 0:
-                        logger.debug('Docker images disk usage: %s (max %s)',
-                                      size_str(total_bytes),
-                                      size_str(self._max_images_bytes))
-                        self._remove_stalest_image()
-                    else:
-                        # Break out of the loop when disk usage is normal.
-                        break
-            except Exception:
-                # Print the error then go to sleep and try again next time.
-                traceback.print_exc()
+        digest = image_state.digest
+        if digest not in self._downloading:
+            self._downloading[digest] = {
+                'thread': threading.Thread(target=download, args=[]),
+                'success': False
+            }
+            self._downloading[digest]['thread'].start()
 
-            # Allow chance to be interrupted before going to sleep.
-            if self._should_stop_cleanup():
-                break
+        if self._downloading[digest]['thread'].is_alive():
+            return image_state
 
-            time.sleep(1)
+        success = self._downloading[digest]['success']
+        del self._downloading[digest]
+        if success:
+            return image_state._replace(status=DependencyStatus.READY)
+        else:
+            return image_state._replace(status=DependencyStatus.FAILED)
+
+    def _reset_dependency_state_from_READY(self, image_state):
+        return image_state
+
+    def _transition_dependency_state_from_READY(self, image_state):
+        return image_state
+
+    def _reset_dependency_state_from_FAILED(self, image_state):
+        return image_state
+
+    def _transition_dependency_state_from_FAILED(self, image_state):
+        return image_state

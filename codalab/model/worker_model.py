@@ -33,7 +33,7 @@ class WorkerModel(object):
         self._socket_dir = socket_dir
         self.shared_file_system = shared_file_system
 
-    def worker_checkin(self, user_id, worker_id, tag, cpus, gpus, memory_bytes, dependencies):
+    def worker_checkin(self, user_id, worker_id, tag, cpus, gpus, memory_bytes, dependencies, runs):
         """
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
@@ -81,6 +81,8 @@ class WorkerModel(object):
                     cl_worker_dependency.insert()
                         .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
                 )
+
+            # Update runs
 
         return socket_id
 
