@@ -1,14 +1,9 @@
-from collections import namedtuple
-import threading
 import os
 import tempfile
 import shutil
-
 import pyjson
-from synchronized import synchronized
 
 class BaseStateCommitter(object):
-
     def load(self):
         """ Load and return the state """
         raise NotImplementedError
@@ -32,27 +27,26 @@ class JsonStateCommitter(BaseStateCommitter):
 
         dirname, basename = os.path.split(self._state_file)
         with tempfile.NamedTemporaryFile('w', prefix=basename, dir=dirname, delete=False) as f:
-            pyjson.dump(state, f)
+            f.write(pyjson.dumps(state))
             f.flush()
-            shutil.copy2(f.name, self._state_file)
+            shutil.move(f.name, self._state_file)
 
-class DependencyStatus(object):
-    # reset: -> STARTING
-    # transition: decide directories (if not fixed) -> DOWNLOADING
-    STARTING = 'STARTING'
+class DependencyStage(object):
+    '''
+    Defines the finite set of possible stages and transition functions
+    Note that it is important that each state be able to be re-executed
+    without unintended adverse effects (which happens upon manager resume)
+    '''
 
-    # reset: -> STARTING
-    # transition: if not in _downloading, create and start _downloading thread.
-    # thread recreates directories and does download
-    # If not done -> DOWNLOADING else -> READY
+    # if not in _downloading, create and start _downloading thread.
+    # (thread recreates directories and downloads)
+    # if thread still alive -> DOWNLOADING else -> READY
     DOWNLOADING = 'DOWNLOADING'
 
-    # reset: -> READY
-    # transition: -> READY
+    # -> READY
     READY = 'READY'
 
-    # reset: -> FAILED
-    # transition: -> FAILED
+    # -> FAILED
     FAILED = 'FAILED'
 
 class BaseDependencyManager(object):
@@ -62,12 +56,13 @@ class BaseDependencyManager(object):
         raise NotImplementedError
 
     def has(self, dependency):
-        """ Return whether or not the manager has the dependency downloaded and ready """
+        """ Return whether or not the corresponding DependencyState exists in the manager """
         raise NotImplementedError
 
     def get(self, dependency):
         """
-        Download the dependency if not self.has(dependency) in a non-blocking manner
+        Start downloading the corresponding dependency if not already in progress.
+        Return the corresponding DependencyState.
         """
         raise NotImplementedError
 
@@ -78,20 +73,3 @@ class BaseDependencyManager(object):
     def stop(self):
         """ Stop execution of this running dependency manager. Blocks until stopped """
         raise NotImplementedError
-
-class BaseStateHandler(object):
-    def reset(self, state):
-        raise NotImplementedError
-        return new_state
-
-    def transition(self, state):
-        raise NotImplementedError
-        return new_state
-
-class BaseStateManager(object):
-
-    def __init__(self):
-        self._handlers = {}
-
-    def register_handler(self, handler):
-        self._handlers[handler.status_name] = handler

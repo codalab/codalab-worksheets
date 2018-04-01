@@ -704,9 +704,8 @@ class BundleModel(object):
 
     def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time):
         '''
-        Marks the bundle as running and returns True. If bundle was WORKER_OFFLINE, also inserts a row
-        into worker_run.
-        Updates a few metadata fields and the events log.
+        Marks the bundle as running and returns True. If bundle was WORKER_OFFLINE,
+        also inserts a row into worker_run. Updates a few metadata fields and the events log.
         '''
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -731,13 +730,14 @@ class BundleModel(object):
                 }
                 connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-            bundle_update = {
-                'state': State.RUNNING,
-                'metadata': {
-                    'last_updated': int(time.time()),
-                },
-            }
-            self.update_bundle(bundle, bundle_update, connection)
+            if row.state == State.RUNNING or row.state == State.WORKER_OFFLINE:
+                bundle_update = {
+                    'state': State.RUNNING,
+                    'metadata': {
+                        'last_updated': int(time.time()),
+                    },
+                }
+                self.update_bundle(bundle, bundle_update, connection)
 
         self.update_events_log(
             user_id=bundle.owner_id,
