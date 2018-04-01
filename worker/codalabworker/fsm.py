@@ -1,5 +1,8 @@
 from collections import namedtuple
 import threading
+import os
+import tempfile
+import shutil
 
 import pyjson
 from synchronized import synchronized
@@ -18,17 +21,20 @@ class JsonStateCommitter(BaseStateCommitter):
     def __init__(self, json_path, schema=None):
         self._state_file = json_path
 
-    def load(self):
-        return pyjson.load(json_path)
+    def load(self, default={}):
+        if not os.path.exists(self._state_file):
+            return default
+        with open(self._state_file) as json_data:
+            return pyjson.load(json_data)
 
     def commit(self, state):
         """ Write out the state in JSON format to a temporary file and rename it into place """
 
         dirname, basename = os.path.split(self._state_file)
-        tmp = tempfile.NamedTemporaryFile(prefix=basename, dir=dirname)
-        with open(tmp, 'w') as f:
+        with tempfile.NamedTemporaryFile('w', prefix=basename, dir=dirname, delete=False) as f:
             pyjson.dump(state, f)
-        os.rename(tmp, self._state_file)
+            f.flush()
+            shutil.copy2(f.name, self._state_file)
 
 class DependencyStatus(object):
     # reset: -> STARTING

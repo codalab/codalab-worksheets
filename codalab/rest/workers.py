@@ -35,7 +35,13 @@ def checkin(worker_id):
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
         request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
-        request.json['dependencies'], request.json['runs'])
+        request.json['dependencies'])
+
+    for uuid, run in request.json['runs']:
+        bundle = local.model.get_bundle(uuid)
+        local.model.resume_bundle(bundle, request.user.user_id, worker_id,
+                                request.json['hostname'], run['start_time'])
+
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 

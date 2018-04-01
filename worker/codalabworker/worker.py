@@ -10,11 +10,25 @@ import time
 import traceback
 import re
 import json
+import socket
+import httplib
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import LocalFileSystemDependencyManager
 from worker_state_manager import WorkerStateManager
-from file_util import remove_path, un_tar_directory
+from docker_client import DockerException
+from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
+from file_util import (
+    un_tar_directory,
+    get_path_size,
+    gzip_file,
+    gzip_string,
+    read_file_section,
+    summarize_file,
+    tar_gzip_directory,
+    remove_path,
+)
+from formatting import duration_str, size_str, parse_size
 from run import Run
 from docker_image_manager import DockerImageManager
 from synchronized import synchronized
@@ -56,6 +70,8 @@ class Worker(object):
         self._docker = docker
         self._docker_network_prefix = docker_network_prefix
         self._stop = False
+        self._should_upgrade = False
+        self._last_checkin_successful = False
 
         self._cpuset = cpuset
         self._gpuset = gpuset
@@ -180,6 +196,14 @@ class Worker(object):
                     self._exiting = True
                 self._should_upgrade = True
 
+    @staticmethod
+    def read_run_missing(bundle_service, worker, socket_id):
+        message = {
+            'error_code': httplib.INTERNAL_SERVER_ERROR,
+            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
+        }
+        bundle_service.reply(worker.id, socket_id, message)
+
     def _assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
         Propose a cpuset and gpuset to a bundle based on given requested resources.
@@ -228,37 +252,102 @@ class Worker(object):
         if self._bundle_service.start_bundle(self.id, bundle_uuid, start_message):
 
             run_state = RunState(
-                    RunStatus.CLEARED, bundle, bundle_path, resources,
+                    RunStatus.STARTING, bundle, bundle_path, resources,
                     now, None, None, None, None)
 
             with synchronized(self):
                 self._runs[bundle_uuid] = run_state
 
+    def _get_run(self, uuid):
+        with synchronized(self):
+            return self._runs.get(uuid, None)
+
     def _read(self, socket_id, uuid, path, read_args):
-        run = self._worker_state_manager._get_run(uuid)
-        if run is None:
-            Run.read_run_missing(self._bundle_service, self, socket_id)
+        def read(self, run_state, socket_id, path, read_args):
+            def reply_error(code, message):
+                message = {
+                    'error_code': code,
+                    'error_message': message,
+                }
+                self._bundle_service.reply(self.id, socket_id, message)
+
+            dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+            try:
+                read_type = read_args['type']
+                if read_type == 'get_target_info':
+                    # At the top-level directory, we should ignore dependencies.
+                    if path and os.path.normpath(path) in dep_paths:
+                        target_info = None
+                    else:
+                        try:
+                            target_info = get_target_info(
+                                run_state.bundle_path, self._uuid, path, read_args['depth'])
+                        except PathException as e:
+                            reply_error(httplib.BAD_REQUEST, e.message)
+                            return
+
+                        if not path and read_args['depth'] > 0:
+                            target_info['contents'] = [
+                                child for child in target_info['contents']
+                                if child['name'] not in dep_paths]
+
+                    self._bundle_service.reply(self.id, socket_id, {'target_info': target_info})
+                else:
+                    try:
+                        final_path = get_target_path(run_state.bundle_path, run_state.bundle['uuid'], path)
+                    except PathException as e:
+                        reply_error(httplib.BAD_REQUEST, e.message)
+                        return
+
+                    if read_type == 'stream_directory':
+                        if path:
+                            exclude_names = []
+                        else:
+                            exclude_names = dep_paths
+                        with closing(tar_gzip_directory(final_path, exclude_names=exclude_names)) as fileobj:
+                            self._bundle_service.reply_data(self.id, socket_id, {}, fileobj)
+                    elif read_type == 'stream_file':
+                        with closing(gzip_file(final_path)) as fileobj:
+                            self._bundle_service.reply_data(self.id, socket_id, {}, fileobj)
+                    elif read_type == 'read_file_section':
+                        string = gzip_string(read_file_section(
+                            final_path, read_args['offset'], read_args['length']))
+                        self._bundle_service.reply_data(self.id, socket_id, {}, string)
+                    elif read_type == 'summarize_file':
+                        string = gzip_string(summarize_file(
+                            final_path, read_args['num_head_lines'],
+                            read_args['num_tail_lines'], read_args['max_line_length'],
+                            read_args['truncation_text']))
+                        self._bundle_service.reply_data(self.id, socket_id, {}, string)
+            except BundleServiceException:
+                traceback.print_exc()
+            except Exception as e:
+                traceback.print_exc()
+                reply_error(httplib.INTERNAL_SERVER_ERROR, e.message)
+
+        run_state = self._get_run(uuid)
+        if run_state is None:
+            Worker.read_run_missing(self._bundle_service, self, socket_id)
         else:
             # Reads may take a long time, so do the read in a separate thread.
-            threading.Thread(target=Run.read,
-                             args=(run, socket_id, path, read_args)).start()
+            threading.Thread(target=read, args=(self, run_state, socket_id, path, read_args)).start()
 
     def _netcat(self, socket_id, uuid, port, message):
-        run = self._worker_state_manager._get_run(uuid)
+        run = self._get_run(uuid)
         if run is None:
-            Run.read_run_missing(self._bundle_service, self, socket_id)
+            Worker.read_run_missing(self._bundle_service, self, socket_id)
         else:
             # Reads may take a long time, so do the read in a separate thread.
             threading.Thread(target=Run.netcat,
                              args=(run, socket_id, port, message)).start()
 
     def _write(self, uuid, subpath, string):
-        run = self._worker_state_manager._get_run(uuid)
+        run = self._get_run(uuid)
         if run is not None:
             run.write(subpath, string)
 
     def _kill(self, uuid):
-        run = self._worker_state_manager._get_run(uuid)
+        run = self._get_run(uuid)
         if run is not None:
             run.kill('Kill requested')
 
