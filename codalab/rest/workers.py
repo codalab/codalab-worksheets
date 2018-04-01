@@ -33,6 +33,17 @@ def checkin(worker_id):
         bundle = local.model.get_bundle(uuid)
         local.model.resume_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'], run['start_time'])
+        # is hack
+        # TODO: unhack
+        metadata_update = {
+            'run_status': run['run_status'],
+            'last_updated': int(time.time()),
+            'time': time.time() - run['start_time'],
+        }
+        if run['docker_image'] is not None:
+            metadata_update['docker_image'] = run['docker_image']
+
+        local.model.update_bundle(bundle, {'metadata': metadata_update})
 
         # this is a hack (or maybe not?)
         # TODO: unhack this

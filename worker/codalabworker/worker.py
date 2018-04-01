@@ -30,6 +30,7 @@ class Worker(object):
         self._state_committer = JsonStateCommitter(commit_file)
         self._tag = tag
         self._work_dir = work_dir
+        self._bundles_dir = os.path.join(work_dir, 'bundles')
         self._bundle_service = bundle_service
         self._stop = False
         self._last_checkin_successful = False
@@ -157,6 +158,14 @@ class Worker(object):
     def _get_run(self, uuid):
         with synchronized(self):
             return self._runs.get(uuid, None)
+
+    @staticmethod
+    def read_run_missing(bundle_service, worker, socket_id):
+        message = {
+            'error_code': httplib.INTERNAL_SERVER_ERROR,
+            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
+        }
+        bundle_service.reply(worker.id, socket_id, message)
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
