@@ -31,6 +31,7 @@ class PyJSONTest(unittest.TestCase):
                         'a_t1': t1(10, 20, 30),
                     }
                 },
+                'a_namedtuple': t2(3,4,6),
                 'set_of_namedtuples': {
                     t1(1, 2, 3),
                     t1(2, 4, 6),
@@ -38,6 +39,7 @@ class PyJSONTest(unittest.TestCase):
                 }
         }
         s = pyjson.dumps(one)
+        #print >>sys.stderr, s
 
         two = pyjson.loads(s)
         assert(two == one)

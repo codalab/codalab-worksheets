@@ -33,7 +33,6 @@ class PyJSONEncoder(json.JSONEncoder):
         elif isinstance(obj, set):
             return dict(_set_object=list(self.default(o) for o in obj))
         elif isinstance(obj, dict):
-            print >>sys.stdout, "got called!"
             return {k: self.default(v) for k, v in obj.items()}
         elif isinstance(obj, tuple):
             return dict(_tuple_object=list(self.default(o) for o in obj))

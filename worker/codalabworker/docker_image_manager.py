@@ -8,15 +8,16 @@ import json
 
 from formatting import size_str
 from synchronized import synchronized
+from docker_client import DockerException
 from fsm import (
     BaseDependencyManager,
     JsonStateCommitter,
-    BaseStateHandler,
+    DependencyStage
 )
 
 logger = logging.getLogger(__name__)
 
-DockerImageState = namedtuple('DockerImageState', 'status digest last_used message')
+DockerImageState = namedtuple('DockerImageState', 'stage digest last_used message')
 
 class DockerImageManager(BaseDependencyManager):
 
@@ -24,6 +25,7 @@ class DockerImageManager(BaseDependencyManager):
         self._state_committer = state_committer
         self._docker = docker
         self._images = {} # digest -> DockerImageState
+        self._downloading = {}
         self._max_images_bytes = max_images_bytes
 
         self._stop = False
@@ -37,7 +39,6 @@ class DockerImageManager(BaseDependencyManager):
     def _load_state(self):
         with synchronized(self):
             self._images = self._state_committer.load()
-            self.reset()
 
     def run(self):
         def loop(self):
@@ -62,21 +63,9 @@ class DockerImageManager(BaseDependencyManager):
                 image_state = self._images[entry]
                 self._images[entry] = self._transition_image_state(image_state)
 
-    def _reset_image_state(self, image_state):
-        status = image_state.status
-        fns = [val for key, val in vars().items() if key == '_reset_image_state_from_' + status]
-        return fns[0]
-
     def _transition_image_state(self, image_state):
-        status = image_state.status
-        fns = [val for key, val in vars().items() if key == '_transition_image_state_from_' + status]
-        return fns[0]
-
-    def reset(self):
-        with synchronized(self):
-            for entry in self._images.keys():
-                image_state = self._images[entry]
-                self._images[entry] = self._reset_image_state(image_state)
+        stage = image_state.stage.upper()
+        return getattr(self, '_transition_image_state_from_' + stage)(image_state)
 
     def touch_image(self, digest): #TODO
         """
@@ -95,34 +84,28 @@ class DockerImageManager(BaseDependencyManager):
     def get(self, digest):
         with synchronized(self):
             if not self.has(digest):
-                self._images[digest] = DockerImageState(DependencyStatus.STARTING, digest, None, "")
+                self._images[digest] = DockerImageState(DependencyStage.DOWNLOADING, digest, None, "")
             return self._images[digest]
 
     def list_all(self):
         with synchronized(self):
             return list(self._images.keys())
 
-    def _reset_image_state_from_STARTING(self, image_state):
-        return image_state
-
-    def _transition_dependency_state_from_STARTING(self, image_state):
-        return image_state._replace(status=RunStatus.DOWNLOADING)
-
-    def _reset_dependency_state_from_DOWNLOADING(self, image_state):
-        return image_state
-
-    def _transition_dependency_state_from_DOWNLOADING(self, image_state):
+    def _transition_image_state_from_DOWNLOADING(self, image_state):
         def download():
             def update_status_message_and_check_killed(status_message):
                 with synchronized(self):
                     image_state = self.get(digest)
                     self._images[digest] = image_state._replace(message=status_message)
-                #check_killed()
 
             try:
                 self._docker.download_image(digest, update_status_message_and_check_killed)
                 with synchronized(self):
                     self._downloading[digest]['success'] = True
+            except DockerException as err:
+                with synchronized(self):
+                    image_state = self.get(digest)
+                    self._images[digest] = image_state._replace(message=str(err))
             finally:
                 logger.debug('Finished downloading image %s', digest) #TODO?
 
@@ -140,18 +123,12 @@ class DockerImageManager(BaseDependencyManager):
         success = self._downloading[digest]['success']
         del self._downloading[digest]
         if success:
-            return image_state._replace(status=DependencyStatus.READY)
+            return image_state._replace(stage=DependencyStage.READY)
         else:
-            return image_state._replace(status=DependencyStatus.FAILED)
+            return image_state._replace(stage=DependencyStage.FAILED)
 
-    def _reset_dependency_state_from_READY(self, image_state):
+    def _transition_image_state_from_READY(self, image_state):
         return image_state
 
-    def _transition_dependency_state_from_READY(self, image_state):
-        return image_state
-
-    def _reset_dependency_state_from_FAILED(self, image_state):
-        return image_state
-
-    def _transition_dependency_state_from_FAILED(self, image_state):
+    def _transition_image_state_from_FAILED(self, image_state):
         return image_state

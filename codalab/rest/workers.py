@@ -23,7 +23,7 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
-    WAIT_TIME_SECS = 5.0
+    WAIT_TIME_SECS = 3.0
 
     torque_worker = ('torque' in local.config['workers'] and
                      request.user.user_id == local.model.root_user_id)
@@ -37,10 +37,21 @@ def checkin(worker_id):
         request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
         request.json['dependencies'])
 
-    for uuid, run in request.json['runs']:
+    for uuid, run in request.json['runs'].items():
         bundle = local.model.get_bundle(uuid)
         local.model.resume_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'], run['start_time'])
+        # is hack
+        # TODO: unhack
+        metadata_update = {
+            'run_status': run['run_status'],
+            'last_updated': int(time.time()),
+            'time': time.time() - run['start_time'],
+        }
+        if run['docker_image'] is not None:
+            metadata_update['docker_image'] = run['docker_image']
+
+        local.model.update_bundle(bundle, {'metadata': metadata_update})
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
@@ -114,23 +125,6 @@ def start_bundle(worker_id, uuid):
                                 request.json['hostname'],
                                 request.json['start_time']):
         print 'Started bundle %s' % uuid
-        return json.dumps(True)
-    return json.dumps(False)
-
-@post('/workers/<worker_id>/resume_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      name='worker_resume_bundle', apply=AuthenticatedPlugin())
-def resume_bundle(worker_id, uuid):
-    """
-    Checks whether the bundle is still assigned to run on the worker with the
-    given worker_id. If so, reports that it's starting to run and returns True.
-    Otherwise, returns False, meaning the worker shouldn't run the bundle.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-    response.content_type = 'application/json'
-    if local.model.resume_bundle(bundle, request.user.user_id, worker_id,
-                                request.json['hostname'],
-                                request.json['start_time']):
         return json.dumps(True)
     return json.dumps(False)
 
