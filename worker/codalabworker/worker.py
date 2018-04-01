@@ -154,6 +154,10 @@ class Worker(object):
         else:
             self._bundle_service.reply(self.id, socket_id, message)
 
+    def _get_run(self, uuid):
+        with synchronized(self):
+            return self._runs.get(uuid, None)
+
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
             self._bundle_service_reply(socket_id, err, message, data)
