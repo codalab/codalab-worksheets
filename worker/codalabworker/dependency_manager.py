@@ -86,7 +86,7 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
 
     def get(self, dependency):
         with synchronized(self):
-            if not self.has(dependency):
+            if not self.has(dependency): # add dependency state if it does not exist
                 self._dependencies[dependency] = DependencyState(DependencyStage.DOWNLOADING,
                         dependency, self._assign_path(dependency), 0, None)
             return self._dependencies[dependency]
@@ -155,7 +155,7 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
                 with synchronized(self):
                     self._downloading[dependency]['success'] = True
 
-            except Exception as e: # get some error message back
+            except Exception as e: # TODO: get some error message back
                 with synchronized(self):
                     self._downloading[dependency]['success'] = False
 

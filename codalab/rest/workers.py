@@ -41,8 +41,9 @@ def checkin(worker_id):
         bundle = local.model.get_bundle(uuid)
         local.model.resume_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'], run['start_time'])
-        # is hack
-        # TODO: unhack
+
+        # this is a hack (or maybe not?)
+        # TODO: unhack this
         metadata_update = {
             'run_status': run['run_status'],
             'last_updated': int(time.time()),
