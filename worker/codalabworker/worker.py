@@ -15,7 +15,6 @@ import sys
 
 from bundle_service_client import BundleServiceException
 from dependency_manager import LocalFileSystemDependencyManager
-from worker_state_manager import WorkerStateManager
 from docker_client import DockerException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
 from file_util import (
@@ -84,20 +83,22 @@ class Worker(object):
         self._uploading = {}
         self._finalizing = {}
 
-        # set up docker networks for running bundles: one with external network access and one without
+        # set up docker networks for runs: one with external network access and one without
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
         if self.docker_network_external_name not in self._docker.list_networks():
             logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
             self._docker.create_network(self.docker_network_external_name, internal=False)
         else:
-            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_external_name))
+            logger.debug('Docker network already exists, not creating: {}'.format(
+                self.docker_network_external_name))
 
         self.docker_network_internal_name = self._docker_network_prefix + "_int"
         if self.docker_network_internal_name not in self._docker.list_networks():
             logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
             self._docker.create_network(self.docker_network_internal_name)
         else:
-            logger.debug('Docker network already exists, not creating: {}'.format(self.docker_network_internal_name))
+            logger.debug('Docker network already exists, not creating: {}'.format(
+                self.docker_network_internal_name))
 
     def _save_state(self):
         with synchronized(self):
@@ -211,7 +212,7 @@ class Worker(object):
     def _assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
         Propose a cpuset and gpuset to a bundle based on given requested resources.
-        Note: no side effects (this is important, we don't want to keep more state than necessary)
+        Note: no side effects (this is important: we don't want to maintain more state than necessary)
 
         Arguments:
             request_cpus: integer
@@ -264,7 +265,7 @@ class Worker(object):
             with synchronized(self):
                 self._runs[bundle_uuid] = run_state
         else:
-            print >>sys.stderr, "Not allowed to start"
+            print >>sys.stdout, 'Bundle {} no longer assigned to this worker'.format(bundle_uuid)
 
     def _get_run(self, uuid):
         with synchronized(self):
@@ -349,6 +350,7 @@ class Worker(object):
             # Reads may take a long time, so do the read in a separate thread.
             threading.Thread(target=read, args=(self, run_state, socket_id, path, read_args)).start()
 
+    # NOTE: this function has not yet been ported
     def _netcat(self, socket_id, uuid, port, message):
         run = self._get_run(uuid)
         if run is None:
@@ -358,11 +360,13 @@ class Worker(object):
             threading.Thread(target=Run.netcat,
                              args=(run, socket_id, port, message)).start()
 
+    # NOTE: this function has not yet been ported
     def _write(self, uuid, subpath, string):
         run = self._get_run(uuid)
         if run is not None:
             run.write(subpath, string)
 
+    # NOTE: this function has not yet been ported
     def _kill(self, uuid):
         with synchronized(self):
             run_state = self._get_run(uuid)
@@ -370,6 +374,7 @@ class Worker(object):
                 run_state.is_killed = True
                 run_state.info['kill_message'] = 'Kill requested'
 
+    # NOTE: this function has not yet been ported
     def _upgrade(self):
         logger.debug('Upgrading')
         worker_dir = os.path.dirname(os.path.realpath(__file__))
@@ -409,39 +414,28 @@ class Worker(object):
         return getattr(self, '_transition_run_state_from_' + stage)(run_state)
 
     def _transition_run_state_from_STARTING(self, run_state):
-        status_message = ''
-        all_ready = True
-        for entry in run_state.bundle['dependencies']:
-            dependency = (entry['parent_uuid'], entry['parent_path'])
+        for dep in run_state.bundle['dependencies']:
+            dependency = (dep['parent_uuid'], dep['parent_path'])
             dependency_state = self._dependency_manager.get(dependency)
-            if not all_ready:
-                pass # already got run_status
-            elif dependency_state.stage == DependencyStage.DOWNLOADING:
-                all_ready = False
+            if dependency_state.stage == DependencyStage.DOWNLOADING:
                 status_message = 'Downloading dependency %s: %s done (archived size)' % (
-                            entry['child_path'], size_str(dependency_state.size_bytes))
+                            dep['child_path'], size_str(dependency_state.size_bytes))
+                return run_state._replace(run_status=status_message)
             elif dependency_state.stage == DependencyStage.FAILED:
                 # Failed to download dependency; -> FINALIZING
-                failure_message = 'Failed to download dependency %s: %s' % (
-                        entry['child_path'], '') #TODO
-
-                run_state.info['failure_message'] = failure_message
+                run_state.info['failure_message'] = 'Failed to download dependency %s: %s' % (
+                        dep['child_path'], '') #TODO: get more specific message
                 return run_state._replace(stage=RunStage.FINALIZING, info=run_state.info)
 
-        image_state = self._image_manager.get(run_state.resources['docker_image'])
-        if not all_ready:
-            pass # already got run_status
-        elif image_state.stage == DependencyStage.DOWNLOADING:
-            all_ready = False
-            status_message = 'Pulling docker image: ' + image_state.message
+        docker_image = run_state.resources['docker_image']
+        image_state = self._image_manager.get(docker_image)
+        if image_state.stage == DependencyStage.DOWNLOADING:
+            status_message = 'Pulling docker image: ' + (image_state.message or docker_image)
+            return run_state._replace(run_status=status_message)
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> FINALIZING
             run_state.info['failure_message'] = image_state.message
             return run_state._replace(stage=RunStage.FINALIZING, info=run_state.info)
-
-        bundle_uuid = run_state.bundle['uuid']
-        if not all_ready:
-            return run_state._replace(run_status=status_message)
 
         # All dependencies ready! Set up directories, symlinks, container. Start container.
         # 1) Set up a directory to store the bundle.
@@ -449,8 +443,9 @@ class Worker(object):
         os.mkdir(run_state.bundle_path)
 
         # 2) Set up symlinks
+        bundle_uuid = run_state.bundle['uuid']
         dependencies = []
-        docker_dependencies_path = '/' + run_state.bundle['uuid'] + '_dependencies'
+        docker_dependencies_path = '/' + bundle_uuid + '_dependencies'
         for dep in run_state.bundle['dependencies']:
             child_path = os.path.normpath(os.path.join(run_state.bundle_path, dep['child_path']))
             if not child_path.startswith(run_state.bundle_path):
@@ -470,28 +465,23 @@ class Worker(object):
         else:
             docker_network = self.docker_network_internal_name
 
-        resources = run_state.resources
         cpuset, gpuset = self._assign_cpu_and_gpu_sets(
-                resources['request_cpus'], resources['request_gpus'])
+                run_state.resources['request_cpus'], run_state.resources['request_gpus'])
 
         # 4) Start container
         container_id = self._docker.start_container(
-            run_state.bundle_path, run_state.bundle['uuid'], run_state.bundle['command'],
-            resources['docker_image'], docker_network, dependencies,
-            cpuset, gpuset, resources['request_memory']
+            run_state.bundle_path, bundle_uuid, run_state.bundle['command'],
+            run_state.resources['docker_image'], docker_network, dependencies,
+            cpuset, gpuset, run_state.resources['request_memory']
         )
 
-        digest = self._docker.get_image_repo_digest(resources['docker_image'])
-        ##self._safe_update_docker_image(digest)
+        digest = self._docker.get_image_repo_digest(run_state.resources['docker_image'])
         #self._image_manager.touch_image(digest)
 
-        bundle_uuid = run_state.bundle['uuid']
         return run_state._replace(stage=RunStage.RUNNING, run_status='Running',
             container_id=container_id, docker_image=digest, cpuset=cpuset, gpuset=gpuset)
 
     def _transition_run_state_from_RUNNING(self, run_state):
-        bundle_uuid = run_state.bundle['uuid']
-
         def check_and_report_finished(run_state):
             try:
                 finished, exitcode, failure_msg = self._docker.check_finished(run_state.container_id)
@@ -500,18 +490,19 @@ class Worker(object):
                 finished, exitcode, failure_msg = False, None, None
             return dict(finished=finished, exitcode=exitcode, failure_message=failure_msg)
 
+        bundle_uuid = run_state.bundle['uuid']
+
         new_info = check_and_report_finished(run_state)
         run_state.info.update(new_info)
         run_state = run_state._replace(info=run_state.info)
         if run_state.info['finished']:
-            return run_state._replace(stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results')
             logger.debug('Finished run with UUID %s, exitcode %s, failure_message %s',
                  bundle_uuid, run_state.info['exitcode'], run_state.info['failure_message'])
+            return run_state._replace(stage=RunStage.UPLOADING_RESULTS, run_status='Uploading results')
         else:
-            return run_state #._replace(run_status='Running')
+            return run_state
 
     def _transition_run_state_from_UPLOADING_RESULTS(self, run_state):
-        bundle_uuid = run_state.bundle['uuid']
         def upload_results():
             try:
                 # Delete the container.
@@ -548,6 +539,7 @@ class Worker(object):
             except Exception:
                 traceback.print_exc()
 
+        bundle_uuid = run_state.bundle['uuid']
         if bundle_uuid not in self._uploading:
             self._uploading[bundle_uuid] = {
                 'thread': threading.Thread(target=upload_results, args=[]),
@@ -558,10 +550,10 @@ class Worker(object):
         if self._uploading[bundle_uuid]['thread'].is_alive():
             return run_state._replace(run_status=self._uploading[bundle_uuid]['run_status'])
         else: # thread finished
+            del self._uploading[bundle_uuid]
             return run_state._replace(stage=RunStage.FINALIZING, container_id=None)
 
     def _transition_run_state_from_FINALIZING(self, run_state):
-        bundle_uuid = run_state.bundle['uuid']
         def finalize():
             try:
                 logger.debug('Finalizing run with UUID %s', bundle_uuid)
@@ -579,6 +571,7 @@ class Worker(object):
             except Exception:
                 traceback.print_exc()
 
+        bundle_uuid = run_state.bundle['uuid']
         if bundle_uuid not in self._finalizing:
             self._finalizing[bundle_uuid] = {
                 'thread': threading.Thread(target=finalize, args=[]),
@@ -588,8 +581,8 @@ class Worker(object):
         if self._finalizing[bundle_uuid]['thread'].is_alive():
             return run_state
         else: # thread finished
+            del self._finalizing[bundle_uuid]['thread']
             return run_state._replace(stage=RunStage.FINISHED, run_status='Finished')
-        return run_state
 
     def _transition_run_state_from_FINISHED(self, run_state):
         return run_state
@@ -601,7 +594,7 @@ class RunStage(object):
     without unintended adverse effects (which happens upon worker resume)
     '''
 
-    # (a) get each dep, if all ready, proceed to (b) else -> STARTING
+    # (a) get every dependency. if all ready, proceed to (b) else -> STARTING
     # (b) recreate directories, symlinks and container. Start container -> RUNNING
     STARTING = 'STARTING'
 
