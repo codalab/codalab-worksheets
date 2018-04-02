@@ -5,21 +5,6 @@ from collections import namedtuple
 class PyJSONEncoder(json.JSONEncoder):
     """
     Use with json.dumps to allow Python sets and (named)tuples to be encoded to JSON
-
-    Example
-    -------
-
-    import json
-
-    data = dict(aset=set([1,2,3]))
-
-    encoded = json.dumps(data, cls=JSONSetEncoder)
-    decoded = json.loads(encoded, object_hook=json_as_python_set)
-    assert data == decoded     # Should assert successfully
-
-    Any object that is matched by isinstance(obj, collections.Set) will
-    be encoded, but the decoded value will always be a normal Python set.
-
     """
 
     def default(self, obj):
@@ -44,16 +29,8 @@ class PyJSONEncoder(json.JSONEncoder):
 
 
 class PyJSONDecoder(json.JSONDecoder):
-    """
-    Decode json {'_set_object': [1,2,3]} to set([1,2,3])
+    """ Decoder """
 
-    Example
-    -------
-    decoded = json.loads(encoded, object_hook=json_as_python_set)
-
-    Also see :class:`JSONSetEncoder`
-
-    """
     def __init__(self, *args, **kwargs):
         json.JSONDecoder.__init__(self, *args, object_hook=self.json_as_python, **kwargs)
 
