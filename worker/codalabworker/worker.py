@@ -156,7 +156,7 @@ class Worker(object):
             self._bundle_service.reply(self.id, socket_id, message)
 
     def _get_run(self, uuid):
-        with synchronized(self):
+        with self._lock:
             return self._runs.get(uuid, None)
 
     @staticmethod
