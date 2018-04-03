@@ -10,7 +10,6 @@ import shutil
 
 from file_util import get_path_size, remove_path
 from formatting import size_str
-from synchronized import synchronized
 from fsm import (
     BaseDependencyManager,
     JsonStateCommitter,
@@ -32,6 +31,8 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
         self._work_dir = work_dir
         self._bundles_dir = os.path.join(work_dir, 'bundles')
 
+        self._lock = threading.RLock()
+
         self._paths = set()
         self._dependencies = {}
         self._downloading = {}
@@ -42,12 +43,12 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
         self._main_thread = None
 
     def _save_state(self):
-        with synchronized(self):
+        with self._lock:
             dependencies = {'{}+{}'.format(*k): v for k, v in self._dependencies.items()}
             self._state_committer.commit(dependencies)
 
     def _load_state(self):
-        with synchronized(self):
+        with self._lock:
             dependencies = self._state_committer.load()
             self._dependencies = {tuple(k.split('+')): v for k, v in dependencies.items()}
             logger.error(self._dependencies)
@@ -71,7 +72,7 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
         self._main_thread.join()
 
     def _process_dependencies(self):
-        with synchronized(self):
+        with self._lock:
             for entry in self._dependencies.keys():
                 dependency_state = self._dependencies[entry]
                 self._dependencies[entry] = self._transition_dependency_state(dependency_state)
@@ -81,11 +82,11 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
         return getattr(self, '_transition_dependency_state_from_' + stage)(dependency_state)
 
     def has(self, dependency): # dependency = (parent_uuid, parent_path)
-        with synchronized(self):
+        with self._lock:
             return (dependency in self._dependencies)
 
     def get(self, dependency):
-        with synchronized(self):
+        with self._lock:
             if not self.has(dependency): # add dependency state if it does not exist
                 self._dependencies[dependency] = DependencyState(DependencyStage.DOWNLOADING,
                         dependency, self._assign_path(dependency), 0, None)
@@ -101,7 +102,7 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
 
         # You could have a conflict between, for example a/b_c and
         # a_b/c. We have to avoid those.
-        with synchronized(self):
+        with self._lock:
             while path in self._paths:
                 path = path + '_'
             self._paths.add(path)
@@ -119,7 +120,7 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
             raise
 
     def list_all(self):
-        with synchronized(self):
+        with self._lock:
             return list(self._dependencies.keys())
 
     def get_run_path(self, uuid):
@@ -128,7 +129,7 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
     def _transition_dependency_state_from_DOWNLOADING(self, dependency_state):
         def download():
             def update_state_and_check_killed(bytes_downloaded):
-                with synchronized(self):
+                with self._lock:
                     state = self._dependencies[dependency]
                     self._dependencies[dependency] = state._replace(size_bytes=bytes_downloaded)
 
@@ -152,11 +153,11 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
                     self._store_dependency(dependency_path, fileobj, target_type)
 
                 logger.debug('Finished downloading dependency %s/%s', parent_uuid, parent_path)
-                with synchronized(self):
+                with self._lock:
                     self._downloading[dependency]['success'] = True
 
             except Exception as e: # TODO: get some error message back
-                with synchronized(self):
+                with self._lock:
                     self._downloading[dependency]['success'] = False
 
         dependency = dependency_state.dependency

@@ -288,6 +288,7 @@ class BundleManager(object):
                 bundle = self._model.get_bundle(uuid)
                 worker['cpus'] -= self._compute_request_cpus(bundle)
                 worker['gpus'] -= self._compute_request_gpus(bundle)
+                worker['memory_bytes'] -= self._compute_request_memory(bundle)
 
     def _filter_and_sort_workers(self, workers_list, bundle):
         """
