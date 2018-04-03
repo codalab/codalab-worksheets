@@ -29,7 +29,6 @@ from file_util import (
 )
 from formatting import duration_str, size_str, parse_size
 from docker_image_manager import DockerImageManager
-from synchronized import synchronized
 from fsm import (
     JsonStateCommitter,
     DependencyStage
@@ -82,6 +81,7 @@ class Worker(object):
         self._runs = {}
         self._uploading = {}
         self._finalizing = {}
+        self._lock = threading.RLock()
 
         # set up docker networks for runs: one with external network access and one without
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
@@ -101,11 +101,11 @@ class Worker(object):
                 self.docker_network_internal_name))
 
     def _save_state(self):
-        with synchronized(self):
+        with self._lock:
             self._state_committer.commit(self._runs)
 
     def _load_state(self):
-        with synchronized(self):
+        with self._lock:
             self._runs = self._state_committer.load()
 
     def run(self):
@@ -129,7 +129,7 @@ class Worker(object):
         self._dependency_manager.stop()
 
     def _get_runs_for_checkin(self):
-        with synchronized(self):
+        with self._lock:
             result = {
                 bundle_uuid: {
                     'run_status': run_state.run_status,
@@ -226,7 +226,7 @@ class Worker(object):
         """
         cpuset, gpuset = set(self._cpuset), set(self._gpuset)
 
-        with synchronized(self):
+        with self._lock:
             for run_state in self._runs.values():
                 if run_state.stage == RunStage.RUNNING:
                     cpuset -= run_state.cpuset
@@ -262,13 +262,13 @@ class Worker(object):
                     cpuset=None, gpuset=None, info={},
             )
 
-            with synchronized(self):
+            with self._lock:
                 self._runs[bundle_uuid] = run_state
         else:
             print >>sys.stdout, 'Bundle {} no longer assigned to this worker'.format(bundle_uuid)
 
     def _get_run(self, uuid):
-        with synchronized(self):
+        with self._lock:
             return self._runs.get(uuid, None)
 
     @staticmethod
@@ -368,7 +368,7 @@ class Worker(object):
 
     # NOTE: this function has not yet been ported
     def _kill(self, uuid):
-        with synchronized(self):
+        with self._lock:
             run_state = self._get_run(uuid)
             if run_state is not None:
                 run_state.is_killed = True
@@ -400,7 +400,7 @@ class Worker(object):
 
     def _process_runs(self):
         """ Transition each run then filter out finished runs """
-        with synchronized(self):
+        with self._lock:
             # transition all runs
             for bundle_uuid in self._runs.keys():
                 run_state = self._runs[bundle_uuid]
@@ -414,6 +414,14 @@ class Worker(object):
         return getattr(self, '_transition_run_state_from_' + stage)(run_state)
 
     def _transition_run_state_from_STARTING(self, run_state):
+        # first attempt to get() every dependency/image so that downloads start in parallel
+        for dep in run_state.bundle['dependencies']:
+            dependency = (dep['parent_uuid'], dep['parent_path'])
+            dependency_state = self._dependency_manager.get(dependency)
+        docker_image = run_state.resources['docker_image']
+        image_state = self._image_manager.get(docker_image)
+
+        # then inspect the state of every dependency/image to see whether all of them are ready
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
             dependency_state = self._dependency_manager.get(dependency)
@@ -437,7 +445,7 @@ class Worker(object):
             run_state.info['failure_message'] = image_state.message
             return run_state._replace(stage=RunStage.FINALIZING, info=run_state.info)
 
-        # All dependencies ready! Set up directories, symlinks, container. Start container.
+        # All dependencies ready! Set up directories, symlinks and container. Start container.
         # 1) Set up a directory to store the bundle.
         remove_path(run_state.bundle_path)
         os.mkdir(run_state.bundle_path)
@@ -530,7 +538,7 @@ class Worker(object):
                 logger.debug('Uploading results for run with UUID %s', bundle_uuid)
                 def update_status(bytes_uploaded):
                     run_status = 'Uploading results: %s done (archived size)' % size_str(bytes_uploaded)
-                    with synchronized(self):
+                    with self._lock:
                         self._uploading[bundle_uuid]['run_status'] = run_status
 
                 self._execute_bundle_service_command_with_retry(
