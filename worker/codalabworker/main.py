@@ -118,11 +118,13 @@ chmod 600 %s""" % args.password_file
     dependency_manager = LocalFileSystemDependencyManager(
             JsonStateCommitter(os.path.join(args.work_dir, 'dependencies-state.json')),
             bundle_service, args.work_dir, max_work_dir_size_bytes, args.max_dependencies_serialized_length)
+    dependency_manager.run()
 
     image_manager = DockerImageManager(
             docker_client, JsonStateCommitter(os.path.join(args.work_dir, 'images-state.json')),
             max_images_bytes
     )
+    image_manager.run()
 
     state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'worker-state.json'))
     worker = Worker(state_committer, dependency_manager, image_manager,

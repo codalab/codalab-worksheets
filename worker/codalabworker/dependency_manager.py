@@ -14,15 +14,21 @@ from fsm import (
     BaseDependencyManager,
     JsonStateCommitter,
     DependencyStage,
+    StateTransitioner
 )
 
 logger = logging.getLogger(__name__)
 
 DependencyState = namedtuple('DependencyState', 'stage dependency path size_bytes last_used')
 
-class LocalFileSystemDependencyManager(BaseDependencyManager):
+class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager):
     def __init__(self, state_committer, bundle_service,
             work_dir, max_cache_size_bytes, max_serialized_length):
+
+        super(LocalFileSystemDependencyManager, self).__init__()
+        self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
+        self.add_transition(DependencyStage.READY, self._transition_from_READY)
+        self.add_transition(DependencyStage.FAILED, self._transition_from_FAILED)
 
         self._state_committer = state_committer
         self._bundle_service = bundle_service
@@ -60,7 +66,7 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
                 try:
                     self._process_dependencies()
                     self._save_state()
-                    # cleanup
+                    # TODO: cleanup
                 except Exception:
                     traceback.print_exc()
                 time.sleep(self._cleanup_sleep_secs)
@@ -75,21 +81,23 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
         with self._lock:
             for entry in self._dependencies.keys():
                 dependency_state = self._dependencies[entry]
-                self._dependencies[entry] = self._transition_dependency_state(dependency_state)
-
-    def _transition_dependency_state(self, dependency_state):
-        stage = dependency_state.stage.upper()
-        return getattr(self, '_transition_dependency_state_from_' + stage)(dependency_state)
+                self._dependencies[entry] = self.transition(dependency_state)
 
     def has(self, dependency): # dependency = (parent_uuid, parent_path)
         with self._lock:
             return (dependency in self._dependencies)
 
     def get(self, dependency):
+        now = time.time()
         with self._lock:
             if not self.has(dependency): # add dependency state if it does not exist
                 self._dependencies[dependency] = DependencyState(DependencyStage.DOWNLOADING,
-                        dependency, self._assign_path(dependency), 0, None)
+                        dependency, self._assign_path(dependency), 0, now)
+
+            # update last_used as long as it isn't in FAILED
+            if self._dependencies[dependency].stage != DependencyStage.FAILED:
+                self._dependencies[dependency] = self._dependencies[dependency]._replace(last_used=now)
+                logger.debug('Touched dependency %s at %f', dependency, now)
             return self._dependencies[dependency]
 
     def _assign_path(self, dependency):
@@ -126,9 +134,10 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
     def get_run_path(self, uuid):
         return os.path.join(self._bundles_dir, uuid)
 
-    def _transition_dependency_state_from_DOWNLOADING(self, dependency_state):
+    def _transition_from_DOWNLOADING(self, dependency_state):
         def download():
             def update_state_and_check_killed(bytes_downloaded):
+                # TODO: check killed
                 with self._lock:
                     state = self._dependencies[dependency]
                     self._dependencies[dependency] = state._replace(size_bytes=bytes_downloaded)
@@ -175,15 +184,15 @@ class LocalFileSystemDependencyManager(BaseDependencyManager):
         success = self._downloading[dependency]['success']
         del self._downloading[dependency]
         if success:
-            return dependency_state._replace(stage=DependencyStage.READY, last_used=time.time())
+            return dependency_state._replace(stage=DependencyStage.READY)
         else:
             self._paths.remove(dependency_state.path)
             return dependency_state._replace(stage=DependencyStage.FAILED)
 
-    def _transition_dependency_state_from_READY(self, dependency_state):
+    def _transition_from_READY(self, dependency_state):
         return dependency_state
 
-    def _transition_dependency_state_from_FAILED(self, dependency_state):
+    def _transition_from_FAILED(self, dependency_state):
         return dependency_state
 
 

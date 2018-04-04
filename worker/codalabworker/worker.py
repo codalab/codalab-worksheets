@@ -31,7 +31,8 @@ from formatting import duration_str, size_str, parse_size
 from docker_image_manager import DockerImageManager
 from fsm import (
     JsonStateCommitter,
-    DependencyStage
+    DependencyStage,
+    StateTransitioner
 )
 
 
@@ -52,17 +53,21 @@ RunState = namedtuple('RunState',
     ['stage', 'run_status', 'bundle', 'bundle_path', 'resources', 'start_time',
         'container_id', 'docker_image', 'is_killed', 'cpuset', 'gpuset', 'info'])
 
-class Worker(object):
+class Worker(StateTransitioner):
     def __init__(self, state_committer, dependency_manager, image_manager,
                 id, tag, work_dir, cpuset, gpuset, bundle_service,
                 docker, docker_network_prefix='codalab_worker_network'):
 
+        super(Worker, self).__init__()
+        self.add_transition(RunStage.STARTING, self._transition_from_STARTING)
+        self.add_transition(RunStage.RUNNING, self._transition_from_RUNNING)
+        self.add_transition(RunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
+        self.add_transition(RunStage.FINALIZING, self._transition_from_FINALIZING)
+        self.add_transition(RunStage.FINISHED, self._transition_from_FINISHED)
+
         self._state_committer = state_committer
         self._dependency_manager = dependency_manager
         self._image_manager = image_manager
-
-        dependency_manager.run()
-        image_manager.run()
 
         self.id = id
         self._tag = tag
@@ -404,16 +409,12 @@ class Worker(object):
             # transition all runs
             for bundle_uuid in self._runs.keys():
                 run_state = self._runs[bundle_uuid]
-                self._runs[bundle_uuid] = self._transition_run_state(run_state)
+                self._runs[bundle_uuid] = self.transition(run_state)
 
             # filter out finished runs
             self._runs = {k: v for k, v in self._runs.items() if v.stage != RunStage.FINISHED}
 
-    def _transition_run_state(self, run_state):
-        stage = run_state.stage.upper()
-        return getattr(self, '_transition_run_state_from_' + stage)(run_state)
-
-    def _transition_run_state_from_STARTING(self, run_state):
+    def _transition_from_STARTING(self, run_state):
         # first attempt to get() every dependency/image so that downloads start in parallel
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
@@ -484,12 +485,11 @@ class Worker(object):
         )
 
         digest = self._docker.get_image_repo_digest(run_state.resources['docker_image'])
-        #self._image_manager.touch_image(digest)
 
         return run_state._replace(stage=RunStage.RUNNING, run_status='Running',
             container_id=container_id, docker_image=digest, cpuset=cpuset, gpuset=gpuset)
 
-    def _transition_run_state_from_RUNNING(self, run_state):
+    def _transition_from_RUNNING(self, run_state):
         def check_and_report_finished(run_state):
             try:
                 finished, exitcode, failure_msg = self._docker.check_finished(run_state.container_id)
@@ -510,7 +510,7 @@ class Worker(object):
         else:
             return run_state
 
-    def _transition_run_state_from_UPLOADING_RESULTS(self, run_state):
+    def _transition_from_UPLOADING_RESULTS(self, run_state):
         def upload_results():
             try:
                 # Delete the container.
@@ -561,7 +561,7 @@ class Worker(object):
             del self._uploading[bundle_uuid]
             return run_state._replace(stage=RunStage.FINALIZING, container_id=None)
 
-    def _transition_run_state_from_FINALIZING(self, run_state):
+    def _transition_from_FINALIZING(self, run_state):
         def finalize():
             try:
                 logger.debug('Finalizing run with UUID %s', bundle_uuid)
@@ -592,7 +592,7 @@ class Worker(object):
             del self._finalizing[bundle_uuid]['thread']
             return run_state._replace(stage=RunStage.FINISHED, run_status='Finished')
 
-    def _transition_run_state_from_FINISHED(self, run_state):
+    def _transition_from_FINISHED(self, run_state):
         return run_state
 
 class RunStage(object):
