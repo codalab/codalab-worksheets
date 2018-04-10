@@ -80,7 +80,8 @@ class DockerClient(object):
 
         # Test to make sure that a connection can be established.
         try:
-            self.test()
+            # self.test()
+            pass
         except DockerException:
             print >> sys.stderr, """
 On Linux, a valid Docker installation should create a Unix socket at
@@ -229,15 +230,20 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to fetch Docker network list')
     def list_networks(self):
+        return []
+        """
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/networks');
             response = conn.getresponse()
             if response.status != 200:
                 raise DockerException(response.read())
             return [t["Name"] for t in json.loads(response.read())]
+        """
 
     @wrap_exception('Unable to create Docker network')
     def create_network(self, network_name, internal=True):
+        return []
+        """
         logger.debug('Creating Docker network: %s', network_name)
         if not network_name:
             raise Exception("empty docker network name")
@@ -251,6 +257,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if response.status != 201:
                 raise DockerException(response.read())
             return json.loads(response.read())["Id"]
+        """
 
     @wrap_exception('Unable to fetch Docker container ip')
     def get_container_ip(self, network_name, container_id):
@@ -518,6 +525,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to kill Docker container')
     def kill_container(self, container_id):
+        # TODO
+        return
         logger.debug('Killing container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
             conn.request('POST', '/containers/%s/kill' % container_id)
@@ -596,4 +605,4 @@ class DockerUnixConnection(httplib.HTTPConnection, object):
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(300)
-        self.sock.connect('//var/run/docker.sock')
+        #self.sock.connect('//var/run/docker.sock')

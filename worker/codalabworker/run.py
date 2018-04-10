@@ -8,6 +8,7 @@ import time
 import traceback
 import sys
 import json
+import subprocess
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
@@ -231,6 +232,48 @@ class Run(object):
                 dependencies.append((dependency_path, docker_dependency_path))
 
             def do_start():
+                #print(self._bundle['command'])
+
+                print(self._bundle_path)
+                #print(self._bundle['command'].split())
+
+                docker_bundle_path = '/' + self._uuid
+
+                # Set up the volumes.
+                '''
+                volume_bindings = ['%s:%s' % (self._bundle_path, docker_bundle_path)]
+                for dependency_path, docker_dependency_path in dependencies:
+                    volume_bindings.append('%s:%s:ro' % (
+                        os.path.abspath(dependency_path),
+                        docker_dependency_path))
+                '''
+                # print(volume_bindings)
+                if '/' not in self._bundle['command']:
+                    #cmd = str(dependencies[0]).split('/')[3]
+                    run = self._bundle['command'].split()
+                    run[1] = dependency_path
+                    #subprocess.Popen(run)
+                    output = subprocess.check_output(run)
+                    print(output.replace('\n', ''))
+                    #print(self._bundle['command'])
+                    #print(run)
+                else:
+                    run = str(self._bundle['command']).split()
+                    for dep_path, docker_dep_path in dependencies:
+                        folder = docker_dep_path.split('/')[-1]
+                        for cmd in run:
+                            print(cmd)
+                            if folder in cmd:
+                                cmd.replace(folder, dep_path)
+                    print(run)
+
+                    #print(dependencies)
+                    #print(dependency_path)
+                #run = ['python', dependency_path]
+                #run.append(self._bundle['command'])
+                #subprocess.Popen(run)
+                # TODO
+                return
                 self._safe_update_run_status('Starting Docker container')
                 if self._resources['request_network']:
                     docker_network = self._worker.docker_network_external_name
@@ -249,6 +292,9 @@ class Run(object):
             def update_status_and_check_killed(status):
                 updater('Pulling docker image: ' + status)
                 check_killed()
+            # TODO
+            self._container_id = do_start()
+            """
             self._docker.download_image(self._resources['docker_image'],
                                         update_status_and_check_killed)
             self._container_id = do_start()
@@ -256,7 +302,7 @@ class Run(object):
             digest = self._docker.get_image_repo_digest(self._resources['docker_image'])
             self._safe_update_docker_image(digest)
             self._image_manager.touch_image(digest)
-
+            """
         except Exception as e:
             logger.exception('Failed while starting run')
             self._finish(failure_message=str(e))
@@ -478,8 +524,10 @@ class Run(object):
 
     def _check_and_report_finished(self):
         try:
+            # TODO
             finished, exitcode, failure_message = (
-                self._docker.check_finished(self._container_id))
+                0, 0, "")
+                #self._docker.check_finished(self._container_id))
         except DockerException:
             traceback.print_exc()
             return False
