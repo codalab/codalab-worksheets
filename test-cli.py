@@ -87,6 +87,14 @@ def current_user():
     return user_id, user_name
 
 
+def get_uuid(line):
+    """
+    Returns the uuid from a line where the uuid is between parentheses
+    """
+    m = re.search(".*\((0x[a-z0-9]+)\)", line)
+    assert m is not None
+    return m.group(1)
+
 
 def sanitize(string):
     try:
@@ -1145,17 +1153,19 @@ def test(ctx):
 def test(ctx):
     # Should not crash
     run_command([cl, 'ginfo', 'public'])
+
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
-    uuid = run_command([cl, 'gnew', group_name])
-    ctx.collect_group(uuid)
-    # Check that you are added to your own group
-    my_groups = run_command([cl, 'gls'])
-    check_contains(group_name, my_groups)
+    group_uuid_line = run_command([cl, 'gnew', group_name])
+    group_uuid = get_uuid(group_uuid_line)
+    ctx.collect_group(group_uuid)
 
+    # Check that you are added to your own group
     group_info = run_command([cl, 'ginfo', group_name])
     check_contains(user_name, group_info)
+    my_groups = run_command([cl, 'gls'])
+    check_contains(group_name, my_groups)
 
     # Try to relegate yourself to non-admin status
     run_command([cl, 'uadd', user_name, group_name], expected_exit_code=1)
