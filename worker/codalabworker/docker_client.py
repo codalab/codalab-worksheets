@@ -220,6 +220,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         Get raw image info JSON.
         :param image_name: id, tag, or repo digest
         """
+        # TODO
+        return
         logger.debug('Fetching Docker image metadata for %s', image_name)
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/images/%s/json' % image_name)
@@ -274,6 +276,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to fetch Docker image metadata')
     def get_image_repo_digest(self, request_docker_image):
+        return ''
         info = self._inspect_image(request_docker_image)
         # the following try-except clause is intentional:
         # old docker versions may have an empty entry under RepoDigests
@@ -293,6 +296,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # First get the image id, because removing by repo digest only untags
         # the digest, without deleting the image.
         # https://github.com/docker/docker/issues/24688
+        # TODO
+        return
         image_id = self._inspect_image(repo_digest)['Id']
 
         # Now delete it
@@ -310,6 +315,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     ''' Download the specified docker image with tag/digest. If no tag is specified, downloads the latest '''
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
+        pass
+        '''
         if len(docker_image.split(":")) < 2:
             logger.debug('Missing tag/digest on request docker image "%s", defaulting to latest', docker_image)
             docker_image = ':'.join([docker_image, 'latest'])
@@ -357,6 +364,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 except KeyError:
                     pass
                 loop_callback(status)
+        '''
 
     def create_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies, extra_args=[]):
@@ -384,6 +392,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 docker_image,
                 command
             )
+
+            print(cli_command)
             output = subprocess.check_output(cli_command.split(' '))
             exitcode = 0
         except subprocess.CalledProcessError, e:
@@ -461,11 +471,12 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             # This can cause problems if users expect to run as a specific user
             'User': '%s:%s' % (uid, gid),
         }
-
+        """
         if self._use_nvidia_docker:
             # Allocate the requested number of GPUs and isolate
             self._add_nvidia_docker_arguments(create_request, [str(k) for k in gpuset])
 
+        
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',
                                 json.dumps(create_request),
@@ -474,16 +485,47 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if create_response.status != 201:
                 raise DockerException(create_response.read())
             container_id = json.loads(create_response.read())['Id']
-
+        """
+        container_id = uuid
         # Start the container.
         logger.debug('Starting Docker container for UUID %s with command %s, container ID %s',
             uuid, command, container_id)
+
+        if len(volume_bindings) > 0:
+            working_dir = volume_bindings[0]
+            bundles = []
+            for i in range(1, len(volume_bindings)):
+                bundles.append(volume_bindings[i].split(":"))
+            # [[u'/home/harry/codalab-worker-scratch/bundles/0x2c92295dfa584d91afaf49c3ca112116', u'/0xb0558b1cdc1b44728dc9b2c9bdb497e5_dependencies/hello.py', u'ro']]
+            # [[u'/home/harry/codalab-worker-scratch/bundles/0x42b3fa2c493e45a99eb079282453e561', u'/0x69adb4b9098b48b79364d12a710c013e_dependencies/_1', u'ro']]
+            # [[u'/home/harry/codalab-worker-scratch/bundles/0x83f82a13852e4a6483860b734e4e47d0', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/hello', u'ro'], [u'/home/harry/codalab-worker-scratch/bundles/0x42b3fa2c493e45a99eb079282453e561', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/_1', u'ro']]
+
+            new_command = str(command).split()
+
+            for bundle in bundles:
+                path = str(bundle[0])
+                name = str(bundle[1].split("/")[-1])
+
+                if name in new_command:    # file name
+                    for i in range(len(new_command)):
+                        if new_command[i] == name:
+                            new_command[i] = path
+                else:                      # folder
+                    for i in range(len(new_command)):
+                        if name + "/" in new_command[i]:
+                            new_command[i] = new_command[i].replace(name, path, 1)
+
+            print(new_command)
+            subprocess.Popen(new_command, cwd=bundle_path)
+
+
+        """
         with closing(self._create_connection()) as start_conn:
             start_conn.request('POST', '/containers/%s/start' % container_id)
             start_response = start_conn.getresponse()
             if start_response.status != 204:
                 raise DockerException(start_response.read())
-
+        """
         return container_id
 
     def get_container_stats(self, container_id):
@@ -536,6 +578,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to check Docker container status')
     def check_finished(self, container_id):
+        return (False, None, None)
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/json' % container_id)
             inspect_response = conn.getresponse()
@@ -560,6 +603,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to delete Docker container')
     def delete_container(self, container_id):
+        #TODO
+        return
         logger.debug('Deleting container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
             conn.request('DELETE', '/containers/%s?force=1' % container_id)

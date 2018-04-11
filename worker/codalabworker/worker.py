@@ -106,6 +106,8 @@ class Worker(object):
             )
 
             # for each resumed run, remove the assigned cpu and gpus from the free sets
+            # TODO
+            """
             with self._resource_lock:
                 run_sets = self._worker_state_manager.map_runs(lambda run: (run._cpuset, run._gpuset))
                 for cpuset, gpuset in run_sets:
@@ -120,7 +122,7 @@ class Worker(object):
                             self._gpuset_free.remove(k)
                         else:
                             logger.debug('Warning: gpu {} not in worker gpuset'.format(k))
-
+            """
             self._worker_state_manager.save_state()
 
         while self._should_run():
