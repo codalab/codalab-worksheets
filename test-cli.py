@@ -77,13 +77,12 @@ def current_worksheet():
 
 def current_user():
     """
-    Return the uuid and username of the current username in a tuple
+    Return the uuid and username of the current user in a tuple
     Does so by parsing the output of `cl uinfo` which by default returns the info
     of the current user
     """
-    my_name = run_command([cl, 'uinfo'])
-    user_id = my_name.split('\n')[0].split(':')[1].strip()
-    user_name = my_name.split('\n')[1].split(':')[1].strip()
+    user_id = run_command([cl, 'uinfo', '-f', 'id']).split(':')[1].strip()
+    user_name = run_command([cl, 'uinfo', '-f', 'user_name']).split(':')[1].strip()
     return user_id, user_name
 
 
@@ -1170,7 +1169,7 @@ def test(ctx):
     # Try to relegate yourself to non-admin status
     run_command([cl, 'uadd', user_name, group_name], expected_exit_code=1)
 
-    # TODO: Test other group membeship semantics:
+    # TODO: Test other group membership semantics:
     # - removing a group
     # - adding new members
     # - adding an admin
