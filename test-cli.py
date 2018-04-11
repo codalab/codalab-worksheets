@@ -75,6 +75,18 @@ def current_worksheet():
     assert m is not None
     return m.group(1)
 
+def current_user():
+    """
+    Return the uuid and username of the current username in a tuple
+    Does so by parsing the output of `cl uinfo` which by default returns the info
+    of the current user
+    """
+    my_name = run_command([cl, 'uinfo'])
+    user_id = my_name.split('\n')[0].split(':')[1].strip()
+    user_name = my_name.split('\n')[1].split(':')[1].strip()
+    return user_id, user_name
+
+
 
 def sanitize(string):
     try:
@@ -314,6 +326,7 @@ class ModuleContext(object):
         # cleaned up at the end of the test.
         self.worksheets = []
         self.bundles = []
+        self.groups = []
         self.error = None
 
     def __enter__(self):
@@ -359,6 +372,10 @@ class ModuleContext(object):
         if len(self.bundles) > 0:
             run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
 
+        # Delete all groups (dedup first)
+        if len(self.groups) > 0:
+            run_command([cl, 'grm'] + list(set(self.groups)))
+
         # Reraise only KeyboardInterrupt
         if exc_type is KeyboardInterrupt:
             return False
@@ -372,6 +389,10 @@ class ModuleContext(object):
     def collect_bundle(self, uuid):
         """Mark a bundle for cleanup on exit."""
         self.bundles.append(uuid)
+
+    def collect_group(self, uuid):
+        """Mark a group for cleanup on exit."""
+        self.groups.append(uuid)
 
 
 class TestModule(object):
@@ -1124,6 +1145,28 @@ def test(ctx):
 def test(ctx):
     # Should not crash
     run_command([cl, 'ginfo', 'public'])
+    user_id, user_name = current_user()
+    # Create new group
+    group_name = random_name()
+    uuid = run_command([cl, 'gnew', group_name])
+    ctx.collect_group(uuid)
+    # Check that you are added to your own group
+    my_groups = run_command([cl, 'gls'])
+    check_contains(group_name, my_groups)
+
+    group_info = run_command([cl, 'ginfo', group_name])
+    check_contains(user_name, group_info)
+
+    # Try to relegate yourself to non-admin status
+    run_command([cl, 'uadd', user_name, group_name], expected_exit_code=1)
+
+    # TODO: Test other group membeship semantics:
+    # - removing a group
+    # - adding new members
+    # - adding an admin
+    # - converting member to admin
+    # - converting admin to member
+    # - permissioning
 
 
 @TestModule.register('netcat')
