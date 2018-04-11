@@ -116,7 +116,7 @@ def add_group_members(group_spec):
 def add_group_members_helper(group_spec, is_admin):
     user_ids = get_resource_ids(request.json, 'users')
     group_info = get_group_info(group_spec, need_admin=True,
-                                access_all_groups=False)['uuid']
+                                access_all_groups=False)
     group_uuid = group_info['uuid']
     group_owner = group_info['owner_id']
     if group_owner in user_ids:
