@@ -507,9 +507,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             cmd = str(command).split()
             num = 0
             times = str(24)
-            gpu = 0
-            ram = 4
-            cpu = 2
+            gpu = str(0)
+            ram = str(4)
+            cpu = str(2)
             for i in range(len(cmd) - 1, 0, -1):
                 if num == 4:
                     break
@@ -517,7 +517,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     try:
                         t = int(cmd[i].split("=")[1])
                         if t > 0:
-                            times = t
+                            times = str(t)
                     except:
                         pass
                     num += 1
@@ -525,7 +525,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     try:
                         num_gpu = int(cmd[i].split("=")[1])
                         if num_gpu > 0:
-                            gpu = num_gpu
+                            gpu = str(num_gpu)
                     except:
                         pass
                     num += 1
@@ -533,7 +533,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     try:
                         rams = int(cmd[i].split("=")[1])
                         if rams > 0:
-                            ram = rams
+                            ram = str(rams)
                     except:
                         pass
                     num += 1
@@ -541,7 +541,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     try:
                         cpus = int(cmd[i].split("=")[1])
                         if cpus > 0:
-                            cpu = cpus
+                            cpu = str(cpus)
                     except:
                         pass
 
