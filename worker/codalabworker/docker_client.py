@@ -650,7 +650,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         job_id = self.bundle_state[container_id]
         res = subprocess.Popen(["qstat", "-j", job_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         out, _ = res.communicate()
-        if len(out) > 50:
+        if len(out) > 100:
             return (False, None, None)
         time.sleep(0.3)
 
