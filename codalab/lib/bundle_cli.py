@@ -2747,6 +2747,7 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument('user_spec', nargs='?', help='Username or id of user to show [default: the authenticated user]'),
+            Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
         ),
     )
     def do_uinfo_command(self, args):
@@ -2758,34 +2759,49 @@ class BundleCLI(object):
             user = client.fetch('user')
         else:
             user = client.fetch('users', args.user_spec)
-        self.print_user_info(user)
+        self.print_user_info(user, args.field)
 
-    def print_user_info(self, user):
-        def print_attribute(key, value):
-            print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+    def print_user_info(self, user, fields):
+        def print_attribute(key, user, should_pretty_print):
+            # These fields will not be returned by the server if the
+            # authenticated user is not root, so don't crash if you can't read them
+            if key in ('last_login', 'email', 'time', 'disk'):
+                try:
+                    if key == 'time':
+                        value = formatting.ratio_str(
+                            formatting.duration_str,
+                            user['time_used'],
+                            user['time_quota'])
+                    elif key == 'disk':
+                        value = formatting.ratio_str(
+                            formatting.size_str,
+                            user['disk_used'],
+                            user['disk_quota'])
+                    else:
+                        value = user[key]
+                except KeyError:
+                    pass
+            else:
+                value = user.get(key, None)
 
-        for key in ('id', 'user_name', 'first_name', 'last_name',
-                    'affiliation', 'url', 'date_joined'):
-            print_attribute(key, user.get(key, None))
+            if should_pretty_print:
+                print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+            else:
+                print >>self.stdout, value.encode('utf-8')
 
-        # These fields will not be returned by the server if the
-        # authenticated user is not root, so stop early on first KeyError
-        try:
-            for key in ('last_login', 'email'):
-                print_attribute(key, user[key])
+        default_fields = ('id', 'user_name', 'first_name', 'last_name',
+                    'affiliation', 'url', 'date_joined', 'last_login',
+                    'email', 'time', 'disk')
+        if fields:
+            should_pretty_print = False
+            fields = fields.split(',')
+        else:
+            should_pretty_print = True
+            fields = default_fields
 
-            print_attribute(
-                'time', formatting.ratio_str(
-                    formatting.duration_str,
-                    user['time_used'],
-                    user['time_quota']))
+        for field in fields:
+            print_attribute(field, user, should_pretty_print)
 
-            print_attribute(
-                'disk', formatting.ratio_str(formatting.size_str,
-                                             user['disk_used'],
-                                             user['disk_quota']))
-        except KeyError:
-            pass
 
     #############################################################################
     # Local-only commands follow!
