@@ -510,7 +510,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             gpu = 0
             ram = 4
             cpu = 2
-            for i in range(len(cmd), 0, -1):
+            for i in range(len(cmd) - 1, 0, -1):
                 if num == 4:
                     break
                 if "time=" in cmd[i]:
