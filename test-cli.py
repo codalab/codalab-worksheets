@@ -847,6 +847,12 @@ def test(ctx):
     check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
     # invalid child path
     run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+    # make sure special characters in the name of a bundle don't break
+    special_name = random_name() + '-dashed.dotted'
+    special_uuid = run_command([cl, 'run', 'echo hello', '-n', special_name])
+    dependent = run_command([cl, 'run', ':%s' % special_name, 'cat %s/stdout' % special_name])
+    wait(dependent)
+    check_equals('hello', run_command([cl, 'cat', dependent+'/stdout']))
 
     # test running with a reference to this worksheet
     source_worksheet_full = current_worksheet()
