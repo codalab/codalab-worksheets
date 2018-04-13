@@ -539,11 +539,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
             out, err = p.communicate()
             # errcode = p.returncode
+            print(out.split()[3])
             fo = open(bundle_path + "/stdout", "w")
-            fo.write(out)
             fe = open(bundle_path + "/stderr", "w")
-            if err is not None:
-                fe.write(err)
             fo.close()
             fe.close()
 
