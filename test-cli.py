@@ -81,8 +81,8 @@ def current_user():
     Does so by parsing the output of `cl uinfo` which by default returns the info
     of the current user
     """
-    user_id = run_command([cl, 'uinfo', '-f', 'id']).split(':')[1].strip()
-    user_name = run_command([cl, 'uinfo', '-f', 'user_name']).split(':')[1].strip()
+    user_id = run_command([cl, 'uinfo', '-f', 'id'])
+    user_name = run_command([cl, 'uinfo', '-f', 'user_name'])
     return user_id, user_name
 
 

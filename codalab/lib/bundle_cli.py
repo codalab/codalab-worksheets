@@ -2762,7 +2762,7 @@ class BundleCLI(object):
         self.print_user_info(user, args.field)
 
     def print_user_info(self, user, fields):
-        def print_attribute(key, user):
+        def print_attribute(key, user, should_pretty_print):
             # These fields will not be returned by the server if the
             # authenticated user is not root, so don't crash if you can't read them
             if key in ('last_login', 'email', 'time', 'disk'):
@@ -2784,16 +2784,23 @@ class BundleCLI(object):
             else:
                 value = user.get(key, None)
 
-            print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+            if should_pretty_print:
+                print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+            else:
+                print >>self.stdout, value.encode('utf-8')
 
         default_fields = ('id', 'user_name', 'first_name', 'last_name',
                     'affiliation', 'url', 'date_joined', 'last_login',
                     'email', 'time', 'disk')
-
-        fields = fields.split(',') if fields else default_fields
+        if fields:
+            should_pretty_print = False
+            fields = fields.split(',')
+        else:
+            should_pretty_print = True
+            fields = default_fields
 
         for field in fields:
-            print_attribute(field, user)
+            print_attribute(field, user, should_pretty_print)
 
 
     #############################################################################
