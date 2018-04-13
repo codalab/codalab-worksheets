@@ -75,6 +75,25 @@ def current_worksheet():
     assert m is not None
     return m.group(1)
 
+def current_user():
+    """
+    Return the uuid and username of the current user in a tuple
+    Does so by parsing the output of `cl uinfo` which by default returns the info
+    of the current user
+    """
+    user_id = run_command([cl, 'uinfo', '-f', 'id'])
+    user_name = run_command([cl, 'uinfo', '-f', 'user_name'])
+    return user_id, user_name
+
+
+def get_uuid(line):
+    """
+    Returns the uuid from a line where the uuid is between parentheses
+    """
+    m = re.search(".*\((0x[a-z0-9]+)\)", line)
+    assert m is not None
+    return m.group(1)
+
 
 def sanitize(string):
     try:
@@ -314,6 +333,7 @@ class ModuleContext(object):
         # cleaned up at the end of the test.
         self.worksheets = []
         self.bundles = []
+        self.groups = []
         self.error = None
 
     def __enter__(self):
@@ -359,6 +379,10 @@ class ModuleContext(object):
         if len(self.bundles) > 0:
             run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
 
+        # Delete all groups (dedup first)
+        if len(self.groups) > 0:
+            run_command([cl, 'grm'] + list(set(self.groups)))
+
         # Reraise only KeyboardInterrupt
         if exc_type is KeyboardInterrupt:
             return False
@@ -372,6 +396,10 @@ class ModuleContext(object):
     def collect_bundle(self, uuid):
         """Mark a bundle for cleanup on exit."""
         self.bundles.append(uuid)
+
+    def collect_group(self, uuid):
+        """Mark a group for cleanup on exit."""
+        self.groups.append(uuid)
 
 
 class TestModule(object):
@@ -1130,6 +1158,30 @@ def test(ctx):
 def test(ctx):
     # Should not crash
     run_command([cl, 'ginfo', 'public'])
+
+    user_id, user_name = current_user()
+    # Create new group
+    group_name = random_name()
+    group_uuid_line = run_command([cl, 'gnew', group_name])
+    group_uuid = get_uuid(group_uuid_line)
+    ctx.collect_group(group_uuid)
+
+    # Check that you are added to your own group
+    group_info = run_command([cl, 'ginfo', group_name])
+    check_contains(user_name, group_info)
+    my_groups = run_command([cl, 'gls'])
+    check_contains(group_name, my_groups)
+
+    # Try to relegate yourself to non-admin status
+    run_command([cl, 'uadd', user_name, group_name], expected_exit_code=1)
+
+    # TODO: Test other group membership semantics:
+    # - removing a group
+    # - adding new members
+    # - adding an admin
+    # - converting member to admin
+    # - converting admin to member
+    # - permissioning
 
 
 @TestModule.register('netcat')
