@@ -502,7 +502,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             # [[u'/home/harry/codalab-worker-scratch/bundles/0x42b3fa2c493e45a99eb079282453e561', u'/0x69adb4b9098b48b79364d12a710c013e_dependencies/_1', u'ro']]
             # [[u'/home/harry/codalab-worker-scratch/bundles/0x83f82a13852e4a6483860b734e4e47d0', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/hello', u'ro'], [u'/home/harry/codalab-worker-scratch/bundles/0x42b3fa2c493e45a99eb079282453e561', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/_1', u'ro']]
 
-            new_command = str(command).split()
+            # new_command = str(command).split()
+            cmd = str(command).split()
+            times = cmd[-1]
+            gpu = cmd[-2]
+            ram = cmd[-3]
+            cpu = cmd[-4]
+            new_command = cmd[:-4]
 
             for bundle in bundles:
                 path = str(bundle[0])
@@ -518,8 +524,17 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                             new_command[i] = new_command[i].replace(name, path, 1)
 
             # print(new_command)
+            f = open(bundle_path + '/' + uuid + '.sh', 'w')
+            f.write('#!/usr/bin/env bash\n\n')
+            f.write('source ~/.bashrc\n')
+            f.write('source activate base\n\n')
+            f.write(' '.join(new_command))
+            f.close()
 
-            p = subprocess.Popen(new_command, cwd=bundle_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
+                   bundle_path + '/' + uuid + '.sh']
+
+            p = subprocess.Popen(run, cwd=bundle_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             self.bundle_state[uuid] = p
 
             out, err = p.communicate()
