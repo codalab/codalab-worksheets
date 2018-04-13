@@ -8,6 +8,7 @@ import ssl
 import struct
 import sys
 import subprocess
+import time
 
 from formatting import size_str, parse_size
 
@@ -64,6 +65,8 @@ class DockerClient(object):
     MIN_API_VERSION = '1.17'
 
     def __init__(self):
+        self.bundle_state = {}
+
         self._docker_host = os.environ.get('DOCKER_HOST') or None
         if self._docker_host:
             self._docker_host = self._docker_host.replace('tcp://', '')
@@ -393,7 +396,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 command
             )
 
-            print(cli_command)
             output = subprocess.check_output(cli_command.split(' '))
             exitcode = 0
         except subprocess.CalledProcessError, e:
@@ -515,9 +517,20 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                         if name + "/" in new_command[i]:
                             new_command[i] = new_command[i].replace(name, path, 1)
 
-            print(new_command)
-            subprocess.Popen(new_command, cwd=bundle_path)
+            # print(new_command)
 
+            p = subprocess.Popen(new_command, cwd=bundle_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            self.bundle_state[uuid] = p
+
+            out, err = p.communicate()
+            # errcode = p.returncode
+            fo = open(bundle_path + "/stdout", "w")
+            fo.write(out)
+            fe = open(bundle_path + "/stderr", "w")
+            if err is not None:
+                fe.write(err)
+            fo.close()
+            fe.close()
 
         """
         with closing(self._create_connection()) as start_conn:
@@ -568,6 +581,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     @wrap_exception('Unable to kill Docker container')
     def kill_container(self, container_id):
         # TODO
+        del self.bundle_state[container_id]
         return
         logger.debug('Killing container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
@@ -578,7 +592,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to check Docker container status')
     def check_finished(self, container_id):
-        return (False, None, None)
+        #stdout, stderr = self.get_logs(container_id)
+        if container_id not in self.bundle_state.keys():
+            return (True, 1, "No such a bundle.")
+        if self.bundle_state[container_id].poll() is None:
+            return (False, None, None)
+        time.sleep(0.3)
+        return (True, 0, None)
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/json' % container_id)
             inspect_response = conn.getresponse()
@@ -604,6 +624,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     @wrap_exception('Unable to delete Docker container')
     def delete_container(self, container_id):
         #TODO
+        del self.bundle_state[container_id]
         return
         logger.debug('Deleting container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
@@ -619,6 +640,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         The stream is encoded in a format defined here:
         https://docs.docker.com/engine/api/v1.20/#/attach-to-a-container
         """
+        stderr = []
+        stdout = []
+        return ''.join(stdout), ''.join(stderr)
+
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/logs?stdout=1&stderr=1' % container_id)
             logs_response = conn.getresponse()
