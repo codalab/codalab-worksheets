@@ -505,11 +505,51 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
             # new_command = str(command).split()
             cmd = str(command).split()
-            times = cmd[-1]
-            gpu = cmd[-2]
-            ram = cmd[-3]
-            cpu = cmd[-4]
-            new_command = cmd[:-4]
+            num = 0
+            times = str(24)
+            gpu = 0
+            ram = 4
+            cpu = 2
+            for i in range(len(cmd), 0, -1):
+                if num == 4:
+                    break
+                if "time=" in cmd[i]:
+                    try:
+                        t = int(cmd[i].split("=")[1])
+                        if t > 0:
+                            times = t
+                    except:
+                        pass
+                    num += 1
+                if "gpu=" in cmd[i]:
+                    try:
+                        num_gpu = int(cmd[i].split("=")[1])
+                        if num_gpu > 0:
+                            gpu = num_gpu
+                    except:
+                        pass
+                    num += 1
+                if "ram=" in cmd[i]:
+                    try:
+                        rams = int(cmd[i].split("=")[1])
+                        if rams > 0:
+                            ram = rams
+                    except:
+                        pass
+                    num += 1
+                if "cpu=" in cmd[i]:
+                    try:
+                        cpus = int(cmd[i].split("=")[1])
+                        if cpus > 0:
+                            cpu = cpus
+                    except:
+                        pass
+
+            if num == 0:
+                new_command = cmd
+            else:
+                new_command = cmd[:-num]
+
 
             for bundle in bundles:
                 path = str(bundle[0])
