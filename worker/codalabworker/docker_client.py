@@ -66,6 +66,7 @@ class DockerClient(object):
 
     def __init__(self):
         self.bundle_state = {}
+        self.bundle_path = {}
 
         self._docker_host = os.environ.get('DOCKER_HOST') or None
         if self._docker_host:
@@ -540,12 +541,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             out, err = p.communicate()
             # errcode = p.returncode
             self.bundle_state[uuid] = out.split()[2]
-
-            fo = open(bundle_path + "/stdout", "w")
-            fo.write(out)
-            fe = open(bundle_path + "/stderr", "w")
-            fo.close()
-            fe.close()
+            self.bundle_path[uuid] = bundle_path
 
         """
         with closing(self._create_connection()) as start_conn:
@@ -597,6 +593,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     def kill_container(self, container_id):
         # TODO
         del self.bundle_state[container_id]
+        del self.bundle_path[container_id]
         return
         logger.debug('Killing container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
@@ -616,6 +613,18 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         if len(out) > 50:
             return (False, None, None)
         time.sleep(0.3)
+
+        bundle_path = self.bundle_path[container_id]
+        stdout = open(bundle_path + "/codalab.sh.o" + job_id, "r").read()
+        stderr = open(bundle_path + "/codalab.sh.e" + job_id, "r").read()
+        fo = open(bundle_path + "/stdout", "w")
+        fo.write(stdout)
+        fe = open(bundle_path + "/stderr", "w")
+        if stderr is not None:
+            fe.write(stderr)
+        fo.close()
+        fe.close()
+
         return (True, 0, None)
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/json' % container_id)
@@ -643,6 +652,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     def delete_container(self, container_id):
         #TODO
         del self.bundle_state[container_id]
+        del self.bundle_path[container_id]
         return
         logger.debug('Deleting container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
