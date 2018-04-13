@@ -513,37 +513,22 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             for i in range(len(cmd) - 1, 0, -1):
                 if num == 4:
                     break
-                if "time=" in cmd[i]:
-                    try:
-                        t = int(cmd[i].split("=")[1])
-                        if t > 0:
-                            times = str(t)
-                    except:
-                        pass
-                    num += 1
-                if "gpu=" in cmd[i]:
-                    try:
-                        num_gpu = int(cmd[i].split("=")[1])
-                        if num_gpu > 0:
-                            gpu = str(num_gpu)
-                    except:
-                        pass
-                    num += 1
-                if "ram=" in cmd[i]:
-                    try:
-                        rams = int(cmd[i].split("=")[1])
-                        if rams > 0:
-                            ram = str(rams)
-                    except:
-                        pass
-                    num += 1
-                if "cpu=" in cmd[i]:
-                    try:
-                        cpus = int(cmd[i].split("=")[1])
-                        if cpus > 0:
-                            cpu = str(cpus)
-                    except:
-                        pass
+                try:
+                    name, nums = cmd[i].split("=")[0], int(cmd[i].split("=")[1])
+                    if name == "time" and nums > 0:
+                        times = str(nums)
+                        num += 1
+                    elif name == "gpu" and nums > 0:
+                        gpu = str(nums)
+                        num += 1
+                    elif name == "ram" and nums > 0:
+                        ram = str(nums)
+                        num += 1
+                    elif name == "cpu" and nums > 0:
+                        cpu = str(nums)
+                        num += 1
+                except:
+                    pass
 
             if num == 0:
                 new_command = cmd
