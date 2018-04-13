@@ -524,7 +524,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                             new_command[i] = new_command[i].replace(name, path, 1)
 
             # print(new_command)
-            f = open(bundle_path + '/' + uuid + '.sh', 'w')
+            f = open(bundle_path + '/' + 'codalab.sh', 'w')
             f.write('#!/usr/bin/env bash\n\n')
             f.write('source ~/.bashrc\n')
             f.write('source activate base\n\n')
@@ -532,7 +532,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             f.close()
 
             run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
-                   bundle_path + '/' + uuid + '.sh']
+                   bundle_path + '/' + 'codalab.sh']
 
             p = subprocess.Popen(run, cwd=bundle_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
             self.bundle_state[uuid] = p
