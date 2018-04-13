@@ -535,12 +535,14 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                    bundle_path + '/' + 'codalab.sh']
 
             p = subprocess.Popen(run, cwd=bundle_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-            self.bundle_state[uuid] = p
+
 
             out, err = p.communicate()
             # errcode = p.returncode
-            print(out.split()[3])
+            self.bundle_state[uuid] = out.split()[2]
+
             fo = open(bundle_path + "/stdout", "w")
+            fo.write(out)
             fe = open(bundle_path + "/stderr", "w")
             fo.close()
             fe.close()
@@ -608,7 +610,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         #stdout, stderr = self.get_logs(container_id)
         if container_id not in self.bundle_state.keys():
             return (True, 1, "No such a bundle.")
-        if self.bundle_state[container_id].poll() is None:
+        job_id = self.bundle_state[container_id]
+        res = subprocess.Popen(["qstat", "-j", job_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        out, _ = res.communicate()
+        if len(out) > 50:
             return (False, None, None)
         time.sleep(0.3)
         return (True, 0, None)
