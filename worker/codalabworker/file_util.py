@@ -57,7 +57,9 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
                 done = True
             time.sleep(2)
 
-        stdout = open(filename + ".o" + job_id, "r").read()
+        output = open(filename + ".o" + job_id, "r").read()
+        stdout = open(filename + job_id, "w")
+        stdout.write(output)
 
         return stdout
     except subprocess.CalledProcessError as e:
