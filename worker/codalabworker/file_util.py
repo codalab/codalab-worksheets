@@ -7,6 +7,7 @@ import subprocess
 import tarfile
 import zlib
 import bz2
+import time
 
 
 def tar_gzip_directory(directory_path, follow_symlinks=False,
@@ -21,6 +22,7 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     """
+    # TODO
     args = ['tar', 'czf', '-', '-C', directory_path]
     if follow_symlinks:
         args.append('-h')
@@ -34,8 +36,30 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
     else:
         args.extend(['--files-from', '/dev/null'])
     try:
-        proc = subprocess.Popen(args, stdout=subprocess.PIPE)
-        return proc.stdout
+        timing = str(int(time.time()))[-4:]
+        filename = 'zip' + timing + '.sh'
+        f = open(filename, 'w')
+        f.write('#!/usr/bin/env bash\n\n')
+        f.write(' '.join(args))
+        f.close()
+
+        run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', 4, '-l', 'h_vmem=4G,gpu=0,h_rt=24:00:00', filename]
+
+        proc = subprocess.Popen(run, stdout=subprocess.PIPE)
+        out, _ = proc.communicate()
+        job_id = out.split()[2]
+        done = False
+
+        while not done:
+            res = subprocess.Popen(["qstat", "-j", job_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            out, _ = res.communicate()
+            if len(out) < 100:
+                done = True
+            time.sleep(2)
+
+        stdout = open(filename + ".o" + job_id, "r").read()
+
+        return stdout
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
