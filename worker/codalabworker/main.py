@@ -41,7 +41,7 @@ def main():
     parser.add_argument('--gpuset', type=str, metavar='GPUSET_STR', default='ALL',
                         help='Comma-separated list of GPUs in which to allow bundle execution '
                              '(e.g., \"0,1\", \"1\").')
-    parser.add_argument('--max-work-dir-size', type=str, metavar='SIZE', default='10g',
+    parser.add_argument('--max-work-dir-size', type=str, metavar='SIZE', default='100g',
                         help='Maximum size of the temporary bundle data '
                              '(e.g., 3, 3k, 3m, 3g, 3t).')
     parser.add_argument('--max-dependencies-serialized-length', type=int, default=60000,
