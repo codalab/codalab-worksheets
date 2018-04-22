@@ -158,6 +158,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
 USER_COMMANDS = (
     'uinfo',
     'uedit',
+    'udelete'
 )
 
 SERVER_COMMANDS = (
@@ -2786,6 +2787,25 @@ class BundleCLI(object):
                                              user['disk_quota']))
         except KeyError:
             pass
+
+    @Commands.command(
+        'udelete',
+        help=[
+            'Delete user.',
+        ],
+        arguments=(
+            Commands.Argument('user_spec', help='Username or id of user to delete.'),
+        ),
+    )
+    def do_uinfo_command(self, args):
+        """
+        Edit properties of users.
+        """
+        client = self.manager.current_client()
+        user = client.fetch('users', args.user_spec)
+
+        client.delete('users', user['id'])
+        print >>self.stdout, 'Deleted user %s(%s).' % (user['user_name'], user['id'])
 
     #############################################################################
     # Local-only commands follow!

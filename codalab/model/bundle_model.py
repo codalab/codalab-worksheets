@@ -1831,6 +1831,12 @@ class BundleModel(object):
 
         return user_id, verification_key
 
+    def delete_user(self, user_id=None):
+        with self.engine.begin() as connection:
+            connection.execute(cl_user.delete().where(
+                cl_user.c.user_id == user_id,
+            ))
+
     def get_verification_key(self, user_id):
         """
         Get verification key for given user.

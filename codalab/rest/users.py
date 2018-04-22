@@ -3,7 +3,7 @@ Worksheets REST API Users Views.
 """
 import httplib
 
-from bottle import abort, get, request, local
+from bottle import abort, get, request, local, delete
 
 from codalab.lib.spec_util import NAME_REGEX
 from codalab.lib.server_util import bottle_patch as patch
@@ -15,6 +15,9 @@ from codalab.rest.schemas import (
 from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
+)
+from codalab.rest.util import (
+    get_resource_ids,
 )
 
 
@@ -71,6 +74,32 @@ def fetch_user(user_spec):
     if user is None:
         abort(httplib.NOT_FOUND, "User %s not found" % user_spec)
     return allowed_user_schema()().dump(user).data
+
+
+@delete('/users', apply=AuthenticatedPlugin())
+def delete_user():
+    """Fetch user ids"""
+    user_ids = get_resource_ids(request.json, 'users')
+
+    request_user_id = request.user.user_id
+    is_root_user = (request_user_id == local.model.root_user_id)
+    print 'request from user_id %s' % request_user_id
+    print 'root user_id is %s' % local.model.root_user_id
+
+    if not is_root_user:
+        abort(httplib.UNAUTHORIZED, "Only root user can delete other users.")
+
+    for user_id in user_ids:
+        user = local.model.get_user(user_id=user_id)
+        if user is None:
+            abort(httplib.NOT_FOUND, "User %s not found" % user_id)
+
+        print 'user_to_delete %s' % user.user_id
+
+        local.model.delete_user(user_id=user.user_id)
+
+    # Return list of deleted id as meta
+    abort(httplib.NO_CONTENT)
 
 
 @get('/users')
