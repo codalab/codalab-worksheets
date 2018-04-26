@@ -82,12 +82,13 @@ def delete_user():
     user_ids = get_resource_ids(request.json, 'users')
 
     request_user_id = request.user.user_id
-    is_root_user = (request_user_id == local.model.root_user_id)
 
-    if not is_root_user:
+    if request_user_id != local.model.root_user_id:
         abort(httplib.UNAUTHORIZED, "Only root user can delete other users.")
 
     for user_id in user_ids:
+        if user_id == local.model.root_user_id:
+            abort(httplib.UNAUTHORIZED, "Cannot delete root user.")
         user = local.model.get_user(user_id=user_id)
         if user is None:
             abort(httplib.NOT_FOUND, "User %s not found" % user_id)

@@ -158,7 +158,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
 USER_COMMANDS = (
     'uinfo',
     'uedit',
-    'udelete'
+    'ufarewell'
 )
 
 SERVER_COMMANDS = (
@@ -2789,17 +2789,18 @@ class BundleCLI(object):
             pass
 
     @Commands.command(
-        'udelete',
+        'ufarewell',
         help=[
-            'Delete user.',
+            'Delete user permanently. Root user only.',
+            'To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.',
         ],
         arguments=(
             Commands.Argument('user_spec', help='Username or id of user to delete.'),
         ),
     )
-    def do_uinfo_command(self, args):
+    def do_ufarewell_command(self, args):
         """
-        Edit properties of users.
+        Delete user.
         """
         client = self.manager.current_client()
         user = client.fetch('users', args.user_spec)
