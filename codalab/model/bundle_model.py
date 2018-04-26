@@ -1870,18 +1870,6 @@ class BundleModel(object):
                 cl_user_group.c.user_id == user_id,
             ))
 
-            # ==Bundle==
-
-            # TODO: Get bundles owned by user and call delete_bundles on those
-
-            # ==Worksheet==
-
-            # TODO: Get worksheets owned by user and call delete_bundles on those
-
-            # ==Group==
-
-            # TODO: Get groups owned by user and call delete_bundles on those
-
             # ==Event==
             connection.execute(cl_event.delete().where(
                 cl_event.c.user_id == user_id,

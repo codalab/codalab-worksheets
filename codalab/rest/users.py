@@ -83,8 +83,6 @@ def delete_user():
 
     request_user_id = request.user.user_id
     is_root_user = (request_user_id == local.model.root_user_id)
-    print 'request from user_id %s' % request_user_id
-    print 'root user_id is %s' % local.model.root_user_id
 
     if not is_root_user:
         abort(httplib.UNAUTHORIZED, "Only root user can delete other users.")
@@ -94,7 +92,32 @@ def delete_user():
         if user is None:
             abort(httplib.NOT_FOUND, "User %s not found" % user_id)
 
-        print 'user_to_delete %s' % user.user_id
+        """
+        Check for owned bundles, worksheets, and groups.
+        If any are found, then do not allow user to be deleted.
+        """
+        error_message = ""
+
+        bundles = local.model.batch_get_bundles(owner_id=user_id)
+        if bundles is not None and len(bundles) > 0:
+            bundle_uuids = [bundle.uuid for bundle in bundles]
+            error_message += "User %s owns bundles, can't delete. UUIDs: %s \n" % \
+                (user_id, ",".join(bundle_uuids))
+
+        worksheets = local.model.batch_get_worksheets(fetch_items=False, owner_id=user_id)
+        if worksheets is not None and len(worksheets) > 0:
+            worksheet_uuids = [worksheet.uuid for worksheet in worksheets]
+            error_message += "User %s owns worksheets, can't delete. UUIDs: %s \n" % \
+                (user_id, ",".join(worksheet_uuids))
+
+        groups = local.model.batch_get_groups(owner_id=user_id)
+        if groups is not None and len(groups) > 0:
+            group_uuids = [group.uuid for group in groups]
+            error_message += "User %s owns groups, can't delete. UUIDs: %s \n" % \
+                (user_id, ",".join(group_uuids))
+
+        if error_message is not "":
+            abort(httplib.NOT_FOUND, error_message)
 
         local.model.delete_user(user_id=user.user_id)
 
