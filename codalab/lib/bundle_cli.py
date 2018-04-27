@@ -158,6 +158,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
 USER_COMMANDS = (
     'uinfo',
     'uedit',
+    'ufarewell'
 )
 
 SERVER_COMMANDS = (
@@ -2802,6 +2803,26 @@ class BundleCLI(object):
         for field in fields:
             print_attribute(field, user, should_pretty_print)
 
+
+    @Commands.command(
+        'ufarewell',
+        help=[
+            'Delete user permanently. Root user only.',
+            'To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.',
+        ],
+        arguments=(
+            Commands.Argument('user_spec', help='Username or id of user to delete.'),
+        ),
+    )
+    def do_ufarewell_command(self, args):
+        """
+        Delete user.
+        """
+        client = self.manager.current_client()
+        user = client.fetch('users', args.user_spec)
+
+        client.delete('users', user['id'])
+        print >>self.stdout, 'Deleted user %s(%s).' % (user['user_name'], user['id'])
 
     #############################################################################
     # Local-only commands follow!

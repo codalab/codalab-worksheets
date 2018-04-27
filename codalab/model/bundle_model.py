@@ -1831,6 +1831,40 @@ class BundleModel(object):
 
         return user_id, verification_key
 
+    def delete_user(self, user_id=None):
+        '''
+        Delete the user with the given uuid.
+        Delete all items in the database with a
+        foreign key that references the user.
+
+        :param user_id: id of user to delete
+        '''
+        with self.engine.begin() as connection:
+
+            # User verification
+            connection.execute(cl_user_verification.delete().where(cl_user_verification.c.user_id == user_id))
+            connection.execute(cl_user_reset_code.delete().where(cl_user_reset_code.c.user_id == user_id))
+
+            # OAuth2
+            connection.execute(oauth2_auth_code.delete().where(oauth2_auth_code.c.user_id == user_id))
+            connection.execute(oauth2_token.delete().where(oauth2_token.c.user_id == user_id))
+            connection.execute(oauth2_client.delete().where(oauth2_client.c.user_id == user_id))
+
+            # Workers
+            connection.execute(cl_worker_run.delete().where(cl_worker_run.c.user_id == user_id))
+
+            # User Groups
+            connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
+
+            # Event
+            connection.execute(cl_event.delete().where(cl_event.c.user_id == user_id))
+
+            # Chat
+            connection.execute(cl_chat.delete().where(cl_chat.c.sender_user_id == user_id or cl_chat.c.recipient_user_id == user_id))
+
+            # Delete User
+            connection.execute(cl_user.delete().where(cl_user.c.user_id == user_id))
+
     def get_verification_key(self, user_id):
         """
         Get verification key for given user.
