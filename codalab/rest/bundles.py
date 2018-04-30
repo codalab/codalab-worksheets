@@ -480,7 +480,7 @@ def _fetch_bundle_contents_blob(uuid, path=''):
 
     target_info = local.download_manager.get_target_info(uuid, path, 0)
     if target_info is None:
-        abort(httplib.NOT_FOUND, 'Not found.')
+        abort(httplib.NOT_FOUND, 'Invalid path "%s" in bundle with UUID (%s)' % (path, uuid))
 
     # Figure out the file name.
     if not path and bundle.metadata.name:
