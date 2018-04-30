@@ -116,7 +116,7 @@ def UnionCompleter(*completers):
 # TODO: https://github.com/codalab/codalab-cli/issues/223
 class TargetsCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
-        key, target = cli_util.parse_key_target(prefix, allow_incomplete=True)
+        key, target = cli_util.parse_key_target(prefix)
         if target is None:
             return ()
 
