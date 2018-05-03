@@ -617,8 +617,11 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     @wrap_exception('Unable to kill Docker container')
     def kill_container(self, container_id):
         # TODO
+        logger.debug('Killing container with ID %s', container_id)
+        p = subprocess.Popen(['qdel', self.bundle_state[container_id]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         del self.bundle_state[container_id]
         del self.bundle_path[container_id]
+        kill_response = "HTTP/1.1 204 No Content"
         return
         logger.debug('Killing container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
