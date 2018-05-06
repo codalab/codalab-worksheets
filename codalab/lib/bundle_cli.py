@@ -1788,7 +1788,6 @@ class BundleCLI(object):
         ),
     )
     def do_cat_command(self, args):
-        self._fail_if_headless(args)  # Files might be too big
 
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
@@ -1808,6 +1807,12 @@ class BundleCLI(object):
                 kwargs['head'] = head
             if tail is not None:
                 kwargs['tail'] = tail
+
+            if self.headless:
+                if head is None or kwargs['head'] > 100:
+                    print >>self.stdout, 'Truncating output to first 100 lines.'
+                    kwargs['head'] = head
+                    
             contents = client.fetch_contents_blob(bundle_uuid, subpath, **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout)
