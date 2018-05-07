@@ -52,9 +52,12 @@ class DependencyStage(object):
 class StateTransitioner(object):
     def __init__(self):
         self._transition_functions = {} # stage_name -> transition_function
+        self._check_functions = [] # List of transition_function
 
     def transition(self, state):
         """ Return the updated state """
+        for check_fn in self._check_functions:
+            state = check_fn(state)
         return self._transition_functions[state.stage](state)
 
     def add_transition(self, stage_name, transition_function):
@@ -62,6 +65,9 @@ class StateTransitioner(object):
             self._transition_functions[stage_name] = transition_function
         else:
             raise Exception('Stage name already exists!')
+
+    def add_check(self, check_function):
+        self._check_functions.append(check_function)
 
 class BaseDependencyManager(object):
 

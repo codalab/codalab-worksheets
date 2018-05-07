@@ -1,3 +1,4 @@
+
 class BaseRunManager(object):
     def start(self):
         """
@@ -47,13 +48,6 @@ class BaseRunManager(object):
         """
         raise NotImplementedError
 
-    def read(self, uuid, path, args):
-        """
-        Read contents of bundle with uuid at path with args.
-        Returns a stream with the contents read
-        """
-        raise NotImplementedError
-
     def write(self, uuid, path, string):
         """
         Write string to path in bundle with uuid
@@ -93,3 +87,81 @@ class BaseRunManager(object):
         Total installed memory of this RunManager
         """
         raise NotImplementedError
+
+class Reader(object):
+    def __init__(self):
+        pass
+
+    def read(self, run_state, path, dep_paths, read_args, reply):
+        bundle_uuid = run_state.bundle['uuid']
+        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+        read_type = read_args['type']
+        if read_type == 'get_target_info'
+            self.get_target_info(run_state, path, dep_paths, read_args, reply)
+        elif read_type == 'stream_directory':
+            self.stream_directory(run_state, path, dep_paths, read_args, reply)
+        elif read_type == 'stream_file':
+            self.stream_directory(run_state, path, dep_paths, read_args, reply)
+        elif read_type == 'read_file_section':
+            self.read_file_section(run_state, path, dep_paths, read_args, reply)
+        elif read_type == 'summarize_file':
+            self.summarize_file(run_state, path, dep_paths, read_args, reply)
+        else:
+            err = (httplib.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
+            reply(err)
+
+    def get_target_info(self, run_state, path, dep_paths, args, reply_fn):
+        """
+        Calls reply_fn(err, msg, data) with the target_info of the path
+        in the msg field, or with err if there is an error
+        """
+        raise NotImplementedError
+
+    def stream_directory(self, run_state, path, dep_paths, args, reply_fn):
+        """
+        Calls reply_fn(err, msg, data) with the dir contents of the path
+        in the data field, or with err if there is an error
+        """
+        raise NotImplementedError
+
+    def stream_file(self, run_state, path, dep_paths, args, reply_fn):
+        """
+        Calls reply_fn(err, msg, data) with the file contents of the path
+        in the data field, or with err if there is an error
+        """
+        raise NotImplementedError
+
+    def read_file_section(self, run_state, path, dep_paths, args, reply_fn):
+        """
+        Calls reply_fn(err, msg, data) with the file section contents of the path
+        in the data field, or with err if there is an error
+        """
+        raise NotImplementedError
+
+    def summarize_file(self, run_state, path, dep_paths, args, reply_fn):
+        """
+        Calls reply_fn(err, msg, data) with the file summary of the path
+        in the data field, or with err if there is an error
+        """
+        raise NotImplementedError
+
+class RunState(object):
+    def __init__(self, stage, run_status, bundle, bundle_path, resources, start_time,
+            container_id, docker_image, is_killed, cpuset, gpuset, info):
+        self.stage = stage
+        self.run_status = run_status
+        self.bundle = bundle
+        self.bundle_path = bundle_path
+        self.resources = resources
+        self.start_time = start_time
+        self.container_id = container_id
+        self.docker_image = docker_image
+        self.is_killed = is_killed
+        self.cpuset = cpuset
+        self.gpuset = gpuset
+        self.info = info
+
+    def _replace(self, **kwargs):
+        obj_dict = vars(self)
+        obj_dict.update(kwargs)
+        return RunState(**self_dict)
