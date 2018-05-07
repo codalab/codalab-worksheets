@@ -1,9 +1,17 @@
+import httplib
 
 class BaseRunManager(object):
     def start(self):
         """
         starts the RunManager, initializes from committed state, starts other
         dependent managers and initializes them as well.
+        """
+        raise NotImplementedError
+
+    def stop(self):
+        """
+        Starts any necessary cleanup and propagates to its other managers
+        Blocks until cleanup is complete and it is safe to quit
         """
         raise NotImplementedError
 
@@ -15,11 +23,7 @@ class BaseRunManager(object):
         """
         raise NotImplementedError
 
-    def stop(self):
-        """
-        Starts any necessary cleanup and propagates to its other managers
-        Blocks until cleanup is complete and it is safe to quit
-        """
+    def process_runs(self):
         raise NotImplementedError
 
     def create_run(self, bundle, resources):
@@ -36,34 +40,36 @@ class BaseRunManager(object):
         """
         raise NotImplementedError
 
-    def list_all_runs(self):
-        """
-        Returns a list of all the runs managed by this RunManager
-        """
-        raise NotImplementedError
-
-    def list_all_dependencies(self):
-        """
-        Returns a list of all dependencies available in this RunManager
-        """
-        raise NotImplementedError
-
-    def write(self, uuid, path, string):
+    def write(self, run_state, path, string):
         """
         Write string to path in bundle with uuid
         """
         raise NotImplementedError
 
-    def netcat(self, uuid, port, message):
+    def netcat(self, run_state, port, message):
         """
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
         """
         raise NotImplementedError
 
-    def kill(self, uuid):
+    def kill(self, run_state):
         """
         Kill bundle with uuid
+        """
+        raise NotImplementedError
+
+    @property
+    def all_runs(self):
+        """
+        Returns a list of all the runs managed by this RunManager
+        """
+        raise NotImplementedError
+
+    @property
+    def all_dependencies(self):
+        """
+        Returns a list of all dependencies available in this RunManager
         """
         raise NotImplementedError
 
@@ -96,7 +102,7 @@ class Reader(object):
         bundle_uuid = run_state.bundle['uuid']
         dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
         read_type = read_args['type']
-        if read_type == 'get_target_info'
+        if read_type == 'get_target_info':
             self.get_target_info(run_state, path, dep_paths, read_args, reply)
         elif read_type == 'stream_directory':
             self.stream_directory(run_state, path, dep_paths, read_args, reply)
@@ -164,4 +170,4 @@ class RunState(object):
     def _replace(self, **kwargs):
         obj_dict = vars(self)
         obj_dict.update(kwargs)
-        return RunState(**self_dict)
+        return RunState(**obj_dict)
