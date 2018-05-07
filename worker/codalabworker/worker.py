@@ -30,7 +30,6 @@ class Worker(object):
         self._state_committer = JsonStateCommitter(commit_file)
         self._tag = tag
         self._work_dir = work_dir
-        self._bundles_dir = os.path.join(work_dir, 'bundles')
         self._bundle_service = bundle_service
         self._stop = False
         self._last_checkin_successful = False
