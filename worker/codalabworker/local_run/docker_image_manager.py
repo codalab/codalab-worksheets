@@ -50,7 +50,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         with self._lock:
             self._images = self._state_committer.load()
 
-    def run(self):
+    def start(self):
         def loop(self):
             while not self._stop:
                 try:

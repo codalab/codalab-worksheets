@@ -60,7 +60,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             logger.error(self._dependencies)
             logger.info('{} dependencies in cache.'.format(len(self._dependencies)))
 
-    def run(self):
+    def start(self):
         def loop(self):
             while not self._stop:
                 try:
