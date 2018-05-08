@@ -184,7 +184,6 @@ class Worker(object):
             err = (httplib.INTERNAL_SERVER_ERROR, e.message)
             reply(err)
 
-    # NOTE: this function has not yet been ported
     def _netcat(self, socket_id, uuid, port, message):
         def reply(err, message={}, data=None):
             self._bundle_service_reply(socket_id, err, message, data)
@@ -198,13 +197,10 @@ class Worker(object):
             err = (httplib.INTERNAL_SERVER_ERROR, e.message)
             reply(err)
 
-    # NOTE: this function has not yet been ported
-    def _write(self, uuid, subpath, string):
-        run_state = self._run_manager.get_run(uuid)
+    def _write(self, run_state, subpath, string):
         dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
-    # NOTE: this function has not yet been ported
     def _kill(self, uuid):
         run_state = self._run_manager.get_run(uuid)
         self._run_manager.kill(run_state)
