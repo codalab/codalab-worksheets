@@ -18,8 +18,9 @@ from bundle_service_client import BundleServiceClient
 from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
-from dependency_manager import LocalFileSystemDependencyManager
-from docker_image_manager import DockerImageManager
+from local_run.dependency_manager import LocalFileSystemDependencyManager
+from local_run.docker_image_manager import DockerImageManager
+from local_run.local_run_manager import LocalRunManager
 from fsm import JsonStateCommitter
 
 logger = logging.getLogger(__name__)
@@ -108,28 +109,27 @@ chmod 600 %s""" % args.password_file
         max_images_bytes = parse_size(args.max_image_cache_size)
 
     docker_client = DockerClient()
-
-    # transform/verify cpuset and gpuset
-    cpuset = parse_cpuset_args(args.cpuset)
-    gpuset = parse_gpuset_args(docker_client, args.gpuset)
-
     bundle_service = BundleServiceClient(args.server, username, password)
+    worker_state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'worker-state.json'))
 
-    dependency_manager = LocalFileSystemDependencyManager(
-            JsonStateCommitter(os.path.join(args.work_dir, 'dependencies-state.json')),
-            bundle_service, args.work_dir, max_work_dir_size_bytes, args.max_dependencies_serialized_length)
-    dependency_manager.run()
+    def create_run_manager(worker):
+        cpuset = parse_cpuset_args(args.cpuset)
+        gpuset = parse_gpuset_args(docker_client, args.gpuset)
 
-    image_manager = DockerImageManager(
-            docker_client, JsonStateCommitter(os.path.join(args.work_dir, 'images-state.json')),
-            max_images_bytes
-    )
-    image_manager.run()
+        dependency_manager = LocalFileSystemDependencyManager(
+                JsonStateCommitter(os.path.join(args.work_dir, 'dependencies-state.json')),
+                bundle_service, args.work_dir, max_work_dir_size_bytes, args.max_dependencies_serialized_length)
 
-    state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'worker-state.json'))
-    worker = Worker(state_committer, dependency_manager, image_manager,
-                args.id, args.tag, args.work_dir, cpuset, gpuset,
-                bundle_service, docker_client, args.network_prefix)
+        image_manager = DockerImageManager(
+                docker_client, JsonStateCommitter(os.path.join(args.work_dir, 'images-state.json')),
+                max_images_bytes
+        )
+
+        run_manager_state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'run-state.json'))
+        return LocalRunManager(worker, docker_client, image_manager, dependency_manager, run_manager_state_committer, args.work_dir, cpuset, gpuset, args.network_prefix)
+
+    worker = Worker(create_run_manager, worker_state_committer, args.id, args.tag,
+            args.work_dir, bundle_service)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
@@ -140,7 +140,7 @@ chmod 600 %s""" % args.password_file
     print('Worker started.')
     # END
 
-    worker.run()
+    worker.start()
 
 def parse_cpuset_args(arg):
     """

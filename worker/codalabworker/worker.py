@@ -25,7 +25,7 @@ Resumable Workers
 """
 
 class Worker(object):
-    def __init__(self, run_manager, state_committer, worker_id, tag, work_dir, bundle_service):
+    def __init__(self, create_run_manager, state_committer, worker_id, tag, work_dir, bundle_service):
         self.id = worker_id
         self._state_committer = state_committer
         self._tag = tag
@@ -33,7 +33,7 @@ class Worker(object):
         self._bundle_service = bundle_service
         self._stop = False
         self._last_checkin_successful = False
-        self._run_manager = run_manager
+        self._run_manager = create_run_manager(self)
 
     def start(self):
         self._run_manager.start()
@@ -55,6 +55,9 @@ class Worker(object):
 
         self._run_manager.stop()
 
+    def signal(self):
+        self._stop = True
+
     def _checkin(self):
         """
         Checkin with the server and get a response. React to this response.
@@ -64,8 +67,8 @@ class Worker(object):
         request = {
             'version': VERSION,
             'tag': self._tag,
-            'cpus': len(self._run_manager.cpus),
-            'gpus': len(self._run_manager.gpus),
+            'cpus': self._run_manager.cpus,
+            'gpus': self._run_manager.gpus,
             'memory_bytes': self._run_manager.memory_bytes,
             'dependencies': self._run_manager.all_dependencies,
             'hostname': socket.gethostname(),
@@ -145,7 +148,6 @@ class Worker(object):
         self._run_manager.kill(run_state)
 
     def finalize_bundle(self, bundle_uuid, finalize_message):
-        # id, bundle_uuid, finalize_message
         self._execute_bundle_service_command_with_retry(
             lambda: self._bundle_service.finalize_bundle(
                 self.id, bundle_uuid, finalize_message))
@@ -155,8 +157,14 @@ class Worker(object):
             lambda: self._bundle_service.update_bundle_contents(
                 self.id, bundle_uuid, bundle_path, update_status))
 
+    def read_run_missing(self, socket_id):
+        message = {
+            'error_code': httplib.INTERNAL_SERVER_ERROR,
+            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
+        }
+        self._bundle_service.reply(self.id, socket_id, message)
+
     def _execute_bundle_service_command_with_retry(self, f):
-        # Retry for 6 hours before giving up.
         retries_left = COMMAND_RETRY_SECONDS
         while True:
             try:
@@ -169,11 +177,4 @@ class Worker(object):
                     time.sleep(30)
                     continue
                 raise
-
-    def read_run_missing(self, socket_id):
-        message = {
-            'error_code': httplib.INTERNAL_SERVER_ERROR,
-            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
-        }
-        self._bundle_service.reply(self.id, socket_id, message)
 
