@@ -85,6 +85,9 @@ class Worker(object):
     def signal(self):
         self._stop = True
 
+    def signal(self):
+        self._stop = True
+
     def _checkin(self):
         """
         Checkin with the server and get a response. React to this response.
