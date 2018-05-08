@@ -40,20 +40,20 @@ class BaseRunManager(object):
         """
         raise NotImplementedError
 
-    def write(self, run_state, path, string):
+    def write(self, bundle_uuid, path, string):
         """
         Write string to path in bundle with uuid
         """
         raise NotImplementedError
 
-    def netcat(self, run_state, port, message):
+    def netcat(self, bundle_uuid, port, message):
         """
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
         """
         raise NotImplementedError
 
-    def kill(self, run_state):
+    def kill(self, bundle_uuid):
         """
         Kill bundle with uuid
         """

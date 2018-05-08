@@ -3,6 +3,7 @@ import os
 from subprocess import check_output
 import threading
 import time
+import socket
 
 from run_manager import BaseRunManager, RunState
 from local_run_state import LocalRunStateMachine, LocalRunStage
@@ -150,18 +151,36 @@ class LocalRunManager(BaseRunManager):
     def read(self, run_state, path, dep_paths, args, reply):
         self._reader.read(run_state, path, dep_paths, args, reply)
 
-    def write(self, run_state, path, string):
+    def write(self, run_state, path, dep_paths, string):
         """
         Write string to path in bundle with uuid
         """
-        raise NotImplementedError
+        if os.path.normpath(path) in dep_paths:
+            return
+        with open(os.path.join(run_state.bundle_path, path), 'w') as f:
+            f.write(string)
 
-    def netcat(self, run_state, port, message):
+    def netcat(self, run_state, port, message, reply):
         """
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
         """
-        raise NotImplementedError
+        container_ip = self.docker.get_container_ip(
+                self.docker_network_external_name, run_state.container_id)
+        if not container_ip:
+            container_ip = self.docker.get_container_ip(
+                    self.docker_network_internal_name, run_state.container_id)
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((container_ip, port))
+        s.sendall(message)
+
+        total_data=[]
+        while True:
+            data = s.recv(1024)
+            if not data: break
+            total_data.append(data)
+        s.close()
+        reply(None, {}, ''.join(total_data))
 
     def kill(self, run_state):
         """

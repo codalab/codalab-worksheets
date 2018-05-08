@@ -115,18 +115,21 @@ class Worker(object):
         else:
             print >>sys.stdout, 'Bundle {} no longer assigned to this worker'.format(bundle['uuid'])
 
+    def _bundle_service_reply(self, socket_id, err, message, data):
+        if err:
+            err = {
+                'error_code': err[0],
+                'error_message': err[1],
+            }
+            self._bundle_service.reply(err)
+        elif data:
+            self._bundle_service.reply_data(self.id, socket_id, message, data)
+        else:
+            self._bundle_service.reply(self.id, socket_id, message)
+
     def _read(self, socket_id, run_state, path, read_args):
         def reply(err, message={}, data=None):
-            if err:
-                err = {
-                    'error_code': err[0],
-                    'error_message': err[1],
-                }
-                self._bundle_service.reply(err)
-            elif data:
-                self._bundle_service.reply_data(self.id, socket_id, message, data)
-            else:
-                self._bundle_service.reply(self.id, socket_id, message)
+            self._bundle_service_reply(socket_id, err, message, data)
 
         try:
             dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
@@ -139,10 +142,20 @@ class Worker(object):
             reply(err)
 
     def _netcat(self, socket_id, run_state, port, message):
-        pass
+        def reply(err, message={}, data=None):
+            self._bundle_service_reply(socket_id, err, message, data)
+        try:
+            self._run_manager.netcat(run_state, port, message, reply)
+        except BundleServiceException:
+            traceback.print_exc()
+        except Exception as e:
+            traceback.print_exc()
+            err = (httplib.INTERNAL_SERVER_ERROR, e.message)
+            reply(err)
 
     def _write(self, run_state, subpath, string):
-        pass
+        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+        self._run_manager.write(run_state, subpath, dep_paths, string)
 
     def _kill(self, run_state):
         self._run_manager.kill(run_state)
