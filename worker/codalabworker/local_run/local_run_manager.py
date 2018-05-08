@@ -57,7 +57,7 @@ class LocalRunManager(BaseRunManager):
                 self.docker_network_internal_name))
 
     def save_state(self):
-        self.state_committer.save_state(self.runs)
+        self.state_committer.save(self.runs)
 
     def _load_state(self):
         self.runs = self.state_committer.load()
