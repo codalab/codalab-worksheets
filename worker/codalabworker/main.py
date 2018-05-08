@@ -18,7 +18,7 @@ from bundle_service_client import BundleServiceClient
 from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
-from local_run.dependency_manager import LocalFileSystemDependencyManager
+from local_run.local_dependency_manager import LocalFileSystemDependencyManager
 from local_run.docker_image_manager import DockerImageManager
 from local_run.local_run_manager import LocalRunManager
 from fsm import JsonStateCommitter
