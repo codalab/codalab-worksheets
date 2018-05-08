@@ -60,7 +60,7 @@ class LocalRunManager(BaseRunManager):
         self.state_committer.save_state(self.runs)
 
     def _load_state(self):
-        self.runs = self.state_committer.load_state()
+        self.runs = self.state_committer.load()
 
     def start(self):
         self._load_state()
