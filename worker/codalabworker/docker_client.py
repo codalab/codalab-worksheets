@@ -562,7 +562,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if len(args) > 0:
                 f.write('#$ ' + args + '\n\n')
             else:
-                f.write('#$ -P other -cwd -pe mt 2 -l\n\n')
+                f.write('#$ -P other -cwd -pe mt 2\n\n')
             f.write('source ~/.bashrc\n')
             f.write('source activate base\n\n')
             #f.write(' '.join(new_command))
