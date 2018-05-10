@@ -52,7 +52,6 @@ class Worker(object):
                 self._last_checkin_successful = False
                 traceback.print_exc()
                 time.sleep(1)
-
         self._run_manager.stop()
         self._image_manager.stop()
         self._dependency_manager.stop()
