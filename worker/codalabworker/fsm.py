@@ -26,7 +26,8 @@ class JsonStateCommitter(BaseStateCommitter):
         """ Write out the state in JSON format to a temporary file and rename it into place """
 
         dirname, basename = os.path.split(self._state_file)
-        with tempfile.NamedTemporaryFile('w', prefix=basename, dir=dirname, delete=False) as f:
+        tempname = self._state_file + '.new'
+        with open(tempname, 'w') as f:
             f.write(pyjson.dumps(state))
             f.flush()
             shutil.move(f.name, self._state_file)

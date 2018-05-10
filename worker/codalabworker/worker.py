@@ -54,6 +54,34 @@ class Worker(object):
                 time.sleep(1)
 
         self._run_manager.stop()
+        self._image_manager.stop()
+        self._dependency_manager.stop()
+
+    def signal(self):
+        self._stop = True
+
+    def _get_runs_for_checkin(self):
+        with self._lock:
+            result = {
+                bundle_uuid: {
+                    'run_status': run_state.run_status,
+                    'start_time': run_state.start_time,
+                    'docker_image': run_state.docker_image,
+                    'info': run_state.info
+                } for bundle_uuid, run_state in self._runs.items()
+            }
+            return result
+
+    def _get_installed_memory_bytes(self):
+        try:
+            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
+        except ValueError:
+            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
+            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+
+    def _get_memory_bytes(self):
+        return self._get_installed_memory_bytes()
+>>>>>>> Got it to run locally
 
     def signal(self):
         self._stop = True
