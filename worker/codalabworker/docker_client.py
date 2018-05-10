@@ -504,6 +504,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             # [[u'/home/harry/codalab-worker-scratch/bundles/0x83f82a13852e4a6483860b734e4e47d0', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/hello', u'ro'], [u'/home/harry/codalab-worker-scratch/bundles/0x42b3fa2c493e45a99eb079282453e561', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/_1', u'ro']]
 
             # new_command = str(command).split()
+            """
             cmd = str(command).split()
             num = 0
             times = str(24)
@@ -534,7 +535,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 new_command = cmd
             else:
                 new_command = cmd[:-num]
-
+            """
+            cmd = str(command).split(" -- ")
+            new_command = cmd[0]
+            args = cmd[1]
 
             for bundle in bundles:
                 path = str(bundle[0])
@@ -551,14 +555,20 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
             # print(new_command)
             f = open(bundle_path + '/' + 'codalab.sh', 'w')
+            if len(args) > 0:
+                f.write('#$ ' + args + '\n\n')
+            else:
+                f.write('#$ -P other -cwd -pe mt 2 -l')
             f.write('#!/usr/bin/env bash\n\n')
             f.write('source ~/.bashrc\n')
             f.write('source activate base\n\n')
-            f.write(' '.join(new_command))
+            #f.write(' '.join(new_command))
+            f.write(new_command)
             f.close()
 
-            run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
-                   bundle_path + '/' + 'codalab.sh']
+            #run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
+            #       bundle_path + '/' + 'codalab.sh']
+            run = ['qsub', bundle_path + '/' + 'codalab.sh']
 
             p = subprocess.Popen(run, cwd=bundle_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
@@ -619,14 +629,17 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # TODO
         logger.debug('Killing container with ID %s', container_id)
         p = subprocess.Popen(['qdel', self.bundle_state[container_id]], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        kill_response = "HTTP/1.1 204 No Content"
-        return
+
+        out, err = p.communicate()
+
+        """
         logger.debug('Killing container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
             conn.request('POST', '/containers/%s/kill' % container_id)
             kill_response = conn.getresponse()
             if kill_response.status == 500:
                 raise DockerException(kill_response.read())
+        """
 
     @wrap_exception('Unable to check Docker container status')
     def check_finished(self, container_id):
@@ -652,6 +665,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         fe.close()
 
         return (True, 0, None)
+        """
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/json' % container_id)
             inspect_response = conn.getresponse()
@@ -673,6 +687,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     failure_msg = None
                 return (True, inspect_json['State']['ExitCode'], failure_msg)
             return (False, None, None)
+        """
 
     @wrap_exception('Unable to delete Docker container')
     def delete_container(self, container_id):
@@ -682,12 +697,14 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         del self.bundle_path[container_id]
         delete_response = "HTTP/1.1 204 No Content"
         return
+        """
         logger.debug('Deleting container with ID %s', container_id)
         with closing(self._create_connection()) as conn:
             conn.request('DELETE', '/containers/%s?force=1' % container_id)
             delete_response = conn.getresponse()
             if delete_response.status == 500:
                 raise DockerException(delete_response.read())
+        """
 
     def get_logs(self, container_id):
         """
@@ -699,7 +716,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         stderr = []
         stdout = []
         return ''.join(stdout), ''.join(stderr)
-
+        """
         with closing(self._create_connection()) as conn:
             conn.request('GET', '/containers/%s/logs?stdout=1&stderr=1' % container_id)
             logs_response = conn.getresponse()
@@ -718,7 +735,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     stderr.append(payload)
                 start += 8 + size
             return ''.join(stdout), ''.join(stderr)
-
+        """
 
 class DockerUnixConnection(httplib.HTTPConnection, object):
     """
