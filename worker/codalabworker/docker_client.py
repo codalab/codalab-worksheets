@@ -538,7 +538,12 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             """
             if str(command) == "bash":
                 f = open(bundle_path + '/' + 'codalab.sh', 'w')
-                print(bundles[0])
+                path = str(bundles[0][0])
+                name = str(bundles[0][1].split("/")[-1])
+                print(path + name)
+                bash = open(path + name, "r").read()
+                f.write(bash)
+                f.close()
             else:
                 cmd = str(command).split(" -- ")
                 new_command = cmd[0].split()
