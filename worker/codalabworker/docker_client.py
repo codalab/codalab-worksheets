@@ -537,7 +537,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 new_command = cmd[:-num]
             """
             cmd = str(command).split(" -- ")
-            new_command = cmd[0]
+            new_command = cmd[0].split()
             if len(cmd) == 2:
                 args = cmd[1]
             else:
@@ -565,8 +565,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 f.write('#$ -P other -cwd -pe mt 2\n\n')
             f.write('source ~/.bashrc\n')
             f.write('source activate base\n\n')
-            #f.write(' '.join(new_command))
-            f.write(new_command)
+            f.write(' '.join(new_command))
+            #f.write(new_command)
             f.close()
 
             #run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
