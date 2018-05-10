@@ -538,7 +538,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             """
             cmd = str(command).split(" -- ")
             new_command = cmd[0]
-            args = cmd[1]
+            if len(cmd) == 2:
+                args = cmd[1]
+            else:
+                args = ""
 
             for bundle in bundles:
                 path = str(bundle[0])
