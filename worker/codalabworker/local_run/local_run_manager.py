@@ -1,3 +1,4 @@
+from collections import namedtuple
 import logging
 import os
 from subprocess import check_output
@@ -5,11 +6,15 @@ import threading
 import time
 import socket
 
-from run_manager import BaseRunManager, RunState
+from run_manager import BaseRunManager#, RunState
 from local_run_state import LocalRunStateMachine, LocalRunStage
 from local_reader import LocalReader
 
 logger = logging.getLogger(__name__)
+
+RunState = namedtuple('RunState',
+    ['stage', 'run_status', 'bundle', 'bundle_path', 'resources', 'start_time',
+'container_id', 'docker_image', 'is_killed', 'cpuset', 'gpuset', 'info'])
 
 class LocalRunManager(BaseRunManager):
     """
@@ -57,7 +62,7 @@ class LocalRunManager(BaseRunManager):
                 self.docker_network_internal_name))
 
     def save_state(self):
-        self.state_committer.save(self.runs)
+        self.state_committer.commit(self.runs)
 
     def _load_state(self):
         self.runs = self.state_committer.load()
