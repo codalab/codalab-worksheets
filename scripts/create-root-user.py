@@ -38,4 +38,4 @@ if model.get_user(user_id=user_id, check_active=False):
     }
     model.update_user_info(update)
 else:
-    model.add_user(username, '', '', '', password, '', user_id, is_verified=True)
+    model.add_user(username, '', '', '', password, '', user_id=user_id, is_verified=True)
