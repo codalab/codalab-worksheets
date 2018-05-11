@@ -1,3 +1,4 @@
+from collections import namedtuple
 import logging
 import os
 from subprocess import check_output

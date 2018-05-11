@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 import traceback
 
@@ -69,12 +70,13 @@ class LocalRunStateMachine(StateTransitioner):
             # TODO: Can't kill uploading/finalizing bundles
             return run_state
 
-        if run_state.is_killed() and run_state.container_id is not None:
+        if run_state.is_killed and run_state.container_id is not None:
             try:
                 self._run_manager._docker.kill_container(run_state.container_id)
             except DockerException:
                 traceback.print_exc()
             return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None)
+        return run_state
 
     def _transition_from_STARTING(self, run_state):
         # first attempt to get() every dependency/image so that downloads start in parallel
@@ -136,7 +138,7 @@ class LocalRunStateMachine(StateTransitioner):
         else:
             docker_network = self._run_manager.docker_network_internal_name
 
-        cpuset, gpuset = self._run_manager.assign_cpu_and_gpu_sets(
+        cpuset, gpuset = self._run_manager._assign_cpu_and_gpu_sets(
                 run_state.resources['request_cpus'], run_state.resources['request_gpus'])
 
         # 4) Start container
@@ -233,7 +235,7 @@ class LocalRunStateMachine(StateTransitioner):
                     'exitcode': exitcode,
                     'failure_message': failure_message,
                 }
-                self._run_manager._finalize_bundle(bundle_uuid, finalize_message)
+                self._run_manager.finalize_bundle(bundle_uuid, finalize_message)
             except Exception:
                 traceback.print_exc()
 
