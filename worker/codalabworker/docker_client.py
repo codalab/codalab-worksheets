@@ -536,37 +536,33 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             else:
                 new_command = cmd[:-num]
             """
-            if str(command) == "bash":
-                f = open(bundle_path + '/' + 'codalab.sh', 'w')
-                path = str(bundles[0][0])
-                name = str(bundles[0][1].split("/")[-1])
-                #print(path + "/" + name)
-                bash = open(path + "/" + name, "r").read()
-                f.write(bash)
-                f.close()
+            cmd = str(command).split(" -- ")
+
+            new_command = cmd[0].split()
+            if len(cmd) == 2:
+                args = cmd[1]
             else:
-                cmd = str(command).split(" -- ")
-                new_command = cmd[0].split()
-                if len(cmd) == 2:
-                    args = cmd[1]
-                else:
-                    args = ""
+                args = ""
 
-                for bundle in bundles:
-                    path = str(bundle[0])
-                    name = str(bundle[1].split("/")[-1])
+            for bundle in bundles:
+                path = str(bundle[0])
+                name = str(bundle[1].split("/")[-1])
 
-                    if name in new_command:  # file name
-                        for i in range(len(new_command)):
-                            if new_command[i] == name:
-                                new_command[i] = path
-                    else:  # folder
-                        for i in range(len(new_command)):
-                            if name + "/" in new_command[i]:
-                                new_command[i] = new_command[i].replace(name, path, 1)
+                if name in new_command:    # file name
+                    for i in range(len(new_command)):
+                        if new_command[i] == name:
+                            new_command[i] = path
+                else:                      # folder
+                    for i in range(len(new_command)):
+                        if name + "/" in new_command[i]:
+                            new_command[i] = new_command[i].replace(name, path, 1)
 
-                # print(new_command)
-                f = open(bundle_path + '/' + 'codalab.sh', 'w')
+            # print(new_command)
+            f = open(bundle_path + '/' + 'codalab.sh', 'w')
+            if new_command[0] == "qsub":
+                bash = open(new_command[1], "r").read()
+                f.write(bash)
+            else:
                 f.write('#!/usr/bin/env bash\n\n')
                 if len(args) > 0:
                     f.write('#$ ' + args + '\n\n')
@@ -575,9 +571,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 f.write('source ~/.bashrc\n')
                 f.write('source activate base\n\n')
                 f.write(' '.join(new_command))
-                # f.write(new_command)
-                f.close()
-
+            #f.write(new_command)
+            f.close()
 
             #run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
             #       bundle_path + '/' + 'codalab.sh']
