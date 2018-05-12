@@ -1808,14 +1808,18 @@ class BundleCLI(object):
             if tail is not None:
                 kwargs['tail'] = tail
 
+            # uses the same parameters as the front-end bundle interface
             if self.headless:
-                if head is None or kwargs['head'] > 100:
-                    print >>self.stdout, 'Truncating output to first 100 lines.'
-                    kwargs['head'] = head
-                    
+                kwargs['head'] = 50
+                kwargs['tail'] = 50
+                kwargs['truncation_text'] = '\n... truncated ...\n\n'
+
             contents = client.fetch_contents_blob(bundle_uuid, subpath, **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout)
+
+            if self.headless:
+                print >>self.stdout, '--Web CLI detected, truncated output to first 50 and last 50 lines.--'
 
         def size(x):
             t = x.get('type', '???')
