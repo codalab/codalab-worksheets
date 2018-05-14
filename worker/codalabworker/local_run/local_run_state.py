@@ -72,7 +72,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         if run_state.is_killed and run_state.container_id is not None:
             try:
-                self._run_manager._docker.kill_container(run_state.container_id)
+                self._run_manager.docker.kill_container(run_state.container_id)
             except DockerException:
                 traceback.print_exc()
             return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None)
