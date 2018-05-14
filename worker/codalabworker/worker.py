@@ -114,7 +114,7 @@ class Worker(object):
                     self.read_run_missing(socket_id)
                     return
             if action_type == 'run':
-                self._run(response['bundle'], response['resources'])
+                self._run(response['uuid'], response['resources'])
             elif action_type == 'read':
                 self._read(socket_id, response['uuid'], response['path'],
                            response['read_args'])
@@ -196,7 +196,8 @@ class Worker(object):
             err = (httplib.INTERNAL_SERVER_ERROR, e.message)
             reply(err)
 
-    def _write(self, run_state, subpath, string):
+    def _write(self, uuid, subpath, string):
+        run_state = self._run_manager.get_run(uuid)
         dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
