@@ -75,6 +75,9 @@ from codalab.objects.oauth2 import (
 from codalab.objects.user import (
     User,
 )
+from codalab.rest.util import (
+    get_group_info
+)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -1001,6 +1004,8 @@ class BundleModel(object):
                 keyword = 'owner_id=' + (user_id or '')
             elif keyword == '.last':
                 keyword = 'id=.sort-'
+            elif keyword == '.shared':
+                keyword = '.shared=True'
 
             m = SEARCH_KEYWORD_REGEX.match(keyword) # key=value
             if m:
@@ -1011,11 +1016,17 @@ class BundleModel(object):
                 key, value = 'uuid_name_title', keyword
 
             clause = None
+            print key
             # Special functions
             if key == '.offset':
                 offset = int(value)
             elif key == '.limit':
                 limit = int(value)
+            elif key == '.shared':
+                clause = cl_worksheet.c.uuid.in_(select([cl_group_worksheet_permission.c.object_uuid]).where(
+                    cl_group_worksheet_permission.c.group_uuid.in_(
+                        alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)))
+                ))
             # Bundle fields
             elif key == 'id':
                 clause = make_condition(cl_worksheet.c.id, value)
@@ -1027,6 +1038,11 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.title, value)
             elif key == 'owner_id':
                 clause = make_condition(cl_worksheet.c.owner_id, value)
+            elif key == 'group':
+                group_uuid = get_group_info(value, False)['uuid']
+                clause = cl_worksheet.c.uuid.in_(select([cl_group_worksheet_permission.c.object_uuid]).where(
+                    cl_group_worksheet_permission.c.group_uuid == group_uuid
+                ))
             elif key == 'bundle':  # contains bundle?
                 condition = make_condition(cl_worksheet_item.c.bundle_uuid, value)
                 if condition is None:  # top-level

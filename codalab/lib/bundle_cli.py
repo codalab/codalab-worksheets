@@ -2370,7 +2370,9 @@ class BundleCLI(object):
         help=[
             'List worksheets on the current instance matching the given keywords.',
             '  wls tag=paper : List worksheets tagged as "paper".',
+            '  wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.',
             '  wls .mine     : List my worksheets.',
+            '  wls .shared   : List worksheets that have been shared with any of the groups I am in.',
         ],
         arguments=(
             Commands.Argument('keywords', help='Keywords to search for.', nargs='*'),
