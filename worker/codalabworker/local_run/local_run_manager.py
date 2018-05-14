@@ -192,7 +192,7 @@ class LocalRunManager(BaseRunManager):
         Kill bundle with uuid
         """
         with self.lock:
-            logger.debug('Run state to KILL: {}'.format(run_state))
+            logger.debug('Runs to KILL: {}'.format(self.runs))
             run_state.info['kill_message'] = 'Kill requested'
             run_state = run_state._replace(info=run_state.info, is_killed=True)
             self.runs[run_state['bundle']['uuid']] = run_state
