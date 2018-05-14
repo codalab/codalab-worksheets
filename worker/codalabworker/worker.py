@@ -106,25 +106,25 @@ class Worker(object):
         if response:
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)
-            if action_type in ['read', 'write', 'netcat', 'kill']:
+            if action_type in ['read', 'netcat']:
                 run_state = self._run_manager.get_run(response['uuid'])
                 socket_id = response['socket_id']
                 if run_state is None:
                     self.read_run_missing(socket_id)
                     return
             if action_type == 'run':
-                self._run(response['bundle'], response['resources'])
+                self._run(response['uuid'], response['resources'])
             elif action_type == 'read':
-                self._read(socket_id, run_state, response['path'],
+                self._read(socket_id, response['uuid'], response['path'],
                            response['read_args'])
             elif action_type == 'netcat':
-                self._netcat(socket_id, run_state, response['port'],
+                self._netcat(socket_id, response['uuid'], response['port'],
                            response['message'])
             elif action_type == 'write':
-                self._write(run_state, response['subpath'],
+                self._write(response['uuid'], response['subpath'],
                             response['string'])
             elif action_type == 'kill':
-                self._kill(run_state)
+                self._kill(response['uuid'])
 
     def _run(self, bundle, resources):
         """
@@ -155,11 +155,12 @@ class Worker(object):
         else:
             self._bundle_service.reply(self.id, socket_id, message)
 
-    def _read(self, socket_id, run_state, path, read_args):
+    def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
             self._bundle_service_reply(socket_id, err, message, data)
 
         try:
+            run_state = self._run_manager.get_run(uuid)
             dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
             self._run_manager.read(run_state, path, dep_paths, read_args, reply)
         except BundleServiceException:
@@ -169,10 +170,11 @@ class Worker(object):
             err = (httplib.INTERNAL_SERVER_ERROR, e.message)
             reply(err)
 
-    def _netcat(self, socket_id, run_state, port, message):
+    def _netcat(self, socket_id, uuid, port, message):
         def reply(err, message={}, data=None):
             self._bundle_service_reply(socket_id, err, message, data)
         try:
+            run_state = self._run_manager.get_run(uuid)
             self._run_manager.netcat(run_state, port, message, reply)
         except BundleServiceException:
             traceback.print_exc()
@@ -181,11 +183,13 @@ class Worker(object):
             err = (httplib.INTERNAL_SERVER_ERROR, e.message)
             reply(err)
 
-    def _write(self, run_state, subpath, string):
+    def _write(self, uuid, subpath, string):
+        run_state = self._run_manager.get_run(uuid)
         dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
-    def _kill(self, run_state):
+    def _kill(self, uuid):
+        run_state = self._run_manager.get_run(uuid)
         self._run_manager.kill(run_state)
 
     def finalize_bundle(self, bundle_uuid, finalize_message):
