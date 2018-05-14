@@ -22,7 +22,7 @@ class LocalReader(Reader):
             final_path = get_target_path(run_state.bundle_path, run_state.bundle['uuid'], path)
         except PathException as e:
             reply_fn((httplib.BAD_REQUEST, e.message), None, None)
-        threading.Thread(target=stream_fn, args=(final_path)).start()
+        threading.Thread(target=stream_fn, args=[final_path]).start()
 
     def get_target_info(self, run_state, path, dep_paths, args, reply_fn):
         bundle_uuid = run_state.bundle['uuid']
