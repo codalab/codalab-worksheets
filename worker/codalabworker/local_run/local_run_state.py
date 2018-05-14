@@ -4,10 +4,10 @@ import threading
 import time
 import traceback
 
-from docker_client import DockerException
-from file_util import remove_path
-from formatting import size_str
-from fsm import (
+from ..docker_client import DockerException
+from ..file_util import remove_path
+from ..formatting import size_str
+from ..fsm import (
     DependencyStage,
     StateTransitioner
 )

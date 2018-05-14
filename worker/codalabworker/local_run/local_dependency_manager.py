@@ -8,9 +8,9 @@ import traceback
 import time
 import shutil
 
-from file_util import get_path_size, remove_path
-from formatting import size_str
-from fsm import (
+from ..file_util import get_path_size, remove_path
+from ..formatting import size_str
+from ..fsm import (
     BaseDependencyManager,
     JsonStateCommitter,
     DependencyStage,

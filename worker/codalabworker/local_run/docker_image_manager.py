@@ -6,9 +6,9 @@ import traceback
 import logging
 import json
 
-from formatting import size_str
-from docker_client import DockerException
-from fsm import (
+from ..formatting import size_str
+from ..docker_client import DockerException
+from ..fsm import (
     BaseDependencyManager,
     JsonStateCommitter,
     DependencyStage,
