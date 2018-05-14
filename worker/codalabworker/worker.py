@@ -113,7 +113,7 @@ class Worker(object):
                     self.read_run_missing(socket_id)
                     return
             if action_type == 'run':
-                self._run(response['uuid'], response['resources'])
+                self._run(response['bundle'], response['resources'])
             elif action_type == 'read':
                 self._read(socket_id, response['bundle']['uuid'], response['path'],
                            response['read_args'])
