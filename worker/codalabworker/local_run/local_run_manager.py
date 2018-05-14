@@ -195,7 +195,7 @@ class LocalRunManager(BaseRunManager):
             logger.debug('Run state to KILL: {}'.format(run_state))
             run_state.info['kill_message'] = 'Kill requested'
             run_state = run_state._replace(info=run_state.info, is_killed=True)
-            self.runs[run_state['uuid']] = run_state
+            self.runs[run_state['bundle']['uuid']] = run_state
 
     @property
     def all_runs(self):
