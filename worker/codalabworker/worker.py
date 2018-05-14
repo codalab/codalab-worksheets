@@ -115,16 +115,16 @@ class Worker(object):
             if action_type == 'run':
                 self._run(response['bundle'], response['resources'])
             elif action_type == 'read':
-                self._read(socket_id, response['bundle']['uuid'], response['path'],
+                self._read(socket_id, response['uuid'], response['path'],
                            response['read_args'])
             elif action_type == 'netcat':
-                self._netcat(socket_id, response['bundle']['uuid'], response['port'],
+                self._netcat(socket_id, response['uuid'], response['port'],
                            response['message'])
             elif action_type == 'write':
-                self._write(response['bundle']['uuid'], response['subpath'],
+                self._write(response['uuid'], response['subpath'],
                             response['string'])
             elif action_type == 'kill':
-                self._kill(response['bundle']['uuid'])
+                self._kill(response['uuid'])
 
     def _run(self, bundle, resources):
         """
