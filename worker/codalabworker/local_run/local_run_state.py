@@ -138,7 +138,7 @@ class LocalRunStateMachine(StateTransitioner):
         else:
             docker_network = self._run_manager.docker_network_internal_name
 
-        cpuset, gpuset = self._run_manager._assign_cpu_and_gpu_sets(
+        cpuset, gpuset = self._run_manager.assign_cpu_and_gpu_sets(
                 run_state.resources['request_cpus'], run_state.resources['request_gpus'])
 
         # 4) Start container
@@ -230,7 +230,11 @@ class LocalRunStateMachine(StateTransitioner):
                 failure_message = run_state.info.get('failure_message', None)
                 exitcode = run_state.info.get('exitcode', None)
                 if failure_message is None and run_state.is_killed:
+<<<<<<< Updated upstream
                     failure_message = self._run_manager._get_kill_message()
+=======
+                    failure_message = self._run_manager.get_kill_message()
+>>>>>>> Stashed changes
                 finalize_message = {
                     'exitcode': exitcode,
                     'failure_message': failure_message,
