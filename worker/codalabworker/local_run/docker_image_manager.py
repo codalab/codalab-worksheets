@@ -17,7 +17,7 @@ from ..fsm import (
 
 logger = logging.getLogger(__name__)
 
-DockerImageState = namedtuple('DockerImageState', 'stage digest last_used message')
+DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used message')
 
 class DockerImageManager(StateTransitioner, BaseDependencyManager):
 
@@ -56,6 +56,8 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 try:
                     self._process_images()
                     self._save_state()
+                    self._cleanup()
+                    self._save_state()
                 except Exception:
                     traceback.print_exc()
                 time.sleep(self._sleep_secs)
@@ -63,7 +65,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         self._main_thread.start()
 
     def stop(self):
-        self._stop_cleanup = True
+        self._stop = True
         self._main_thread.join()
 
     def _process_images(self):
@@ -80,22 +82,42 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     if now - image_state.last_used > self._max_age_failed_seconds:
                         del self._images[digest]
 
-                # TODO: remove oldest images if size too big
-                pass
-
             for digest in self._images.keys():
                 image_state = self._images[digest]
                 self._images[digest] = self.transition(image_state)
 
+    def _cleanup(self):
+        while True:
+            total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
+            if total_bytes > self._max_images_bytes and len(self._images) > 0 and reclaimable_bytes > 0:
+                logger.debug('Docker images disk usage: %s (max %s)',
+                              size_str(total_bytes),
+                              size_str(self._max_images_bytes))
+                with self._lock:
+                    failed_images = {digest: image for digest, image in self._images.items() if image.stage == DependencyStage.FAILED}
+                    ready_images = {digest: image for digest, image in self._images.items() if image.stage == DependencyStage.READY}
+                    if failed_images:
+                        digest_to_remove = min(failed_images, key=lambda i: failed_images[i].last_used)
+                    elif ready_images:
+                        digest_to_remove = min(ready_images, key=lambda i: ready_images[i].last_used)
+                    else:
+                        break
+                    try:
+                        self._docker.remove_image(digest_to_remove)
+                    finally:
+                        del self._images[digest_to_remove]
+            else:
+                break
+
+
     def remove(self, digest):
         """
-        Mercilessly remove the image corresponding to the digest if it is being tracked by the manager.
+        Set the image to be removed. This will fail the active downloads
         """
         if not self.has(digest):
             return
         with self._lock:
-            # TODO: kill any threads that are downloading the image
-            del self._images[digest]
+            self._images[digest] = self._images[digest]._replace(killed=True)
 
     def has(self, digest):
         with self._lock:
@@ -105,7 +127,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         now = time.time()
         with self._lock:
             if not self.has(digest):
-                self._images[digest] = DockerImageState(DependencyStage.DOWNLOADING, digest, now, "")
+                self._images[digest] = DockerImageState(stage=DependencyStage.DOWNLOADING, digest=digest, killed=False, last_used=now, message="")
 
             # update last_used as long as it isn't in FAILED
             if self._images[digest].stage != DependencyStage.FAILED:
@@ -120,21 +142,23 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
     def _transition_from_DOWNLOADING(self, image_state):
         def download():
             def update_status_message_and_check_killed(status_message):
-                # TODO: check killed
                 with self._lock:
                     image_state = self.get(digest)
-                    self._images[digest] = image_state._replace(message=status_message)
+                    if image_state.killed:
+                        return False # should resume
+                    else:
+                        self._images[digest] = image_state._replace(message=status_message)
+                        return True # should stop download
 
             try:
                 self._docker.download_image(digest, update_status_message_and_check_killed)
                 with self._lock:
                     self._downloading[digest]['success'] = True
+                logger.debug('Finished downloading image %s', digest) 
             except DockerException as err:
                 with self._lock:
                     image_state = self.get(digest)
                     self._images[digest] = image_state._replace(message=str(err))
-            finally:
-                logger.debug('Finished downloading image %s', digest) #TODO?
 
         digest = image_state.digest
         if digest not in self._downloading:
