@@ -349,7 +349,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                         size_str(response['progressDetail']['total']))
                 except KeyError:
                     pass
-                loop_callback(status)
+                should_resume = loop_callback(status)
+                if not should_resume:
+                    raise DockerException('Download aborted by user')
 
     def create_container(self, bundle_path, uuid, command, docker_image,
                         request_network, dependencies, extra_args=[]):
