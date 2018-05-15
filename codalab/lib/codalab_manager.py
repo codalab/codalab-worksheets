@@ -57,7 +57,7 @@ from codalab.lib import formatting
 from codalab.model.worker_model import WorkerModel
 
 
-MAIN_BUNDLE_SERVICE = 'https://worksheets.codalab.org'
+MAIN_BUNDLE_SERVICE = 'http://128.9.36.100'
 
 
 def cached(fn):
@@ -401,6 +401,7 @@ class CodaLabManager(object):
         # Create RestOAuthHandler that authenticates directly with
         # OAuth endpoints on the REST server
         from codalab.server.auth import RestOAuthHandler
+        address = "http://128.9.36.100"
         auth_handler = RestOAuthHandler(address)
 
         # Create JsonApiClient with a callback to get access tokens
@@ -425,6 +426,8 @@ class CodaLabManager(object):
         :param auth_handler: AuthHandler through which to authenticate
         :return: access token
         """
+        cache_key = 'http://128.9.36.100'
+
         auth = self.state['auth'].get(cache_key, {})
         def _cache_token(token_info, username=None):
             '''
