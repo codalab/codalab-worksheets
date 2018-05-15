@@ -230,11 +230,7 @@ class LocalRunStateMachine(StateTransitioner):
                 failure_message = run_state.info.get('failure_message', None)
                 exitcode = run_state.info.get('exitcode', None)
                 if failure_message is None and run_state.is_killed:
-<<<<<<< Updated upstream
-                    failure_message = self._run_manager._get_kill_message()
-=======
                     failure_message = self._run_manager.get_kill_message()
->>>>>>> Stashed changes
                 finalize_message = {
                     'exitcode': exitcode,
                     'failure_message': failure_message,
