@@ -302,7 +302,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     ''' Download the specified docker image with tag/digest. If no tag is specified, downloads the latest '''
     @wrap_exception('Unable to download Docker image')
-    def download_image(self, docker_image, loop_callback):
+    def download_image(self, docker_image, progress_callback):
         if len(docker_image.split(":")) < 2:
             logger.debug('Missing tag/digest on request docker image "%s", defaulting to latest', docker_image)
             docker_image = ':'.join([docker_image, 'latest'])
@@ -349,7 +349,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                         size_str(response['progressDetail']['total']))
                 except KeyError:
                     pass
-                should_resume = loop_callback(status)
+                should_resume = progress_callback(status)
                 if not should_resume:
                     raise DockerException('Download aborted by user')
 

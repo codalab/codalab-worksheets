@@ -25,23 +25,24 @@ class LocalRunManager(BaseRunManager):
     def __init__(self, worker, docker, image_manager, dependency_manager,
             state_committer, bundles_dir, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
+        self._state_committer = state_committer
+        self._run_state_manager = LocalRunStateMachine(self)
+        self._reader = LocalReader()
+        self._bundles_dir = bundles_dir
+        self._docker_network_prefix = docker_network_prefix
+        self._init_docker_networks()
+
+        # These members are public as the run state manager needs access to them
         self.docker = docker
         self.image_manager = image_manager
         self.dependency_manager = dependency_manager
-        self.state_committer = state_committer
         self.cpuset = cpuset
         self.gpuset = gpuset
-        self._docker_network_prefix = docker_network_prefix
-        self._bundles_dir = bundles_dir
 
         self.runs = {}
         self.uploading = {}
         self.finalizing = {}
         self.lock = threading.RLock()
-
-        self._run_state_manager = LocalRunStateMachine(self)
-        self._reader = LocalReader()
-        self._init_docker_networks()
 
     def _init_docker_networks(self):
         # set up docker networks for runs: one with external network access and one without
@@ -62,10 +63,10 @@ class LocalRunManager(BaseRunManager):
                 self.docker_network_internal_name))
 
     def save_state(self):
-        self.state_committer.commit(self.runs)
+        self._state_committer.commit(self.runs)
 
     def _load_state(self):
-        self.runs = self.state_committer.load()
+        self.runs = self._state_committer.load()
 
     def start(self):
         self._load_state()
@@ -153,8 +154,8 @@ class LocalRunManager(BaseRunManager):
     def finalize_bundle(self, bundle_uuid, finalize_message):
         self._worker.finalize_bundle(bundle_uuid, finalize_message)
 
-    def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
-        self._worker.upload_bundle_contents(bundle_uuid, bundle_path, update_status)
+    def upload_bundle_contents(self, bundle_uuid, bundle_path, progress_callback):
+        self._worker.upload_bundle_contents(bundle_uuid, bundle_path, progress_callback)
 
     def read(self, run_state, path, dep_paths, args, reply):
         self._reader.read(run_state, path, dep_paths, args, reply)
