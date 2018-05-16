@@ -663,7 +663,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
         bundle_path = self.bundle_path[container_id]
         try:
-            stdout = open(bundle_path + "/result", "r").read()
+            stdout = open(bundle_path + "/result.txt", "r").read()
         except:
             stdout = open(bundle_path + "/codalab.sh.o" + job_id, "r").read()
         stderr = open(bundle_path + "/codalab.sh.e" + job_id, "r").read()
