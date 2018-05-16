@@ -8,7 +8,7 @@ import traceback
 import time
 import shutil
 
-from ..file_util import get_path_size, remove_path
+from ..file_util import get_path_size, remove_path, un_tar_directory
 from ..formatting import size_str
 from ..fsm import (
     BaseDependencyManager,
@@ -19,7 +19,14 @@ from ..fsm import (
 
 logger = logging.getLogger(__name__)
 
-DependencyState = namedtuple('DependencyState', 'stage dependency path size_bytes last_used')
+DependencyState = namedtuple('DependencyState', 'stage dependency path size_bytes last_used message killed')
+
+class DownloadAbortedException(Exception):
+    """
+    Exception raised by the download if a download is killed before it is complete
+    """
+    def __init__(self, message):
+        super(DownloadAbortedException, self).__init__(message)
 
 class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager):
     def __init__(self, state_committer, bundle_service,
@@ -45,7 +52,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self._load_state()
 
         self._stop = False
-        self._cleanup_sleep_secs = 10
         self._main_thread = None
 
     def _save_state(self):
@@ -66,7 +72,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 try:
                     self._process_dependencies()
                     self._save_state()
-                    # TODO: cleanup
+                    self._cleanup()
+                    self._save_state()
                 except Exception:
                     traceback.print_exc()
                 time.sleep(self._cleanup_sleep_secs)
@@ -83,6 +90,37 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 dependency_state = self._dependencies[entry]
                 self._dependencies[entry] = self.transition(dependency_state)
 
+    def _cleanup(self):
+        while True:
+            with self._lock:
+                bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
+                serialized_dependencies = {'{}+{}'.format(*k): v for k, v in self._dependencies.items()}
+                serialized_length = len(json.dumps(serialized_dependencies))
+                if bytes_used > self._max_cache_size_bytes or serialized_length > self._max_serialized_length:
+                    logger.debug('%d dependencies in cache, disk usage: %s (max %s), serialized size: %s (max %s)',
+                                  len(self._dependencies),
+                                  size_str(bytes_used),
+                                  size_str(self._max_cache_size_bytes),
+                                  size_str(serialized_length),
+                                  size_str(self._max_serialized_length))
+                    failed_deps = {dep: state for dep, state in self._dependencies.items() if dep.stage == DependencyStage.FAILED}
+                    ready_deps = {dep: state for dep, state in self._dependencies.items() if dep.stage == DependencyStage.READY}
+                    if failed_deps:
+                        dep_to_remove = min(failed_deps, key=lambda i: failed_deps[i].last_used)
+                    elif ready_deps:
+                        dep_to_remove = min(ready_deps, key=lambda i: ready_deps[i].last_used)
+                    else:
+                        # TODO: What do we do if there are only downloading deps but together they are bigger than the quota
+                        break
+                    try:
+                        self._paths.remove(self._dependencies[dep_to_remove].path)
+                    finally:
+                        del self._dependencies[dep_to_remove]
+                else:
+                    break
+
+
+
     def has(self, dependency): # dependency = (parent_uuid, parent_path)
         with self._lock:
             return (dependency in self._dependencies)
@@ -91,8 +129,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         now = time.time()
         with self._lock:
             if not self.has(dependency): # add dependency state if it does not exist
-                self._dependencies[dependency] = DependencyState(DependencyStage.DOWNLOADING,
-                        dependency, self._assign_path(dependency), 0, now)
+                self._dependencies[dependency] = DependencyState(stage=DependencyStage.DOWNLOADING,
+                        dependency=dependency, path=self._assign_path(dependency), size_bytes=0,
+                        last_used=now, message="Starting download", killed=False)
 
             # update last_used as long as it isn't in FAILED
             if self._dependencies[dependency].stage != DependencyStage.FAILED:
@@ -123,8 +162,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             else:
                 with open(dependency_path, 'wb') as f:
                     shutil.copyfileobj(fileobj, f)
-        except:
-            remove_path(dependency_path)
+        except :
             raise
 
     def list_all(self):
@@ -137,10 +175,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     def _transition_from_DOWNLOADING(self, dependency_state):
         def download():
             def update_state_and_check_killed(bytes_downloaded):
-                # TODO: check killed
                 with self._lock:
                     state = self._dependencies[dependency]
-                    self._dependencies[dependency] = state._replace(size_bytes=bytes_downloaded)
+                    if state.killed:
+                        raise DownloadAbortedException("Aborted by user")
+                    self._dependencies[dependency] = state._replace(size_bytes=bytes_downloaded, message="Downloading dependency: %s downloaded" % size_str(bytes_downloaded))
 
             dependency_path = os.path.join(self._bundles_dir, dependency_state.path)
             logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
@@ -165,16 +204,18 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 with self._lock:
                     self._downloading[dependency]['success'] = True
 
-            except Exception as e: # TODO: get some error message back
+            except Exception as e:
                 with self._lock:
                     self._downloading[dependency]['success'] = False
+                    self._downloading[dependency]['failure_message'] = "Depdendency download failed: %s " % str(e)
 
         dependency = dependency_state.dependency
         parent_uuid, parent_path = dependency
         if dependency not in self._downloading:
             self._downloading[dependency] = {
                 'thread': threading.Thread(target=download, args=[]),
-                'success': False
+                'success': False,
+                'failure_message': None
             }
             self._downloading[dependency]['thread'].start()
 
@@ -182,12 +223,14 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             return dependency_state
 
         success = self._downloading[dependency]['success']
+        failure_message = self._downloading[dependency]['failure_message']
+
         del self._downloading[dependency]
         if success:
-            return dependency_state._replace(stage=DependencyStage.READY)
+            return dependency_state._replace(stage=DependencyStage.READY, message="Download complete")
         else:
             self._paths.remove(dependency_state.path)
-            return dependency_state._replace(stage=DependencyStage.FAILED)
+            return dependency_state._replace(stage=DependencyStage.FAILED, message=failure_message)
 
     def _transition_from_READY(self, dependency_state):
         return dependency_state
