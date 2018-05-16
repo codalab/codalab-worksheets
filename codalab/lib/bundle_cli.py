@@ -2961,7 +2961,7 @@ class BundleCLI(object):
 
     def _fail_if_headless(self, args):
         if self.headless:
-            raise UsageError('Cannot execute CLI command: %s' % args.command)
+            raise UsageError('You are only allowed to execute command "%s" from the CLI.' % args.command)
 
     def _fail_if_not_local(self, args):
         if 'localhost' not in self.manager.current_client().address:
