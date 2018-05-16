@@ -1788,7 +1788,6 @@ class BundleCLI(object):
         ),
     )
     def do_cat_command(self, args):
-        self._fail_if_headless(args)  # Files might be too big
 
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
@@ -1808,9 +1807,19 @@ class BundleCLI(object):
                 kwargs['head'] = head
             if tail is not None:
                 kwargs['tail'] = tail
+
+            # uses the same parameters as the front-end bundle interface
+            if self.headless:
+                kwargs['head'] = 50
+                kwargs['tail'] = 50
+                kwargs['truncation_text'] = '\n... truncated ...\n\n'
+
             contents = client.fetch_contents_blob(bundle_uuid, subpath, **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout)
+
+            if self.headless:
+                print >>self.stdout, '--Web CLI detected, truncated output to first 50 and last 50 lines.--'
 
         def size(x):
             t = x.get('type', '???')
