@@ -101,6 +101,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     elif ready_images:
                         digest_to_remove = min(ready_images, key=lambda i: ready_images[i].last_used)
                     else:
+                        # TODO: What do we do if there are only downloading images but together they are bigger than the quota
                         break
                     try:
                         self._docker.remove_image(digest_to_remove)
@@ -145,10 +146,10 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 with self._lock:
                     image_state = self.get(digest)
                     if image_state.killed:
-                        return False # should resume
+                        return False # should_resume = False
                     else:
                         self._images[digest] = image_state._replace(message=status_message)
-                        return True # should stop download
+                        return True # should_resume = True
 
             try:
                 self._docker.download_image(digest, update_status_message_and_check_killed)
