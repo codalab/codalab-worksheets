@@ -67,7 +67,6 @@ class LocalRunStateMachine(StateTransitioner):
     def _handle_kill(self, run_state):
         bundle_uuid = run_state.bundle['uuid']
         if bundle_uuid in self._run_manager.uploading or bundle_uuid in self._run_manager.finalizing:
-            # TODO: Can't kill uploading/finalizing bundles
             return run_state
 
         if run_state.is_killed and run_state.container_id is not None:
@@ -200,12 +199,13 @@ class LocalRunStateMachine(StateTransitioner):
 
                 # Upload results
                 logger.debug('Uploading results for run with UUID %s', bundle_uuid)
-                def update_status(bytes_uploaded):
+                def progress_callback(bytes_uploaded):
                     run_status = 'Uploading results: %s done (archived size)' % size_str(bytes_uploaded)
                     with self._run_manager.lock:
                         self._run_manager.uploading[bundle_uuid]['run_status'] = run_status
+                        return not self._run_manager.runs[bundle_uuid].is_killed
 
-                self._run_manager.upload_bundle_contents(bundle_uuid, run_state.bundle_path, update_status)
+                self._run_manager.upload_bundle_contents(bundle_uuid, run_state.bundle_path, progress_callback)
             except Exception:
                 traceback.print_exc()
 
