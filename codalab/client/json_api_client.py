@@ -572,7 +572,7 @@ class JsonApiClient(RestClient):
 
     @wrap_exception('Unable to fetch contents blob of bundle {1}')
     def fetch_contents_blob(self, bundle_id, target_path='', range_=None,
-                            head=None, tail=None):
+                            head=None, tail=None, truncation_text=None):
         """
         Returns a file-like object for the target on the given bundle.
 
@@ -593,6 +593,8 @@ class JsonApiClient(RestClient):
             params['head'] = head
         if tail is not None:
             params['tail'] = tail
+        if truncation_text is not None:
+            params['truncation_text'] = truncation_text
         return self._make_request('GET', request_path, headers=headers,
                                   query_params=params, return_response=True)
 
