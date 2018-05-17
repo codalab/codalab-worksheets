@@ -564,10 +564,14 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if new_command[0] == "qsub":
                 bash = open(new_command[1], "r")
                 for line in bash.readlines():
-                    if line.split()[0] == "export":
-                        if line.split()[1] in bds:
-                            line += "=" + bds[line.split()[1]]
-                    f.write(line)
+                    try:
+                        if line.split()[0] == "export":
+                            if line.split()[1] in bds:
+                                line += "=" + bds[line.split()[1]]
+                        f.write(line)
+                    except:
+                        f.write(line)
+
                 # f.write(bash)
             else:
                 f.write('#!/usr/bin/env bash\n\n')
