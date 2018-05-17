@@ -544,9 +544,11 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             else:
                 args = ""
 
+            bds = {}
             for bundle in bundles:
                 path = str(bundle[0])
                 name = str(bundle[1].split("/")[-1])
+                bds[name] = path
 
                 if name in new_command:    # file name
                     for i in range(len(new_command)):
@@ -560,8 +562,13 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             # print(new_command)
             f = open(bundle_path + '/' + 'codalab.sh', 'w')
             if new_command[0] == "qsub":
-                bash = open(new_command[1], "r").read()
-                f.write(bash)
+                bash = open(new_command[1], "r")
+                for line in bash.readlines():
+                    if line.split()[0] == "export":
+                        if line.split()[1] in bds:
+                            line += "=" + bds[line.split()[1]]
+                    f.write(line)
+                # f.write(bash)
             else:
                 f.write('#!/usr/bin/env bash\n\n')
                 if len(args) > 0:
