@@ -567,7 +567,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     try:
                         if line.split()[0] == "export":
                             if line.split()[1] in bds:
-                                line += "export " + line.split()[1] + "=" + bds[line.split()[1]] + "\n"
+                                line = "export " + line.split()[1] + "=" + bds[line.split()[1]] + "\n"
                         f.write(line)
                     except:
                         f.write(line)
