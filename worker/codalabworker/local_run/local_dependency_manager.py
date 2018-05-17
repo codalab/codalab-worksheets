@@ -19,7 +19,7 @@ from ..fsm import (
 
 logger = logging.getLogger(__name__)
 
-DependencyState = namedtuple('DependencyState', 'stage dependency path size_bytes last_used message killed')
+DependencyState = namedtuple('DependencyState', 'stage dependency path size_bytes dependents last_used message killed')
 
 class DownloadAbortedException(Exception):
     """
@@ -104,7 +104,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                                   size_str(serialized_length),
                                   size_str(self._max_serialized_length))
                     failed_deps = {dep: state for dep, state in self._dependencies.items() if dep.stage == DependencyStage.FAILED}
-                    ready_deps = {dep: state for dep, state in self._dependencies.items() if dep.stage == DependencyStage.READY}
+                    ready_deps = {dep: state for dep, state in self._dependencies.items() if dep.stage == DependencyStage.READY and not state.dependents}
                     if failed_deps:
                         dep_to_remove = min(failed_deps, key=lambda i: failed_deps[i].last_used)
                     elif ready_deps:
@@ -125,19 +125,31 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         with self._lock:
             return (dependency in self._dependencies)
 
-    def get(self, dependency):
+    def get(self, uuid, dependency):
+        """
+        Request the dependency for the run with uuid, registering uuid as a dependent of this dependency
+        """
         now = time.time()
         with self._lock:
             if not self.has(dependency): # add dependency state if it does not exist
                 self._dependencies[dependency] = DependencyState(stage=DependencyStage.DOWNLOADING,
                         dependency=dependency, path=self._assign_path(dependency), size_bytes=0,
-                        last_used=now, message="Starting download", killed=False)
+                        dependents=set(uuid), last_used=now, message="Starting download", killed=False)
 
             # update last_used as long as it isn't in FAILED
             if self._dependencies[dependency].stage != DependencyStage.FAILED:
+                self._dependencies[dependency].dependents.add(uuid)
                 self._dependencies[dependency] = self._dependencies[dependency]._replace(last_used=now)
-                logger.debug('Touched dependency %s at %f', dependency, now)
+                logger.debug('Touched dependency %s at %f, added dependent %s', dependency, now, uuid)
             return self._dependencies[dependency]
+
+    def release(self, uuid, dependency):
+        """
+        Register that the run with uuid is no longer dependent on this dependency
+        """
+        with self._lock:
+            if self.has(dependency) and uuid in self._dependencies[dependency].dependents:
+                self._dependencies[dependency].dependents.remove(uuid)
 
     def _assign_path(self, dependency):
         parent_uuid, parent_path = dependency

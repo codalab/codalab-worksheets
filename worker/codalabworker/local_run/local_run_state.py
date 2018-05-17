@@ -81,14 +81,14 @@ class LocalRunStateMachine(StateTransitioner):
         # first attempt to get() every dependency/image so that downloads start in parallel
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
-            dependency_state = self._run_manager.dependency_manager.get(dependency)
+            dependency_state = self._run_manager.dependency_manager.get(run_state.bundle['uuid'], dependency)
         docker_image = run_state.resources['docker_image']
         image_state = self._run_manager.image_manager.get(docker_image)
 
         # then inspect the state of every dependency/image to see whether all of them are ready
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
-            dependency_state = self._run_manager.dependency_manager.get(dependency)
+            dependency_state = self._run_manager.dependency_manager.get(run_state.bundle['uuid'], dependency)
             if dependency_state.stage == DependencyStage.DOWNLOADING:
                 status_message = 'Downloading dependency %s: %s done (archived size)' % (
                             dep['child_path'], size_str(dependency_state.size_bytes))
@@ -124,6 +124,7 @@ class LocalRunStateMachine(StateTransitioner):
                 raise Exception('Invalid key for dependency: %s' % (dep['child_path']))
 
             dependency_path = self._run_manager.dependency_manager.get(
+                        bundle_uuid,
                         (dep['parent_uuid'], dep['parent_path'])).path
             dependency_path = os.path.join(self._run_manager.bundles_dir, dependency_path)
 
@@ -190,8 +191,8 @@ class LocalRunStateMachine(StateTransitioner):
 
                 # Clean-up dependencies.
                 for dep in run_state.bundle['dependencies']:
-                    #self._run_manager.dependency_manager.remove_dependency(
-                    #    dep['parent_uuid'], dep['parent_path'], bundle_uuid)
+                    self._run_manager.dependency_manager.release(
+                        bundle_uuid, (dep['parent_uuid'], dep['parent_path']))
 
                     # Clean-up the symlinks we created.
                     child_path = os.path.join(run_state.bundle_path, dep['child_path'])
