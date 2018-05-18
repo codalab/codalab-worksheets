@@ -9,6 +9,7 @@ import struct
 import sys
 import subprocess
 import time
+import re
 
 from formatting import size_str, parse_size
 
@@ -28,7 +29,9 @@ def wrap_exception(message):
                 raise DockerException, \
                     DockerException(message + ': ' + str(e)), \
                     sys.exc_info()[2]
+
         return wrapper
+
     return decorator
 
 
@@ -275,7 +278,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 raise DockerException(response.read())
             try:
                 return json.loads(response.read())["NetworkSettings"]["Networks"][network_name]["IPAddress"]
-            except KeyError: # if container ip cannot be found in provided network, return None
+            except KeyError:  # if container ip cannot be found in provided network, return None
                 return None
 
     @wrap_exception('Unable to fetch Docker image metadata')
@@ -292,7 +295,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             return info['RepoDigests'][0]
         except (KeyError, IndexError):
             # If this happens, need to upgrade docker and delete the images and re-get them.
-            logger.debug('ERROR: empty RepoDigests for image {}, need to upgrade docker and delete image'.format(request_docker_image))
+            logger.debug('ERROR: empty RepoDigests for image {}, need to upgrade docker and delete image'.format(
+                request_docker_image))
             return ''
 
     @wrap_exception('Unable to remove Docker image')
@@ -317,6 +321,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     logger.debug('docker image %s: %s', action.lower(), target)
 
     ''' Download the specified docker image with tag/digest. If no tag is specified, downloads the latest '''
+
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, loop_callback):
         pass
@@ -371,7 +376,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         '''
 
     def create_container(self, bundle_path, uuid, command, docker_image,
-                        request_network, dependencies, extra_args=[]):
+                         request_network, dependencies, extra_args=[]):
         bundle_stat = os.stat(bundle_path)
         uid = bundle_stat.st_uid
         gid = bundle_stat.st_gid
@@ -390,7 +395,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             cli_command = 'docker {} {} {} {} {} {} {}'.format(
                 'create',
                 ' '.join(extra_args),
-                ' '.join([ '-v {}'.format(v) for v in volume_bindings ]),
+                ' '.join(['-v {}'.format(v) for v in volume_bindings]),
                 '-w={}'.format(docker_bundle_path),
                 '-e {}={}'.format('HOME', docker_bundle_path),
                 docker_image,
@@ -408,7 +413,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         return container_id
 
     def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
-                        dependencies):
+                             dependencies):
         # Set up the command.
         docker_bundle_path = '/' + uuid
         docker_commands = [
@@ -420,7 +425,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         return docker_commands
 
     def _get_volume_bindings(self, bundle_path, uuid, command, docker_image,
-                        dependencies):
+                             dependencies):
         docker_bundle_path = '/' + uuid
 
         # Set up the volumes.
@@ -463,11 +468,11 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'Image': docker_image,
             'WorkingDir': docker_bundle_path,
             'Env': ['HOME=%s' % docker_bundle_path],
-            'Entrypoint': [''], # unset entry point regardless of image
+            'Entrypoint': [''],  # unset entry point regardless of image
             'HostConfig': {
                 'Binds': volume_bindings,
                 'NetworkMode': network_name,
-                'Memory': memory_bytes, # hard memory limit
+                'Memory': memory_bytes,  # hard memory limit
                 'CpusetCpus': ','.join([str(k) for k in cpuset]),
             },
             # TODO: Fix potential permissions issues arising from this setting
@@ -479,7 +484,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             # Allocate the requested number of GPUs and isolate
             self._add_nvidia_docker_arguments(create_request, [str(k) for k in gpuset])
 
-        
+
         with closing(self._create_connection()) as create_conn:
             create_conn.request('POST', '/containers/create',
                                 json.dumps(create_request),
@@ -492,7 +497,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         container_id = uuid
         # Start the container.
         logger.debug('Starting Docker container for UUID %s with command %s, container ID %s',
-            uuid, command, container_id)
+                     uuid, command, container_id)
 
         if len(volume_bindings) > 0:
             working_dir = volume_bindings[0]
@@ -550,28 +555,26 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 name = str(bundle[1].split("/")[-1])
                 bds[name] = path
 
-                if name in new_command:    # file name
+                if name in new_command:  # file name
                     for i in range(len(new_command)):
                         if new_command[i] == name:
                             new_command[i] = path
-                else:                      # folder
+                else:  # folder
                     for i in range(len(new_command)):
                         if name + "/" in new_command[i]:
                             new_command[i] = new_command[i].replace(name, path, 1)
 
             # print(new_command)
-            import re
-            pat = re.compile("{{\w+}}")
-
             f = open(bundle_path + '/' + 'codalab.sh', 'w')
             if new_command[0] == "qsub":
                 bash = open(new_command[1], "r")
                 for line in bash.readlines():
-                    if pat.search(line):
-                        b_name = pat.findall(line)[0][2:-2]
-                        new_line = pat.sub(bds[b_name], line)
-                        f.write(new_line)
-                    else:
+                    try:
+                        if line.split()[0] == "export":
+                            if line.split()[1] in bds:
+                                line = "export " + line.split()[1] + "=" + bds[line.split()[1]] + "\n"
+                        f.write(line)
+                    except:
                         f.write(line)
 
                 # f.write(bash)
@@ -584,15 +587,14 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 f.write('source ~/.bashrc\n')
                 f.write('source activate base\n\n')
                 f.write(' '.join(new_command))
-            #f.write(new_command)
+            # f.write(new_command)
             f.close()
 
-            #run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
+            # run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', cpu, '-l', 'h_vmem='+ram+'G,gpu='+gpu+',h_rt='+times+':00:00',
             #       bundle_path + '/' + 'codalab.sh']
             run = ['qsub', bundle_path + '/' + 'codalab.sh']
 
             p = subprocess.Popen(run, cwd=bundle_path, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-
 
             out, err = p.communicate()
             # errcode = p.returncode
@@ -664,7 +666,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to check Docker container status')
     def check_finished(self, container_id):
-        #stdout, stderr = self.get_logs(container_id)
+        # stdout, stderr = self.get_logs(container_id)
         if container_id not in self.bundle_state.keys():
             return (True, 1, "No such a bundle.")
         job_id = self.bundle_state[container_id]
@@ -715,7 +717,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
     @wrap_exception('Unable to delete Docker container')
     def delete_container(self, container_id):
-        #TODO
+        # TODO
         logger.debug('Deleting container with ID %s', container_id)
         del self.bundle_state[container_id]
         del self.bundle_path[container_id]
@@ -761,6 +763,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             return ''.join(stdout), ''.join(stderr)
         """
 
+
 class DockerUnixConnection(httplib.HTTPConnection, object):
     """
     Connection to the Docker Unix socket.
@@ -772,4 +775,4 @@ class DockerUnixConnection(httplib.HTTPConnection, object):
     def connect(self):
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.settimeout(300)
-        #self.sock.connect('//var/run/docker.sock')
+        # self.sock.connect('//var/run/docker.sock')
