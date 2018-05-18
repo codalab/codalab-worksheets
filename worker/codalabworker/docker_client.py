@@ -570,6 +570,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 bash = open(new_command[1], "r")
                 for line in bash.readlines():
                     try:
+                        print(666666)
                         if line.split()[0] == "export":
                             if line.split()[1] in bds:
                                 line = "export " + line.split()[1] + "=" + bds[line.split()[1]] + "\n"
