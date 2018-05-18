@@ -569,8 +569,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 for line in bash.readlines():
                     if pat.search(line):
                         b_name = pat.findall(line)[0][2:-2]
-                        pat.sub(bds[b_name], line)
-                    f.write(line)
+                        new_line = pat.sub(bds[b_name], line)
+                        f.write(new_line)
+                    else:
+                        f.write(line)
 
                 # f.write(bash)
             else:
