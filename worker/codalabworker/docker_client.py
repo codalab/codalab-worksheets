@@ -566,9 +566,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             f = open(bundle_path + '/' + 'codalab.sh', 'w')
             if new_command[0] == "qsub":
                 bash = open(new_command[1], "r")
+                """
                 for line in bash.readlines():
                     f.write(pat.search(line))
-                    """
+                   
                     if pat.search(line):
                         f.write("# 666\n")
                         b_name = pat.findall(line)[0][2:-2]
