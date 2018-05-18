@@ -565,17 +565,17 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                             new_command[i] = new_command[i].replace(name, path, 1)
 
             # print(new_command)
+            pat = re.compile("{{\w+}}")
+
             f = open(bundle_path + '/' + 'codalab.sh', 'w')
             if new_command[0] == "qsub":
                 bash = open(new_command[1], "r")
                 for line in bash.readlines():
-                    try:
-                        print(666666)
-                        if line.split()[0] == "export":
-                            if line.split()[1] in bds:
-                                line = "export " + line.split()[1] + "=" + bds[line.split()[1]] + "\n"
-                        f.write(line)
-                    except:
+                    if pat.search(line):
+                        b_name = pat.findall(line)[0][2:-2]
+                        new_line = pat.sub(bds[b_name], line)
+                        f.write(new_line)
+                    else:
                         f.write(line)
 
                 # f.write(bash)
