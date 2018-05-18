@@ -563,8 +563,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             import re
             pat = re.compile("{{\w+}}")
 
-            f = open(bundle_path + '/' + 'codalab.sh', 'w')
-            f.close()
+            ff = open(bundle_path + '/' + 'codalab.sh', 'w')
             if new_command[0] == "qsub":
                 bash = open(new_command[1], "r")
                 """
