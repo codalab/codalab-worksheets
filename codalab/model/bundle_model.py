@@ -1016,16 +1016,18 @@ class BundleModel(object):
                 key, value = 'uuid_name_title', keyword
 
             clause = None
-            print key
             # Special functions
             if key == '.offset':
                 offset = int(value)
             elif key == '.limit':
                 limit = int(value)
-            elif key == '.shared':
+            elif key == '.shared':  # shared with any group I am in with read or all permission?
                 clause = cl_worksheet.c.uuid.in_(select([cl_group_worksheet_permission.c.object_uuid]).where(
-                    cl_group_worksheet_permission.c.group_uuid.in_(
-                        alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id)))
+                    and_(
+                        cl_group_worksheet_permission.c.group_uuid.in_(
+                            alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id))),
+                        cl_group_worksheet_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ
+                    )
                 ))
             # Bundle fields
             elif key == 'id':
@@ -1038,11 +1040,13 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.title, value)
             elif key == 'owner_id':
                 clause = make_condition(cl_worksheet.c.owner_id, value)
-            elif key == 'group':
+            elif key == 'group':  # shared with group with read or all permissions?
                 group_uuid = get_group_info(value, False)['uuid']
-                clause = cl_worksheet.c.uuid.in_(select([cl_group_worksheet_permission.c.object_uuid]).where(
-                    cl_group_worksheet_permission.c.group_uuid == group_uuid
-                ))
+                clause = cl_worksheet.c.uuid.in_(
+                        select([cl_group_worksheet_permission.c.object_uuid])
+                        .where(and_(
+                            cl_group_worksheet_permission.c.group_uuid == group_uuid,
+                            cl_group_worksheet_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ)))
             elif key == 'bundle':  # contains bundle?
                 condition = make_condition(cl_worksheet_item.c.bundle_uuid, value)
                 if condition is None:  # top-level
