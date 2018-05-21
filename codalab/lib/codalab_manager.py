@@ -517,7 +517,8 @@ class CodaLabManager(object):
                 "NOTICE: "
                 "The instance you are connected to is running CodaLab v{}. "
                 "You are currently using an older v{} of the CLI. "
-                "You can pull the latest features from GitHub.\n"
+                "Please update codalab using\n"
+                "   pip install -U codalab\n"
             ).format(server_version, CODALAB_VERSION)
             sys.stderr.write(message)
 
