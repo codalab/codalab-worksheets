@@ -136,7 +136,8 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 logger.debug('Touched image digest=%s at %f', digest, now)
             return self._images[digest]
 
-    def list_all(self):
+    @property
+    def all_images(self):
         with self._lock:
             return list(self._images.keys())
 

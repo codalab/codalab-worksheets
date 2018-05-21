@@ -177,7 +177,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         except :
             raise
 
-    def list_all(self):
+    @property
+    def all_dependencies(self):
         with self._lock:
             return list(self._dependencies.keys())
 
@@ -267,5 +268,6 @@ class SharedFileSystemDependencyManager(BaseDependencyManager):
     def get(self, dependency, blocking=True):
         raise NotImplementedError
 
-    def list_all(self):
+    @property
+    def all_dependencies(self):
         raise NotImplementedError
