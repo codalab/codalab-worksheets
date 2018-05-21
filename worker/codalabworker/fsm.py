@@ -67,9 +67,6 @@ class StateTransitioner(object):
         else:
             raise Exception('Stage name already exists!')
 
-    def add_check(self, check_function):
-        self._check_functions.append(check_function)
-
 class BaseDependencyManager(object):
 
     def run(self):

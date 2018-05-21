@@ -65,11 +65,11 @@ class LocalRunManager(BaseRunManager):
     def save_state(self):
         self._state_committer.commit(self.runs)
 
-    def _load_state(self):
+    def load_state(self):
         self.runs = self._state_committer.load()
 
     def start(self):
-        self._load_state()
+        self.load_state()
         self.image_manager.start()
         self.dependency_manager.start()
 
@@ -221,7 +221,7 @@ class LocalRunManager(BaseRunManager):
         """
         Returns a list of all dependencies available in this RunManager
         """
-        return self.dependency_manager.list_all()
+        return self.dependency_manager.all_dependencies
 
     @property
     def cpus(self):

@@ -150,24 +150,3 @@ class Reader(object):
         in the data field, or with err if there is an error
         """
         raise NotImplementedError
-
-class RunState(object):
-    def __init__(self, stage, run_status, bundle, bundle_path, resources, start_time,
-            container_id, docker_image, is_killed, cpuset, gpuset, info):
-        self.stage = stage
-        self.run_status = run_status
-        self.bundle = bundle
-        self.bundle_path = bundle_path
-        self.resources = resources
-        self.start_time = start_time
-        self.container_id = container_id
-        self.docker_image = docker_image
-        self.is_killed = is_killed
-        self.cpuset = cpuset
-        self.gpuset = gpuset
-        self.info = info
-
-    def _replace(self, **kwargs):
-        obj_dict = vars(self)
-        obj_dict.update(kwargs)
-        return RunState(**obj_dict)

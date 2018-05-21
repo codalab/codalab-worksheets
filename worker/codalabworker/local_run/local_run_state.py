@@ -57,27 +57,15 @@ class LocalRunStateMachine(StateTransitioner):
     def __init__(self, run_manager):
         super(LocalRunStateMachine, self).__init__()
         self._run_manager = run_manager
-        self.add_check(self._handle_kill)
         self.add_transition(LocalRunStage.STARTING, self._transition_from_STARTING)
         self.add_transition(LocalRunStage.RUNNING, self._transition_from_RUNNING)
         self.add_transition(LocalRunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(LocalRunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_transition(LocalRunStage.FINISHED, self._transition_from_FINISHED)
 
-    def _handle_kill(self, run_state):
-        bundle_uuid = run_state.bundle['uuid']
-        if bundle_uuid in self._run_manager.uploading or bundle_uuid in self._run_manager.finalizing:
-            return run_state
-
-        if run_state.is_killed and run_state.container_id is not None:
-            try:
-                self._run_manager.docker.kill_container(run_state.container_id)
-            except DockerException:
-                traceback.print_exc()
-            return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None)
-        return run_state
-
     def _transition_from_STARTING(self, run_state):
+        if run_state.is_killed:
+            return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None)
         # first attempt to get() every dependency/image so that downloads start in parallel
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
@@ -99,8 +87,6 @@ class LocalRunStateMachine(StateTransitioner):
                         dep['child_path'], '') #TODO: get more specific message
                 return run_state._replace(stage=LocalRunStage.FINALIZING, info=run_state.info)
 
-        docker_image = run_state.resources['docker_image']
-        image_state = self._run_manager.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_message = 'Pulling docker image: ' + (image_state.message or docker_image)
             return run_state._replace(run_status=status_message)
@@ -167,6 +153,13 @@ class LocalRunStateMachine(StateTransitioner):
         new_info = check_and_report_finished(run_state)
         run_state.info.update(new_info)
         run_state = run_state._replace(info=run_state.info)
+
+        if run_state.is_killed and run_state.container_id is not None:
+            try:
+                self._run_manager.docker.kill_container(run_state.container_id)
+            except DockerException:
+                traceback.print_exc()
+            return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None)
         if run_state.info['finished']:
             logger.debug('Finished run with UUID %s, exitcode %s, failure_message %s',
                  bundle_uuid, run_state.info['exitcode'], run_state.info['failure_message'])
@@ -188,15 +181,6 @@ class LocalRunStateMachine(StateTransitioner):
                         except DockerException:
                             traceback.print_exc()
                             time.sleep(1)
-
-                # Clean-up dependencies.
-                for dep in run_state.bundle['dependencies']:
-                    self._run_manager.dependency_manager.release(
-                        bundle_uuid, (dep['parent_uuid'], dep['parent_path']))
-
-                    # Clean-up the symlinks we created.
-                    child_path = os.path.join(run_state.bundle_path, dep['child_path'])
-                    remove_path(child_path)
 
                 # Upload results
                 logger.debug('Uploading results for run with UUID %s', bundle_uuid)
@@ -239,6 +223,19 @@ class LocalRunStateMachine(StateTransitioner):
                 self._run_manager.finalize_bundle(bundle_uuid, finalize_message)
             except Exception:
                 traceback.print_exc()
+            finally:
+                # Clean-up dependencies.
+                for dep in run_state.bundle['dependencies']:
+                    self._run_manager.dependency_manager.release(
+                        bundle_uuid, (dep['parent_uuid'], dep['parent_path']))
+
+                    # Clean-up the symlinks we created.
+                    child_path = os.path.join(run_state.bundle_path, dep['child_path'])
+                    try:
+                        remove_path(child_path)
+                    except Exception:
+                        traceback.print_exc()
+
 
         bundle_uuid = run_state.bundle['uuid']
         if bundle_uuid not in self._run_manager.finalizing:
