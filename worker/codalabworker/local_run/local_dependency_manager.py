@@ -47,8 +47,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self._lock = threading.RLock()
 
         self._paths = set()
-        self._dependencies = {}
-        self._downloading = {}
+        self._dependencies = dict()
+        self._downloading = dict()
         self._load_state()
 
         self._stop = False
