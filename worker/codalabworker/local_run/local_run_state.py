@@ -4,10 +4,10 @@ import threading
 import time
 import traceback
 
-from ..docker_client import DockerException
-from ..file_util import remove_path
-from ..formatting import size_str
-from ..fsm import (
+from codalabworker.docker_client import DockerException
+from codalabworker.file_util import remove_path
+from codalabworker.formatting import size_str
+from codalabworker.fsm import (
     DependencyStage,
     StateTransitioner
 )

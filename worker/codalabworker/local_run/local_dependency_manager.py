@@ -8,9 +8,9 @@ import traceback
 import time
 import shutil
 
-from ..file_util import get_path_size, remove_path, un_tar_directory
-from ..formatting import size_str
-from ..fsm import (
+from codalabworker.file_util import get_path_size, remove_path, un_tar_directory
+from codalabworker.formatting import size_str
+from codalabworker.fsm import (
     BaseDependencyManager,
     JsonStateCommitter,
     DependencyStage,
@@ -75,7 +75,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     self._save_state()
                 except Exception:
                     traceback.print_exc()
-                time.sleep(self._cleanup_sleep_secs)
+                # TODO: decide if we need to sleep here
         self._main_thread = threading.Thread(target=loop, args=[self])
         self._main_thread.start()
 
