@@ -30,7 +30,6 @@ class LocalRunManager(BaseRunManager):
         self._reader = LocalReader()
         self._bundles_dir = bundles_dir
         self._docker_network_prefix = docker_network_prefix
-        self._init_docker_networks()
 
         # These members are public as the run state manager needs access to them
         self.docker = docker
@@ -43,6 +42,7 @@ class LocalRunManager(BaseRunManager):
         self.uploading = {}
         self.finalizing = {}
         self.lock = threading.RLock()
+        self._init_docker_networks()
 
     def _init_docker_networks(self):
         # set up docker networks for runs: one with external network access and one without
