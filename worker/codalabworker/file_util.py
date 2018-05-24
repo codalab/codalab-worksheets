@@ -37,7 +37,8 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
         args.extend(['--files-from', '/dev/null'])
     try:
         timing = str(int(time.time()))[-4:]
-        filename = 'zip' + timing + '.sh'
+        zip_path = '/nas/home/tianxie/'
+        filename = zip_path + 'zip' + timing + '.sh'
         f = open(filename, 'w')
         f.write('#!/usr/bin/env bash\n\n')
         f.write(' '.join(args))
@@ -45,19 +46,19 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
 
         run = ['qsub', '-P', 'other', '-cwd', '-pe', 'mt', '4', '-l', 'h_vmem=4G,gpu=0,h_rt=24:00:00', filename]
 
-        proc = subprocess.Popen(run, stdout=subprocess.PIPE)
+        proc = subprocess.Popen(run, stdout=subprocess.PIPE, cwd=zip_path)
         out, _ = proc.communicate()
         job_id = out.split()[2]
         done = False
 
         while not done:
-            res = subprocess.Popen(["qstat", "-j", job_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            res = subprocess.Popen(["qstat", "-j", job_id], stdin=subprocess.PIPE, stdout=subprocess.PIPE, cwd=zip_path)
             out, _ = res.communicate()
             if len(out) < 100:
                 done = True
             time.sleep(2)
 
-        stdout = open(filename + ".o" + job_id, "r")
+        stdout = open(zip_path + filename + ".o" + job_id, "r")
 
         return stdout
 
