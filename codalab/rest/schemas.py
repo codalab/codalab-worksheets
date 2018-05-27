@@ -17,6 +17,7 @@ from codalab.bundles import BUNDLE_SUBCLASSES
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib.spec_util import CHILD_PATH_REGEX, NAME_REGEX, UUID_REGEX
 from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
+from codalab.objects.permission import parse_permission, permission_str
 
 
 class PermissionSpec(fields.Field):
