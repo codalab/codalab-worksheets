@@ -20,6 +20,7 @@ def send_help_message():
     support_email = local.config['server']['support_email']
     username = request.user.user_name
     user_email = request.user.email
+    originUrl = request.get_header('Referer')
 
     first_name = request.user.first_name if request.user.first_name else ''
     last_name = request.user.last_name if request.user.last_name else ''
@@ -28,7 +29,8 @@ def send_help_message():
 
     local.emailer.send_email(
         subject="Message from %s" % user_email,
-        body=template('help_message_to_codalab_body', real_name=real_name, username=username, email=user_email, message=message),
+        body=template('help_message_to_codalab_body', real_name=real_name, username=username,
+                      email=user_email, message=message, originUrl=originUrl),
         recipient=support_email,
         sender=user_email,
         charset='utf-8',
