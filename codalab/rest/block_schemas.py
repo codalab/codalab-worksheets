@@ -16,14 +16,14 @@ from marshmallow_jsonapi import Schema, fields
 # Enum that represents different modes for a block.
 class BlockModes:
     MARKUP_MODE = "markup_block"
-    RECORD_MODE = "record"
-    TABLE_MODE = "table"
-    BUNDLE_CONTENTS_MODE = "contents"
-    BUNDLE_HTML_MODE = "html"
-    BUNDLE_IMAGE_MODE = "image"
-    GRAPH_MODE = "graph"
-    WSEARCH_MODE = "wsearch"
-    SEARCH_MODE = "search"
+    RECORD_MODE = "record_block"
+    TABLE_MODE = "table_block"
+    BUNDLE_CONTENTS_MODE = "contents_block"
+    BUNDLE_HTML_MODE = "html_block"
+    BUNDLE_IMAGE_MODE = "image_block"
+    GRAPH_MODE = "graph_block"
+    WSEARCH_MODE = "wsearch_block"
+    SEARCH_MODE = "search_block"
     values = (MARKUP_MODE, RECORD_MODE, TABLE_MODE, BUNDLE_CONTENTS_MODE,
               BUNDLE_HTML_MODE, BUNDLE_IMAGE_MODE, GRAPH_MODE, WSEARCH_MODE,
               SEARCH_MODE)
