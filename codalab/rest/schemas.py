@@ -17,7 +17,6 @@ from codalab.bundles import BUNDLE_SUBCLASSES
 from codalab.lib.bundle_action import BundleAction
 from codalab.lib.spec_util import CHILD_PATH_REGEX, NAME_REGEX, UUID_REGEX
 from codalab.lib.worksheet_util import WORKSHEET_ITEM_TYPES
-from codalab.objects.permission import parse_permission, permission_str
 
 
 class PermissionSpec(fields.Field):
@@ -51,56 +50,6 @@ def validate_child_path(path):
     if not CHILD_PATH_REGEX.match(path):
         raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
-
-STATUS_STRINGS = ("unknown", "ready", "not_found", "no_permission")
-
-class Status(fields.Field):
-    # code = fields.String(validate=validate.OneOf(set(STATUS_STRINGS)))
-    # error_message = fields.String()
-
-class WorksheetBlock(Schema):
-    mode = fields.String()
-    is_refined = fields.Bool()
-
-    class Meta:
-        type_ = 'worksheet-block'
-
-class MarkupBlock(WorksheetBlock):
-    mode = fields.String(validate=validate.Equal(WORKSHEET_ITEM_TYPES.TYPE_MARKUP))
-    is_refined = fields.Bool(validate=validate.Equal(True))
-    text = fields.String()
-
-class BundleContentsBlock(WorksheetBlock):
-    mode = fields.String(validate=validate.Equal(WORKSHEET_ITEM_TYPES.TYPE_BUNDLE_CONTENTS))
-    path = fields.String()
-    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True)
-    max_lines = fields.Integer()
-
-    status = Status()
-    files = fields.List()  # what is this?
-    lines = fields.List(fields.String)
-
-class BundleImageBlock(WorksheetBlock):
-    mode = fields.String(validate=validate.Equal(WORKSHEET_ITEM_TYPES.TYPE_BUNDLE_CONTENTS))
-    path = fields.String()
-    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True)
-    max_lines = fields.Integer()
-
-    status = Status()
-    image_data = fields.String()
-
-class BundleHTMLBlock(WorksheetBlock):
-    mode = fields.String(validate=validate.Equal(WORKSHEET_ITEM_TYPES.TYPE_BUNDLE_CONTENTS))
-    path = fields.String()
-    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True)
-    max_lines = fields.Integer()
-
-    status = Status()
-    html_data = fields.String()
-
-class MarkupBlock(WorksheetBlock):
-    mode = fields.String(validate=validate.Equal(WORKSHEET_ITEM_TYPES.TYPE_MARKUP))
-    text = fields.String()
 
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
@@ -140,7 +89,7 @@ class WorksheetSchema(Schema):
     title = fields.String()
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
-    tags = fields.List(fields.String)
+    tags = fields.List(fields.String())
     group_permissions = fields.Relationship(include_data=True, type_='worksheet-permissions', id_field='id', many=True)
     items = fields.Relationship(include_data=True, type_='worksheet-items', id_field='id', many=True)
     last_item_id = fields.Integer(dump_only=True)

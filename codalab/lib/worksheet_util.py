@@ -36,18 +36,19 @@ from itertools import izip
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
-
+from codalab.rest.block_schemas import BlockModes, MarkupBlockSchema
 
 # Note: this is part of the client's session, not server side.
 CURRENT_WORKSHEET = '.'
 
-# Types of worksheet items
+# Types of raw worksheet items
 TYPE_MARKUP = 'markup'
 TYPE_DIRECTIVE = 'directive'
 TYPE_BUNDLE = 'bundle'
 TYPE_WORKSHEET = 'worksheet'
 
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
+
 
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
@@ -617,11 +618,11 @@ def interpret_items(schemas, raw_items):
 
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
-                    interpreted_items.append({
-                        'mode': TYPE_MARKUP,
-                        'interpreted': 'ERROR: cannot access bundle',
-                        'properties': {},
-                    })
+                    interpreted_items.append(
+                        MarkupBlockSchema().load({
+                            'id': len(interpreted_items),
+                            "text": "ERROR: cannot access bundle",
+                        }).data)
                     continue
 
                 # Parse arguments
@@ -754,13 +755,12 @@ def interpret_items(schemas, raw_items):
                 if len(interpreted_items) > 0 and interpreted_items[-1]['mode'] == TYPE_MARKUP and \
                    not last_was_empty_line and not new_last_was_empty_line:
                     # Join with previous markup item
-                    interpreted_items[-1]['interpreted'] += '\n' + value_obj
+                    interpreted_items[-1].text += '\n' + value_obj
                 elif not new_last_was_empty_line:
-                    interpreted_items.append({
-                        'mode': TYPE_MARKUP,
-                        'interpreted': value_obj,
-                        'properties': {},
-                    })
+                    interpreted_items.append(MarkupBlockSchema().load({
+                        'id': len(interpreted_items),
+                        'text': value_obj,
+                    }).data)
                 # Important: set raw_to_interpreted after so we can focus on current item.
                 if new_last_was_empty_line:
                     raw_to_interpreted.append(None)
@@ -832,11 +832,11 @@ def interpret_items(schemas, raw_items):
         except UsageError as e:
             current_schema = None
             bundle_infos[:] = []
-            interpreted_items.append({
-                'mode': TYPE_MARKUP,
-                'interpreted': 'Error on line %d: %s' % (raw_index, e.message),
-                'properties': {},
-            })
+            interpreted_items.append(MarkupBlockSchema().load({
+                'id': len(interpreted_items),
+                'text': 'Error on line %d: %s' % (raw_index, e.message),
+            }).data)
+
             raw_to_interpreted.append((len(interpreted_items) - 1, 0))
 
         except StandardError:
@@ -844,11 +844,11 @@ def interpret_items(schemas, raw_items):
             bundle_infos[:] = []
             import traceback
             traceback.print_exc()
-            interpreted_items.append({
-                'mode': TYPE_MARKUP,
-                'interpreted': 'Unexpected error while parsing line %d' % raw_index,
-                'properties': {},
-            })
+            interpreted_items.append(MarkupBlockSchema().load({
+                'id': len(interpreted_items),
+                'text': 'Unexpected error while parsing line %d' % raw_index,
+            }).data)
+
             raw_to_interpreted.append((len(interpreted_items) - 1, 0))
 
         finally:
