@@ -2,4 +2,4 @@ User {{!username}} ({{!email}}) ({{!real_name}}) has sent the following message 
 
 {{!message}}
 
-
+The message was sent from {{originUrl}}.
