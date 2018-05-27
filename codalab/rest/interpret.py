@@ -50,6 +50,7 @@ from codalab.rest.worksheets import (
     get_worksheet_info,
     search_worksheets,
 )
+from codalab.rest.block_schemas import BlockModes
 
 
 @post('/interpret/search')
@@ -319,14 +320,15 @@ def resolve_interpreted_items(interpreted_items):
         if item is None:
             continue
         mode = item['mode']
-        data = item['interpreted']
-        properties = item['properties']
+        # TODO: remove these fields entirely, using fields unique to each mode instead.
+        data = item['interpreted'] if ('interpreted' in item) else None
+        properties = item['properties'] if ('properties' in item) else None
 
         try:
             # Replace data with a resolved version.
-            if mode == 'markup':
+            if mode == BlockModes.MARKUP_MODE:
                 # no need to do anything
-                pass
+                data = item['text']
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
