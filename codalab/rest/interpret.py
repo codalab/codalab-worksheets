@@ -50,7 +50,7 @@ from codalab.rest.worksheets import (
     get_worksheet_info,
     search_worksheets,
 )
-from codalab.rest.block_schemas import BlockModes
+from codalab.rest.worksheet_block_schemas import BlockModes
 
 
 @post('/interpret/search')
@@ -299,7 +299,6 @@ def head_target(target, max_num_lines, replace_non_unicode=False):
 
 
 # Default number of lines to pull for each display mode.
-DEFAULT_CONTENTS_MAX_LINES = 10
 DEFAULT_GRAPH_MAX_LINES = 100
 
 
@@ -326,52 +325,69 @@ def resolve_interpreted_items(interpreted_items):
 
         try:
             # Replace data with a resolved version.
-            if mode == BlockModes.MARKUP_MODE:
+            if mode == BlockModes.markup_block:
                 # no need to do anything
-                data = item['text']
+                pass
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
                 header, contents = data
                 # Request information
                 contents = interpret_genpath_table_contents(contents)
                 data = (header, contents)
-            elif mode == 'contents':
+
+                # TODO: remove this and use new schemas
+                item['interpreted'] = data
+            elif mode == BlockModes.contents_block:
                 try:
-                    max_lines = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
+                    max_lines = item['max_lines']
                 except ValueError:
                     raise UsageError("maxlines must be integer")
 
                 try:
-                    target_info = rest_util.get_target_info(data, 0)
+                    target_info = rest_util.get_target_info(item['bundle_info']['uuid'], item['target_genpath'])
                 except NotFoundError:
-                    data = None
+                    item['status']['code'] = 'not_found'
+                    item['lines'] = None
                 else:
                     if target_info['type'] == 'directory':
-                        data = ['<directory>']
+                        item['status']['code'] = 'ready'
+                        item['lines'] = ['<directory>']
                     elif target_info['type'] == 'file':
-                        data = head_target(data, max_lines, replace_non_unicode=True)
+                        item['status']['code'] = 'ready'
+                        item['lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), max_lines, replace_non_unicode=True)
                     else:
-                        data = None
-            elif mode == 'html':
+                        item['status']['code'] = 'not_found'
+                        item['lines'] = None
+            elif mode == BlockModes.html_block:
                 try:
-                    target_info = rest_util.get_target_info(data, 0)
+                    max_lines = item['max_lines']
+                except ValueError:
+                    raise UsageError("maxlines must be integer")
+                try:
+                    target_info = rest_util.get_target_info((item['bundle_info']['uuid'], item['target_genpath']), 0)
                 except NotFoundError:
-                    data = None
+                    item['status']['code'] = 'not_found'
+                    item['html_lines'] = None
                 else:
                     if target_info['type'] == 'file':
-                        data = head_target(data, None)
+                        item['status']['code'] = 'ready'
+                        item['html_lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), max_lines)
                     else:
-                        data = None
-            elif mode == 'image':
+                        item['status']['code'] = 'not_found'
+                        item['html_lines'] = None
+            elif mode == BlockModes.image_block:
                 try:
-                    target_info = rest_util.get_target_info(data, 0)
+                    target_info = rest_util.get_target_info((item['bundle_info']['uuid'], item['target_genpath']), 0)
                 except NotFoundError:
-                    data = None
+                    item['status']['code'] = 'not_found'
+                    item['image_data'] = None
                 else:
                     if target_info['type'] == 'file':
-                        data = base64.b64encode(cat_target(data))
+                        item['status']['code'] = 'ready'
+                        item['image_data'] = base64.b64encode(cat_target((item['bundle_info']['uuid'], item['target_genpath'])))
                     else:
-                        data = None
+                        item['status']['code'] = 'not_found'
+                        item['image_data'] = None
             elif mode == 'graph':
                 try:
                     max_lines = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
@@ -394,12 +410,21 @@ def resolve_interpreted_items(interpreted_items):
                             for line in contents:
                                 row = line.split('\t')
                                 points.append(row)
+                # TODO: remove this and use new schemas
+                item['interpreted'] = data
             elif mode == 'search':
                 data = interpret_search(data)
+                # TODO: remove this and use new schemas
+                item['interpreted'] = data
+
             elif mode == 'wsearch':
                 data = interpret_wsearch(data)
+
+                # TODO: remove this and use new schemas
+                item['interpreted'] = data
             elif mode == 'worksheet':
-                pass
+                # TODO: remove this and use new schemas
+                item['interpreted'] = data
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
@@ -411,8 +436,7 @@ def resolve_interpreted_items(interpreted_items):
             traceback.print_exc()
             data = error_data(mode, "Unexpected error interpreting item")
 
-        # Assign the interpreted from the processed data
-        item['interpreted'] = data
+        item['is_refined'] = True
 
     return interpreted_items
 

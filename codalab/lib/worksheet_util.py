@@ -36,7 +36,13 @@ from itertools import izip
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
-from codalab.rest.block_schemas import BlockModes, MarkupBlockSchema
+from codalab.rest.worksheet_block_schemas import (
+    BlockModes,
+    MarkupBlockSchema,
+    BundleContentsBlockSchema,
+    BundleImageBlockSchema,
+    BundleHTMLBlockSchema,
+)
 
 # Note: this is part of the client's session, not server side.
 CURRENT_WORKSHEET = '.'
@@ -55,6 +61,9 @@ SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
 
 DIRECTIVE_CHAR = '%'
 DIRECTIVE_REGEX = re.compile(r'^' + DIRECTIVE_CHAR + '\s*(.*)$')
+
+# Default number of lines to pull for each display mode.
+DEFAULT_CONTENTS_MAX_LINES = 10
 
 
 def markup_item(x):
@@ -615,28 +624,52 @@ def interpret_items(schemas, raw_items):
         if mode == 'hidden':
             pass
         elif mode == 'contents' or mode == 'image' or mode == 'html':
-
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
                     interpreted_items.append(
                         MarkupBlockSchema().load({
                             'id': len(interpreted_items),
-                            "text": "ERROR: cannot access bundle",
+                            'text': 'ERROR: cannot access bundle',
                         }).data)
                     continue
 
                 # Parse arguments
                 if len(args) == 0:
                     raise_genpath_usage_error()
-                interpreted = genpath_to_target(bundle_info, args[0])
+                # these two are required for the target
+                (bundle_uuid, target_genpath) = genpath_to_target(bundle_info, args[0])
                 properties = parse_properties(args[1:])
 
-                interpreted_items.append({
-                    'mode': mode,
-                    'interpreted': interpreted,
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_info)
-                })
+                if mode == 'contents':
+                    interpreted_items.append(BundleContentsBlockSchema().load({
+                        'target_genpath': target_genpath,
+                        'bundle_info': copy.deepcopy(bundle_info),
+                        'status': {
+                            'code': 'unknown',
+                            'error_message': '',
+                        },
+                        'max_lines': properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES)
+                    }).data)
+                elif mode == 'image':
+                    interpreted_items.append(BundleImageBlockSchema().load({
+                        'target_genpath': target_genpath,
+                        'bundle_info': copy.deepcopy(bundle_info),
+                        'status': {
+                            'code': 'unknown',
+                            'error_message': '',
+                        },
+                        'width': properties.get('width', None),
+                        'height': properties.get('height', None),
+                    }).data)
+                elif mode == 'html':
+                    interpreted_items.append(BundleHTMLBlockSchema().load({
+                        'target_genpath': target_genpath,
+                        'bundle_info': copy.deepcopy(bundle_info),
+                        'status': {
+                            'code': 'unknown',
+                            'error_message': '',
+                        },
+                    }).data)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
