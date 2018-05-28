@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used message')
 
-class DockerImageManager(StateTransitioner, BaseDependencyManager):
+class DockerImageManager(StateTransitioner):
 
     def __init__(self, docker, state_committer, max_images_bytes, max_age_failed_seconds=60):
 
