@@ -110,6 +110,8 @@ chmod 600 %s""" % args.password_file
 
     docker_client = DockerClient()
     bundle_service = BundleServiceClient(args.server, username, password)
+    if not os.path.exists(args.work_dir):
+        os.makedirs(args.work_dir, 0770)
     worker_state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'worker-state.json'))
 
     def create_run_manager(worker):
