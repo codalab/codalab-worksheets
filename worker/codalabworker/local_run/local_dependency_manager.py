@@ -62,6 +62,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         with self._lock:
             self._dependencies = self._state_committer.load()
             assert(isinstance(self._dependencies, dict))
+            assert(all(isinstance(dep, DependencyState) for k, dep in self._dependencies.items()))
             logger.error(self._dependencies)
             logger.info('{} dependencies in cache.'.format(len(self._dependencies)))
 
