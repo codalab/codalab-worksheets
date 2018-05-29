@@ -85,6 +85,12 @@ class BundleManager(object):
         self._make_bundles()
         self._schedule_run_bundles()
 
+    def _schedule_run_bundles(self):
+        """
+        Sub classes should implement this. See DefaultBundleManager
+        """
+        raise NotImplementedError
+
     def _stage_bundles(self):
         """
         Stages bundles by:
