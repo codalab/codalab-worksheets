@@ -27,10 +27,6 @@ def checkin(worker_id):
 
     torque_worker = ('torque' in local.config['workers'] and
                      request.user.user_id == local.model.root_user_id)
-    if (not torque_worker and
-        request.json['version'] != VERSION and
-        not request.json['will_upgrade']):
-        return {'type': 'upgrade'}
 
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
