@@ -124,8 +124,12 @@ class LocalRunStateMachine(StateTransitioner):
         else:
             docker_network = self._run_manager.docker_network_internal_name
 
-        cpuset, gpuset = self._run_manager.assign_cpu_and_gpu_sets(
+        try:
+            cpuset, gpuset = self._run_manager.assign_cpu_and_gpu_sets(
                 run_state.resources['request_cpus'], run_state.resources['request_gpus'])
+        except:
+            run_state.info['failure_message'] = "Cannot assign enough resources"
+            return run_state._replace(stage=LocalRunStage.FINALIZING, info=run_state.info)
 
         # 4) Start container
         container_id = self._run_manager.docker.start_container(
