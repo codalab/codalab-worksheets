@@ -148,10 +148,16 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     def release(self, uuid, dependency):
         """
         Register that the run with uuid is no longer dependent on this dependency
+        If no more runs are dependent on this dependency, kill it
         """
         with self._lock:
-            if self.has(dependency) and uuid in self._dependencies[dependency].dependents:
-                self._dependencies[dependency].dependents.remove(uuid)
+            if self.has(dependency):
+                dep_state = self._dependencies[dependency]
+                if uuid in dep_state.dependents:
+                    dep_state.dependents.remove(uuid)
+                if not dep_state.dependents:
+                    dep_state = dep_state._replace(killed=True)
+                    self._dependencies[dependency] = dep_state
 
     def _assign_path(self, dependency):
         parent_uuid, parent_path = dependency

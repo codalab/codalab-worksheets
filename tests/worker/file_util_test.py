@@ -2,6 +2,7 @@ import os
 import tempfile
 import unittest
 import bz2
+import fake_filesystem_unittest
 
 from codalabworker.file_util import (gzip_file,
                                      gzip_string,
@@ -13,7 +14,10 @@ from codalabworker.file_util import (gzip_file,
                                      un_tar_directory)
 
 
-class FileUtilTest(unittest.TestCase):
+class FileUtilTest(fake_filesystem_unittest.TestCase):
+    def setUp(self):
+        self.setUpPyfakefs()
+
     def test_tar_has_files(self):
         dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'files')
         temp_dir = tempfile.mkdtemp()
