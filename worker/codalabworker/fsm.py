@@ -13,7 +13,8 @@ class BaseStateCommitter(object):
         raise NotImplementedError
 
 class JsonStateCommitter(BaseStateCommitter):
-    def __init__(self, json_path, schema=None):
+    def __init__(self, json_path):
+        # TODO: Do we want to add a schema to this?
         self._state_file = json_path
 
     def load(self, default={}):

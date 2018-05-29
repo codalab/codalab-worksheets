@@ -4,7 +4,12 @@ import os
 import threading
 
 from codalabworker.run_manager import Reader
-from codalabworker.download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
+from codalabworker.download_util import (
+        BUNDLE_NO_LONGER_RUNNING_MESSAGE,
+        get_target_info,
+        get_target_path,
+        PathException
+)
 from codalabworker.file_util import (
     un_tar_directory,
     get_path_size,

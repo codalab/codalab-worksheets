@@ -1,4 +1,3 @@
-import tempfile
 import time
 import unittest
 from mock import Mock
@@ -26,7 +25,7 @@ class DockerImageManagerTest(unittest.TestCase):
             self.assertEqual(digest_from_manager.stage, DependencyStage.DOWNLOADING)
         self.docker.download_image.side_effect = download_checker
         self.manager.get(test_digest)
-        self.docker.download_image.assert_called_with(test_digest, mock.Any)
+        self.docker.download_image.assert_called_with(test_digest, Mock.Any)
         # Download done, make sure manager has the digest
         self.assertTrue(self.manager.has(test_digest))
         # Make sure its stage is set to READY
@@ -44,7 +43,12 @@ class DockerImageManagerTest(unittest.TestCase):
         self.docker.download_image.side_effect = request_while_downloading
         self.manager.get(test_digest)
         # Make sure download image is only called once
-        self.docker.download_image.assert_called_once_with(test_digest, mock.Any)
+        self.docker.download_image.assert_called_once_with(test_digest, Mock.Any)
+
+    def test_state_management(self):
+        # TODO: Test saving state correctly and loading state correctly
+        # Including resuming dependency downloads
+        pass
 
     def test_download_failure(self):
         # TODO: Test what happens if DockerException is thrown by docker client
