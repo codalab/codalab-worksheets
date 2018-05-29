@@ -4,24 +4,17 @@ import unittest
 from mock import Mock
 
 from codalabworker.docker_client import DockerClient
-from codalabworker.docker_image_manager import DockerImageManager
+from codalabworker.local_run.docker_image_manager import DockerImageManager
+from codalabworker.fsm import JsonStateCommitter
 from codalabworker.file_util import remove_path
 
 
 class DockerImageManagerTest(unittest.TestCase):
     def setUp(self):
-        self.work_dir = tempfile.mkdtemp()
+        self.state_committer = Mock(spec=JsonStateCommitter)
         self.docker = Mock(spec=DockerClient)
-        self.manager = DockerImageManager(self.docker, self.work_dir,
-                                          max_images_bytes=100)
+        self.manager = DockerImageManager(self.docker, self.state_committer, max_images_bytes=100)
 
-    def tearDown(self):
-        remove_path(self.work_dir)
-
-    def _run_cleanup(self):
-        self.manager.start_cleanup_thread()
-        time.sleep(0.1)
-        self.manager.stop_cleanup_thread()
 
     def test_cleanup(self):
         # Add image B after image A

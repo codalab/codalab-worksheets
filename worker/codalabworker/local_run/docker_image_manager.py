@@ -22,7 +22,6 @@ DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used
 class DockerImageManager(StateTransitioner):
 
     def __init__(self, docker, state_committer, max_images_bytes, max_age_failed_seconds=60):
-
         super(DockerImageManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
         self.add_transition(DependencyStage.READY, self._transition_from_READY)
