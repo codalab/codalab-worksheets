@@ -103,6 +103,7 @@ class Worker(object):
             'hostname': socket.gethostname(),
             'runs': self._run_manager.all_runs
         }
+        logger.debug('Making checkin request: %s', request)
         response = self._bundle_service.checkin(self.id, request)
         if response:
             action_type = response['type']
