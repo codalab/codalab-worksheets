@@ -5,7 +5,7 @@ from mock import Mock
 
 from codalabworker.docker_client import DockerClient
 from codalabworker.local_run.docker_image_manager import DockerImageManager
-from codalabworker.fsm import JsonStateCommitter
+from codalabworker.fsm import JsonStateCommitter, DependencyStage
 from codalabworker.file_util import remove_path
 
 
@@ -15,6 +15,72 @@ class DockerImageManagerTest(unittest.TestCase):
         self.docker = Mock(spec=DockerClient)
         self.manager = DockerImageManager(self.docker, self.state_committer, max_images_bytes=100)
 
+    def test_normal_workflow(self):
+        test_digest = 'image:A'
+        self.assertFalse(self.manager.has(test_digest))
+        def download_checker(digest, cb):
+            # Make sure image manager reports as having this image
+            self.assertTrue(self.manager.has(digest))
+            digest_from_manager = self.manager.get(digest)
+            # Make sure image manager reports status as DOWNLOADING
+            self.assertEqual(digest_from_manager.stage, DependencyStage.DOWNLOADING)
+        self.docker.download_image.side_effect = download_checker
+        self.manager.get(test_digest)
+        self.docker.download_image.assert_called_with(test_digest, mock.Any)
+        # Download done, make sure manager has the digest
+        self.assertTrue(self.manager.has(test_digest))
+        # Make sure its stage is set to READY
+        digest_from_manager = self.manager.get(test_digest)
+        self.assertEqual(digest_from_manager.stage, DependencyStage.READY)
+
+    def test_concurrent_requests(self):
+        test_digest = 'image:A'
+        def request_while_downloading(digest, cb):
+            # Make sure we don't create a new image for the same digest
+            num_old_digests = len(self.manager._images)
+            second_request = self.manager.get(digest)
+            num_new_digests = len(self.manager._images)
+            self.assertEqual(num_old_digests, num_new_digests)
+        self.docker.download_image.side_effect = request_while_downloading
+        self.manager.get(test_digest)
+        # Make sure download image is only called once
+        self.docker.download_image.assert_called_once_with(test_digest, mock.Any)
+
+    def test_download_failure(self):
+        # TODO: Test what happens if DockerException is thrown by docker client
+        pass
+
+    def test_download_timeout(self):
+        # TODO: Test a download timeout
+        pass
+
+    def test_very_large_image(self):
+        # TODO: Test downloading an image larger than disk limit
+        pass
+
+    def test_remove_while_downloading(self):
+        # TODO: Test killing an image while being downloaded, should cancel download
+        pass
+
+    def test_remove_after_downloading(self):
+        # TODO: Test removing an image when READY, should just work
+        pass
+
+    def test_cleanup_failed_first(self):
+        # TODO: Make sure failed dependencies are cleared first
+        pass
+
+    def test_cleanup_oldest_first(self):
+        # TODO: Test oldest dependencies are cleaned first
+        pass
+
+    def test_cleanup_multiple_images(self):
+        # TODO: Test cleanup can clear multiple dependencies
+        pass
+
+    def test_cleanup_no_breaking_downloads(self):
+        # TODO: Make sure cleanup doesn't break downloading images randomly
+        pass
 
     def test_cleanup(self):
         # Add image B after image A
