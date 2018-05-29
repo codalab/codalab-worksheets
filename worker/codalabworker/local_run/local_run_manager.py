@@ -6,7 +6,7 @@ import threading
 import time
 import socket
 
-from codalabworker.run_manager import BaseRunManager#, RunState
+from codalabworker.run_manager import BaseRunManager
 from local_run_state import LocalRunStateMachine, LocalRunStage
 from local_reader import LocalReader
 
