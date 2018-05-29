@@ -389,7 +389,6 @@ class BundleManager(object):
         """
         Compute the CPU limit used for scheduling the run.
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_cpus:
             return 1
         return bundle.metadata.request_cpus
@@ -398,7 +397,6 @@ class BundleManager(object):
         """
         Compute the GPU limit used for scheduling the run.
         """
-        #TODO: Remove this once we want to deprecate old versions
         if bundle.metadata.request_gpus is None:
             return 0
         return bundle.metadata.request_gpus
@@ -407,7 +405,6 @@ class BundleManager(object):
         """
         Compute the memory limit used for scheduling the run.
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_memory:
             return formatting.parse_size('2g')
         return formatting.parse_size(bundle.metadata.request_memory)
@@ -416,7 +413,6 @@ class BundleManager(object):
         """
         Compute the disk limit used for scheduling the run.
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_disk:
             return formatting.parse_size('4g')
         return formatting.parse_size(bundle.metadata.request_disk)
@@ -425,10 +421,17 @@ class BundleManager(object):
         """
         Compute the time limit used for scheduling the run.
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_time:
             return formatting.parse_duration('1d')
         return formatting.parse_duration(bundle.metadata.request_time)
+
+    def _get_docker_image(self, bundle):
+        """
+        Set docker image to be the default if not specified
+        """
+        if not bundle.metadata.request_docker_image:
+            return 'codalab/ubuntu:1.9'
+        return bundle.metadata.request_docker_image
 
     def _construct_run_message(self, worker, bundle):
         """
@@ -449,7 +452,7 @@ class BundleManager(object):
         resources['request_cpus'] = self._compute_request_cpus(bundle)
         resources['request_gpus'] = self._compute_request_gpus(bundle)
 
-        resources['docker_image'] = bundle.metadata.request_docker_image
+        resources['docker_image'] = self._get_docker_image(bundle)
         resources['request_time'] = self._compute_request_time(bundle)
         resources['request_memory'] = self._compute_request_memory(bundle)
         resources['request_disk'] = self._compute_request_disk(bundle)
