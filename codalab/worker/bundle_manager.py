@@ -253,11 +253,17 @@ class BundleManager(object):
         worker resumes the bundle, indicating that it's still RUNNING.
         """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
+            if not workers.is_running(bundle.uuid):
+                failure_message = 'Worker offline'
+                logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
+                self._model.set_offline_bundle(bundle)
+            """
             if (not workers.is_running(bundle.uuid) or  # Dead worker.
                 time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):
                 failure_message = 'Worker offline'
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.set_offline_bundle(bundle)
+            """
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
         """

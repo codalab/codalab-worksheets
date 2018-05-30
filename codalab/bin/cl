@@ -9,7 +9,7 @@ while [ -L $f ]; do
 done
 
 export CODALAB=`dirname $f`/../..
-export PYTHONPATH=$CODALAB
+export PYTHONPATH=$CODALAB:$CODALAB/worker
 
 if [ -f "$CODALAB/venv/bin/python" ]; then
   exec $CODALAB/venv/bin/python $CODALAB/codalab/bin/cl.py "$@"

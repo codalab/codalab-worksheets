@@ -300,7 +300,8 @@ class Run(object):
 
     def _check_and_report_resource_utilization(self, report):
         new_metadata = {}
-
+        #TODO
+        return
         # Get wall clock time.
         new_metadata['time'] = time.time() - self._start_time
         if (self._resources['request_time'] and new_metadata['time'] > self._resources['request_time']):
