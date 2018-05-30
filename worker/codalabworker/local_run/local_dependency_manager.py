@@ -44,6 +44,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self._work_dir = work_dir
         self._bundles_dir = os.path.join(work_dir, 'bundles')
         if not os.path.exists(self._bundles_dir):
+            logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
             os.makedirs(self._bundles_dir, 0770)
 
         self._lock = threading.RLock()

@@ -1,15 +1,16 @@
-# 5/29 TODO:
+# TODO:
 ## Done Tests:
   - Assign max CPUs to a run, stop worker, create another run, bring worker back to life [x]
-  - Have two runs that require same big dependency
   - DockerImageState objects end up in DependencyManager state queue (bad pyjson default param)
+  - Have a run that depends on another run
 
 ## Currently testing:
+  - Dependency symlinking is broken
 
 ## To be tested:
   - Start more involved runs on dev worker 1
+    - Have two runs that require same big dependency (confirmed succesfully waiting for download together)
     - Have two runs that require same big docker image
-    - Have a run that depends on another run
     - Have runs that go over each resource constraint category:
       - memory
       - time
@@ -25,4 +26,4 @@
     - Kill the worker during running, it should go back to running
     - Kill the worker during uploading results, it should restart uploading
   - Bring down worker mid run, remove run server side, bring worker back up
-  - Start writing some of the unit test
+  - Start writing some of the unit tests

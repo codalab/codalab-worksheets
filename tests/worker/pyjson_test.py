@@ -45,3 +45,9 @@ class PyJSONTest(unittest.TestCase):
 
         reloaded = pyjson.loads(pyjson.dumps(cases))
         self.assertEqual(reloaded, cases)
+
+    def test_tuples(self):
+        tuple_dict = {(u'0x123799xasd', ''): {'dict': 'vals'}}
+
+        reloaded = pyjson.loads(pyjson.dumps(tuple_dict))
+        self.assertEqual(reloaded, tuple_dict)
