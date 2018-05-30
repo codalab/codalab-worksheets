@@ -9,7 +9,7 @@ from codalab.common import (
     precondition,
     UsageError,
 )
-from codalab.codalabworker.rest_client import RestClient, RestClientException
+from codalabworker.rest_client import RestClient, RestClientException
 
 
 def wrap_exception(message):
