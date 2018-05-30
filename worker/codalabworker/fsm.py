@@ -17,9 +17,9 @@ class JsonStateCommitter(BaseStateCommitter):
         # TODO: Do we want to add a schema to this?
         self._state_file = json_path
 
-    def load(self, default={}):
+    def load(self, default=None):
         if not os.path.exists(self._state_file):
-            return default
+            return dict() if default is None else default
         with open(self._state_file) as json_data:
             return pyjson.load(json_data)
 
@@ -54,12 +54,9 @@ class DependencyStage(object):
 class StateTransitioner(object):
     def __init__(self):
         self._transition_functions = {} # stage_name -> transition_function
-        self._check_functions = [] # List of transition_function
 
     def transition(self, state):
         """ Return the updated state """
-        for check_fn in self._check_functions:
-            state = check_fn(state)
         return self._transition_functions[state.stage](state)
 
     def add_transition(self, stage_name, transition_function):

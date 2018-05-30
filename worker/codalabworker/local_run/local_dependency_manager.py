@@ -58,8 +58,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def _save_state(self):
         with self._lock:
-            assert(isinstance(self._dependencies, dict))
-            assert(all(isinstance(dep, DependencyState) for k, dep in self._dependencies.items()))
             self._state_committer.commit(self._dependencies)
 
     def _load_state(self):
@@ -87,16 +85,15 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def _process_dependencies(self):
         with self._lock:
-            for entry in self._dependencies.keys():
-                dependency_state = self._dependencies[entry]
-                self._dependencies[entry] = self.transition(dependency_state)
+            for entry, state in self._dependencies.items():
+                self._dependencies[entry] = self.transition(state)
 
     def _cleanup(self):
         while True:
             with self._lock:
                 bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
                 serialized_dependencies = {'{}+{}'.format(*k): v for k, v in self._dependencies.items()}
-                serialized_length = len(pyjson.dumps(serialized_dependencies))
+                serialized_length = len(codalabworker.pyjson.dumps(serialized_dependencies))
                 if bytes_used > self._max_cache_size_bytes or serialized_length > self._max_serialized_length:
                     logger.debug('%d dependencies in cache, disk usage: %s (max %s), serialized size: %s (max %s)',
                                   len(self._dependencies),
@@ -119,8 +116,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         del self._dependencies[dep_to_remove]
                 else:
                     break
-
-
 
     def has(self, dependency): # dependency = (parent_uuid, parent_path)
         with self._lock:

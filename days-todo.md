@@ -1,12 +1,10 @@
 # 5/29 TODO:
 ## Done Tests:
   - Assign max CPUs to a run, stop worker, create another run, bring worker back to life [x]
-
+  - Have two runs that require same big dependency
+  - DockerImageState objects end up in DependencyManager state queue (bad pyjson default param)
 
 ## Currently testing:
-  - Have two runs that require same big dependency
-    - Fix PyJSON to encode tuple dict keys [x]
-    - Serialized length calculations are broken since they try to dump to json
 
 ## To be tested:
   - Start more involved runs on dev worker 1

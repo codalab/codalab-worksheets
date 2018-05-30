@@ -28,7 +28,6 @@ class LocalRunManager(BaseRunManager):
         self._state_committer = state_committer
         self._run_state_manager = LocalRunStateMachine(self)
         self._reader = LocalReader()
-        self._bundles_dir = bundles_dir
         self._docker_network_prefix = docker_network_prefix
 
         # These members are public as the run state manager needs access to them
@@ -37,6 +36,7 @@ class LocalRunManager(BaseRunManager):
         self.dependency_manager = dependency_manager
         self.cpuset = cpuset
         self.gpuset = gpuset
+        self.bundles_dir = bundles_dir
 
         self.runs = {}
         self.uploading = {}
