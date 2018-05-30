@@ -504,43 +504,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             bundles = []
             for i in range(1, len(volume_bindings)):
                 bundles.append(volume_bindings[i].split(":"))
-            # [[u'/home/harry/codalab-worker-scratch/bundles/0x2c92295dfa584d91afaf49c3ca112116', u'/0xb0558b1cdc1b44728dc9b2c9bdb497e5_dependencies/hello.py', u'ro']]
-            # [[u'/home/harry/codalab-worker-scratch/bundles/0x42b3fa2c493e45a99eb079282453e561', u'/0x69adb4b9098b48b79364d12a710c013e_dependencies/_1', u'ro']]
-            # [[u'/home/harry/codalab-worker-scratch/bundles/0x83f82a13852e4a6483860b734e4e47d0', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/hello', u'ro'], [u'/home/harry/codalab-worker-scratch/bundles/0x42b3fa2c493e45a99eb079282453e561', u'/0x106bdc96a1ef4802bc63eabb8ee35e9e_dependencies/_1', u'ro']]
 
-            # new_command = str(command).split()
-            """
-            cmd = str(command).split()
-            num = 0
-            times = str(24)
-            gpu = str(0)
-            ram = str(4)
-            cpu = str(2)
-            for i in range(len(cmd) - 1, 0, -1):
-                if num == 4:
-                    break
-                try:
-                    name, nums = cmd[i].split("=")[0], int(cmd[i].split("=")[1])
-                    if name == "time" and nums > 0:
-                        times = str(nums)
-                        num += 1
-                    elif name == "gpu" and nums > 0:
-                        gpu = str(nums)
-                        num += 1
-                    elif name == "ram" and nums > 0:
-                        ram = str(nums)
-                        num += 1
-                    elif name == "cpu" and nums > 0:
-                        cpu = str(nums)
-                        num += 1
-                except:
-                    pass
-
-            if num == 0:
-                new_command = cmd
-            else:
-                new_command = cmd[:-num]
-            """
             cmd = str(command).split(" -- ")
 
             new_command = cmd[0].split()
