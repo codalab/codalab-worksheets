@@ -13,11 +13,11 @@ class PyJSONEncoder(json.JSONEncoder):
         """
         Encodes a dict key. Currently only supports encoding tuples as keys
         """
-        if not (isinstance(key, tuple) or isinstance(key, str)):
-            raise Exception('PyJSON can only encode dicts with str or tuple keys')
+        if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, unicode)):
+            raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
         if isinstance(key, tuple):
-            if not all(isinstance(tuple_el, str) for tuple_el in key):
-                raise Exception('Tuple elements need to be all strings for PyJSON to work')
+            if not all(isinstance(tuple_el, str) or isinstance(tuple_el, unicode) for tuple_el in key):
+                raise Exception('Tuple elements need to be all strings (or unicode) for PyJSON to work')
 
             if any(PyJSONEncoder.TUPLE_KEY_STR in tuple_el for tuple_el in key):
                 raise Exception('%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict' % PyJSONEncoder.TUPLE_KEY_STR)

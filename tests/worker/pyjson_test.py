@@ -38,6 +38,8 @@ class PyJSONTest(unittest.TestCase):
                     t2(20, 40, 60),
                 },
                 ('key', 'tuple'): 'blah',
+                (u'unicode', 'key') : u'unicode_val',
+                u'unicode': 'val',
                 '(\'key\', \'tuple\')': 'malicious_key'
         }
 
