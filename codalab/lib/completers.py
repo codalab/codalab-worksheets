@@ -3,7 +3,6 @@ completers.py
 
 Classes and functions for CLI autocomplete functionality, built within the argcomplete framework.
 """
-from .docker_util import Docker
 import inspect
 import itertools
 import os
@@ -11,40 +10,9 @@ import re
 
 from argcomplete import warn
 
+from codalab.lib import spec_util, worksheet_util, cli_util
 
-from codalab.lib import spec_util, worksheet_util
-
-
-KEY_TARGET_SPEC_FORMAT = r"(?:([^:]*):)?([^/]*)(?:/(.*))?"
-GLOBAL_WORKSHEET_SPEC_FORMAT = r"(?:(.*)::)?(.*)"
-
-
-def short_uuid(full_uuid):
-    return worksheet_util.apply_func('[0:8]', full_uuid)
-
-
-def require_not_headless(completer):
-    """
-    Given a completer (that is not a CodaLabCompleter), return a CodaLabCompleter that will only call the
-    given completer if the client is not headless.
-    """
-    class SafeCompleter(CodaLabCompleter):
-        def __call__(self, *args, **kwargs):
-            if self.cli.headless:
-                return ()
-            else:
-                return completer(*args, **kwargs)
-
-    return SafeCompleter
-
-
-def initialize_completer(completer, cli):
-    completer_class = completer if inspect.isclass(completer) else completer.__class__
-    if issubclass(completer_class, CodaLabCompleter):
-        return completer(cli)
-    else:
-        return completer
-
+from .docker_util import Docker
 
 class CodaLabCompleter(object):
     """
@@ -81,7 +49,7 @@ class BundlesCompleter(CodaLabCompleter):
     Complete bundle specs with suggestions from the current worksheet, or from the
     worksheet specified in the current arguments if one exists.
     """
-    def __call__(self, prefix, action=None, parsed_args=None):
+    def __call__(self, prefix, action=None, parsed_args=None, worksheet_uuid=None):
         worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
         client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
@@ -148,29 +116,33 @@ def UnionCompleter(*completers):
 # TODO: https://github.com/codalab/codalab-cli/issues/223
 class TargetsCompleter(CodaLabCompleter):
     def __call__(self, prefix, action=None, parsed_args=None):
-        worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
-        client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
-
-        m = re.match(KEY_TARGET_SPEC_FORMAT, prefix)
-        if m is None:
+        key, target = cli_util.parse_key_target(prefix)
+        if target is None:
             return ()
 
-        key, bundle_spec, subpath = m.groups()
+        instance, worksheet_spec, bundle_spec, subpath = cli_util.parse_target_spec(target)
+
+        if worksheet_spec is None:
+            worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
+
+        client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
         # Build parameterizable format string for suggestions
         suggestion_format = ''.join([
             (key + ':') if key is not None else '',
+            (worksheet_spec + '//') if worksheet_spec is not None else '',
             (bundle_spec + '/') if subpath is not None else '',
             '{}',
         ])
 
         if subpath is None:
             # then suggest completions for bundle_spec
-            return (suggestion_format.format(b) for b in BundlesCompleter(self.cli)(bundle_spec, action, parsed_args))
+            return (suggestion_format.format(b) for b in BundlesCompleter(self.cli)(bundle_spec, action, parsed_args, worksheet_uuid))
         else:
             # then suggest completions for subpath
-            target = self.cli.parse_target(client, worksheet_uuid, bundle_spec + '/' + subpath)
-            dir_target = (target[0], os.path.dirname(subpath))
+            resolved_target = self.cli.resolve_target(client, worksheet_uuid, target)
+            bundle_uuid = resolved_target[2]
+            dir_target = (bundle_uuid, os.path.dirname(subpath))
             info = client.fetch_contents_info(dir_target[0], dir_target[1], depth=1)
             if info is not None and info['type'] == 'directory':
                 matching_child_names = []
@@ -200,4 +172,31 @@ class DockerImagesCompleter(CodaLabCompleter):
         first_slash = prefix.find('/')
         trimmed_prefix = prefix[0:first_slash] if first_slash >= 0 else prefix
         return Docker.search(trimmed_prefix, handle_err)
+
+def short_uuid(full_uuid):
+    return worksheet_util.apply_func('[0:8]', full_uuid)
+
+
+def require_not_headless(completer):
+    """
+    Given a completer (that is not a CodaLabCompleter), return a CodaLabCompleter that will only call the
+    given completer if the client is not headless.
+    """
+    class SafeCompleter(CodaLabCompleter):
+        def __call__(self, *args, **kwargs):
+            if self.cli.headless:
+                return ()
+            else:
+                return completer(*args, **kwargs)
+
+    return SafeCompleter
+
+
+def initialize_completer(completer, cli):
+    completer_class = completer if inspect.isclass(completer) else completer.__class__
+    if issubclass(completer_class, CodaLabCompleter):
+        return completer(cli)
+    else:
+        return completer
+
 

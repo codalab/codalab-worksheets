@@ -11,27 +11,42 @@ import signal
 import socket
 import stat
 import sys
+import multiprocessing
+import re
 
 from bundle_service_client import BundleServiceClient
 from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
 
+logger = logging.getLogger(__name__)
+
 def main():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
     parser.add_argument('--tag',
                         help='Tag that allows for scheduling runs on specific '
                              'workers.')
-    parser.add_argument('--server', required=True,
+    parser.add_argument('--server', default='https://worksheets.codalab.org',
                         help='URL of the CodaLab server, in the format '
                              '<http|https>://<hostname>[:<port>] (e.g., https://worksheets.codalab.org)')
     parser.add_argument('--work-dir', default='codalab-worker-scratch',
                         help='Directory where to store temporary bundle data, '
                              'including dependencies and the data from run '
                              'bundles.')
+    parser.add_argument('--network-prefix', default='codalab_worker_network',
+                        help='Docker network name prefix')
+    parser.add_argument('--cpuset', type=str, metavar='CPUSET_STR', default='ALL',
+                        help='Comma-separated list of CPUs in which to allow bundle execution, '
+                             '(e.g., \"0,2,3\", \"1\").')
+    parser.add_argument('--gpuset', type=str, metavar='GPUSET_STR', default='ALL',
+                        help='Comma-separated list of GPUs in which to allow bundle execution '
+                             '(e.g., \"0,1\", \"1\").')
     parser.add_argument('--max-work-dir-size', type=str, metavar='SIZE', default='10g',
                         help='Maximum size of the temporary bundle data '
                              '(e.g., 3, 3k, 3m, 3g, 3t).')
+    parser.add_argument('--max-dependencies-serialized-length', type=int, default=60000,
+                        help='Maximum length of serialized json of dependency list of worker '
+                             '(e.g., 50, 30000, 60000).')
     parser.add_argument('--max-image-cache-size', type=str, metavar='SIZE',
                         help='Limit the disk space used to cache Docker images '
                              'for worker jobs to the specified amount (e.g. '
@@ -39,9 +54,6 @@ def main():
                              'the least recently used images are removed first. '
                              'Worker will not remove any images if this option '
                              'is not specified.')
-    parser.add_argument('--slots', type=int, default=1,
-                        help='Number of slots to use for running bundles. '
-                             'A single bundle takes up a single slot.')
     parser.add_argument('--password-file',
                         help='Path to the file containing the username and '
                              'password for logging into the bundle service, '
@@ -58,10 +70,10 @@ def main():
     args = parser.parse_args()
 
     # Get the username and password.
-    print 'Connecting to %s' % args.server
+    logger.info('Connecting to %s' % args.server)
     if args.password_file:
         if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            print >> sys.stderr, """
+            print >>sys.stderr, """
 Permissions on password file are too lax.
 Only the user should be allowed to access the file.
 On Linux, run:
@@ -71,8 +83,12 @@ chmod 600 %s""" % args.password_file
             username = f.readline().strip()
             password = f.readline().strip()
     else:
-        username = raw_input('Username: ')
-        password = getpass.getpass()
+        username = os.environ.get('CODALAB_USERNAME')
+        if username is None:
+            username = raw_input('Username: ')
+        password = os.environ.get('CODALAB_PASSWORD')
+        if password is None:
+            password = getpass.getpass()
 
     # Set up logging.
     if args.verbose:
@@ -87,17 +103,84 @@ chmod 600 %s""" % args.password_file
         max_images_bytes = None
     else:
         max_images_bytes = parse_size(args.max_image_cache_size)
-    worker = Worker(args.id, args.tag, args.work_dir, max_work_dir_size_bytes,
-                    max_images_bytes, args.shared_file_system, args.slots,
+
+    docker_client = DockerClient()
+
+    # transform/verify cpuset and gpuset
+    cpuset = parse_cpuset_args(args.cpuset)
+    gpuset = parse_gpuset_args(docker_client, args.gpuset)
+
+    worker = Worker(args.id, args.tag, args.work_dir, cpuset, gpuset,
+                    max_work_dir_size_bytes, args.max_dependencies_serialized_length,
+                    max_images_bytes, args.shared_file_system,
                     BundleServiceClient(args.server, username, password),
-                    DockerClient())
+                    docker_client, args.network_prefix)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
         signal.signal(sig, lambda signup, frame: worker.signal())
 
-    print 'Worker started.'
+    # BEGIN: DO NOT CHANGE THIS LINE UNLESS YOU KNOW WHAT YOU ARE DOING
+    # THIS IS HERE TO KEEP TEST-CLI FROM HANGING
+    print('Worker started.')
+    # END
+
     worker.run()
+
+def parse_cpuset_args(arg):
+    """
+    Parse given arg into a set of integers representing cpus
+
+    Arguments:
+        arg: comma seperated string of ints, or "ALL" representing all available cpus
+    """
+    cpu_count = multiprocessing.cpu_count()
+    if arg == 'ALL':
+        cpuset = range(cpu_count)
+    else:
+        try:
+            cpuset = [int(s) for s in arg.split(',')]
+        except Exception, e:
+            raise ValueError("CPUSET_STR invalid format: must be a string of comma-separated integers")
+
+        if not len(cpuset) == len(set(cpuset)):
+            raise ValueError("CPUSET_STR invalid: CPUs not distinct values")
+        if not all(cpu in range(cpu_count) for cpu in cpuset):
+            raise ValueError("CPUSET_STR invalid: CPUs out of range")
+    return set(cpuset)
+
+def parse_gpuset_args(docker_client, arg):
+    """
+    Parse given arg into a set of integers representing gpu devices
+
+    Arguments:
+        docker_client: DockerClient instance
+        arg: comma seperated string of ints, or "ALL" representing all gpus
+    """
+    if arg == '':
+        return set()
+
+    info = docker_client.get_nvidia_devices_info()
+    all_gpus = []
+    if info is not None:
+        for d in info['Devices']:
+            m = re.search('^/dev/nvidia(\d+)$', d['Path'])
+            all_gpus.append(int(m.group(1)))
+
+    if arg == 'ALL':
+        return set(all_gpus)
+    else:
+        try:
+            gpuset = [int(s) for s in arg.split(',')]
+        except Exception, e:
+            raise ValueError("GPUSET_STR invalid format: must be a string of comma-separated integers")
+
+        if not len(gpuset) == len(set(gpuset)):
+            raise ValueError("GPUSET_STR invalid: GPUs not distinct values")
+        if not all(gpu in all_gpus for gpu in gpuset):
+            raise ValueError("GPUSET_STR invalid: GPUs out of range")
+        return set(gpuset)
+
 
 if __name__ == '__main__':
     main()

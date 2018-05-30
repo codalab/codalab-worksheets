@@ -5,6 +5,7 @@ import json
 import os
 import subprocess
 import time
+from datetime import datetime
 
 from bottle import abort, get, local, post, put, request, response
 
@@ -33,20 +34,10 @@ def checkin(worker_id):
 
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
-        request.json['slots'], request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
+        request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
         request.json['dependencies'])
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
-
-
-@post('/workers/<worker_id>/checkout',
-      name='worker_checkout', apply=AuthenticatedPlugin())
-def checkout(worker_id):
-    """
-    Checks out from the bundle service, cleaning up any state related to the
-    worker.
-    """
-    local.worker_model.worker_cleanup(request.user.user_id, worker_id)
 
 
 def check_reply_permission(worker_id, socket_id):
@@ -107,7 +98,7 @@ def check_run_permission(bundle):
 def start_bundle(worker_id, uuid):
     """
     Checks whether the bundle is still assigned to run on the worker with the
-    given ID. If so, reports that it's starting to run and returns True.
+    given worker_id. If so, reports that it's starting to run and returns True.
     Otherwise, returns False, meaning the worker shouldn't run the bundle.
     """
     bundle = local.model.get_bundle(uuid)
@@ -120,6 +111,22 @@ def start_bundle(worker_id, uuid):
         return json.dumps(True)
     return json.dumps(False)
 
+@post('/workers/<worker_id>/resume_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
+      name='worker_resume_bundle', apply=AuthenticatedPlugin())
+def resume_bundle(worker_id, uuid):
+    """
+    Checks whether the bundle is still assigned to run on the worker with the
+    given worker_id. If so, reports that it's starting to run and returns True.
+    Otherwise, returns False, meaning the worker shouldn't run the bundle.
+    """
+    bundle = local.model.get_bundle(uuid)
+    check_run_permission(bundle)
+    response.content_type = 'application/json'
+    if local.model.resume_bundle(bundle, request.user.user_id, worker_id,
+                                request.json['hostname'],
+                                request.json['start_time']):
+        return json.dumps(True)
+    return json.dumps(False)
 
 @put('/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
      name='worker_update_bundle_metadata', apply=AuthenticatedPlugin())
@@ -167,12 +174,31 @@ def finalize_bundle(worker_id, uuid):
         # If the directory still doesn't exist after 2 minutes, the following
         # call will return an error.
 
-        local.upload_manager.update_metadata_and_save(bundle, new_bundle=False)
+        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
     print 'Finalized bundle %s' % uuid
     local.model.finalize_bundle(bundle, request.user.user_id,
                                 request.json['exitcode'],
                                 request.json['failure_message'])
+
+@get('/workers/info', name='workers_info', apply=AuthenticatedPlugin())
+def workers_info():
+    if request.user.user_id != local.model.root_user_id:
+        abort(httplib.UNAUTHORIZED, 'User is not root user')
+
+    data = local.worker_model.get_workers()
+
+    # edit entries in data to make them suitable for human reading
+    for worker in data:
+        # checkin_time: seconds since epoch
+        worker['checkin_time'] = int((worker['checkin_time'] - datetime.utcfromtimestamp(0)).total_seconds())
+        del worker['dependencies']
+
+        running_bundles = local.model.batch_get_bundles(uuid=worker['run_uuids'])
+        worker['cpus_in_use'] = sum(bundle.metadata.request_cpus for bundle in running_bundles)
+        worker['gpus_in_use'] = sum(bundle.metadata.request_gpus for bundle in running_bundles)
+
+    return {'data': data}
 
 
 @get('/workers/code.tar.gz', name='worker_download_code')
@@ -180,7 +206,7 @@ def code():
     """
     Returns .tar.gz archive containing the code of the worker.
     """
-    response.set_header('Content-Disposition', 'filename="code.tar.gz"')
+    response.set_header('Content-Disposition', 'attachment; filename="code.tar.gz"')
     response.set_header('Content-Type', 'application/gzip')
     codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     code_dir = os.path.join(codalab_cli, 'worker', 'codalabworker')

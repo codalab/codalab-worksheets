@@ -1,9 +1,12 @@
+import logging
+import sys
 from contextlib import closing
 
 from codalab.common import http_error_to_exception, precondition, State, UsageError, NotFoundError
 from codalabworker import download_util
 from codalabworker import file_util
 
+logger = logging.getLogger(__name__)
 
 def retry_if_no_longer_running(f):
     """
@@ -77,8 +80,10 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
                 with closing(self._worker_model.start_listening(response_socket_id)) as sock:
                     result = self._worker_model.get_json_message(sock, 60)
-                precondition(result is not None, 'Unable to reach worker')
-                if 'error_code' in result:
+                if result is None: # dead workers are a fact of life now
+                    logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
+                    return None
+                elif 'error_code' in result:
                     raise http_error_to_exception(result['error_code'], result['error_message'])
                 return result['target_info']
             finally:
@@ -200,6 +205,20 @@ class DownloadManager(object):
                 string = file_util.un_gzip_string(string)
             return string
 
+    def netcat(self, uuid, port, message):
+        """
+        Sends a raw bytestring into the specified port of a running bundle, then return the response.
+        """
+        worker = self._worker_model.get_bundle_worker(uuid)
+        response_socket_id = self._worker_model.allocate_socket(worker['user_id'], worker['worker_id'])
+        try:
+            self._send_netcat_message(worker, response_socket_id, uuid, port, message)
+            string = self._get_read_response_string(response_socket_id)
+        finally:
+            self._worker_model.deallocate_socket(response_socket_id)
+
+        return string
+
     def _is_available_locally(self, uuid):
         if self._bundle_model.get_bundle_state(uuid) == State.RUNNING:
             if self._worker_model.shared_file_system:
@@ -225,9 +244,19 @@ class DownloadManager(object):
             'path': path,
             'read_args': read_args,
         }
-        precondition(
-            self._worker_model.send_json_message(worker['socket_id'], message, 60),
-            'Unable to reach worker')
+        if not self._worker_model.send_json_message(worker['socket_id'], message, 60): # dead workers are a fact of life now
+            logging.info('Unable to reach worker')
+
+    def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
+        message = {
+            'type': 'netcat',
+            'socket_id': response_socket_id,
+            'uuid': uuid,
+            'port': port,
+            'message': message,
+        }
+        if not self._worker_model.send_json_message(worker['socket_id'], message, 60): # dead workers are a fact of life now
+            logging.info('Unable to reach worker')
 
     def _get_read_response_stream(self, response_socket_id):
         with closing(self._worker_model.start_listening(response_socket_id)) as sock:

@@ -75,6 +75,9 @@ from codalab.objects.oauth2 import (
 from codalab.objects.user import (
     User,
 )
+from codalab.rest.util import (
+    get_group_info
+)
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
@@ -570,7 +573,7 @@ class BundleModel(object):
     def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
         """
         Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle
-        and last_updated metadata. 
+        and last_updated metadata.
         """
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -585,7 +588,7 @@ class BundleModel(object):
                      'job_handle': job_handle,
                      'last_updated': int(time.time())
                 },
-            } 
+            }
             self.update_bundle(bundle, bundle_update, connection)
 
     def set_starting_bundle(self, bundle, user_id, worker_id):
@@ -617,6 +620,31 @@ class BundleModel(object):
 
             return True
 
+    def set_offline_bundle(self, bundle):
+        """
+        Sets the bundle to WORKER_OFFLINE, updating the last_updated metadata.
+        Remove the corresponding row from worker_run if it exists.
+        """
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return False
+
+            # Delete row in worker_run
+            connection.execute(
+                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
+
+            bundle_update = {
+                'state': State.WORKER_OFFLINE,
+                'metadata': {
+                    'last_updated': int(time.time()),
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+            return True
+
     def restage_bundle(self, bundle):
         """
         Sets a bundle back from STARTING to STAGED, returning False if the
@@ -636,7 +664,7 @@ class BundleModel(object):
             update_message = {
                 'state': State.STAGED,
                 'metadata': {
-                    'job_handle': None, 
+                    'job_handle': None,
                 },
             }
             self.update_bundle(bundle, update_message, connection)
@@ -677,14 +705,62 @@ class BundleModel(object):
 
         return True
 
+    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+        '''
+        Marks the bundle as running and returns True. If bundle was WORKER_OFFLINE, also inserts a row
+        into worker_run.
+        Updates a few metadata fields and the events log.
+        '''
+        with self.engine.begin() as connection:
+            # Check that it still exists.
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                # The user deleted the bundle.
+                return False
+
+            if row.state == State.WORKER_OFFLINE:
+                # check that worker_run row doesn't already exist
+                run_row = connection.execute(
+                    cl_worker_run.select().where(cl_worker_run.c.run_uuid == bundle.uuid)).fetchone()
+                if run_row:
+                    # we should never get to this point: panic
+                    raise IntegrityError('worker_run row exists for a bundle in WORKER_OFFLINE state, uuid %s'
+                            % (bundle.uuid,))
+
+                worker_run_row = {
+                    'user_id': user_id,
+                    'worker_id': worker_id,
+                    'run_uuid': bundle.uuid,
+                }
+                connection.execute(cl_worker_run.insert().values(worker_run_row))
+
+            bundle_update = {
+                'state': State.RUNNING,
+                'metadata': {
+                    'last_updated': int(time.time()),
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
+
+        self.update_events_log(
+            user_id=bundle.owner_id,
+            user_name=None,  # Don't know
+            command='resume_bundle',
+            args=(bundle.uuid),
+            uuid=bundle.uuid)
+
+        return True
+
     def finalize_bundle(self, bundle, user_id, exitcode=None, failure_message=None):
         """
-        Marks the bundle as READY / FAILED, updating a few metadata fields, the
+        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields, the
         events log and removing the worker_run row. Additionally, if the user
         running the bundle was the CodaLab root user, increments the time
         used by the bundle owner.
         """
         state = State.FAILED if failure_message or exitcode else State.READY
+        if failure_message == 'Kill requested':
+            state = State.KILLED
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
@@ -928,6 +1004,8 @@ class BundleModel(object):
                 keyword = 'owner_id=' + (user_id or '')
             elif keyword == '.last':
                 keyword = 'id=.sort-'
+            elif keyword == '.shared':
+                keyword = '.shared=True'
 
             m = SEARCH_KEYWORD_REGEX.match(keyword) # key=value
             if m:
@@ -943,6 +1021,14 @@ class BundleModel(object):
                 offset = int(value)
             elif key == '.limit':
                 limit = int(value)
+            elif key == '.shared':  # shared with any group I am in with read or all permission?
+                clause = cl_worksheet.c.uuid.in_(select([cl_group_worksheet_permission.c.object_uuid]).where(
+                    and_(
+                        cl_group_worksheet_permission.c.group_uuid.in_(
+                            alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id))),
+                        cl_group_worksheet_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ
+                    )
+                ))
             # Bundle fields
             elif key == 'id':
                 clause = make_condition(cl_worksheet.c.id, value)
@@ -954,6 +1040,13 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.title, value)
             elif key == 'owner_id':
                 clause = make_condition(cl_worksheet.c.owner_id, value)
+            elif key == 'group':  # shared with group with read or all permissions?
+                group_uuid = get_group_info(value, False)['uuid']
+                clause = cl_worksheet.c.uuid.in_(
+                        select([cl_group_worksheet_permission.c.object_uuid])
+                        .where(and_(
+                            cl_group_worksheet_permission.c.group_uuid == group_uuid,
+                            cl_group_worksheet_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ)))
             elif key == 'bundle':  # contains bundle?
                 condition = make_condition(cl_worksheet_item.c.bundle_uuid, value)
                 if condition is None:  # top-level
@@ -1511,12 +1604,13 @@ class BundleModel(object):
         if query_info.get('count'):
             # Sort by decreasing count
             query = query.order_by('cnt DESC')
+            if field is not None:
+                query = query.group_by(field)
         else:
             # Sort from latest event to earliest
             query = query.order_by(cl_event.c.id.desc())
-
-        if field is not None:
-            query = query.group_by(field)
+            if field is not None:
+                raise UsageError('If specify field, must count')
 
         if offset != None:
             query = query.offset(offset)
@@ -1570,7 +1664,7 @@ class BundleModel(object):
             connection.execute(cl_event.insert().values(info))
 
     # Operations on the query log
-    def date_handler(self, obj): 
+    def date_handler(self, obj):
         """
         Helper function to serialize DataTime
         """
@@ -1757,6 +1851,40 @@ class BundleModel(object):
 
         return user_id, verification_key
 
+    def delete_user(self, user_id=None):
+        '''
+        Delete the user with the given uuid.
+        Delete all items in the database with a
+        foreign key that references the user.
+
+        :param user_id: id of user to delete
+        '''
+        with self.engine.begin() as connection:
+
+            # User verification
+            connection.execute(cl_user_verification.delete().where(cl_user_verification.c.user_id == user_id))
+            connection.execute(cl_user_reset_code.delete().where(cl_user_reset_code.c.user_id == user_id))
+
+            # OAuth2
+            connection.execute(oauth2_auth_code.delete().where(oauth2_auth_code.c.user_id == user_id))
+            connection.execute(oauth2_token.delete().where(oauth2_token.c.user_id == user_id))
+            connection.execute(oauth2_client.delete().where(oauth2_client.c.user_id == user_id))
+
+            # Workers
+            connection.execute(cl_worker_run.delete().where(cl_worker_run.c.user_id == user_id))
+
+            # User Groups
+            connection.execute(cl_user_group.delete().where(cl_user_group.c.user_id == user_id))
+
+            # Event
+            connection.execute(cl_event.delete().where(cl_event.c.user_id == user_id))
+
+            # Chat
+            connection.execute(cl_chat.delete().where(cl_chat.c.sender_user_id == user_id or cl_chat.c.recipient_user_id == user_id))
+
+            # Delete User
+            connection.execute(cl_user.delete().where(cl_user.c.user_id == user_id))
+
     def get_verification_key(self, user_id):
         """
         Get verification key for given user.
@@ -1837,7 +1965,7 @@ class BundleModel(object):
             }))
 
         return code
-    
+
     def get_reset_code_user_id(self, code, delete=False):
         """
         Check if reset code is valid.
@@ -1910,6 +2038,12 @@ class BundleModel(object):
         user_info['time_used'] += amount
         self.update_user_info(user_info)
 
+    def get_user_time_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        time_quota = user_info['time_quota']
+        time_used = user_info['time_used']
+        return time_quota - time_used
+
     def update_user_last_login(self, user_id):
         """
         Update user's last login date to now.
@@ -1921,6 +2055,12 @@ class BundleModel(object):
 
     def _get_disk_used(self, user_id):
         return self.search_bundle_uuids(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
+
+    def get_user_disk_quota_left(self, user_id):
+        user_info = self.get_user_info(user_id)
+        disk_quota = user_info['disk_quota']
+        disk_used = self._get_disk_used(user_id)
+        return disk_quota - disk_used
 
     def update_user_disk_used(self, user_id):
         user_info = self.get_user_info(user_id)

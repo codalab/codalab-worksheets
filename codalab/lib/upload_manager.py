@@ -2,6 +2,7 @@ import re
 import os
 import shutil
 
+from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
 
 class UploadManager(object):
@@ -10,8 +11,12 @@ class UploadManager(object):
     the associated bundle metadata in the database.
     """
     def __init__(self, bundle_model, bundle_store):
+        # exclude these patterns by default
+        DEFAULT_EXCLUDE_PATTERNS = ['.DS_Store', '__MACOSX', '^\._.*']
         self._bundle_model = bundle_model
         self._bundle_store = bundle_store
+        self._default_exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
+
 
     def upload_to_bundle_store(self, bundle, sources, follow_symlinks, exclude_patterns, remove_sources, git, unpack, simplify_archives):
         """
@@ -29,13 +34,14 @@ class UploadManager(object):
         |simplify_archives|: whether to simplify unpacked archives so that if they
                              contain a single file, the final path is just that file,
                              not a directory containing that file.
-    
+
         If |sources| contains one source, then the bundle contents will be that source.
         Otherwise, the bundle contents will be a directory with each of the sources.
         Exceptions:
         - If |git|, then each source is replaced with the result of running 'git clone |source|'
         - If |unpack| is True or a source is an archive (zip, tar.gz, etc.), then unpack the source.
         """
+        exclude_patterns = self._default_exclude_patterns + exclude_patterns if exclude_patterns else self._default_exclude_patterns
         bundle_path = self._bundle_store.get_bundle_location(bundle.uuid)
         try:
             path_util.make_directory(bundle_path)
@@ -57,7 +63,7 @@ class UploadManager(object):
                 elif is_local_path:
                     source_path = path_util.normalize(source)
                     path_util.check_isvalid(source_path, 'upload')
-                    
+
                     if unpack and self._can_unpack_file(source_path):
                         self._unpack_file(
                             source_path, zip_util.strip_archive_ext(source_output_path),
@@ -82,7 +88,7 @@ class UploadManager(object):
             if os.path.exists(bundle_path):
                 path_util.remove(bundle_path)
             raise
-    
+
     def _interpret_source(self, source):
         is_url, is_local_path, is_fileobj = False, False, False
         if isinstance(source, basestring):
@@ -98,7 +104,7 @@ class UploadManager(object):
 
     def _can_unpack_file(self, path):
         return os.path.isfile(path) and zip_util.path_is_archive(path)
-    
+
     def _unpack_file(self, source_path, dest_path, remove_source, simplify_archive):
         zip_util.unpack(zip_util.get_archive_ext(source_path), source_path, dest_path)
         if remove_source:
@@ -124,15 +130,10 @@ class UploadManager(object):
         if len(files) == 1:
             self._simplify_directory(path, files[0])
 
-    # ... ignore files that match any of these exactly
-    IGNORE_FILE_EXACT = ['.DS_Store', '__MACOSX']
-    # ... ignore files that match any of these patterns
-    IGNORE_FILE_PATTERNS = [re.compile(s) for s in ['^\._.*']]
 
     def _ignore_file_in_archive(self, filename):
-        if filename in self.IGNORE_FILE_EXACT:
-            return True
-        return any([pattern.match(filename) for pattern in self.IGNORE_FILE_PATTERNS])
+        matchers = [re.compile(s) for s in self._default_exclude_patterns]
+        return any([matcher.match(filename) for matcher in matchers])
 
     def _simplify_directory(self, path, child_path=None):
         """
@@ -148,7 +149,7 @@ class UploadManager(object):
         path_util.rename(child_path, path)
         path_util.remove(temp_path)
 
-    def update_metadata_and_save(self, bundle, new_bundle):
+    def update_metadata_and_save(self, bundle, enforce_disk_quota=False):
         """
         Updates the metadata about the contents of the bundle, including
         data_size as well as the total amount of disk used by the user.
@@ -166,20 +167,18 @@ class UploadManager(object):
 
         data_hash = '0x%s' % (path_util.hash_directory(bundle_path, dirs_and_files))
         data_size = path_util.get_size(bundle_path, dirs_and_files)
+        if enforce_disk_quota:
+            disk_left = self._bundle_model.get_user_disk_quota_left(bundle.owner_id)
+            if data_size > disk_left:
+                raise UsageError("Can't save bundle, bundle size %s greater than user's disk quota left: %s" % (data_size, disk_left))
 
-        if new_bundle:
-            bundle.data_hash = data_hash
-            bundle.metadata.set_metadata_key('data_size', data_size)
-            self._bundle_model.save_bundle(bundle)
-        else:
-            bundle_update = {
-               'data_hash': data_hash,
-               'metadata': {
-                    'data_size': data_size,             
-                },
-            }
-            self._bundle_model.update_bundle(bundle, bundle_update)
-
+        bundle_update = {
+           'data_hash': data_hash,
+           'metadata': {
+                'data_size': data_size,
+            },
+        }
+        self._bundle_model.update_bundle(bundle, bundle_update)
         self._bundle_model.update_user_disk_used(bundle.owner_id)
 
     def has_contents(self, bundle):
@@ -190,7 +189,7 @@ class UploadManager(object):
         bundle_update = {
             'data_hash': None,
             'metadata': {
-                'data_size': 0,             
+                'data_size': 0,
             },
         }
         self._bundle_model.update_bundle(bundle, bundle_update)

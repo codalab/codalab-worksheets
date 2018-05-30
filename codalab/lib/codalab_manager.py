@@ -366,10 +366,11 @@ class CodaLabManager(object):
     @cached
     def emailer(self):
         if 'email' in self.config:
+            # Default to authless SMTP (supported by some servers) if user/password is unspecified.
             return SMTPEmailer(
                 host=self.config['email']['host'],
-                user=self.config['email']['user'],
-                password=self.config['email']['password'],
+                user=self.config['email'].get('user','noreply@codalab.org'), 
+                password=self.config['email'].get('password',None),
                 use_tls=True,
                 default_sender='CodaLab <noreply@codalab.org>',
                 server_email='noreply@codalab.org',
@@ -516,7 +517,8 @@ class CodaLabManager(object):
                 "NOTICE: "
                 "The instance you are connected to is running CodaLab v{}. "
                 "You are currently using an older v{} of the CLI. "
-                "You can pull the latest features from GitHub.\n"
+                "Please update codalab using\n"
+                "   pip install -U codalab\n"
             ).format(server_version, CODALAB_VERSION)
             sys.stderr.write(message)
 

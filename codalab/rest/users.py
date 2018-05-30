@@ -3,10 +3,13 @@ Worksheets REST API Users Views.
 """
 import httplib
 
-from bottle import abort, get, request, local
+from bottle import abort, get, request, local, delete
 
 from codalab.lib.spec_util import NAME_REGEX
-from codalab.lib.server_util import bottle_patch as patch
+from codalab.lib.server_util import (
+    bottle_patch as patch,
+    json_api_meta,
+)
 from codalab.rest.schemas import (
     AuthenticatedUserSchema,
     USER_READ_ONLY_FIELDS,
@@ -15,6 +18,9 @@ from codalab.rest.schemas import (
 from codalab.server.authenticated_plugin import (
     AuthenticatedPlugin,
     UserVerifiedPlugin,
+)
+from codalab.rest.util import (
+    get_resource_ids,
 )
 
 
@@ -71,6 +77,56 @@ def fetch_user(user_spec):
     if user is None:
         abort(httplib.NOT_FOUND, "User %s not found" % user_spec)
     return allowed_user_schema()().dump(user).data
+
+
+@delete('/users', apply=AuthenticatedPlugin())
+def delete_user():
+    """Fetch user ids"""
+    user_ids = get_resource_ids(request.json, 'users')
+
+    request_user_id = request.user.user_id
+
+    if request_user_id != local.model.root_user_id:
+        abort(httplib.UNAUTHORIZED, 'Only root user can delete other users.')
+
+    for user_id in user_ids:
+        if user_id == local.model.root_user_id:
+            abort(httplib.UNAUTHORIZED, 'Cannot delete root user.')
+        user = local.model.get_user(user_id=user_id)
+        if user is None:
+            abort(httplib.NOT_FOUND, 'User %s not found' % user_id)
+
+        '''
+        Check for owned bundles, worksheets, and groups.
+        If any are found, then do not allow user to be deleted.
+        '''
+        error_messages = []
+
+        bundles = local.model.batch_get_bundles(owner_id=user_id)
+        if bundles is not None and len(bundles) > 0:
+            bundle_uuids = [bundle.uuid for bundle in bundles]
+            error_messages.append('User %s owns bundles, can\'t delete user. UUIDs: %s\n'
+                                  % (user_id, ','.join(bundle_uuids)))
+
+        worksheets = local.model.batch_get_worksheets(fetch_items=False, owner_id=user_id)
+        if worksheets is not None and len(worksheets) > 0:
+            worksheet_uuids = [worksheet.uuid for worksheet in worksheets]
+            error_messages.append('User %s owns worksheets, can\'t delete. UUIDs: %s\n'
+                                  % (user_id, ','.join(worksheet_uuids)))
+
+        groups = local.model.batch_get_groups(owner_id=user_id)
+        if groups is not None and len(groups) > 0:
+            group_uuids = [group.uuid for group in groups]
+            error_messages.append('User %s owns groups, can\'t delete. UUIDs: %s\n'
+                                  % (user_id, ','.join(group_uuids)))
+
+        if error_messages:
+            abort(httplib.NOT_FOUND, '\n'.join(error_messages))
+
+        local.model.delete_user(user_id=user.user_id)
+
+    # Return list of deleted id as meta
+    return json_api_meta({}, {'ids': user_ids})
 
 
 @get('/users')

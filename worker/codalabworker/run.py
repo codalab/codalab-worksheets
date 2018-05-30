@@ -6,13 +6,14 @@ import socket
 import threading
 import time
 import traceback
+import sys
+import json
 
 from bundle_service_client import BundleServiceException
 from docker_client import DockerException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE, get_target_info, get_target_path, PathException
 from file_util import get_path_size, gzip_file, gzip_string, read_file_section, summarize_file, tar_gzip_directory, remove_path
-from formatting import duration_str, size_str
-
+from formatting import duration_str, size_str, parse_size
 
 logger = logging.getLogger(__name__)
 
@@ -25,11 +26,14 @@ class Run(object):
         2) Starting the Docker container.
         3) Reporting running container resource utilization to the bundle
            service, and killing the container if it uses too many resources.
-        4) Handling any messages related to the run.
-        5) Reporting to the bundle service that the run has finished.
+        4) Periodically informing the server that the job is still running (think of this as a heartbeat,
+           if the server does not receive one for more than WORKER_TIMEOUT_SECONDS, the job is moved to
+           the WORKER_OFFLINE state)
+        5) Handling any messages related to the run.
+        6) Reporting to the bundle service that the run has finished.
     """
     def __init__(self, bundle_service, docker, image_manager, worker,
-                 bundle, bundle_path, resources):
+                 bundle, bundle_path, resources, cpuset, gpuset):
         self._bundle_service = bundle_service
         self._docker = docker
         self._image_manager = image_manager
@@ -38,8 +42,11 @@ class Run(object):
         self._bundle_path = os.path.realpath(bundle_path)
         self._dep_paths = set([dep['child_path'] for dep in self._bundle['dependencies']])
         self._resources = resources
+        self._cpuset = cpuset
+        self._gpuset = gpuset
         self._uuid = bundle['uuid']
         self._container_id = None
+        self._start_time = None # start time of container
 
         self._disk_utilization_lock = threading.Lock()
         self._disk_utilization = 0
@@ -53,6 +60,30 @@ class Run(object):
 
         self._finished_lock = threading.Lock()
         self._finished = False
+
+    def serialize(self):
+        """ Output a dictionary able to be serialized into json """
+        run_info = {
+            'bundle': self._bundle,
+            'bundle_path': self._bundle_path,
+            'resources': self._resources,
+            'container_id': self._container_id,
+            'start_time': self._start_time,
+            'cpuset': list(self._cpuset),
+            'gpuset': list(self._gpuset),
+        }
+        return run_info
+
+    @staticmethod
+    def deserialize(bundle_service, docker, image_manager, worker, run_info):
+        """ Create a new Run object and populate it based on given run_info dictionary """
+        run = Run(bundle_service, docker, image_manager, worker,
+                run_info['bundle'], run_info['bundle_path'], run_info['resources'],
+                set(run_info.get('cpuset', [])), set(run_info.get('gpuset', []))) # default values for backwards compatibility
+        run._container_id = run_info['container_id']
+        run._start_time = run_info['start_time']
+        return run
+
 
     def run(self):
         """
@@ -88,6 +119,37 @@ class Run(object):
 
         return True
 
+    def resume(self):
+        """
+        Report that the bundle is running, and spawn a thread to monitor it
+        """
+        if self._send_resume_message():
+            # Start a thread for this run.
+            def resume_run(self):
+                Run._safe_update_run_status(self, 'Running')
+                Run._monitor(self)
+
+            threading.Thread(target=resume_run, args=[self]).start()
+            return True
+
+        return False
+
+    def _send_resume_message(self):
+        """
+        Report that the bundle is running. We note the start time here for
+        accurate accounting of time used, since the clock on the bundle
+        service and on the worker could be different.
+        """
+        start_message = {
+            'hostname': socket.gethostname(),
+            'start_time': int(self._start_time),
+        }
+
+        if not self._bundle_service.resume_bundle(self._worker.id, self._uuid,
+                                                 start_message):
+            return False
+        return True
+
     def _safe_update_docker_image(self, docker_image):
         """ Update the docker_image metadata field for the run bundle """
         try:
@@ -116,6 +178,7 @@ class Run(object):
             if (time.time() - last_update_time[0] >= PROGRESS_UPDATE_FREQ_SECS):
                 last_update_time[0] = time.time()
                 self._safe_update_run_status(status)
+                self._send_resume_message()
         return update
 
     def _start(self):
@@ -169,28 +232,26 @@ class Run(object):
 
             def do_start():
                 self._safe_update_run_status('Starting Docker container')
+                if self._resources['request_network']:
+                    docker_network = self._worker.docker_network_external_name
+                else:
+                    docker_network = self._worker.docker_network_internal_name
+
                 return self._docker.start_container(
                     self._bundle_path, self._uuid, self._bundle['command'],
-                    self._resources['docker_image'],
-                    self._resources['request_network'],
-                    dependencies)
+                    self._resources['docker_image'], docker_network, dependencies,
+                    self._cpuset, self._gpuset, self._resources['request_memory']
+                )
 
-            try:
-                self._container_id = do_start()
-            except DockerException as e:
-                # The download image call is slow, even if the image is already
-                # available. Thus, we only make it if we know the image is not
-                # available. Start-up is much faster that way.
-                if 'No such image' in e.message:
-                    updater = self._throttled_updater()
-                    def update_status_and_check_killed(status):
-                        updater('Downloading Docker image: ' + status)
-                        check_killed()
-                    self._docker.download_image(self._resources['docker_image'],
-                                                update_status_and_check_killed)
-                    self._container_id = do_start()
-                else:
-                    raise
+            # Pull the docker image regardless of whether or not we already have it
+            # This will make sure we pull updated versions of the image
+            updater = self._throttled_updater()
+            def update_status_and_check_killed(status):
+                updater('Pulling docker image: ' + status)
+                check_killed()
+            self._docker.download_image(self._resources['docker_image'],
+                                        update_status_and_check_killed)
+            self._container_id = do_start()
 
             digest = self._docker.get_image_repo_digest(self._resources['docker_image'])
             self._safe_update_docker_image(digest)
@@ -224,6 +285,11 @@ class Run(object):
                 report = False
             self._check_and_report_resource_utilization(report)
 
+            try:
+                self._send_resume_message()
+            except BundleServiceException:
+                pass
+
             # TODO(klopyrev): Upload the contents of the running bundle to the
             #                 bundle service every few hours, so that they are
             #                 available in case the worker dies.
@@ -237,8 +303,7 @@ class Run(object):
 
         # Get wall clock time.
         new_metadata['time'] = time.time() - self._start_time
-        if (self._resources['request_time'] and
-            new_metadata['time'] > self._resources['request_time']):
+        if (self._resources['request_time'] and new_metadata['time'] > self._resources['request_time']):
             self.kill('Time limit %s exceeded.' % duration_str(self._resources['request_time']))
 
         # Get memory, time_user and time_system.
@@ -246,10 +311,6 @@ class Run(object):
         if 'memory' in new_metadata and new_metadata['memory'] > self._max_memory:
             self._max_memory = new_metadata['memory']
         new_metadata['memory_max'] = self._max_memory
-        if (self._resources['request_memory'] and
-            'memory' in new_metadata and
-            new_metadata['memory'] > self._resources['request_memory']):
-            self.kill('Memory limit %sb exceeded.' % size_str(self._resources['request_memory']))
 
         # Get disk utilization.
         with self._disk_utilization_lock:
@@ -289,6 +350,39 @@ class Run(object):
             'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         bundle_service.reply(worker.id, socket_id, message)
+
+    def netcat(self, socket_id, port, message):
+        """ Set up a unix socket to the running container, send the message and retrieve the response. """
+
+        def reply_error(code, message):
+            message = {
+                'error_code': code,
+                'error_message': message,
+            }
+            self._bundle_service.reply(self._worker.id, socket_id, message)
+
+        try:
+            container_ip = self._worker._docker.get_container_ip(
+                    self._worker.docker_network_external_name, self._container_id)
+            if not container_ip:
+                container_ip = self._worker._docker.get_container_ip(
+                        self._worker.docker_network_internal_name, self._container_id)
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((container_ip, port))
+            s.sendall(message)
+
+            total_data=[]
+            while True:
+                data = s.recv(1024)
+                if not data: break
+                total_data.append(data)
+            s.close()
+            self._bundle_service.reply_data(self._worker.id, socket_id, {}, ''.join(total_data))
+        except BundleServiceException:
+            traceback.print_exc()
+        except Exception as e:
+            traceback.print_exc()
+            reply_error(httplib.INTERNAL_SERVER_ERROR, e.message)
 
     def read(self, socket_id, path, read_args):
         def reply_error(code, message):
@@ -409,6 +503,9 @@ class Run(object):
                         traceback.print_exc()
                         time.sleep(1)
 
+            # Release held up cpus and gpus
+            self._worker._deallocate_cpu_and_sets(self._cpuset, self._gpuset)
+
             # Clean-up dependencies.
             for dep in self._bundle['dependencies']:
                 if not self._worker.shared_file_system:
@@ -465,3 +562,8 @@ class Run(object):
     def _set_finished(self):
         with self._finished_lock:
             self._finished = True
+
+    @property
+    def requested_memory_bytes(self):
+        """ Return request_memory, or 4 megabytes if None (this is for backwards compatibility  """
+        return self._resources['request_memory'] or parse_size('4m')

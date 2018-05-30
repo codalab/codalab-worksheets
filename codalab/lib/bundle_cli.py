@@ -47,7 +47,6 @@ from codalab.common import (
 )
 from codalab.lib import (
     bundle_util,
-    cli_util,
     file_util,
     formatting,
     metadata_util,
@@ -58,7 +57,14 @@ from codalab.lib import (
     zip_util,
     bundle_fuse,
 )
-from codalab.lib.cli_util import nested_dict_get
+from codalab.lib.cli_util import (
+    nested_dict_get,
+    parse_key_target,
+    parse_target_spec,
+    desugar_command,
+    INSTANCE_SEPARATOR,
+    WORKSHEET_SEPARATOR
+)
 from codalab.objects.permission import (
     group_permissions_str,
     parse_permission,
@@ -88,13 +94,17 @@ from codalabworker.docker_client import DockerClient
 from codalabworker.file_util import remove_path
 
 # Formatting Constants
-GLOBAL_SPEC_FORMAT = "[<alias>::|<address>::](<uuid>|<name>)"
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
-TARGET_SPEC_FORMAT = '(<uuid>|<name>)[%s<subpath within bundle>]' % (os.sep,)
-ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
-BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
-GLOBAL_BUNDLE_SPEC_FORMAT = '((<uuid>|<name>|^<index>)|(<alias>|<address>)::(<uuid>|<name>))'
+BASIC_SPEC_FORMAT = '(<uuid>|<name>)'
+BASIC_BUNDLE_SPEC_FORMAT = '(<uuid>|<name>|^<index>)'
+
+GLOBAL_SPEC_FORMAT = "[%s%s]%s" % (ADDRESS_SPEC_FORMAT, INSTANCE_SEPARATOR, BASIC_SPEC_FORMAT)
 WORKSHEET_SPEC_FORMAT = GLOBAL_SPEC_FORMAT
+
+BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (WORKSHEET_SPEC_FORMAT, WORKSHEET_SEPARATOR, BASIC_BUNDLE_SPEC_FORMAT)
+
+TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
+ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
 PERMISSION_SPEC_FORMAT = '((n)one|(r)ead|(a)ll)'
 UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
@@ -104,6 +114,7 @@ BUNDLE_COMMANDS = (
     'upload',
     'make',
     'run',
+    'docker',
     'edit',
     'detach',
     'rm',
@@ -118,12 +129,7 @@ BUNDLE_COMMANDS = (
     'kill',
     'write',
     'mount',
-)
-
-DOCKER_IMAGE_COMMANDS = (
-    'edit-image',
-    'commit-image',
-    'push-image',
+    'netcat',
 )
 
 WORKSHEET_COMMANDS = (
@@ -152,10 +158,12 @@ GROUP_AND_PERMISSION_COMMANDS = (
 USER_COMMANDS = (
     'uinfo',
     'uedit',
+    'ufarewell'
 )
 
 SERVER_COMMANDS = (
     'server',
+    'workers',
     'bundle-manager',
     'bs-add-partition',
     'bs-rm-partition',
@@ -298,7 +306,6 @@ class Commands(object):
         max_length = max(
           len(command_name(command)) for command in itertools.chain(
               BUNDLE_COMMANDS,
-              DOCKER_IMAGE_COMMANDS,
               WORKSHEET_COMMANDS,
               GROUP_AND_PERMISSION_COMMANDS,
               USER_COMMANDS,
@@ -356,9 +363,6 @@ class Commands(object):
         Commands for users:
         {user_commands}
 
-        Commands for building Docker images:
-        {docker_image_commands}
-
         Commands for managing server:
         {server_commands}
 
@@ -366,7 +370,6 @@ class Commands(object):
         {other_commands}
         """).format(
             bundle_commands=command_group_help_text(BUNDLE_COMMANDS),
-            docker_image_commands=command_group_help_text(DOCKER_IMAGE_COMMANDS),
             worksheet_commands=command_group_help_text(WORKSHEET_COMMANDS),
             group_and_permission_commands=command_group_help_text(GROUP_AND_PERMISSION_COMMANDS),
             user_commands=command_group_help_text(USER_COMMANDS),
@@ -503,47 +506,61 @@ class BundleCLI(object):
     def simple_group_str(info):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
-    @staticmethod
-    def parse_target(client, worksheet_uuid, target_spec):
+    def resolve_target(self, default_client, default_worksheet_uuid, target_spec, allow_remote=True):
         """
-        Helper: A target_spec is a bundle_spec[/subpath].
+        Input: Target spec in the form of
+        [<instance>::][<worksheet_spec>//]<bundle_spec>[/<subpath>]
+            where <bundle_spec> is required and the rest are optional.
+
+        Returns:
+            - client: A client connected to the instance the target is from if allow_remote is True and an instance is specified,
+                otherwise default_client
+            - worksheet_uuid: The uuid of the worksheet the target bundle is from,
+                a new uuid if the target spec includes a worksheet spec
+                same as default_worksheet_uuid otherwise
+            - bundle_uuid: The uuid of the target bundle
+            - subpath: The subpath from the target_spec
+        Raises UsageError if allow_remote is False but an instance is specified in the target_spec
         """
-        if os.sep in target_spec:
-            bundle_spec, subpath = tuple(target_spec.split(os.sep, 1))
+        instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
+
+        if instance is not None:
+            if not allow_remote:
+                raise UsageError('Cannot execute command on a target on a remote instance. Please remove the instance reference (i.e. "prod::" in prod::worksheet//bundle)')
+            aliases = self.manager.config['aliases']
+            if instance in aliases:
+                instance = aliases.get(instance)
+            client = self.manager.client(instance)
         else:
-            bundle_spec, subpath = target_spec, ''
+            client = default_client
+        if worksheet_spec is not None:
+            worksheet_uuid = BundleCLI.resolve_worksheet_uuid(client, '', worksheet_spec)
+        else:
+            worksheet_uuid = default_worksheet_uuid
+
         # Resolve the bundle_spec to a particular bundle_uuid.
         bundle_uuid = BundleCLI.resolve_bundle_uuid(client, worksheet_uuid, bundle_spec)
-        return (bundle_uuid, subpath)
 
-    def parse_target_specs(self, items):
-        targets = []
-        for item in items:
-            if ':' in item:
-                (key, target) = item.split(':', 1)
-                if key == '':
-                    key = target  # Set default key to be same as target
-            else:
-                # Provide syntactic sugar for a make bundle with a single anonymous target.
-                (key, target) = ('', item)
+        # Rest of CLI treats empty string as no subpath and can't handle subpath being None
+        subpath = '' if subpath is None else subpath
 
-            targets.append((key, target))
-        return targets
+        return (client, worksheet_uuid, bundle_uuid, subpath)
 
-    def parse_key_targets(self, client, worksheet_uuid, items):
+    def resolve_key_targets(self, client, worksheet_uuid, target_specs):
         """
-        Helper: items is a list of strings which are [<key>]:<target>
+        Helper: target_specs is a list of strings which are [<key>]:<target>
+        Returns: [(key, (bundle_uuid, subpath)), ...]
         """
         targets = []
-        # Turn targets into a dict mapping key -> (uuid, subpath)) tuples.
-
-        for key, target in self.parse_target_specs(items):
+        target_keys_values = [parse_key_target(spec) for spec in target_specs]
+        for key, target_spec in target_keys_values:
             if key in targets:
                 if key:
                     raise UsageError('Duplicate key: %s' % (key,))
                 else:
                     raise UsageError('Must specify keys when packaging multiple targets!')
-            targets.append((key, self.parse_target(client, worksheet_uuid, target)))
+            _, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(client, worksheet_uuid, target_spec, allow_remote=False)
+            targets.append((key, (bundle_uuid, subpath)))
         return targets
 
     @staticmethod
@@ -615,7 +632,7 @@ class BundleCLI(object):
         Example: https://worksheets.codalab.org/bundleservice::wine
         Return (client, spec)
         """
-        tokens = spec.split('::')
+        tokens = spec.split(INSTANCE_SEPARATOR)
         if len(tokens) == 1:
             address = self.manager.session()['address']
             spec = tokens[0]
@@ -729,7 +746,7 @@ class BundleCLI(object):
 
         # Parse arguments
         argv = self.collapse_bare_command(argv)
-        if argv[0] == '-v' or argv[0] == '--version':
+        if len(argv) > 0 and (argv[0] == '-v' or argv[0] == '--version'):
             self.print_version()
             return
         args = parser.parse_args(argv)
@@ -741,19 +758,7 @@ class BundleCLI(object):
             structured_result = command_fn()
         else:
             try:
-                # Profiling (off by default)
-                if False:
-                    import hotshot
-                    import hotshot.stats
-                    prof_path = 'codalab.prof'
-                    prof = hotshot.Profile(prof_path)
-                    prof.runcall(command_fn)
-                    prof.close()
-                    stats = hotshot.stats.load(prof_path)
-                    stats.sort_stats('time', 'calls')
-                    stats.print_stats(20)
-                else:
-                    structured_result = command_fn()
+                structured_result = command_fn()
             except PermissionError, e:
                 if self.headless:
                     raise e
@@ -917,6 +922,35 @@ class BundleCLI(object):
             print config[key]
 
     @Commands.command(
+        'workers',
+        help=[
+            'Display worker information of this CodaLab instance. Root user only.',
+        ],
+        arguments=(
+        ),
+    )
+    def do_workers_command(self, args):
+        client = self.manager.current_client()
+        raw_info = client.get_workers_info()
+
+        columns = ['worker_id', 'cpus', 'gpus', 'memory_bytes', 'last_checkin', 'tag']
+
+        data = []
+
+        for worker in raw_info:
+            data.append({
+                'worker_id': worker['worker_id'],
+                'cpus': '{}/{}'.format(worker['cpus_in_use'], worker['cpus']),
+                'gpus': '{}/{}'.format(worker['gpus_in_use'], worker['gpus']),
+                'memory_bytes': formatting.size_str(worker['memory_bytes']),
+                'last_checkin': '{} ago'.format(formatting.duration_str(int(time.time()) - worker['checkin_time'])),
+                'tag': worker['tag'],
+            })
+
+        print >>self.stdout, 'Workers Info:'
+        self.print_table(columns, data)
+
+    @Commands.command(
         'upload',
         aliases=('up',),
         help=[
@@ -940,22 +974,18 @@ class BundleCLI(object):
         + EDIT_ARGUMENTS,
     )
     def do_upload_command(self, args):
-        # Uploading from local filesystem not allowed for headless CLI (i.e. web terminal)
-        if self.headless and args.path:
-            raise UsageError("Upload from local filesystem not supported in headless CLI.")
-
         if args.contents is None and not args.path:
             raise UsageError("Nothing to upload.")
 
         if args.contents is not None and args.path:
-            raise UsageError("Upload does not support mixing content strings and local files.")
+            raise UsageError("Upload does not support mixing content strings and paths(local files and URLs).")
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
         # Build bundle info
         metadata = self.get_missing_metadata(UploadedBundle, args, initial_metadata={})
         # name = 'test.zip' => name = 'test'
-        if args.contents is not None:
+        if args.contents is not None and metadata['name'] is None:
             metadata['name'] = 'contents'
         if not args.pack and zip_util.path_is_archive(metadata['name']):
             metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
@@ -977,8 +1007,6 @@ class BundleCLI(object):
 
         # Option 2: Upload URL(s)
         elif any(map(path_util.path_is_url, args.path)):
-            if self.headless:
-                raise UsageError("Local file paths not allowed without a filesystem.")
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
 
@@ -992,6 +1020,8 @@ class BundleCLI(object):
 
         # Option 3: Upload file(s) from the local filesystem
         else:
+            if self.headless:
+                raise UsageError("Local file paths not allowed without a filesystem.")
             # Check that the upload paths exist
             for path in args.path:
                 path_util.check_isvalid(path_util.normalize(path), 'upload')
@@ -1045,9 +1075,8 @@ class BundleCLI(object):
     def do_download_command(self, args):
         self._fail_if_headless(args)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        bundle_uuid, subpath = target
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
 
         # Figure out where to download.
         info = client.fetch('bundles', bundle_uuid)
@@ -1061,7 +1090,7 @@ class BundleCLI(object):
             return
 
         # Do the download.
-        target_info = client.fetch_contents_info(target[0], target[1], 0)
+        target_info = client.fetch_contents_info(bundle_uuid, subpath, 0)
         if target_info['type'] == 'link':
             raise UsageError('Downloading symlinks is not allowed.')
 
@@ -1069,7 +1098,7 @@ class BundleCLI(object):
 
         progress = FileTransferProgress('Received ', f=self.stderr)
         contents = file_util.tracked(
-            client.fetch_contents_blob(target[0], target[1]), progress.update)
+            client.fetch_contents_blob(bundle_uuid, subpath), progress.update)
         with progress, closing(contents):
             if target_info['type'] == 'directory':
                 un_tar_directory(contents, final_path, 'gz')
@@ -1182,7 +1211,9 @@ class BundleCLI(object):
     )
     def do_make_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
+        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
+        # Support anonymous make calls by replacing None keys with ''
+        targets = [('' if key is None else key, val) for key, val in targets]
         metadata = self.get_missing_metadata(MakeBundle, args)
         new_bundle = client.create(
             'bundles',
@@ -1229,77 +1260,53 @@ class BundleCLI(object):
 
     @Commands.command(
         'run',
-        help='Create a bundle by running a program bundle on an input bundle. If local mode is specified, simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
+        help='Create a bundle by running a program bundle on an input bundle.',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
             Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
             Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
-            Commands.Argument('--local', action='store_true', help='Beta feature: this command may change in a future release. Simulate a run bundle locally. This means any dependencies provided are local files/directories mounted to a temporary container (read-only).'),
         ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
     def do_run_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        args.target_spec, args.command = cli_util.desugar_command(args.target_spec, args.command)
+        args.target_spec, args.command = desugar_command(args.target_spec, args.command)
         metadata = self.get_missing_metadata(RunBundle, args)
 
-        if args.local:
-            self._fail_if_headless(args)  # Disable on headless systems
-            docker_image = metadata.get('request_docker_image', None)
-            if not docker_image:
-                raise UsageError('--request-docker-image [docker-image] must be specified when running in local mode')
+        targets = self.resolve_key_targets(client, worksheet_uuid, args.target_spec)
+        new_bundle = client.create(
+            'bundles',
+            self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
+            params={'worksheet': worksheet_uuid},
+        )
 
-            uuid = generate_uuid()
-            bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
-            command = args.command
-            request_network = None
-            dependencies = [
-                (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
-            ]
-
-            # Set up a directory to store the bundle.
-            remove_path(bundle_path)
-            os.makedirs(bundle_path)
-
-            for dependency_path, docker_dependency_path in dependencies:
-                child_path = os.path.join(bundle_path, dependency_path)
-                os.symlink(docker_dependency_path, child_path)
-
-            dc = DockerClient()
-            container_id = dc.start_container(bundle_path, uuid, command, docker_image, request_network, dependencies)
-            print >>self.stdout, '===='
-            print >>self.stdout, 'ContainerID: ', container_id
-            print >>self.stdout, 'Local Bundle ID: ', uuid
-            print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
-            print >>self.stdout, '===='
-        else:
-            targets = self.parse_key_targets(client, worksheet_uuid, args.target_spec)
-            new_bundle = client.create(
-                'bundles',
-                self.derive_bundle(RunBundle.BUNDLE_TYPE, args.command, targets, metadata),
-                params={'worksheet': worksheet_uuid},
-            )
-
-            print >>self.stdout, new_bundle['uuid']
-            self.wait(client, args, new_bundle['uuid'])
+        print >>self.stdout, new_bundle['uuid']
+        self.wait(client, args, new_bundle['uuid'])
 
     @Commands.command(
-        'edit-image',
-        help='Beta feature: this command may change in a future release. Start an interactive shell with an image to allow edits to that image locally. This means any dependencies provided are also local files/directories mounted to a temporary container (read-only).',
+        'docker',
+        help='Beta feature. Simulate a run bundle locally, producing bundle contents in the local environment and mounting local dependencies.',
         arguments=(
             Commands.Argument('target_spec', help=ALIASED_TARGET_SPEC_FORMAT, nargs='*', completer=TargetsCompleter),
-            Commands.Argument('--request-docker-image', help='The docker image to edit', required=True),
-        )
+            Commands.Argument('command', metavar='[---] command', help='Arbitrary Linux command to execute.', completer=NullCompleter),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ) + Commands.metadata_arguments([RunBundle]) + EDIT_ARGUMENTS + WAIT_ARGUMENTS,
     )
-    def do_edit_image_command(self, args):
+    def do_docker_command(self, args):
         self._fail_if_headless(args)  # Disable on headless systems
-        docker_image = args.request_docker_image
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        args.target_spec, args.command = desugar_command(args.target_spec, args.command)
+        metadata = self.get_missing_metadata(RunBundle, args)
+
+        docker_image = metadata.get('request_docker_image', None)
+        if not docker_image:
+            raise UsageError('--request-docker-image [docker-image] must be specified')
 
         uuid = generate_uuid()
         bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
-        command = '/bin/bash'
         request_network = None
+        target_specs = [parse_key_target(spec) for spec in args.target_spec]
         dependencies = [
-            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, target in self.parse_target_specs(args.target_spec)
+            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
         ]
 
         # Set up a directory to store the bundle.
@@ -1311,55 +1318,13 @@ class BundleCLI(object):
             os.symlink(docker_dependency_path, child_path)
 
         dc = DockerClient()
-        container_id = dc.create_container(bundle_path, uuid, command, docker_image, request_network, dependencies, ['-it'])
-
+        container_id = dc.create_container(bundle_path, uuid, args.command, docker_image, request_network, dependencies, ['-it'])
         print >>self.stdout, '===='
-        print >>self.stdout, 'Entering container {}'.format(container_id[:8])
-        print >>self.stdout, 'Once you are happy with the changes, please exit the container (ctrl-D)'
-        print >>self.stdout, 'and commit your changes to a new image by running:'
-        print >>self.stdout, ''
-        print >>self.stdout, '\tcl commit-image {} [image-tag]'.format(container_id[:8])
-        print >>self.stdout, ''
+        print >>self.stdout, 'Container ID: ', container_id[:12]
+        print >>self.stdout, 'Local Bundle UUID: ', uuid
+        print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
         print >>self.stdout, '===='
         os.system('docker start -ai {}'.format(container_id))
-        print >>self.stdout, '===='
-        print >>self.stdout, 'Exited from container {}'.format(container_id[:8])
-        print >>self.stdout, 'If you are happy with the changes, please commit your changes to a new'
-        print >>self.stdout, 'image by running:'
-        print >>self.stdout, ''
-        print >>self.stdout, '\tcl commit-image {} [image-tag]'.format(container_id[:8])
-        print >>self.stdout, ''
-        print >>self.stdout, '===='
-
-    @Commands.command(
-        'commit-image',
-        help='Create an image from a container.',
-        arguments=(
-            Commands.Argument('container', help='Container to commit.'),
-            Commands.Argument('image_tag', help='Image tag to commit to. E.g: codalabtest-on.azurecr.io/ubuntu'),
-        )
-    )
-    def do_commit_image_command(self, args):
-        self._fail_if_headless(args)  # Disable on headless systems
-        cli_command = 'docker commit {} {}'.format(args.container, args.image_tag)
-        os.system(cli_command)
-
-    @Commands.command(
-        'push-image',
-        help='Beta feature: this command may change in a future release. Push a (committed) image to a docker registry. Deprecated and disabled. Please use docker push instead.',
-        arguments=(
-            Commands.Argument('image_tag', help='Image tag for which to perform a push. E.g: codalabtest-on.azurecr.io/ubuntu'),
-        )
-    )
-    def do_push_image_command(self, args):
-        self._fail_if_headless(args)  # Disable on headless systems
-        print >>self.stdout, '===='
-        print >>self.stdout, 'cl push-image has been deprecated and disabled. Please use docker push instead:'
-        print >>self.stdout, ''
-        print >>self.stdout, '\tdocker push [image-tag]'
-        print >>self.stdout, ''
-        print >>self.stdout, '===='
-
 
     @Commands.command(
         'edit',
@@ -1754,13 +1719,13 @@ class BundleCLI(object):
 
         print >>self.stdout, wrap('contents')
         bundle_uuid = info['uuid']
-        info = self.print_target_info(client, (bundle_uuid, ''), head=10)
+        info = self.print_target_info(client, bundle_uuid, '', head=10)
         if info is not None and info['type'] == 'directory':
             for item in info['contents']:
                 if item['name'] not in ['stdout', 'stderr']:
                     continue
                 print >>self.stdout, wrap(item['name'])
-                self.print_target_info(client, (bundle_uuid, item['name']), head=10)
+                self.print_target_info(client, bundle_uuid, item['name'], head=10)
 
     @Commands.command(
         'mount',
@@ -1778,9 +1743,8 @@ class BundleCLI(object):
         if bundle_fuse.fuse_is_available:
             self._fail_if_headless(args)  # Disable on headless systems
 
-            client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-            target = self.parse_target(client, worksheet_uuid, args.target_spec)
-            uuid, path = target
+            default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+            client, worksheet_uuid, uuid, path = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
 
             mountpoint = path_util.normalize(args.mountpoint)
             path_util.check_isvalid(mountpoint, 'mount')
@@ -1790,6 +1754,25 @@ class BundleCLI(object):
             print >>self.stdout, 'BundleFUSE shutting down.'
         else:
             print >>self.stdout, 'fuse is not installed'
+
+    @Commands.command(
+        'netcat',
+        help=[
+            'Beta feature: this command may change in a future release. Send raw data into a port of a running bundle',
+        ],
+        arguments=(
+            Commands.Argument('bundle_spec', help=BUNDLE_SPEC_FORMAT, completer=BundlesCompleter),
+            Commands.Argument('port', type=int, help='Port'),
+            Commands.Argument('message', metavar='[---] message', help='Arbitrary message to send.', completer=NullCompleter),
+            Commands.Argument('--verbose', help='Verbose mode for BundleFUSE.', action='store_true', default=False),
+            Commands.Argument('-w', '--worksheet-spec', help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT, completer=WorksheetsCompleter),
+        ),
+    )
+    def do_netcat_command(self, args):
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        bundle_uuid = self.resolve_bundle_uuids(client, worksheet_uuid, args.bundle_spec)[0]
+        info = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
+        print >>self.stdout, info['data']
 
     @Commands.command(
         'cat',
@@ -1805,15 +1788,14 @@ class BundleCLI(object):
         ),
     )
     def do_cat_command(self, args):
-        self._fail_if_headless(args)  # Files might be too big
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        self.print_target_info(client, target, head=args.head, tail=args.tail)
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
+        self.print_target_info(client, bundle_uuid, subpath, head=args.head, tail=args.tail)
 
     # Helper: shared between info and cat
-    def print_target_info(self, client, target, head=None, tail=None):
-        info = client.fetch_contents_info(target[0], target[1], 1)
+    def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
+        info = client.fetch_contents_info(bundle_uuid, subpath, 1)
         info_type = info.get('type')
 
         if info_type is None:
@@ -1825,9 +1807,19 @@ class BundleCLI(object):
                 kwargs['head'] = head
             if tail is not None:
                 kwargs['tail'] = tail
-            contents = client.fetch_contents_blob(target[0], target[1], **kwargs)
+
+            # uses the same parameters as the front-end bundle interface
+            if self.headless:
+                kwargs['head'] = 50
+                kwargs['tail'] = 50
+                kwargs['truncation_text'] = '\n... truncated ...\n\n'
+
+            contents = client.fetch_contents_blob(bundle_uuid, subpath, **kwargs)
             with closing(contents):
                 shutil.copyfileobj(contents, self.stdout)
+
+            if self.headless:
+                print >>self.stdout, '--Web CLI detected, truncated output to first 50 and last 50 lines.--'
 
         def size(x):
             t = x.get('type', '???')
@@ -1867,9 +1859,8 @@ class BundleCLI(object):
     def do_wait_command(self, args):
         self._fail_if_headless(args)
 
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
-        (bundle_uuid, subpath) = target
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
 
         # Figure files to display
         subpaths = []
@@ -1979,11 +1970,11 @@ class BundleCLI(object):
         'macro',
         help=[
             'Use mimicry to simulate macros.',
-            '  macro M A B   <=>   mimic M-in1 M-in2 M-out A B'
+            '  macro M A B <name1>:C <name2>:D <=> mimic M-in1 M-in2 M-in-name1 M-in-name2 M-out A B C D'
         ],
         arguments=(
-            Commands.Argument('macro_name', help='Name of the macro (look for <macro_name>-in1, ..., and <macro_name>-out bundles).'),
-            Commands.Argument('bundles', help='Bundles: new_input_1 ... new_input_n (%s)' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
+            Commands.Argument('macro_name', help='Name of the macro (look for <macro_name>-in1, <macro_name>-in-<name>, ..., and <macro_name>-out bundles).'),
+            Commands.Argument('bundles', help='Bundles: new_input_1 ... new_input_n named_input_name:named_input_bundle other_named_input_name:other_named_input_bundle (%s)' % BUNDLE_SPEC_FORMAT, nargs='+', completer=BundlesCompleter),
         ) + Commands.metadata_arguments([MakeBundle, RunBundle]) + MIMIC_ARGUMENTS,
     )
     def do_macro_command(self, args):
@@ -1995,13 +1986,27 @@ class BundleCLI(object):
         # next time we try to use the macro.
         if not getattr(args, metadata_util.metadata_key_to_argument('name')):
             setattr(args, metadata_util.metadata_key_to_argument('name'), 'new')
-        # Reduce to the mimic case
-        args.bundles = [args.macro_name + '-in' + str(i+1) for i in range(len(args.bundles))] + \
-                       [args.macro_name + '-out'] + args.bundles
-        self.mimic(args)
 
-    def add_mimic_args(self, parser):
-        self.add_wait_args(parser)
+        # Reduce to the mimic case
+        named_user_inputs, named_macro_inputs, numbered_user_inputs = [], [], []
+
+        for bundle in args.bundles:
+            if ':' in bundle:
+                input_name, input_bundle = bundle.split(':', 1)
+                named_user_inputs.append(input_bundle)
+                named_macro_inputs.append(args.macro_name + '-in-' + input_name)
+            else:
+                numbered_user_inputs.append(bundle)
+
+        numbered_macro_inputs = [args.macro_name + '-in' + str(i+1) for i in range(len(numbered_user_inputs))]
+
+        args.bundles = numbered_macro_inputs + \
+                       named_macro_inputs + \
+                       [args.macro_name + '-out'] + \
+                       numbered_user_inputs + \
+                       named_user_inputs
+
+        self.mimic(args)
 
     def mimic(self, args):
         """
@@ -2069,22 +2074,22 @@ class BundleCLI(object):
         ),
     )
     def do_write_command(self, args):
-        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        target = self.parse_target(client, worksheet_uuid, args.target_spec)
+        default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
         client.create('bundle-actions', {
             'type': 'write',
-            'uuid': target[0],
-            'subpath': target[1],
+            'uuid': bundle_uuid,
+            'subpath': subpath,
             'string': args.string,
         })
-        print >>self.stdout, target[0]
+        print >>self.stdout, bundle_uuid
 
     #############################################################################
     # CLI methods for worksheet-related commands follow!
     #############################################################################
 
     def worksheet_str(self, worksheet_info):
-        return '%s::%s(%s)' % (self.manager.session()['address'], worksheet_info['name'], worksheet_info['uuid'])
+        return '%s%s%s(%s)' % (self.manager.session()['address'], INSTANCE_SEPARATOR, worksheet_info['name'], worksheet_info['uuid'])
 
     @Commands.command(
         'new',
@@ -2107,7 +2112,7 @@ class BundleCLI(object):
     Item specifications, with the format depending on the specified item_type.
         text:      (<text>|%%<directive>)
         bundle:    {0}
-        worksheet: {1}""").format(GLOBAL_BUNDLE_SPEC_FORMAT, WORKSHEET_SPEC_FORMAT).strip()
+        worksheet: {1}""").format(BUNDLE_SPEC_FORMAT, WORKSHEET_SPEC_FORMAT).strip()
 
     @Commands.command(
         'add',
@@ -2146,12 +2151,7 @@ class BundleCLI(object):
 
         elif args.item_type == 'bundle':
             for bundle_spec in args.item_spec:
-                source_client, source_spec = self.parse_spec(bundle_spec)
-
-                # a base_worksheet_uuid is only applicable if we're on the source client
-                base_worksheet_uuid = curr_worksheet_uuid if source_client is curr_client else None
-                source_bundle_uuid = self.resolve_bundle_uuid(source_client, base_worksheet_uuid, source_spec)
-
+                source_client, source_worksheet_uuid, source_bundle_uuid, subpath = self.resolve_target(curr_client, curr_worksheet_uuid, bundle_spec)
                 # copy (or add only if bundle already exists on destination)
                 self.copy_bundle(source_client, source_bundle_uuid,
                                  dest_client, dest_worksheet_uuid,
@@ -2348,7 +2348,7 @@ class BundleCLI(object):
                     if maxlines:
                         maxlines = int(maxlines)
                     try:
-                        self.print_target_info(client, data, head=maxlines)
+                        self.print_target_info(client, data[0], data[1], head=maxlines)
                     except UsageError, e:
                         print >>self.stdout, 'ERROR:', e
                 else:
@@ -2378,8 +2378,10 @@ class BundleCLI(object):
         aliases=('wsearch', 'ws'),
         help=[
             'List worksheets on the current instance matching the given keywords.',
-            '  wls tag=paper : List worksheets tagged as "paper".',
-            '  wls .mine     : List my worksheets.',
+            '  wls tag=paper           : List worksheets tagged as "paper".',
+            '  wls group=<group_spec>  : List worksheets shared with the group identfied by group_spec.',
+            '  wls .mine               : List my worksheets.',
+            '  wls .shared             : List worksheets that have been shared with any of the groups I am in.',
         ],
         arguments=(
             Commands.Argument('keywords', help='Keywords to search for.', nargs='*'),
@@ -2757,6 +2759,7 @@ class BundleCLI(object):
         ],
         arguments=(
             Commands.Argument('user_spec', nargs='?', help='Username or id of user to show [default: the authenticated user]'),
+            Commands.Argument('-f', '--field', help='Print out these comma-separated fields.'),
         ),
     )
     def do_uinfo_command(self, args):
@@ -2768,34 +2771,69 @@ class BundleCLI(object):
             user = client.fetch('user')
         else:
             user = client.fetch('users', args.user_spec)
-        self.print_user_info(user)
+        self.print_user_info(user, args.field)
 
-    def print_user_info(self, user):
-        def print_attribute(key, value):
-            print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+    def print_user_info(self, user, fields):
+        def print_attribute(key, user, should_pretty_print):
+            # These fields will not be returned by the server if the
+            # authenticated user is not root, so don't crash if you can't read them
+            if key in ('last_login', 'email', 'time', 'disk'):
+                try:
+                    if key == 'time':
+                        value = formatting.ratio_str(
+                            formatting.duration_str,
+                            user['time_used'],
+                            user['time_quota'])
+                    elif key == 'disk':
+                        value = formatting.ratio_str(
+                            formatting.size_str,
+                            user['disk_used'],
+                            user['disk_quota'])
+                    else:
+                        value = user[key]
+                except KeyError:
+                    pass
+            else:
+                value = user.get(key, None)
 
-        for key in ('id', 'user_name', 'first_name', 'last_name',
-                    'affiliation', 'url', 'date_joined'):
-            print_attribute(key, user.get(key, None))
+            if should_pretty_print:
+                print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+            else:
+                print >>self.stdout, value.encode('utf-8')
 
-        # These fields will not be returned by the server if the
-        # authenticated user is not root, so stop early on first KeyError
-        try:
-            for key in ('last_login', 'email'):
-                print_attribute(key, user[key])
+        default_fields = ('id', 'user_name', 'first_name', 'last_name',
+                    'affiliation', 'url', 'date_joined', 'last_login',
+                    'email', 'time', 'disk')
+        if fields:
+            should_pretty_print = False
+            fields = fields.split(',')
+        else:
+            should_pretty_print = True
+            fields = default_fields
 
-            print_attribute(
-                'time', formatting.ratio_str(
-                    formatting.duration_str,
-                    user['time_used'],
-                    user['time_quota']))
+        for field in fields:
+            print_attribute(field, user, should_pretty_print)
 
-            print_attribute(
-                'disk', formatting.ratio_str(formatting.size_str,
-                                             user['disk_used'],
-                                             user['disk_quota']))
-        except KeyError:
-            pass
+
+    @Commands.command(
+        'ufarewell',
+        help=[
+            'Delete user permanently. Root user only.',
+            'To be safe, you can only delete a user if user does not own any bundles, worksheets, or groups.',
+        ],
+        arguments=(
+            Commands.Argument('user_spec', help='Username or id of user to delete.'),
+        ),
+    )
+    def do_ufarewell_command(self, args):
+        """
+        Delete user.
+        """
+        client = self.manager.current_client()
+        user = client.fetch('users', args.user_spec)
+
+        client.delete('users', user['id'])
+        print >>self.stdout, 'Deleted user %s(%s).' % (user['user_name'], user['id'])
 
     #############################################################################
     # Local-only commands follow!
@@ -2925,7 +2963,7 @@ class BundleCLI(object):
 
     def _fail_if_headless(self, args):
         if self.headless:
-            raise UsageError('Cannot execute CLI command: %s' % args.command)
+            raise UsageError('You are only allowed to execute command "%s" from the CLI.' % args.command)
 
     def _fail_if_not_local(self, args):
         if 'localhost' not in self.manager.current_client().address:

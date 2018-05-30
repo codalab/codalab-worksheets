@@ -341,7 +341,6 @@ worker = Table(
     Column('worker_id', String(127), primary_key=True, nullable=False),
 
     Column('tag', Text, nullable=True),  # Tag that allows for scheduling runs on specific workers.
-    Column('slots', Integer, nullable=False),  # Number of bundles the worker can run.
     Column('cpus', Integer, nullable=False),  # Number of CPUs on worker.
     Column('gpus', Integer, nullable=False),  # Number of GPUs on worker.
     Column('memory_bytes', BigInteger, nullable=False),  # Total memory of worker.
