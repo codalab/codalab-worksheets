@@ -60,6 +60,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         with self._lock:
             assert(isinstance(self._dependencies, dict))
             assert(all(isinstance(dep, DependencyState) for k, dep in self._dependencies.items()))
+            logger.info('{} dependencies to be committed.'.format(len(self._dependencies)))
+            logger.error(self._dependencies)
             self._state_committer.commit(self._dependencies)
 
     def _load_state(self):
