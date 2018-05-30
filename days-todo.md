@@ -6,6 +6,7 @@
 ## Currently testing:
   - Have two runs that require same big dependency
     - Fix PyJSON to encode tuple dict keys [x]
+    - Serialized length calculations are broken since they try to dump to json
 
 ## To be tested:
   - Start more involved runs on dev worker 1

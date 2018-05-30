@@ -1,6 +1,5 @@
 from contextlib import closing
 from collections import namedtuple
-import json
 import logging
 import os
 import threading
@@ -16,6 +15,7 @@ from codalabworker.fsm import (
     DependencyStage,
     StateTransitioner
 )
+import codalabworker.pyjson
 
 logger = logging.getLogger(__name__)
 
@@ -65,9 +65,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     def _load_state(self):
         with self._lock:
             self._dependencies = self._state_committer.load()
-            assert(isinstance(self._dependencies, dict))
-            assert(all(isinstance(dep, DependencyState) for k, dep in self._dependencies.items()))
-            logger.error(self._dependencies)
             logger.info('{} dependencies in cache.'.format(len(self._dependencies)))
 
     def start(self):
@@ -99,7 +96,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             with self._lock:
                 bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
                 serialized_dependencies = {'{}+{}'.format(*k): v for k, v in self._dependencies.items()}
-                serialized_length = len(json.dumps(serialized_dependencies))
+                serialized_length = len(pyjson.dumps(serialized_dependencies))
                 if bytes_used > self._max_cache_size_bytes or serialized_length > self._max_serialized_length:
                     logger.debug('%d dependencies in cache, disk usage: %s (max %s), serialized size: %s (max %s)',
                                   len(self._dependencies),
