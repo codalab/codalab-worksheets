@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used message')
 
-class DockerImageManager(StateTransitioner):
+class DockerImageManager(StateTransitioner, BaseDependencyManager):
 
     def __init__(self, docker, state_committer, max_images_bytes, max_age_failed_seconds=60):
         super(DockerImageManager, self).__init__()
@@ -75,15 +75,13 @@ class DockerImageManager(StateTransitioner):
         """
         now = time.time()
         with self._lock:
-            for digest in self._images.keys():
-                image_state = self._images[digest]
-                if image_state.stage == DependencyStage.FAILED:
-                    if now - image_state.last_used > self._max_age_failed_seconds:
+            for digest, state in self._images.items():
+                if state.stage == DependencyStage.FAILED:
+                    if now - state.last_used > self._max_age_failed_seconds:
                         del self._images[digest]
 
-            for digest in self._images.keys():
-                image_state = self._images[digest]
-                self._images[digest] = self.transition(image_state)
+            for digest, state in self._images.items():
+                self._images[digest] = self.transition(state)
 
     def _cleanup(self):
         while True:
