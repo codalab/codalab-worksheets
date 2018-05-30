@@ -12,7 +12,7 @@ class PyJSONTest(unittest.TestCase):
         t1 = namedtuple("t1", "w1 w2 w3")
         t2 = namedtuple("t2", "r1 t2 y3")
 
-        one = {
+        cases = {
                 'a_string': 'blah',
                 'a_set': set([1,3,4]),
                 'a_list': [1,3,4],
@@ -36,10 +36,10 @@ class PyJSONTest(unittest.TestCase):
                     t1(1, 2, 3),
                     t1(2, 4, 6),
                     t2(20, 40, 60),
-                }
+                },
+                ('key', 'tuple'): 'blah',
+                '(\'key\', \'tuple\')': 'malicious_key'
         }
-        s = pyjson.dumps(one)
-        #print >>sys.stderr, s
 
-        two = pyjson.loads(s)
-        assert(two == one)
+        reloaded = pyjson.loads(pyjson.dumps(cases))
+        self.assertEqual(reloaded, cases)

@@ -5,8 +5,7 @@
 
 ## Currently testing:
   - Have two runs that require same big dependency
-    - Something wrong with dep. manager
-
+    - Fix PyJSON to encode tuple dict keys [x]
 
 ## To be tested:
   - Start more involved runs on dev worker 1
@@ -27,4 +26,4 @@
     - Kill the worker during running, it should go back to running
     - Kill the worker during uploading results, it should restart uploading
   - Bring down worker mid run, remove run server side, bring worker back up
-  - Start writing some of the unit tests
+  - Start writing some of the unit test
