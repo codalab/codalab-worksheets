@@ -471,8 +471,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             container_id = json.loads(create_response.read())['Id']
 
         # Start the container.
-        logger.debug('Starting Docker container for UUID %s with command %s, container ID %s',
-            uuid, command, container_id)
+        logger.debug('Starting Docker container for UUID %s with command %s, container ID %s,\n \t\t volume bindings: %s',
+            uuid, command, container_id, volume_bindings)
         with closing(self._create_connection()) as start_conn:
             start_conn.request('POST', '/containers/%s/start' % container_id)
             start_response = start_conn.getresponse()
