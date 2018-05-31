@@ -29,8 +29,9 @@ class DownloadAbortedException(Exception):
         super(DownloadAbortedException, self).__init__(message)
 
 class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager):
+    DEPENDENCIES_DIR_NAME = 'dependencies'
     def __init__(self, state_committer, bundle_service,
-            work_dir, max_cache_size_bytes, max_serialized_length):
+            worker_dir, max_cache_size_bytes, max_serialized_length):
 
         super(LocalFileSystemDependencyManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
@@ -41,11 +42,10 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self._bundle_service = bundle_service
         self._max_cache_size_bytes = max_cache_size_bytes
         self._max_serialized_length = max_serialized_length or float('inf')
-        self._work_dir = work_dir
-        self._bundles_dir = os.path.join(work_dir, 'bundles')
-        if not os.path.exists(self._bundles_dir):
-            logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
-            os.makedirs(self._bundles_dir, 0770)
+        self.dependencies_dir = os.path.join(worker_dir, LocalFileSystemDependencyManager.DEPENDENCIES_DIR_NAME)
+        if not os.path.exists(self.dependencies_dir):
+            logger.info('{} doesn\'t exist, creating.'.format(self.dependencies_dir))
+            os.makedirs(self.dependencies_dir, 0770)
 
         self._lock = threading.RLock()
 
@@ -187,7 +187,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             return list(self._dependencies.keys())
 
     def get_run_path(self, uuid):
-        return os.path.join(self._bundles_dir, uuid)
+        return os.path.join(self.dependencies_dir, uuid)
 
     def _transition_from_DOWNLOADING(self, dependency_state):
         def download():
@@ -198,7 +198,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         raise DownloadAbortedException("Aborted by user")
                     self._dependencies[dependency] = state._replace(size_bytes=bytes_downloaded, message="Downloading dependency: %s downloaded" % size_str(bytes_downloaded))
 
-            dependency_path = os.path.join(self._bundles_dir, dependency_state.path)
+            dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
             try:
                 fileobj, target_type = (

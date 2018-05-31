@@ -36,7 +36,6 @@ class LocalRunManager(BaseRunManager):
         self.dependency_manager = dependency_manager
         self.cpuset = cpuset
         self.gpuset = gpuset
-        self.bundles_dir = bundles_dir
 
         self.runs = {}  # bundle_uuid -> LocalRunState
         # bundle_uuid -> {'thread': Thread, 'run_status': str}
