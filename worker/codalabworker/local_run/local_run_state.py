@@ -126,14 +126,7 @@ class LocalRunStateMachine(StateTransitioner):
 
             docker_dependency_path = os.path.join(docker_dependencies_path, dep['child_path'])
 
-            logger.debug('############################################\n ###################################################\n SLEEPING \n #######################################\n ###############################')
-            time.sleep(20)
-            logger.debug('############################################\n ###################################################\n WOKE \n #######################################\n ###############################')
-            logger.debug('Symlinking %s to %s (really %s).', child_path, docker_dependency_path, dependency_path)
             os.symlink(docker_dependency_path, child_path)
-            logger.debug('############################################\n ###################################################\n SLEEPING \n #######################################\n ###############################')
-            time.sleep(20)
-            logger.debug('############################################\n ###################################################\n WOKE \n #######################################\n ###############################')
             # These are turned into docker volume bindings like:
             #   dependency_path:docker_dependency_path:ro
             dependencies.append((dependency_path, docker_dependency_path))
