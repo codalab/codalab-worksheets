@@ -124,9 +124,9 @@ class LocalRunStateMachine(StateTransitioner):
                         (dep['parent_uuid'], dep['parent_path'])).path
             dependency_path = os.path.join(self._run_manager.bundles_dir, dependency_path)
 
-            docker_dependency_path = os.path.join(docker_dependencies_path, dep['child_path'])
+            docker_dependency_path = os.path.join(dep['child_path'], docker_dependencies_path)
 
-            logger.debug('Symlinking %s to %s (really %s).', child_path, docker_dependency_path, dependency_path)
+            logger.debug('Symlinking %s to %s (really %s).', docker_dependency_path, child_path, dependency_path)
             os.symlink(docker_dependency_path, child_path)
             # These are turned into docker volume bindings like:
             #   dependency_path:docker_dependency_path:ro
