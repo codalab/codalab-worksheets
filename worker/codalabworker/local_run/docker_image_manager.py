@@ -130,7 +130,6 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
             # update last_used as long as it isn't in FAILED
             if self._images[digest].stage != DependencyStage.FAILED:
                 self._images[digest] = self._images[digest]._replace(last_used=now)
-                logger.debug('Touched image digest=%s at %f', digest, now)
             return self._images[digest]
 
     @property
