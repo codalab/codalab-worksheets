@@ -176,6 +176,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 un_tar_directory(fileobj, dependency_path, 'gz')
             else:
                 with open(dependency_path, 'wb') as f:
+                    logger.debug('copying file to %s', dependency_path)
                     shutil.copyfileobj(fileobj, f)
         except :
             raise
@@ -216,7 +217,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
                     self._store_dependency(dependency_path, fileobj, target_type)
 
-                logger.debug('Finished downloading dependency %s/%s', parent_uuid, parent_path)
+                logger.debug('Finished downloading %s dependency %s/%s to %s', target_type, parent_uuid, parent_path, dependency_path)
                 with self._lock:
                     self._downloading[dependency]['success'] = True
 
