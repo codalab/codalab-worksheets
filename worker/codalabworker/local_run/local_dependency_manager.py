@@ -131,7 +131,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             if not self.has(dependency): # add dependency state if it does not exist
                 self._dependencies[dependency] = DependencyState(stage=DependencyStage.DOWNLOADING,
                         dependency=dependency, path=self._assign_path(dependency), size_bytes=0,
-                        dependents=set(uuid), last_used=now, message="Starting download", killed=False)
+                        dependents=set((uuid)), last_used=now, message="Starting download", killed=False)
 
             # update last_used as long as it isn't in FAILED
             if self._dependencies[dependency].stage != DependencyStage.FAILED:
