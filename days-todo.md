@@ -2,10 +2,12 @@
 ## Done Tests:
   - Assign max CPUs to a run, stop worker, create another run, bring worker back to life [x]
   - DockerImageState objects end up in DependencyManager state queue (bad pyjson default param)
+  - Fixed bad state management that didn't clean up dependency symlinks before upload
   - Have a run that depends on another run
 
 ## Currently testing:
   - Dependency symlinking is broken
+    - even file dependencies are symlinked as directories
 
 ## To be tested:
   - Start more involved runs on dev worker 1

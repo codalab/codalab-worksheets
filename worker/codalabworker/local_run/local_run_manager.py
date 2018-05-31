@@ -1,4 +1,3 @@
-from collections import namedtuple
 import logging
 import os
 from subprocess import check_output
@@ -7,14 +6,10 @@ import time
 import socket
 
 from codalabworker.run_manager import BaseRunManager
-from local_run_state import LocalRunStateMachine, LocalRunStage
+from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from local_reader import LocalReader
 
 logger = logging.getLogger(__name__)
-
-RunState = namedtuple('RunState',
-    ['stage', 'run_status', 'bundle', 'bundle_path', 'resources', 'start_time',
-'container_id', 'docker_image', 'is_killed', 'cpuset', 'gpuset', 'info'])
 
 class LocalRunManager(BaseRunManager):
     """
@@ -100,11 +95,11 @@ class LocalRunManager(BaseRunManager):
         bundle_uuid = bundle['uuid']
         bundle_path = self.dependency_manager.get_run_path(bundle_uuid)
         now = time.time()
-        run_state = RunState(
-                stage=LocalRunStage.STARTING, run_status='', bundle=bundle,
+        run_state = LocalRunState(
+                stage=LocalRunStage.PREPARING, run_status='', bundle=bundle,
                 bundle_path=os.path.realpath(bundle_path), resources=resources,
                 start_time=now, container_id=None, docker_image=None, is_killed=False,
-                cpuset=None, gpuset=None, info={},
+                has_contents=False, cpuset=None, gpuset=None, info={},
         )
         with self.lock:
             self.runs[bundle_uuid] = run_state
