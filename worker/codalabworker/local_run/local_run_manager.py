@@ -18,7 +18,7 @@ class LocalRunManager(BaseRunManager):
     Docker network.
     """
     def __init__(self, worker, docker, image_manager, dependency_manager,
-            state_committer, bundles_dir, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
+            state_committer, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
         self._state_committer = state_committer
         self._run_state_manager = LocalRunStateMachine(self)
@@ -31,7 +31,6 @@ class LocalRunManager(BaseRunManager):
         self.dependency_manager = dependency_manager
         self.cpuset = cpuset
         self.gpuset = gpuset
-        self.bundles_dir = bundles_dir
 
         self.runs = {}
         self.uploading = {}
@@ -243,3 +242,7 @@ class LocalRunManager(BaseRunManager):
         except ValueError:
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+
+    @property
+    def dependencies_dir(self):
+        return self.dependency_manager.dependencies_dir

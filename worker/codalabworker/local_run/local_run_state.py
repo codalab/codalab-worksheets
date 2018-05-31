@@ -122,7 +122,7 @@ class LocalRunStateMachine(StateTransitioner):
             dependency_path = self._run_manager.dependency_manager.get(
                         bundle_uuid,
                         (dep['parent_uuid'], dep['parent_path'])).path
-            dependency_path = os.path.join(self._run_manager.bundles_dir, dependency_path)
+            dependency_path = os.path.join(self._run_manager.dependencies_dir, dependency_path)
 
             docker_dependency_path = os.path.join(docker_dependencies_path, dep['child_path'])
 

@@ -128,7 +128,7 @@ chmod 600 %s""" % args.password_file
         )
 
         run_manager_state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'run-state.json'))
-        return LocalRunManager(worker, docker_client, image_manager, dependency_manager, run_manager_state_committer, args.work_dir, cpuset, gpuset, args.network_prefix)
+        return LocalRunManager(worker, docker_client, image_manager, dependency_manager, run_manager_state_committer, cpuset, gpuset, args.network_prefix)
 
     worker = Worker(create_run_manager, worker_state_committer, args.id, args.tag,
             args.work_dir, bundle_service)

@@ -4,11 +4,9 @@
   - DockerImageState objects end up in DependencyManager state queue (bad pyjson default param)
   - Fixed bad state management that didn't clean up dependency symlinks before upload
   - Have a run that depends on another run
+  - Dependency symlinking is broken (fixed, dir structure was bad)
 
 ## Currently testing:
-  - Dependency symlinking is broken
-    - even file dependencies are symlinked as directories
-    - check target_type that bundle service returns
 
 ## To be tested:
   - Start more involved runs on dev worker 1
