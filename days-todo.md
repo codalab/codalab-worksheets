@@ -8,6 +8,7 @@
 ## Currently testing:
   - Dependency symlinking is broken
     - even file dependencies are symlinked as directories
+    - check target_type that bundle service returns
 
 ## To be tested:
   - Start more involved runs on dev worker 1
