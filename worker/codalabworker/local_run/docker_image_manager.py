@@ -98,7 +98,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     elif ready_images:
                         digest_to_remove = min(ready_images, key=lambda i: ready_images[i].last_used)
                     else:
-                        # TODO: What do we do if there are only downloading images but together they are bigger than the quota
+                        logger.debug('Docker image manager disk quota is full but there are only downloading images. Waiting for downloads to finishe before cleanup.')
                         break
                     try:
                         self._docker.remove_image(digest_to_remove)
