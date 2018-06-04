@@ -34,6 +34,7 @@ class JsonStateCommitter(BaseStateCommitter):
             shutil.copyfile(f.name, self._state_file)
 
 
+
 class DependencyStage(object):
     '''
     Defines the finite set of possible stages and transition functions
