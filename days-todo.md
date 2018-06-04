@@ -14,11 +14,11 @@
     - Kill the worker during uploading results, it should restart uploading
   - Have two runs that require same big dependency (confirmed succesfully waiting for download together)
   - Have two runs that require same big docker image
+  - Deploy a dev GPU worker and do more involved runs there
 
 ## Currently testing:
-  - Test a multi-day run
+  - Test Evan's runs
 
 ## To be tested:
-  - Deploy a dev GPU worker and do more involved runs there
   - Bring down worker mid run, remove run server side, bring worker back up
   - Start writing some of the unit tests
