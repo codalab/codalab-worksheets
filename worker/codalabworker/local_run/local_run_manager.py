@@ -122,10 +122,6 @@ class LocalRunManager(BaseRunManager):
         with self.lock:
             self.runs[bundle_uuid] = run_state
 
-    def get_kill_message(self):
-        # TODO: There can be other kill messages
-        return 'Kill requested'
-
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
         Propose a cpuset and gpuset to a bundle based on given requested resources.

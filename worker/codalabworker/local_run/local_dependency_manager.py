@@ -76,7 +76,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     self._save_state()
                 except Exception:
                     traceback.print_exc()
-                # TODO: decide if we need to sleep here
         self._main_thread = threading.Thread(target=loop, args=[self])
         self._main_thread.start()
 
@@ -109,7 +108,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     elif ready_deps:
                         dep_to_remove = min(ready_deps, key=lambda i: ready_deps[i].last_used)
                     else:
-                        # TODO: What do we do if there are only downloading deps but together they are bigger than the quota
+                        logger.info('Dependency quota full but there are only downloading dependencies, not cleaning up until downloads are over')
                         break
                     try:
                         self._paths.remove(self._dependencies[dep_to_remove].path)

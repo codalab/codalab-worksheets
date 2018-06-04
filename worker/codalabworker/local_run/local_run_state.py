@@ -251,7 +251,7 @@ class LocalRunStateMachine(StateTransitioner):
                 failure_message = run_state.info.get('failure_message', None)
                 exitcode = run_state.info.get('exitcode', None)
                 if failure_message is None and run_state.is_killed:
-                    failure_message = self._run_manager.get_kill_message()
+                    failure_message = run_state.info['kill_message']
                 finalize_message = {
                     'exitcode': exitcode,
                     'failure_message': failure_message,
