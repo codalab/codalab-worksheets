@@ -2,7 +2,6 @@ import base64
 from contextlib import closing
 import httplib
 import json
-import re
 import socket
 import sys
 import threading
@@ -64,8 +63,8 @@ class BundleServiceClient(RestClient):
 
     def _get_access_token(self):
         with self._authorization_lock:
-            if (not self._access_token
-                or time.time() > self._token_expiration_time - 5 * 60):
+            if (not self._access_token or
+                    time.time() > self._token_expiration_time - 5 * 60):
                 self._authorize()
             return self._access_token
 

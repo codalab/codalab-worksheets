@@ -1,5 +1,4 @@
 import logging
-import os
 import time
 import traceback
 import socket
@@ -16,13 +15,13 @@ COMMAND_RETRY_SECONDS = 2 * 60 * 6
 logger = logging.getLogger(__name__)
 
 """
-Resumable Workers
-
-    If the worker process of a worker machine terminates and restarts while a
-    bundle is running, the worker process is able to keep track of the running
-    bundle once again, as long as the state is intact and the bundle container
-    is still running or has finished running.
+Codalab Worker
+Workers handle communications with the Codalab server. Their main role in Codalab execution
+is syncing the job states with the server and passing on job-related commands from the server
+to architecture-specific RunManagers that run the jobs. Workers are execution platform antagonistic
+but they expect the platform specific RunManagers they use to implement a common interface
 """
+
 
 class Worker(object):
     def __init__(self, create_run_manager, state_committer, worker_id, tag, work_dir, bundle_service):
@@ -90,7 +89,7 @@ class Worker(object):
         """
         Checkin with the server and get a response. React to this response.
         This function must return fast to keep checkins frequent. Time consuming
-        processes must be handled asyncronously.
+        processes must be handled asynchronously.
         """
         request = {
             'version': VERSION,
@@ -102,7 +101,6 @@ class Worker(object):
             'hostname': socket.gethostname(),
             'runs': self._run_manager.all_runs
         }
-        logger.debug('Making checkin request: %s', request)
         response = self._bundle_service.checkin(self.id, request)
         if response:
             action_type = response['type']
@@ -120,7 +118,7 @@ class Worker(object):
                            response['read_args'])
             elif action_type == 'netcat':
                 self._netcat(socket_id, response['uuid'], response['port'],
-                           response['message'])
+                             response['message'])
             elif action_type == 'write':
                 self._write(response['uuid'], response['subpath'],
                             response['string'])
@@ -223,4 +221,3 @@ class Worker(object):
                     time.sleep(30)
                     continue
                 raise
-

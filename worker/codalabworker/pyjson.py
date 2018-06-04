@@ -1,17 +1,19 @@
 import json
-import sys
 from collections import namedtuple
+
 
 class PyJSONEncoder(json.JSONEncoder):
     """
     Use with json.dumps to allow Python sets and (named)tuples to be encoded to JSON
+    Also allows dicts with tuple keys to be JSON-encoded (as long as the keys don't include
+    the special token strings used for encoding)
     """
     TUPLE_KEY_STR = '_tuple_key_'
     TUPLE_ELEM_STR = '_tuple_sep_'
 
     def encode_key(self, key):
         """
-        Encodes a dict key. Currently only supports encoding tuples as keys
+        Encodes a dict key. Currently only supports encoding tuples and strings as keys
         """
         if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, unicode)):
             raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
@@ -26,17 +28,17 @@ class PyJSONEncoder(json.JSONEncoder):
                 raise Exception('%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict' % PyJSONEncoder.TUPLE_ELEM_STR)
 
             key = '%s%s' % (PyJSONEncoder.TUPLE_KEY_STR,
-                    PyJSONEncoder.TUPLE_ELEM_STR.join(key))
+                            PyJSONEncoder.TUPLE_ELEM_STR.join(key))
 
         return key
 
     def default(self, obj):
-        if hasattr(obj, '_asdict'): # detect namedtuple
+        if hasattr(obj, '_asdict'):  # detect namedtuple
             odct = obj._asdict()
             return dict(
-                    _namedtuple_name=type(obj).__name__,
-                    _namedtuple_fields=odct.keys(),
-                    _namedtuple_values=list(self.default(o) for o in odct.values()),
+                _namedtuple_name=type(obj).__name__,
+                _fields=odct.keys(),
+                _values=list(self.default(o) for o in odct.values()),
             )
         elif isinstance(obj, set):
             return dict(_set_object=list(self.default(o) for o in obj))
@@ -80,14 +82,18 @@ class PyJSONDecoder(json.JSONDecoder):
                 return {self.decode_key(k): self.json_as_python(v) for k, v in dct.items()}
         return dct
 
+
 def load(*args, **kwargs):
     return json.load(*args, cls=PyJSONDecoder, **kwargs)
+
 
 def loads(*args, **kwargs):
     return json.loads(*args, cls=PyJSONDecoder, **kwargs)
 
+
 def dump(*args, **kwargs):
     return json.dump(*args, cls=PyJSONEncoder, **kwargs)
+
 
 def dumps(*args, **kwargs):
     return json.dumps(*args, cls=PyJSONEncoder, **kwargs)

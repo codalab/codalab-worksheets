@@ -1,7 +1,7 @@
 import os
-import tempfile
 import shutil
 import pyjson
+
 
 class BaseStateCommitter(object):
     def load(self):
@@ -11,6 +11,7 @@ class BaseStateCommitter(object):
     def commit(self, state):
         """ Commit the state """
         raise NotImplementedError
+
 
 class JsonStateCommitter(BaseStateCommitter):
     def __init__(self, json_path):
@@ -33,6 +34,7 @@ class JsonStateCommitter(BaseStateCommitter):
             f.flush()
             shutil.move(f.name, self._state_file)
 
+
 class DependencyStage(object):
     '''
     Defines the finite set of possible stages and transition functions
@@ -51,9 +53,10 @@ class DependencyStage(object):
     # -> FAILED
     FAILED = 'FAILED'
 
+
 class StateTransitioner(object):
     def __init__(self):
-        self._transition_functions = {} # stage_name -> transition_function
+        self._transition_functions = {}  # stage_name -> transition_function
 
     def transition(self, state):
         """ Return the updated state """
@@ -64,6 +67,7 @@ class StateTransitioner(object):
             self._transition_functions[stage_name] = transition_function
         else:
             raise Exception('Stage name already exists!')
+
 
 class BaseDependencyManager(object):
 

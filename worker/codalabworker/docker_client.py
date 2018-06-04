@@ -230,7 +230,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     @wrap_exception('Unable to fetch Docker network list')
     def list_networks(self):
         with closing(self._create_connection()) as conn:
-            conn.request('GET', '/networks');
+            conn.request('GET', '/networks')
             response = conn.getresponse()
             if response.status != 200:
                 raise DockerException(response.read())
@@ -245,8 +245,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         create_request = {"Name": network_name, "Internal": internal}
         with closing(self._create_connection()) as conn:
             conn.request('POST', '/networks/create',
-                    json.dumps(create_request), {'Content-Type': 'application/json'}
-            );
+                         json.dumps(create_request), {'Content-Type': 'application/json'})
             response = conn.getresponse()
             if response.status != 201:
                 raise DockerException(response.read())
@@ -262,7 +261,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 raise DockerException(response.read())
             try:
                 return json.loads(response.read())["NetworkSettings"]["Networks"][network_name]["IPAddress"]
-            except KeyError: # if container ip cannot be found in provided network, return None
+            except KeyError:  # if container ip cannot be found in provided network, return None
                 return None
 
     @wrap_exception('Unable to fetch Docker image metadata')
@@ -354,11 +353,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     raise DockerException('Download aborted by user')
 
     def create_container(self, bundle_path, uuid, command, docker_image,
-                        request_network, dependencies, extra_args=[]):
-        bundle_stat = os.stat(bundle_path)
-        uid = bundle_stat.st_uid
-        gid = bundle_stat.st_gid
-
+                         request_network, dependencies, extra_args=[]):
         docker_bundle_path = '/' + uuid
 
         # Set up the volumes.
@@ -373,26 +368,22 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             cli_command = 'docker {} {} {} {} {} {} {}'.format(
                 'create',
                 ' '.join(extra_args),
-                ' '.join([ '-v {}'.format(v) for v in volume_bindings ]),
+                ' '.join(['-v {}'.format(v) for v in volume_bindings]),
                 '-w={}'.format(docker_bundle_path),
                 '-e {}={}'.format('HOME', docker_bundle_path),
                 docker_image,
                 command
             )
             output = subprocess.check_output(cli_command.split(' '))
-            exitcode = 0
         except subprocess.CalledProcessError, e:
             output = e.output
-            exitcode = e.returncode
             raise
 
         container_id = output
         return container_id
 
-    def _get_docker_commands(self, bundle_path, uuid, command, docker_image,
-                        dependencies):
+    def _get_docker_commands(self, bundle_path, uuid, command, docker_image, dependencies):
         # Set up the command.
-        docker_bundle_path = '/' + uuid
         docker_commands = [
             # TODO: Remove when codalab/torch uses ENV directives
             # Temporary hack for codalab/torch image to load env variables
@@ -402,7 +393,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         return docker_commands
 
     def _get_volume_bindings(self, bundle_path, uuid, command, docker_image,
-                        dependencies):
+                             dependencies):
         docker_bundle_path = '/' + uuid
 
         # Set up the volumes.
@@ -445,11 +436,11 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             'Image': docker_image,
             'WorkingDir': docker_bundle_path,
             'Env': ['HOME=%s' % docker_bundle_path],
-            'Entrypoint': [''], # unset entry point regardless of image
+            'Entrypoint': [''],  # unset entry point regardless of image
             'HostConfig': {
                 'Binds': volume_bindings,
                 'NetworkMode': network_name,
-                'Memory': memory_bytes, # hard memory limit
+                'Memory': memory_bytes,  # hard memory limit
                 'CpusetCpus': ','.join([str(k) for k in cpuset]),
             },
             # TODO: Fix potential permissions issues arising from this setting
@@ -472,7 +463,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
         # Start the container.
         logger.debug('Starting Docker container for UUID %s with command %s, container ID %s,\n \t\t volume bindings: %s',
-            uuid, command, container_id, volume_bindings)
+                     uuid, command, container_id, volume_bindings)
         with closing(self._create_connection()) as start_conn:
             start_conn.request('POST', '/containers/%s/start' % container_id)
             start_response = start_conn.getresponse()
@@ -577,8 +568,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             stdout = []
             start = 0
             while start < len(contents):
-                fp, size = struct.unpack('>BxxxL', contents[start:start+8])
-                payload = contents[start+8:start+8+size]
+                fp, size = struct.unpack('>BxxxL', contents[start: start + 8])
+                payload = contents[start + 8: start + 8 + size]
                 if fp == 1:
                     stdout.append(payload)
                 elif fp == 2:

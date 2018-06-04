@@ -7,11 +7,10 @@ import traceback
 import time
 import shutil
 
-from codalabworker.file_util import get_path_size, remove_path, un_tar_directory
+from codalabworker.file_util import un_tar_directory
 from codalabworker.formatting import size_str
 from codalabworker.fsm import (
     BaseDependencyManager,
-    JsonStateCommitter,
     DependencyStage,
     StateTransitioner
 )
@@ -21,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 DependencyState = namedtuple('DependencyState', 'stage dependency path size_bytes dependents last_used message killed')
 
+
 class DownloadAbortedException(Exception):
     """
     Exception raised by the download if a download is killed before it is complete
@@ -28,10 +28,17 @@ class DownloadAbortedException(Exception):
     def __init__(self, message):
         super(DownloadAbortedException, self).__init__(message)
 
+
 class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager):
+    """
+    This dependency manager downloads dependency bundles from Codalab server
+    to the local filesystem. It caches all downloaded dependencies but cleans up the
+    old ones if the disk use hits the given threshold
+    """
     DEPENDENCIES_DIR_NAME = 'dependencies'
+
     def __init__(self, state_committer, bundle_service,
-            worker_dir, max_cache_size_bytes, max_serialized_length):
+                 worker_dir, max_cache_size_bytes, max_serialized_length):
 
         super(LocalFileSystemDependencyManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
@@ -89,6 +96,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 self._dependencies[entry] = self.transition(state)
 
     def _cleanup(self):
+        """
+        Limit the disk usage of the dependencies (both the bundle files and the serialied state file size)
+        Deletes oldest failed dependencies first and then oldest finished dependencies.
+        Doesn't touch downloading dependencies.
+        """
         while True:
             with self._lock:
                 bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
@@ -96,11 +108,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 serialized_length = len(codalabworker.pyjson.dumps(serialized_dependencies))
                 if bytes_used > self._max_cache_size_bytes or serialized_length > self._max_serialized_length:
                     logger.debug('%d dependencies in cache, disk usage: %s (max %s), serialized size: %s (max %s)',
-                                  len(self._dependencies),
-                                  size_str(bytes_used),
-                                  size_str(self._max_cache_size_bytes),
-                                  size_str(serialized_length),
-                                  size_str(self._max_serialized_length))
+                                 len(self._dependencies),
+                                 size_str(bytes_used),
+                                 size_str(self._max_cache_size_bytes),
+                                 size_str(serialized_length),
+                                 size_str(self._max_serialized_length))
                     failed_deps = {dep: state for dep, state in self._dependencies.items() if dep.stage == DependencyStage.FAILED}
                     ready_deps = {dep: state for dep, state in self._dependencies.items() if dep.stage == DependencyStage.READY and not state.dependents}
                     if failed_deps:
@@ -117,7 +129,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 else:
                     break
 
-    def has(self, dependency): # dependency = (parent_uuid, parent_path)
+    def has(self, dependency):
+        """
+        Takes a dependency = (parent_uuid, parent_path)
+        Returns true if the manager has processed this dependency
+        """
         with self._lock:
             return (dependency in self._dependencies)
 
@@ -127,10 +143,16 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         """
         now = time.time()
         with self._lock:
-            if not self.has(dependency): # add dependency state if it does not exist
-                self._dependencies[dependency] = DependencyState(stage=DependencyStage.DOWNLOADING,
-                        dependency=dependency, path=self._assign_path(dependency), size_bytes=0,
-                        dependents=set((uuid)), last_used=now, message="Starting download", killed=False)
+            if not self.has(dependency):  # add dependency state if it does not exist
+                self._dependencies[dependency] = DependencyState(
+                    stage=DependencyStage.DOWNLOADING,
+                    dependency=dependency,
+                    path=self._assign_path(dependency),
+                    size_bytes=0,
+                    dependents=set((uuid)),
+                    last_used=now,
+                    message="Starting download",
+                    killed=False)
 
             # update last_used as long as it isn't in FAILED
             if self._dependencies[dependency].stage != DependencyStage.FAILED:
@@ -154,6 +176,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     self._dependencies[dependency] = dep_state
 
     def _assign_path(self, dependency):
+        """
+        Normalize the path for the dependency by replacing / with _, aboiding conflicts
+        """
         parent_uuid, parent_path = dependency
         if parent_path:
             path = os.path.join(parent_uuid, parent_path)
@@ -170,6 +195,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         return path
 
     def _store_dependency(self, dependency_path, fileobj, target_type):
+        """
+        Copy the dependency fileobj to its path in the local filesystem
+        """
         try:
             if target_type == 'directory':
                 un_tar_directory(fileobj, dependency_path, 'gz')
@@ -177,7 +205,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 with open(dependency_path, 'wb') as f:
                     logger.debug('copying file to %s', dependency_path)
                     shutil.copyfileobj(fileobj, f)
-        except :
+        except:
             raise
 
     @property
@@ -191,6 +219,10 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     def _transition_from_DOWNLOADING(self, dependency_state):
         def download():
             def update_state_and_check_killed(bytes_downloaded):
+                """
+                Callback method for bundle service client updates dependency state and
+                raises DownloadAbortedException if download is killed by dep. manager
+                """
                 with self._lock:
                     state = self._dependencies[dependency]
                     if state.killed:
@@ -200,6 +232,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             dependency_path = os.path.join(self.dependencies_dir, dependency_state.path)
             logger.debug('Downloading dependency %s/%s', parent_uuid, parent_path)
             try:
+                # Start async download to the fileobj
                 fileobj, target_type = (
                     self._bundle_service.get_bundle_contents(parent_uuid, parent_path))
                 with closing(fileobj):
@@ -207,13 +240,16 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     # track of the number of bytes downloaded so far.
                     old_read_method = fileobj.read
                     bytes_downloaded = [0]
+
                     def interruptable_read(*args, **kwargs):
                         data = old_read_method(*args, **kwargs)
                         bytes_downloaded[0] += len(data)
                         update_state_and_check_killed(bytes_downloaded[0])
                         return data
+
                     fileobj.read = interruptable_read
 
+                    # Start copying the fileobj to filesystem dependency path
                     self._store_dependency(dependency_path, fileobj, target_type)
 
                 logger.debug('Finished downloading %s dependency %s/%s to %s', target_type, parent_uuid, parent_path, dependency_path)

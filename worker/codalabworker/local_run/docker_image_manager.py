@@ -1,16 +1,13 @@
 from collections import namedtuple
 import threading
-import os
 import time
 import traceback
 import logging
-import json
 
 from codalabworker.formatting import size_str
 from codalabworker.docker_client import DockerException
 from codalabworker.fsm import (
     BaseDependencyManager,
-    JsonStateCommitter,
     DependencyStage,
     StateTransitioner
 )
@@ -18,6 +15,7 @@ from codalabworker.fsm import (
 logger = logging.getLogger(__name__)
 
 DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used message')
+
 
 class DockerImageManager(StateTransitioner, BaseDependencyManager):
 
@@ -29,7 +27,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
 
         self._state_committer = state_committer
         self._docker = docker
-        self._images = {} # digest -> DockerImageState
+        self._images = {}  # digest -> DockerImageState
         self._downloading = {}
         self._max_images_bytes = max_images_bytes
         self._max_age_failed_seconds = max_age_failed_seconds
@@ -70,8 +68,6 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
     def _process_images(self):
         """
         Transition image states. Also remove FAILED states that are too old.
-        If size of images is larger than self._max_images_bytes, remove the
-        least-recently used one.
         """
         now = time.time()
         with self._lock:
@@ -84,12 +80,21 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 self._images[digest] = self.transition(state)
 
     def _cleanup(self):
+        """
+        If Docker's disk usage is higher than the quota given at initialization, clean up old images
+        until disk usage is under the quota again. Remove images in this order:
+            - FAILED images, least recently touched first
+            - READY images, least recently touched first
+        For now, if all the images are DOWNLOADING, log but don't delete. Images will be deleted after
+        download completes
+
+        """
         while True:
             total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
             if total_bytes > self._max_images_bytes and len(self._images) > 0 and reclaimable_bytes > 0:
                 logger.debug('Docker images disk usage: %s (max %s)',
-                              size_str(total_bytes),
-                              size_str(self._max_images_bytes))
+                             size_str(total_bytes),
+                             size_str(self._max_images_bytes))
                 with self._lock:
                     failed_images = {digest: image for digest, image in self._images.items() if image.stage == DependencyStage.FAILED}
                     ready_images = {digest: image for digest, image in self._images.items() if image.stage == DependencyStage.READY}
@@ -106,7 +111,6 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                         del self._images[digest_to_remove]
             else:
                 break
-
 
     def remove(self, digest):
         """
@@ -143,16 +147,16 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 with self._lock:
                     image_state = self.get(digest)
                     if image_state.killed:
-                        return False # should_resume = False
+                        return False  # should_resume = False
                     else:
                         self._images[digest] = image_state._replace(message=status_message)
-                        return True # should_resume = True
+                        return True  # should_resume = True
 
             try:
                 self._docker.download_image(digest, update_status_message_and_check_killed)
                 with self._lock:
                     self._downloading[digest]['success'] = True
-                logger.debug('Finished downloading image %s', digest) 
+                logger.debug('Finished downloading image %s', digest)
             except DockerException as err:
                 with self._lock:
                     image_state = self.get(digest)

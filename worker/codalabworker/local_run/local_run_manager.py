@@ -11,6 +11,7 @@ from local_reader import LocalReader
 
 logger = logging.getLogger(__name__)
 
+
 class LocalRunManager(BaseRunManager):
     """
     LocalRunManager executes the runs locally, each one in its own Docker
@@ -18,7 +19,7 @@ class LocalRunManager(BaseRunManager):
     Docker network.
     """
     def __init__(self, worker, docker, image_manager, dependency_manager,
-            state_committer, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
+                 state_committer, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
         self._state_committer = state_committer
         self._run_state_manager = LocalRunStateMachine(self)
@@ -39,7 +40,9 @@ class LocalRunManager(BaseRunManager):
         self._init_docker_networks()
 
     def _init_docker_networks(self):
-        # set up docker networks for runs: one with external network access and one without
+        """
+        Set up docker networks for runs: one with external network access and one without
+        """
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
         if self.docker_network_external_name not in self.docker.list_networks():
             logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
@@ -63,6 +66,9 @@ class LocalRunManager(BaseRunManager):
         self.runs = self._state_committer.load()
 
     def start(self):
+        """
+        Load your state from disk, and start your sub-managers
+        """
         self.load_state()
         self.image_manager.start()
         self.dependency_manager.start()
@@ -94,12 +100,19 @@ class LocalRunManager(BaseRunManager):
         bundle_uuid = bundle['uuid']
         bundle_path = self.dependency_manager.get_run_path(bundle_uuid)
         now = time.time()
-        run_state = LocalRunState(
-                stage=LocalRunStage.PREPARING, run_status='', bundle=bundle,
-                bundle_path=os.path.realpath(bundle_path), resources=resources,
-                start_time=now, container_id=None, docker_image=None, is_killed=False,
-                has_contents=False, cpuset=None, gpuset=None, info={},
-        )
+        run_state = LocalRunState(stage=LocalRunStage.PREPARING,
+                                  run_status='',
+                                  bundle=bundle,
+                                  bundle_path=os.path.realpath(bundle_path),
+                                  resources=resources,
+                                  start_time=now,
+                                  container_id=None,
+                                  docker_image=None,
+                                  is_killed=False,
+                                  has_contents=False,
+                                  cpuset=None,
+                                  gpuset=None,
+                                  info={})
         with self.lock:
             self.runs[bundle_uuid] = run_state
 
@@ -143,12 +156,21 @@ class LocalRunManager(BaseRunManager):
             return self.runs.get(uuid, None)
 
     def finalize_bundle(self, bundle_uuid, finalize_message):
+        """
+        Use the Worker API to finalize the bundle with the uuid using the message
+        """
         self._worker.finalize_bundle(bundle_uuid, finalize_message)
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, progress_callback):
+        """
+        Use the Worker API to upload contents of bundle_path to bundle_uuid
+        """
         self._worker.upload_bundle_contents(bundle_uuid, bundle_path, progress_callback)
 
     def read(self, run_state, path, dep_paths, args, reply):
+        """
+        Use your Reader helper to invoke the given read command
+        """
         self._reader.read(run_state, path, dep_paths, args, reply)
 
     def write(self, run_state, path, dep_paths, string):
@@ -165,19 +187,20 @@ class LocalRunManager(BaseRunManager):
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
         """
-        container_ip = self.docker.get_container_ip(
-                self.docker_network_external_name, run_state.container_id)
+        container_ip = self.docker.get_container_ip(self.docker_network_external_name,
+                                                    run_state.container_id)
         if not container_ip:
-            container_ip = self.docker.get_container_ip(
-                    self.docker_network_internal_name, run_state.container_id)
+            container_ip = self.docker.get_container_ip(self.docker_network_internal_name,
+                                                        run_state.container_id)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((container_ip, port))
         s.sendall(message)
 
-        total_data=[]
+        total_data = []
         while True:
             data = s.recv(1024)
-            if not data: break
+            if not data:
+                break
             total_data.append(data)
         s.close()
         reply(None, {}, ''.join(total_data))
