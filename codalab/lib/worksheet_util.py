@@ -37,11 +37,16 @@ from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
 from codalab.rest.worksheet_block_schemas import (
+    FetchStatusSchema,
     BlockModes,
     MarkupBlockSchema,
     BundleContentsBlockSchema,
     BundleImageBlockSchema,
     BundleHTMLBlockSchema,
+    TableBlockSchema,
+    RecordsRowSchema,
+    RecordsBlockSchema,
+    GraphBlockSchema,
 )
 
 # Note: this is part of the client's session, not server side.
@@ -620,7 +625,6 @@ def interpret_items(schemas, raw_items):
         # Print out the curent bundles somehow
         mode = current_display[0]
         args = current_display[1:]
-        properties = {}
         if mode == 'hidden':
             pass
         elif mode == 'contents' or mode == 'image' or mode == 'html':
@@ -640,36 +644,24 @@ def interpret_items(schemas, raw_items):
                 (bundle_uuid, target_genpath) = genpath_to_target(bundle_info, args[0])
                 properties = parse_properties(args[1:])
 
+                block_object = {
+                    'target_genpath': target_genpath,
+                    'bundle_info': copy.deepcopy(bundle_info),
+                    'status': FetchStatusSchema.get_initial_status(),
+                }
+
                 if mode == 'contents':
-                    interpreted_items.append(BundleContentsBlockSchema().load({
-                        'target_genpath': target_genpath,
-                        'bundle_info': copy.deepcopy(bundle_info),
-                        'status': {
-                            'code': 'unknown',
-                            'error_message': '',
-                        },
-                        'max_lines': properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES)
-                    }).data)
+                    try:
+                        block_object['max_lines'] = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+                    interpreted_items.append(BundleContentsBlockSchema().load(block_object).data)
                 elif mode == 'image':
-                    interpreted_items.append(BundleImageBlockSchema().load({
-                        'target_genpath': target_genpath,
-                        'bundle_info': copy.deepcopy(bundle_info),
-                        'status': {
-                            'code': 'unknown',
-                            'error_message': '',
-                        },
-                        'width': properties.get('width', None),
-                        'height': properties.get('height', None),
-                    }).data)
+                    block_object['width'] = properties.get('width', None)
+                    block_object['height'] = properties.get('height', None)
+                    interpreted_items.append(BundleImageBlockSchema().load(block_object).data)
                 elif mode == 'html':
-                    interpreted_items.append(BundleHTMLBlockSchema().load({
-                        'target_genpath': target_genpath,
-                        'bundle_info': copy.deepcopy(bundle_info),
-                        'status': {
-                            'code': 'unknown',
-                            'error_message': '',
-                        },
-                    }).data)
+                    interpreted_items.append(BundleHTMLBlockSchema().load(block_object).data)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -680,16 +672,16 @@ def interpret_items(schemas, raw_items):
                 header = ('key', 'value')
                 rows = []
                 for (name, genpath, post) in schema:
-                    rows.append({
+                    rows.append(RecordsRowSchema().load({
                         'key': name + ':',
                         'value': apply_func(post, interpret_genpath(bundle_info, genpath))
-                    })
-                interpreted_items.append({
-                    'mode': mode,
-                    'interpreted': (header, rows),
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_info)
-                })
+                    }).data)
+                interpreted_items.append(RecordsBlockSchema().load({
+                    'bundle_info': copy.deepcopy(bundle_info),
+                    'status': FetchStatusSchema.get_initial_status(),
+                    'header': header,
+                    'rows':  rows,
+                }).data)
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -702,9 +694,9 @@ def interpret_items(schemas, raw_items):
             for item_index, bundle_info in bundle_infos:
                 if 'metadata' in bundle_info:
                     rows.append({
-                                    name: apply_func(post, interpret_genpath(bundle_info, genpath))
-                                    for (name, genpath, post) in schema
-                                    })
+                        name: apply_func(post, interpret_genpath(bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
                     # The front-end relies on the name metadata field existing
@@ -713,16 +705,17 @@ def interpret_items(schemas, raw_items):
                         'name': '<invalid>'
                     }
                     rows.append({
-                                    name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
-                                    for (name, genpath, post) in schema
-                                    })
+                        name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
                     processed_bundle_infos.append(processed_bundle_info)
-            interpreted_items.append({
-                'mode': mode,
-                'interpreted': (header, rows),
-                'properties': properties,
-                'bundle_info': processed_bundle_infos
-            })
+            interpreted_items.append(TableBlockSchema().load({
+                'bundle_info': processed_bundle_infos,
+                'status': FetchStatusSchema.get_initial_status(),
+                'header': header,
+                'rows':  rows,
+            }).data)
+
         elif mode == 'graph':
             # display graph <genpath> <properties>
             if len(args) == 0:
@@ -733,19 +726,27 @@ def interpret_items(schemas, raw_items):
             #   'target': (bundle_uuid, subpath)
             # }
             properties = parse_properties(args[1:])
-            interpreted = [{
-                'uuid': bundle_info['uuid'],
+
+            trajectories = [{
+                'bundle_uuid': bundle_info['uuid'],
                 'display_name': interpret_genpath(bundle_info, properties.get('display_name', 'name')),
-                'target': genpath_to_target(bundle_info, args[0])
+                'target_genpath': genpath_to_target(bundle_info, args[0])[1]
             } for item_index, bundle_info in bundle_infos]
 
-            interpreted_items.append({
-                'mode': mode,
-                'interpreted': interpreted,
-                'properties': properties,
+            try:
+                max_lines = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
+            except ValueError:
+                raise UsageError("maxlines must be integer")
+
+            interpreted_items.append(GraphBlockSchema().load({
+                'trajectories': trajectories,
                 'bundle_info': bundle_infos[0][1]  # Only show the first one for now
+                'max_lines': max_lines,
+                'xlabel': properties.get('xlabel', None)
+                'ylabel': properties.get('ylabel', None)
+
                 #'bundle_info': [copy.deepcopy(bundle_info) for item_index, bundle_info in bundle_infos]
-            })
+            }).data)
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
@@ -827,6 +828,8 @@ def interpret_items(schemas, raw_items):
                 elif command == 'display':
                     # Set display
                     current_display = value_obj[1:]
+
+                # TODO: remove search and wsearch and replace with BundlesSpec and WorksheetsSpec
                 elif command == 'search':
                     # Display bundles based on query
                     keywords = value_obj[1:]

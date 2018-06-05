@@ -40,6 +40,13 @@ class FetchStatusSchema(PlainSchema):
     code = fields.String(validate=validate.OneOf(set(STATUS_STRINGS)))
     error_message = fields.String()
 
+    @staticmethod
+    def get_initial_status():
+        return {
+            'code': 'unknown',
+            'error_message': '',
+        }
+
 
 class WorksheetBlockSchema(PlainSchema):
     """
@@ -68,13 +75,14 @@ class BundleBlockSchema(WorksheetBlockSchema):
     Stores state relevant to fetching information from bundle.
     """
 
-    target_genpath = fields.String(required=True)
     bundle_info = fields.Dict(required=True)
+    target_genpath = fields.String(required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
 
 class BundleContentsBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.contents_block)
+
     max_lines = fields.Integer()
     lines = fields.List(fields.String())
 
@@ -89,17 +97,47 @@ class BundleImageBlockSchema(BundleBlockSchema):
 
 class BundleHTMLBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.html_block)
+
     max_lines = fields.Constant(sys.maxint)
     html_lines = fields.List(fields.String())
 
 
-# class TableSchemaItemSchema(PlainSchema):
-#     name = fields.String()
-#     genpath = fields.String()
-#     post_processor = fields.String()
+class TableBlockSchema(WorksheetBlockSchema):
+    mode = fields.Constant(BlockModes.table_block)
+    bundle_info = fields.List(fields.Dict(), required=True)
+    status = fields.Nested(FetchStatusSchema, required=True)
+
+    header = fields.List(fields.String(), required=True)
+    rows = fields.List(fields.Dict(), required=True)
 
 
-# class TableBlockSchema(WorksheetBlockSchema):
-#     mode = fields.Constant(BlockModes.table_block)
-#     table_schema = fields.Nested(TableSchemaItemSchema, many=True)
-#     header = fields.List(fields.String())
+class RecordsRowSchema(PlainSchema):
+    key = fields.String(required=True)
+    value = fields.Raw(required=True)
+
+
+class RecordsBlockSchema(BundleBlockSchema):
+    mode = fields.Constant(BlockModes.record_block)
+    bundle_info = fields.Dict(required=True)
+    status = fields.Nested(FetchStatusSchema, required=True)
+
+    header = fields.Constant(('key', 'value'))
+    rows = fields.Nested(RecordsRowSchema, many=True, required=True)
+
+
+class GraphTrajectorySchema(PlainSchema):
+    uuid = fields.String(required=True)
+    display_name = fields.String(required=True)
+    target_genpath = fields.String()
+    points = fields.List(fields.String())
+
+
+class GraphBlockSchema(BundleBlockSchema):
+    mode = fields.Constant(BlockModes.graph_block)
+    bundle_info = fields.Dict(required=True)
+    status = fields.Nested(FetchStatusSchema, required=True)
+
+    trajectories = fields.Nested(GraphTrajectorySchema, many=True, required=True)
+    max_lines = fields.Integer()
+    xlabel = fields.String()
+    ylabel = fields.String()
