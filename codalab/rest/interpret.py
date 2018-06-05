@@ -235,7 +235,7 @@ def fetch_interpreted_worksheet(uuid):
         if item is None:
             continue
         if item['mode'] == 'table':
-            for row_map in item['interpreted'][1]:
+            for row_map in item['rows']:
                 for k, v in row_map.iteritems():
                     if v is None:
                         row_map[k] = formatting.contents_str(v)
@@ -321,7 +321,6 @@ def resolve_interpreted_items(interpreted_items):
         mode = item['mode']
         # TODO: remove these fields entirely, using fields unique to each mode instead.
         data = item['interpreted'] if ('interpreted' in item) else None
-        properties = item['properties'] if ('properties' in item) else None
 
         try:
             # Replace data with a resolved version.
@@ -330,97 +329,66 @@ def resolve_interpreted_items(interpreted_items):
                 pass
             elif mode == 'record' or mode == 'table':
                 # header_name_posts is a list of (name, post-processing) pairs.
-                header, contents = data
+                contents = item['rows']
                 # Request information
                 contents = interpret_genpath_table_contents(contents)
-                data = (header, contents)
-
-                # TODO: remove this and use new schemas
-                item['interpreted'] = data
-            elif mode == BlockModes.contents_block:
+                item['rows'] = contents
+            elif mode == BlockModes.contents_block or mode == BlockModes.html_block or mode == BlockModes.image_block:
                 try:
-                    max_lines = item['max_lines']
-                except ValueError:
-                    raise UsageError("maxlines must be integer")
-
-                try:
-                    target_info = rest_util.get_target_info(item['bundle_info']['uuid'], item['target_genpath'])
-                except NotFoundError:
+                    target_info = rest_util.get_target_info((item['bundle_info']['uuid'], item['target_genpath']), 0)
+                except NotFoundError as e:
                     item['status']['code'] = 'not_found'
-                    item['lines'] = None
-                else:
-                    if target_info['type'] == 'directory':
-                        item['status']['code'] = 'ready'
-                        item['lines'] = ['<directory>']
-                    elif target_info['type'] == 'file':
-                        item['status']['code'] = 'ready'
-                        item['lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), max_lines, replace_non_unicode=True)
-                    else:
-                        item['status']['code'] = 'not_found'
+                    if mode == BlockModes.contents_block:
                         item['lines'] = None
-            elif mode == BlockModes.html_block:
-                try:
-                    max_lines = item['max_lines']
-                except ValueError:
-                    raise UsageError("maxlines must be integer")
-                try:
-                    target_info = rest_util.get_target_info((item['bundle_info']['uuid'], item['target_genpath']), 0)
-                except NotFoundError:
-                    item['status']['code'] = 'not_found'
-                    item['html_lines'] = None
-                else:
-                    if target_info['type'] == 'file':
-                        item['status']['code'] = 'ready'
-                        item['html_lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), max_lines)
-                    else:
-                        item['status']['code'] = 'not_found'
+                    elif mode == BlockModes.html_block:
                         item['html_lines'] = None
-            elif mode == BlockModes.image_block:
-                try:
-                    target_info = rest_util.get_target_info((item['bundle_info']['uuid'], item['target_genpath']), 0)
-                except NotFoundError:
-                    item['status']['code'] = 'not_found'
-                    item['image_data'] = None
-                else:
-                    if target_info['type'] == 'file':
+                    elif mode == BlockModes.image_block:
+                        item['image_data'] = None
+
+                if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
+                    item['status']['code'] = 'ready'
+                    item['lines'] = ['<directory>']
+                elif target_info['type'] == 'file':
+                    item['status']['code'] = 'ready'
+                    if mode == BlockModes.contents_block:
+                        item['lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), item['max_lines'], replace_non_unicode=True)
+                    elif mode == BlockModes.html_block:
+                        item['html_lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), item['max_lines'])
+                    elif mode == BlockModes.image_block:
                         item['status']['code'] = 'ready'
                         item['image_data'] = base64.b64encode(cat_target((item['bundle_info']['uuid'], item['target_genpath'])))
-                    else:
-                        item['status']['code'] = 'not_found'
+                else:
+                    item['status']['code'] = 'not_found'
+                    if mode == BlockModes.contents_block:
+                        item['lines'] = None
+                    elif mode == BlockModes.html_block:
+                        item['html_lines'] = None
+                    elif mode == BlockModes.image_block:
                         item['image_data'] = None
-            elif mode == 'graph':
-                try:
-                    max_lines = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
-                except ValueError:
-                    raise UsageError("maxlines must be integer")
-
+            elif mode == BlockModes.graph_block:
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
-                for info in data:
-                    target = info['target']
+                for info in item['trajectories']:
+                    target = (info['uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
-                    except NotFoundError:
+                    except NotFoundError as e:
                         pass
-                    else:
-                        if target_info['type'] == 'file':
-                            contents = head_target(target, max_lines, replace_non_unicode=True)
-                            # Assume TSV file without header for now, just return each line as a row
-                            info['points'] = points = []
-                            for line in contents:
-                                row = line.split('\t')
-                                points.append(row)
-                # TODO: remove this and use new schemas
-                item['interpreted'] = data
+                    if target_info['type'] == 'file':
+                        contents = head_target(target, item['max_lines'], replace_non_unicode=True)
+                        # Assume TSV file without header for now, just return each line as a row
+                        info['points'] = points = []
+                        for line in contents:
+                            row = line.split('\t')
+                            points.append(row)
+            # TODO: remove search and wsearch and replace with BundlesSpec and WorksheetsSpec
             elif mode == 'search':
                 data = interpret_search(data)
-                # TODO: remove this and use new schemas
                 item['interpreted'] = data
 
             elif mode == 'wsearch':
                 data = interpret_wsearch(data)
 
-                # TODO: remove this and use new schemas
                 item['interpreted'] = data
             elif mode == 'worksheet':
                 # TODO: remove this and use new schemas
