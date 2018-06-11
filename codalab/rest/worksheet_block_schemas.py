@@ -56,9 +56,24 @@ class FetchStatusSchema(PlainSchema):
 
 
 class BundlesSpecSchema(PlainSchema):
+    mode_bundle_specs = 'bundle_specs'
+    mode_bundle_search = 'bundle_search'
+
+    modes = (mode_bundle_specs, mode_bundle_search)
+
+    spec_type = fields.String(validate=validate.OneOf(set(modes)))
     bundles_spec = fields.String(required=True)
     bundle_infos = fields.List(fields.Dict())
     fetch_status = fields.Nested(FetchStatusSchema(), required=True)
+
+    @staticmethod
+    def get_completed_bundles_spec(bundle_info):
+        return {
+            'spec_type': mode_bundle_specs,
+            'bundles_spec': bundle_info['uuid'],
+            'bundle_infos': [bundle_info],
+            'fetch_status': FetchStatusSchema.get_ready_status(),
+        }
 
 
 class WorksheetBlockSchema(PlainSchema):
