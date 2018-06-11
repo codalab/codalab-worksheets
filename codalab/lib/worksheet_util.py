@@ -740,10 +740,10 @@ def interpret_items(schemas, raw_items):
 
             interpreted_items.append(GraphBlockSchema().load({
                 'trajectories': trajectories,
-                'bundle_info': bundle_infos[0][1]  # Only show the first one for now
+                'bundle_info': bundle_infos[0][1],  # Only show the first one for now
                 'max_lines': max_lines,
-                'xlabel': properties.get('xlabel', None)
-                'ylabel': properties.get('ylabel', None)
+                'xlabel': properties.get('xlabel', None),
+                'ylabel': properties.get('ylabel', None),
 
                 #'bundle_info': [copy.deepcopy(bundle_info) for item_index, bundle_info in bundle_infos]
             }).data)

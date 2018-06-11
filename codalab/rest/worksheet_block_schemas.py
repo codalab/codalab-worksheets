@@ -47,6 +47,19 @@ class FetchStatusSchema(PlainSchema):
             'error_message': '',
         }
 
+    @staticmethod
+    def get_ready_status():
+        return {
+            'code': 'ready',
+            'error_message': '',
+        }
+
+
+class BundlesSpecSchema(PlainSchema):
+    bundles_spec = fields.String(required=True)
+    bundle_infos = fields.List(fields.Dict())
+    fetch_status = fields.Nested(FetchStatusSchema(), required=True)
+
 
 class WorksheetBlockSchema(PlainSchema):
     """
@@ -75,6 +88,7 @@ class BundleBlockSchema(WorksheetBlockSchema):
     Stores state relevant to fetching information from bundle.
     """
 
+    bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
     bundle_info = fields.Dict(required=True)
     target_genpath = fields.String(required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
@@ -104,6 +118,7 @@ class BundleHTMLBlockSchema(BundleBlockSchema):
 
 class TableBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.table_block)
+    bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
     bundle_info = fields.List(fields.Dict(), required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
@@ -118,6 +133,7 @@ class RecordsRowSchema(PlainSchema):
 
 class RecordsBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.record_block)
+    bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
     bundle_info = fields.Dict(required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
@@ -134,6 +150,7 @@ class GraphTrajectorySchema(PlainSchema):
 
 class GraphBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.graph_block)
+    bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
     bundle_info = fields.Dict(required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
