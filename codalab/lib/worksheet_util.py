@@ -646,8 +646,8 @@ def interpret_items(schemas, raw_items):
 
                 block_object = {
                     'target_genpath': target_genpath,
-                    'bundle_info': copy.deepcopy(bundle_info),
-                    'status': FetchStatusSchema.get_initial_status(),
+                    'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json([bundle_info])).data,
+                    'status': FetchStatusSchema.get_unknown_status(),
                 }
 
                 if mode == 'contents':
@@ -677,8 +677,8 @@ def interpret_items(schemas, raw_items):
                         'value': apply_func(post, interpret_genpath(bundle_info, genpath))
                     }).data)
                 interpreted_items.append(RecordsBlockSchema().load({
-                    'bundle_info': copy.deepcopy(bundle_info),
-                    'status': FetchStatusSchema.get_initial_status(),
+                    'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json([bundle_info])).data,
+                    'status': FetchStatusSchema.get_unknown_status(),
                     'header': header,
                     'rows':  rows,
                 }).data)
@@ -710,8 +710,8 @@ def interpret_items(schemas, raw_items):
                     })
                     processed_bundle_infos.append(processed_bundle_info)
             interpreted_items.append(TableBlockSchema().load({
-                'bundle_info': processed_bundle_infos,
-                'status': FetchStatusSchema.get_initial_status(),
+                'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json(processed_bundle_infos)).data,
+                'status': FetchStatusSchema.get_unknown_status(),
                 'header': header,
                 'rows':  rows,
             }).data)
@@ -740,12 +740,10 @@ def interpret_items(schemas, raw_items):
 
             interpreted_items.append(GraphBlockSchema().load({
                 'trajectories': trajectories,
-                'bundle_info': bundle_infos[0][1],  # Only show the first one for now
+                'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json([bundle_infos[0][1]])).data,
                 'max_lines': max_lines,
                 'xlabel': properties.get('xlabel', None),
                 'ylabel': properties.get('ylabel', None),
-
-                #'bundle_info': [copy.deepcopy(bundle_info) for item_index, bundle_info in bundle_infos]
             }).data)
         else:
             raise UsageError('Unknown display mode: %s' % mode)
@@ -831,15 +829,23 @@ def interpret_items(schemas, raw_items):
 
                 # TODO: remove search and wsearch and replace with BundlesSpec and WorksheetsSpec
                 elif command == 'search':
-                    # Display bundles based on query
-                    keywords = value_obj[1:]
-                    mode = command
-                    data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
-                    interpreted_items.append({
-                        'mode': mode,
-                        'interpreted': data,
-                        'properties': {},
-                    })
+
+                    # display table schema =>
+                    # key1       key2
+                    # b1_value1  b1_value2
+                    # b2_value1  b2_value2
+                    schema = get_schema(args)
+                    header = tuple(name for (name, genpath, post) in schema)
+                    interpreted_items.append(TableBlockSchema().load({
+                        'bundles_spec': BundleSearchSpecSchema().load({
+                                'spec_type': BundlesSpecSchema.search_spec_type,
+                                'keywords': value_obj[1:]
+                            }).data,
+                        'status': FetchStatusSchema.get_unknown_status(),
+                        'header': header,
+                        'rows':  rows,
+                    }).data)
+
                 elif command == 'wsearch':
                     # Display worksheets based on query
                     keywords = value_obj[1:]
