@@ -41,7 +41,7 @@ class FetchStatusSchema(PlainSchema):
     error_message = fields.String()
 
     @staticmethod
-    def get_initial_status():
+    def get_unknown_status():
         return {
             'code': 'unknown',
             'error_message': '',
@@ -56,24 +56,33 @@ class FetchStatusSchema(PlainSchema):
 
 
 class BundlesSpecSchema(PlainSchema):
-    mode_bundle_specs = 'bundle_specs'
-    mode_bundle_search = 'bundle_search'
+    uuid_spec_type = 'uuid_spec'
+    search_spec_type = 'search_spec'
 
-    modes = (mode_bundle_specs, mode_bundle_search)
+    spec_types = (uuid_spec_type, search_spec_type)
 
-    spec_type = fields.String(validate=validate.OneOf(set(modes)))
-    bundles_spec = fields.String(required=True)
-    bundle_infos = fields.List(fields.Dict())
-    fetch_status = fields.Nested(FetchStatusSchema(), required=True)
+    # Fields
+    spec_type = fields.String(validate=validate.OneOf(set(spec_types)))
+    bundle_infos = fields.List(fields.Dict(), required=True)
+    fetch_status = fields.Nested(FetchStatusSchema, required=True)
+
+
+class BundleUUIDSpecSchema(BundlesSpecSchema):
+    spec_type = fields.Constant(BundlesSpecSchema.uuid_spec_type)
+    uuid_spec = fields.List(fields.String(), required=True)
 
     @staticmethod
-    def get_completed_bundles_spec(bundle_info):
+    def create_json(bundle_infos):
         return {
-            'spec_type': mode_bundle_specs,
-            'bundles_spec': bundle_info['uuid'],
-            'bundle_infos': [bundle_info],
+            'spec_type': BundlesSpecSchema.uuid_spec_type,
+            'uuid_spec': [bundle_info['uuid'] for bundle_info in bundle_infos],
+            'bundle_infos': bundle_infos,
             'fetch_status': FetchStatusSchema.get_ready_status(),
         }
+
+class BundleSearchSpecSchema(BundlesSpecSchema):
+    spec_type = fields.Constant(BundlesSpecSchema.search_spec_type)
+    search_keywords = fields.List(fields.String(), required=True)
 
 
 class WorksheetBlockSchema(PlainSchema):
@@ -104,7 +113,6 @@ class BundleBlockSchema(WorksheetBlockSchema):
     """
 
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
-    bundle_info = fields.Dict(required=True)
     target_genpath = fields.String(required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
@@ -134,7 +142,6 @@ class BundleHTMLBlockSchema(BundleBlockSchema):
 class TableBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.table_block)
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
-    bundle_info = fields.List(fields.Dict(), required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
     header = fields.List(fields.String(), required=True)
@@ -149,7 +156,6 @@ class RecordsRowSchema(PlainSchema):
 class RecordsBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.record_block)
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
-    bundle_info = fields.Dict(required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
     header = fields.Constant(('key', 'value'))
@@ -166,7 +172,6 @@ class GraphTrajectorySchema(PlainSchema):
 class GraphBlockSchema(BundleBlockSchema):
     mode = fields.Constant(BlockModes.graph_block)
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
-    bundle_info = fields.Dict(required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
     trajectories = fields.Nested(GraphTrajectorySchema, many=True, required=True)
