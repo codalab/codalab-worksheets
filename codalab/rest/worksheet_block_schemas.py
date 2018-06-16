@@ -63,7 +63,7 @@ class BundlesSpecSchema(PlainSchema):
 
     # Fields
     spec_type = fields.String(validate=validate.OneOf(set(spec_types)))
-    bundle_infos = fields.List(fields.Dict(), required=True)
+    bundle_infos = fields.List(fields.Dict())
     fetch_status = fields.Nested(FetchStatusSchema, required=True)
 
 

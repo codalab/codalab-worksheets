@@ -335,7 +335,7 @@ def resolve_interpreted_items(interpreted_items):
                 item['rows'] = contents
             elif mode == BlockModes.contents_block or mode == BlockModes.html_block or mode == BlockModes.image_block:
                 try:
-                    target_info = rest_util.get_target_info((item['bundle_info']['uuid'], item['target_genpath']), 0)
+                    target_info = rest_util.get_target_info((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath']), 0)
                 except NotFoundError as e:
                     item['status']['code'] = 'not_found'
                     if mode == BlockModes.contents_block:
@@ -351,12 +351,12 @@ def resolve_interpreted_items(interpreted_items):
                 elif target_info['type'] == 'file':
                     item['status']['code'] = 'ready'
                     if mode == BlockModes.contents_block:
-                        item['lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), item['max_lines'], replace_non_unicode=True)
+                        item['lines'] = head_target((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath']), item['max_lines'], replace_non_unicode=True)
                     elif mode == BlockModes.html_block:
-                        item['html_lines'] = head_target((item['bundle_info']['uuid'], item['target_genpath']), item['max_lines'])
+                        item['html_lines'] = head_target((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath']), item['max_lines'])
                     elif mode == BlockModes.image_block:
                         item['status']['code'] = 'ready'
-                        item['image_data'] = base64.b64encode(cat_target((item['bundle_info']['uuid'], item['target_genpath'])))
+                        item['image_data'] = base64.b64encode(cat_target((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath'])))
                 else:
                     item['status']['code'] = 'not_found'
                     if mode == BlockModes.contents_block:
