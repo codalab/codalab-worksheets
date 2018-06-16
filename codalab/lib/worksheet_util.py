@@ -31,6 +31,7 @@ import os
 import re
 import sys
 from itertools import izip
+from bottle import request, local
 
 
 from codalab.common import PermissionError, UsageError
@@ -48,6 +49,8 @@ from codalab.rest.worksheet_block_schemas import (
     RecordsBlockSchema,
     GraphBlockSchema,
 )
+from codalab.rest import util as rest_util
+
 
 # Note: this is part of the client's session, not server side.
 CURRENT_WORKSHEET = '.'
@@ -834,17 +837,18 @@ def interpret_items(schemas, raw_items):
                     # key1       key2
                     # b1_value1  b1_value2
                     # b2_value1  b2_value2
-                    schema = get_schema(args)
-                    header = tuple(name for (name, genpath, post) in schema)
-                    interpreted_items.append(TableBlockSchema().load({
-                        'bundles_spec': BundleSearchSpecSchema().load({
-                                'spec_type': BundlesSpecSchema.search_spec_type,
-                                'keywords': value_obj[1:]
-                            }).data,
-                        'status': FetchStatusSchema.get_unknown_status(),
-                        'header': header,
-                        'rows':  rows,
-                    }).data)
+                    keywords = rest_util.resolve_owner_in_keywords(keywords)
+                    bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
+
+                    bundle_infos = [(raw_index, bundle_info) for item_index, bundle_info in rest_util.get_bundle_infos(bundle_uuids)]
+
+                    if len(bundle_infos) > 0:
+                        flush_bundles()
+                    else:
+                        interpreted_items.append(MarkupBlockSchema().load({
+                            'id': len(interpreted_items),
+                            'text': '(no results)',
+                        }).data)
 
                 elif command == 'wsearch':
                     # Display worksheets based on query
