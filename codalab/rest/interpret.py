@@ -337,7 +337,7 @@ def resolve_interpreted_items(interpreted_items):
             if mode == BlockModes.markup_block:
                 # no need to do anything
                 pass
-            elif mode == 'record' or mode == 'table':
+            elif mode == BlockModes.record_block or mode == BlockModes.table_block:
                 # header_name_posts is a list of (name, post-processing) pairs.
                 contents = item['rows']
                 # Request information
@@ -576,7 +576,7 @@ def expand_raw_item(raw_item):
     on the returned raw_items.
     """
 
-    (bundle_info, subworksheet_info, value_obj, item_type) = item
+    (bundle_info, subworksheet_info, value_obj, item_type) = raw_item
 
     is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
     is_wsearch = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch')
@@ -595,7 +595,7 @@ def expand_raw_item(raw_item):
             for bundle_uuid in bundle_uuids:
                 raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
         elif is_wsearch:
-            worksheet_infos = search_worksheets(query['keywords'])
+            worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
                 raw_items.append(subworksheet_item(worksheet_info))
 

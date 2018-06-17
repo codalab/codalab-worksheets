@@ -48,6 +48,7 @@ from codalab.rest.worksheet_block_schemas import (
     RecordsBlockSchema,
     GraphBlockSchema,
     SubworksheetsBlock,
+    BundleUUIDSpecSchema,
 )
 
 
@@ -761,7 +762,7 @@ def interpret_items(schemas, raw_items):
 
         interpreted_items.append(SubworksheetsBlock().load({
             'subworksheet_infos': copy.deepcopy(worksheet_infos),
-        }))
+        }).data)
 
         worksheet_infos[:] = []
 
