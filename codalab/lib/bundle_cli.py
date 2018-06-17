@@ -2369,7 +2369,7 @@ class BundleCLI(object):
                 # Placeholder
                 print >>self.stdout, '[' + mode + ']'
             elif mode == 'subworksheets_block':
-                for worksheet_info in item['subworksheet_infos']
+                for worksheet_info in item['subworksheet_infos']:
                     print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']'
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
