@@ -22,12 +22,10 @@ class BlockModes:
     html_block = 'html_block'
     image_block = 'image_block'
     graph_block = 'graph_block'
-    wsearch_block = 'wsearch_block'
-    search_block = 'search_block'
+    subworksheets_block = 'subworksheets_block'
 
     values = (markup_block, record_block, table_block, contents_block,
-              html_block, image_block, graph_block, wsearch_block,
-              search_block)
+              html_block, image_block, graph_block, subworksheets_block)
 
 
 STATUS_STRINGS = ('unknown', 'pending', 'ready', 'not_found', 'no_permission')
@@ -57,9 +55,8 @@ class FetchStatusSchema(PlainSchema):
 
 class BundlesSpecSchema(PlainSchema):
     uuid_spec_type = 'uuid_spec'
-    search_spec_type = 'search_spec'
 
-    spec_types = (uuid_spec_type, search_spec_type)
+    spec_types = (uuid_spec_type)
 
     # Fields
     spec_type = fields.String(validate=validate.OneOf(set(spec_types)))
@@ -79,10 +76,6 @@ class BundleUUIDSpecSchema(BundlesSpecSchema):
             'bundle_infos': bundle_infos,
             'fetch_status': FetchStatusSchema.get_ready_status(),
         }
-
-class BundleSearchSpecSchema(BundlesSpecSchema):
-    spec_type = fields.Constant(BundlesSpecSchema.search_spec_type)
-    search_keywords = fields.List(fields.String(), required=True)
 
 
 class WorksheetBlockSchema(PlainSchema):
@@ -178,3 +171,8 @@ class GraphBlockSchema(BundleBlockSchema):
     max_lines = fields.Integer()
     xlabel = fields.String()
     ylabel = fields.String()
+
+
+class SubworksheetsBlock(WorksheetBlockSchema):
+    mode = fields.Constant(BlockModes.subworksheets_block)
+    subworksheet_infos = fields.List(fields.Dict, required=True)

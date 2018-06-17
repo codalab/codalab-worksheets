@@ -12,6 +12,7 @@ static helper functions.
 import base64
 import types
 from contextlib import closing
+from itertools import chain
 import json
 
 import yaml
@@ -42,6 +43,7 @@ from codalab.lib.worksheet_util import (
     directive_item,
     bundle_item,
     subworksheet_item,
+    get_command,
 )
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL
 from codalab.objects.permission import permission_str
@@ -50,7 +52,10 @@ from codalab.rest.worksheets import (
     get_worksheet_info,
     search_worksheets,
 )
-from codalab.rest.worksheet_block_schemas import BlockModes
+from codalab.rest.worksheet_block_schemas import (
+    BlockModes,
+    MarkupBlockSchema
+)
 
 
 @post('/interpret/search')
@@ -187,6 +192,12 @@ def fetch_interpreted_worksheet(uuid):
     # Fetch items.
     worksheet_info['raw'] = get_worksheet_lines(worksheet_info)
 
+    # Replace searches with raw items.
+    # This needs to be done before get_worksheet_lines because this replaces
+    # user-written raw items.
+    worksheet_info['items'] = list(chain.from_iterable(
+        [expand_raw_item(raw_item) for raw_item in worksheet_info['items']]))
+
     # Set permissions
     worksheet_info['edit_permission'] = (worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
     # Check enable chat box
@@ -309,18 +320,17 @@ def resolve_interpreted_items(interpreted_items):
     appropriate information, replacing the 'interpreted' field in each item.
     The result can be serialized via JSON.
     """
-    def error_data(mode, message):
-        if mode == 'record' or mode == 'table':
-            return (('ERROR',), [{'ERROR': message}])
-        else:
-            return [message]
+    def error_data(item_index, message):
+        interpreted_items[item_index] = MarkupBlockSchema().load({
+            'id': item_index,
+            'text': 'ERROR: ' + message,
+        }).data
 
-    for item in interpreted_items:
+
+    for item_index, item in enumerate(interpreted_items):
         if item is None:
             continue
         mode = item['mode']
-        # TODO: remove these fields entirely, using fields unique to each mode instead.
-        data = item['interpreted'] if ('interpreted' in item) else None
 
         try:
             # Replace data with a resolved version.
@@ -381,70 +391,23 @@ def resolve_interpreted_items(interpreted_items):
                         for line in contents:
                             row = line.split('\t')
                             points.append(row)
-            # TODO: remove search and wsearch and replace with BundlesSpec and WorksheetsSpec
-            elif mode == 'search':
-                data = interpret_search(data)
-                item['interpreted'] = data
-
-            elif mode == 'wsearch':
-                data = interpret_wsearch(data)
-
-                item['interpreted'] = data
-            elif mode == 'worksheet':
-                # TODO: remove this and use new schemas
-                item['interpreted'] = data
+            elif mode == BlockModes.subworksheets_block:
+                # do nothing
+                pass
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
         except UsageError as e:
-            data = error_data(mode, e.message)
+            error_data(item_index, e.message)
 
         except StandardError:
             import traceback
             traceback.print_exc()
-            data = error_data(mode, "Unexpected error interpreting item")
+            error_data(item_index, "Unexpected error interpreting item")
 
         item['is_refined'] = True
 
     return interpreted_items
-
-
-def interpret_search(query):
-    """
-    Input: specification of a bundle search query.
-    Output: worksheet items based on the result of issuing the search query.
-    """
-    # Perform search
-    keywords = rest_util.resolve_owner_in_keywords(query['keywords'])
-    bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
-
-    # Single number, just print it out...
-    if not isinstance(bundle_uuids, list):
-        return interpret_items(query['schemas'], [markup_item(str(bundle_uuids))])
-
-    # Set display
-    items = [directive_item(('display',) + tuple(query['display']))]
-
-    # Show bundles
-    bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
-    for bundle_uuid in bundle_uuids:
-        items.append(bundle_item(bundle_infos[bundle_uuid]))
-
-    # Finally, interpret the items
-    return interpret_items(query['schemas'], items)
-
-
-def interpret_wsearch(query):
-    """
-    Input: specification of a worksheet search query.
-    Output: worksheet items based on the result of issuing the search query.
-    """
-    # Get the worksheet uuids
-    worksheet_infos = search_worksheets(query['keywords'])
-    items = [subworksheet_item(worksheet_info) for worksheet_info in worksheet_infos]
-
-    # Finally, interpret the items
-    return interpret_items([], items)
 
 
 def interpret_genpath_table_contents(contents):
@@ -601,3 +564,39 @@ def resolve_items_into_infos(items):
         value_obj = formatting.string_to_tokens(i['value']) if i['type'] == TYPE_DIRECTIVE else i['value']
         new_items.append((bundle_info, subworksheet_info, value_obj, i['type']))
     return new_items
+
+
+def expand_raw_item(raw_item):
+    """
+    Some raw items must be expanded into more raw items.
+    Input: Raw item.
+    Output: Array of raw items. If raw item does not need expanding, 
+    this returns an 1-length array that contains original raw item,
+    otherwise it contains the search result. You do not need to call resolve_items_into_infos
+    on the returned raw_items.
+    """
+
+    (bundle_info, subworksheet_info, value_obj, item_type) = item
+
+    is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
+    is_wsearch = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch')
+
+    if not (is_search or is_wsearch):
+        return [raw_item]
+    else:
+        command = get_command(value_obj)
+        keywords = value_obj[1:]
+        raw_items = []
+
+        if is_search:
+            keywords = rest_util.resolve_owner_in_keywords(keywords)
+            bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
+            bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
+            for bundle_uuid in bundle_uuids:
+                raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
+        elif is_wsearch:
+            worksheet_infos = search_worksheets(query['keywords'])
+            for worksheet_info in worksheet_infos:
+                raw_items.append(subworksheet_item(worksheet_info))
+
+        return raw_items
