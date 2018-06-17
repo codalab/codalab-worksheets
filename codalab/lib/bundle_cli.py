@@ -2344,37 +2344,31 @@ class BundleCLI(object):
     def display_interpreted(self, client, worksheet_info, interpreted):
         for item in interpreted['items']:
             mode = item['mode']
-            data = item['interpreted']
-            properties = item['properties']
             print >>self.stdout, ''  # Separate interpreted items
-            if mode == 'markup' or mode == 'contents':
-                if mode == 'contents':
-                    maxlines = properties.get('maxlines')
+            if mode == 'markup_block' or mode == 'contents_block':
+                bundle_info = item['bundles_spec']['bundle_infos'][0]
+                if mode == 'contents_block':
+                    maxlines = item['max_lines']
                     if maxlines:
                         maxlines = int(maxlines)
                     try:
-                        self.print_target_info(client, data[0], data[1], head=maxlines)
+                        self.print_target_info(client, bundle_info['uuid'], item['target_genpath'], head=maxlines)
                     except UsageError, e:
                         print >>self.stdout, 'ERROR:', e
                 else:
-                    print >>self.stdout, data
-            elif mode == 'record' or mode == 'table':
+                    print >>self.stdout, (bundle_info['uuid'], item['target_genpath'])
+            elif mode == 'record_block' or mode == 'table_block':
                 # header_name_posts is a list of (name, post-processing) pairs.
-                header, contents = data
-                contents = client.interpret_genpath_table_contents(contents)
+                header, rows = (item['header'], item['rows'])
+                rows = client.interpret_genpath_table_contents(rows)
                 # print >>self.stdout, the table
-                self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
-            elif mode == 'html' or mode == 'image' or mode == 'graph':
+                self.print_table(header, rows, show_header=(mode == 'table'), indent='  ')
+            elif mode == 'html_block' or mode == 'image_block' or mode == 'graph_block':
                 # Placeholder
                 print >>self.stdout, '[' + mode + ']'
-            elif mode == 'search':
-                search_interpreted = client.interpret_search(data)
-                self.display_interpreted(client, worksheet_info, search_interpreted)
-            elif mode == 'wsearch':
-                wsearch_interpreted = client.interpret_wsearch(data)
-                self.display_interpreted(client, worksheet_info, wsearch_interpreted)
-            elif mode == 'worksheet':
-                print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(data) + ']'
+            elif mode == 'subworksheets_block':
+                for worksheet_info in item['subworksheet_infos']
+                    print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']'
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 

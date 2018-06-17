@@ -31,7 +31,6 @@ import os
 import re
 import sys
 from itertools import izip
-from bottle import request, local
 
 
 from codalab.common import PermissionError, UsageError
@@ -48,8 +47,8 @@ from codalab.rest.worksheet_block_schemas import (
     RecordsRowSchema,
     RecordsBlockSchema,
     GraphBlockSchema,
+    SubworksheetsBlock,
 )
-from codalab.rest import util as rest_util
 
 
 # Note: this is part of the client's session, not server side.
@@ -543,6 +542,10 @@ def get_default_schemas():
     return schemas
 
 
+def get_command(value_obj):  # For directives only
+    return value_obj[0] if len(value_obj) > 0 else None
+
+
 def interpret_items(schemas, raw_items):
     """
     schemas: initial mapping from name to list of schema items (columns of a table)
@@ -585,6 +588,7 @@ def interpret_items(schemas, raw_items):
     current_display = default_display
     interpreted_items = []
     bundle_infos = []
+    worksheet_infos = []
 
     def get_schema(args):  # args is a list of schema names
         args = args if len(args) > 0 else ['default']
@@ -635,7 +639,6 @@ def interpret_items(schemas, raw_items):
                 if is_missing(bundle_info):
                     interpreted_items.append(
                         MarkupBlockSchema().load({
-                            'id': len(interpreted_items),
                             'text': 'ERROR: cannot access bundle',
                         }).data)
                     continue
@@ -723,7 +726,7 @@ def interpret_items(schemas, raw_items):
             # display graph <genpath> <properties>
             if len(args) == 0:
                 raise_genpath_usage_error()
-            # interpreted is list of {
+            # trajectories is list of {
             #   'uuid': ...,
             #   'display_name': ..., # What to show as the description of a bundle
             #   'target': (bundle_uuid, subpath)
@@ -752,8 +755,15 @@ def interpret_items(schemas, raw_items):
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
 
-    def get_command(value_obj):  # For directives only
-        return value_obj[0] if len(value_obj) > 0 else None
+    def flush_worksheets():
+        if len(worksheet_infos) == 0:
+            return
+
+        interpreted_items.append(SubworksheetsBlock().load({
+            'subworksheet_infos': copy.deepcopy(worksheet_infos),
+        }))
+
+        worksheet_infos[:] = []
 
     # Go through all the raw items...
     last_was_empty_line = False
@@ -765,11 +775,18 @@ def interpret_items(schemas, raw_items):
             is_bundle = (item_type == TYPE_BUNDLE)
             is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
             is_directive = (item_type == TYPE_DIRECTIVE)
+            is_worksheet = (item_type == TYPE_WORKSHEET)
+
             if not is_bundle:
                 flush_bundles()
+
+            if not is_worksheet:
+                flush_worksheets()
+
             # Reset display to minimize long distance dependencies of directives
             if not (is_bundle or is_search):
                 current_display = default_display
+
             # Reset schema to minimize long distance dependencies of directives
             if not is_directive:
                 current_schema = None
@@ -778,13 +795,8 @@ def interpret_items(schemas, raw_items):
                 raw_to_interpreted.append((len(interpreted_items), len(bundle_infos)))
                 bundle_infos.append((raw_index, bundle_info))
             elif item_type == TYPE_WORKSHEET:
-                raw_to_interpreted.append((len(interpreted_items), 0))
-                interpreted_items.append({
-                    'mode': TYPE_WORKSHEET,
-                    'interpreted': subworksheet_info,
-                    'properties': {},
-                    'subworksheet_info': subworksheet_info,
-                })
+                raw_to_interpreted.append((len(interpreted_items), len(worksheet_infos)))
+                worksheet_infos.append(subworksheet_info)
             elif item_type == TYPE_MARKUP:
                 new_last_was_empty_line = (value_obj == '')
                 if len(interpreted_items) > 0 and interpreted_items[-1]['mode'] == TYPE_MARKUP and \
@@ -829,57 +841,23 @@ def interpret_items(schemas, raw_items):
                 elif command == 'display':
                     # Set display
                     current_display = value_obj[1:]
-
-                # TODO: remove search and wsearch and replace with BundlesSpec and WorksheetsSpec
-                elif command == 'search':
-
-                    # display table schema =>
-                    # key1       key2
-                    # b1_value1  b1_value2
-                    # b2_value1  b2_value2
-                    keywords = rest_util.resolve_owner_in_keywords(keywords)
-                    bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
-
-                    bundle_infos = [(raw_index, bundle_info) for item_index, bundle_info in rest_util.get_bundle_infos(bundle_uuids)]
-
-                    if len(bundle_infos) > 0:
-                        flush_bundles()
-                    else:
-                        interpreted_items.append(MarkupBlockSchema().load({
-                            'id': len(interpreted_items),
-                            'text': '(no results)',
-                        }).data)
-
-                elif command == 'wsearch':
-                    # Display worksheets based on query
-                    keywords = value_obj[1:]
-                    mode = command
-                    data = {'keywords': keywords}
-                    interpreted_items.append({
-                        'mode': mode,
-                        'interpreted': data,
-                        'properties': {},
-                    })
                 else:
                     raise UsageError("unknown directive `%s`" % command)
 
-                # Only search/wsearch contribute an interpreted item
-                if command == 'search' or command == 'wsearch':
-                    raw_to_interpreted.append((len(interpreted_items) - 1, 0))
-                else:
-                    raw_to_interpreted.append(None)
+                raw_to_interpreted.append(None)
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
             # Flush bundles once more at the end
             if raw_index == len(raw_items) - 1:
                 flush_bundles()
+                flush_worksheets()
 
         except UsageError as e:
             current_schema = None
             bundle_infos[:] = []
+            worksheet_infos[:] = []
             interpreted_items.append(MarkupBlockSchema().load({
-                'id': len(interpreted_items),
                 'text': 'Error on line %d: %s' % (raw_index, e.message),
             }).data)
 
@@ -888,10 +866,10 @@ def interpret_items(schemas, raw_items):
         except StandardError:
             current_schema = None
             bundle_infos[:] = []
+            worksheet_infos[:] = []
             import traceback
             traceback.print_exc()
             interpreted_items.append(MarkupBlockSchema().load({
-                'id': len(interpreted_items),
                 'text': 'Unexpected error while parsing line %d' % raw_index,
             }).data)
 

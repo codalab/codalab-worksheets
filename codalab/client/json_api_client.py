@@ -657,22 +657,6 @@ class JsonApiClient(RestClient):
             }
         )['contents']
 
-    @wrap_exception('Unable to interpret bundle search')
-    def interpret_search(self, query):
-        return self._make_request(
-            method='POST',
-            path='/interpret/search',
-            data=query,
-        )
-
-    @wrap_exception('Unable to interpret worksheet search')
-    def interpret_wsearch(self, query):
-        return self._make_request(
-            method='POST',
-            path='/interpret/wsearch',
-            data=query,
-        )
-
     @wrap_exception('Unable to update worksheet')
     def update_worksheet_raw(self, worksheet_id, lines):
         self._make_request(
