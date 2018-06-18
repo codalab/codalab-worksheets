@@ -76,7 +76,7 @@ class LocalRunStateMachine(StateTransitioner):
         self.add_transition(LocalRunStage.CLEANING, self._transition_from_CLEANING)
         self.add_transition(LocalRunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(LocalRunStage.FINALIZING, self._transition_from_FINALIZING)
-        self.add_transition(LocalRunStage.FINISHED, self._transition_from_FINISHED)
+        self.add_terminal(LocalRunStage.FINISHED)
 
     def _transition_from_PREPARING(self, run_state):
         """
@@ -319,6 +319,3 @@ class LocalRunStateMachine(StateTransitioner):
         else:  # thread finished
             del self._run_manager.finalizing[bundle_uuid]['thread']
             return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
-
-    def _transition_from_FINISHED(self, run_state):
-        return run_state

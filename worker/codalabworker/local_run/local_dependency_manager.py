@@ -42,8 +42,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
         super(LocalFileSystemDependencyManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
-        self.add_transition(DependencyStage.READY, self._transition_from_READY)
-        self.add_transition(DependencyStage.FAILED, self._transition_from_FAILED)
+        self.add_terminal(DependencyStage.READY)
+        self.add_terminal(DependencyStage.FAILED)
 
         self._state_committer = state_committer
         self._bundle_service = bundle_service
@@ -283,13 +283,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         else:
             self._paths.remove(dependency_state.path)
             return dependency_state._replace(stage=DependencyStage.FAILED, message=failure_message)
-
-    def _transition_from_READY(self, dependency_state):
-        return dependency_state
-
-    def _transition_from_FAILED(self, dependency_state):
-        return dependency_state
-
 
 class SharedFileSystemDependencyManager(BaseDependencyManager):
     def __init__(self, state_manager):

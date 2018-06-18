@@ -22,8 +22,8 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
     def __init__(self, docker, state_committer, max_images_bytes, max_age_failed_seconds=60):
         super(DockerImageManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
-        self.add_transition(DependencyStage.READY, self._transition_from_READY)
-        self.add_transition(DependencyStage.FAILED, self._transition_from_FAILED)
+        self.add_terminal(DependencyStage.READY)
+        self.add_terminal(DependencyStage.FAILED)
 
         self._state_committer = state_committer
         self._docker = docker
@@ -179,9 +179,3 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
             return image_state._replace(stage=DependencyStage.READY)
         else:
             return image_state._replace(stage=DependencyStage.FAILED)
-
-    def _transition_from_READY(self, image_state):
-        return image_state
-
-    def _transition_from_FAILED(self, image_state):
-        return image_state
