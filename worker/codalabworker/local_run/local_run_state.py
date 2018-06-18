@@ -38,7 +38,7 @@ class LocalRunStage(object):
     This stage encompasses cleaning up intermediary components like
     the dependency symlinks and also the releasing of dependencies
     """
-    CLEANING = 'LOCAL_RUN.CLEANING'
+    CLEANING_UP = 'LOCAL_RUN.CLEANING_UP'
 
     """
     Uploading results means the job's results are getting uploaded to the server
@@ -73,7 +73,7 @@ class LocalRunStateMachine(StateTransitioner):
         self._run_manager = run_manager
         self.add_transition(LocalRunStage.PREPARING, self._transition_from_PREPARING)
         self.add_transition(LocalRunStage.RUNNING, self._transition_from_RUNNING)
-        self.add_transition(LocalRunStage.CLEANING, self._transition_from_CLEANING)
+        self.add_transition(LocalRunStage.CLEANING_UP, self._transition_from_CLEANING_UP)
         self.add_transition(LocalRunStage.UPLOADING_RESULTS, self._transition_from_UPLOADING_RESULTS)
         self.add_transition(LocalRunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(LocalRunStage.FINISHED)
@@ -81,9 +81,9 @@ class LocalRunStateMachine(StateTransitioner):
     def _transition_from_PREPARING(self, run_state):
         """
         1- Request the docker image from docker image manager
-            - if image is failed, move to CLEANING state
+            - if image is failed, move to CLEANING_UP state
         2- Request the dependencies from dependency manager
-            - if any are failed, move to CLEANING state
+            - if any are failed, move to CLEANING_UP state
         3- If all dependencies and docker image are ready:
             - Set up the local filesystem for the run
             - Create symlinks to dependencies
@@ -92,7 +92,7 @@ class LocalRunStateMachine(StateTransitioner):
         4- If all is successful, move to RUNNING state
         """
         if run_state.is_killed:
-            return run_state._replace(stage=LocalRunStage.CLEANING, container_id=None)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
         # first attempt to get() every dependency/image so that downloads start in parallel
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
@@ -109,18 +109,18 @@ class LocalRunStateMachine(StateTransitioner):
                     dep['child_path'], size_str(dependency_state.size_bytes))
                 return run_state._replace(run_status=status_message)
             elif dependency_state.stage == DependencyStage.FAILED:
-                # Failed to download dependency; -> CLEANING
+                # Failed to download dependency; -> CLEANING_UP
                 run_state.info['failure_message'] = 'Failed to download dependency %s: %s' % (
                     dep['child_path'], '')
-                return run_state._replace(stage=LocalRunStage.CLEANING, info=run_state.info)
+                return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_message = 'Pulling docker image: ' + (image_state.message or docker_image)
             return run_state._replace(run_status=status_message)
         elif image_state.stage == DependencyStage.FAILED:
-            # Failed to pull image; -> CLEANING
+            # Failed to pull image; -> CLEANING_UP
             run_state.info['failure_message'] = image_state.message
-            return run_state._replace(stage=LocalRunStage.CLEANING, info=run_state.info)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         # All dependencies ready! Set up directories, symlinks and container. Start container.
         # 1) Set up a directory to store the bundle.
@@ -159,7 +159,7 @@ class LocalRunStateMachine(StateTransitioner):
                 run_state.resources['request_cpus'], run_state.resources['request_gpus'])
         except:
             run_state.info['failure_message'] = "Cannot assign enough resources"
-            return run_state._replace(stage=LocalRunStage.CLEANING, info=run_state.info)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         # 4) Start container
         container_id = self._run_manager.docker.start_container(
@@ -171,7 +171,7 @@ class LocalRunStateMachine(StateTransitioner):
         digest = self._run_manager.docker.get_image_repo_digest(run_state.resources['docker_image'])
 
         return run_state._replace(stage=LocalRunStage.RUNNING,
-                                  run_status='Running',
+                                  run_status='Running job in Docker container',
                                   container_id=container_id,
                                   docker_image=digest,
                                   has_contents=True,
@@ -182,7 +182,7 @@ class LocalRunStateMachine(StateTransitioner):
         """
         1- Check run status of the docker container
         2- If run is killed, kill the container
-        3- If run is finished, move to CLEANING state
+        3- If run is finished, move to CLEANING_UP state
         """
         def check_and_report_finished(run_state):
             try:
@@ -203,15 +203,15 @@ class LocalRunStateMachine(StateTransitioner):
                 self._run_manager.docker.kill_container(run_state.container_id)
             except DockerException:
                 traceback.print_exc()
-            return run_state._replace(stage=LocalRunStage.CLEANING, container_id=None)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
         if run_state.info['finished']:
             logger.debug('Finished run with UUID %s, exitcode %s, failure_message %s',
                          bundle_uuid, run_state.info['exitcode'], run_state.info['failure_message'])
-            return run_state._replace(stage=LocalRunStage.CLEANING, run_status='Uploading results')
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, run_status='Uploading results')
         else:
             return run_state
 
-    def _transition_from_CLEANING(self, run_state):
+    def _transition_from_CLEANING_UP(self, run_state):
         """
         1- delete the container if still existent
         2- clean up the dependencies from bundle folder
@@ -245,7 +245,7 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.has_contents:
             return run_state._replace(stage=LocalRunStage.UPLOADING_RESULTS, run_status='Uploading results')
         else:
-            return run_state._replace(stage=LocalRunStage.FINALIZING)
+            return run_state._replace(stage=LocalRunStage.FINALIZING, run_status='Finalizing bundle')
 
     def _transition_from_UPLOADING_RESULTS(self, run_state):
         """
@@ -278,7 +278,7 @@ class LocalRunStateMachine(StateTransitioner):
         if bundle_uuid not in self._run_manager.uploading:
             self._run_manager.uploading[bundle_uuid] = {
                 'thread': threading.Thread(target=upload_results, args=[]),
-                'run_status': ''
+                'run_status': 'Starting upload'
             }
             self._run_manager.uploading[bundle_uuid]['thread'].start()
 
@@ -286,7 +286,7 @@ class LocalRunStateMachine(StateTransitioner):
             return run_state._replace(run_status=self._run_manager.uploading[bundle_uuid]['run_status'])
         else:  # thread finished
             del self._run_manager.uploading[bundle_uuid]
-            return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None)
+            return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None, run_status='Finalizing bundle')
 
     def _transition_from_FINALIZING(self, run_state):
         """

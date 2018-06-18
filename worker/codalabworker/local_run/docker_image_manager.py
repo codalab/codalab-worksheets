@@ -28,7 +28,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         self._state_committer = state_committer
         self._docker = docker
         self._images = {}  # digest -> DockerImageState
-        self._downloading = {}
+        self._downloading = {}  # digest -> {'thread': Thread, 'success': bool}
         self._max_images_bytes = max_images_bytes
         self._max_age_failed_seconds = max_age_failed_seconds
         self._lock = threading.RLock()

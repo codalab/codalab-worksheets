@@ -34,6 +34,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     This dependency manager downloads dependency bundles from Codalab server
     to the local filesystem. It caches all downloaded dependencies but cleans up the
     old ones if the disk use hits the given threshold
+
+    For this class dependencies are uniquely identified by (parent_uuid, parent_path)
     """
     DEPENDENCIES_DIR_NAME = 'dependencies'
 
@@ -56,9 +58,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
         self._lock = threading.RLock()
 
-        self._paths = set()
-        self._dependencies = dict()
-        self._downloading = dict()
+        self._paths = set()  # File paths that are currently being used to store dependencies. Used to prevent conflicts
+        self._dependencies = dict()  # (parent_uuid, parent_path) -> DependencyState
+        self._downloading = dict()  # (parent_uuid, parent_path) -> {'thread': Thread, 'success': bool}
         self._load_state()
 
         self._stop = False
@@ -104,8 +106,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         while True:
             with self._lock:
                 bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
-                serialized_dependencies = {'{}+{}'.format(*k): v for k, v in self._dependencies.items()}
-                serialized_length = len(codalabworker.pyjson.dumps(serialized_dependencies))
+                serialized_length = len(codalabworker.pyjson.dumps(self._dependencies))
                 if bytes_used > self._max_cache_size_bytes or serialized_length > self._max_serialized_length:
                     logger.debug('%d dependencies in cache, disk usage: %s (max %s), serialized size: %s (max %s)',
                                  len(self._dependencies),
@@ -125,7 +126,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     try:
                         self._paths.remove(self._dependencies[dep_to_remove].path)
                     finally:
-                        del self._dependencies[dep_to_remove]
+                        if dep_to_remove:
+                            del self._dependencies[dep_to_remove]
                 else:
                     break
 
@@ -283,23 +285,3 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         else:
             self._paths.remove(dependency_state.path)
             return dependency_state._replace(stage=DependencyStage.FAILED, message=failure_message)
-
-class SharedFileSystemDependencyManager(BaseDependencyManager):
-    def __init__(self, state_manager):
-        self._state_manager = state_manager
-
-    def run(self):
-        raise NotImplementedError
-
-    def stop(self):
-        raise NotImplementedError
-
-    def has(self, dependency):
-        raise NotImplementedError
-
-    def get(self, dependency, blocking=True):
-        raise NotImplementedError
-
-    @property
-    def all_dependencies(self):
-        raise NotImplementedError
