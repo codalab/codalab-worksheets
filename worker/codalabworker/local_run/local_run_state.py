@@ -93,34 +93,41 @@ class LocalRunStateMachine(StateTransitioner):
         """
         if run_state.is_killed:
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
-        # first attempt to get() every dependency/image so that downloads start in parallel
-        for dep in run_state.bundle['dependencies']:
-            dependency = (dep['parent_uuid'], dep['parent_path'])
-            dependency_state = self._run_manager.dependency_manager.get(run_state.bundle['uuid'], dependency)
-        docker_image = run_state.resources['docker_image']
-        image_state = self._run_manager.image_manager.get(docker_image)
 
-        # then inspect the state of every dependency/image to see whether all of them are ready
+        dependencies_ready = True
+        status_messages = []
+
+        # get dependencies
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
             dependency_state = self._run_manager.dependency_manager.get(run_state.bundle['uuid'], dependency)
             if dependency_state.stage == DependencyStage.DOWNLOADING:
-                status_message = 'Downloading dependency %s: %s done (archived size)' % (
-                    dep['child_path'], size_str(dependency_state.size_bytes))
-                return run_state._replace(run_status=status_message)
+                status_messages.append('Downloading dependency %s: %s done (archived size)' % (
+                    dep['child_path'], size_str(dependency_state.size_bytes)))
+                dependencies_ready = False
             elif dependency_state.stage == DependencyStage.FAILED:
                 # Failed to download dependency; -> CLEANING_UP
                 run_state.info['failure_message'] = 'Failed to download dependency %s: %s' % (
                     dep['child_path'], '')
                 return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
+        # get the docker image
+        docker_image = run_state.resources['docker_image']
+        image_state = self._run_manager.image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
-            status_message = 'Pulling docker image: ' + (image_state.message or docker_image)
-            return run_state._replace(run_status=status_message)
+            status_messages.append('Pulling docker image: ' + (image_state.message or docker_image))
+            dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
             run_state.info['failure_message'] = image_state.message
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
+
+        # stop proceeding if dependency and image downloads aren't all done
+        if not dependencies_ready:
+            status_message = status_messages.pop()
+            if status_messages:
+                status_message += "(and downloading %d others)" % len(status_messages)
+            return run_state._replace(run_status=status_message)
 
         # All dependencies ready! Set up directories, symlinks and container. Start container.
         # 1) Set up a directory to store the bundle.
