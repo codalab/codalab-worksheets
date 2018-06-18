@@ -25,9 +25,6 @@ def checkin(worker_id):
     """
     WAIT_TIME_SECS = 3.0
 
-    torque_worker = ('torque' in local.config['workers'] and
-                     request.user.user_id == local.model.root_user_id)
-
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id, worker_id, request.json['tag'],
         request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],

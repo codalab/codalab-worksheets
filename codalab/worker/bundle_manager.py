@@ -30,12 +30,8 @@ class BundleManager(object):
             print >> sys.stderr, 'config.json file missing a workers section.'
             exit(1)
 
-        if 'torque' in config:
-            from codalab.worker.torque_bundle_manager import TorqueBundleManager
-            self = TorqueBundleManager(codalab_manager, config['torque'])
-        else:
-            from codalab.worker.default_bundle_manager import DefaultBundleManager
-            self = DefaultBundleManager()
+        from codalab.worker.default_bundle_manager import DefaultBundleManager
+        self = DefaultBundleManager()
 
         self._model = codalab_manager.model()
         self._worker_model = codalab_manager.worker_model()
