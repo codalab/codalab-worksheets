@@ -18,6 +18,7 @@ class LocalRunManager(BaseRunManager):
     container. It manages its cache of local Docker images and its own local
     Docker network.
     """
+    NETCAT_BUFFER_SIZE = 4096
     def __init__(self, worker, docker, image_manager, dependency_manager,
                  state_committer, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
@@ -33,9 +34,9 @@ class LocalRunManager(BaseRunManager):
         self.cpuset = cpuset
         self.gpuset = gpuset
 
-        self.runs = {}
-        self.uploading = {}
-        self.finalizing = {}
+        self.runs = {}  # bundle_uuid -> LocalRunState
+        self.uploading = {}  # bundle_uuid -> {'thread': Thread, 'run_status': str}
+        self.finalizing = {}  # bundle_uuid -> {'thread': Thread}
         self.lock = threading.RLock()
         self._init_docker_networks()
 
@@ -198,7 +199,7 @@ class LocalRunManager(BaseRunManager):
 
         total_data = []
         while True:
-            data = s.recv(1024)
+            data = s.recv(LocalRunManager.NETCAT_BUFFER_SIZE)
             if not data:
                 break
             total_data.append(data)
