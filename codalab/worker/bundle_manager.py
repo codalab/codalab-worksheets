@@ -390,6 +390,8 @@ class BundleManager(object):
     def _compute_request_cpus(self, bundle):
         """
         Compute the CPU limit used for scheduling the run.
+        The default of 1 is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_cpus:
             return 1
@@ -398,6 +400,8 @@ class BundleManager(object):
     def _compute_request_gpus(self, bundle):
         """
         Compute the GPU limit used for scheduling the run.
+        The default of 0 is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
         if bundle.metadata.request_gpus is None:
             return 0
@@ -406,6 +410,8 @@ class BundleManager(object):
     def _compute_request_memory(self, bundle):
         """
         Compute the memory limit used for scheduling the run.
+        The default of 2g is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_memory:
             return formatting.parse_size('2g')
@@ -414,6 +420,8 @@ class BundleManager(object):
     def _compute_request_disk(self, bundle):
         """
         Compute the disk limit used for scheduling the run.
+        The default of 4g is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_disk:
             return formatting.parse_size('4g')
@@ -422,6 +430,8 @@ class BundleManager(object):
     def _compute_request_time(self, bundle):
         """
         Compute the time limit used for scheduling the run.
+        The default of 1d is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_time:
             return formatting.parse_duration('1d')
@@ -430,6 +440,8 @@ class BundleManager(object):
     def _get_docker_image(self, bundle):
         """
         Set docker image to be the default if not specified
+        The default is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
         if not bundle.metadata.request_docker_image:
             return 'codalab/ubuntu:1.9'
