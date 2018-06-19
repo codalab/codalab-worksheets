@@ -310,7 +310,7 @@ class LocalRunStateMachine(StateTransitioner):
                 traceback.print_exc()
 
         bundle_uuid = run_state.bundle['uuid']
-        self._run_manager.add_if_new(bundle_uuid, threading.Thread(target=finalize, args=[]))
+        self._run_manager.finalizing.add_if_new(bundle_uuid, threading.Thread(target=finalize, args=[]))
 
         if self._run_manager.finalizing[bundle_uuid].is_alive():
             return run_state
