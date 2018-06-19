@@ -67,7 +67,7 @@ class ThreadDict(object):
         :param key: key to refer to this thread
         :param thread: thread to be added to the dict and to be started
         """
-        if key not in self.thread_dict:
+        if key not in self._thread_dict:
             self.add_thread(key, thread)
 
     def add_thread(self, key, thread):
