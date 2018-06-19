@@ -4,7 +4,6 @@
 # For testing
 mock==1.3.0
 nose==1.3.7
-pyfakefs==3.4.1
 
 # Server-specific
 alembic==0.8.2
