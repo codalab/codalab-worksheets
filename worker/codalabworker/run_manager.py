@@ -1,7 +1,10 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABCMeta, abstractmethod, abstractproperty
 import httplib
 
-class BaseRunManager(ABC):
+
+class BaseRunManager(object):
+    __metaclass__ = ABCMeta
+
     @abstractmethod
     def start(self):
         """
@@ -104,9 +107,9 @@ class BaseRunManager(ABC):
         """
         raise NotImplementedError
 
+
 class Reader(ABC):
     def read(self, run_state, path, dep_paths, read_args, reply):
-        bundle_uuid = run_state.bundle['uuid']
         dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
         read_type = read_args['type']
         if read_type == 'get_target_info':
