@@ -5,6 +5,7 @@ import threading
 import time
 import socket
 
+from codalabworker.worker_thread import ThreadDict
 from codalabworker.run_manager import BaseRunManager
 from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from local_reader import LocalReader
@@ -19,6 +20,7 @@ class LocalRunManager(BaseRunManager):
     Docker network.
     """
     NETCAT_BUFFER_SIZE = 4096
+
     def __init__(self, worker, docker, image_manager, dependency_manager,
                  state_committer, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
@@ -35,8 +37,10 @@ class LocalRunManager(BaseRunManager):
         self.gpuset = gpuset
 
         self.runs = {}  # bundle_uuid -> LocalRunState
-        self.uploading = {}  # bundle_uuid -> {'thread': Thread, 'run_status': str}
-        self.finalizing = {}  # bundle_uuid -> {'thread': Thread}
+        # bundle_uuid -> {'thread': Thread, 'run_status': str}
+        self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
+        # bundle_uuid -> {'thread': Thread}
+        self.finalizing = ThreadDict()
         self.lock = threading.RLock()
         self._init_docker_networks()
 

@@ -11,6 +11,7 @@ from codalabworker.fsm import (
     DependencyStage,
     StateTransitioner
 )
+from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +29,8 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         self._state_committer = state_committer
         self._docker = docker
         self._images = {}  # digest -> DockerImageState
-        self._downloading = {}  # digest -> {'thread': Thread, 'success': bool}
+        # digest -> {'thread': Thread, 'success': bool}
+        self._downloading = ThreadDict(fields={'success': False})
         self._max_images_bytes = max_images_bytes
         self._max_age_failed_seconds = max_age_failed_seconds
         self._lock = threading.RLock()
@@ -163,19 +165,14 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     self._images[digest] = image_state._replace(message=str(err))
 
         digest = image_state.digest
-        if digest not in self._downloading:
-            self._downloading[digest] = {
-                'thread': threading.Thread(target=download, args=[]),
-                'success': False
-            }
-            self._downloading[digest]['thread'].start()
+        self._downloading.add_if_new(digest, threading.Thread(target=download, args=[]))
 
-        if self._downloading[digest]['thread'].is_alive():
+        if self._downloading[digest].is_alive():
             return image_state
 
-        success = self._downloading[digest]['success']
-        del self._downloading[digest]
-        if success:
+        self._downloading.remove(digest)
+
+        if self._downloading[digest]['success']:
             return image_state._replace(stage=DependencyStage.READY)
         else:
             return image_state._replace(stage=DependencyStage.FAILED)
