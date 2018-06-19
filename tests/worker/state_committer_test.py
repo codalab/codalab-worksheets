@@ -1,21 +1,24 @@
 import os
 import unittest
-from mock import Mock
-import fake_filesystem_unittest
+import tempfile
 
 from codalabworker.fsm import JsonStateCommitter
+from codalabworker.file_util import remove_path
 
-class JsonStateCommitterTest(fake_filesystem_unittest.TestCase):
+
+class JsonStateCommitterTest(unittest.TestCase):
     def setUp(self):
-        self.setUpPyfakefs()
-        self.test_dir = '/test'
-        self.fs.create_dir(self.test_dir)
+        self.test_dir = tempfile.mkdtemp()
         self.state_file = 'test-state.json'
         self.state_path = os.path.join(self.test_dir, self.state_file)
         self.committer = JsonStateCommitter(self.state_path)
 
     def tearDown(self):
-        os.remove(self.state_path)
+        try:
+            os.remove(self.state_path)
+        except OSError:
+            pass
+        os.rmdir(self.test_dir)
 
     def test_path_parsing(self):
         """ Simple test to ensure we don't mess up the state file path"""
@@ -33,7 +36,8 @@ class JsonStateCommitterTest(fake_filesystem_unittest.TestCase):
         """ Make sure load loads the state file if it exists """
         test_state = {'state': 'value'}
         test_state_json_str = '{\"state\": \"value\"}'
-        self.fs.create_file(self.state_path, contents=test_state_json_str)
+        with open(self.state_path, 'w') as f:
+            f.write(test_state_json_str)
         loaded_state = self.committer.load()
         self.assertDictEqual(test_state, loaded_state)
 
