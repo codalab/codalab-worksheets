@@ -170,9 +170,6 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         if self._downloading[digest].is_alive():
             return image_state
 
+        new_stage = DependencyStage.READY if self._downloading[digest]['success'] else DependencyStage.FAILED
         self._downloading.remove(digest)
-
-        if self._downloading[digest]['success']:
-            return image_state._replace(stage=DependencyStage.READY)
-        else:
-            return image_state._replace(stage=DependencyStage.FAILED)
+        return image_state._replace(stage=new_stage)
