@@ -286,9 +286,9 @@ class LocalRunStateMachine(StateTransitioner):
 
         if self._run_manager.uploading[bundle_uuid].is_alive():
             return run_state._replace(run_status=self._run_manager.uploading[bundle_uuid]['run_status'])
-        else:  # thread finished
-            self._run_manager.uploading.remove(bundle_uuid)
-            return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None, run_status='Finalizing bundle')
+
+        self._run_manager.uploading.remove(bundle_uuid)
+        return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None, run_status='Finalizing bundle')
 
     def _transition_from_FINALIZING(self, run_state):
         """
@@ -314,6 +314,6 @@ class LocalRunStateMachine(StateTransitioner):
 
         if self._run_manager.finalizing[bundle_uuid].is_alive():
             return run_state
-        else:  # thread finished
-            self._run_manager.finalizing.remove(bundle_uuid)
-            return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
+
+        self._run_manager.finalizing.remove(bundle_uuid)
+        return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
