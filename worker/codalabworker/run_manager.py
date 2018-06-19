@@ -108,7 +108,7 @@ class BaseRunManager(object):
         raise NotImplementedError
 
 
-class Reader(ABC):
+class Reader(object):
     def read(self, run_state, path, dep_paths, read_args, reply):
         dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
         read_type = read_args['type']
