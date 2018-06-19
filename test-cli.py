@@ -532,6 +532,7 @@ def test(ctx):
 
     # run and check the data_hash
     uuid = run_command([cl, 'run', 'echo hello'])
+    print('Waiting echo hello with uuid %s' % uuid)
     wait(uuid)
 #    run_command([cl, 'wait', uuid])
     check_contains('0x', get_info(uuid, 'data_hash'))
