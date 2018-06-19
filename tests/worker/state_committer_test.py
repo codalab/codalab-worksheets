@@ -3,7 +3,6 @@ import unittest
 import tempfile
 
 from codalabworker.fsm import JsonStateCommitter
-from codalabworker.file_util import remove_path
 
 
 class JsonStateCommitterTest(unittest.TestCase):

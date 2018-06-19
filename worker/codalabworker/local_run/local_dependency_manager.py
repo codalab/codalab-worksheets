@@ -15,6 +15,8 @@ from codalabworker.fsm import (
     StateTransitioner
 )
 import codalabworker.pyjson
+from codalabworker.worker_thread import ThreadDict
+
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +25,7 @@ DependencyState = namedtuple('DependencyState', 'stage dependency path size_byte
 
 class DownloadAbortedException(Exception):
     """
+
     Exception raised by the download if a download is killed before it is complete
     """
     def __init__(self, message):
@@ -60,7 +63,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
         self._paths = set()  # File paths that are currently being used to store dependencies. Used to prevent conflicts
         self._dependencies = dict()  # (parent_uuid, parent_path) -> DependencyState
-        self._downloading = dict()  # (parent_uuid, parent_path) -> {'thread': Thread, 'success': bool}
+        # (parent_uuid, parent_path) -> WorkerThread(thread, success, failure_message)
+        self._downloading = ThreadDict(fields={'success': False,
+                                               'failure_message': None})
         self._load_state()
 
         self._stop = False
@@ -265,21 +270,15 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
         dependency = dependency_state.dependency
         parent_uuid, parent_path = dependency
-        if dependency not in self._downloading:
-            self._downloading[dependency] = {
-                'thread': threading.Thread(target=download, args=[]),
-                'success': False,
-                'failure_message': None
-            }
-            self._downloading[dependency]['thread'].start()
+        self._downloading.add_if_new(dependency, threading.Thread(target=download, args=[]))
 
-        if self._downloading[dependency]['thread'].is_alive():
+        if self._downloading[dependency].is_alive():
             return dependency_state
 
         success = self._downloading[dependency]['success']
         failure_message = self._downloading[dependency]['failure_message']
 
-        del self._downloading[dependency]
+        self._downloading.remove(dependency)
         if success:
             return dependency_state._replace(stage=DependencyStage.READY, message="Download complete")
         else:

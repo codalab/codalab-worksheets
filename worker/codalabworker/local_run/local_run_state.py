@@ -282,17 +282,12 @@ class LocalRunStateMachine(StateTransitioner):
                 traceback.print_exc()
 
         bundle_uuid = run_state.bundle['uuid']
-        if bundle_uuid not in self._run_manager.uploading:
-            self._run_manager.uploading[bundle_uuid] = {
-                'thread': threading.Thread(target=upload_results, args=[]),
-                'run_status': 'Starting upload'
-            }
-            self._run_manager.uploading[bundle_uuid]['thread'].start()
+        self._run_manager.uploading.add_if_new(bundle_uuid, threading.Thread(target=upload_results, args=[]))
 
-        if self._run_manager.uploading[bundle_uuid]['thread'].is_alive():
+        if self._run_manager.uploading[bundle_uuid].is_alive():
             return run_state._replace(run_status=self._run_manager.uploading[bundle_uuid]['run_status'])
         else:  # thread finished
-            del self._run_manager.uploading[bundle_uuid]
+            self._run_manager.uploading.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None, run_status='Finalizing bundle')
 
     def _transition_from_FINALIZING(self, run_state):
@@ -315,14 +310,10 @@ class LocalRunStateMachine(StateTransitioner):
                 traceback.print_exc()
 
         bundle_uuid = run_state.bundle['uuid']
-        if bundle_uuid not in self._run_manager.finalizing:
-            self._run_manager.finalizing[bundle_uuid] = {
-                'thread': threading.Thread(target=finalize, args=[]),
-            }
-            self._run_manager.finalizing[bundle_uuid]['thread'].start()
+        self._run_manager.add_if_new(bundle_uuid, threading.Thread(target=finalize, args=[]))
 
-        if self._run_manager.finalizing[bundle_uuid]['thread'].is_alive():
+        if self._run_manager.finalizing[bundle_uuid].is_alive():
             return run_state
         else:  # thread finished
-            del self._run_manager.finalizing[bundle_uuid]['thread']
+            self._run_manager.finalizing.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
