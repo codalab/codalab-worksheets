@@ -58,6 +58,12 @@ class StateTransitioner(object):
         self._transition_functions = {}  # stage_name -> transition_function
         self._terminal_states = []  # stage_name
 
+    def add_terminal(self, stage_name):
+        if stage_name not in self._transition_functions and stage_name not in self._terminal_states:
+            self._terminal_states.append(stage_name)
+        else:
+            raise Exception('Stage name already exists!')
+
     def transition(self, state):
         """ Return the updated state """
         if state in self._terminal_states:
