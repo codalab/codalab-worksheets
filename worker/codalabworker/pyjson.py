@@ -37,8 +37,8 @@ class PyJSONEncoder(json.JSONEncoder):
             odct = obj._asdict()
             return dict(
                 _namedtuple_name=type(obj).__name__,
-                _fields=odct.keys(),
-                _values=list(self.default(o) for o in odct.values()),
+                _namedtuple_fields=odct.keys(),
+                _namedtuple_values=list(self.default(o) for o in odct.values()),
             )
         elif isinstance(obj, set):
             return dict(_set_object=list(self.default(o) for o in obj))
