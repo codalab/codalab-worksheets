@@ -66,7 +66,7 @@ class StateTransitioner(object):
 
     def transition(self, state):
         """ Return the updated state """
-        if state in self._terminal_states:
+        if state.stage in self._terminal_states:
             return state
         return self._transition_functions[state.stage](state)
 
