@@ -12,7 +12,7 @@ class WorkerThread(object):
         :param thread: Thread object
         :param fields: A Dict from strings(field names) to values
         """
-        if 'thread' in fields:
+        if fields and 'thread' in fields:
             raise KeyError('Field name \'thread\' reserved for threads')
         self.thread = thread
         self.fields = fields
