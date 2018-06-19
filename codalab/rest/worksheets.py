@@ -35,7 +35,8 @@ from codalab.rest.users import UserSchema
 from codalab.rest.util import (
     get_bundle_infos,
     resolve_owner_in_keywords,
-    get_resource_ids)
+    get_resource_ids,
+)
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
