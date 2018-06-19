@@ -28,27 +28,34 @@ class BlockModes:
               html_block, image_block, graph_block, subworksheets_block)
 
 
-STATUS_STRINGS = ('unknown', 'pending', 'ready', 'not_found', 'no_permission')
+class FetchStatusCodes:
+    unknown = 'unknown'
+    pending = 'pending'
+    ready = 'ready'
+    not_found = 'not_found'
+    no_permission = 'no_permission'
+
+    values = (unknown, pending, ready, not_found, no_permission)
 
 
 class FetchStatusSchema(PlainSchema):
     """
     Schema that represents the status of fetching a resource.
     """
-    code = fields.String(validate=validate.OneOf(set(STATUS_STRINGS)))
+    code = fields.String(validate=validate.OneOf(set(FetchStatusCodes.values)))
     error_message = fields.String()
 
     @staticmethod
     def get_unknown_status():
         return {
-            'code': 'unknown',
+            'code': FetchStatusCodes.unknown,
             'error_message': '',
         }
 
     @staticmethod
     def get_ready_status():
         return {
-            'code': 'ready',
+            'code': FetchStatusCodes.ready,
             'error_message': '',
         }
 

@@ -54,7 +54,8 @@ from codalab.rest.worksheets import (
 )
 from codalab.rest.worksheet_block_schemas import (
     BlockModes,
-    MarkupBlockSchema
+    MarkupBlockSchema,
+    FetchStatusCodes,
 )
 
 
@@ -210,37 +211,37 @@ def fetch_interpreted_worksheet(uuid):
     # Go and fetch more information about the worksheet contents by
     # resolving the interpreted items.
     try:
-        interpreted_items = interpret_items(
+        interpreted_blocks = interpret_items(
             get_default_schemas(),
             worksheet_info['items'])
     except UsageError, e:
-        interpreted_items = {'items': []}
+        interpreted_blocks = {'blocks': []}
         worksheet_info['error'] = str(e)
 
     # bundle_uuids is an optional argument that, if exists, contain the uuids of all the unfinished run bundles that need updating
     # In this case, full_worksheet will return a list of item parallel to ws.info.items that contain only items that need updating.
-    # More specifically, all items that don't contain run bundles that need updating are None.
-    # Also, a non-None item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
+    # More specifically, all blocks that don't contain run bundles that need updating are None.
+    # Also, a non-None block could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     # The bundle_infos for bundles that don't need updating are also None.
     if bundle_uuids:
-        for i, item in enumerate(interpreted_items['items']):
-            if 'bundle_info' not in item:
-                interpreted_items['items'][i] = None
+        for i, block in enumerate(interpreted_blocks['blocks']):
+            if 'bundle_info' not in block:
+                interpreted_blocks['blocks'][i] = None
             else:
-                if isinstance(item['bundle_info'], dict):
-                    item['bundle_info'] = [item['bundle_info']]
-                is_relevant_item = False
-                for j, bundle in enumerate(item['bundle_info']):
+                if isinstance(block['bundle_info'], dict):
+                    block['bundle_info'] = [block['bundle_info']]
+                is_relevant_block = False
+                for j, bundle in enumerate(block['bundle_info']):
                     if bundle['uuid'] in bundle_uuids:
-                        is_relevant_item = True
+                        is_relevant_block = True
                     else:
-                        item['bundle_info'][j] = None
-                if not is_relevant_item:
-                    interpreted_items['items'][i] = None
+                        block['bundle_info'][j] = None
+                if not is_relevant_block:
+                    interpreted_blocks['blocks'][i] = None
 
-    worksheet_info['items'] = resolve_interpreted_items(interpreted_items['items'])
-    worksheet_info['raw_to_interpreted'] = interpreted_items['raw_to_interpreted']
-    worksheet_info['interpreted_to_raw'] = interpreted_items['interpreted_to_raw']
+    worksheet_info['items'] = resolve_interpreted_blocks(interpreted_blocks['blocks'])
+    worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
+    worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
 
     for item in worksheet_info['items']:
         if item is None:
@@ -313,24 +314,24 @@ def head_target(target, max_num_lines, replace_non_unicode=False):
 DEFAULT_GRAPH_MAX_LINES = 100
 
 
-def resolve_interpreted_items(interpreted_items):
+def resolve_interpreted_blocks(interpreted_blocks):
     """
     Called by the web interface.  Takes a list of interpreted worksheet
     items (returned by worksheet_util.interpret_items) and fetches the
     appropriate information, replacing the 'interpreted' field in each item.
     The result can be serialized via JSON.
     """
-    def error_data(item_index, message):
-        interpreted_items[item_index] = MarkupBlockSchema().load({
-            'id': item_index,
+    def set_error_data(block_index, message):
+        interpreted_blocks[block_index] = MarkupBlockSchema().load({
+            'id': block_index,
             'text': 'ERROR: ' + message,
         }).data
 
 
-    for item_index, item in enumerate(interpreted_items):
-        if item is None:
+    for block_index, block in enumerate(interpreted_blocks):
+        if block is None:
             continue
-        mode = item['mode']
+        mode = block['mode']
 
         try:
             # Replace data with a resolved version.
@@ -339,53 +340,55 @@ def resolve_interpreted_items(interpreted_items):
                 pass
             elif mode == BlockModes.record_block or mode == BlockModes.table_block:
                 # header_name_posts is a list of (name, post-processing) pairs.
-                contents = item['rows']
+                header = block['header']
+                contents = block['rows']
                 # Request information
                 contents = interpret_genpath_table_contents(contents)
-                item['rows'] = contents
+
+                block['rows'] = contents
             elif mode == BlockModes.contents_block or mode == BlockModes.html_block or mode == BlockModes.image_block:
                 try:
-                    target_info = rest_util.get_target_info((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath']), 0)
+                    target_info = rest_util.get_target_info((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), 0)
                 except NotFoundError as e:
-                    item['status']['code'] = 'not_found'
+                    block['status']['code'] = FetchStatusCodes.not_found
                     if mode == BlockModes.contents_block:
-                        item['lines'] = None
+                        block['lines'] = None
                     elif mode == BlockModes.html_block:
-                        item['html_lines'] = None
+                        block['html_lines'] = None
                     elif mode == BlockModes.image_block:
-                        item['image_data'] = None
+                        block['image_data'] = None
 
                 if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
-                    item['status']['code'] = 'ready'
-                    item['lines'] = ['<directory>']
+                    block['status']['code'] = FetchStatusCodes.ready
+                    block['lines'] = ['<directory>']
                 elif target_info['type'] == 'file':
-                    item['status']['code'] = 'ready'
+                    block['status']['code'] = FetchStatusCodes.ready
                     if mode == BlockModes.contents_block:
-                        item['lines'] = head_target((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath']), item['max_lines'], replace_non_unicode=True)
+                        block['lines'] = head_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), block['max_lines'], replace_non_unicode=True)
                     elif mode == BlockModes.html_block:
-                        item['html_lines'] = head_target((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath']), item['max_lines'])
+                        block['html_lines'] = head_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), block['max_lines'])
                     elif mode == BlockModes.image_block:
-                        item['status']['code'] = 'ready'
-                        item['image_data'] = base64.b64encode(cat_target((item['bundles_spec']['bundle_infos'][0]['uuid'], item['target_genpath'])))
+                        block['status']['code'] = FetchStatusCodes.ready
+                        block['image_data'] = base64.b64encode(cat_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath'])))
                 else:
-                    item['status']['code'] = 'not_found'
+                    block['status']['code'] = FetchStatusCodes.not_found
                     if mode == BlockModes.contents_block:
-                        item['lines'] = None
+                        block['lines'] = None
                     elif mode == BlockModes.html_block:
-                        item['html_lines'] = None
+                        block['html_lines'] = None
                     elif mode == BlockModes.image_block:
-                        item['image_data'] = None
+                        block['image_data'] = None
             elif mode == BlockModes.graph_block:
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
-                for info in item['trajectories']:
+                for info in block['trajectories']:
                     target = (info['uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
                     except NotFoundError as e:
                         pass
                     if target_info['type'] == 'file':
-                        contents = head_target(target, item['max_lines'], replace_non_unicode=True)
+                        contents = head_target(target, block['max_lines'], replace_non_unicode=True)
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:
@@ -398,16 +401,16 @@ def resolve_interpreted_items(interpreted_items):
                 raise UsageError('Invalid display mode: %s' % mode)
 
         except UsageError as e:
-            error_data(item_index, e.message)
+            set_error_data(block_index, e.message)
 
         except StandardError:
             import traceback
             traceback.print_exc()
-            error_data(item_index, "Unexpected error interpreting item")
+            set_error_data(block_index, "Unexpected error interpreting item")
 
-        item['is_refined'] = True
+        block['is_refined'] = True
 
-    return interpreted_items
+    return interpreted_blocks
 
 
 def interpret_genpath_table_contents(contents):
@@ -568,12 +571,12 @@ def resolve_items_into_infos(items):
 
 def expand_raw_item(raw_item):
     """
-    Some raw items must be expanded into more raw items.
+    Raw items that include searches must be expanded into more raw items.
     Input: Raw item.
-    Output: Array of raw items. If raw item does not need expanding, 
+    Output: Array of raw items. If raw item does not need expanding,
     this returns an 1-length array that contains original raw item,
-    otherwise it contains the search result. You do not need to call resolve_items_into_infos
-    on the returned raw_items.
+    otherwise it contains the search result. You do not need to call
+    resolve_items_into_infos on the returned raw_items.
     """
 
     (bundle_info, subworksheet_info, value_obj, item_type) = raw_item
@@ -581,9 +584,7 @@ def expand_raw_item(raw_item):
     is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
     is_wsearch = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch')
 
-    if not (is_search or is_wsearch):
-        return [raw_item]
-    else:
+    if is_search or is_wsearch:
         command = get_command(value_obj)
         keywords = value_obj[1:]
         raw_items = []
@@ -600,3 +601,5 @@ def expand_raw_item(raw_item):
                 raw_items.append(subworksheet_item(worksheet_info))
 
         return raw_items
+    else:
+        return [raw_item]
