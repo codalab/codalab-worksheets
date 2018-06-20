@@ -93,7 +93,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         """
         while True:
             total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
-            if total_bytes > self._max_images_bytes and len(self._images) > 0 and reclaimable_bytes > 0:
+            if self._max_images_bytes and total_bytes > self._max_images_bytes and len(self._images) > 0 and reclaimable_bytes > 0:
                 logger.debug('Docker images disk usage: %s (max %s)',
                              size_str(total_bytes),
                              size_str(self._max_images_bytes))
