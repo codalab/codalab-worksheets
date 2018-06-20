@@ -2350,7 +2350,7 @@ class BundleCLI(object):
             print >>self.stdout, ''  # Separate interpreted items
             if mode == BlockModes.markup_block:
                 print >>self.stdout, block['text']
-            if mode == BlockModes.contents_block:
+            elif mode == BlockModes.contents_block:
                 bundle_info = block['bundles_spec']['bundle_infos'][0]
                 maxlines = block['max_lines']
                 if maxlines:
@@ -2364,7 +2364,7 @@ class BundleCLI(object):
                 header, rows = (block['header'], block['rows'])
                 rows = client.interpret_genpath_table_contents(rows)
                 # print >>self.stdout, the table
-                self.print_table(header, rows, show_header=(mode == 'table'), indent='  ')
+                self.print_table(header, rows, show_header=(mode == BlockModes.table_block), indent='  ')
             elif mode == BlockModes.html_block or mode == BlockModes.image_block or mode == BlockModes.graph_block:
                 # Placeholder
                 print >>self.stdout, '[' + mode + ']'
