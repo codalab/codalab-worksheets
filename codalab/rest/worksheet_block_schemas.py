@@ -13,19 +13,19 @@ from marshmallow import (
 from marshmallow_jsonapi import Schema, fields
 import sys
 
+
 # Enum that represents different modes for a block.
 class BlockModes:
     markup_block = 'markup_block'
     record_block = 'record_block'
     table_block = 'table_block'
     contents_block = 'contents_block'
-    html_block = 'html_block'
     image_block = 'image_block'
     graph_block = 'graph_block'
     subworksheets_block = 'subworksheets_block'
 
     values = (markup_block, record_block, table_block, contents_block,
-              html_block, image_block, graph_block, subworksheets_block)
+              image_block, graph_block, subworksheets_block)
 
 
 class FetchStatusCodes:
@@ -130,13 +130,6 @@ class BundleImageBlockSchema(BundleBlockSchema):
     image_data = fields.String()
     height = fields.Integer()
     width = fields.Integer()
-
-
-class BundleHTMLBlockSchema(BundleBlockSchema):
-    mode = fields.Constant(BlockModes.html_block)
-
-    max_lines = fields.Constant(sys.maxint)
-    html_lines = fields.List(fields.String())
 
 
 class TableBlockSchema(WorksheetBlockSchema):

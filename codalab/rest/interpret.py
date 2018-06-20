@@ -327,7 +327,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
             'text': 'ERROR: ' + message,
         }).data
 
-
     for block_index, block in enumerate(interpreted_blocks):
         if block is None:
             continue
@@ -340,13 +339,12 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 pass
             elif mode == BlockModes.record_block or mode == BlockModes.table_block:
                 # header_name_posts is a list of (name, post-processing) pairs.
-                header = block['header']
                 contents = block['rows']
                 # Request information
                 contents = interpret_genpath_table_contents(contents)
 
                 block['rows'] = contents
-            elif mode == BlockModes.contents_block or mode == BlockModes.html_block or mode == BlockModes.image_block:
+            elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
                 try:
                     target_info = rest_util.get_target_info((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), 0)
                 except NotFoundError as e:
@@ -365,8 +363,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
                     block['status']['code'] = FetchStatusCodes.ready
                     if mode == BlockModes.contents_block:
                         block['lines'] = head_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), block['max_lines'], replace_non_unicode=True)
-                    elif mode == BlockModes.html_block:
-                        block['html_lines'] = head_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), block['max_lines'])
                     elif mode == BlockModes.image_block:
                         block['status']['code'] = FetchStatusCodes.ready
                         block['image_data'] = base64.b64encode(cat_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath'])))
@@ -374,8 +370,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
                     block['status']['code'] = FetchStatusCodes.not_found
                     if mode == BlockModes.contents_block:
                         block['lines'] = None
-                    elif mode == BlockModes.html_block:
-                        block['html_lines'] = None
                     elif mode == BlockModes.image_block:
                         block['image_data'] = None
             elif mode == BlockModes.graph_block:
