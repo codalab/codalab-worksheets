@@ -163,7 +163,7 @@ class RecordsBlockSchema(BundleBlockSchema):
 
 
 class GraphTrajectorySchema(PlainSchema):
-    uuid = fields.String(required=True)
+    bundle_uuid = fields.String(required=True)
     display_name = fields.String(required=True)
     target_genpath = fields.String()
     points = fields.List(fields.String())
