@@ -382,11 +382,11 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
                 for info in block['trajectories']:
-                    target = (info['uuid'], info['target_genpath'])
+                    target = (info['bundle_uuid'], info['target_genpath'])
                     try:
                         target_info = rest_util.get_target_info(target, 0)
                     except NotFoundError as e:
-                        pass
+                        continue
                     if target_info['type'] == 'file':
                         contents = head_target(target, block['max_lines'], replace_non_unicode=True)
                         # Assume TSV file without header for now, just return each line as a row
