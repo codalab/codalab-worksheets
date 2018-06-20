@@ -328,7 +328,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     line += ch
                     try:
                         response = json.loads(line)
-                        logger.debug(line.strip())
                         break
                     except ValueError:
                         pass
