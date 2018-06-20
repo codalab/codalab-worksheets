@@ -2363,7 +2363,7 @@ class BundleCLI(object):
                 rows = client.interpret_genpath_table_contents(rows)
                 # print >>self.stdout, the table
                 self.print_table(header, rows, show_header=(mode == BlockModes.table_block), indent='  ')
-            elif mode == BlockModes.html_block or mode == BlockModes.image_block or mode == BlockModes.graph_block:
+            elif mode == BlockModes.image_block or mode == BlockModes.graph_block:
                 # Placeholder
                 print >>self.stdout, '[' + mode + ']'
             elif mode == BlockModes.subworksheets_block:

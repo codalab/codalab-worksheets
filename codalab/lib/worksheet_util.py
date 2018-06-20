@@ -42,7 +42,6 @@ from codalab.rest.worksheet_block_schemas import (
     MarkupBlockSchema,
     BundleContentsBlockSchema,
     BundleImageBlockSchema,
-    BundleHTMLBlockSchema,
     TableBlockSchema,
     RecordsRowSchema,
     RecordsBlockSchema,
@@ -635,7 +634,7 @@ def interpret_items(schemas, raw_items):
         args = current_display[1:]
         if mode == 'hidden':
             pass
-        elif mode == 'contents' or mode == 'image' or mode == 'html':
+        elif mode == 'contents' or mode == 'image':
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
                     blocks.append(
@@ -667,8 +666,6 @@ def interpret_items(schemas, raw_items):
                     block_object['width'] = properties.get('width', None)
                     block_object['height'] = properties.get('height', None)
                     blocks.append(BundleImageBlockSchema().load(block_object).data)
-                elif mode == 'html':
-                    blocks.append(BundleHTMLBlockSchema().load(block_object).data)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
