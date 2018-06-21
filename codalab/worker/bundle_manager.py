@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 WORKER_TIMEOUT_SECONDS = 30
 
+
 class BundleManager(object):
     """
     Assigns run bundles to workers and makes make bundles.
@@ -242,8 +243,8 @@ class BundleManager(object):
         state so that they can be scheduled to run again.
         """
         for bundle in self._model.batch_get_bundles(state=State.STARTING, bundle_type='run'):
-            if (not workers.is_running(bundle.uuid) or  # Dead worker.
-                time.time() - bundle.metadata.last_updated > 5 * 60):  # Run message went missing.
+            if (not workers.is_running(bundle.uuid) or
+                    time.time() - bundle.metadata.last_updated > 5 * 60):  # Run message went missing.
                 logger.info('Re-staging run bundle %s', bundle.uuid)
                 if self._model.restage_bundle(bundle):
                     workers.restage(bundle.uuid)
@@ -255,8 +256,8 @@ class BundleManager(object):
         worker resumes the bundle, indicating that it's still RUNNING.
         """
         for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
-            if (not workers.is_running(bundle.uuid) or  # Dead worker.
-                time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):
+            if (not workers.is_running(bundle.uuid) or
+                    time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):
                 failure_message = 'Worker offline'
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.set_offline_bundle(bundle)
@@ -352,6 +353,7 @@ class BundleManager(object):
         # in its cache.
         needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path),
                               bundle.dependencies))
+
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
             worker_id = worker['worker_id']
@@ -377,7 +379,7 @@ class BundleManager(object):
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
-                worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
+               worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
