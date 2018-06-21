@@ -575,7 +575,7 @@ def _update_bundle_contents_blob(uuid):
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
     final_state = request.query.get('state_on_success', default=None)
     should_update_state = final_state is not None
-    if should_update_state is not None and final_state not in State.FINAL_STATES:
+    if should_update_state and final_state not in State.FINAL_STATES:
         abort(httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES))
 
     # If this bundle already has data, remove it.
