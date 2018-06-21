@@ -680,7 +680,7 @@ Query parameters:
   state should not change on failure. Default is 0.
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
-  Default is 'ready'.
+  Default is empty in which case the state is not updated.
 
 
 &uarr; [Back to Top](#table-of-contents)

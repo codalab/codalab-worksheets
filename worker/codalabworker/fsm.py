@@ -31,7 +31,7 @@ class JsonStateCommitter(BaseStateCommitter):
         with tempfile.NamedTemporaryFile() as f:
             f.write(pyjson.dumps(state))
             f.flush()
-            shutil.move(f.name, self._state_file)
+            shutil.copyfile(f.name, self._state_file)
 
 
 class DependencyStage(object):
