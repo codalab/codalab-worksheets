@@ -7,7 +7,7 @@ import datetime
 import json
 import re
 import time
-import uuid
+from uuid import uuid4
 
 from sqlalchemy import (
     and_,
@@ -81,6 +81,7 @@ from codalab.rest.util import (
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
 
+
 def str_key_dict(row):
     """
     row comes out of an element of a database query.
@@ -89,6 +90,7 @@ def str_key_dict(row):
     This function converts the keys to strings.
     """
     return dict((str(k), v) for k, v in row.items())
+
 
 class BundleModel(object):
     def __init__(self, engine, default_user_info):
@@ -203,8 +205,10 @@ class BundleModel(object):
                 table.c.owner_id,
             ]).where(table.c.uuid.in_(uuids))).fetchall()
             return dict((row.uuid, row.owner_id) for row in rows)
+
     def get_bundle_owner_ids(self, uuids):
         return self.get_owner_ids(cl_bundle, uuids)
+
     def get_worksheet_owner_ids(self, uuids):
         return self.get_owner_ids(cl_worksheet, uuids)
 
@@ -1262,7 +1266,7 @@ class BundleModel(object):
         with self.engine.begin() as connection:
             if 'tags' in info:
                 # Delete old tags
-                result = connection.execute(cl_worksheet_tag.delete().where(cl_worksheet_tag.c.worksheet_uuid == worksheet.uuid))
+                connection.execute(cl_worksheet_tag.delete().where(cl_worksheet_tag.c.worksheet_uuid == worksheet.uuid))
                 # Add new tags
                 new_tag_values = [{'worksheet_uuid': worksheet.uuid, 'tag': tag} for tag in info['tags']]
                 self.do_multirow_insert(connection, cl_worksheet_tag, new_tag_values)
@@ -1788,7 +1792,7 @@ class BundleModel(object):
         """
         clauses = []
         if check_active:
-            clauses.append(cl_user.c.is_active == True)
+            clauses.append(cl_user.c.is_active)
         if user_ids is not None:
             clauses.append(cl_user.c.user_id.in_(user_ids))
         if usernames is not None:
@@ -1834,7 +1838,7 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
-            user_id = user_id or '0x%s' % uuid.uuid4().hex
+            user_id = user_id or '0x%s' % uuid4().hex
 
             connection.execute(cl_user.insert().values({
                 "user_id": user_id,
@@ -1860,7 +1864,7 @@ class BundleModel(object):
             if is_verified:
                 verification_key = None
             else:
-                verification_key = uuid.uuid4().hex
+                verification_key = uuid4().hex
                 connection.execute(cl_user_verification.insert().values({
                     "user_id": user_id,
                     "date_created": now,
@@ -1919,7 +1923,7 @@ class BundleModel(object):
             ).limit(1)).fetchone()
 
             if verify_row is None:
-                key = uuid.uuid4().hex
+                key = uuid4().hex
                 now = datetime.datetime.utcnow()
                 connection.execute(cl_user_verification.insert().values({
                     "user_id": user_id,
@@ -1975,7 +1979,7 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             now = datetime.datetime.utcnow()
-            code = uuid.uuid4().hex
+            code = uuid4().hex
 
             connection.execute(cl_user_reset_code.insert().values({
                 "user_id": user_id,
