@@ -15,6 +15,7 @@ from codalab.model.tables import (
     worker_run as cl_worker_run,
     worker_dependency as cl_worker_dependency,
 )
+from codalab.model.util import retrying_execute
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,8 @@ class WorkerModel(object):
                 'memory_bytes': memory_bytes,
                 'checkin_time': datetime.datetime.now(),
             }
-            existing_row = conn.execute(
+            existing_row = retrying_execute(
+                conn,
                 cl_worker
                 .select()
                 .where(and_(cl_worker.c.user_id == user_id,
@@ -57,7 +59,8 @@ class WorkerModel(object):
             ).fetchone()
             if existing_row:
                 socket_id = existing_row.socket_id
-                conn.execute(
+                retrying_execute(
+                    conn,
                     cl_worker
                     .update()
                     .where(and_(cl_worker.c.user_id == user_id,
@@ -70,12 +73,13 @@ class WorkerModel(object):
                     'worker_id': worker_id,
                     'socket_id': socket_id,
                 })
-                conn.execute(cl_worker.insert().values(worker_row))
+                retrying_execute(conn, cl_worker.insert().values(worker_row))
 
             # Update dependencies
             blob = self._serialize_dependencies(dependencies)
             if existing_row:
-                conn.execute(
+                retrying_execute(
+                    conn,
                     cl_worker_dependency
                     .update()
                     .where(and_(cl_worker_dependency.c.user_id == user_id,
@@ -83,7 +87,8 @@ class WorkerModel(object):
                     .values(dependencies=blob)
                 )
             else:
-                conn.execute(
+                retrying_execute(
+                    conn,
                     cl_worker_dependency
                     .insert()
                     .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
@@ -104,7 +109,8 @@ class WorkerModel(object):
         as the socket directory.
         """
         with self._engine.begin() as conn:
-            socket_rows = conn.execute(
+            socket_rows = retrying_execute(
+                conn,
                 cl_worker_socket
                 .select()
                 .where(and_(cl_worker_socket.c.user_id == user_id,
@@ -112,18 +118,18 @@ class WorkerModel(object):
             ).fetchall()
             for socket_row in socket_rows:
                 self._cleanup_socket(socket_row.socket_id)
-            conn.execute(cl_worker_socket.delete()
-                         .where(and_(cl_worker_socket.c.user_id == user_id,
-                                     cl_worker_socket.c.worker_id == worker_id)))
-            conn.execute(cl_worker_run.delete()
-                         .where(and_(cl_worker_run.c.user_id == user_id,
-                                     cl_worker_run.c.worker_id == worker_id)))
-            conn.execute(cl_worker_dependency.delete()
-                         .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                     cl_worker_dependency.c.worker_id == worker_id)))
-            conn.execute(cl_worker.delete()
-                         .where(and_(cl_worker.c.user_id == user_id,
-                                     cl_worker.c.worker_id == worker_id)))
+            retrying_execute(conn, cl_worker_socket.delete()
+                             .where(and_(cl_worker_socket.c.user_id == user_id,
+                                         cl_worker_socket.c.worker_id == worker_id)))
+            retrying_execute(conn, cl_worker_run.delete()
+                             .where(and_(cl_worker_run.c.user_id == user_id,
+                                         cl_worker_run.c.worker_id == worker_id)))
+            retrying_execute(conn, cl_worker_dependency.delete()
+                             .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                         cl_worker_dependency.c.worker_id == worker_id)))
+            retrying_execute(conn, cl_worker.delete()
+                             .where(and_(cl_worker.c.user_id == user_id,
+                                         cl_worker.c.worker_id == worker_id)))
 
     def get_workers(self):
         """
@@ -131,11 +137,12 @@ class WorkerModel(object):
         value is a list of dicts with the structure shown in the code below.
         """
         with self._engine.begin() as conn:
-            worker_rows = conn.execute(
+            worker_rows = retrying_execute(
+                conn,
                 select([cl_worker, cl_worker_dependency.c.dependencies])
                 .select_from(cl_worker.outerjoin(cl_worker_dependency))
             ).fetchall()
-            worker_run_rows = conn.execute(cl_worker_run.select()).fetchall()
+            worker_run_rows = retrying_execute(conn, cl_worker_run.select()).fetchall()
 
         worker_dict = {(row.user_id, row.worker_id): {
             'user_id': row.user_id,
@@ -158,13 +165,13 @@ class WorkerModel(object):
         Returns information about the worker that the given bundle is running
         on. This method should be called only for bundles that are running.
         """
-        with self._engine.begin() as connection:
-            row = connection.execute(cl_worker_run.select()
-                                     .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
+        with self._engine.begin() as conn:
+            row = retrying_execute(conn, cl_worker_run.select()
+                                   .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
             precondition(row, 'Trying to find worker for bundle that is not running.')
-            worker_row = connection.execute(cl_worker.select()
-                                            .where(and_(cl_worker.c.user_id == row.user_id,
-                                                        cl_worker.c.worker_id == row.worker_id))).fetchone()
+            worker_row = retrying_execute(conn, cl_worker.select()
+                                          .where(and_(cl_worker.c.user_id == row.user_id,
+                                                      cl_worker.c.worker_id == row.worker_id))).fetchone()
             return {
                 'user_id': worker_row.user_id,
                 'worker_id': worker_row.worker_id,
@@ -180,7 +187,8 @@ class WorkerModel(object):
                 'user_id': user_id,
                 'worker_id': worker_id,
             }
-            return conn.execute(
+            return retrying_execute(
+                conn,
                 cl_worker_socket.insert().values(socket_row)
             ).inserted_primary_key[0]
         if conn is None:
@@ -196,8 +204,8 @@ class WorkerModel(object):
         """
         self._cleanup_socket(socket_id)
         with self._engine.begin() as conn:
-            conn.execute(cl_worker_socket.delete()
-                         .where(cl_worker_socket.c.socket_id == socket_id))
+            retrying_execute(conn, cl_worker_socket.delete()
+                             .where(cl_worker_socket.c.socket_id == socket_id))
 
     def _socket_path(self, socket_id):
         return os.path.join(self._socket_dir, str(socket_id))
@@ -354,7 +362,8 @@ class WorkerModel(object):
         impersonating a worker from another user and replying to its messages.
         """
         with self._engine.begin() as conn:
-            row = conn.execute(
+            row = retrying_execute(
+                conn,
                 cl_worker_socket
                 .select()
                 .where(and_(cl_worker_socket.c.user_id == user_id,
