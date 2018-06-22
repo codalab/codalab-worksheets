@@ -19,8 +19,6 @@ from codalab.model.util import retrying_execute
 
 logger = logging.getLogger(__name__)
 
-logger = logging.getLogger(__name__)
-
 
 class WorkerModel(object):
     """
