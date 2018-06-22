@@ -7,6 +7,7 @@ import socket
 import time
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import OperationalError
 
 from codalab.common import precondition
 from codalab.model.tables import (
@@ -16,6 +17,8 @@ from codalab.model.tables import (
     worker_dependency as cl_worker_dependency,
 )
 from codalab.model.util import retrying_execute
+
+logger = logging.getLogger(__name__)
 
 logger = logging.getLogger(__name__)
 
