@@ -5,6 +5,7 @@ BundleModel is a wrapper around database calls to save and load bundle metadata.
 import collections
 import datetime
 import json
+import logging
 import re
 import time
 from uuid import uuid4
@@ -84,6 +85,29 @@ from codalab.rest.util import (
 
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')
+
+
+def retry_if_deadlock(f):
+    """
+    Decorator that retries a db transaction if the transaction fails
+    due to a deadlock.
+    """
+    lock_messages = ['Deadlock found', 'Lock wait timeout exceeded']
+    DEADLOCK_MAX_ATTEMPTS = 10
+
+    def wrapper(*args, **kwargs):
+        num_attempts = 0
+        while num_attempts < DEADLOCK_MAX_ATTEMPTS:
+            num_attempts += 1
+            try:
+                return f(*args, **kwargs)
+            except exc.OperationalError as e:
+                if any(msg in e.message for msg in lock_messages) \
+                        and num_attempts < DEADLOCK_MAX_ATTEMPTS:
+                    logger.debug('Db deadlock on attempt \#%d, retrying' % num_attempts)
+                else:
+                    raise
+    return wrapper
 
 
 def str_key_dict(row):

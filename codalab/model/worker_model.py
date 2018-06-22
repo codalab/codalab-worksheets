@@ -7,7 +7,6 @@ import socket
 import time
 
 from sqlalchemy import and_, select
-from sqlalchemy.exc import OperationalError
 
 from codalab.common import precondition
 from codalab.model.tables import (
