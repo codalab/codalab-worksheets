@@ -8,6 +8,7 @@ from codalabworker import file_util
 
 logger = logging.getLogger(__name__)
 
+
 def retry_if_no_longer_running(f):
     """
     Decorator that retries a download if the bundle finishes running in the
@@ -80,7 +81,7 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
                 with closing(self._worker_model.start_listening(response_socket_id)) as sock:
                     result = self._worker_model.get_json_message(sock, 60)
-                if result is None: # dead workers are a fact of life now
+                if result is None:  # dead workers are a fact of life now
                     logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
                     return None
                 elif 'error_code' in result:
@@ -244,7 +245,7 @@ class DownloadManager(object):
             'path': path,
             'read_args': read_args,
         }
-        if not self._worker_model.send_json_message(worker['socket_id'], message, 60): # dead workers are a fact of life now
+        if not self._worker_model.send_json_message(worker['socket_id'], message, 60):  # dead workers are a fact of life now
             logging.info('Unable to reach worker')
 
     def _send_netcat_message(self, worker, response_socket_id, uuid, port, message):
@@ -255,7 +256,7 @@ class DownloadManager(object):
             'port': port,
             'message': message,
         }
-        if not self._worker_model.send_json_message(worker['socket_id'], message, 60): # dead workers are a fact of life now
+        if not self._worker_model.send_json_message(worker['socket_id'], message, 60):  # dead workers are a fact of life now
             logging.info('Unable to reach worker')
 
     def _get_read_response_stream(self, response_socket_id):
@@ -289,4 +290,3 @@ class Deallocating(object):
     def close(self):
         self._fileobj.close()
         self._worker_model.deallocate_socket(self._socket_id)
-

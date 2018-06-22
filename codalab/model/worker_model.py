@@ -7,7 +7,6 @@ import socket
 import time
 
 from sqlalchemy import and_, select
-from sqlalchemy.exc import OperationalError
 
 from codalab.common import precondition
 from codalab.model.tables import (
@@ -43,59 +42,52 @@ class WorkerModel(object):
         that the worker should listen for messages on.
         """
         with self._engine.begin() as conn:
-            MAX_ATTEMPTS = 10
-            num_attempts = 0
-            done = False
-            while not done and num_attempts < MAX_ATTEMPTS:
-                num_attempts += 1
-                try:
-                    worker_row = {
-                        'tag': tag,
-                        'cpus': cpus,
-                        'gpus': gpus,
-                        'memory_bytes': memory_bytes,
-                        'checkin_time': datetime.datetime.now(),
-                    }
-                    existing_row = conn.execute(
-                        cl_worker.select()
-                            .where(and_(cl_worker.c.user_id == user_id,
-                                        cl_worker.c.worker_id == worker_id))
-                    ).fetchone()
-                    if existing_row:
-                        socket_id = existing_row.socket_id
-                        conn.execute(
-                            cl_worker.update()
-                                .where(and_(cl_worker.c.user_id == user_id,
-                                            cl_worker.c.worker_id == worker_id))
-                                .values(worker_row))
-                    else:
-                        socket_id = self.allocate_socket(user_id, worker_id, conn)
-                        worker_row.update({
-                            'user_id': user_id,
-                            'worker_id': worker_id,
-                            'socket_id': socket_id,
-                        })
-                        conn.execute(cl_worker.insert().values(worker_row))
+            worker_row = {
+                'tag': tag,
+                'cpus': cpus,
+                'gpus': gpus,
+                'memory_bytes': memory_bytes,
+                'checkin_time': datetime.datetime.now(),
+            }
+            existing_row = conn.execute(
+                cl_worker
+                .select()
+                .where(and_(cl_worker.c.user_id == user_id,
+                            cl_worker.c.worker_id == worker_id))
+            ).fetchone()
+            if existing_row:
+                socket_id = existing_row.socket_id
+                conn.execute(
+                    cl_worker
+                    .update()
+                    .where(and_(cl_worker.c.user_id == user_id,
+                                cl_worker.c.worker_id == worker_id))
+                    .values(worker_row))
+            else:
+                socket_id = self.allocate_socket(user_id, worker_id, conn)
+                worker_row.update({
+                    'user_id': user_id,
+                    'worker_id': worker_id,
+                    'socket_id': socket_id,
+                })
+                conn.execute(cl_worker.insert().values(worker_row))
 
-                    # Update dependencies
-                    blob = self._serialize_dependencies(dependencies)
-                    if existing_row:
-                        conn.execute(
-                            cl_worker_dependency.update()
-                                .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                            cl_worker_dependency.c.worker_id == worker_id))
-                                .values(dependencies=blob)
-                        )
-                    else:
-                        conn.execute(
-                            cl_worker_dependency.insert()
-                                .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
-                        )
-                except OperationalError as e:
-                    logger.debug('Error %s detected, retrying' % e)
-                else:
-                    done = True
-
+            # Update dependencies
+            blob = self._serialize_dependencies(dependencies)
+            if existing_row:
+                conn.execute(
+                    cl_worker_dependency
+                    .update()
+                    .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                cl_worker_dependency.c.worker_id == worker_id))
+                    .values(dependencies=blob)
+                )
+            else:
+                conn.execute(
+                    cl_worker_dependency
+                    .insert()
+                    .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
+                )
         return socket_id
 
     @staticmethod
@@ -113,9 +105,10 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             socket_rows = conn.execute(
-                cl_worker_socket.select()
-                    .where(and_(cl_worker_socket.c.user_id == user_id,
-                                cl_worker_socket.c.worker_id == worker_id))
+                cl_worker_socket
+                .select()
+                .where(and_(cl_worker_socket.c.user_id == user_id,
+                            cl_worker_socket.c.worker_id == worker_id))
             ).fetchall()
             for socket_row in socket_rows:
                 self._cleanup_socket(socket_row.socket_id)
@@ -184,8 +177,8 @@ class WorkerModel(object):
         """
         def do(conn):
             socket_row = {
-               'user_id': user_id,
-               'worker_id': worker_id,
+                'user_id': user_id,
+                'worker_id': worker_id,
             }
             return conn.execute(
                 cl_worker_socket.insert().values(socket_row)
@@ -362,10 +355,11 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             row = conn.execute(
-                cl_worker_socket.select()
-                    .where(and_(cl_worker_socket.c.user_id == user_id,
-                                cl_worker_socket.c.worker_id == worker_id,
-                                cl_worker_socket.c.socket_id == socket_id))
+                cl_worker_socket
+                .select()
+                .where(and_(cl_worker_socket.c.user_id == user_id,
+                            cl_worker_socket.c.worker_id == worker_id,
+                            cl_worker_socket.c.socket_id == socket_id))
             ).fetchone()
             if row:
                 return True
