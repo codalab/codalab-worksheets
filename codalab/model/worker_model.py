@@ -1,19 +1,23 @@
 from contextlib import closing
 import datetime
 import json
+import logging
 import os
 import socket
 import time
 
 from sqlalchemy import and_, select
+from sqlalchemy.exc import OperationalError
 
 from codalab.common import precondition
 from codalab.model.tables import (
-  worker as cl_worker,
-  worker_socket as cl_worker_socket,
-  worker_run as cl_worker_run,
-  worker_dependency as cl_worker_dependency,
+    worker as cl_worker,
+    worker_socket as cl_worker_socket,
+    worker_run as cl_worker_run,
+    worker_dependency as cl_worker_dependency,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class WorkerModel(object):
@@ -39,48 +43,58 @@ class WorkerModel(object):
         that the worker should listen for messages on.
         """
         with self._engine.begin() as conn:
-            worker_row = {
-                'tag': tag,
-                'cpus': cpus,
-                'gpus': gpus,
-                'memory_bytes': memory_bytes,
-                'checkin_time': datetime.datetime.now(),
-            }
-            existing_row = conn.execute(
-                cl_worker.select()
-                    .where(and_(cl_worker.c.user_id == user_id,
-                                cl_worker.c.worker_id == worker_id))
-            ).fetchone()
-            if existing_row:
-                socket_id = existing_row.socket_id
-                conn.execute(
-                    cl_worker.update()
-                        .where(and_(cl_worker.c.user_id == user_id,
-                                    cl_worker.c.worker_id == worker_id))
-                        .values(worker_row))
-            else:
-                socket_id = self.allocate_socket(user_id, worker_id, conn)
-                worker_row.update({
-                    'user_id': user_id,
-                    'worker_id': worker_id,
-                    'socket_id': socket_id,
-                })
-                conn.execute(cl_worker.insert().values(worker_row))
+            MAX_ATTEMPTS = 10
+            num_attempts = 0
+            done = False
+            while not done and num_attempts < MAX_ATTEMPTS:
+                num_attempts += 1
+                try:
+                    worker_row = {
+                        'tag': tag,
+                        'cpus': cpus,
+                        'gpus': gpus,
+                        'memory_bytes': memory_bytes,
+                        'checkin_time': datetime.datetime.now(),
+                    }
+                    existing_row = conn.execute(
+                        cl_worker.select()
+                            .where(and_(cl_worker.c.user_id == user_id,
+                                        cl_worker.c.worker_id == worker_id))
+                    ).fetchone()
+                    if existing_row:
+                        socket_id = existing_row.socket_id
+                        conn.execute(
+                            cl_worker.update()
+                                .where(and_(cl_worker.c.user_id == user_id,
+                                            cl_worker.c.worker_id == worker_id))
+                                .values(worker_row))
+                    else:
+                        socket_id = self.allocate_socket(user_id, worker_id, conn)
+                        worker_row.update({
+                            'user_id': user_id,
+                            'worker_id': worker_id,
+                            'socket_id': socket_id,
+                        })
+                        conn.execute(cl_worker.insert().values(worker_row))
 
-            # Update dependencies
-            blob = self._serialize_dependencies(dependencies)
-            if existing_row:
-                conn.execute(
-                    cl_worker_dependency.update()
-                        .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                    cl_worker_dependency.c.worker_id == worker_id))
-                        .values(dependencies=blob)
-                )
-            else:
-                conn.execute(
-                    cl_worker_dependency.insert()
-                        .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
-                )
+                    # Update dependencies
+                    blob = self._serialize_dependencies(dependencies)
+                    if existing_row:
+                        conn.execute(
+                            cl_worker_dependency.update()
+                                .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                            cl_worker_dependency.c.worker_id == worker_id))
+                                .values(dependencies=blob)
+                        )
+                    else:
+                        conn.execute(
+                            cl_worker_dependency.insert()
+                                .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
+                        )
+                except OperationalError as e:
+                    logger.debug('Error %s detected, retrying' % e)
+                else:
+                    done = True
 
         return socket_id
 
@@ -324,7 +338,7 @@ class WorkerModel(object):
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     # TODO: maybe exponential backoff
-                    time.sleep(0.3) # changed from 0.003 to keep from rate-limiting due to dead workers
+                    time.sleep(0.3)  # changed from 0.003 to keep from rate-limiting due to dead workers
                     continue
 
                 if not autoretry:
