@@ -1,8 +1,13 @@
 import logging
-import sys
 from contextlib import closing
 
-from codalab.common import http_error_to_exception, precondition, State, UsageError, NotFoundError
+from codalab.common import (
+    http_error_to_exception,
+    precondition,
+    State,
+    UsageError,
+    NotFoundError
+)
 from codalabworker import download_util
 from codalabworker import file_util
 
@@ -46,26 +51,21 @@ class DownloadManager(object):
     @retry_if_no_longer_running
     def get_target_info(self, uuid, path, depth):
         """
-        Returns information about an individual target inside the bundle, or
-        None if the target or bundle doesn't exist.
+        Returns information about an individual target inside the bundle,
+        Raises NotFoundError if the bundle or the path within the bundle is not found
 
         For information about the format of the return value, see
         worker.download_util.get_target_info.
         """
-        try:
-            bundle_state = self._bundle_model.get_bundle_state(uuid)
-        except NotFoundError:
-            bundle_state = None
+        bundle_state = self._bundle_model.get_bundle_state(uuid)
+        # Raises NotFoundException if uuid is invalid
 
-        # Return None if invalid bundle reference
-        if bundle_state is None:
-            return None
-        elif bundle_state != State.RUNNING:
+        if bundle_state != State.RUNNING:
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
             except download_util.PathException as e:
-                raise UsageError(e.message)
+                raise NotFoundError(e.message)
         else:
             # get_target_info calls are sent to the worker even on a shared file
             # system since 1) due to NFS caching the worker has more up to date
@@ -83,7 +83,7 @@ class DownloadManager(object):
                     result = self._worker_model.get_json_message(sock, 60)
                 if result is None:  # dead workers are a fact of life now
                     logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
-                    return None
+                    raise NotFoundError('Unable to reach worker of running bundle with bundle state {}'.format(bundle_state))
                 elif 'error_code' in result:
                     raise http_error_to_exception(result['error_code'], result['error_message'])
                 return result['target_info']
@@ -109,7 +109,7 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
                 fileobj = self._get_read_response_stream(response_socket_id)
                 return Deallocating(fileobj, self._worker_model, response_socket_id)
-            except:
+            except Exception:
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise
 
@@ -137,7 +137,7 @@ class DownloadManager(object):
                 if not gzipped:
                     fileobj = file_util.un_gzip_stream(fileobj)
                 return Deallocating(fileobj, self._worker_model, response_socket_id)
-            except:
+            except Exception:
                 self._worker_model.deallocate_socket(response_socket_id)
                 raise
 

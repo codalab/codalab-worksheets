@@ -22,7 +22,10 @@ from bottle import (
     request,
 )
 
-from codalab.common import UsageError
+from codalab.common import (
+    UsageError,
+    NotFoundError
+)
 from codalab.lib import (
     formatting,
     spec_util,
@@ -336,25 +339,37 @@ def resolve_interpreted_items(interpreted_items):
                 except ValueError:
                     raise UsageError("maxlines must be integer")
 
-                target_info = rest_util.get_target_info(data, 0)
-                if target_info is not None and target_info['type'] == 'directory':
-                    data = ['<directory>']
-                elif target_info is not None and target_info['type'] == 'file':
-                    data = head_target(data, max_lines, replace_non_unicode=True)
-                else:
+                try:
+                    target_info = rest_util.get_target_info(data, 0)
+                except NotFoundError:
                     data = None
+                else:
+                    if target_info['type'] == 'directory':
+                        data = ['<directory>']
+                    elif target_info['type'] == 'file':
+                        data = head_target(data, max_lines, replace_non_unicode=True)
+                    else:
+                        data = None
             elif mode == 'html':
-                target_info = rest_util.get_target_info(data, 0)
-                if target_info is not None and target_info['type'] == 'file':
-                    data = head_target(data, None)
-                else:
+                try:
+                    target_info = rest_util.get_target_info(data, 0)
+                except NotFoundError:
                     data = None
+                else:
+                    if target_info['type'] == 'file':
+                        data = head_target(data, None)
+                    else:
+                        data = None
             elif mode == 'image':
-                target_info = rest_util.get_target_info(data, 0)
-                if target_info is not None and target_info['type'] == 'file':
-                    data = base64.b64encode(cat_target(data))
-                else:
+                try:
+                    target_info = rest_util.get_target_info(data, 0)
+                except NotFoundError:
                     data = None
+                else:
+                    if target_info['type'] == 'file':
+                        data = base64.b64encode(cat_target(data))
+                    else:
+                        data = None
             elif mode == 'graph':
                 try:
                     max_lines = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
@@ -365,14 +380,18 @@ def resolve_interpreted_items(interpreted_items):
                 # Add a 'points' field that contains the contents of the target.
                 for info in data:
                     target = info['target']
-                    target_info = rest_util.get_target_info(target, 0)
-                    if target_info is not None and target_info['type'] == 'file':
-                        contents = head_target(target, max_lines, replace_non_unicode=True)
-                        # Assume TSV file without header for now, just return each line as a row
-                        info['points'] = points = []
-                        for line in contents:
-                            row = line.split('\t')
-                            points.append(row)
+                    try:
+                        target_info = rest_util.get_target_info(target, 0)
+                    except NotFoundError:
+                        pass
+                    else:
+                        if target_info['type'] == 'file':
+                            contents = head_target(target, max_lines, replace_non_unicode=True)
+                            # Assume TSV file without header for now, just return each line as a row
+                            info['points'] = points = []
+                            for line in contents:
+                                row = line.split('\t')
+                                points.append(row)
             elif mode == 'search':
                 data = interpret_search(data)
             elif mode == 'wsearch':
@@ -502,10 +521,13 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
-        target_info = rest_util.get_target_info(target, 0)
+        try:
+            target_info = rest_util.get_target_info(target, 0)
+        except NotFoundError:
+            info = None
 
         # Try to interpret the structure of the file by looking inside it.
-        if target_info is not None and target_info['type'] == 'file':
+        if target_info['type'] == 'file':
             contents = head_target(target, MAX_LINES)
 
             if len(contents) == 0:
@@ -546,7 +568,8 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
                     info = None
             else:
                 info = None
-            if info is None: break
+            if info is None:
+                break
     return apply_func(post, info)
 
 
