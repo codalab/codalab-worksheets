@@ -10,6 +10,7 @@ import httplib
 # http://semver.org/
 CODALAB_VERSION = '0.2.26'
 
+
 class IntegrityError(ValueError):
     """
     Raised by the model when there is a database integrity issue.
@@ -57,6 +58,7 @@ class PermissionError(UsageError):
     necessary permissions. Similar to HTTP status 403.
     """
 
+
 # Listed in order of most specific to least specific.
 http_codes_and_exceptions = [
     (httplib.FORBIDDEN, PermissionError),
@@ -102,7 +104,7 @@ class State(object):
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
     KILLED = 'killed'     # Killed by user
-    WORKER_OFFLINE = 'worker_offline' # Assigned worker has gone offline
+    WORKER_OFFLINE = 'worker_offline'  # Assigned worker has gone offline
 
     OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED}
     ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING}
