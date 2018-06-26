@@ -2339,11 +2339,11 @@ class BundleCLI(object):
                 print >>self.stdout, line
         else:
             print >>self.stdout, self._worksheet_description(worksheet_info)
-            interpreted_blocks = worksheet_util.interpret_items(worksheet_util.get_default_schemas(), worksheet_info['items'])
+            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['items']
             self.display_blocks(client, worksheet_info, interpreted_blocks)
 
     def display_blocks(self, client, worksheet_info, interpreted_blocks):
-        for block in interpreted_blocks['blocks']:
+        for block in interpreted_blocks:
             mode = block['mode']
             print >>self.stdout, ''  # Separate interpreted items
             if mode == BlockModes.markup_block:
@@ -2363,9 +2363,12 @@ class BundleCLI(object):
                 rows = client.interpret_genpath_table_contents(rows)
                 # print >>self.stdout, the table
                 self.print_table(header, rows, show_header=(mode == BlockModes.table_block), indent='  ')
-            elif mode == BlockModes.image_block or mode == BlockModes.graph_block:
+            elif mode == BlockModes.image_block:
                 # Placeholder
-                print >>self.stdout, '[' + mode + ']'
+                print >>self.stdout, '[Image]'
+            elif mode == BlockModes.graph_block:
+                # Placeholder
+                print >>self.stdout, '[Graph]'
             elif mode == BlockModes.subworksheets_block:
                 for worksheet_info in block['subworksheet_infos']:
                     print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']'

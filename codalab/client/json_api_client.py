@@ -563,6 +563,12 @@ class JsonApiClient(RestClient):
                 data=self._pack_document(data, 'users')))
 
     @wrap_exception('Unable to fetch contents info of bundle {1}')
+    def fetch_interpreted_worksheet(self, worksheet_uuid):
+        request_path = '/interpret/worksheet/%s' % worksheet_uuid
+        response = self._make_request('GET', request_path)
+        return response
+
+    @wrap_exception('Unable to fetch contents info of bundle {1}')
     def fetch_contents_info(self, bundle_id, target_path='', depth=0):
         request_path = '/bundles/%s/contents/info/%s' % \
                        (bundle_id, urllib.quote(target_path))
