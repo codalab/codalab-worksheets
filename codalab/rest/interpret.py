@@ -196,8 +196,7 @@ def fetch_interpreted_worksheet(uuid):
     # Replace searches with raw items.
     # This needs to be done before get_worksheet_lines because this replaces
     # user-written raw items.
-    worksheet_info['items'] = list(chain.from_iterable(
-        [expand_raw_item(raw_item) for raw_item in worksheet_info['items']]))
+    worksheet_info['items'] = expand_raw_items(worksheet_info['items'])
 
     # Set permissions
     worksheet_info['edit_permission'] = (worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
@@ -562,6 +561,8 @@ def resolve_items_into_infos(items):
         new_items.append((bundle_info, subworksheet_info, value_obj, i['type']))
     return new_items
 
+def expand_raw_items(raw_items):
+    return list(chain.from_iterable([expand_raw_item(raw_item) for raw_item in raw_items]))
 
 def expand_raw_item(raw_item):
     """
