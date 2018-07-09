@@ -10,9 +10,11 @@ import re
 
 from argcomplete import warn
 
+from codalab.common import NotFoundError
 from codalab.lib import spec_util, worksheet_util, cli_util
 
 from .docker_util import Docker
+
 
 class CodaLabCompleter(object):
     """
@@ -143,8 +145,11 @@ class TargetsCompleter(CodaLabCompleter):
             resolved_target = self.cli.resolve_target(client, worksheet_uuid, target)
             bundle_uuid = resolved_target[2]
             dir_target = (bundle_uuid, os.path.dirname(subpath))
-            info = client.fetch_contents_info(dir_target[0], dir_target[1], depth=1)
-            if info is not None and info['type'] == 'directory':
+            try:
+                info = client.fetch_contents_info(dir_target[0], dir_target[1], depth=1)
+            except NotFoundError:
+                return ()
+            if info['type'] == 'directory':
                 matching_child_names = []
                 basename = os.path.basename(subpath)
                 for child in info['contents']:
@@ -173,6 +178,7 @@ class DockerImagesCompleter(CodaLabCompleter):
         trimmed_prefix = prefix[0:first_slash] if first_slash >= 0 else prefix
         return Docker.search(trimmed_prefix, handle_err)
 
+
 def short_uuid(full_uuid):
     return worksheet_util.apply_func('[0:8]', full_uuid)
 
@@ -198,5 +204,3 @@ def initialize_completer(completer, cli):
         return completer(cli)
     else:
         return completer
-
-
