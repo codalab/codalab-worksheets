@@ -1795,12 +1795,13 @@ class BundleCLI(object):
 
     # Helper: shared between info and cat
     def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
-        info = client.fetch_contents_info(bundle_uuid, subpath, 1)
-        info_type = info.get('type')
-
-        if info_type is None:
+        try:
+            info = client.fetch_contents_info(bundle_uuid, subpath, 1)
+        except NotFoundError:
             print >>self.stdout, formatting.verbose_contents_str(None)
+            return None
 
+        info_type = info.get('type')
         if info_type == 'file':
             kwargs = {}
             if head is not None:
@@ -1897,6 +1898,7 @@ class BundleCLI(object):
                     client.fetch_contents_info(bundle_uuid, subpath, 0)
                     break
                 except NotFoundError:
+                    # TODO: Now NotFoundError might also mean the bundle doesn't exist
                     time.sleep(SLEEP_PERIOD)
 
         info = None
