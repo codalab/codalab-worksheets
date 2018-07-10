@@ -29,7 +29,12 @@ def get_target_info(bundle_path, uuid, path, depth):
     if not os.path.islink(final_path) and not os.path.exists(final_path):
         raise PathException('Path {} in bundle {} not found'.format(path, uuid))
 
-    return _compute_target_info(final_path, depth)
+    info = _compute_target_info(final_path, depth)
+
+    if info is None:
+        raise PathException('Path {} in bundle {} not found'.format(path, uuid))
+
+    return info
 
 
 def get_target_path(bundle_path, uuid, path):
