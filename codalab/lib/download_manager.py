@@ -63,7 +63,10 @@ class DownloadManager(object):
         if bundle_state != State.RUNNING:
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
-                return download_util.get_target_info(bundle_path, uuid, path, depth)
+                info = download_util.get_target_info(bundle_path, uuid, path, depth)
+                if info is None:
+                    raise Exception('download utils get target info is none')
+                return info
             except download_util.PathException as e:
                 raise NotFoundError(e.message)
         else:
@@ -81,12 +84,14 @@ class DownloadManager(object):
                 self._send_read_message(worker, response_socket_id, uuid, path, read_args)
                 with closing(self._worker_model.start_listening(response_socket_id)) as sock:
                     result = self._worker_model.get_json_message(sock, 60)
-                if result is None:  # dead workers are a fact of life now
+                if result is None or result['target_info'] is None:  # dead workers are a fact of life now
                     logging.info('Unable to reach worker, bundle state {}'.format(bundle_state))
                     raise NotFoundError('Unable to reach worker of running bundle with bundle state {}'.format(bundle_state))
                 elif 'error_code' in result:
                     raise http_error_to_exception(result['error_code'], result['error_message'])
                 return result['target_info']
+            except Exception as e:
+                raise e
             finally:
                 self._worker_model.deallocate_socket(response_socket_id)
 
