@@ -31,9 +31,6 @@ def get_target_info(bundle_path, uuid, path, depth):
 
     info = _compute_target_info(final_path, depth)
 
-    if info is None:
-        raise PathException('Path {} in bundle {} not found'.format(path, uuid))
-
     return info
 
 
@@ -78,10 +75,9 @@ def _get_target_path(bundle_path, path):
 
 
 def _compute_target_info(path, depth):
-    stat = os.lstat(path)
-
     result = {}
     result['name'] = os.path.basename(path)
+    stat = os.lstat(path)
     result['size'] = stat.st_size
     result['perm'] = stat.st_mode & 0777
     if os.path.islink(path):
@@ -95,4 +91,6 @@ def _compute_target_info(path, depth):
             result['contents'] = [
                 _compute_target_info(os.path.join(path, file_name), depth - 1)
                 for file_name in os.listdir(path)]
+    if result is None:
+        raise PathException()
     return result
