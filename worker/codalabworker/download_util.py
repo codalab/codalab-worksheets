@@ -20,7 +20,7 @@ def get_target_info(bundle_path, uuid, path, depth):
     example, means only the top-level entry is included, and no contents. Depth
     1 means the contents of the top-level are included, but nothing deeper.
 
-    If the given path does not exist, returns None.
+    If the given path does not exist, raises PathException.
 
     If reading the given path is not secure, raises a PathException.
     """
