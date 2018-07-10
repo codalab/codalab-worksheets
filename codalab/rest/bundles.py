@@ -395,8 +395,6 @@ def _fetch_bundle_contents_info(uuid, path=''):
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     try:
         info = local.download_manager.get_target_info(uuid, path, depth)
-        if info is None:
-            abort(httplib.BAD_REQUEST, 'Download manager returned info None for {}/{}, depth {}'.format(uuid, path, depth))
     except NotFoundError as e:
         abort(httplib.NOT_FOUND, e.message)
     except Exception as e:
