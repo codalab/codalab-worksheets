@@ -568,7 +568,9 @@ class JsonApiClient(RestClient):
                        (bundle_id, urllib.quote(target_path))
         response = self._make_request('GET', request_path,
                                       query_params={'depth': depth})
-
+        # TODO Kerem: Remove this after debug done
+        if response['data'] is None:
+            raise Exception('response data is none: {}'.format(response))
         return response['data']
 
     @wrap_exception('Unable to fetch contents blob of bundle {1}')
