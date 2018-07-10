@@ -570,7 +570,7 @@ class JsonApiClient(RestClient):
                                       query_params={'depth': depth})
         # TODO Kerem: Remove this after debug done
         if response['data'] is None:
-            raise Exception('response data is none: {}'.format(response))
+            raise Exception('Request: {}, response data is none: {}'.format(request_path, response))
         return response['data']
 
     @wrap_exception('Unable to fetch contents blob of bundle {1}')
