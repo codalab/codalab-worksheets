@@ -771,6 +771,23 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% search ' + uuid, '.'])
     run_command([cl, 'add', 'text', '% wsearch ' + wuuid, '.'])
     check_contains([uuid[0:8], wuuid[0:8]], run_command([cl, 'print']))
+    # Check search by group
+    group_wname = random_name()
+    group_wuuid = run_command([cl, 'new', group_wname])
+    ctx.collect_worksheet(group_wuuid)
+    check_contains(['Switched', group_wname, group_wuuid], run_command([cl, 'work', group_wuuid]))
+    user_id, user_name = current_user()
+    # Create new group
+    group_name = random_name()
+    group_uuid_line = run_command([cl, 'gnew', group_name])
+    group_uuid = get_uuid(group_uuid_line)
+    ctx.collect_group(group_uuid)
+    # Make worksheet unavailable to public but available to the group
+    run_command([cl, 'wperm', group_wuuid, 'public', 'n'])
+    run_command([cl, 'wperm', group_wuuid, group_name, 'r'])
+    check_contains(group_wuuid[:8], run_command([cl, 'wls', '.shared']))
+    check_contains(group_wuuid[:8], run_command([cl, 'wls', 'group={}'.format(group_uuid)]))
+    check_contains(group_wuuid[:8], run_command([cl, 'wls', 'group={}'.format(group_name)]))
 
 
 @TestModule.register('worksheet_tags')
@@ -856,6 +873,22 @@ def test(ctx):
     size1 = float(run_command([cl, 'info', '-f', 'data_size', uuid1]))
     size2 = float(run_command([cl, 'info', '-f', 'data_size', uuid2]))
     check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
+    # Check search by group
+    group_bname = random_name()
+    group_buuid = run_command([cl, 'run', 'echo hello', '-n', group_bname])
+    ctx.collect_bundle(group_buuid)
+    user_id, user_name = current_user()
+    # Create new group
+    group_name = random_name()
+    group_uuid_line = run_command([cl, 'gnew', group_name])
+    group_uuid = get_uuid(group_uuid_line)
+    ctx.collect_group(group_uuid)
+    # Make bundle unavailable to public but available to the group
+    run_command([cl, 'perm', group_buuid, 'public', 'n'])
+    run_command([cl, 'perm', group_buuid, group_name, 'r'])
+    check_contains(group_buuid[:8], run_command([cl, 'search', '.shared']))
+    check_contains(group_buuid[:8], run_command([cl, 'search', 'group={}'.format(group_uuid)]))
+    check_contains(group_buuid[:8], run_command([cl, 'search', 'group={}'.format(group_name)]))
 
 
 @TestModule.register('run')
