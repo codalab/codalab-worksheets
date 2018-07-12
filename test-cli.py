@@ -875,7 +875,7 @@ def test(ctx):
     check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
     # Check search by group
     group_bname = random_name()
-    group_buuid = run_command([cl, 'new', group_bname])
+    group_buuid = run_command([cl, 'run', 'echo hello', '-n', group_bname])
     ctx.collect_bundle(group_buuid)
     user_id, user_name = current_user()
     # Create new group
