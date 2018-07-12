@@ -785,9 +785,9 @@ def test(ctx):
     # Make worksheet unavailable to public but available to the group
     run_command([cl, 'wperm', group_wuuid, 'public', 'n'])
     run_command([cl, 'wperm', group_wuuid, group_name, 'r'])
-    check_contains(group_wuuid, run_command([cl, 'wls', '.shared']))
-    check_equals(group_wuuid, run_command([cl, 'wls', 'group={}'.format(group_uuid)]))
-    check_equals(group_wuuid, run_command([cl, 'wls', 'group={}'.format(group_name)]))
+    check_contains(group_wuuid[:8], run_command([cl, 'wls', '.shared']))
+    check_contains(group_wuuid[:8], run_command([cl, 'wls', 'group={}'.format(group_uuid)]))
+    check_contains(group_wuuid[:8], run_command([cl, 'wls', 'group={}'.format(group_name)]))
 
 
 @TestModule.register('worksheet_tags')
@@ -886,9 +886,9 @@ def test(ctx):
     # Make bundle unavailable to public but available to the group
     run_command([cl, 'perm', group_buuid, 'public', 'n'])
     run_command([cl, 'perm', group_buuid, group_name, 'r'])
-    check_contains(group_buuid, run_command([cl, 'search', '.shared']))
-    check_equals(group_buuid, run_command([cl, 'search', 'group={}'.format(group_uuid)]))
-    check_equals(group_buuid, run_command([cl, 'search', 'group={}'.format(group_name)]))
+    check_contains(group_buuid[:8], run_command([cl, 'search', '.shared']))
+    check_contains(group_buuid[:8], run_command([cl, 'search', 'group={}'.format(group_uuid)]))
+    check_contains(group_buuid[:8], run_command([cl, 'search', 'group={}'.format(group_name)]))
 
 
 @TestModule.register('run')
