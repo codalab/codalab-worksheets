@@ -272,8 +272,10 @@ class BundleModel(object):
         - .offset=<int>: return bundles starting at this offset
         - .limit=<int>: maximum number of bundles to return
         - .count: just return the number of bundles
+        - .shared: shared with me through a group
         - .mine: sugar for owner_id=user_id
         - .last: sugar for id=sort-
+        - .group: return bundles shared with this group
         Keys are one of the following:
         - Bundle fields (e.g., uuid)
         - Metadata fields (e.g., time)
@@ -336,6 +338,8 @@ class BundleModel(object):
             # Sugar
             if keyword == '.mine':
                 keyword = 'owner_id=' + (user_id or '')
+            elif keyword == '.shared':
+                keyword = '.shared=True'
             elif keyword == '.last':
                 keyword = 'id=.sort-'
             elif keyword == '.count':
@@ -381,6 +385,21 @@ class BundleModel(object):
                 clause = make_condition(key, cl_bundle.c.command, value)
             elif key == 'owner_id':
                 clause = make_condition(key, cl_bundle.c.owner_id, value)
+            elif key == '.shared':  # shared with any group I am in with read permission
+                clause = cl_bundle.c.uuid.in_(select([cl_group_bundle_permission.c.object_uuid]).where(
+                    and_(
+                        cl_group_bundle_permission.c.group_uuid.in_(
+                            alias(select([cl_user_group.c.group_uuid]).where(cl_user_group.c.user_id == user_id))),
+                        cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ
+                    )
+                ))
+            elif key == 'group':  # shared with group with read permission
+                group_uuid = get_group_info(value, False)['uuid']
+                clause = cl_bundle.c.uuid.in_(
+                    select([cl_group_bundle_permission.c.object_uuid])
+                    .where(and_(
+                           cl_group_bundle_permission.c.group_uuid == group_uuid,
+                           cl_group_bundle_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ)))
             # Special fields
             elif key == 'dependency':
                 # Match uuid of dependency
