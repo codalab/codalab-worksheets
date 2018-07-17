@@ -12,7 +12,8 @@ from codalabworker.formatting import size_str
 from codalabworker.fsm import (
     BaseDependencyManager,
     DependencyStage,
-    StateTransitioner
+    StateTransitioner,
+    JsonStateCommitter
 )
 import codalabworker.pyjson
 from codalabworker.worker_thread import ThreadDict
@@ -42,7 +43,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     """
     DEPENDENCIES_DIR_NAME = 'dependencies'
 
-    def __init__(self, state_committer, bundle_service,
+    def __init__(self, commit_file, bundle_service,
                  worker_dir, max_cache_size_bytes, max_serialized_length):
 
         super(LocalFileSystemDependencyManager, self).__init__()
@@ -50,7 +51,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self.add_terminal(DependencyStage.READY)
         self.add_terminal(DependencyStage.FAILED)
 
-        self._state_committer = state_committer
+        self._state_committer = JsonStateCommitter(commit_file)
         self._bundle_service = bundle_service
         self._max_cache_size_bytes = max_cache_size_bytes
         self._max_serialized_length = max_serialized_length or float('inf')
@@ -73,12 +74,16 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def _save_state(self):
         with self._lock:
-            self._state_committer.commit(self._dependencies)
+            self._state_committer.commit({
+                'dependencies': self._dependencies,
+                'paths': self._paths})
 
     def _load_state(self):
         with self._lock:
-            self._dependencies = self._state_committer.load()
-            logger.info('{} dependencies in cache.'.format(len(self._dependencies)))
+            state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
+            self._dependencies = state['dependencies']
+            self._paths = state['paths']
+            logger.info('{} dependencies, {} paths in cache.'.format(len(self._dependencies), len(self._paths)))
 
     def start(self):
         def loop(self):
@@ -212,7 +217,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 with open(dependency_path, 'wb') as f:
                     logger.debug('copying file to %s', dependency_path)
                     shutil.copyfileobj(fileobj, f)
-        except:
+        except Exception:
             raise
 
     @property
