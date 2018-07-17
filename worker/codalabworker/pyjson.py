@@ -63,7 +63,8 @@ class PyJSONDecoder(json.JSONDecoder):
         """
         Should do the opposite of what encode_key does
         """
-        if key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
+        if isinstance(key, basestring) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
+            __import__('pdb').set_trace()
             key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR):]
             return tuple(key_str.split(PyJSONEncoder.TUPLE_ELEM_STR))
         return key
