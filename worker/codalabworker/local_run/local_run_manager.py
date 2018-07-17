@@ -6,6 +6,7 @@ import time
 import socket
 
 from codalabworker.worker_thread import ThreadDict
+from codalabworker.fsm import JsonStateCommitter
 from codalabworker.run_manager import BaseRunManager
 from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from local_reader import LocalReader
@@ -22,9 +23,9 @@ class LocalRunManager(BaseRunManager):
     NETCAT_BUFFER_SIZE = 4096
 
     def __init__(self, worker, docker, image_manager, dependency_manager,
-                 state_committer, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
+                 commit_file, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
-        self._state_committer = state_committer
+        self._state_committer = JsonStateCommitter(commit_file, state_schema=LocalRunManagerSchema)
         self._run_state_manager = LocalRunStateMachine(self)
         self._reader = LocalReader()
         self._docker_network_prefix = docker_network_prefix

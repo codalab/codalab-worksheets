@@ -21,7 +21,6 @@ from worker import Worker
 from local_run.local_dependency_manager import LocalFileSystemDependencyManager
 from local_run.docker_image_manager import DockerImageManager
 from local_run.local_run_manager import LocalRunManager
-from fsm import JsonStateCommitter
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +112,6 @@ chmod 600 %s""" % args.password_file
     bundle_service = BundleServiceClient(args.server, username, password)
     if not os.path.exists(args.work_dir):
         os.makedirs(args.work_dir, 0770)
-    worker_state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'worker-state.json'))
 
     def create_local_run_manager(worker):
         """
@@ -125,7 +123,7 @@ chmod 600 %s""" % args.password_file
         gpuset = parse_gpuset_args(docker_client, args.gpuset)
 
         dependency_manager = LocalFileSystemDependencyManager(
-            JsonStateCommitter(os.path.join(args.work_dir, 'dependencies-state.json')),
+            os.path.join(args.work_dir, 'dependencies-state.json'),
             bundle_service,
             args.work_dir,
             max_work_dir_size_bytes,
@@ -133,21 +131,20 @@ chmod 600 %s""" % args.password_file
 
         image_manager = DockerImageManager(
             docker_client,
-            JsonStateCommitter(os.path.join(args.work_dir, 'images-state.json')),
+            os.path.join(args.work_dir, 'images-state.json'),
             max_images_bytes)
 
-        run_manager_state_committer = JsonStateCommitter(os.path.join(args.work_dir, 'run-state.json'))
         return LocalRunManager(worker,
                                docker_client,
                                image_manager,
                                dependency_manager,
-                               run_manager_state_committer,
+                               os.path.join(args.work_dir, 'run-state.json'),
                                cpuset,
                                gpuset,
                                args.network_prefix)
 
     worker = Worker(create_local_run_manager,
-                    worker_state_committer,
+                    os.path.join(args.work_dir, 'worker-state.json'),
                     args.id,
                     args.tag,
                     args.work_dir,

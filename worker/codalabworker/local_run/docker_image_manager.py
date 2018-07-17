@@ -9,7 +9,8 @@ from codalabworker.docker_client import DockerException
 from codalabworker.fsm import (
     BaseDependencyManager,
     DependencyStage,
-    StateTransitioner
+    StateTransitioner,
+    JsonStateCommitter
 )
 from codalabworker.worker_thread import ThreadDict
 
@@ -20,13 +21,13 @@ DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used
 
 class DockerImageManager(StateTransitioner, BaseDependencyManager):
 
-    def __init__(self, docker, state_committer, max_images_bytes, max_age_failed_seconds=60):
+    def __init__(self, docker, commit_file, max_images_bytes, max_age_failed_seconds=60):
         super(DockerImageManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
         self.add_terminal(DependencyStage.READY)
         self.add_terminal(DependencyStage.FAILED)
 
-        self._state_committer = state_committer
+        self._state_committer = JsonStateCommitter(commit_file, state_schema=DockerImageManagerSchema)
         self._docker = docker
         self._images = {}  # digest -> DockerImageState
         # digest -> {'thread': Thread, 'success': bool}
