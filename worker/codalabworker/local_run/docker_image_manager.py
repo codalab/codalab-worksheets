@@ -27,7 +27,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         self.add_terminal(DependencyStage.READY)
         self.add_terminal(DependencyStage.FAILED)
 
-        self._state_committer = JsonStateCommitter(commit_file, state_schema=DockerImageManagerSchema)
+        self._state_committer = JsonStateCommitter(commit_file)
         self._docker = docker
         self._images = {}  # digest -> DockerImageState
         # digest -> {'thread': Thread, 'success': bool}
