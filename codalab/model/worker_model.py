@@ -42,6 +42,7 @@ class WorkerModel(object):
         Adds the worker to the database, if not yet there. Returns the socket ID
         that the worker should listen for messages on.
         """
+        print('worker checkin')
         with self._engine.begin() as conn:
             worker_row = {
                 'tag': tag,

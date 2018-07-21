@@ -16,7 +16,7 @@ from codalabworker.file_util import remove_path
 
 logger = logging.getLogger(__name__)
 
-WORKER_TIMEOUT_SECONDS = 30
+WORKER_TIMEOUT_SECONDS = 60
 
 
 class BundleManager(object):
