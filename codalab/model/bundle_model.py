@@ -656,10 +656,10 @@ class BundleModel(object):
         """
         # Before set offline txn begins
         with self.engine.begin() as connection:
-            # Check that it still exists.
-            row = retrying_execute(connection, cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            # Check that it still exists and is running
+            row = retrying_execute(connection, cl_bundle.select().where(cl_bundle.c.id == bundle.id and cl_bundle.c.state == State.RUNNING)).fetchone()
             if not row:
-                # The user deleted the bundle.
+                # The user deleted the bundle or the bundle finished
                 return False
 
             # Delete row in worker_run
