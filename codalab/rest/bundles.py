@@ -583,7 +583,7 @@ def _update_bundle_contents_blob(uuid):
       state should not change on failure. Default is 0.
     - `state_on_success`: (optional) Update the bundle state to this state if
       the upload completes successfully. Must be either 'ready' or 'failed'.
-      Default is None which means the state is not updated.
+      Default is 'ready'.
     """
     check_bundles_have_all_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
@@ -592,9 +592,8 @@ def _update_bundle_contents_blob(uuid):
 
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
-    final_state = request.query.get('state_on_success', default=None)
-    should_update_state = final_state is not None
-    if should_update_state and final_state not in State.FINAL_STATES:
+    final_state = request.query.get('state_on_success', default=State.READY)
+    if final_state not in State.FINAL_STATES:
         abort(httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES))
 
     # If this bundle already has data, remove it.
@@ -640,9 +639,8 @@ def _update_bundle_contents_blob(uuid):
         abort(httplib.INTERNAL_SERVER_ERROR, msg)
 
     else:
-        if should_update_state:
-            # Upload succeeded: update state
-            local.model.update_bundle(bundle, {'state': final_state})
+        # Upload succeeded: update state
+        local.model.update_bundle(bundle, {'state': final_state})
 
 
 #############################################################
