@@ -654,7 +654,6 @@ class BundleModel(object):
         Sets the bundle to WORKER_OFFLINE, updating the last_updated metadata.
         Remove the corresponding row from worker_run if it exists.
         """
-        # Before set offline txn begins
         with self.engine.begin() as connection:
             # Check that it still exists and is running
             row = retrying_execute(connection, cl_bundle.select().where(cl_bundle.c.id == bundle.id and cl_bundle.c.state == State.RUNNING)).fetchone()
@@ -674,7 +673,6 @@ class BundleModel(object):
                 },
             }
             self.update_bundle(bundle, bundle_update, connection)
-        # Right after set offline txn ends
         return True
 
     def restage_bundle(self, bundle):
@@ -806,7 +804,6 @@ class BundleModel(object):
         if exitcode is not None:
             metadata['exitcode'] = exitcode
 
-        # Before finalize transaction begins
         with self.engine.begin() as connection:
             bundle_update = {
                 'state': state,
@@ -816,7 +813,6 @@ class BundleModel(object):
             retrying_execute(
                 connection,
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
-        # Right after finalize transaction ends
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id,
