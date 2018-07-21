@@ -654,7 +654,6 @@ class BundleModel(object):
         Sets the bundle to WORKER_OFFLINE, updating the last_updated metadata.
         Remove the corresponding row from worker_run if it exists.
         """
-        __import__('pdb').set_trace()
         # Before set offline txn begins
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -675,7 +674,6 @@ class BundleModel(object):
                 },
             }
             self.update_bundle(bundle, bundle_update, connection)
-        __import__('pdb').set_trace()
         # Right after set offline txn ends
         return True
 
@@ -808,7 +806,6 @@ class BundleModel(object):
         if exitcode is not None:
             metadata['exitcode'] = exitcode
 
-        __import__('pdb').set_trace()
         # Before finalize transaction begins
         with self.engine.begin() as connection:
             bundle_update = {
@@ -819,7 +816,6 @@ class BundleModel(object):
             retrying_execute(
                 connection,
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
-        __import__('pdb').set_trace()
         # Right after finalize transaction ends
 
         if user_id == self.root_user_id:
