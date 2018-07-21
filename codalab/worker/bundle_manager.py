@@ -19,7 +19,6 @@ logger = logging.getLogger(__name__)
 WORKER_TIMEOUT_SECONDS = 60
 
 
-
 class BundleManager(object):
     """
     Assigns run bundles to workers and makes make bundles.
