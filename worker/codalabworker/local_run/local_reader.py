@@ -4,8 +4,8 @@ import os
 import threading
 
 from codalabworker.run_manager import Reader
+import codalabworker.download_util as download_util
 from codalabworker.download_util import (
-    get_target_info,
     get_target_path,
     PathException
 )
@@ -44,10 +44,11 @@ class LocalReader(Reader):
         target_info = None
         if not path or os.path.normpath(path) not in dep_paths:
             try:
-                target_info = get_target_info(run_state.bundle_path, bundle_uuid, path, args['depth'])
+                target_info = download_util.get_target_info(run_state.bundle_path, bundle_uuid, path, args['depth'])
             except PathException as e:
                 err = (httplib.NOT_FOUND, e.message)
                 reply_fn(err, None, None)
+                return
 
             if target_info is not None and not path and args['depth'] > 0:
                 target_info['contents'] = [

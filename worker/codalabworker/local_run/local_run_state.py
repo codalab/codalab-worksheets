@@ -257,7 +257,7 @@ class LocalRunStateMachine(StateTransitioner):
     def _transition_from_UPLOADING_RESULTS(self, run_state):
         """
         If bundle not already uploading:
-            Use the RunManager API to upload contents at bundle_path to the server and then delete the bundle_path
+            Use the RunManager API to upload contents at bundle_path to the server
             Pass the callback to that API such that if the bundle is killed during the upload,
             the callback returns false, allowing killable uploads.
         If uploading and not finished:
@@ -280,8 +280,6 @@ class LocalRunStateMachine(StateTransitioner):
                 self._run_manager.upload_bundle_contents(bundle_uuid, run_state.bundle_path, progress_callback)
             except Exception:
                 traceback.print_exc()
-            finally:
-                remove_path(run_state.bundle_path)
 
         bundle_uuid = run_state.bundle['uuid']
         self._run_manager.uploading.add_if_new(bundle_uuid, threading.Thread(target=upload_results, args=[]))
@@ -295,6 +293,7 @@ class LocalRunStateMachine(StateTransitioner):
     def _transition_from_FINALIZING(self, run_state):
         """
         Use the RunManager API to make a finalize call to the server
+        Remove the local files after finalizing is done
         """
         def finalize():
             try:
@@ -310,6 +309,8 @@ class LocalRunStateMachine(StateTransitioner):
                 self._run_manager.finalize_bundle(bundle_uuid, finalize_message)
             except Exception:
                 traceback.print_exc()
+            finally:
+                remove_path(run_state.bundle_path)
 
         bundle_uuid = run_state.bundle['uuid']
         self._run_manager.finalizing.add_if_new(bundle_uuid, threading.Thread(target=finalize, args=[]))
