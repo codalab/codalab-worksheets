@@ -58,7 +58,7 @@ class LocalReader(Reader):
 
     def stream_directory(self, run_state, path, dep_paths, args, reply_fn):
         """
-        Stream teh directory at path using a separate thread
+        Stream the directory at path using a separate thread
         """
         exclude_names = [] if path else dep_paths
 
