@@ -32,7 +32,7 @@ class LocalReader(Reader):
         try:
             final_path = get_target_path(run_state.bundle_path, run_state.bundle['uuid'], path)
         except PathException as e:
-            reply_fn((httplib.BAD_REQUEST, e.message), None, None)
+            reply_fn((httplib.NOT_FOUND, e.message), None, None)
         threading.Thread(target=stream_fn, args=[final_path]).start()
 
     def get_target_info(self, run_state, path, dep_paths, args, reply_fn):
@@ -41,14 +41,12 @@ class LocalReader(Reader):
         """
         bundle_uuid = run_state.bundle['uuid']
         # At the top-level directory, we should ignore dependencies.
-        if path and os.path.normpath(path) in dep_paths:
-            target_info = None
-        else:
+        target_info = None
+        if not path or os.path.normpath(path) not in dep_paths:
             try:
-                target_info = get_target_info(
-                    run_state.bundle_path, bundle_uuid, path, args['depth'])
+                target_info = get_target_info(run_state.bundle_path, bundle_uuid, path, args['depth'])
             except PathException as e:
-                err = (httplib.BAD_REQUEST, e.message)
+                err = (httplib.NOT_FOUND, e.message)
                 reply_fn(err, None, None)
 
             if target_info is not None and not path and args['depth'] > 0:
