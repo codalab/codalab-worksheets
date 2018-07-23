@@ -1793,16 +1793,19 @@ class BundleCLI(object):
 
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
-        self.print_target_info(client, bundle_uuid, subpath, head=args.head, tail=args.tail)
+        info = self.print_target_info(client, bundle_uuid, subpath, head=args.head, tail=args.tail)
+        if info is None:
+            raise UsageError('Target {} doesn\'t exist in bundle {}'.format(subpath, bundle_uuid))
 
     # Helper: shared between info and cat
     def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
-        info = client.fetch_contents_info(bundle_uuid, subpath, 1)
-        info_type = info.get('type')
-
-        if info_type is None:
+        try:
+            info = client.fetch_contents_info(bundle_uuid, subpath, 1)
+        except NotFoundError:
             print >>self.stdout, formatting.verbose_contents_str(None)
+            return None
 
+        info_type = info.get('type')
         if info_type == 'file':
             kwargs = {}
             if head is not None:
@@ -1892,21 +1895,21 @@ class BundleCLI(object):
 
         SLEEP_PERIOD = 1.0
 
-        # Wait for all files to become ready
+        # Wait for all files to become ready (or until run finishes)
+        run_state = client.fetch('bundles', bundle_uuid)['state']
         for subpath in subpaths:
-            while True:
+            while run_state not in State.FINAL_STATES:
+                run_state = client.fetch('bundles', bundle_uuid)['state']
                 try:
                     client.fetch_contents_info(bundle_uuid, subpath, 0)
-                    break
                 except NotFoundError:
                     time.sleep(SLEEP_PERIOD)
+                    continue
+                break
 
-        info = None
-        run_finished = False
         while True:
-            if not run_finished:
-                info = client.fetch('bundles', bundle_uuid)
-                run_finished = info['state'] in State.FINAL_STATES
+            if not run_state in State.FINAL_STATES:
+                run_state = client.fetch('bundles', bundle_uuid)['state']
 
             # Read data.
             for i in xrange(0, len(subpaths)):
@@ -1944,13 +1947,13 @@ class BundleCLI(object):
             self.stdout.flush()
 
             # The run finished and we read all the data.
-            if run_finished:
+            if run_state in State.FINAL_STATES:
                 break
 
             # Sleep, since we've finished reading all the data available.
             time.sleep(SLEEP_PERIOD)
 
-        return info['state']
+        return run_state
 
     @Commands.command(
         'mimic',
