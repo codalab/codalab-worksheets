@@ -117,7 +117,7 @@ class Reader(object):
         elif read_type == 'stream_directory':
             self.stream_directory(run_state, path, dep_paths, read_args, reply)
         elif read_type == 'stream_file':
-            self.stream_directory(run_state, path, dep_paths, read_args, reply)
+            self.stream_file(run_state, path, dep_paths, read_args, reply)
         elif read_type == 'read_file_section':
             self.read_file_section(run_state, path, dep_paths, read_args, reply)
         elif read_type == 'summarize_file':
