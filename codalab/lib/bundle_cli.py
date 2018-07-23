@@ -1793,7 +1793,9 @@ class BundleCLI(object):
 
         default_client, default_worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(default_client, default_worksheet_uuid, args.target_spec)
-        self.print_target_info(client, bundle_uuid, subpath, head=args.head, tail=args.tail)
+        info = self.print_target_info(client, bundle_uuid, subpath, head=args.head, tail=args.tail)
+        if info is None:
+            raise UsageError('Target {} doesn\'t exist in bundle {}'.format(subpath, bundle_uuid))
 
     # Helper: shared between info and cat
     def print_target_info(self, client, bundle_uuid, subpath, head=None, tail=None):
