@@ -1893,22 +1893,21 @@ class BundleCLI(object):
 
         SLEEP_PERIOD = 1.0
 
-        # Wait for all files to become ready
+        # Wait for all files to become ready (or until run finishes)
+        run_state = client.fetch('bundles', bundle_uuid)['state']
         for subpath in subpaths:
-            while True:
+            while run_state not in State.FINAL_STATES:
+                run_state = client.fetch('bundles', bundle_uuid)['state']
                 try:
                     client.fetch_contents_info(bundle_uuid, subpath, 0)
-                    break
                 except NotFoundError:
-                    # TODO: Now NotFoundError might also mean the bundle doesn't exist
                     time.sleep(SLEEP_PERIOD)
+                    continue
+                break
 
-        info = None
-        run_finished = False
         while True:
-            if not run_finished:
-                info = client.fetch('bundles', bundle_uuid)
-                run_finished = info['state'] in State.FINAL_STATES
+            if not run_state in State.FINAL_STATES:
+                run_state = client.fetch('bundles', bundle_uuid)['state']
 
             # Read data.
             for i in xrange(0, len(subpaths)):
@@ -1946,13 +1945,13 @@ class BundleCLI(object):
             self.stdout.flush()
 
             # The run finished and we read all the data.
-            if run_finished:
+            if run_state in State.FINAL_STATES:
                 break
 
             # Sleep, since we've finished reading all the data available.
             time.sleep(SLEEP_PERIOD)
 
-        return info['state']
+        return run_state
 
     @Commands.command(
         'mimic',
