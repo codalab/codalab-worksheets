@@ -150,7 +150,7 @@ class Worker(object):
                 'error_code': err[0],
                 'error_message': err[1],
             }
-            self._bundle_service.reply(err)
+            self._bundle_service.reply(self.id, socket_id, err)
         elif data:
             self._bundle_service.reply_data(self.id, socket_id, message, data)
         else:
