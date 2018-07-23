@@ -273,9 +273,7 @@ class LocalRunStateMachine(StateTransitioner):
 
                 def progress_callback(bytes_uploaded):
                     run_status = 'Uploading results: %s done (archived size)' % size_str(bytes_uploaded)
-                    with self._run_manager.lock:
-                        self._run_manager.uploading[bundle_uuid]['run_status'] = run_status
-                        return not self._run_manager.runs[bundle_uuid].is_killed
+                    return True
 
                 self._run_manager.upload_bundle_contents(bundle_uuid, run_state.bundle_path, progress_callback)
             except Exception:
@@ -297,7 +295,6 @@ class LocalRunStateMachine(StateTransitioner):
         """
         def finalize():
             try:
-                logger.debug('Finalizing run with UUID %s', bundle_uuid)
                 failure_message = run_state.info.get('failure_message', None)
                 exitcode = run_state.info.get('exitcode', None)
                 if failure_message is None and run_state.is_killed:
@@ -306,6 +303,7 @@ class LocalRunStateMachine(StateTransitioner):
                     'exitcode': exitcode,
                     'failure_message': failure_message,
                 }
+                logger.debug('Finalizing run with UUID %s: %s', bundle_uuid, finalize_message)
                 self._run_manager.finalize_bundle(bundle_uuid, finalize_message)
             except Exception:
                 traceback.print_exc()

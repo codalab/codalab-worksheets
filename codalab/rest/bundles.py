@@ -592,8 +592,8 @@ def _update_bundle_contents_blob(uuid):
 
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
-    final_state = request.query.get('state_on_success', default=State.READY)
-    if final_state not in State.FINAL_STATES:
+    final_state = request.query.get('state_on_success', default=None)
+    if final_state is not None and final_state not in State.FINAL_STATES:
         abort(httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES))
 
     # If this bundle already has data, remove it.
@@ -639,8 +639,9 @@ def _update_bundle_contents_blob(uuid):
         abort(httplib.INTERNAL_SERVER_ERROR, msg)
 
     else:
-        # Upload succeeded: update state
-        local.model.update_bundle(bundle, {'state': final_state})
+        if final_state is not None:
+            # Upload succeeded: update state
+            local.model.update_bundle(bundle, {'state': final_state})
 
 
 #############################################################

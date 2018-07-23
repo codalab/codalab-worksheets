@@ -21,14 +21,19 @@ class LocalRunManager(BaseRunManager):
     Docker network.
     """
     NETCAT_BUFFER_SIZE = 4096
+    BUNDLES_DIR_NAME = 'runs'
 
     def __init__(self, worker, docker, image_manager, dependency_manager,
-                 commit_file, cpuset, gpuset, docker_network_prefix='codalab_worker_network'):
+                 commit_file, cpuset, gpuset, work_dir, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
         self._state_committer = JsonStateCommitter(commit_file)
         self._run_state_manager = LocalRunStateMachine(self)
         self._reader = LocalReader()
         self._docker_network_prefix = docker_network_prefix
+        self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
+        if not os.path.exists(self._bundles_dir):
+            logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
+            os.makedirs(self._bundles_dir, 0770)
 
         # These members are public as the run state manager needs access to them
         self.docker = docker
@@ -104,7 +109,7 @@ class LocalRunManager(BaseRunManager):
         resources
         """
         bundle_uuid = bundle['uuid']
-        bundle_path = self.dependency_manager.get_run_path(bundle_uuid)
+        bundle_path = os.path.join(self._bundles_dir, bundle_uuid)
         now = time.time()
         run_state = LocalRunState(stage=LocalRunStage.PREPARING,
                                   run_status='',

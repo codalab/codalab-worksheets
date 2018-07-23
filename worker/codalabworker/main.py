@@ -141,6 +141,7 @@ chmod 600 %s""" % args.password_file
                                os.path.join(args.work_dir, 'run-state.json'),
                                cpuset,
                                gpuset,
+                               args.work_dir,
                                args.network_prefix)
 
     worker = Worker(create_local_run_manager,

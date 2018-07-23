@@ -228,9 +228,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         with self._lock:
             return list(self._dependencies.keys())
 
-    def get_run_path(self, uuid):
-        return os.path.join(self.dependencies_dir, uuid)
-
     def _transition_from_DOWNLOADING(self, dependency_state):
         def download():
             def update_state_and_check_killed(bytes_downloaded):

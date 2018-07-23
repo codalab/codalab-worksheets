@@ -146,7 +146,12 @@ def wait_for_contents(uuid, substring, timeout_seconds=100):
     while True:
         if time.time() - start_time > 100:
             raise AssertionError('timeout while waiting for %s to run' % uuid)
-        if substring in run_command([cl, 'cat', uuid]):
+        try:
+            out = run_command([cl, 'cat', uuid])
+        except AssertionError:
+            time.sleep(0.5)
+            continue
+        if substring in out:
             return True
         time.sleep(0.5)
 
