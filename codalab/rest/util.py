@@ -154,8 +154,8 @@ def check_target_has_read_permission(target):
 
 def get_target_info(target, depth):
     """
-    Returns information about an individual target inside the bundle, or
-    None if the target doesn't exist.
+    Returns information about an individual target inside the bundle
+    Raises NotFoundError if target bundle or path don't exist
     """
     check_target_has_read_permission(target)
     return local.download_manager.get_target_info(target[0], target[1], depth)

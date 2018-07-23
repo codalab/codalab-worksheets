@@ -403,7 +403,7 @@ class Run(object):
                         target_info = get_target_info(
                             self._bundle_path, self._uuid, path, read_args['depth'])
                     except PathException as e:
-                        reply_error(httplib.BAD_REQUEST, e.message)
+                        reply_error(httplib.NOT_FOUND, e.message)
                         return
 
                     if not path and read_args['depth'] > 0:
@@ -417,7 +417,7 @@ class Run(object):
                 try:
                     final_path = get_target_path(self._bundle_path, self._uuid, path)
                 except PathException as e:
-                    reply_error(httplib.BAD_REQUEST, e.message)
+                    reply_error(httplib.NOT_FOUND, e.message)
                     return
 
                 if read_type == 'stream_directory':

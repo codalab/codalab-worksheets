@@ -6,13 +6,26 @@ import sys
 import time
 from itertools import izip
 
-from bottle import abort, get, post, put, delete, local, request, response
-
+from bottle import (
+    abort,
+    get,
+    post,
+    put,
+    delete,
+    local,
+    request,
+    response
+)
 from codalab.bundles import (
     get_bundle_subclass,
     UploadedBundle,
 )
-from codalab.common import precondition, State, UsageError
+from codalab.common import (
+    precondition,
+    State,
+    UsageError,
+    NotFoundError
+)
 from codalab.lib import (
     canonicalize,
     spec_util,
@@ -229,10 +242,10 @@ def _create_bundles():
         created_uuids.append(bundle_uuid)
         bundle_class = get_bundle_subclass(bundle['bundle_type'])
         bundle['owner_id'] = request.user.user_id
-        bundle['state'] = (State.UPLOADING
-                           if issubclass(bundle_class, UploadedBundle)
-                           or query_get_bool('wait_for_upload', False)
-                           else State.CREATED)
+        if issubclass(bundle_class, UploadedBundle) or query_get_bool('wait_for_upload', False):
+            bundle['state'] = State.UPLOADING
+        else:
+            bundle['state'] = State.CREATED
         bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
         bundle.setdefault('metadata', {})['created'] = int(time.time())
         for dep in bundle.setdefault('dependencies', []):
@@ -378,13 +391,17 @@ def _fetch_bundle_contents_info(uuid, path=''):
         abort(httplib.BAD_REQUEST, "Depth must be at least 0")
 
     check_bundles_have_read_permission(local.model, request.user, [uuid])
-    info = local.download_manager.get_target_info(uuid, path, depth)
-    if info is None:
-        abort(httplib.NOT_FOUND, 'Bundle not found')
+    try:
+        info = local.download_manager.get_target_info(uuid, path, depth)
+    except NotFoundError as e:
+        abort(httplib.NOT_FOUND, e.message)
+    except Exception as e:
+        abort(httplib.BAD_REQUEST, e.message)
 
     return {
         'data': info
     }
+
 
 @put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
 def _netcat_bundle(uuid, port):
@@ -398,6 +415,7 @@ def _netcat_bundle(uuid, port):
         abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle already finalized.')
     info = local.download_manager.netcat(uuid, port, request.json['message'])
     return {'data': info}
+
 
 @post('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
 @put('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
@@ -415,7 +433,7 @@ def _netcurl_bundle(uuid, port, path=''):
         abort(httplib.FORBIDDEN, 'Cannot netcurl bundle, bundle already finalized.')
 
     try:
-        request.path_shift(4) # shift away the routing parts of the URL
+        request.path_shift(4)  # shift away the routing parts of the URL
 
         headers_string = ['{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()]
         message = "{} {} HTTP/1.1\r\n".format(request.method, request.path)
@@ -424,13 +442,14 @@ def _netcurl_bundle(uuid, port, path=''):
         message += request.body.read()
 
         info = local.download_manager.netcat(uuid, port, message)
-    except:
+    except Exception:
         print >>sys.stderr, "{}".format(request.environ)
         raise
     finally:
-        request.path_shift(-4) # restore the URL
+        request.path_shift(-4)  # restore the URL
 
     return info
+
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
 @get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
@@ -478,9 +497,12 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
 
-    target_info = local.download_manager.get_target_info(uuid, path, 0)
-    if target_info is None:
-        abort(httplib.NOT_FOUND, 'Invalid path "%s" in bundle with UUID (%s)' % (path, uuid))
+    try:
+        target_info = local.download_manager.get_target_info(uuid, path, 0)
+    except NotFoundError as e:
+        abort(httplib.NOT_FOUND, e.message)
+    except Exception as e:
+        abort(httplib.BAD_REQUEST, e.message)
 
     # Figure out the file name.
     if not path and bundle.metadata.name:
@@ -589,7 +611,7 @@ def _update_bundle_contents_blob(uuid):
             exclude_patterns=None, remove_sources=False,
             git=query_get_bool('git', default=False),
             unpack=query_get_bool('unpack', default=True),
-            simplify_archives=query_get_bool('simplify', default=True)) # See UploadManager for full explanation of 'simplify'
+            simplify_archives=query_get_bool('simplify', default=True))  # See UploadManager for full explanation of 'simplify'
 
         local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
