@@ -882,6 +882,7 @@ def test(ctx):
     # Check search by group
     group_bname = random_name()
     group_buuid = run_command([cl, 'run', 'echo hello', '-n', group_bname])
+    wait(group_buuid)
     ctx.collect_bundle(group_buuid)
     user_id, user_name = current_user()
     # Create new group
