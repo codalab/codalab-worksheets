@@ -172,7 +172,6 @@ def finalize_bundle(worker_id, uuid):
 
         local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
-    print 'Finalized bundle %s' % uuid
     local.model.finalize_bundle(bundle, request.user.user_id,
                                 request.json['exitcode'],
                                 request.json['failure_message'])

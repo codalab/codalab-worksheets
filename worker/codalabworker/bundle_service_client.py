@@ -129,12 +129,6 @@ class BundleServiceClient(RestClient):
             'POST', self._worker_url_prefix(worker_id) + '/start_bundle/' + uuid,
             data=request_data)
 
-    @wrap_exception('Unable to update bundle metadata in bundle service')
-    def update_bundle_metadata(self, worker_id, uuid, new_metadata):
-        self._make_request(
-            'PUT', self._worker_url_prefix(worker_id) + '/update_bundle_metadata/' + uuid,
-            data=new_metadata)
-
     @wrap_exception('Unable to update bundle contents in bundle service')
     def update_bundle_contents(self, worker_id, uuid, path, progress_callback):
         with closing(tar_gzip_directory(path)) as fileobj:
