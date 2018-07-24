@@ -6,8 +6,8 @@ import time
 import traceback
 
 from codalabworker.docker_client import DockerException
-from codalabworker.file_util import remove_path
-from codalabworker.formatting import size_str
+from codalabworker.file_util import remove_path, get_path_size
+from codalabworker.formatting import size_str, duration_str
 from codalabworker.fsm import (
     DependencyStage,
     StateTransitioner
@@ -58,9 +58,22 @@ class LocalRunStage(object):
 
 LocalRunState = namedtuple(
     'RunState',
-    ['stage', 'run_status', 'bundle', 'bundle_path', 'resources', 'start_time',
-     'container_id', 'docker_image', 'is_killed', 'has_contents', 'cpuset',
-     'gpuset', 'info'])
+    ['stage',
+     'run_status',
+     'bundle',
+     'bundle_path',
+     'resources',
+     'start_time',
+     'container_id',
+     'docker_image',
+     'is_killed',
+     'has_contents',
+     'cpuset',
+     'gpuset',
+     'time_used',
+     'max_memory',
+     'disk_utilization',
+     'info'])
 
 
 class LocalRunStateMachine(StateTransitioner):
@@ -178,6 +191,7 @@ class LocalRunStateMachine(StateTransitioner):
         digest = self._run_manager.docker.get_image_repo_digest(run_state.resources['docker_image'])
 
         return run_state._replace(stage=LocalRunStage.RUNNING,
+                                  start_time=time.time(),
                                   run_status='Running job in Docker container',
                                   container_id=container_id,
                                   docker_image=digest,
@@ -191,19 +205,64 @@ class LocalRunStateMachine(StateTransitioner):
         2- If run is killed, kill the container
         3- If run is finished, move to CLEANING_UP state
         """
+        bundle_uuid = run_state.bundle['uuid']
+
         def check_and_report_finished(run_state):
             try:
                 finished, exitcode, failure_msg = self._run_manager.docker.check_finished(run_state.container_id)
             except DockerException:
                 traceback.print_exc()
                 finished, exitcode, failure_msg = False, None, None
-            return dict(finished=finished, exitcode=exitcode, failure_message=failure_msg)
+            new_info = dict(finished=finished, exitcode=exitcode, failure_message=failure_msg)
+            run_state.info.update(new_info)
+            run_state = run_state._replace(info=run_state.info)
+            return run_state
 
-        bundle_uuid = run_state.bundle['uuid']
+        def check_resource_utilization(run_state):
+            kill_messages = []
 
-        new_info = check_and_report_finished(run_state)
-        run_state.info.update(new_info)
-        run_state = run_state._replace(info=run_state.info)
+            run_stats = self._run_manager.docker.get_container_stats(run_state.container_id)
+            time_used = time.time() - run_state.start_time
+
+            run_state = run_state._replace(time_used=time_used)
+            run_state = run_state._replace(max_memory=max(run_state.max_memory, run_stats.get('memory', 0)))
+            run_state = run_state._replace(disk_utilization=self._run_manager.disk_utilization[bundle_uuid]['disk_utilization'])
+
+            if (run_state.resources['request_time'] and run_state.time_used > run_state.resources['request_time']):
+                logger.debug("Used time {}, requested time: {}".format(run_state.time_used, run_state.resources.get('request_time', 'inf')))
+                kill_messages.append('Time limit %s exceeded.' % duration_str(run_state.resources['request_time']))
+
+            if run_state.max_memory > run_state.resources['request_memory']:
+                kill_messages.append('Memory limit %s exceeded.' % duration_str(run_state.resources['request_memory']))
+
+            if (run_state.resources['request_disk'] and run_state.disk_utilization > run_state.resources['request_disk']):
+                kill_messages.append('Disk limit %sb exceeded.' % size_str(run_state.resources['request_disk']))
+
+            if kill_messages:
+                new_info = run_state.info
+                new_info['kill_message'] = ' '.join(kill_messages)
+                run_state = run_state._replace(info=new_info, is_killed=True)
+
+            return run_state
+
+        def check_disk_utilization():
+            while self._run_manager.disk_utilization[bundle_uuid]['running']:
+                start_time = time.time()
+                try:
+                    disk_utilization = get_path_size(run_state.bundle_path)
+                    self._run_manager.disk_utilization[bundle_uuid]['disk_utilization'] = disk_utilization
+                except Exception:
+                    traceback.print_exc()
+                end_time = time.time()
+
+                # To ensure that we don't hammer the disk for this computation when
+                # there are lots of files, we run it at most 10% of the time.
+                time.sleep(max((end_time - start_time) * 10, 1.0))
+
+        self._run_manager.disk_utilization.add_if_new(bundle_uuid, threading.Thread(target=check_disk_utilization, args=[]))
+
+        run_state = check_and_report_finished(run_state)
+        run_state = check_resource_utilization(run_state)
 
         if run_state.is_killed and run_state.container_id is not None:
             try:
@@ -214,6 +273,8 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.info['finished']:
             logger.debug('Finished run with UUID %s, exitcode %s, failure_message %s',
                          bundle_uuid, run_state.info['exitcode'], run_state.info['failure_message'])
+            self._run_manager.disk_utilization[bundle_uuid]['running'] = False
+            self._run_manager.disk_utilization.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, run_status='Uploading results')
         else:
             return run_state

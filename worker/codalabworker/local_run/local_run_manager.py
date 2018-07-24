@@ -43,6 +43,8 @@ class LocalRunManager(BaseRunManager):
         self.gpuset = gpuset
 
         self.runs = {}  # bundle_uuid -> LocalRunState
+        # bundle_uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
+        self.disk_utilization = ThreadDict(fields={'disk_utilization': 0, 'running': True})
         # bundle_uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
         # bundle_uuid -> {'thread': Thread}
@@ -123,6 +125,9 @@ class LocalRunManager(BaseRunManager):
                                   has_contents=False,
                                   cpuset=None,
                                   gpuset=None,
+                                  time_used=0,
+                                  max_memory=0,
+                                  disk_utilization=0,
                                   info={})
         with self.lock:
             self.runs[bundle_uuid] = run_state
