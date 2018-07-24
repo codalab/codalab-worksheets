@@ -26,28 +26,19 @@ def checkin(worker_id):
     WAIT_TIME_SECS = 3.0
 
     socket_id = local.worker_model.worker_checkin(
-        request.user.user_id, worker_id, request.json['tag'],
-        request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
+        request.user.user_id,
+        worker_id,
+        request.json['tag'],
+        request.json['cpus'],
+        request.json['gpus'],
+        request.json['memory_bytes'],
+        request.json['dependencies'])
 
     for uuid, run in request.json['runs'].items():
         bundle = local.model.get_bundle(uuid)
         local.model.resume_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'], run['start_time'])
 
-        # this is a hack (or maybe not?)
-        # TODO: unhack this
-        metadata_update = {
-            'run_status': run['run_status'],
-            'last_updated': int(time.time()),
-            'time': time.time() - run['start_time'],
-        }
-        if run['docker_image'] is not None:
-            metadata_update['docker_image'] = run['docker_image']
-
-        local.model.update_bundle(bundle, {'metadata': metadata_update})
-
-        # this is a hack (or maybe not?)
-        # TODO: unhack this
         metadata_update = {
             'run_status': run['run_status'],
             'last_updated': int(time.time()),
