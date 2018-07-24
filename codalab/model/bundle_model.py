@@ -804,11 +804,11 @@ class BundleModel(object):
         if exitcode is not None:
             metadata['exitcode'] = exitcode
 
+        bundle_update = {
+            'state': state,
+            'metadata': metadata,
+        }
         with self.engine.begin() as connection:
-            bundle_update = {
-                'state': state,
-                'metadata': metadata,
-            }
             self.update_bundle(bundle, bundle_update, connection)
             retrying_execute(
                 connection,
