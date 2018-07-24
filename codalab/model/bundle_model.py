@@ -803,8 +803,11 @@ class BundleModel(object):
             'state': state,
             'metadata': metadata,
         }
+
         with self.engine.begin() as connection:
             self.update_bundle(bundle, bundle_update, connection)
+
+        with self.engine.begin() as connection:
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
 
