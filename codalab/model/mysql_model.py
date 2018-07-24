@@ -10,7 +10,6 @@ from sqlalchemy import (
 from sqlalchemy.pool import Pool
 
 from codalab.model.bundle_model import BundleModel
-from codalab.model.util import retrying_execute
 from codalab.common import (
     UsageError,
 )
@@ -53,7 +52,7 @@ class MySQLModel(BundleModel):
     def do_multirow_insert(self, connection, table, values):
         # MySQL allows for more efficient multi-row insertions.
         if values:
-            retrying_execute(connection, table.insert().values(values))
+            connection.execute(table.insert().values(values))
 
     # TODO: Remove these methods below when all appropriate table columns have
     # been converted to the appropriate types that perform automatic encoding.
