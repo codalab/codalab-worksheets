@@ -380,9 +380,15 @@ class ModuleContext(object):
             self.bundles.extend(run_command([cl, 'ls', '-w', worksheet, '-u']).split())
             run_command([cl, 'wrm', '--force', worksheet])
 
-        # Delete all bundles (dedup first)
+        # Delete all bundles (kill and dedup first)
         if len(self.bundles) > 0:
-            run_command([cl, 'rm', '--force'] + list(set(self.bundles)))
+            for bundle in set(self.bundles):
+                try:
+                    run_command([cl, 'kill', bundle])
+                    run_command([cl, 'wait', bundle])
+                except AssertionError:
+                    pass
+                run_command([cl, 'rm', '--force', bundle])
 
         # Delete all groups (dedup first)
         if len(self.groups) > 0:
