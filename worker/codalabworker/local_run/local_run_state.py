@@ -346,10 +346,12 @@ class LocalRunStateMachine(StateTransitioner):
 
                 def progress_callback(bytes_uploaded):
                     run_status = 'Uploading results: %s done (archived size)' % size_str(bytes_uploaded)
+                    self._run_manager.uploading[bundle_uuid]['run_status'] = run_status
                     return True
 
                 self._run_manager.upload_bundle_contents(bundle_uuid, run_state.bundle_path, progress_callback)
-            except Exception:
+            except Exception as e:
+                self._run_manager.uploading[bundle_uuid]['run_status'] = "Error while uploading: %s" % e
                 traceback.print_exc()
 
         bundle_uuid = run_state.bundle['uuid']
@@ -365,14 +367,16 @@ class LocalRunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
+        failure_message = run_state.info.get('failure_message', None)
         if 'exitcode' not in run_state.info:
             run_state.info['exitcode'] = None
-        if 'failure_message' not in run_state.info and run_state.is_killed:
+        if not failure_message and run_state.is_killed:
             run_state.info['failure_message'] = run_state.info['kill_message']
         run_state.info['finalized'] = False
         return run_state._replace(stage=LocalRunStage.FINALIZING,
                                   info=run_state.info,
                                   run_status="Finalizing bundle")
+
 
     def _transition_from_FINALIZING(self, run_state):
         """
