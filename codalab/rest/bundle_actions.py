@@ -21,7 +21,7 @@ def create_bundle_actions():
 
     for action in actions:
         bundle = local.model.get_bundle(action['uuid'])
-        if bundle.state != State.RUNNING:
+        if bundle.state not in [State.RUNNING, State.PREPARING]:
             raise UsageError('Cannot execute this action on a bundle that is not running.')
 
         worker = local.worker_model.get_bundle_worker(action['uuid'])

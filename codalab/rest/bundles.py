@@ -413,8 +413,9 @@ def _netcat_bundle(uuid, port):
     """
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
-    if bundle.state in State.FINAL_STATES:
-        abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle already finalized.')
+    print(bundle.state)
+    if bundle.state != State.RUNNING:
+        abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
     info = local.download_manager.netcat(uuid, port, request.json['message'])
     return {'data': info}
 

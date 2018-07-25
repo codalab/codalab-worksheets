@@ -655,7 +655,7 @@ class BundleModel(object):
         """
         with self.engine.begin() as connection:
             # Check that it still exists and is running
-            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id and cl_bundle.c.state == State.RUNNING)).fetchone()
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id and (cl_bundle.c.state == State.RUNNING or cl_bundle.c.state == State.PREPARING))).fetchone()
             if not row:
                 # The user deleted the bundle or the bundle finished
                 return False
@@ -715,7 +715,7 @@ class BundleModel(object):
                 return False
 
             bundle_update = {
-                'state': State.RUNNING,
+                'state': State.PREPARING,
                 'metadata': {
                     'remote': hostname,
                     'started': start_time,
@@ -733,7 +733,7 @@ class BundleModel(object):
 
         return True
 
-    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time, state=State.RUNNING):
         '''
         Marks the bundle as running and returns True. If bundle was WORKER_OFFLINE,
         also inserts a row into worker_run. Updates a few metadata fields and the events log.
@@ -761,9 +761,9 @@ class BundleModel(object):
                 }
                 connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-            if row.state == State.RUNNING or row.state == State.WORKER_OFFLINE:
+            if row.state in [State.PREPARING, State.RUNNING, State.WORKER_OFFLINE]:
                 bundle_update = {
-                    'state': State.RUNNING,
+                    'state': state,
                     'metadata': {
                         'last_updated': int(time.time()),
                     },
