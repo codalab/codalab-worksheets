@@ -29,7 +29,6 @@ from codalab.common import (
     NotFoundError,
     precondition,
     UsageError,
-    State,
 )
 from codalab.lib import (
     crypt_util,
@@ -80,6 +79,7 @@ from codalab.objects.user import (
 from codalab.rest.util import (
     get_group_info
 )
+from codalabworker.bundle_state import State
 
 
 SEARCH_KEYWORD_REGEX = re.compile('^([\.\w/]*)=(.*)$')

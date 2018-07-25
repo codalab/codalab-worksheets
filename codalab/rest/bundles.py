@@ -23,7 +23,6 @@ from codalab.bundles import (
 )
 from codalab.common import (
     precondition,
-    State,
     UsageError,
     NotFoundError
 )
@@ -60,6 +59,7 @@ from codalab.rest.util import (
     resolve_owner_in_keywords,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalabworker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 

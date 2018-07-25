@@ -5,10 +5,10 @@ import threading
 import time
 import traceback
 
-from codalab.common import State
 from codalabworker.docker_client import DockerException
 from codalabworker.file_util import remove_path, get_path_size
 from codalabworker.formatting import size_str, duration_str
+from codalabworker.bundle_state import State
 from codalabworker.fsm import (
     DependencyStage,
     StateTransitioner
@@ -50,7 +50,7 @@ class LocalRunStage(object):
     Uploading results means the job's results are getting uploaded to the server
     """
     UPLOADING_RESULTS = 'LOCAL_RUN.UPLOADING_RESULTS'
-    WORKER_STATE_TO_SERVER_STATE[FINISHING] = State.RUNNING
+    WORKER_STATE_TO_SERVER_STATE[UPLOADING_RESULTS] = State.RUNNING
 
     """
     Finalizing means the worker is finalizing the bundle metadata with the server

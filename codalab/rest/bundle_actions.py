@@ -1,10 +1,11 @@
 from bottle import local, post, request
 
-from codalab.common import State, UsageError, precondition
+from codalab.common import UsageError, precondition
 from codalab.lib.bundle_action import BundleAction
 from codalab.objects.permission import check_bundles_have_all_permission
 from codalab.rest.schemas import BundleActionSchema
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalabworker.bundle_state import State
 
 
 @post('/bundle-actions', apply=AuthenticatedPlugin())

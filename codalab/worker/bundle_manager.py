@@ -9,9 +9,10 @@ import time
 import traceback
 
 from codalab.objects.permission import check_bundles_have_read_permission
-from codalab.common import State, PermissionError
+from codalab.common import PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalabworker.file_util import remove_path
+from codalabworker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)

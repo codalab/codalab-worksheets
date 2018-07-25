@@ -4,12 +4,12 @@ from contextlib import closing
 from codalab.common import (
     http_error_to_exception,
     precondition,
-    State,
     UsageError,
     NotFoundError
 )
 from codalabworker import download_util
 from codalabworker import file_util
+from codalabworker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 

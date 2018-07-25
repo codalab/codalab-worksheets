@@ -1,8 +1,8 @@
 import logging
 
-from codalab.common import State
 from codalab.worker.bundle_manager import BundleManager
 from codalab.worker.worker_info_accessor import WorkerInfoAccessor
+from codalabworker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)
