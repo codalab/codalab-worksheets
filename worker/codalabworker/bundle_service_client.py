@@ -137,12 +137,6 @@ class BundleServiceClient(RestClient):
                 query_params={'filename': 'bundle.tar.gz'}, fileobj=fileobj,
                 progress_callback=progress_callback)
 
-    @wrap_exception('Unable to finalize bundle in bundle service')
-    def finalize_bundle(self, worker_id, uuid, request_data):
-        self._make_request(
-            'POST', self._worker_url_prefix(worker_id) + '/finalize_bundle/' + uuid,
-            data=request_data)
-
     @wrap_exception('Unable to get worker code')
     def get_code(self):
         return self._make_request(

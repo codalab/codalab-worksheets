@@ -325,7 +325,7 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.has_contents:
             return run_state._replace(stage=LocalRunStage.UPLOADING_RESULTS, run_status='Uploading results')
         else:
-            return run_state._replace(stage=LocalRunStage.FINALIZING, run_status='Finalizing bundle')
+            return self.finalize_run(run_state)
 
     def _transition_from_UPLOADING_RESULTS(self, run_state):
         """
@@ -359,35 +359,29 @@ class LocalRunStateMachine(StateTransitioner):
             return run_state._replace(run_status=self._run_manager.uploading[bundle_uuid]['run_status'])
 
         self._run_manager.uploading.remove(bundle_uuid)
-        return run_state._replace(stage=LocalRunStage.FINALIZING, container_id=None, run_status='Finalizing bundle')
+        return self.finalize_run(run_state)
+
+    def finalize_run(self, run_state):
+        """
+        Prepare the finalize message to be sent with the next checkin
+        """
+        bundle_uuid = run_state.bundle['uuid']
+        failure_message = run_state.info.get('failure_message', None)
+        exitcode = run_state.info.get('exitcode', None)
+        if failure_message is None and run_state.is_killed:
+            failure_message = run_state.info['kill_message']
+        run_state.info['finalize_message'] = {
+            'exitcode': exitcode,
+            'failure_message': failure_message,
+        }
+        return run_state._replace(stage=LocalRunStage.FINALIZING,
+                                  info=run_state.info,
+                                  run_status="Finalizing bundle")
 
     def _transition_from_FINALIZING(self, run_state):
         """
-        Use the RunManager API to make a finalize call to the server
-        Remove the local files after finalizing is done
+        If a full worker cycle has passed since we got into FINALIZING we already reported to
+        server so can move on to FINISHED. Can also remove bundle_path now
         """
-        def finalize():
-            try:
-                failure_message = run_state.info.get('failure_message', None)
-                exitcode = run_state.info.get('exitcode', None)
-                if failure_message is None and run_state.is_killed:
-                    failure_message = run_state.info['kill_message']
-                finalize_message = {
-                    'exitcode': exitcode,
-                    'failure_message': failure_message,
-                }
-                logger.debug('Finalizing run with UUID %s: %s', bundle_uuid, finalize_message)
-                self._run_manager.finalize_bundle(bundle_uuid, finalize_message)
-            except Exception:
-                traceback.print_exc()
-            finally:
-                remove_path(run_state.bundle_path)
-
-        bundle_uuid = run_state.bundle['uuid']
-        self._run_manager.finalizing.add_if_new(bundle_uuid, threading.Thread(target=finalize, args=[]))
-
-        if self._run_manager.finalizing[bundle_uuid].is_alive():
-            return run_state
-
-        self._run_manager.finalizing.remove(bundle_uuid)
+        remove_path(run_state.bundle_path)
         return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')

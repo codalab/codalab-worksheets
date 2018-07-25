@@ -36,8 +36,8 @@ def checkin(worker_id):
 
     for uuid, run in request.json['runs'].items():
         bundle = local.model.get_bundle(uuid)
-        local.model.resume_bundle(bundle, request.user.user_id, worker_id,
-                                request.json['hostname'], run['start_time'], run['state'])
+        local.model.bundle_checkin(bundle, request.user.user_id, worker_id,
+                                   request.json['hostname'], run['start_time'], run['state'])
 
         metadata_update = {
             'run_status': run['run_status'],
@@ -139,42 +139,6 @@ def update_bundle_metadata(worker_id, uuid):
             metadata_update[key] = value
     local.model.update_bundle(bundle, {'metadata': metadata_update})
 
-
-@post('/workers/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      name='worker_finalize_bundle', apply=AuthenticatedPlugin())
-def finalize_bundle(worker_id, uuid):
-    """
-    Reports that the bundle has finished running.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-
-    if (local.worker_model.shared_file_system and
-        request.user.user_id == local.model.root_user_id):
-        # On a shared file system, the worker doesn't upload the contents, so
-        # we need to run a metadata update here. With no shared file system
-        # it happens in update_bundle_contents.
-
-        # On the NFS file system the contents of directories are cached, so the
-        # new directory that has been created for the bundle might not appear
-        # right away. We use this loop to check for it. There might be some
-        # inconsistencies in the actual contents due to newly created files not
-        # be seen. Although, that's very unlikely to give a large difference
-        # in the final bundle size.
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        for _ in xrange(120):
-            if os.path.exists(bundle_location):
-                break
-            else:
-                time.sleep(1)
-        # If the directory still doesn't exist after 2 minutes, the following
-        # call will return an error.
-
-        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
-
-    local.model.finalize_bundle(bundle, request.user.user_id,
-                                request.json['exitcode'],
-                                request.json['failure_message'])
 
 @get('/workers/info', name='workers_info', apply=AuthenticatedPlugin())
 def workers_info():

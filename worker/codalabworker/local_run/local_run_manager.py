@@ -173,12 +173,6 @@ class LocalRunManager(BaseRunManager):
         with self.lock:
             return self.runs.get(uuid, None)
 
-    def finalize_bundle(self, bundle_uuid, finalize_message):
-        """
-        Use the Worker API to finalize the bundle with the uuid using the message
-        """
-        self._worker.finalize_bundle(bundle_uuid, finalize_message)
-
     def upload_bundle_contents(self, bundle_uuid, bundle_path, progress_callback):
         """
         Use the Worker API to upload contents of bundle_path to bundle_uuid

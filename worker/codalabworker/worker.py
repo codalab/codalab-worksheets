@@ -57,18 +57,6 @@ class Worker(object):
     def signal(self):
         self._stop = True
 
-    def _get_runs_for_checkin(self):
-        with self._lock:
-            result = {
-                bundle_uuid: {
-                    'run_status': run_state.run_status,
-                    'start_time': run_state.start_time,
-                    'docker_image': run_state.docker_image,
-                    'info': run_state.info
-                } for bundle_uuid, run_state in self._runs.items()
-            }
-            return result
-
     def _get_installed_memory_bytes(self):
         try:
             return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
@@ -202,11 +190,6 @@ class Worker(object):
     def _kill(self, uuid):
         run_state = self._run_manager.get_run(uuid)
         self._run_manager.kill(run_state)
-
-    def finalize_bundle(self, bundle_uuid, finalize_message):
-        self._execute_bundle_service_command_with_retry(
-            lambda: self._bundle_service.finalize_bundle(
-                self.id, bundle_uuid, finalize_message))
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
         self._execute_bundle_service_command_with_retry(

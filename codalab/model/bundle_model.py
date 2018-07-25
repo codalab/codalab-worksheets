@@ -733,10 +733,31 @@ class BundleModel(object):
 
         return True
 
-    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time, state=State.RUNNING):
+    def bundle_checkin(self, bundle, user_id, worker_id, hostname, start_time, state):
         '''
-        Marks the bundle as running and returns True. If bundle was WORKER_OFFLINE,
-        also inserts a row into worker_run. Updates a few metadata fields and the events log.
+        Updates the database tables with the most recent bundle information from worker
+        '''
+        if state == State.FINALIZING:
+            return self.finalize_bundle(bundle,
+                                 user_id,
+                                 bundle.info['finalize_message']['exitcode'],
+                                 bundle.info['finalize_message']['failure_message'])
+        elif state in [State.PREPARING, State.RUNNING]:
+            return self.resume_bundle(bundle,
+                               user_id,
+                               worker_id,
+                               hostname,
+                               start_time,
+                               state)
+        else:
+            # State isn't one we can check in for
+            return False
+
+
+    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time, state):
+        '''
+        Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
+        Updates a few metadata fields and the events log.
         '''
         with self.engine.begin() as connection:
             # Check that it still exists.
@@ -761,15 +782,13 @@ class BundleModel(object):
                 }
                 connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-            if row.state in [State.PREPARING, State.RUNNING, State.WORKER_OFFLINE, State.FINALIZING]:
-                bundle_update = {
-                    'metadata': {
-                        'last_updated': int(time.time()),
-                    },
-                }
-                if state != State.FINALIZING:
-                    bundle_update['state'] = state
-                self.update_bundle(bundle, bundle_update, connection)
+            bundle_update = {
+                'metadata': {
+                    'last_updated': int(time.time()),
+                    'state': state,
+                },
+            }
+            self.update_bundle(bundle, bundle_update, connection)
 
         self.update_events_log(
             user_id=bundle.owner_id,
@@ -807,8 +826,6 @@ class BundleModel(object):
 
         with self.engine.begin() as connection:
             self.update_bundle(bundle, bundle_update, connection)
-
-        with self.engine.begin() as connection:
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
 
@@ -822,6 +839,8 @@ class BundleModel(object):
             command='finalize_bundle',
             args=(bundle.uuid, state, bundle.metadata.to_dict()),
             uuid=bundle.uuid)
+
+        return True
 
     def save_bundle(self, bundle):
         """
