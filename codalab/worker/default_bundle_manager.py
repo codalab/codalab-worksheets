@@ -29,6 +29,7 @@ class DefaultBundleManager(BundleManager):
         self._restage_stuck_starting_bundles(workers)
         self._bring_offline_stuck_running_bundles(workers)
         self._fail_on_too_many_resources(workers)
+        self._acknowledge_recently_finished_bundles(workers)
 
         # Schedule, preferring user-owned workers.
         self._schedule_run_bundles_on_workers(workers, user_owned=True)

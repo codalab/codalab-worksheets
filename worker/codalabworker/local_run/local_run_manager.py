@@ -173,6 +173,14 @@ class LocalRunManager(BaseRunManager):
         with self.lock:
             return self.runs.get(uuid, None)
 
+    def acknowledge_finalize(self, uuid):
+        """
+        Marks the run as finalized server-side so it can be discarded
+        """
+        if uuid in self.runs:
+            with self.lock:
+                self.runs[uuid].info['finalized'] = True
+
     def upload_bundle_contents(self, bundle_uuid, bundle_path, progress_callback):
         """
         Use the Worker API to upload contents of bundle_path to bundle_uuid

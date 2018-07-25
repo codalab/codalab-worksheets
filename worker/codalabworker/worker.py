@@ -112,6 +112,8 @@ class Worker(object):
                             response['string'])
             elif action_type == 'kill':
                 self._kill(response['uuid'])
+            elif action_type == 'mark_finalized':
+                self._mark_finalized(response['uuid'])
 
     def _run(self, bundle, resources):
         """
@@ -141,10 +143,6 @@ class Worker(object):
             self._bundle_service.reply_data(self.id, socket_id, message, data)
         else:
             self._bundle_service.reply(self.id, socket_id, message)
-
-    def _get_run(self, uuid):
-        with self._lock:
-            return self._runs.get(uuid, None)
 
     @staticmethod
     def read_run_missing(bundle_service, worker, socket_id):
@@ -190,6 +188,9 @@ class Worker(object):
     def _kill(self, uuid):
         run_state = self._run_manager.get_run(uuid)
         self._run_manager.kill(run_state)
+
+    def _mark_finalized(self, uuid):
+        self._run_manager.mark_finalized(uuid)
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
         self._execute_bundle_service_command_with_retry(

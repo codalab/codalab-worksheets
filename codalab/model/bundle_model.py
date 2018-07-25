@@ -825,13 +825,11 @@ class BundleModel(object):
             metadata['exitcode'] = exitcode
 
         bundle_update = {
-            'state': state,
+            'state': State.FINALIZING,
             'metadata': metadata,
         }
 
         self.update_bundle(bundle, bundle_update, connection)
-        connection.execute(
-            cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id,
@@ -845,6 +843,19 @@ class BundleModel(object):
             uuid=bundle.uuid)
 
         return True
+
+    def finish_bundle(self, bundle):
+        '''
+        Updates the given FINALIZING bundle to FINISHED state so the server stops
+        telling the worker it is finalized
+        '''
+        state = State.FAILED if bundle.metadata.failure_message or bundle.metadata.exitcode else State.READY
+        if failure_message == 'Kill requested':
+            state = State.KILLED
+        with self.engine.begin() as connection:
+            self.update_bundle(bundle, {'state': state}, connection)
+            connection.execute(
+                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
 
     def save_bundle(self, bundle):
         """

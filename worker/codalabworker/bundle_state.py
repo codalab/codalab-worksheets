@@ -10,7 +10,7 @@ class State(object):
     STARTING = 'starting'  # Wait for the worker to start running the bundle.
     PREPARING = 'preparing' # Wait for worker to download dependencies and docker images
     RUNNING = 'running'   # Actually running
-    FINALIZING = 'finalizing' # Finalizing finished run don't update state on worker checkin
+    FINALIZING = 'finalizing' # Run finished and finalized server-side, tell worker to discard it
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
     KILLED = 'killed'     # Killed by user

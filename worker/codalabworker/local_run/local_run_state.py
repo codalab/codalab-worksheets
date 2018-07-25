@@ -369,6 +369,7 @@ class LocalRunStateMachine(StateTransitioner):
             run_state.info['exitcode'] = None
         if 'failure_message' not in run_state.info and run_state.is_killed:
             run_state.info['failure_message'] = run_state.info['kill_message']
+        run_state.info['finalized'] = False
         return run_state._replace(stage=LocalRunStage.FINALIZING,
                                   info=run_state.info,
                                   run_status="Finalizing bundle")
@@ -378,5 +379,8 @@ class LocalRunStateMachine(StateTransitioner):
         If a full worker cycle has passed since we got into FINALIZING we already reported to
         server so can move on to FINISHED. Can also remove bundle_path now
         """
-        remove_path(run_state.bundle_path)
-        return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
+        if run_state.info['finalized']:
+            remove_path(run_state.bundle_path)
+            return run_state._replace(stage=LocalRunStage.FINISHED, run_status='Finished')
+        else:
+            return run_state
