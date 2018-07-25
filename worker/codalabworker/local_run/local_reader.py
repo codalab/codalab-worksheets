@@ -22,6 +22,13 @@ class LocalReader(Reader):
     """
     Class that implements read functions for bundles executed on the local filesystem
     """
+    def __init__(self):
+        self.read_threads = [] # Threads
+
+    def stop(self):
+        for thread in self.read_threads:
+            thread.join()
+
     def _threaded_read(self, run_state, path, stream_fn, reply_fn):
         """
         Given a run state, a path, a stream function and a reply function,
@@ -33,7 +40,9 @@ class LocalReader(Reader):
             final_path = get_target_path(run_state.bundle_path, run_state.bundle['uuid'], path)
         except PathException as e:
             reply_fn((httplib.NOT_FOUND, e.message), None, None)
-        threading.Thread(target=stream_fn, args=[final_path]).start()
+        read_thread = threading.Thread(target=stream_fn, args=[final_path])
+        read_thread.start()
+        self.read_threads.append(read_thread)
 
     def get_target_info(self, run_state, path, dep_paths, args, reply_fn):
         """

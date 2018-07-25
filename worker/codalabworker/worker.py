@@ -9,9 +9,9 @@ from bundle_service_client import BundleServiceException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from fsm import JsonStateCommitter
 
-VERSION = 18
+VERSION = 19
 
-COMMAND_RETRY_SECONDS = 2 * 60 * 6
+COMMAND_RETRY_SECONDS = 60 * 12
 
 logger = logging.getLogger(__name__)
 
@@ -53,22 +53,6 @@ class Worker(object):
                 traceback.print_exc()
                 time.sleep(1)
         self._run_manager.stop()
-
-    def signal(self):
-        self._stop = True
-
-    def _get_installed_memory_bytes(self):
-        try:
-            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
-        except ValueError:
-            # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
-            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
-
-    def _get_memory_bytes(self):
-        return self._get_installed_memory_bytes()
-
-    def signal(self):
-        self._stop = True
 
     def signal(self):
         self._stop = True
@@ -132,26 +116,6 @@ class Worker(object):
         else:
             print >>sys.stdout, 'Bundle {} no longer assigned to this worker'.format(bundle['uuid'])
 
-    def _bundle_service_reply(self, socket_id, err, message, data):
-        if err:
-            err = {
-                'error_code': err[0],
-                'error_message': err[1],
-            }
-            self._bundle_service.reply(self.id, socket_id, err)
-        elif data:
-            self._bundle_service.reply_data(self.id, socket_id, message, data)
-        else:
-            self._bundle_service.reply(self.id, socket_id, message)
-
-    @staticmethod
-    def read_run_missing(bundle_service, worker, socket_id):
-        message = {
-            'error_code': httplib.INTERNAL_SERVER_ERROR,
-            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
-        }
-        bundle_service.reply(worker.id, socket_id, message)
-
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
             self._bundle_service_reply(socket_id, err, message, data)
@@ -203,6 +167,18 @@ class Worker(object):
             'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         self._bundle_service.reply(self.id, socket_id, message)
+
+    def _bundle_service_reply(self, socket_id, err, message, data):
+        if err:
+            err = {
+                'error_code': err[0],
+                'error_message': err[1],
+            }
+            self._bundle_service.reply(self.id, socket_id, err)
+        elif data:
+            self._bundle_service.reply_data(self.id, socket_id, message, data)
+        else:
+            self._bundle_service.reply(self.id, socket_id, message)
 
     def _execute_bundle_service_command_with_retry(self, f):
         retries_left = COMMAND_RETRY_SECONDS

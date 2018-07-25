@@ -81,11 +81,24 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     def _load_state(self):
         with self._lock:
             state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
+            dependencies = {}
+            paths = set()
             for dep, dep_state in state['dependencies']:
-                assert os.path.exists(dep_state.path), "Dependency {} in loaded state but its path {} doesn't exist in the filesystem".format(dep, dep_state.path)
-                assert dep_state.path in state['paths'], "Dependency {} in loaded state but its path {} is not in the loaded paths {}".format(dep, dep_state.path, state['paths'])
-            self._dependencies = state['dependencies']
-            self._paths = state['paths']
+                if os.path.exists(dep_state.path):
+                    dependencies[dep] = dep_state
+                else:
+                    logger.info("Dependency {} in loaded state but its path {} doesn't exist in the filesystem".format(dep, dep_state.path))
+                if dep_state.path not in state['paths']:
+                    state['paths'].add(dep_state.path)
+                    logger.info("Dependency {} in loaded state but its path {} is not in the loaded paths {}".format(dep, dep_state.path, state['paths']))
+            for path in state['paths']:
+                if os.path.exists(path):
+                    paths.add(path)
+                else:
+                    logger.info("Path {} in loaded state but doesn't exist in the filesystem".format(path))
+
+            self._dependencies = dependencies
+            self._paths = paths
             logger.info('{} dependencies, {} paths in cache.'.format(len(self._dependencies), len(self._paths)))
 
     def start(self):
@@ -102,8 +115,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self._main_thread.start()
 
     def stop(self):
+        logger.info("Stopping local dependency manager")
         self._stop = True
+        self._downloading.stop()
         self._main_thread.join()
+        logger.info("Stopped local dependency manager. Exiting.")
 
     def _process_dependencies(self):
         with self._lock:

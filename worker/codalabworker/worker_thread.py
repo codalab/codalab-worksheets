@@ -41,6 +41,18 @@ class WorkerThread(object):
         """
         return self.thread.is_alive()
 
+    def join(self):
+        """
+        join acts directly on the thread object
+        """
+        return self.thread.join()
+
+    def start(self):
+        """
+        start acts directly on the thread object
+        """
+        return self.thread.start()
+
 
 class ThreadDict(object):
     """
@@ -79,15 +91,24 @@ class ThreadDict(object):
         new_fields = copy.deepcopy(self._initial_fields)
         new_thread = WorkerThread(thread=thread, fields=new_fields)
         self._thread_dict[key] = new_thread
-        new_thread.thread.start()
+        new_thread.start()
 
     def remove(self, key):
         """
         Joins and remove the thread with key from the dict if it exists
         """
         if key in self._thread_dict:
-            self._thread_dict[key].thread.join()
+            self._thread_dict[key].join()
             del self._thread_dict[key]
+
+    def stop(self):
+        """
+        Joins and removes all the threads in the dict
+        """
+        for key in self._thread_dict.keys():
+            self._thread_dict[key].join()
+
+        self._thread_dict = dict()
 
     def __getitem__(self, key):
         """

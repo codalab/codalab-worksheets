@@ -20,7 +20,11 @@ class LocalRunManager(BaseRunManager):
     container. It manages its cache of local Docker images and its own local
     Docker network.
     """
+    # Network buffer size to use while proxying with netcat
     NETCAT_BUFFER_SIZE = 4096
+    # Number of seconds to wait for bundle kills to propagate before forcing kill
+    KILL_TIMEOUT = 100
+    # Directory name to store running bundles in worker filesystem
     BUNDLES_DIR_NAME = 'runs'
 
     def __init__(self, worker, docker, image_manager, dependency_manager,
@@ -41,6 +45,7 @@ class LocalRunManager(BaseRunManager):
         self.dependency_manager = dependency_manager
         self.cpuset = cpuset
         self.gpuset = gpuset
+        self._stop = False
 
         self.runs = {}  # bundle_uuid -> LocalRunState
         # bundle_uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
@@ -91,10 +96,37 @@ class LocalRunManager(BaseRunManager):
     def stop(self):
         """
         Starts any necessary cleanup and propagates to its other managers
+        Kills any run bundles still running
         Blocks until cleanup is complete and it is safe to quit
         """
+        logger.info("Stopping Local Run Manager")
+        self._stop = True
+        self._kill_all()
         self.image_manager.stop()
         self.dependency_manager.stop()
+        self.disk_utilization.stop()
+        self.uploading.stop()
+        self.finalizing.stop()
+        logger.info("Stopped Local Run Manager. Exiting")
+
+    def _kill_all(self):
+        """
+        Kills all runs as worker is quitting
+        """
+        logger.debug("Killing all bundles to exit")
+        # Set all bundle statuses to killed
+        with self.lock:
+            for uuid in self.runs.keys():
+                run_state = self.runs[uuid]
+                run_state.info['kill_message'] = 'Worker stopped'
+                run_state = run_state._replace(info=run_state.info, is_killed=True)
+                self.runs[uuid] = run_state
+        # Wait until all runs finished or KILL_TIMEOUT seconds pas
+        for attempt in range(KILL_TIMEOUT):
+            if len(self.runs) > 0:
+                logger.debug("Waiting for {} more bundles. {} seconds until force quit.".format(len(self.runs), KILL_TIMEOUT - attemmpt))
+                time.sleep(1)
+
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
@@ -112,6 +144,9 @@ class LocalRunManager(BaseRunManager):
         Creates and starts processing a new run with the given bundle and
         resources
         """
+        if self._stop:
+            # Run Manager stopped, refuse more runs
+            return
         bundle_uuid = bundle['uuid']
         bundle_path = os.path.join(self._bundles_dir, bundle_uuid)
         now = time.time()

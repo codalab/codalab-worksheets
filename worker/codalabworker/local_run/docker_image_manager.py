@@ -65,8 +65,11 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         self._main_thread.start()
 
     def stop(self):
+        logger.info("Stopping docker image manager")
         self._stop = True
+        self._downloading.stop()
         self._main_thread.join()
+        logger.info("Stopped docker image manager. Exiting. Exiting.")
 
     def _process_images(self):
         """
@@ -149,7 +152,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
             def update_status_message_and_check_killed(status_message):
                 with self._lock:
                     image_state = self.get(digest)
-                    if image_state.killed:
+                    if self._stop or image_state.killed:
                         return False  # should_resume = False
                     else:
                         self._images[digest] = image_state._replace(message=status_message)
