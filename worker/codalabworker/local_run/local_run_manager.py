@@ -44,7 +44,9 @@ class LocalRunManager(BaseRunManager):
 
         self.runs = {}  # bundle_uuid -> LocalRunState
         # bundle_uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
-        self.disk_utilization = ThreadDict(fields={'disk_utilization': 0, 'running': True})
+        self.disk_utilization = ThreadDict(fields={'disk_utilization': 0,
+                                                   'running': True,
+                                                   'lock': None})
         # bundle_uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
         # bundle_uuid -> {'thread': Thread}
