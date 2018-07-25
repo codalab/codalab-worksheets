@@ -365,15 +365,10 @@ class LocalRunStateMachine(StateTransitioner):
         """
         Prepare the finalize message to be sent with the next checkin
         """
-        bundle_uuid = run_state.bundle['uuid']
-        failure_message = run_state.info.get('failure_message', None)
-        exitcode = run_state.info.get('exitcode', None)
-        if failure_message is None and run_state.is_killed:
-            failure_message = run_state.info['kill_message']
-        run_state.info['finalize_message'] = {
-            'exitcode': exitcode,
-            'failure_message': failure_message,
-        }
+        if 'exitcode' not in run_state.info:
+            run_state.info['exitcode'] = None
+        if 'failure_message' not in run_state.info and run_state.is_killed:
+            run_state.info['failure_message'] = run_state.info['kill_message']
         return run_state._replace(stage=LocalRunStage.FINALIZING,
                                   info=run_state.info,
                                   run_status="Finalizing bundle")

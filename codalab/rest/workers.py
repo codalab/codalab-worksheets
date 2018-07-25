@@ -36,18 +36,11 @@ def checkin(worker_id):
 
     for uuid, run in request.json['runs'].items():
         bundle = local.model.get_bundle(uuid)
-        local.model.bundle_checkin(bundle, request.user.user_id, worker_id,
-                                   request.json['hostname'], run['start_time'], run['state'])
-
-        metadata_update = {
-            'run_status': run['run_status'],
-            'last_updated': int(time.time()),
-            'time': time.time() - run['start_time'],
-        }
-        if run['docker_image'] is not None:
-            metadata_update['docker_image'] = run['docker_image']
-
-        local.model.update_bundle(bundle, {'metadata': metadata_update})
+        local.model.bundle_checkin(bundle,
+                                   run,
+                                   request.user.user_id,
+                                   worker_id,
+                                   request.json['hostname'])
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)

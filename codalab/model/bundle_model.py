@@ -733,62 +733,65 @@ class BundleModel(object):
 
         return True
 
-    def bundle_checkin(self, bundle, user_id, worker_id, hostname, start_time, state):
+    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id, hostname):
         '''
         Updates the database tables with the most recent bundle information from worker
         '''
-        if state == State.FINALIZING:
-            return self.finalize_bundle(bundle,
-                                 user_id,
-                                 bundle.info['finalize_message']['exitcode'],
-                                 bundle.info['finalize_message']['failure_message'])
-        elif state in [State.PREPARING, State.RUNNING]:
-            return self.resume_bundle(bundle,
-                               user_id,
-                               worker_id,
-                               hostname,
-                               start_time,
-                               state)
-        else:
-            # State isn't one we can check in for
-            return False
+        state = bundle_update['state']
+        with self.engine.begin() as connection:
+            # If bundle isn't in db anymore the user deleted it so cancel
+            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
+            if not row:
+                return False
+            if state == State.FINALIZING:
+                return self.finalize_bundle(bundle,
+                                            user_id,
+                                            bundle_update['info']['exitcode'],
+                                            bundle_update['info']['failure_message'],
+                                            connection)
+            elif state in [State.PREPARING, State.RUNNING]:
+                return self.resume_bundle(bundle,
+                                          bundle_update,
+                                          row,
+                                          user_id,
+                                          worker_id,
+                                          hostname,
+                                          connection)
+            else:
+                # State isn't one we can check in for
+                return False
 
 
-    def resume_bundle(self, bundle, user_id, worker_id, hostname, start_time, state):
+    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, hostname, connection):
         '''
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
         Updates a few metadata fields and the events log.
         '''
-        with self.engine.begin() as connection:
-            # Check that it still exists.
-            row = connection.execute(cl_bundle.select().where(cl_bundle.c.id == bundle.id)).fetchone()
-            if not row:
-                # The user deleted the bundle.
-                return False
+        if row.state == State.WORKER_OFFLINE:
+            run_row = connection.execute(
+                cl_worker_run.select().where(cl_worker_run.c.run_uuid == bundle.uuid)).fetchone()
+            if run_row:
+                # we should never get to this point: panic
+                raise IntegrityError('worker_run row exists for a bundle in WORKER_OFFLINE state, uuid %s'
+                                     % (bundle.uuid,))
 
-            if row.state == State.WORKER_OFFLINE:
-                # check that worker_run row doesn't already exist
-                run_row = connection.execute(
-                    cl_worker_run.select().where(cl_worker_run.c.run_uuid == bundle.uuid)).fetchone()
-                if run_row:
-                    # we should never get to this point: panic
-                    raise IntegrityError('worker_run row exists for a bundle in WORKER_OFFLINE state, uuid %s'
-                                         % (bundle.uuid,))
-
-                worker_run_row = {
-                    'user_id': user_id,
-                    'worker_id': worker_id,
-                    'run_uuid': bundle.uuid,
-                }
-                connection.execute(cl_worker_run.insert().values(worker_run_row))
-
-            bundle_update = {
-                'metadata': {
-                    'last_updated': int(time.time()),
-                    'state': state,
-                },
+            worker_run_row = {
+                'user_id': user_id,
+                'worker_id': worker_id,
+                'run_uuid': bundle.uuid,
             }
-            self.update_bundle(bundle, bundle_update, connection)
+            connection.execute(cl_worker_run.insert().values(worker_run_row))
+
+        metadata_update = {
+            'run_status': bundle_update['run_status'],
+            'last_updated': int(time.time()),
+            'time': time.time() - bundle_update['start_time'],
+        }
+
+        if bundle_update['docker_image'] is not None:
+            metadata_update['docker_image'] = bundle_update['docker_image']
+
+        self.update_bundle(bundle, {'state': bundle_update['state'], 'metadata': metadata_update}, connection)
 
         self.update_events_log(
             user_id=bundle.owner_id,
@@ -797,9 +800,11 @@ class BundleModel(object):
             args=(bundle.uuid),
             uuid=bundle.uuid)
 
+
+
         return True
 
-    def finalize_bundle(self, bundle, user_id, exitcode=None, failure_message=None):
+    def finalize_bundle(self, bundle, user_id, exitcode, failure_message, connection):
         """
         Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields, the
         events log and removing the worker_run row. Additionally, if the user
@@ -824,10 +829,9 @@ class BundleModel(object):
             'metadata': metadata,
         }
 
-        with self.engine.begin() as connection:
-            self.update_bundle(bundle, bundle_update, connection)
-            connection.execute(
-                cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
+        self.update_bundle(bundle, bundle_update, connection)
+        connection.execute(
+            cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid))
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id,
