@@ -56,7 +56,7 @@ class LocalRunStage(object):
     Finalizing means the worker is finalizing the bundle metadata with the server
     """
     FINALIZING = 'LOCAL_RUN.FINALIZING'
-    WORKER_STATE_TO_SERVER_STATE[FINALIZING] = State.RUNNING
+    WORKER_STATE_TO_SERVER_STATE[FINALIZING] = State.FINALIZING
 
     """
     Finished means the worker is done with this run

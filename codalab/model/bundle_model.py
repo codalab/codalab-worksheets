@@ -761,13 +761,14 @@ class BundleModel(object):
                 }
                 connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-            if row.state in [State.PREPARING, State.RUNNING, State.WORKER_OFFLINE]:
+            if row.state in [State.PREPARING, State.RUNNING, State.WORKER_OFFLINE, State.FINALIZING]:
                 bundle_update = {
-                    'state': state,
                     'metadata': {
                         'last_updated': int(time.time()),
                     },
                 }
+                if state != State.FINALIZING:
+                    bundle_update['state'] = state
                 self.update_bundle(bundle, bundle_update, connection)
 
         self.update_events_log(

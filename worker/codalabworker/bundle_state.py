@@ -10,13 +10,14 @@ class State(object):
     STARTING = 'starting'  # Wait for the worker to start running the bundle.
     PREPARING = 'preparing' # Wait for worker to download dependencies and docker images
     RUNNING = 'running'   # Actually running
+    FINALIZING = 'finalizing' # Finalizing finished run don't update state on worker checkin
     READY = 'ready'       # Done running and succeeded
     FAILED = 'failed'     # Done running and failed
     KILLED = 'killed'     # Killed by user
     WORKER_OFFLINE = 'worker_offline'  # Assigned worker has gone offline
 
-    OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED, PREPARING}
-    ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, PREPARING}
+    OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
+    ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, FINALIZING, PREPARING}
     FINAL_STATES = {READY, FAILED, KILLED}
 
 
