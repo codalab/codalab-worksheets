@@ -37,7 +37,7 @@ def checkin(worker_id):
     for uuid, run in request.json['runs'].items():
         bundle = local.model.get_bundle(uuid)
         local.model.resume_bundle(bundle, request.user.user_id, worker_id,
-                                request.json['hostname'], run['start_time'])
+                                request.json['hostname'], run['start_time'], run['state'])
 
         metadata_update = {
             'run_status': run['run_status'],

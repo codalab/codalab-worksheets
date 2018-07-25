@@ -243,7 +243,8 @@ class LocalRunManager(BaseRunManager):
                     'run_status': run_state.run_status,
                     'start_time': run_state.start_time,
                     'docker_image': run_state.docker_image,
-                    'info': run_state.info
+                    'info': run_state.info,
+                    'state': LocalRunState.WORKER_STATE_TO_SERVER_STATE[run_state.stage]
                 } for bundle_uuid, run_state in self.runs.items()
             }
             return result

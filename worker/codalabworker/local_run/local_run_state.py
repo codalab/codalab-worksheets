@@ -5,6 +5,7 @@ import threading
 import time
 import traceback
 
+from codalab.common import State
 from codalabworker.docker_client import DockerException
 from codalabworker.file_util import remove_path, get_path_size
 from codalabworker.formatting import size_str, duration_str
@@ -23,37 +24,46 @@ class LocalRunStage(object):
     without unintended adverse effects (which happens upon worker resume)
     """
 
+    WORKER_STATE_TO_SERVER_STATE = {}
+
     """
     This stage involves setting up the directory structure for the run
     and preapring to start the container
     """
     PREPARING = 'LOCAL_RUN.PREPARING'
+    WORKER_STATE_TO_SERVER_STATE[PREPARING] = State.PREPARING
 
     """
     Running encompasses the state where the user's job is running
     """
     RUNNING = 'LOCAL_RUN.RUNNING'
+    WORKER_STATE_TO_SERVER_STATE[RUNNING] = State.RUNNING
 
     """
     This stage encompasses cleaning up intermediary components like
     the dependency symlinks and also the releasing of dependencies
     """
     CLEANING_UP = 'LOCAL_RUN.CLEANING_UP'
+    WORKER_STATE_TO_SERVER_STATE[CLEANING_UP] = State.RUNNING
 
     """
     Uploading results means the job's results are getting uploaded to the server
     """
     UPLOADING_RESULTS = 'LOCAL_RUN.UPLOADING_RESULTS'
+    WORKER_STATE_TO_SERVER_STATE[FINISHING] = State.RUNNING
 
     """
     Finalizing means the worker is finalizing the bundle metadata with the server
     """
     FINALIZING = 'LOCAL_RUN.FINALIZING'
+    WORKER_STATE_TO_SERVER_STATE[FINALIZING] = State.RUNNING
 
     """
     Finished means the worker is done with this run
     """
     FINISHED = 'LOCAL_RUN.FINISHED'
+    WORKER_STATE_TO_SERVER_STATE[FINISHED] = State.READY
+
 
 
 LocalRunState = namedtuple(
