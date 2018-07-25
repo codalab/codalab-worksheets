@@ -51,6 +51,14 @@ class BaseRunManager(object):
         raise NotImplementedError
 
     @abstractmethod
+    def mark_finalized(self, uuid):
+        """
+        Marks the run with the given uuid as finalized server-side so the
+        run manager can discard it completely
+        """
+        raise NotImplementedError
+
+    @abstractmethod
     def write(self, bundle_uuid, path, string):
         """
         Write string to path in bundle with uuid

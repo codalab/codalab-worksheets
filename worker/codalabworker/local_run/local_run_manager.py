@@ -173,7 +173,7 @@ class LocalRunManager(BaseRunManager):
         with self.lock:
             return self.runs.get(uuid, None)
 
-    def acknowledge_finalize(self, uuid):
+    def mark_finalized(self, uuid):
         """
         Marks the run as finalized server-side so it can be discarded
         """
