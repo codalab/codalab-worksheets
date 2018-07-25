@@ -226,11 +226,9 @@ class LocalRunStateMachine(StateTransitioner):
 
             run_state = run_state._replace(time_used=time_used)
             run_state = run_state._replace(max_memory=max(run_state.max_memory, run_stats.get('memory', 0)))
-            with self._run_manager.disk_utilization[bundle_uuid]['lock']:
-                run_state = run_state._replace(disk_utilization=self._run_manager.disk_utilization[bundle_uuid]['disk_utilization'])
+            run_state = run_state._replace(disk_utilization=self._run_manager.disk_utilization[bundle_uuid]['disk_utilization'])
 
             if (run_state.resources['request_time'] and run_state.time_used > run_state.resources['request_time']):
-                logger.debug("Used time {}, requested time: {}".format(run_state.time_used, run_state.resources.get('request_time', 'inf')))
                 kill_messages.append('Time limit %s exceeded.' % duration_str(run_state.resources['request_time']))
 
             if run_state.max_memory > run_state.resources['request_memory']:
@@ -247,19 +245,13 @@ class LocalRunStateMachine(StateTransitioner):
             return run_state
 
         def check_disk_utilization():
-            # Wait until the caller creates a lock
-            while not self._run_manager.disk_utilization[bundle_uuid]['lock']:
-                time.sleep(0.1)
-
             running = True
             while running:
                 start_time = time.time()
                 try:
                     disk_utilization = get_path_size(run_state.bundle_path)
-                    with self._run_manager.disk_utilization[bundle_uuid]['lock']:
-                        self._run_manager.disk_utilization[bundle_uuid]['disk_utilization'] = disk_utilization
-                        logger.debug("Disk util: %s", disk_utilization)
-                        running = self._run_manager.disk_utilization[bundle_uuid]['running']
+                    self._run_manager.disk_utilization[bundle_uuid]['disk_utilization'] = disk_utilization
+                    running = self._run_manager.disk_utilization[bundle_uuid]['running']
                 except Exception:
                     traceback.print_exc()
                 end_time = time.time()
@@ -267,12 +259,8 @@ class LocalRunStateMachine(StateTransitioner):
                 # To ensure that we don't hammer the disk for this computation when
                 # there are lots of files, we run it at most 10% of the time.
                 time.sleep(max((end_time - start_time) * 10, 1.0))
-            logger.debug("Quit disk util thread")
 
         self._run_manager.disk_utilization.add_if_new(bundle_uuid, threading.Thread(target=check_disk_utilization, args=[]))
-        if not self._run_manager.disk_utilization[bundle_uuid]['lock']:
-            self._run_manager.disk_utilization[bundle_uuid]['lock'] = threading.RLock()
-
         run_state = check_and_report_finished(run_state)
         run_state = check_resource_utilization(run_state)
 
@@ -281,15 +269,13 @@ class LocalRunStateMachine(StateTransitioner):
                 self._run_manager.docker.kill_container(run_state.container_id)
             except DockerException:
                 traceback.print_exc()
-            with self._run_manager.disk_utilization[bundle_uuid]['lock']:
-                self._run_manager.disk_utilization[bundle_uuid]['running'] = False
+            self._run_manager.disk_utilization[bundle_uuid]['running'] = False
             self._run_manager.disk_utilization.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
         if run_state.info['finished']:
             logger.debug('Finished run with UUID %s, exitcode %s, failure_message %s',
                          bundle_uuid, run_state.info['exitcode'], run_state.info['failure_message'])
-            with self._run_manager.disk_utilization[bundle_uuid]['lock']:
-                self._run_manager.disk_utilization[bundle_uuid]['running'] = False
+            self._run_manager.disk_utilization[bundle_uuid]['running'] = False
             self._run_manager.disk_utilization.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, run_status='Uploading results')
         else:
