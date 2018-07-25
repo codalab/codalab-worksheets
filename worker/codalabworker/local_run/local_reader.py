@@ -41,24 +41,23 @@ class LocalReader(Reader):
         """
         bundle_uuid = run_state.bundle['uuid']
         # At the top-level directory, we should ignore dependencies.
-        if path and os.path.normpath(path) in self._dep_paths:
-            err = (httplib.NOT_FOUND, e.message)
-            reply_fn(err, None, None)
-            return
+        if path and os.path.normpath(path) in dep_paths:
+            target_info = None
         else:
             try:
                 target_info = download_util.get_target_info(run_state.bundle_path, bundle_uuid, path, args['depth'])
             except PathException as e:
-                err = (httplib.NOT_FOUND, e.message)
-                reply_fn(err, None, None)
-                return
+                pass
 
             if target_info is not None and not path and args['depth'] > 0:
                 target_info['contents'] = [
                     child for child in target_info['contents']
                     if child['name'] not in dep_paths]
 
-        reply_fn(None, {'target_info': target_info}, None)
+        if target_info is None:
+            err = (httplib.NOT_FOUND, e.message)
+        else:
+            reply_fn(None, {'target_info': target_info}, None)
 
     def stream_directory(self, run_state, path, dep_paths, args, reply_fn):
         """
