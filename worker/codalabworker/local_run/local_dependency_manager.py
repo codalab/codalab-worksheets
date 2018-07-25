@@ -83,7 +83,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             state = self._state_committer.load(default={'dependencies': {}, 'paths': set()})
             dependencies = {}
             paths = set()
-            for dep, dep_state in state['dependencies']:
+            for dep, dep_state in state['dependencies'].items():
                 if os.path.exists(dep_state.path):
                     dependencies[dep] = dep_state
                 else:
