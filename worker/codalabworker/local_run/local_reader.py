@@ -41,8 +41,11 @@ class LocalReader(Reader):
         """
         bundle_uuid = run_state.bundle['uuid']
         # At the top-level directory, we should ignore dependencies.
-        target_info = None
-        if not path or os.path.normpath(path) not in dep_paths:
+        if path and os.path.normpath(path) in self._dep_paths:
+            err = (httplib.NOT_FOUND, e.message)
+            reply_fn(err, None, None)
+            return
+        else:
             try:
                 target_info = download_util.get_target_info(run_state.bundle_path, bundle_uuid, path, args['depth'])
             except PathException as e:
