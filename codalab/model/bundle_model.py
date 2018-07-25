@@ -849,7 +849,10 @@ class BundleModel(object):
         Updates the given FINALIZING bundle to FINISHED state so the server stops
         telling the worker it is finalized
         '''
-        state = State.FAILED if bundle.metadata.failure_message or bundle.metadata.exitcode else State.READY
+        metadata = bundle.metadata.to_dict()
+        failure_message = metadata.get('failure_message', None)
+        exitcode = metadata.get('exitcode', 0)
+        state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message == 'Kill requested':
             state = State.KILLED
         with self.engine.begin() as connection:

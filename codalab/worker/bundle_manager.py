@@ -256,9 +256,11 @@ class BundleManager(object):
         """
         for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
             worker = workers.get_bundle_worker(bundle.uuid)
-            if self._worker_model.send_json_message(worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2):
-                logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
-                self._model.finish_bundle(bundle)
+            if (worker is not None and
+                    self._worker_model.send_json_message(worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2)):
+
+                    logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
+                    self._model.finish_bundle(bundle)
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
