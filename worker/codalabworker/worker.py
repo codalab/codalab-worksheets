@@ -7,7 +7,7 @@ import sys
 
 from bundle_service_client import BundleServiceException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
-from fsm import JsonStateCommitter
+from state_committer import JsonStateCommitter
 
 VERSION = 19
 

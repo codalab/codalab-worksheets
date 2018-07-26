@@ -57,33 +57,33 @@ class DefaultBundleManager(BundleManager):
             failures = []
 
             failures.append(self._check_resource_failure(
-                    self._compute_request_cpus(bundle),
-                    global_fail_string='No workers available with %d CPUs, max available: %d',
-                    global_max=max(map(lambda worker: worker['cpus'], workers_list))))
+                            self._compute_request_cpus(bundle),
+                            global_fail_string='No workers available with %d CPUs, max available: %d',
+                            global_max=max(map(lambda worker: worker['cpus'], workers_list))))
 
             failures.append(self._check_resource_failure(
-                    self._compute_request_gpus(bundle),
-                    global_fail_string='No workers available with %d GPUs, max available: %d',
-                    global_max=max(map(lambda worker: worker['gpus'], workers_list))))
+                            self._compute_request_gpus(bundle),
+                            global_fail_string='No workers available with %d GPUs, max available: %d',
+                            global_max=max(map(lambda worker: worker['gpus'], workers_list))))
 
             failures.append(self._check_resource_failure(
-                    self._compute_request_disk(bundle),
-                    user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
-                    user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
-                    global_fail_string='Maximum job disk size (%s) exceeded (%s)',
-                    global_max=self._max_request_disk))
+                            self._compute_request_disk(bundle),
+                            user_fail_string='Requested more disk (%s) than user disk quota left (%s)',
+                            user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
+                            global_fail_string='Maximum job disk size (%s) exceeded (%s)',
+                            global_max=self._max_request_disk))
 
             failures.append(self._check_resource_failure(
-                    self._compute_request_time(bundle),
-                    user_fail_string='Requested more time (%s) than user time quota left (%s)',
-                    user_max=self._model.get_user_time_quota_left(bundle.owner_id),
-                    global_fail_string='Maximum job time (%s) exceeded (%s)',
-                    global_max=self._max_request_time))
+                            self._compute_request_time(bundle),
+                            user_fail_string='Requested more time (%s) than user time quota left (%s)',
+                            user_max=self._model.get_user_time_quota_left(bundle.owner_id),
+                            global_fail_string='Maximum job time (%s) exceeded (%s)',
+                            global_max=self._max_request_time))
 
             failures.append(self._check_resource_failure(
-                    self._compute_request_memory(bundle),
-                    global_fail_string='Maximum memory limit (%s) exceeded (%s)',
-                    global_max=self._max_request_memory))
+                            self._compute_request_memory(bundle),
+                            global_fail_string='Maximum memory limit (%s) exceeded (%s)',
+                            global_max=self._max_request_memory))
 
             failures = [f for f in failures if f is not None]
 

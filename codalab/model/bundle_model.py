@@ -143,7 +143,7 @@ class BundleModel(object):
         #   - Some dialects do not support multiple inserts in a single statement,
         #     which we deal with by using the DBAPI execute_many pattern.
         if values:
-            with connection.begin() as trans:
+            with connection.begin():
                 connection.execute(table.insert(), values)
 
     def make_clause(self, key, value):
@@ -761,7 +761,6 @@ class BundleModel(object):
                 # State isn't one we can check in for
                 return False
 
-
     def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, hostname, connection):
         '''
         Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
@@ -799,8 +798,6 @@ class BundleModel(object):
             command='resume_bundle',
             args=(bundle.uuid),
             uuid=bundle.uuid)
-
-
 
         return True
 
@@ -1111,11 +1108,10 @@ class BundleModel(object):
                 clause = make_condition(cl_worksheet.c.owner_id, value)
             elif key == 'group':  # shared with group with read or all permissions?
                 group_uuid = get_group_info(value, False)['uuid']
-                clause = cl_worksheet.c.uuid.in_(
-                        select([cl_group_worksheet_permission.c.object_uuid])
-                        .where(and_(
-                            cl_group_worksheet_permission.c.group_uuid == group_uuid,
-                            cl_group_worksheet_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ)))
+                clause = cl_worksheet.c.uuid.in_(select([cl_group_worksheet_permission.c.object_uuid])
+                                                 .where(and_(
+                                                        cl_group_worksheet_permission.c.group_uuid == group_uuid,
+                                                        cl_group_worksheet_permission.c.permission >= GROUP_OBJECT_PERMISSION_READ)))
             elif key == 'bundle':  # contains bundle?
                 condition = make_condition(cl_worksheet_item.c.bundle_uuid, value)
                 if condition is None:  # top-level
@@ -1443,14 +1439,18 @@ class BundleModel(object):
         Delete the group with the given uuid.
         """
         with self.engine.begin() as connection:
-            connection.execute(cl_group_bundle_permission.delete()
-                             .where(cl_group_bundle_permission.c.group_uuid == uuid))
-            connection.execute(cl_group_worksheet_permission.delete()
-                             .where(cl_group_worksheet_permission.c.group_uuid == uuid))
-            connection.execute(cl_user_group.delete()
-                             .where(cl_user_group.c.group_uuid == uuid))
-            connection.execute(cl_group.delete()
-                             .where(cl_group.c.uuid == uuid))
+            connection.execute(cl_group_bundle_permission
+                               .delete()
+                               .where(cl_group_bundle_permission.c.group_uuid == uuid))
+            connection.execute(cl_group_worksheet_permission
+                               .delete()
+                               .where(cl_group_worksheet_permission.c.group_uuid == uuid))
+            connection.execute(cl_user_group
+                               .delete()
+                               .where(cl_user_group.c.group_uuid == uuid))
+            connection.execute(cl_group
+                               .delete()
+                               .where(cl_group.c.uuid == uuid))
 
     def add_user_in_group(self, user_id, group_uuid, is_admin):
         """
@@ -1467,19 +1467,21 @@ class BundleModel(object):
         Add user as a member of a group.
         """
         with self.engine.begin() as connection:
-            connection.execute(cl_user_group.delete()
-                             .where(cl_user_group.c.user_id == user_id)
-                             .where(cl_user_group.c.group_uuid == group_uuid))
+            connection.execute(cl_user_group
+                               .delete()
+                               .where(cl_user_group.c.user_id == user_id)
+                               .where(cl_user_group.c.group_uuid == group_uuid))
 
     def update_user_in_group(self, user_id, group_uuid, is_admin):
         """
         Update user role in group.
         """
         with self.engine.begin() as connection:
-            connection.execute(cl_user_group.update()
-                             .where(cl_user_group.c.user_id == user_id)
-                             .where(cl_user_group.c.group_uuid == group_uuid)
-                             .values({'is_admin': is_admin}))
+            connection.execute(cl_user_group
+                               .update()
+                               .where(cl_user_group.c.user_id == user_id)
+                               .where(cl_user_group.c.group_uuid == group_uuid)
+                               .values({'is_admin': is_admin}))
 
     def batch_get_user_in_group(self, **kwargs):
         """
@@ -1523,10 +1525,11 @@ class BundleModel(object):
             if new_permission > 0:
                 if old_permission > 0:
                     # Update existing permission
-                    connection.execute(table.update().
-                                     where(table.c.group_uuid == group_uuid).
-                                     where(table.c.object_uuid == object_uuid).
-                                     values({'permission': new_permission}))
+                    connection.execute(table
+                                       .update()
+                                       .where(table.c.group_uuid == group_uuid)
+                                       .where(table.c.object_uuid == object_uuid)
+                                       .values({'permission': new_permission}))
                 else:
                     # Create permission
                     connection.execute(table.insert().values({
@@ -1537,9 +1540,10 @@ class BundleModel(object):
             else:
                 if old_permission > 0:
                     # Delete permission
-                    connection.execute(table.delete()
-                                     .where(table.c.group_uuid == group_uuid)
-                                     .where(table.c.object_uuid == object_uuid))
+                    connection.execute(table
+                                       .delete()
+                                       .where(table.c.group_uuid == group_uuid)
+                                       .where(table.c.object_uuid == object_uuid))
 
     def set_group_bundle_permission(self, group_uuid, bundle_uuid, new_permission):
         return self.set_group_permission(
@@ -1564,11 +1568,10 @@ class BundleModel(object):
                 group_restrict = true()
 
             rows = connection.execute(select([table, cl_group.c.name])
-                                    .where(table.c.group_uuid == cl_group.c.uuid)
-                                    .where(group_restrict)
-                                    .where(table.c.object_uuid.in_(object_uuids))
-                                    .order_by(cl_group.c.name)
-                                    ).fetchall()
+                                      .where(table.c.group_uuid == cl_group.c.uuid)
+                                      .where(group_restrict)
+                                      .where(table.c.object_uuid.in_(object_uuids))
+                                      .order_by(cl_group.c.name)).fetchall()
             result = collections.defaultdict(list)  # object_uuid => list of rows
             for row in rows:
                 result[row.object_uuid].append({'id': row.id, 'group_uuid': row.group_uuid, 'group_name': row.name, 'permission': row.permission})

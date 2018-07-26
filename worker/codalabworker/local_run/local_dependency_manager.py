@@ -13,10 +13,10 @@ from codalabworker.fsm import (
     BaseDependencyManager,
     DependencyStage,
     StateTransitioner,
-    JsonStateCommitter
 )
 import codalabworker.pyjson
 from codalabworker.worker_thread import ThreadDict
+from codalabworker.state_committer import JsonStateCommitter
 
 
 logger = logging.getLogger(__name__)
@@ -62,8 +62,10 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
         self._lock = threading.RLock()
 
-        self._paths = set()  # File paths that are currently being used to store dependencies. Used to prevent conflicts
-        self._dependencies = dict()  # (parent_uuid, parent_path) -> DependencyState
+        # File paths that are currently being used to store dependencies. Used to prevent conflicts
+        self._paths = set()
+        # (parent_uuid, parent_path) -> DependencyState
+        self._dependencies = dict()
         # (parent_uuid, parent_path) -> WorkerThread(thread, success, failure_message)
         self._downloading = ThreadDict(fields={'success': False,
                                                'failure_message': None})

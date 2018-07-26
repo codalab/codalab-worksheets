@@ -6,7 +6,7 @@ import time
 import socket
 
 from codalabworker.worker_thread import ThreadDict
-from codalabworker.fsm import JsonStateCommitter
+from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.run_manager import BaseRunManager
 from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from local_reader import LocalReader
@@ -122,11 +122,13 @@ class LocalRunManager(BaseRunManager):
                 run_state = run_state._replace(info=run_state.info, is_killed=True)
                 self.runs[uuid] = run_state
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
-        for attempt in range(KILL_TIMEOUT):
-            if len(self.runs) > 0:
-                logger.debug("Waiting for {} more bundles. {} seconds until force quit.".format(len(self.runs), KILL_TIMEOUT - attemmpt))
-                time.sleep(1)
-
+        for attempt in range(LocalRunManager.KILL_TIMEOUT):
+            with self.lock:
+                self.runs = {k: v for k, v in self.runs.items() if v.stage != LocalRunStage.FINISHED}
+                if len(self.runs) > 0:
+                    logger.debug("Waiting for {} more bundles. {} seconds until force quit.".format(
+                        len(self.runs), LocalRunManager.KILL_TIMEOUT - attempt))
+            time.sleep(1)
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """

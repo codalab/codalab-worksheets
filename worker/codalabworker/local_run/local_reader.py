@@ -23,7 +23,7 @@ class LocalReader(Reader):
     Class that implements read functions for bundles executed on the local filesystem
     """
     def __init__(self):
-        self.read_threads = [] # Threads
+        self.read_threads = []  # Threads
 
     def stop(self):
         for thread in self.read_threads:
@@ -53,7 +53,7 @@ class LocalReader(Reader):
 
         # if path is a dependency raise an error
         if path and os.path.normpath(path) in dep_paths:
-            err = (httplib.NOT_FOUND, e.message)
+            err = (httplib.NOT_FOUND, '{} not found in bundle {}'.format(path, bundle_uuid))
             reply_fn(err, None, None)
             return
         else:

@@ -20,12 +20,10 @@ def wrap_exception(message):
             try:
                 return f(*args, **kwargs)
             except DockerException as e:
-                raise DockerException, \
-                    DockerException(message + ': ' + e.message), \
+                raise DockerException(message + ': ' + e.message), \
                     sys.exc_info()[2]
             except (httplib.HTTPException, socket.error) as e:
-                raise DockerException, \
-                    DockerException(message + ': ' + str(e)), \
+                raise DockerException(message + ': ' + str(e)), \
                     sys.exc_info()[2]
         return wrapper
     return decorator
@@ -180,7 +178,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 raise DockerException(version_response.read())
             try:
                 version_info = json.loads(version_response.read())
-            except:
+            except Exception:
                 raise DockerException('Invalid version information')
             if map(int, version_info['ApiVersion'].split('.')) < \
                     map(int, self.MIN_API_VERSION.split('.')):
@@ -495,7 +493,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                         stats['time_user'] = int(value) / 100.0
                     elif key == 'system':
                         stats['time_system'] = int(value) / 100.0
-        except:
+        except Exception:
             pass
 
         # Get memory usage
@@ -503,7 +501,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             memory_path = os.path.join(cgroup, 'memory/docker', container_id, 'memory.usage_in_bytes')
             with open(memory_path) as f:
                 stats['memory'] = int(f.read())
-        except:
+        except Exception:
             pass
 
         return stats

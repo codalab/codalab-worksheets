@@ -112,18 +112,22 @@ class WorkerModel(object):
             ).fetchall()
             for socket_row in socket_rows:
                 self._cleanup_socket(socket_row.socket_id)
-            conn.execute(cl_worker_socket.delete()
-                             .where(and_(cl_worker_socket.c.user_id == user_id,
-                                         cl_worker_socket.c.worker_id == worker_id)))
-            conn.execute(cl_worker_run.delete()
-                             .where(and_(cl_worker_run.c.user_id == user_id,
-                                         cl_worker_run.c.worker_id == worker_id)))
-            conn.execute(cl_worker_dependency.delete()
-                             .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                         cl_worker_dependency.c.worker_id == worker_id)))
-            conn.execute(cl_worker.delete()
-                             .where(and_(cl_worker.c.user_id == user_id,
-                                         cl_worker.c.worker_id == worker_id)))
+            conn.execute(cl_worker_socket
+                         .delete()
+                         .where(and_(cl_worker_socket.c.user_id == user_id,
+                                     cl_worker_socket.c.worker_id == worker_id)))
+            conn.execute(cl_worker_run
+                         .delete()
+                         .where(and_(cl_worker_run.c.user_id == user_id,
+                                     cl_worker_run.c.worker_id == worker_id)))
+            conn.execute(cl_worker_dependency
+                         .delete()
+                         .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                     cl_worker_dependency.c.worker_id == worker_id)))
+            conn.execute(cl_worker
+                         .delete()
+                         .where(and_(cl_worker.c.user_id == user_id,
+                                     cl_worker.c.worker_id == worker_id)))
 
     def get_workers(self):
         """
@@ -159,12 +163,14 @@ class WorkerModel(object):
         on. This method should be called only for bundles that are running.
         """
         with self._engine.begin() as conn:
-            row = conn.execute(cl_worker_run.select()
-                                   .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
+            row = conn.execute(cl_worker_run
+                               .select()
+                               .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
             precondition(row, 'Trying to find worker for bundle that is not running.')
-            worker_row = conn.execute(cl_worker.select()
-                                          .where(and_(cl_worker.c.user_id == row.user_id,
-                                                      cl_worker.c.worker_id == row.worker_id))).fetchone()
+            worker_row = conn.execute(cl_worker
+                                      .select()
+                                      .where(and_(cl_worker.c.user_id == row.user_id,
+                                                  cl_worker.c.worker_id == row.worker_id))).fetchone()
             return {
                 'user_id': worker_row.user_id,
                 'worker_id': worker_row.worker_id,
@@ -196,8 +202,9 @@ class WorkerModel(object):
         """
         self._cleanup_socket(socket_id)
         with self._engine.begin() as conn:
-            conn.execute(cl_worker_socket.delete()
-                             .where(cl_worker_socket.c.socket_id == socket_id))
+            conn.execute(cl_worker_socket
+                         .delete()
+                         .where(cl_worker_socket.c.socket_id == socket_id))
 
     def _socket_path(self, socket_id):
         return os.path.join(self._socket_dir, str(socket_id))

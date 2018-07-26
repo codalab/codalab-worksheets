@@ -95,7 +95,7 @@ class ThreadDict(object):
 
     def remove(self, key):
         """
-        Joins and remove the thread with key from the dict if it exists
+        Joins and removes the thread with key from the dict if it exists
         """
         if key in self._thread_dict:
             self._thread_dict[key].join()

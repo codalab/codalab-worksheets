@@ -26,12 +26,15 @@ class BaseRunManager(object):
         """
         makes the RunManager and all other managers commit their state to
         disk (including state of all runs)
-
         """
         raise NotImplementedError
 
     @abstractmethod
     def process_runs(self):
+        """
+        Main event-loop call where the run manager should advance the state
+        machine of all its runs
+        """
         raise NotImplementedError
 
     @abstractmethod

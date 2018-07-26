@@ -28,7 +28,7 @@ class LocalRunStage(object):
 
     """
     This stage involves setting up the directory structure for the run
-    and preapring to start the container
+    and preparing to start the container
     """
     PREPARING = 'LOCAL_RUN.PREPARING'
     WORKER_STATE_TO_SERVER_STATE[PREPARING] = State.PREPARING
@@ -63,7 +63,6 @@ class LocalRunStage(object):
     """
     FINISHED = 'LOCAL_RUN.FINISHED'
     WORKER_STATE_TO_SERVER_STATE[FINISHED] = State.READY
-
 
 
 LocalRunState = namedtuple(
@@ -149,7 +148,7 @@ class LocalRunStateMachine(StateTransitioner):
         if not dependencies_ready:
             status_message = status_messages.pop()
             if status_messages:
-                status_message += "(and downloading %d others)" % len(status_messages)
+                status_message += "(and downloading %d other dependencies and docker images)" % len(status_messages)
             return run_state._replace(run_status=status_message)
 
         # All dependencies ready! Set up directories, symlinks and container. Start container.
@@ -187,7 +186,7 @@ class LocalRunStateMachine(StateTransitioner):
         try:
             cpuset, gpuset = self._run_manager.assign_cpu_and_gpu_sets(
                 run_state.resources['request_cpus'], run_state.resources['request_gpus'])
-        except:
+        except Exception:
             run_state.info['failure_message'] = "Cannot assign enough resources"
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
@@ -376,7 +375,6 @@ class LocalRunStateMachine(StateTransitioner):
         return run_state._replace(stage=LocalRunStage.FINALIZING,
                                   info=run_state.info,
                                   run_status="Finalizing bundle")
-
 
     def _transition_from_FINALIZING(self, run_state):
         """

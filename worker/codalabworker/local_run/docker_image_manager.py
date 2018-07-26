@@ -10,8 +10,8 @@ from codalabworker.fsm import (
     BaseDependencyManager,
     DependencyStage,
     StateTransitioner,
-    JsonStateCommitter
 )
+from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
