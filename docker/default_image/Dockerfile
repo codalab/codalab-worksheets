@@ -27,29 +27,19 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # PyTorch CPU
 # torchvision
 
-RUN apt-get update; apt-get -y upgrade; apt-get -y install \
-      python2.7 \
-      python-pip \
-      python-dev \
-      python-software-properties \
-      python-tk \
-      software-properties-common \
-      build-essential \
-      cmake \
-      default-jdk \
-      libav-tools \
-      libboost-all-dev \
-      libeigen3-dev \
-      libfreetype6-dev \
-      libhdf5-dev \
+RUN apt-get -y update; apt-get -y upgrade;
+RUN apt-get -y install python2.7;
+RUN apt-get -y install python-pip;
+RUN apt-get -y install python-dev;
+RUN apt-get -y install python-software-properties;
+RUN apt-get -y install python-tk;
+RUN apt-get -y install software-properties-common;
+RUN apt-get -y install build-essential;
+RUN apt-get -y install cmake;
+RUN apt-get -y install default-jdk;
+RUN apt-get -y install libhdf5-dev;
+RUN apt-get -y install swig;
 
-RUN apt-get -y install \
-      python-numpy \
-      python-scipy \
-      python-matplotlib \
-      python-pandas \
-      python-sympy \
-      python-nose
 
 RUN apt-get clean && apt-get autoremove
 
@@ -64,7 +54,13 @@ RUN pip install -U \
       gym[all] \
       nltk \
       tensorflow \
-      keras
+      keras \
+      numpy \
+      scipy \
+      matpl \
+      panda \
+      sympy \
+      nose;
 
 RUN python -m spacy download en
 
