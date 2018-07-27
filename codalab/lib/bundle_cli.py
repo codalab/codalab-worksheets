@@ -1781,7 +1781,7 @@ class BundleCLI(object):
     )
     def do_netcat_command(self, args):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuid = self.resolve_bundle_specs(client, worksheet_uuid, args.bundle_spec)[0]
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(client, worksheet_uuid, args.bundle_spec)
         info = client.netcat(bundle_uuid, port=args.port, data={"message": args.message})
         print >>self.stdout, info['data']
 
