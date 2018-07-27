@@ -563,6 +563,12 @@ class JsonApiClient(RestClient):
                 data=self._pack_document(data, 'users')))
 
     @wrap_exception('Unable to fetch contents info of bundle {1}')
+    def fetch_interpreted_worksheet(self, worksheet_uuid):
+        request_path = '/interpret/worksheet/%s' % worksheet_uuid
+        response = self._make_request('GET', request_path)
+        return response
+
+    @wrap_exception('Unable to fetch contents info of bundle {1}')
     def fetch_contents_info(self, bundle_id, target_path='', depth=0):
         request_path = '/bundles/%s/contents/info/%s' % \
                        (bundle_id, urllib.quote(target_path))
@@ -656,22 +662,6 @@ class JsonApiClient(RestClient):
                 'contents': contents
             }
         )['contents']
-
-    @wrap_exception('Unable to interpret bundle search')
-    def interpret_search(self, query):
-        return self._make_request(
-            method='POST',
-            path='/interpret/search',
-            data=query,
-        )
-
-    @wrap_exception('Unable to interpret worksheet search')
-    def interpret_wsearch(self, query):
-        return self._make_request(
-            method='POST',
-            path='/interpret/wsearch',
-            data=query,
-        )
 
     @wrap_exception('Unable to update worksheet')
     def update_worksheet_raw(self, worksheet_id, lines):

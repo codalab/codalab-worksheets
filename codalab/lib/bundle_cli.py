@@ -92,6 +92,7 @@ from codalab.lib.spec_util import generate_uuid
 from codalabworker.docker_client import DockerClient
 from codalabworker.file_util import remove_path
 from codalabworker.bundle_state import State
+from codalab.rest.worksheet_block_schemas import BlockModes
 
 # Formatting Constants
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
@@ -2340,43 +2341,39 @@ class BundleCLI(object):
                 print >>self.stdout, line
         else:
             print >>self.stdout, self._worksheet_description(worksheet_info)
-            interpreted = worksheet_util.interpret_items(worksheet_util.get_default_schemas(), worksheet_info['items'])
-            self.display_interpreted(client, worksheet_info, interpreted)
+            interpreted_blocks = client.fetch_interpreted_worksheet(worksheet_uuid)['items']
+            self.display_blocks(client, worksheet_info, interpreted_blocks)
 
-    def display_interpreted(self, client, worksheet_info, interpreted):
-        for item in interpreted['items']:
-            mode = item['mode']
-            data = item['interpreted']
-            properties = item['properties']
+    def display_blocks(self, client, worksheet_info, interpreted_blocks):
+        for block in interpreted_blocks:
+            mode = block['mode']
             print >>self.stdout, ''  # Separate interpreted items
-            if mode == 'markup' or mode == 'contents':
-                if mode == 'contents':
-                    maxlines = properties.get('maxlines')
-                    if maxlines:
-                        maxlines = int(maxlines)
-                    try:
-                        self.print_target_info(client, data[0], data[1], head=maxlines)
-                    except UsageError, e:
-                        print >>self.stdout, 'ERROR:', e
-                else:
-                    print >>self.stdout, data
-            elif mode == 'record' or mode == 'table':
+            if mode == BlockModes.markup_block:
+                print >>self.stdout, block['text']
+            elif mode == BlockModes.contents_block:
+                bundle_info = block['bundles_spec']['bundle_infos'][0]
+                maxlines = block['max_lines']
+                if maxlines:
+                    maxlines = int(maxlines)
+                try:
+                    self.print_target_info(client, bundle_info['uuid'], block['target_genpath'], head=maxlines)
+                except UsageError, e:
+                    print >>self.stdout, 'ERROR:', e
+            elif mode == BlockModes.record_block or mode == BlockModes.table_block:
                 # header_name_posts is a list of (name, post-processing) pairs.
-                header, contents = data
-                contents = client.interpret_genpath_table_contents(contents)
+                header, rows = (block['header'], block['rows'])
+                rows = client.interpret_genpath_table_contents(rows)
                 # print >>self.stdout, the table
-                self.print_table(header, contents, show_header=(mode == 'table'), indent='  ')
-            elif mode == 'html' or mode == 'image' or mode == 'graph':
+                self.print_table(header, rows, show_header=(mode == BlockModes.table_block), indent='  ')
+            elif mode == BlockModes.image_block:
                 # Placeholder
-                print >>self.stdout, '[' + mode + ']'
-            elif mode == 'search':
-                search_interpreted = client.interpret_search(data)
-                self.display_interpreted(client, worksheet_info, search_interpreted)
-            elif mode == 'wsearch':
-                wsearch_interpreted = client.interpret_wsearch(data)
-                self.display_interpreted(client, worksheet_info, wsearch_interpreted)
-            elif mode == 'worksheet':
-                print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(data) + ']'
+                print >>self.stdout, '[Image]'
+            elif mode == BlockModes.graph_block:
+                # Placeholder
+                print >>self.stdout, '[Graph]'
+            elif mode == BlockModes.subworksheets_block:
+                for worksheet_info in block['subworksheet_infos']:
+                    print >>self.stdout, '[Worksheet ' + self.simple_worksheet_str(worksheet_info) + ']'
             else:
                 raise UsageError('Invalid display mode: %s' % mode)
 
