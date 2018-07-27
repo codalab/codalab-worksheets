@@ -57,8 +57,8 @@ RUN pip install -U \
       keras \
       numpy \
       scipy \
-      matpl \
-      panda \
+      matplotlib \
+      pandas \
       sympy \
       nose;
 
