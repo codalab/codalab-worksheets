@@ -511,7 +511,7 @@ class BundleCLI(object):
         """
         Wrapper for resolve_target that takes a list of target specs and returns a list of bundle uuids.
         """
-        return [self.resolve_target(default_client, default_worksheet_uuid, target_specs, allow_remote)[2] for spec in target_specs]
+        return [self.resolve_target(default_client, default_worksheet_uuid, spec, allow_remote)[2] for spec in target_specs]
 
     def resolve_target(self, default_client, default_worksheet_uuid, target_spec, allow_remote=True):
         """
