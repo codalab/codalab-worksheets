@@ -74,6 +74,7 @@ def gzip_file(file_path):
     except subprocess.CalledProcessError as e:
         raise IOError(e.output)
 
+
 def un_bz2_file(source, dest_path):
     """
     Unzips the source bz2 file object and writes the output to the file at
@@ -83,11 +84,12 @@ def un_bz2_file(source, dest_path):
     # they require the input file-like object to support either tell() or
     # fileno(). Our version requires only read() and close().
 
-    BZ2_BUFFER_SIZE = 100 * 1024 * 1024 # Unzip in chunks of 100MB
+    BZ2_BUFFER_SIZE = 100 * 1024 * 1024  # Unzip in chunks of 100MB
     with open(dest_path, 'wb') as dest:
         decompressor = bz2.BZ2Decompressor()
-        for data in iter(lambda : source.read(BZ2_BUFFER_SIZE), b''):
+        for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b''):
             dest.write(decompressor.decompress(data))
+
 
 def un_gzip_stream(fileobj):
     """
@@ -183,7 +185,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 lines.pop()
             else:
                 lines[-1] += '\n'
-    
+
     file_size = os.stat(file_path).st_size
     with open(file_path) as fileobj:
         if file_size > (num_head_lines + num_tail_lines) * max_line_length:
@@ -204,7 +206,7 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
                 tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[1:][-num_tail_lines:]
                 ensure_ends_with_newline(tail_lines)
-            
+
             if num_head_lines > 0 and num_tail_lines > 0:
                 lines = head_lines + [truncation_text] + tail_lines
             elif num_head_lines > 0:
@@ -221,8 +223,9 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                     lines = lines[:num_head_lines]
                 else:
                     lines = lines[-num_tail_lines:]
-    
+
     return ''.join(lines)
+
 
 def get_path_size(path, exclude_names=[]):
     """
@@ -237,6 +240,7 @@ def get_path_size(path, exclude_names=[]):
             if child not in exclude_names:
                 result += get_path_size(os.path.join(path, child))
     return result
+
 
 def remove_path(path):
     """

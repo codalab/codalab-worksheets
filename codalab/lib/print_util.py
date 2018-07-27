@@ -54,6 +54,8 @@ class FileTransferProgress(object):
         Update progress display.
 
         :param bytes_done: Number of bytes transferred
+        :returns True: To resume connections for breakable
+            operations like uploads
         """
         self.f.write('\r')
         self.f.write(self.prefix)
@@ -65,6 +67,7 @@ class FileTransferProgress(object):
         self.f.write(' [%s/sec]' % self.format_size(speed))
         self.f.write('    \t\t\t')
         self.f.flush()
+        return True
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.f.write('\n')

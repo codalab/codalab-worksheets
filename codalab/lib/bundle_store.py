@@ -4,7 +4,7 @@ import sys
 from collections import OrderedDict
 
 from codalab.lib import path_util, spec_util
-from codalab.common import State
+from codalabworker.bundle_state import State
 
 class BundleStoreCleanupMixin(object):
     """A mixin for BundleStores that wish to support a cleanup operation

@@ -23,19 +23,25 @@ def checkin(worker_id):
     Waits for a message for the worker for WAIT_TIME_SECS seconds. Returns the
     message or None if there isn't one.
     """
-    WAIT_TIME_SECS = 5.0
-
-    torque_worker = ('torque' in local.config['workers'] and
-                     request.user.user_id == local.model.root_user_id)
-    if (not torque_worker and
-        request.json['version'] != VERSION and
-        not request.json['will_upgrade']):
-        return {'type': 'upgrade'}
+    WAIT_TIME_SECS = 3.0
 
     socket_id = local.worker_model.worker_checkin(
-        request.user.user_id, worker_id, request.json['tag'],
-        request.json['cpus'], request.json['gpus'], request.json['memory_bytes'],
+        request.user.user_id,
+        worker_id,
+        request.json['tag'],
+        request.json['cpus'],
+        request.json['gpus'],
+        request.json['memory_bytes'],
         request.json['dependencies'])
+
+    for uuid, run in request.json['runs'].items():
+        bundle = local.model.get_bundle(uuid)
+        local.model.bundle_checkin(bundle,
+                                   run,
+                                   request.user.user_id,
+                                   worker_id,
+                                   request.json['hostname'])
+
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
 
@@ -111,23 +117,6 @@ def start_bundle(worker_id, uuid):
         return json.dumps(True)
     return json.dumps(False)
 
-@post('/workers/<worker_id>/resume_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      name='worker_resume_bundle', apply=AuthenticatedPlugin())
-def resume_bundle(worker_id, uuid):
-    """
-    Checks whether the bundle is still assigned to run on the worker with the
-    given worker_id. If so, reports that it's starting to run and returns True.
-    Otherwise, returns False, meaning the worker shouldn't run the bundle.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-    response.content_type = 'application/json'
-    if local.model.resume_bundle(bundle, request.user.user_id, worker_id,
-                                request.json['hostname'],
-                                request.json['start_time']):
-        return json.dumps(True)
-    return json.dumps(False)
-
 @put('/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
      name='worker_update_bundle_metadata', apply=AuthenticatedPlugin())
 def update_bundle_metadata(worker_id, uuid):
@@ -143,43 +132,6 @@ def update_bundle_metadata(worker_id, uuid):
             metadata_update[key] = value
     local.model.update_bundle(bundle, {'metadata': metadata_update})
 
-
-@post('/workers/<worker_id>/finalize_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      name='worker_finalize_bundle', apply=AuthenticatedPlugin())
-def finalize_bundle(worker_id, uuid):
-    """
-    Reports that the bundle has finished running.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-
-    if (local.worker_model.shared_file_system and
-        request.user.user_id == local.model.root_user_id):
-        # On a shared file system, the worker doesn't upload the contents, so
-        # we need to run a metadata update here. With no shared file system
-        # it happens in update_bundle_contents.
-
-        # On the NFS file system the contents of directories are cached, so the
-        # new directory that has been created for the bundle might not appear
-        # right away. We use this loop to check for it. There might be some
-        # inconsistencies in the actual contents due to newly created files not
-        # be seen. Although, that's very unlikely to give a large difference
-        # in the final bundle size.
-        bundle_location = local.bundle_store.get_bundle_location(uuid)
-        for _ in xrange(120):
-            if os.path.exists(bundle_location):
-                break
-            else:
-                time.sleep(1)
-        # If the directory still doesn't exist after 2 minutes, the following
-        # call will return an error.
-
-        local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
-
-    print 'Finalized bundle %s' % uuid
-    local.model.finalize_bundle(bundle, request.user.user_id,
-                                request.json['exitcode'],
-                                request.json['failure_message'])
 
 @get('/workers/info', name='workers_info', apply=AuthenticatedPlugin())
 def workers_info():

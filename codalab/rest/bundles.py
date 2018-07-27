@@ -1,4 +1,5 @@
 import httplib
+import logging
 import mimetypes
 import os
 import re
@@ -22,7 +23,6 @@ from codalab.bundles import (
 )
 from codalab.common import (
     precondition,
-    State,
     UsageError,
     NotFoundError
 )
@@ -59,7 +59,9 @@ from codalab.rest.util import (
     resolve_owner_in_keywords,
 )
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalabworker.bundle_state import State
 
+logger = logging.getLogger(__name__)
 
 @get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR)
 def _fetch_bundle(uuid):
@@ -411,8 +413,9 @@ def _netcat_bundle(uuid, port):
     """
     check_bundles_have_read_permission(local.model, request.user, [uuid])
     bundle = local.model.get_bundle(uuid)
-    if bundle.state in State.FINAL_STATES:
-        abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle already finalized.')
+    print(bundle.state)
+    if bundle.state != State.RUNNING:
+        abort(httplib.FORBIDDEN, 'Cannot netcat bundle, bundle not running.')
     info = local.download_manager.netcat(uuid, port, request.json['message'])
     return {'data': info}
 
@@ -590,8 +593,8 @@ def _update_bundle_contents_blob(uuid):
 
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
-    final_state = request.query.get('state_on_success', default=State.READY)
-    if final_state not in State.FINAL_STATES:
+    final_state = request.query.get('state_on_success', default=None)
+    if final_state is not None and final_state not in State.FINAL_STATES:
         abort(httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES))
 
     # If this bundle already has data, remove it.
@@ -637,8 +640,9 @@ def _update_bundle_contents_blob(uuid):
         abort(httplib.INTERNAL_SERVER_ERROR, msg)
 
     else:
-        # Upload succeeded: update state
-        local.model.update_bundle(bundle, {'state': final_state})
+        if final_state is not None:
+            # Upload succeeded: update state
+            local.model.update_bundle(bundle, {'state': final_state})
 
 
 #############################################################
@@ -699,7 +703,9 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 
     # Make sure we don't delete bundles which are active.
     states = local.model.get_bundle_states(uuids)
+    logger.debug('delete states: %s', states)
     active_uuids = [uuid for (uuid, state) in states.items() if state in State.ACTIVE_STATES]
+    logger.debug('delete actives: %s', active_uuids)
     if len(active_uuids) > 0:
         raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
                          'For run bundles, kill them first. ' +

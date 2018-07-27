@@ -3,13 +3,13 @@ import os
 import unittest
 
 from codalab.common import (
-  State,
   UsageError,
 )
 from codalab.lib import (
   canonicalize,
   spec_util,
 )
+from codalabworker.bundle_state import State
 
 
 class CanonicalizeTest(unittest.TestCase):

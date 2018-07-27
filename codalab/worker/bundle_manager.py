@@ -9,14 +9,16 @@ import time
 import traceback
 
 from codalab.objects.permission import check_bundles_have_read_permission
-from codalab.common import State, PermissionError
+from codalab.common import PermissionError
 from codalab.lib import bundle_util, formatting, path_util
 from codalabworker.file_util import remove_path
+from codalabworker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)
 
-WORKER_TIMEOUT_SECONDS = 30
+WORKER_TIMEOUT_SECONDS = 60
+
 
 class BundleManager(object):
     """
@@ -30,12 +32,8 @@ class BundleManager(object):
             print >> sys.stderr, 'config.json file missing a workers section.'
             exit(1)
 
-        if 'torque' in config:
-            from codalab.worker.torque_bundle_manager import TorqueBundleManager
-            self = TorqueBundleManager(codalab_manager, config['torque'])
-        else:
-            from codalab.worker.default_bundle_manager import DefaultBundleManager
-            self = DefaultBundleManager()
+        from codalab.worker.default_bundle_manager import DefaultBundleManager
+        self = DefaultBundleManager()
 
         self._model = codalab_manager.model()
         self._worker_model = codalab_manager.worker_model()
@@ -84,6 +82,12 @@ class BundleManager(object):
         self._stage_bundles()
         self._make_bundles()
         self._schedule_run_bundles()
+
+    def _schedule_run_bundles(self):
+        """
+        Sub classes should implement this. See DefaultBundleManager
+        """
+        raise NotImplementedError
 
     def _stage_bundles(self):
         """
@@ -240,22 +244,37 @@ class BundleManager(object):
         state so that they can be scheduled to run again.
         """
         for bundle in self._model.batch_get_bundles(state=State.STARTING, bundle_type='run'):
-            if (not workers.is_running(bundle.uuid) or  # Dead worker.
-                time.time() - bundle.metadata.last_updated > 5 * 60):  # Run message went missing.
+            if (not workers.is_running(bundle.uuid) or
+                    time.time() - bundle.metadata.last_updated > 5 * 60):  # Run message went missing.
                 logger.info('Re-staging run bundle %s', bundle.uuid)
                 if self._model.restage_bundle(bundle):
                     workers.restage(bundle.uuid)
 
+    def _acknowledge_recently_finished_bundles(self, workers):
+        """
+        Acknowledges recently finished bundles to workers so they can discard run information
+        """
+        for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
+            worker = workers.get_bundle_worker(bundle.uuid)
+            if (worker is not None and
+                    self._worker_model.send_json_message(worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2)):
+
+                    logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
+                    self._model.finish_bundle(bundle)
+
     def _bring_offline_stuck_running_bundles(self, workers):
         """
-        Make bundles that got stuck in the RUNNING state into WORKER_OFFLINE state.
-        Bundles in WORKER_OFFLINE state can be moved back to the RUNNING state if a
-        worker resumes the bundle, indicating that it's still RUNNING.
+        Make bundles that got stuck in the RUNNING or PREPARING state into WORKER_OFFLINE state.
+        Bundles in WORKER_OFFLINE state can be moved back to the RUNNING or PREPARING state if a
+        worker resumes the bundle indicating that it's still in one of those states.
         """
-        for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run'):
-            if (not workers.is_running(bundle.uuid) or  # Dead worker.
-                time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS):
+        for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run') + self._model.batch_get_bundles(state=State.PREPARING, bundle_type='run'):
+            failure_message = None
+            if not workers.is_running(bundle.uuid):
+                failure_message = 'No worker claims bundle'
+            if time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS:
                 failure_message = 'Worker offline'
+            if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
                 self._model.set_offline_bundle(bundle)
 
@@ -288,6 +307,7 @@ class BundleManager(object):
                 bundle = self._model.get_bundle(uuid)
                 worker['cpus'] -= self._compute_request_cpus(bundle)
                 worker['gpus'] -= self._compute_request_gpus(bundle)
+                worker['memory_bytes'] -= self._compute_request_memory(bundle)
 
     def _filter_and_sort_workers(self, workers_list, bundle):
         """
@@ -349,6 +369,7 @@ class BundleManager(object):
         # in its cache.
         needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path),
                               bundle.dependencies))
+
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
             worker_id = worker['worker_id']
@@ -374,7 +395,7 @@ class BundleManager(object):
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
-                worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
+               worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
@@ -387,8 +408,9 @@ class BundleManager(object):
     def _compute_request_cpus(self, bundle):
         """
         Compute the CPU limit used for scheduling the run.
+        The default of 1 is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_cpus:
             return 1
         return bundle.metadata.request_cpus
@@ -396,8 +418,9 @@ class BundleManager(object):
     def _compute_request_gpus(self, bundle):
         """
         Compute the GPU limit used for scheduling the run.
+        The default of 0 is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
-        #TODO: Remove this once we want to deprecate old versions
         if bundle.metadata.request_gpus is None:
             return 0
         return bundle.metadata.request_gpus
@@ -405,8 +428,9 @@ class BundleManager(object):
     def _compute_request_memory(self, bundle):
         """
         Compute the memory limit used for scheduling the run.
+        The default of 2g is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_memory:
             return formatting.parse_size('2g')
         return formatting.parse_size(bundle.metadata.request_memory)
@@ -414,8 +438,9 @@ class BundleManager(object):
     def _compute_request_disk(self, bundle):
         """
         Compute the disk limit used for scheduling the run.
+        The default of 4g is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_disk:
             return formatting.parse_size('4g')
         return formatting.parse_size(bundle.metadata.request_disk)
@@ -423,11 +448,22 @@ class BundleManager(object):
     def _compute_request_time(self, bundle):
         """
         Compute the time limit used for scheduling the run.
+        The default of 1d is for backwards compatibilty for
+        runs from before when we added client-side defaults
         """
-        #TODO: Remove this once we want to deprecate old versions
         if not bundle.metadata.request_time:
             return formatting.parse_duration('1d')
         return formatting.parse_duration(bundle.metadata.request_time)
+
+    def _get_docker_image(self, bundle):
+        """
+        Set docker image to be the default if not specified
+        The default is for backwards compatibilty for
+        runs from before when we added client-side defaults
+        """
+        if not bundle.metadata.request_docker_image:
+            return 'codalab/ubuntu:1.9'
+        return bundle.metadata.request_docker_image
 
     def _construct_run_message(self, worker, bundle):
         """
@@ -448,7 +484,7 @@ class BundleManager(object):
         resources['request_cpus'] = self._compute_request_cpus(bundle)
         resources['request_gpus'] = self._compute_request_gpus(bundle)
 
-        resources['docker_image'] = bundle.metadata.request_docker_image
+        resources['docker_image'] = self._get_docker_image(bundle)
         resources['request_time'] = self._compute_request_time(bundle)
         resources['request_memory'] = self._compute_request_memory(bundle)
         resources['request_disk'] = self._compute_request_disk(bundle)

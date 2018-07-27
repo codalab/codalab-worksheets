@@ -2,7 +2,6 @@ import base64
 from contextlib import closing
 import httplib
 import json
-import re
 import socket
 import sys
 import threading
@@ -20,20 +19,17 @@ def wrap_exception(message):
             try:
                 return f(*args, **kwargs)
             except RestClientException as e:
-                raise BundleServiceException, \
-                    BundleServiceException(message + ': ' + e.message,
-                                           e.client_error), \
+                raise BundleServiceException(message + ': ' + e.message,
+                                             e.client_error), \
                     sys.exc_info()[2]
             except urllib2.HTTPError as e:
-                raise BundleServiceException, \
-                    BundleServiceException(message + ': ' +
-                                           httplib.responses[e.code] + ' - ' +
-                                           e.read(),
-                                           e.code >= 400 and e.code < 500), \
+                raise BundleServiceException(message + ': ' +
+                                             httplib.responses[e.code] + ' - ' +
+                                             e.read(),
+                                             e.code >= 400 and e.code < 500), \
                     sys.exc_info()[2]
             except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
-                raise BundleServiceException, \
-                    BundleServiceException(message + ': ' + str(e), False), \
+                raise BundleServiceException(message + ': ' + str(e), False), \
                     sys.exc_info()[2]
         return wrapper
     return decorator
@@ -64,8 +60,8 @@ class BundleServiceClient(RestClient):
 
     def _get_access_token(self):
         with self._authorization_lock:
-            if (not self._access_token
-                or time.time() > self._token_expiration_time - 5 * 60):
+            if (not self._access_token or
+                    time.time() > self._token_expiration_time - 5 * 60):
                 self._authorize()
             return self._access_token
 
@@ -130,18 +126,6 @@ class BundleServiceClient(RestClient):
             'POST', self._worker_url_prefix(worker_id) + '/start_bundle/' + uuid,
             data=request_data)
 
-    @wrap_exception('Unable to resume bundle in bundle service')
-    def resume_bundle(self, worker_id, uuid, request_data):
-        return self._make_request(
-            'POST', self._worker_url_prefix(worker_id) + '/resume_bundle/' + uuid,
-            data=request_data)
-
-    @wrap_exception('Unable to update bundle metadata in bundle service')
-    def update_bundle_metadata(self, worker_id, uuid, new_metadata):
-        self._make_request(
-            'PUT', self._worker_url_prefix(worker_id) + '/update_bundle_metadata/' + uuid,
-            data=new_metadata)
-
     @wrap_exception('Unable to update bundle contents in bundle service')
     def update_bundle_contents(self, worker_id, uuid, path, progress_callback):
         with closing(tar_gzip_directory(path)) as fileobj:
@@ -149,12 +133,6 @@ class BundleServiceClient(RestClient):
                 'PUT', '/bundles/' + uuid + '/contents/blob/',
                 query_params={'filename': 'bundle.tar.gz'}, fileobj=fileobj,
                 progress_callback=progress_callback)
-
-    @wrap_exception('Unable to finalize bundle in bundle service')
-    def finalize_bundle(self, worker_id, uuid, request_data):
-        self._make_request(
-            'POST', self._worker_url_prefix(worker_id) + '/finalize_bundle/' + uuid,
-            data=request_data)
 
     @wrap_exception('Unable to get worker code')
     def get_code(self):
