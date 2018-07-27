@@ -366,8 +366,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
                     block['status']['code'] = FetchStatusCodes.not_found
                     if mode == BlockModes.contents_block:
                         block['lines'] = None
-                    elif mode == BlockModes.html_block:
-                        block['html_lines'] = None
                     elif mode == BlockModes.image_block:
                         block['image_data'] = None
 
