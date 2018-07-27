@@ -54,8 +54,6 @@ class LocalRunManager(BaseRunManager):
                                                    'lock': None})
         # bundle_uuid -> {'thread': Thread, 'run_status': str}
         self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
-        # bundle_uuid -> {'thread': Thread}
-        self.finalizing = ThreadDict()
         self.lock = threading.RLock()
         self._init_docker_networks()
 
@@ -96,24 +94,24 @@ class LocalRunManager(BaseRunManager):
     def stop(self):
         """
         Starts any necessary cleanup and propagates to its other managers
-        Kills any run bundles still running
         Blocks until cleanup is complete and it is safe to quit
         """
         logger.info("Stopping Local Run Manager")
         self._stop = True
-        self._kill_all()
         self.image_manager.stop()
         self.dependency_manager.stop()
+        for uuid in self.disk_utilization.keys():
+            self.disk_utilization[uuid]['running'] = False
         self.disk_utilization.stop()
         self.uploading.stop()
-        self.finalizing.stop()
+        self.save_state()
         logger.info("Stopped Local Run Manager. Exiting")
 
-    def _kill_all(self):
+    def kill_all(self):
         """
-        Kills all runs as worker is quitting
+        Kills all runs
         """
-        logger.debug("Killing all bundles to exit")
+        logger.debug("Killing all bundles")
         # Set all bundle statuses to killed
         with self.lock:
             for uuid in self.runs.keys():
