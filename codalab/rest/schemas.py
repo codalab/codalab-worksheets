@@ -90,7 +90,7 @@ class WorksheetSchema(Schema):
     title = fields.String()
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
-    tags = fields.List(fields.String)
+    tags = fields.List(fields.String())
     group_permissions = fields.Relationship(include_data=True, type_='worksheet-permissions', id_field='id', many=True)
     items = fields.Relationship(include_data=True, type_='worksheet-items', id_field='id', many=True)
     last_item_id = fields.Integer(dump_only=True)

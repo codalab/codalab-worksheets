@@ -36,12 +36,25 @@ from itertools import izip
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
+from codalab.rest.worksheet_block_schemas import (
+    FetchStatusSchema,
+    BlockModes,
+    MarkupBlockSchema,
+    BundleContentsBlockSchema,
+    BundleImageBlockSchema,
+    TableBlockSchema,
+    RecordsRowSchema,
+    RecordsBlockSchema,
+    GraphBlockSchema,
+    SubworksheetsBlock,
+    BundleUUIDSpecSchema,
+)
 
 
 # Note: this is part of the client's session, not server side.
 CURRENT_WORKSHEET = '.'
 
-# Types of worksheet items
+# Types of (raw) worksheet items
 TYPE_MARKUP = 'markup'
 TYPE_DIRECTIVE = 'directive'
 TYPE_BUNDLE = 'bundle'
@@ -49,11 +62,15 @@ TYPE_WORKSHEET = 'worksheet'
 
 WORKSHEET_ITEM_TYPES = (TYPE_MARKUP, TYPE_DIRECTIVE, TYPE_BUNDLE, TYPE_WORKSHEET)
 
+
 BUNDLE_REGEX = re.compile('^(\[(.*)\])?\s*\{([^{]*)\}$')
 SUBWORKSHEET_REGEX = re.compile('^(\[(.*)\])?\s*\{\{(.*)\}\}$')
 
 DIRECTIVE_CHAR = '%'
 DIRECTIVE_REGEX = re.compile(r'^' + DIRECTIVE_CHAR + '\s*(.*)$')
+
+# Default number of lines to pull for each display mode.
+DEFAULT_CONTENTS_MAX_LINES = 10
 
 
 def markup_item(x):
@@ -525,6 +542,10 @@ def get_default_schemas():
     return schemas
 
 
+def get_command(value_obj):  # For directives only
+    return value_obj[0] if len(value_obj) > 0 else None
+
+
 def interpret_items(schemas, raw_items):
     """
     schemas: initial mapping from name to list of schema items (columns of a table)
@@ -559,14 +580,15 @@ def interpret_items(schemas, raw_items):
     - Others (blank lines, directives, schema definitions) don't.
     - Those that don't should get mapped to the next interpreted item.
     """
-    raw_to_interpreted = []  # rawIndex => (focusIndex, subFocusIndex)
+    raw_to_block = []  # rawIndex => (focusIndex, subFocusIndex)
 
     # Set default schema
     current_schema = None
     default_display = ('table', 'default')
     current_display = default_display
-    interpreted_items = []
+    blocks = []
     bundle_infos = []
+    worksheet_infos = []
 
     def get_schema(args):  # args is a list of schema names
         args = args if len(args) > 0 else ['default']
@@ -597,7 +619,7 @@ def interpret_items(schemas, raw_items):
 
     def flush_bundles():
         """
-        Having collected bundles in |bundle_infos|, flush them into |interpreted_items|,
+        Having collected bundles in |bundle_infos|, flush them into |blocks|,
         potentially as a single table depending on the mode.
         """
         if len(bundle_infos) == 0:
@@ -610,32 +632,40 @@ def interpret_items(schemas, raw_items):
         # Print out the curent bundles somehow
         mode = current_display[0]
         args = current_display[1:]
-        properties = {}
         if mode == 'hidden':
             pass
-        elif mode == 'contents' or mode == 'image' or mode == 'html':
-
+        elif mode == 'contents' or mode == 'image':
             for item_index, bundle_info in bundle_infos:
                 if is_missing(bundle_info):
-                    interpreted_items.append({
-                        'mode': TYPE_MARKUP,
-                        'interpreted': 'ERROR: cannot access bundle',
-                        'properties': {},
-                    })
+                    blocks.append(
+                        MarkupBlockSchema().load({
+                            'text': 'ERROR: cannot access bundle',
+                        }).data)
                     continue
 
                 # Parse arguments
                 if len(args) == 0:
                     raise_genpath_usage_error()
-                interpreted = genpath_to_target(bundle_info, args[0])
+                # these two are required for the target
+                (bundle_uuid, target_genpath) = genpath_to_target(bundle_info, args[0])
                 properties = parse_properties(args[1:])
 
-                interpreted_items.append({
-                    'mode': mode,
-                    'interpreted': interpreted,
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_info)
-                })
+                block_object = {
+                    'target_genpath': target_genpath,
+                    'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json([bundle_info])).data,
+                    'status': FetchStatusSchema.get_unknown_status(),
+                }
+
+                if mode == 'contents':
+                    try:
+                        block_object['max_lines'] = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
+                    except ValueError:
+                        raise UsageError("maxlines must be integer")
+                    blocks.append(BundleContentsBlockSchema().load(block_object).data)
+                elif mode == 'image':
+                    block_object['width'] = properties.get('width', None)
+                    block_object['height'] = properties.get('height', None)
+                    blocks.append(BundleImageBlockSchema().load(block_object).data)
         elif mode == 'record':
             # display record schema =>
             # key1: value1
@@ -646,16 +676,16 @@ def interpret_items(schemas, raw_items):
                 header = ('key', 'value')
                 rows = []
                 for (name, genpath, post) in schema:
-                    rows.append({
+                    rows.append(RecordsRowSchema().load({
                         'key': name + ':',
                         'value': apply_func(post, interpret_genpath(bundle_info, genpath))
-                    })
-                interpreted_items.append({
-                    'mode': mode,
-                    'interpreted': (header, rows),
-                    'properties': properties,
-                    'bundle_info': copy.deepcopy(bundle_info)
-                })
+                    }).data)
+                blocks.append(RecordsBlockSchema().load({
+                    'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json([bundle_info])).data,
+                    'status': FetchStatusSchema.get_unknown_status(),
+                    'header': header,
+                    'rows':  rows,
+                }).data)
         elif mode == 'table':
             # display table schema =>
             # key1       key2
@@ -668,9 +698,9 @@ def interpret_items(schemas, raw_items):
             for item_index, bundle_info in bundle_infos:
                 if 'metadata' in bundle_info:
                     rows.append({
-                                    name: apply_func(post, interpret_genpath(bundle_info, genpath))
-                                    for (name, genpath, post) in schema
-                                    })
+                        name: apply_func(post, interpret_genpath(bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
                     processed_bundle_infos.append(copy.deepcopy(bundle_info))
                 else:
                     # The front-end relies on the name metadata field existing
@@ -679,45 +709,61 @@ def interpret_items(schemas, raw_items):
                         'name': '<invalid>'
                     }
                     rows.append({
-                                    name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
-                                    for (name, genpath, post) in schema
-                                    })
+                        name: apply_func(post, interpret_genpath(processed_bundle_info, genpath))
+                        for (name, genpath, post) in schema
+                    })
                     processed_bundle_infos.append(processed_bundle_info)
-            interpreted_items.append({
-                'mode': mode,
-                'interpreted': (header, rows),
-                'properties': properties,
-                'bundle_info': processed_bundle_infos
-            })
+            blocks.append(TableBlockSchema().load({
+                'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json(processed_bundle_infos)).data,
+                'status': FetchStatusSchema.get_unknown_status(),
+                'header': header,
+                'rows':  rows,
+            }).data)
+
         elif mode == 'graph':
             # display graph <genpath> <properties>
             if len(args) == 0:
                 raise_genpath_usage_error()
-            # interpreted is list of {
+            # trajectories is list of {
             #   'uuid': ...,
             #   'display_name': ..., # What to show as the description of a bundle
             #   'target': (bundle_uuid, subpath)
             # }
             properties = parse_properties(args[1:])
-            interpreted = [{
-                'uuid': bundle_info['uuid'],
+
+            trajectories = [{
+                'bundle_uuid': bundle_info['uuid'],
                 'display_name': interpret_genpath(bundle_info, properties.get('display_name', 'name')),
-                'target': genpath_to_target(bundle_info, args[0])
+                'target_genpath': genpath_to_target(bundle_info, args[0])[1]
             } for item_index, bundle_info in bundle_infos]
 
-            interpreted_items.append({
-                'mode': mode,
-                'interpreted': interpreted,
-                'properties': properties,
-                'bundle_info': bundle_infos[0][1]  # Only show the first one for now
-                #'bundle_info': [copy.deepcopy(bundle_info) for item_index, bundle_info in bundle_infos]
-            })
+            try:
+                max_lines = int(properties.get('maxlines', DEFAULT_CONTENTS_MAX_LINES))
+            except ValueError:
+                raise UsageError("maxlines must be integer")
+
+            blocks.append(GraphBlockSchema().load({
+                'trajectories': trajectories,
+                'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json([bundle_infos[0][1]])).data, # Only show the first one for now
+                # 'bundles_spec': BundleUUIDSpecSchema().load(BundleUUIDSpecSchema.create_json(
+                #     [copy.deepcopy(bundle_info) for item_index, bundle_info in bundle_infos]).data,
+                'max_lines': max_lines,
+                'xlabel': properties.get('xlabel', None),
+                'ylabel': properties.get('ylabel', None),
+            }).data)
         else:
             raise UsageError('Unknown display mode: %s' % mode)
         bundle_infos[:] = []  # Clear
 
-    def get_command(value_obj):  # For directives only
-        return value_obj[0] if len(value_obj) > 0 else None
+    def flush_worksheets():
+        if len(worksheet_infos) == 0:
+            return
+
+        blocks.append(SubworksheetsBlock().load({
+            'subworksheet_infos': copy.deepcopy(worksheet_infos),
+        }).data)
+
+        worksheet_infos[:] = []
 
     # Go through all the raw items...
     last_was_empty_line = False
@@ -729,43 +775,44 @@ def interpret_items(schemas, raw_items):
             is_bundle = (item_type == TYPE_BUNDLE)
             is_search = (item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search')
             is_directive = (item_type == TYPE_DIRECTIVE)
+            is_worksheet = (item_type == TYPE_WORKSHEET)
+
             if not is_bundle:
                 flush_bundles()
+
+            if not is_worksheet:
+                flush_worksheets()
+
             # Reset display to minimize long distance dependencies of directives
             if not (is_bundle or is_search):
                 current_display = default_display
+
             # Reset schema to minimize long distance dependencies of directives
             if not is_directive:
                 current_schema = None
 
             if item_type == TYPE_BUNDLE:
-                raw_to_interpreted.append((len(interpreted_items), len(bundle_infos)))
+                raw_to_block.append((len(blocks), len(bundle_infos)))
                 bundle_infos.append((raw_index, bundle_info))
             elif item_type == TYPE_WORKSHEET:
-                raw_to_interpreted.append((len(interpreted_items), 0))
-                interpreted_items.append({
-                    'mode': TYPE_WORKSHEET,
-                    'interpreted': subworksheet_info,
-                    'properties': {},
-                    'subworksheet_info': subworksheet_info,
-                })
+                raw_to_block.append((len(blocks), len(worksheet_infos)))
+                worksheet_infos.append(subworksheet_info)
             elif item_type == TYPE_MARKUP:
                 new_last_was_empty_line = (value_obj == '')
-                if len(interpreted_items) > 0 and interpreted_items[-1]['mode'] == TYPE_MARKUP and \
+                if len(blocks) > 0 and blocks[-1]['mode'] == TYPE_MARKUP and \
                    not last_was_empty_line and not new_last_was_empty_line:
                     # Join with previous markup item
-                    interpreted_items[-1]['interpreted'] += '\n' + value_obj
+                    blocks[-1].text += '\n' + value_obj
                 elif not new_last_was_empty_line:
-                    interpreted_items.append({
-                        'mode': TYPE_MARKUP,
-                        'interpreted': value_obj,
-                        'properties': {},
-                    })
-                # Important: set raw_to_interpreted after so we can focus on current item.
+                    blocks.append(MarkupBlockSchema().load({
+                        'id': len(blocks),
+                        'text': value_obj,
+                    }).data)
+                # Important: set raw_to_block after so we can focus on current item.
                 if new_last_was_empty_line:
-                    raw_to_interpreted.append(None)
+                    raw_to_block.append(None)
                 else:
-                    raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+                    raw_to_block.append((len(blocks) - 1, 0))
             elif item_type == TYPE_DIRECTIVE:
                 command = get_command(value_obj)
                 if command == '%' or command == '' or command is None:
@@ -794,89 +841,66 @@ def interpret_items(schemas, raw_items):
                 elif command == 'display':
                     # Set display
                     current_display = value_obj[1:]
-                elif command == 'search':
-                    # Display bundles based on query
-                    keywords = value_obj[1:]
-                    mode = command
-                    data = {'keywords': keywords, 'display': current_display, 'schemas': schemas}
-                    interpreted_items.append({
-                        'mode': mode,
-                        'interpreted': data,
-                        'properties': {},
-                    })
-                elif command == 'wsearch':
-                    # Display worksheets based on query
-                    keywords = value_obj[1:]
-                    mode = command
-                    data = {'keywords': keywords}
-                    interpreted_items.append({
-                        'mode': mode,
-                        'interpreted': data,
-                        'properties': {},
-                    })
                 else:
                     raise UsageError("unknown directive `%s`" % command)
 
-                # Only search/wsearch contribute an interpreted item
-                if command == 'search' or command == 'wsearch':
-                    raw_to_interpreted.append((len(interpreted_items) - 1, 0))
-                else:
-                    raw_to_interpreted.append(None)
+                raw_to_block.append(None)
             else:
                 raise RuntimeError('Unknown worksheet item type: %s' % item_type)
 
             # Flush bundles once more at the end
             if raw_index == len(raw_items) - 1:
                 flush_bundles()
+                flush_worksheets()
 
         except UsageError as e:
             current_schema = None
             bundle_infos[:] = []
-            interpreted_items.append({
-                'mode': TYPE_MARKUP,
-                'interpreted': 'Error on line %d: %s' % (raw_index, e.message),
-                'properties': {},
-            })
-            raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+            worksheet_infos[:] = []
+            blocks.append(MarkupBlockSchema().load({
+                'text': 'Error on line %d: %s' % (raw_index, e.message),
+            }).data)
+
+            raw_to_block.append((len(blocks) - 1, 0))
 
         except StandardError:
             current_schema = None
             bundle_infos[:] = []
+            worksheet_infos[:] = []
             import traceback
             traceback.print_exc()
-            interpreted_items.append({
-                'mode': TYPE_MARKUP,
-                'interpreted': 'Unexpected error while parsing line %d' % raw_index,
-                'properties': {},
-            })
-            raw_to_interpreted.append((len(interpreted_items) - 1, 0))
+            blocks.append(MarkupBlockSchema().load({
+                'text': 'Unexpected error while parsing line %d' % raw_index,
+            }).data)
+
+            raw_to_block.append((len(blocks) - 1, 0))
 
         finally:
             last_was_empty_line = new_last_was_empty_line
 
     # TODO: fix inconsistencies resulting from UsageErrors thrown in flush_bundles()
-    if len(raw_to_interpreted) != len(raw_items):
-        print >>sys.stderr, "WARNING: Length of raw_to_interpreted does not match length of raw_items"
+    if len(raw_to_block) != len(raw_items):
+        print >>sys.stderr, "WARNING: Length of raw_to_block does not match length of raw_items"
 
     # Package the result
-    interpreted_to_raw = {}
+    block_to_raw = {}
     next_interpreted_index = None
     # Go in reverse order so we can assign raw items that map to None to the next interpreted item
-    for raw_index, interpreted_index in reversed(list(enumerate(raw_to_interpreted))):
+    for raw_index, interpreted_index in reversed(list(enumerate(raw_to_block))):
         if interpreted_index is None:  # e.g., blank line, directive
             interpreted_index = next_interpreted_index
-            raw_to_interpreted[raw_index] = interpreted_index
+            raw_to_block[raw_index] = interpreted_index
         else:
             interpreted_index_str = str(interpreted_index[0]) + ',' + str(interpreted_index[1])
-            if interpreted_index_str not in interpreted_to_raw:  # Bias towards the last item
-                interpreted_to_raw[interpreted_index_str] = raw_index
+            if interpreted_index_str not in block_to_raw:  # Bias towards the last item
+                block_to_raw[interpreted_index_str] = raw_index
         next_interpreted_index = interpreted_index
 
     # Return the result
     result = {}
-    result['items'] = interpreted_items
-    result['raw_to_interpreted'] = raw_to_interpreted
-    result['interpreted_to_raw'] = interpreted_to_raw
+    result['blocks'] = blocks
+    result['raw_to_block'] = raw_to_block
+    result['block_to_raw'] = block_to_raw
     return result
 
 
