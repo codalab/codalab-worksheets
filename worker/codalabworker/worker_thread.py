@@ -54,7 +54,7 @@ class WorkerThread(object):
         return self.thread.start()
 
 
-class ThreadDict(object):
+class ThreadDict(dict):
     """
     Class for worker components to keep track of various threads that may succeed or fail
     and may have other fields to keep track of
@@ -69,8 +69,8 @@ class ThreadDict(object):
         Creates a new ThreadDict.
         :param fields: A Dict from strings(field names) to initial values
         """
+        dict.__init__(self)
         self._initial_fields = fields
-        self._thread_dict = dict()  # <key> -> WorkerThread
 
     def add_if_new(self, key, thread):
         """
@@ -79,7 +79,7 @@ class ThreadDict(object):
         :param key: key to refer to this thread
         :param thread: thread to be added to the dict and to be started
         """
-        if key not in self._thread_dict:
+        if key not in self:
             self.add_thread(key, thread)
 
     def add_thread(self, key, thread):
@@ -90,34 +90,21 @@ class ThreadDict(object):
         """
         new_fields = copy.deepcopy(self._initial_fields)
         new_thread = WorkerThread(thread=thread, fields=new_fields)
-        self._thread_dict[key] = new_thread
+        self[key] = new_thread
         new_thread.start()
 
     def remove(self, key):
         """
         Joins and removes the thread with key from the dict if it exists
         """
-        if key in self._thread_dict:
-            self._thread_dict[key].join()
-            del self._thread_dict[key]
+        if key in self:
+            self[key].join()
+            del self[key]
 
     def stop(self):
         """
         Joins and removes all the threads in the dict
         """
-        for key in self._thread_dict.keys():
-            self._thread_dict[key].join()
+        for key in self.keys():
+            self[key].join()
 
-        self._thread_dict = dict()
-
-    def __getitem__(self, key):
-        """
-        getitem acts directly on the thread dict
-        """
-        return self._thread_dict[key]
-
-    def __contains__(self, key):
-        """
-        contains acts directly on the thread dict
-        """
-        return key in self._thread_dict
