@@ -346,6 +346,22 @@ def resolve_interpreted_blocks(interpreted_blocks):
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
                 try:
                     target_info = rest_util.get_target_info((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), 0)
+                    if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
+                        block['status']['code'] = FetchStatusCodes.ready
+                        block['lines'] = ['<directory>']
+                    elif target_info['type'] == 'file':
+                        block['status']['code'] = FetchStatusCodes.ready
+                        if mode == BlockModes.contents_block:
+                            block['lines'] = head_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), block['max_lines'], replace_non_unicode=True)
+                        elif mode == BlockModes.image_block:
+                            block['status']['code'] = FetchStatusCodes.ready
+                            block['image_data'] = base64.b64encode(cat_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath'])))
+                    else:
+                        block['status']['code'] = FetchStatusCodes.not_found
+                        if mode == BlockModes.contents_block:
+                            block['lines'] = None
+                        elif mode == BlockModes.image_block:
+                            block['image_data'] = None
                 except NotFoundError as e:
                     block['status']['code'] = FetchStatusCodes.not_found
                     if mode == BlockModes.contents_block:
@@ -355,22 +371,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
                     elif mode == BlockModes.image_block:
                         block['image_data'] = None
 
-                if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
-                    block['status']['code'] = FetchStatusCodes.ready
-                    block['lines'] = ['<directory>']
-                elif target_info['type'] == 'file':
-                    block['status']['code'] = FetchStatusCodes.ready
-                    if mode == BlockModes.contents_block:
-                        block['lines'] = head_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath']), block['max_lines'], replace_non_unicode=True)
-                    elif mode == BlockModes.image_block:
-                        block['status']['code'] = FetchStatusCodes.ready
-                        block['image_data'] = base64.b64encode(cat_target((block['bundles_spec']['bundle_infos'][0]['uuid'], block['target_genpath'])))
-                else:
-                    block['status']['code'] = FetchStatusCodes.not_found
-                    if mode == BlockModes.contents_block:
-                        block['lines'] = None
-                    elif mode == BlockModes.image_block:
-                        block['image_data'] = None
             elif mode == BlockModes.graph_block:
                 # data = list of {'target': ...}
                 # Add a 'points' field that contains the contents of the target.
@@ -474,38 +474,37 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
 
     target = (bundle_uuid, subpath)
     if target not in target_cache:
+        info = None
         try:
             target_info = rest_util.get_target_info(target, 0)
+            if target_info['type'] == 'file':
+                contents = head_target(target, MAX_LINES)
+
+                if len(contents) == 0:
+                    info = ''
+                elif all('\t' in x for x in contents):
+                    # Tab-separated file (key\tvalue\nkey\tvalue...)
+                    info = {}
+                    for x in contents:
+                        kv = x.strip().split("\t", 1)
+                        if len(kv) == 2: info[kv[0]] = kv[1]
+                else:
+                    try:
+                        # JSON file
+                        info = json.loads(''.join(contents))
+                    except (TypeError, ValueError):
+                        try:
+                            # YAML file
+                            # Use safe_load because yaml.load() could execute
+                            # arbitrary Python code
+                            info = yaml.safe_load(''.join(contents))
+                        except yaml.YAMLError:
+                            # Plain text file
+                            info = ''.join(contents)
         except NotFoundError:
-            info = None
+            pass
 
         # Try to interpret the structure of the file by looking inside it.
-        if target_info['type'] == 'file':
-            contents = head_target(target, MAX_LINES)
-
-            if len(contents) == 0:
-                info = ''
-            elif all('\t' in x for x in contents):
-                # Tab-separated file (key\tvalue\nkey\tvalue...)
-                info = {}
-                for x in contents:
-                    kv = x.strip().split("\t", 1)
-                    if len(kv) == 2: info[kv[0]] = kv[1]
-            else:
-                try:
-                    # JSON file
-                    info = json.loads(''.join(contents))
-                except (TypeError, ValueError):
-                    try:
-                        # YAML file
-                        # Use safe_load because yaml.load() could execute
-                        # arbitrary Python code
-                        info = yaml.safe_load(''.join(contents))
-                    except yaml.YAMLError:
-                        # Plain text file
-                        info = ''.join(contents)
-        else:
-            info = None
         target_cache[target] = info
 
     # Traverse the info object.
