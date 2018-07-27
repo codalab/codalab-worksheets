@@ -3,7 +3,7 @@ MakeBundle is a Bundle type that symlinks a number of targets in from other
 bundles to produce a new, packaged bundle.
 '''
 from codalab.bundles.derived_bundle import DerivedBundle
-from codalab.common import State
+from codalabworker.bundle_state import State
 
 
 class MakeBundle(DerivedBundle):

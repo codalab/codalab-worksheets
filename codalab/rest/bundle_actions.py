@@ -1,10 +1,11 @@
 from bottle import local, post, request
 
-from codalab.common import State, UsageError, precondition
+from codalab.common import UsageError, precondition
 from codalab.lib.bundle_action import BundleAction
 from codalab.objects.permission import check_bundles_have_all_permission
 from codalab.rest.schemas import BundleActionSchema
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
+from codalabworker.bundle_state import State
 
 
 @post('/bundle-actions', apply=AuthenticatedPlugin())
@@ -21,7 +22,7 @@ def create_bundle_actions():
 
     for action in actions:
         bundle = local.model.get_bundle(action['uuid'])
-        if bundle.state != State.RUNNING:
+        if bundle.state not in [State.RUNNING, State.PREPARING]:
             raise UsageError('Cannot execute this action on a bundle that is not running.')
 
         worker = local.worker_model.get_bundle_worker(action['uuid'])

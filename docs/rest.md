@@ -428,14 +428,6 @@ Checks whether the bundle is still assigned to run on the worker with the
 given ID. If so, reports that it's starting to run and returns True.
 Otherwise, returns False, meaning the worker shouldn't run the bundle.
 
-### `PUT /workers/<worker_id>/update_bundle_metadata/<uuid:re:0x[0-9a-f]{32}>`
-
-Updates metadata related to a running bundle.
-
-### `POST /workers/<worker_id>/finalize_bundle/<uuid:re:0x[0-9a-f]{32}>`
-
-Reports that the bundle has finished running.
-
 ### `GET /workers/code.tar.gz`
 
 Returns .tar.gz archive containing the code of the worker.
@@ -680,7 +672,7 @@ Query parameters:
   state should not change on failure. Default is 0.
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
-  Default is 'ready'.
+  Default is empty in which case the state is not updated.
 
 
 &uarr; [Back to Top](#table-of-contents)

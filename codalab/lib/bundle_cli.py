@@ -42,7 +42,6 @@ from codalab.common import (
     NotFoundError,
     PermissionError,
     precondition,
-    State,
     UsageError,
 )
 from codalab.lib import (
@@ -92,6 +91,7 @@ from codalabworker.file_util import un_tar_directory
 from codalab.lib.spec_util import generate_uuid
 from codalabworker.docker_client import DockerClient
 from codalabworker.file_util import remove_path
+from codalabworker.bundle_state import State
 
 # Formatting Constants
 ADDRESS_SPEC_FORMAT = "(<alias>|<address>)"
@@ -1003,7 +1003,7 @@ class BundleCLI(object):
             client.upload_contents_blob(
                 new_bundle['id'],
                 fileobj=contents_buffer,
-                params={'filename': 'contents', 'unpack': False})
+                params={'filename': 'contents', 'unpack': False, 'state_on_success': State.READY})
 
         # Option 2: Upload URL(s)
         elif any(map(path_util.path_is_url, args.path)):
@@ -1016,6 +1016,7 @@ class BundleCLI(object):
             client.upload_contents_blob(new_bundle['id'], params={
                 'urls': args.path,
                 'git': args.git,
+                'state_on_success': State.READY
             })
 
         # Option 3: Upload file(s) from the local filesystem
@@ -1057,6 +1058,7 @@ class BundleCLI(object):
                         'filename': packed['filename'],
                         'unpack': packed['should_unpack'],
                         'simplify': packed['should_simplify'],
+                        'state_on_success': State.READY
                     },
                     progress_callback=progress.update)
 

@@ -4,12 +4,12 @@ from contextlib import closing
 from codalab.common import (
     http_error_to_exception,
     precondition,
-    State,
     UsageError,
     NotFoundError
 )
 from codalabworker import download_util
 from codalabworker import file_util
+from codalabworker.bundle_state import State
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +60,9 @@ class DownloadManager(object):
         bundle_state = self._bundle_model.get_bundle_state(uuid)
         # Raises NotFoundException if uuid is invalid
 
-        if bundle_state != State.RUNNING:
+        if bundle_state == State.PREPARING:
+            raise NotFoundError("Bundle {} hasn't started running yet, files not available".format(uuid))
+        elif bundle_state != State.RUNNING:
             bundle_path = self._bundle_store.get_bundle_location(uuid)
             try:
                 return download_util.get_target_info(bundle_path, uuid, path, depth)
@@ -221,7 +223,7 @@ class DownloadManager(object):
         return string
 
     def _is_available_locally(self, uuid):
-        if self._bundle_model.get_bundle_state(uuid) == State.RUNNING:
+        if self._bundle_model.get_bundle_state(uuid) in [State.RUNNING, State.PREPARING]:
             if self._worker_model.shared_file_system:
                 worker = self._worker_model.get_bundle_worker(uuid)
                 return worker['user_id'] == self._bundle_model.root_user_id

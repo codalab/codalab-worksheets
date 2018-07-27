@@ -1,6 +1,7 @@
 from contextlib import closing
 import datetime
 import json
+import logging
 import os
 import socket
 import time
@@ -9,11 +10,13 @@ from sqlalchemy import and_, select
 
 from codalab.common import precondition
 from codalab.model.tables import (
-  worker as cl_worker,
-  worker_socket as cl_worker_socket,
-  worker_run as cl_worker_run,
-  worker_dependency as cl_worker_dependency,
+    worker as cl_worker,
+    worker_socket as cl_worker_socket,
+    worker_run as cl_worker_run,
+    worker_dependency as cl_worker_dependency,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class WorkerModel(object):
@@ -47,17 +50,19 @@ class WorkerModel(object):
                 'checkin_time': datetime.datetime.now(),
             }
             existing_row = conn.execute(
-                cl_worker.select()
-                    .where(and_(cl_worker.c.user_id == user_id,
-                                cl_worker.c.worker_id == worker_id))
+                cl_worker
+                .select()
+                .where(and_(cl_worker.c.user_id == user_id,
+                            cl_worker.c.worker_id == worker_id))
             ).fetchone()
             if existing_row:
                 socket_id = existing_row.socket_id
                 conn.execute(
-                    cl_worker.update()
-                        .where(and_(cl_worker.c.user_id == user_id,
-                                    cl_worker.c.worker_id == worker_id))
-                        .values(worker_row))
+                    cl_worker
+                    .update()
+                    .where(and_(cl_worker.c.user_id == user_id,
+                                cl_worker.c.worker_id == worker_id))
+                    .values(worker_row))
             else:
                 socket_id = self.allocate_socket(user_id, worker_id, conn)
                 worker_row.update({
@@ -71,17 +76,18 @@ class WorkerModel(object):
             blob = self._serialize_dependencies(dependencies)
             if existing_row:
                 conn.execute(
-                    cl_worker_dependency.update()
-                        .where(and_(cl_worker_dependency.c.user_id == user_id,
-                                    cl_worker_dependency.c.worker_id == worker_id))
-                        .values(dependencies=blob)
+                    cl_worker_dependency
+                    .update()
+                    .where(and_(cl_worker_dependency.c.user_id == user_id,
+                                cl_worker_dependency.c.worker_id == worker_id))
+                    .values(dependencies=blob)
                 )
             else:
                 conn.execute(
-                    cl_worker_dependency.insert()
-                        .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
+                    cl_worker_dependency
+                    .insert()
+                    .values(user_id=user_id, worker_id=worker_id, dependencies=blob)
                 )
-
         return socket_id
 
     @staticmethod
@@ -99,22 +105,27 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             socket_rows = conn.execute(
-                cl_worker_socket.select()
-                    .where(and_(cl_worker_socket.c.user_id == user_id,
-                                cl_worker_socket.c.worker_id == worker_id))
+                cl_worker_socket
+                .select()
+                .where(and_(cl_worker_socket.c.user_id == user_id,
+                            cl_worker_socket.c.worker_id == worker_id))
             ).fetchall()
             for socket_row in socket_rows:
                 self._cleanup_socket(socket_row.socket_id)
-            conn.execute(cl_worker_socket.delete()
+            conn.execute(cl_worker_socket
+                         .delete()
                          .where(and_(cl_worker_socket.c.user_id == user_id,
                                      cl_worker_socket.c.worker_id == worker_id)))
-            conn.execute(cl_worker_run.delete()
+            conn.execute(cl_worker_run
+                         .delete()
                          .where(and_(cl_worker_run.c.user_id == user_id,
                                      cl_worker_run.c.worker_id == worker_id)))
-            conn.execute(cl_worker_dependency.delete()
+            conn.execute(cl_worker_dependency
+                         .delete()
                          .where(and_(cl_worker_dependency.c.user_id == user_id,
                                      cl_worker_dependency.c.worker_id == worker_id)))
-            conn.execute(cl_worker.delete()
+            conn.execute(cl_worker
+                         .delete()
                          .where(and_(cl_worker.c.user_id == user_id,
                                      cl_worker.c.worker_id == worker_id)))
 
@@ -151,13 +162,15 @@ class WorkerModel(object):
         Returns information about the worker that the given bundle is running
         on. This method should be called only for bundles that are running.
         """
-        with self._engine.begin() as connection:
-            row = connection.execute(cl_worker_run.select()
-                                     .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
+        with self._engine.begin() as conn:
+            row = conn.execute(cl_worker_run
+                               .select()
+                               .where(cl_worker_run.c.run_uuid == uuid)).fetchone()
             precondition(row, 'Trying to find worker for bundle that is not running.')
-            worker_row = connection.execute(cl_worker.select()
-                                            .where(and_(cl_worker.c.user_id == row.user_id,
-                                                        cl_worker.c.worker_id == row.worker_id))).fetchone()
+            worker_row = conn.execute(cl_worker
+                                      .select()
+                                      .where(and_(cl_worker.c.user_id == row.user_id,
+                                                  cl_worker.c.worker_id == row.worker_id))).fetchone()
             return {
                 'user_id': worker_row.user_id,
                 'worker_id': worker_row.worker_id,
@@ -170,8 +183,8 @@ class WorkerModel(object):
         """
         def do(conn):
             socket_row = {
-               'user_id': user_id,
-               'worker_id': worker_id,
+                'user_id': user_id,
+                'worker_id': worker_id,
             }
             return conn.execute(
                 cl_worker_socket.insert().values(socket_row)
@@ -189,7 +202,8 @@ class WorkerModel(object):
         """
         self._cleanup_socket(socket_id)
         with self._engine.begin() as conn:
-            conn.execute(cl_worker_socket.delete()
+            conn.execute(cl_worker_socket
+                         .delete()
                          .where(cl_worker_socket.c.socket_id == socket_id))
 
     def _socket_path(self, socket_id):
@@ -324,7 +338,7 @@ class WorkerModel(object):
                 if not success:
                     # Shouldn't be too expensive just to keep retrying.
                     # TODO: maybe exponential backoff
-                    time.sleep(0.3) # changed from 0.003 to keep from rate-limiting due to dead workers
+                    time.sleep(0.3)  # changed from 0.003 to keep from rate-limiting due to dead workers
                     continue
 
                 if not autoretry:
@@ -348,10 +362,11 @@ class WorkerModel(object):
         """
         with self._engine.begin() as conn:
             row = conn.execute(
-                cl_worker_socket.select()
-                    .where(and_(cl_worker_socket.c.user_id == user_id,
-                                cl_worker_socket.c.worker_id == worker_id,
-                                cl_worker_socket.c.socket_id == socket_id))
+                cl_worker_socket
+                .select()
+                .where(and_(cl_worker_socket.c.user_id == user_id,
+                            cl_worker_socket.c.worker_id == worker_id,
+                            cl_worker_socket.c.socket_id == socket_id))
             ).fetchone()
             if row:
                 return True

@@ -18,8 +18,12 @@ from bundle_service_client import BundleServiceClient
 from docker_client import DockerClient
 from formatting import parse_size
 from worker import Worker
+from local_run.local_dependency_manager import LocalFileSystemDependencyManager
+from local_run.docker_image_manager import DockerImageManager
+from local_run.local_run_manager import LocalRunManager
 
 logger = logging.getLogger(__name__)
+
 
 def main():
     parser = argparse.ArgumentParser(description='CodaLab worker.')
@@ -105,16 +109,47 @@ chmod 600 %s""" % args.password_file
         max_images_bytes = parse_size(args.max_image_cache_size)
 
     docker_client = DockerClient()
+    bundle_service = BundleServiceClient(args.server, username, password)
+    if not os.path.exists(args.work_dir):
+        os.makedirs(args.work_dir, 0770)
 
-    # transform/verify cpuset and gpuset
-    cpuset = parse_cpuset_args(args.cpuset)
-    gpuset = parse_gpuset_args(docker_client, args.gpuset)
+    def create_local_run_manager(worker):
+        """
+        To avoid circular dependencies the Worker initializes takes a RunManager factory
+        to initilize its run manager. This method creates a LocalFilesystem-Docker RunManager
+        which is the default execution architecture Codalab uses
+        """
+        cpuset = parse_cpuset_args(args.cpuset)
+        gpuset = parse_gpuset_args(docker_client, args.gpuset)
 
-    worker = Worker(args.id, args.tag, args.work_dir, cpuset, gpuset,
-                    max_work_dir_size_bytes, args.max_dependencies_serialized_length,
-                    max_images_bytes, args.shared_file_system,
-                    BundleServiceClient(args.server, username, password),
-                    docker_client, args.network_prefix)
+        dependency_manager = LocalFileSystemDependencyManager(
+            os.path.join(args.work_dir, 'dependencies-state.json'),
+            bundle_service,
+            args.work_dir,
+            max_work_dir_size_bytes,
+            args.max_dependencies_serialized_length)
+
+        image_manager = DockerImageManager(
+            docker_client,
+            os.path.join(args.work_dir, 'images-state.json'),
+            max_images_bytes)
+
+        return LocalRunManager(worker,
+                               docker_client,
+                               image_manager,
+                               dependency_manager,
+                               os.path.join(args.work_dir, 'run-state.json'),
+                               cpuset,
+                               gpuset,
+                               args.work_dir,
+                               args.network_prefix)
+
+    worker = Worker(create_local_run_manager,
+                    os.path.join(args.work_dir, 'worker-state.json'),
+                    args.id,
+                    args.tag,
+                    args.work_dir,
+                    bundle_service)
 
     # Register a signal handler to ensure safe shutdown.
     for sig in [signal.SIGTERM, signal.SIGINT, signal.SIGHUP]:
@@ -125,7 +160,8 @@ chmod 600 %s""" % args.password_file
     print('Worker started.')
     # END
 
-    worker.run()
+    worker.start()
+
 
 def parse_cpuset_args(arg):
     """
@@ -140,7 +176,7 @@ def parse_cpuset_args(arg):
     else:
         try:
             cpuset = [int(s) for s in arg.split(',')]
-        except Exception, e:
+        except ValueError:
             raise ValueError("CPUSET_STR invalid format: must be a string of comma-separated integers")
 
         if not len(cpuset) == len(set(cpuset)):
@@ -148,6 +184,7 @@ def parse_cpuset_args(arg):
         if not all(cpu in range(cpu_count) for cpu in cpuset):
             raise ValueError("CPUSET_STR invalid: CPUs out of range")
     return set(cpuset)
+
 
 def parse_gpuset_args(docker_client, arg):
     """
@@ -172,7 +209,7 @@ def parse_gpuset_args(docker_client, arg):
     else:
         try:
             gpuset = [int(s) for s in arg.split(',')]
-        except Exception, e:
+        except ValueError:
             raise ValueError("GPUSET_STR invalid format: must be a string of comma-separated integers")
 
         if not len(gpuset) == len(set(gpuset)):

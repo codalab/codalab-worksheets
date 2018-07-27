@@ -88,6 +88,15 @@ class RestClient(object):
 
     def _upload_with_chunked_encoding(self, method, url, query_params, fileobj,
                                       progress_callback=None):
+        """
+        Uploads the fileobj to url using method with query_params,
+        if progress_callback is specified, it is called with the
+        number of bytes uploaded after each chunk upload is finished
+        the optional progress_callback should return a boolean which interrupts the
+        download if False and resumes it if True. If i's not specified the download
+        runs to completion
+        """
+        CHUNK_SIZE = 16 * 1024
         # Start the request.
         parsed_base_url = urlparse.urlparse(self._base_url)
         path = url + '?' + urllib.urlencode(query_params)
@@ -107,13 +116,15 @@ class RestClient(object):
             # Use chunked transfer encoding to send the data through.
             bytes_uploaded = 0
             while True:
-                to_send = fileobj.read(16 * 1024)
+                to_send = fileobj.read(CHUNK_SIZE)
                 if not to_send:
                     break
                 conn.send('%X\r\n%s\r\n' % (len(to_send), to_send))
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
-                    progress_callback(bytes_uploaded)
+                    should_resume = progress_callback(bytes_uploaded)
+                    if not should_resume:
+                        raise Exception('Upload aborted by client')
             conn.send('0\r\n\r\n')
 
             # Read the response.

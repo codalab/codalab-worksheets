@@ -42,7 +42,7 @@ import yaml
 
 sys.path.append('.')
 from codalab.bundles import RunBundle
-from codalab.common import NotFoundError, State, PermissionError
+from codalab.common import NotFoundError, PermissionError
 from codalab.client.json_api_client import (
     JsonApiClient,
     JsonApiRelationship,
@@ -55,6 +55,7 @@ from codalab.lib.spec_util import UUID_STR
 from codalab.model.tables import GROUP_OBJECT_PERMISSION_READ
 from codalab.rest.schemas import BundleDependencySchema, validate_uuid
 from codalab.server.auth import RestOAuthHandler
+from codalabworker.bundle_state import State
 
 
 logger = logging.getLogger(__name__)

@@ -10,12 +10,12 @@ and ./stderr. The ./output directory may also be used to store output files.
 '''
 from codalab.bundles.derived_bundle import DerivedBundle
 from codalab.common import (
-    State,
     UsageError,
 )
 
 from codalab.lib.completers import DockerImagesCompleter
 from codalab.objects.metadata_spec import MetadataSpec
+from codalabworker.bundle_state import State
 
 
 class RunBundle(DerivedBundle):
