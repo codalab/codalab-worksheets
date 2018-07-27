@@ -20,11 +20,9 @@ def wrap_exception(message):
             try:
                 return f(*args, **kwargs)
             except DockerException as e:
-                raise DockerException(message + ': ' + e.message), \
-                    sys.exc_info()[2]
+                raise DockerException(message + ': ' + e.message)
             except (httplib.HTTPException, socket.error) as e:
-                raise DockerException(message + ': ' + str(e)), \
-                    sys.exc_info()[2]
+                raise DockerException(message + ': ' + str(e))
         return wrapper
     return decorator
 
