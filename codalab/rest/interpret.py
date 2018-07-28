@@ -584,9 +584,12 @@ def expand_raw_item(raw_item):
         if is_search:
             keywords = rest_util.resolve_owner_in_keywords(keywords)
             bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
-            bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
-            for bundle_uuid in bundle_uuids:
-                raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
+            if not isinstance(bundle_uuids, list):
+                raw_items.append(markup_item(str(bundle_uuids)))
+            else:
+                bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
+                for bundle_uuid in bundle_uuids:
+                    raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
         elif is_wsearch:
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
