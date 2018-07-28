@@ -3,7 +3,8 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
 # Installed packages:
 
-# python 2.7
+# python (2.7)
+# python3.7
 # pip
 # cmake
 # numpy
@@ -21,13 +22,14 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # dlib
 # OpenAI gym[all]
 # NLTK (no data)
-# TensorFlow CPU
+# tensorflow CPU
 # keras
-# OpenAI universe
-# PyTorch CPU
+# tensorboard
+# pytorch CPU
 # torchvision
 
 RUN apt-get -y update; apt-get -y upgrade;
+RUN apt-get -y install git;
 RUN apt-get -y install python2.7;
 RUN apt-get -y install python-pip;
 RUN apt-get -y install python-dev;
@@ -39,7 +41,6 @@ RUN apt-get -y install cmake;
 RUN apt-get -y install default-jdk;
 RUN apt-get -y install libhdf5-dev;
 RUN apt-get -y install swig;
-
 
 RUN apt-get clean && apt-get autoremove
 
@@ -53,8 +54,6 @@ RUN pip install -U \
       dlib \
       gym[all] \
       nltk \
-      tensorflow \
-      keras \
       numpy \
       scipy \
       matplotlib \
@@ -64,9 +63,50 @@ RUN pip install -U \
 
 RUN python -m spacy download en
 
-RUN git clone https://github.com/openai/universe.git && \
-    cd universe && \
-        pip install -e .
+# Set up python3
+
+RUN add-apt-repository -y ppa:deadsnakes/ppa;
+RUN apt-get -y update:
+RUN apt-get -y install python3.7;
+RUN apt-get -y install python3-pip;
+RUN apt-get -y install python3-dev;
+RUN apt-get -y install python3-software-properties;
+
+RUN pip3 install -U pip
+RUN pip3 install -U \
+      spacy \
+      tqdm \
+      wheel \
+      scikit-learn \
+      scikit-image \
+      dlib \
+      gym[all] \
+      nltk \
+      numpy \
+      scipy \
+      matplotlib \
+      pandas \
+      sympy \
+      nose;
+
+RUN python3 -m spacy download en
+
+
+# CPU-specific commands
+
+RUN pip install -U \
+      tensorflow \
+      tensorboard \
+      keras
 
 RUN pip install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27mu-linux_x86_64.whl || pip install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27m-linux_x86_64.whl
 RUN pip install torchvision
+
+
+RUN pip3 install -U \
+      tensorflow \
+      tensorboard \
+      keras
+
+RUN pip3 install http://download.pytorch.org/whl/cpu/torch-0.4.1.post2-cp37-cp37m-linux_x86_64.whl
+RUN pip3 install torchvision

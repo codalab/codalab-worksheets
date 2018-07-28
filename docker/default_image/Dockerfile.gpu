@@ -4,11 +4,8 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # Installed packages:
 
 # CUDA 9.2 Toolkit &  Runtime Libraries
-# default-jdk
-# scala (2.12.6)
-# sbt
 # python (2.7)
-# python3 (3.5)
+# python3.7
 # pip
 # pip3
 # cmake
@@ -33,7 +30,6 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # pytorch GPU
 # torchvision
 
-RUN apt-get -y update; apt-get -y upgrade;
 RUN apt-get -y install apt-transport-https;
 RUN apt-get -y install git;
 RUN apt-get -y install python2.7;
