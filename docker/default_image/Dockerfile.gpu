@@ -4,8 +4,11 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # Installed packages:
 
 # CUDA 9.2 Toolkit &  Runtime Libraries
+# default-jdk
+# scala (2.12.6)
+# sbt
 # python (2.7)
-# python3.5
+# python3 (3.5)
 # pip
 # pip3
 # cmake
@@ -43,6 +46,15 @@ RUN apt-get -y install cmake;
 RUN apt-get -y install default-jdk;
 RUN apt-get -y install libhdf5-dev;
 RUN apt-get -y install swig;
+RUN apt-get -y install wget;
+
+## Scala
+RUN wget http://scala-lang.org/files/archive/scala-2.12.6.deb
+RUN dpkg -i scala-2.12.1.deb
+RUN echo "deb https://dl.bintray.com/sbt/debian /" | sudo tee -a /etc/apt/sources.list.d/sbt.list
+RUN apt-key -y adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+RUN apt-get -y update
+RUN apt-get -y install sbtk
 
 RUN apt-get clean && apt-get autoremove
 
