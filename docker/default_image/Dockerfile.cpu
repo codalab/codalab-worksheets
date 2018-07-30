@@ -4,8 +4,9 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # Installed packages:
 
 # python (2.7)
-# python3.7
+# python3.5
 # pip
+# pip3
 # cmake
 # numpy
 # scipy
@@ -65,15 +66,13 @@ RUN python -m spacy download en
 
 # Set up python3
 
-RUN add-apt-repository -y ppa:deadsnakes/ppa;
-RUN apt-get -y update;
-RUN apt-get -y install python3.7;
 RUN apt-get -y install python3-pip;
 RUN apt-get -y install python3-dev;
 RUN apt-get -y install python3-software-properties;
 
 RUN pip3 install -U pip
 RUN pip3 install -U \
+      numpy \
       spacy \
       tqdm \
       wheel \
@@ -82,7 +81,6 @@ RUN pip3 install -U \
       dlib \
       gym[all] \
       nltk \
-      numpy \
       scipy \
       matplotlib \
       pandas \
@@ -108,5 +106,5 @@ RUN pip3 install -U \
       tensorboard \
       keras
 
-RUN pip3 install http://download.pytorch.org/whl/cpu/torch-0.4.1.post2-cp37-cp37m-linux_x86_64.whl
+RUN pip3 install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp35-cp35m-linux_x86_64.whl
 RUN pip3 install torchvision
