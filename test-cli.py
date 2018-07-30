@@ -1467,17 +1467,9 @@ def test(ctx):
 @TestModule.register('docker', default=False)
 def test(ctx):
     """
-    Check that certain Docker containers work with the CodaLab workers.
+    Placeholder for tests for default Codalab docker images
     """
-    # Environment variables should load properly in codalab images
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
-    wait(uuid)
-    check_equals('/opt/scala/current', run_command([cl, 'cat', uuid + '/stdout']))
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1', 'echo $LUA_PATH'])
-    wait(uuid)
-    check_contains(
-        '/user/.luarocks/share/lua/5.1/?.lua', run_command([cl, 'cat', uuid + '/stdout'])
-    )
+    pass
 
 
 @TestModule.register('competition')

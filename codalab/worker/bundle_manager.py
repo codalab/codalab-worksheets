@@ -478,11 +478,14 @@ class BundleManager(object):
     def _get_docker_image(self, bundle):
         """
         Set docker image to be the default if not specified
-        The default is for backwards compatibilty for
-        runs from before when we added client-side defaults
+        Unlike other metadata fields this can actually be None
+        from client
         """
         if not bundle.metadata.request_docker_image:
-            return 'codalab/ubuntu:1.9'
+            if bundle.metadata.request_gpus:
+                return 'codalab/default-gpu:latest'
+            else:
+                return 'codalab/default-cpu:latest'
         return bundle.metadata.request_docker_image
 
     def _construct_run_message(self, worker, bundle):
