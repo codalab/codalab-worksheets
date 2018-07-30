@@ -583,10 +583,14 @@ def expand_raw_item(raw_item):
 
         if is_search:
             keywords = rest_util.resolve_owner_in_keywords(keywords)
-            bundle_uuids = local.model.search_bundle_uuids(request.user.user_id, keywords)
-            bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
-            for bundle_uuid in bundle_uuids:
-                raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
+            search_result = local.model.search_bundles(request.user.user_id, keywords)
+            if search_result['is_aggregate']:
+                raw_items.append(markup_item(search_result['result']))
+            else:
+                bundle_uuids = search_result['result']
+                bundle_infos = rest_util.get_bundle_infos(bundle_uuids)
+                for bundle_uuid in bundle_uuids:
+                    raw_items.append(bundle_item(bundle_infos[bundle_uuid]))
         elif is_wsearch:
             worksheet_infos = search_worksheets(keywords)
             for worksheet_info in worksheet_infos:
