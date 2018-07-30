@@ -131,6 +131,11 @@ def _fetch_bundles():
         # Handle search keywords
         keywords = resolve_owner_in_keywords(keywords)
         search_result = local.model.search_bundles(request.user.user_id, keywords)
+        # Return simple dict if scalar result (e.g. .sum or .count queries)
+        if search_result['is_aggregate']:
+            return json_api_meta({}, {'result': search_result['result']})
+        # If not aggregate this is a list
+        bundle_uuids = search_result['result']
     elif specs:
         # Resolve bundle specs
         bundle_uuids = canonicalize.get_bundle_uuids(local.model, request.user, worksheet_uuid, specs)
@@ -141,16 +146,8 @@ def _fetch_bundles():
 
     # Find all descendants down to the provided depth
     if descendant_depth is not None:
-        if search_result['is_aggregate']:
-            abort(httplib.BAD_REQUEST,
-                  "Cannot combine depth parameter with an aggregate search (.sum or .count)")
-        else:
-            bundle_uuids = search_result['result']
-            bundle_uuids = local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth)
+        bundle_uuids = local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth)
 
-    # Return simple dict if scalar result (e.g. .sum or .count queries)
-    if search_result['is_aggregate']:
-        return json_api_meta({}, {'result': search_result['result']})
 
     return build_bundles_document(bundle_uuids)
 
