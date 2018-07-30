@@ -120,5 +120,5 @@ RUN pip3 install -U \
       tensorboard \
       keras
 
-RUN pip3 install http://download.pytorch.org/whl/cu92/torch-0.4.1.post2-cp37-cp37m-linux_x86_64.whl
+RUN pip3 install http://download.pytorch.org/whl/cu92/torch-0.4.1-cp35-cp35m-linux_x86_64.whl
 RUN pip3 install torchvision
