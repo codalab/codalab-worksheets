@@ -4,8 +4,11 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # Installed packages:
 
 # CUDA 9.2 Toolkit &  Runtime Libraries
+# default-jdk
+# scala (2.12.6)
+# sbt
 # python (2.7)
-# python3.5
+# python3 (3.5)
 # pip
 # pip3
 # cmake
