@@ -271,9 +271,13 @@ class BundleModel(object):
             depth -= 1
         return visited
 
-    def search_bundle_uuids(self, user_id, keywords):
+    def search_bundles(self, user_id, keywords):
         """
-        Return a list of uuids (in the appropriate order) matching the keywords.
+        Returns a  bundle search result dict where:
+            result: list of bundle uuids matching search criteria in order
+                          specified for bundle searches
+                    single number value for aggregate searches(.count, .sum)
+            is_aggregate: True for aggregate searches, False otherwise
         Each keyword is either:
         - <key>=<value>
         - .floating: return bundles not in any worksheet
@@ -504,8 +508,9 @@ class BundleModel(object):
 
         result = self._execute_query(query)
         if count or sum_key[0] is not None:  # Just returning a single number
-            return worksheet_util.apply_func(format_func, result[0])
-        return result
+            result = worksheet_util.apply_func(format_func, result[0])
+            return {'result': result, 'is_aggregate': True}
+        return {'result': result, 'is_aggregate': False}
 
     def get_bundle_uuids(self, conditions, max_results):
         """
@@ -1032,7 +1037,7 @@ class BundleModel(object):
         Return a list of row dicts, one per worksheet. These dicts do NOT contain
         ALL worksheet items; this method is meant to make it easy for a user to see
         their existing worksheets.
-        Note: keywords has basically same semantics as search_bundle_uuids.
+        Note: keywords has basically same semantics as search_bundles.
         """
         clauses = []
         offset = 0
@@ -2126,7 +2131,7 @@ class BundleModel(object):
         })
 
     def _get_disk_used(self, user_id):
-        return self.search_bundle_uuids(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%']) or 0
+        return self.search_bundles(user_id, ['size=.sum', 'owner_id=' + user_id, 'data_hash=%'])['result'] or 0
 
     def get_user_disk_quota_left(self, user_id):
         user_info = self.get_user_info(user_id)
