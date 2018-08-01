@@ -2027,7 +2027,16 @@ class BundleCLI(object):
         Use args.bundles to generate a call to bundle_util.mimic_bundles()
         """
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundles)
+        try:
+            bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundles)
+        except NotFoundError as e:
+            # Maybe they're trying with old syntax (worksheet/bundle)
+            try:
+                bundle_uuids = BundleCLI.resolve_bundle_uuids(client, worksheet_uuid, args.bundles)
+            except NotFoundError:
+                # If this doesn't work either, raise the outer error as that's the non-deprecated
+                # interpretation of what happened
+                raise e
         metadata = self.get_provided_metadata(args)
         output_name = metadata.pop('name', None)
 
