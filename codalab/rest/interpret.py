@@ -340,8 +340,6 @@ def resolve_interpreted_blocks(interpreted_blocks):
                 # header_name_posts is a list of (name, post-processing) pairs.
                 contents = block['rows']
                 # Request information
-                print 'contents'
-                print contents
                 contents = interpret_genpath_table_contents(contents)
 
                 block['rows'] = contents
@@ -601,8 +599,6 @@ def expand_raw_item(raw_item):
             for worksheet_info in worksheet_infos:
                 raw_items.append(subworksheet_item(worksheet_info))
 
-        print 'search raw_items for %s' % value_obj
-        print raw_items
         return raw_items
     else:
         return [raw_item]
