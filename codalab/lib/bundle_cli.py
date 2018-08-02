@@ -1019,7 +1019,7 @@ class BundleCLI(object):
             client.upload_contents_blob(
                 new_bundle['id'],
                 fileobj=contents_buffer,
-                params={'filename': 'contents', 'unpack': False, 'state_on_success': State.READY})
+                params={'filename': 'contents', 'unpack': False, 'state_on_success': State.READY, 'finalize_on_success': True})
 
         # Option 2: Upload URL(s)
         elif any(map(path_util.path_is_url, args.path)):
@@ -1032,7 +1032,8 @@ class BundleCLI(object):
             client.upload_contents_blob(new_bundle['id'], params={
                 'urls': args.path,
                 'git': args.git,
-                'state_on_success': State.READY
+                'state_on_success': State.READY,
+                'finalize_on_success': True
             })
 
         # Option 3: Upload file(s) from the local filesystem
@@ -1074,7 +1075,8 @@ class BundleCLI(object):
                         'filename': packed['filename'],
                         'unpack': packed['should_unpack'],
                         'simplify': packed['should_simplify'],
-                        'state_on_success': State.READY
+                        'state_on_success': State.READY,
+                        'finalize_on_success': True
                     },
                     progress_callback=progress.update)
 
@@ -1213,6 +1215,7 @@ class BundleCLI(object):
                     'unpack': unpack,
                     'simplify': False,  # retain original bundle verbatim
                     'state_on_success': source_state,  # copy bundle state
+                    'finalize_on_success': True
                 },
                 progress_callback=progress.update)
 

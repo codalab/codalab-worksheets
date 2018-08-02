@@ -671,6 +671,9 @@ Query parameters:
 - `finalize_on_failure`: (optional) 1 if bundle state should be set
   to 'failed' in the case of a failure during upload, or 0 if the bundle
   state should not change on failure. Default is 0.
+- `finalize_on_success`: (optional) if true update the bundle state to this
+  if the upload completes successfully. Default true, false should be
+  specified.
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
   Default is empty in which case the state is not updated.
