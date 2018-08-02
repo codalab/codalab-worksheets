@@ -507,9 +507,11 @@ class BundleCLI(object):
     def simple_group_str(info):
         return '%s(%s)' % (contents_str(info.get('name')), info['id'])
 
-    def resolve_bundle_specs(self, default_client, default_worksheet_uuid, target_specs, allow_remote=True):
+    def target_specs_to_bundle_uuids(self, default_client, default_worksheet_uuid, target_specs, allow_remote=True):
         """
         Wrapper for resolve_target that takes a list of target specs and returns a list of bundle uuids.
+        Supports the new worksheet//bundle notation, doesn't support the old worksheet/bundle notation that was only partially
+        supported
         """
         return [self.resolve_target(default_client, default_worksheet_uuid, spec, allow_remote)[2] for spec in target_specs]
 
@@ -572,13 +574,20 @@ class BundleCLI(object):
 
     @staticmethod
     def resolve_bundle_uuid(client, worksheet_uuid, bundle_spec):
-        # Minor optimization: return immediately if already a UUID
+        """
+        Given a bundle spec, returns the uuid for the bundle, immediately
+        returning if the spec is an uuid
+        """
         if spec_util.UUID_REGEX.match(bundle_spec):
             return bundle_spec
         return BundleCLI.resolve_bundle_uuids(client, worksheet_uuid, [bundle_spec])[0]
 
     @staticmethod
     def resolve_bundle_uuids(client, worksheet_uuid, bundle_specs):
+        """
+        Given specs for bundles, returns their IDs, supports the
+        worksheet/bundle notation
+        """
         bundles = client.fetch('bundles', params={
             'worksheet': worksheet_uuid,
             'specs': bundle_specs,
@@ -1412,7 +1421,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then detach.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         worksheet_info = client.fetch('worksheets', worksheet_uuid, params={'include': ['items', 'items.bundle']})
 
         # Number the bundles: c c a b c => 3 2 1 1 1
@@ -1465,7 +1474,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         # Resolve all the bundles first, then delete.
         # This is important since some of the bundle specs (^1 ^2) are relative.
-        bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         deleted_uuids = client.delete('bundles', bundle_uuids, params={
             'force': args.force,
             'recursive': args.recursive,
@@ -2027,7 +2036,16 @@ class BundleCLI(object):
         Use args.bundles to generate a call to bundle_util.mimic_bundles()
         """
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundles)
+        try:
+            bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundles)
+        except NotFoundError as e:
+            # Maybe they're trying with old syntax (worksheet/bundle)
+            try:
+                bundle_uuids = BundleCLI.resolve_bundle_uuids(client, worksheet_uuid, args.bundles)
+            except NotFoundError:
+                # If this doesn't work either, raise the outer error as that's the non-deprecated
+                # interpretation of what happened
+                raise e
         metadata = self.get_provided_metadata(args)
         output_name = metadata.pop('name', None)
 
@@ -2070,7 +2088,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
 
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
-        bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         for bundle_uuid in bundle_uuids:
             print >>self.stdout, bundle_uuid
         client.create('bundle-actions', [{
@@ -2644,7 +2662,7 @@ class BundleCLI(object):
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
         group = client.fetch('groups', args.group_spec)
 
-        bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         new_permission = parse_permission(args.permission_spec)
 
         client.create('bundle-permissions', [{
@@ -2698,7 +2716,7 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        bundle_uuids = self.resolve_bundle_specs(client, worksheet_uuid, args.bundle_spec)
+        bundle_uuids = self.target_specs_to_bundle_uuids(client, worksheet_uuid, args.bundle_spec)
         owner_id = client.fetch('users', args.user_spec)['id']
 
         client.update('bundles', [{
