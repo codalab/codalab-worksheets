@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.2.12_
+_version 0.2.27_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -468,6 +468,7 @@ Query parameters:
     - `size=.sort-            ` : Sort by a particular field in reverse.
     - `size=.sum              ` : Compute total of a particular field.
     - `.mine                  ` : Match only bundles I own.
+    - `.shared                ` : Match only bundles shared with a group I'm a part of.
     - `.floating              ` : Match bundles that aren't on any worksheet.
     - `.count                 ` : Count the number of bundles.
     - `.limit=10              ` : Limit the number of results to the top 10.

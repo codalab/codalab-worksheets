@@ -9,12 +9,11 @@ from bundle_service_client import BundleServiceException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from state_committer import JsonStateCommitter
 
-VERSION = 19
+VERSION = 20
 
 COMMAND_RETRY_SECONDS = 60 * 12
 
 logger = logging.getLogger(__name__)
-
 """
 Codalab Worker
 Workers handle communications with the Codalab server. Their main role in Codalab execution
@@ -25,7 +24,8 @@ but they expect the platform specific RunManagers they use to implement a common
 
 
 class Worker(object):
-    def __init__(self, create_run_manager, commit_file, worker_id, tag, work_dir, bundle_service):
+    def __init__(self, create_run_manager, commit_file, worker_id, tag,
+                 work_dir, bundle_service):
         self.id = worker_id
         self._state_committer = JsonStateCommitter(commit_file)
         self._tag = tag
@@ -111,10 +111,12 @@ class Worker(object):
             'start_time': int(now),
         }
 
-        if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
+        if self._bundle_service.start_bundle(self.id, bundle['uuid'],
+                                             start_message):
             self._run_manager.create_run(bundle, resources)
         else:
-            print >>sys.stdout, 'Bundle {} no longer assigned to this worker'.format(bundle['uuid'])
+            print >> sys.stdout, 'Bundle {} no longer assigned to this worker'.format(
+                bundle['uuid'])
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
@@ -122,8 +124,11 @@ class Worker(object):
 
         try:
             run_state = self._run_manager.get_run(uuid)
-            dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
-            self._run_manager.read(run_state, path, dep_paths, read_args, reply)
+            dep_paths = set([
+                dep['child_path'] for dep in run_state.bundle['dependencies']
+            ])
+            self._run_manager.read(run_state, path, dep_paths, read_args,
+                                   reply)
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
@@ -134,6 +139,7 @@ class Worker(object):
     def _netcat(self, socket_id, uuid, port, message):
         def reply(err, message={}, data=None):
             self._bundle_service_reply(socket_id, err, message, data)
+
         try:
             run_state = self._run_manager.get_run(uuid)
             self._run_manager.netcat(run_state, port, message, reply)
@@ -146,7 +152,8 @@ class Worker(object):
 
     def _write(self, uuid, subpath, string):
         run_state = self._run_manager.get_run(uuid)
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+        dep_paths = set(
+            [dep['child_path'] for dep in run_state.bundle['dependencies']])
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
     def _kill(self, uuid):
