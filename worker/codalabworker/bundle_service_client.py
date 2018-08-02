@@ -146,7 +146,7 @@ class BundleServiceClient(RestClient):
                 '/bundles/' + uuid + '/contents/blob/',
                 query_params={
                     'filename': 'bundle.tar.gz',
-                    'finalize_on_success': False
+                    'finalize_on_success': 0
                 },
                 fileobj=fileobj,
                 progress_callback=progress_callback)
