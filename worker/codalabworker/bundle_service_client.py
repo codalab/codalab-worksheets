@@ -20,18 +20,14 @@ def wrap_exception(message):
                 return f(*args, **kwargs)
             except RestClientException as e:
                 raise BundleServiceException(message + ': ' + e.message,
-                                             e.client_error), \
-                    sys.exc_info()[2]
+                                             e.client_error)
             except urllib2.HTTPError as e:
-                raise BundleServiceException(message + ': ' +
-                                             httplib.responses[e.code] + ' - ' +
-                                             e.read(),
-                                             e.code >= 400 and e.code < 500), \
-                    sys.exc_info()[2]
+                raise BundleServiceException(
+                    message + ': ' + httplib.responses[e.code] + ' - ' +
+                    e.read(), e.code >= 400 and e.code < 500)
             except (urllib2.URLError, httplib.HTTPException,
                     socket.error) as e:
-                raise BundleServiceException(message + ': ' + str(e), False), \
-                    sys.exc_info()[2]
+                raise BundleServiceException(message + ': ' + str(e), False)
 
         return wrapper
 
