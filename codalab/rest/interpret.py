@@ -403,21 +403,24 @@ def resolve_interpreted_blocks(interpreted_blocks):
 
     return interpreted_blocks
 
+def is_bundle_genpath_triple(value):
+    # if called after an RPC call tuples may become lists
+    need_gen_types = (types.TupleType, types.ListType)
+
+    return isinstance(value, need_gen_types) and len(value) == 3 and all(isinstance(elem, basestring) for elem in value)
 
 def interpret_genpath_table_contents(contents):
     """
     contents represents a table, but some of the elements might not be
     interpreted yet, so fill them in.
     """
-    # if called after an RPC call tuples may become lists
-    need_gen_types = (types.TupleType, types.ListType)
 
     # Request information
     requests = []
     for r, row in enumerate(contents):
         for key, value in row.items():
             # value can be either a string (already rendered) or a (bundle_uuid, genpath, post) triple
-            if isinstance(value, need_gen_types):
+            if is_bundle_genpath_triple(value):
                 requests.append(value)
     responses = interpret_file_genpaths(requests)
 
@@ -427,7 +430,7 @@ def interpret_genpath_table_contents(contents):
     for r, row in enumerate(contents):
         new_row = {}
         for key, value in row.items():
-            if isinstance(value, need_gen_types):
+            if is_bundle_genpath_triple(value):
                 value = responses[ri]
                 ri += 1
             new_row[key] = value
