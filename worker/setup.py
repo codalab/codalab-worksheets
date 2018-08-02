@@ -1,6 +1,4 @@
 from setuptools import setup, find_packages
-from setuptools.command.install import install
-import os
 
 
 def get_requirements(*requirements_file_paths):
@@ -16,7 +14,7 @@ def get_requirements(*requirements_file_paths):
 
 setup(
     name='codalabworker',
-    version='0.2.27',
+    version='0.2.28',
     description='Worker for CodaLab, a platform for reproducible computation',
     long_description=
     'To use your own hardware in CodaLab Worksheets, visit https://github.com/codalab/codalab-worksheets/wiki/Execution#running-your-own-worker. You can find the code at https://github.com/codalab/codalab-cli.',

@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.2.27_
+_version 0.2.28_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -676,7 +676,7 @@ Query parameters:
   specified.
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
-  Default is empty in which case the state is not updated.
+  Default is 'ready'.
 
 
 &uarr; [Back to Top](#table-of-contents)
