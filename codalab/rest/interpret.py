@@ -407,7 +407,7 @@ def is_bundle_genpath_triple(value):
     # if called after an RPC call tuples may become lists
     need_gen_types = (types.TupleType, types.ListType)
 
-    return isinstance(value, need_gen_types) and len(value) == 3
+    return isinstance(value, need_gen_types) and len(value) == 3 and all(isinstance(elem, basestring) for elem in value)
 
 def interpret_genpath_table_contents(contents):
     """
