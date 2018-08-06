@@ -3,13 +3,10 @@ Handles reading the session cookie.
 """
 import datetime
 
-from bottle import (
-  local,
-  request,
-  response
-)
+from bottle import (local, request, response)
 
 from codalab.server.authenticated_plugin import user_is_authenticated
+
 
 class LoginCookie(object):
     """
@@ -21,7 +18,8 @@ class LoginCookie(object):
     def __init__(self, user_id, max_age):
         self.user_id = user_id
         self.max_age = max_age
-        self.expires = datetime.datetime.utcnow() + datetime.timedelta(seconds=max_age)
+        self.expires = datetime.datetime.utcnow(
+        ) + datetime.timedelta(seconds=max_age)
 
     def save(self):
         """
@@ -29,8 +27,12 @@ class LoginCookie(object):
         """
         self.clear()
         response.set_cookie(
-            self.KEY, self, secret=local.config['server']['secret_key'],
-            max_age=self.max_age, path=self.PATH)
+            self.KEY,
+            self,
+            secret=local.config['server']['secret_key'],
+            max_age=self.max_age,
+            path=self.PATH
+        )
 
     @classmethod
     def get(cls):
@@ -41,7 +43,8 @@ class LoginCookie(object):
         :return: LoginCookie or None
         """
         cookie = request.get_cookie(
-            cls.KEY, secret=local.config['server']['secret_key'], default=None)
+            cls.KEY, secret=local.config['server']['secret_key'], default=None
+        )
         if cookie and cookie.expires > datetime.datetime.utcnow():
             return cookie
         else:

@@ -36,6 +36,7 @@ from codalab.lib.codalab_manager import (
 
 class DryRunAbort(Exception):
     """Raised at end of transaction of dry run."""
+
     def __str__(self):
         return """
         This was a dry run, no migration occurred. To perform full migration,
@@ -54,12 +55,12 @@ CODALAB_HOME = manager.codalab_home
 # Turn on query logging
 model.engine.echo = True
 
-
 ###############################################################
 # Configure connection to Django database
 ###############################################################
-django_config = read_json_or_die(os.path.join(CODALAB_HOME,
-                                              'website-config.json'))
+django_config = read_json_or_die(
+    os.path.join(CODALAB_HOME, 'website-config.json')
+)
 
 # Use default settings as defined in codalab-worksheets
 if 'database' not in django_config:
@@ -96,16 +97,16 @@ elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
         return d
 
     # Default location: ../codalab-worksheets/codalab/$NAME
-    sqlite_path = os.path.join(os.path.dirname(os.getcwd()),
-                               'codalab-worksheets',
-                               'codalab',
-                               django_config['database']['NAME'])
+    sqlite_path = os.path.join(
+        os.path.dirname(os.getcwd()), 'codalab-worksheets', 'codalab',
+        django_config['database']['NAME']
+    )
     django_db = sqlite3.connect(sqlite_path)
     django_db.row_factory = dict_factory
 else:
-    raise UsageError("Invalid database engine %r" %
-                     django_config['database']['ENGINE'])
-
+    raise UsageError(
+        "Invalid database engine %r" % django_config['database']['ENGINE']
+    )
 
 ###############################################################
 # Begin Transaction
@@ -117,7 +118,8 @@ with model.engine.begin() as bundle_db:
     ###############################################################
     # General SQL query should work on both MySQL and sqlite3
     django_cursor = django_db.cursor()
-    django_cursor.execute("""
+    django_cursor.execute(
+        """
         SELECT
         cluser.id as b_user_id,  -- prevent clash with user_id column on update
         cluser.password,
@@ -134,7 +136,8 @@ with model.engine.begin() as bundle_db:
         FROM authenz_cluser AS cluser
         LEFT OUTER JOIN account_emailaddress AS email
         ON cluser.id = email.user_id
-        WHERE cluser.id != -1 AND cluser.is_active = 1""")
+        WHERE cluser.id != -1 AND cluser.is_active = 1"""
+    )
     django_users = list(django_cursor.fetchall())
 
     # Get set of user ids in bundles db
@@ -149,10 +152,12 @@ with model.engine.begin() as bundle_db:
     print "Users to update:", ', '.join(list(to_update))
     print "Users to insert:", ', '.join(list(to_insert))
 
-    to_update = [user for user in django_users
-                 if (str(user['b_user_id']) in to_update)]
-    to_insert = [user for user in django_users
-                 if (str(user['b_user_id']) in to_insert)]
+    to_update = [
+        user for user in django_users if (str(user['b_user_id']) in to_update)
+    ]
+    to_insert = [
+        user for user in django_users if (str(user['b_user_id']) in to_insert)
+    ]
 
     ###############################################################
     # Update existing users in bundles db

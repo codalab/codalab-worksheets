@@ -18,6 +18,10 @@ class BundleAction(object):
             return BundleAction.KILL
         elif action['type'] == BundleAction.WRITE:
             # Note: assume subpath must not have the separator in it.
-            return BundleAction.SEPARATOR.join([BundleAction.WRITE, action['subpath'], action['string']])
+            return BundleAction.SEPARATOR.join(
+                [BundleAction.WRITE, action['subpath'], action['string']]
+            )
         else:
-            raise PreconditionViolation("Unsupported bundle action %r" % action['type'])
+            raise PreconditionViolation(
+                "Unsupported bundle action %r" % action['type']
+            )

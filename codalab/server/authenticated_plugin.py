@@ -1,9 +1,9 @@
 from bottle import (
-  abort,
-  httplib,
-  redirect,
-  request,
-  url,
+    abort,
+    httplib,
+    redirect,
+    request,
+    url,
 )
 
 from codalab.lib.server_util import redirect_with_query
@@ -48,6 +48,7 @@ class PublicUserPlugin(object):
             if not user_is_authenticated():
                 request.user = PUBLIC_USER
             return callback(*args, **kwargs)
+
         return wrapper
 
 

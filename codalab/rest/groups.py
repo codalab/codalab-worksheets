@@ -31,15 +31,14 @@ def fetch_groups():
     """Fetch list of groups readable by the authenticated user."""
     if request.user.user_id == local.model.root_user_id:
         groups = local.model.batch_get_all_groups(
-            None,
-            {'user_defined': True},
-            None
+            None, {'user_defined': True}, None
         )
     else:
         groups = local.model.batch_get_all_groups(
-            None,
-            {'owner_id': request.user.user_id, 'user_defined': True},
-            {'user_id': request.user.user_id}
+            None, {
+                'owner_id': request.user.user_id,
+                'user_defined': True
+            }, {'user_id': request.user.user_id}
         )
 
     for group in groups:
@@ -91,14 +90,20 @@ def delete_groups():
 @post('/groups', apply=AuthenticatedPlugin())
 def create_group():
     """Create a group."""
-    groups = GroupSchema(strict=True, many=True).load(request.json, partial=True).data
+    groups = GroupSchema(
+        strict=True, many=True
+    ).load(
+        request.json, partial=True
+    ).data
     created_groups = []
     for group in groups:
         ensure_unused_group_name(group['name'])
         group['owner_id'] = request.user.user_id
         group['user_defined'] = True
         group = local.model.create_group(group)
-        local.model.add_user_in_group(request.user.user_id, group['uuid'], is_admin=True)
+        local.model.add_user_in_group(
+            request.user.user_id, group['uuid'], is_admin=True
+        )
         created_groups.append(group)
     return GroupSchema(many=True).dump(created_groups).data
 
@@ -115,14 +120,19 @@ def add_group_members(group_spec):
 
 def add_group_members_helper(group_spec, is_admin):
     user_ids = get_resource_ids(request.json, 'users')
-    group_info = get_group_info(group_spec, need_admin=True,
-                                access_all_groups=False)
+    group_info = get_group_info(
+        group_spec, need_admin=True, access_all_groups=False
+    )
     group_uuid = group_info['uuid']
     group_owner = group_info['owner_id']
     if group_owner in user_ids:
-        raise UsageError("Cannot relegate the group owner into non-admin status")
-    members = set(m['user_id'] for m in local.model.batch_get_user_in_group(
-        user_id=user_ids, group_uuid=group_uuid))
+        raise UsageError(
+            "Cannot relegate the group owner into non-admin status"
+        )
+    members = set(
+        m['user_id'] for m in local.model.
+        batch_get_user_in_group(user_id=user_ids, group_uuid=group_uuid)
+    )
     for user_id in user_ids:
         if user_id in members:
             local.model.update_user_in_group(user_id, group_uuid, is_admin)
@@ -131,8 +141,12 @@ def add_group_members_helper(group_spec, is_admin):
     return request.json
 
 
-@delete('/groups/<group_spec>/relationships/admins', apply=AuthenticatedPlugin())
-@delete('/groups/<group_spec>/relationships/members', apply=AuthenticatedPlugin())
+@delete(
+    '/groups/<group_spec>/relationships/admins', apply=AuthenticatedPlugin()
+)
+@delete(
+    '/groups/<group_spec>/relationships/members', apply=AuthenticatedPlugin()
+)
 def delete_group_members(group_spec):
     # For now, both routes will delete a member entirely from the group.
     user_ids = get_resource_ids(request.json, 'users')

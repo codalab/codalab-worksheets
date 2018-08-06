@@ -18,10 +18,8 @@ from codalab.common import CODALAB_VERSION
 # Ensure all REST modules are loaded
 from codalab.server import rest_server
 
-
 REST_DOCS_PATH = 'docs/rest.md'
 EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static', 'chats', 'faq', 'help'}
-
 
 APISpec = namedtuple('APISpec', 'name anchor routes')
 
@@ -59,10 +57,14 @@ def get_api_routes():
 def get_codalab_schemas():
     from codalab.rest import schemas as schemas_module
     for k, v in vars(schemas_module).iteritems():
-        if not isclass(v): continue
-        if not issubclass(v, Schema): continue
-        if v is Schema: continue
-        if v is JsonApiSchema: continue
+        if not isclass(v):
+            continue
+        if not issubclass(v, Schema):
+            continue
+        if v is Schema:
+            continue
+        if v is JsonApiSchema:
+            continue
         yield k, v
 
 
@@ -184,7 +186,6 @@ a `401 Unauthorized` or `403 Forbidden` status.
 
 '''
 
-
 SCHEMA_DOC = '''\
 <%
     from marshmallow_jsonapi import Schema as JsonApiSchema
@@ -248,7 +249,6 @@ API_ROUTE_DOC = '''\
 % end
 '''
 
-
 INDEX_LINK = "\n&uarr; [Back to Top](#table-of-contents)\n"
 
 
@@ -257,7 +257,13 @@ def main():
         os.makedirs(os.path.dirname(REST_DOCS_PATH))
 
     with open(REST_DOCS_PATH, 'wb') as out:
-        out.write(template(dedent(INDEX_DOC), api_specs=get_api_routes(), version=CODALAB_VERSION))
+        out.write(
+            template(
+                dedent(INDEX_DOC),
+                api_specs=get_api_routes(),
+                version=CODALAB_VERSION
+            )
+        )
         out.write(dedent(INTRODUCTION_DOC))
 
         out.write('# Resource Object Schemas\n')

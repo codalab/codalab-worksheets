@@ -24,8 +24,10 @@ class BlockModes:
     graph_block = 'graph_block'
     subworksheets_block = 'subworksheets_block'
 
-    values = (markup_block, record_block, table_block, contents_block,
-              image_block, graph_block, subworksheets_block)
+    values = (
+        markup_block, record_block, table_block, contents_block, image_block,
+        graph_block, subworksheets_block
+    )
 
 
 class FetchStatusCodes:
@@ -167,7 +169,9 @@ class GraphBlockSchema(BundleBlockSchema):
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
-    trajectories = fields.Nested(GraphTrajectorySchema, many=True, required=True)
+    trajectories = fields.Nested(
+        GraphTrajectorySchema, many=True, required=True
+    )
     max_lines = fields.Integer()
     xlabel = fields.String()
     ylabel = fields.String()

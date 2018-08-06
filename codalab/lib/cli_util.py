@@ -36,6 +36,7 @@ def nested_dict_get(obj, *args, **kwargs):
     except (KeyError, TypeError):
         return default
 
+
 def parse_key_target(spec):
     """
     Parses a keyed target spec into its key and the rest of the target spec
@@ -71,6 +72,7 @@ def parse_target_spec(spec):
     match = re.match(TARGET_REGEX, spec)
     return match.groups() if match else (None, None, None, None)
 
+
 def desugar_command(orig_target_spec, command):
     """
     Desugar command, returning mutated target_spec and command.
@@ -97,13 +99,18 @@ def desugar_command(orig_target_spec, command):
             key = subpath if subpath is not None else bundle
         elif key is None:
             # key only returns None if ':' not present in original spec
-            key = val2key[val] if val in val2key else 'b' + str(len(target_spec) + 1)
+            key = val2key[
+                val
+            ] if val in val2key else 'b' + str(len(target_spec) + 1)
 
         if val not in val2key:
             val2key[val] = key
         if key in key2val:
             if key2val[key] != val:
-                raise UsageError('key %s exists with multiple values: %s and %s' % (key, key2val[key], val))
+                raise UsageError(
+                    'key %s exists with multiple values: %s and %s' %
+                    (key, key2val[key], val)
+                )
         else:
             key2val[key] = val
             target_spec.append(key + ':' + val)

@@ -13,6 +13,7 @@ from watchdog.events import FileSystemEventHandler
 from codalab.lib.bundle_cli import BundleCLI, Commands
 from codalab.lib.codalab_manager import CodaLabManager
 
+
 class ClFileWatcherEventHandler(FileSystemEventHandler):
     SERVER_PROCESS = None
 
@@ -32,7 +33,9 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
         file_extension = os.path.splitext(event.src_path)[1]
 
         if file_extension in extensions_to_watch:
-            print "Saw file change: %s -- restarting!" % (os.path.basename(event.src_path))
+            print "Saw file change: %s -- restarting!" % (
+                os.path.basename(event.src_path)
+            )
             self.restart()
 
 
@@ -59,22 +62,33 @@ def run_server_with_watch():
     help='Start an instance of a CodaLab bundle service with a REST API.',
     arguments=(
         Commands.Argument(
-            '--watch', help='Restart the server on code changes.',
-            action='store_true'),
+            '--watch',
+            help='Restart the server on code changes.',
+            action='store_true'
+        ),
         Commands.Argument(
-            '-p', '--processes',
+            '-p',
+            '--processes',
             help='Number of processes to use. A production deployment should '
-                 'use more than 1 process to make the best use of multiple '
-                 'CPUs.',
-            type=int, default=1),
+            'use more than 1 process to make the best use of multiple '
+            'CPUs.',
+            type=int,
+            default=1
+        ),
         Commands.Argument(
-            '-t', '--threads',
+            '-t',
+            '--threads',
             help='Number of threads to use. The server will be able to handle '
-                 '(--processes) x (--threads) requests at the same time.',
-            type=int, default=50),
+            '(--processes) x (--threads) requests at the same time.',
+            type=int,
+            default=50
+        ),
         Commands.Argument(
-            '-d', '--debug', help='Run the development server for debugging.',
-            action='store_true')
+            '-d',
+            '--debug',
+            help='Run the development server for debugging.',
+            action='store_true'
+        )
     ),
 )
 def do_rest_server_command(bundle_cli, args):
@@ -85,17 +99,21 @@ def do_rest_server_command(bundle_cli, args):
         run_server_with_watch()
     else:
         from codalab.server.rest_server import run_rest_server
-        run_rest_server(bundle_cli.manager, args.debug, args.processes, args.threads)
+        run_rest_server(
+            bundle_cli.manager, args.debug, args.processes, args.threads
+        )
 
 
 @Commands.command(
     'bundle-manager',
-    help = 'Start the bundle manager that executes run and make bundles.',
+    help='Start the bundle manager that executes run and make bundles.',
     arguments=(
         Commands.Argument(
             '--sleep-time',
             help='Number of seconds to wait between successive actions.',
-            type=int, default=0.5),
+            type=int,
+            default=0.5
+        ),
     ),
 )
 def do_bundle_manager_command(bundle_cli, args):
@@ -109,6 +127,7 @@ def do_bundle_manager_command(bundle_cli, args):
 
     manager.run(args.sleep_time)
 
+
 def main():
     cli = BundleCLI(CodaLabManager())
     try:
@@ -116,6 +135,7 @@ def main():
     except KeyboardInterrupt:
         print 'Terminated by Ctrl-C'
         sys.exit(130)
+
 
 if __name__ == '__main__':
     main()

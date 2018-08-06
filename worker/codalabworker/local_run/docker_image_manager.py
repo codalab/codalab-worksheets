@@ -16,14 +16,19 @@ from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
-DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used message')
+DockerImageState = namedtuple(
+    'DockerImageState', 'stage digest killed last_used message'
+)
 
 
 class DockerImageManager(StateTransitioner, BaseDependencyManager):
-
-    def __init__(self, docker, commit_file, max_images_bytes, max_age_failed_seconds=60):
+    def __init__(
+        self, docker, commit_file, max_images_bytes, max_age_failed_seconds=60
+    ):
         super(DockerImageManager, self).__init__()
-        self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
+        self.add_transition(
+            DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING
+        )
         self.add_terminal(DependencyStage.READY)
         self.add_terminal(DependencyStage.FAILED)
 
@@ -61,6 +66,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 except Exception:
                     traceback.print_exc()
                 time.sleep(self._sleep_secs)
+
         self._main_thread = threading.Thread(target=loop, args=[self])
         self._main_thread.start()
 
@@ -97,19 +103,38 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         """
         while True:
             total_bytes, reclaimable_bytes = self._docker.get_disk_usage()
-            if self._max_images_bytes and total_bytes > self._max_images_bytes and len(self._images) > 0 and reclaimable_bytes > 0:
-                logger.debug('Docker images disk usage: %s (max %s)',
-                             size_str(total_bytes),
-                             size_str(self._max_images_bytes))
+            if self._max_images_bytes and total_bytes > self._max_images_bytes and len(
+                self._images
+            ) > 0 and reclaimable_bytes > 0:
+                logger.debug(
+                    'Docker images disk usage: %s (max %s)',
+                    size_str(total_bytes), size_str(self._max_images_bytes)
+                )
                 with self._lock:
-                    failed_images = {digest: image for digest, image in self._images.items() if image.stage == DependencyStage.FAILED}
-                    ready_images = {digest: image for digest, image in self._images.items() if image.stage == DependencyStage.READY}
+                    failed_images = {
+                        digest: image
+                        for digest, image in self._images.items()
+                        if image.stage == DependencyStage.FAILED
+                    }
+                    ready_images = {
+                        digest: image
+                        for digest, image in self._images.items()
+                        if image.stage == DependencyStage.READY
+                    }
                     if failed_images:
-                        digest_to_remove = min(failed_images, key=lambda i: failed_images[i].last_used)
+                        digest_to_remove = min(
+                            failed_images,
+                            key=lambda i: failed_images[i].last_used
+                        )
                     elif ready_images:
-                        digest_to_remove = min(ready_images, key=lambda i: ready_images[i].last_used)
+                        digest_to_remove = min(
+                            ready_images,
+                            key=lambda i: ready_images[i].last_used
+                        )
                     else:
-                        logger.debug('Docker image manager disk quota is full but there are only downloading images. Waiting for downloads to finishe before cleanup.')
+                        logger.debug(
+                            'Docker image manager disk quota is full but there are only downloading images. Waiting for downloads to finishe before cleanup.'
+                        )
                         break
                     try:
                         self._docker.remove_image(digest_to_remove)
@@ -135,11 +160,19 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         now = time.time()
         with self._lock:
             if not self.has(digest):
-                self._images[digest] = DockerImageState(stage=DependencyStage.DOWNLOADING, digest=digest, killed=False, last_used=now, message="")
+                self._images[digest] = DockerImageState(
+                    stage=DependencyStage.DOWNLOADING,
+                    digest=digest,
+                    killed=False,
+                    last_used=now,
+                    message=""
+                )
 
             # update last_used as long as it isn't in FAILED
             if self._images[digest].stage != DependencyStage.FAILED:
-                self._images[digest] = self._images[digest]._replace(last_used=now)
+                self._images[digest] = self._images[digest]._replace(
+                    last_used=now
+                )
             return self._images[digest]
 
     @property
@@ -155,25 +188,35 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     if self._stop or image_state.killed:
                         return False  # should_resume = False
                     else:
-                        self._images[digest] = image_state._replace(message=status_message)
+                        self._images[digest] = image_state._replace(
+                            message=status_message
+                        )
                         return True  # should_resume = True
 
             try:
-                self._docker.download_image(digest, update_status_message_and_check_killed)
+                self._docker.download_image(
+                    digest, update_status_message_and_check_killed
+                )
                 with self._lock:
                     self._downloading[digest]['success'] = True
                 logger.debug('Finished downloading image %s', digest)
             except DockerException as err:
                 with self._lock:
                     image_state = self.get(digest)
-                    self._images[digest] = image_state._replace(message=str(err))
+                    self._images[digest] = image_state._replace(
+                        message=str(err)
+                    )
 
         digest = image_state.digest
-        self._downloading.add_if_new(digest, threading.Thread(target=download, args=[]))
+        self._downloading.add_if_new(
+            digest, threading.Thread(target=download, args=[])
+        )
 
         if self._downloading[digest].is_alive():
             return image_state
 
-        new_stage = DependencyStage.READY if self._downloading[digest]['success'] else DependencyStage.FAILED
+        new_stage = DependencyStage.READY if self._downloading[digest][
+            'success'
+        ] else DependencyStage.FAILED
         self._downloading.remove(digest)
         return image_state._replace(stage=new_stage)

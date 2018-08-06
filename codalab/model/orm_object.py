@@ -9,6 +9,7 @@ non-id columns of a SQLAlchemy table.
 from codalab.common import precondition
 import datetime
 
+
 class ORMObject(object):
     COLUMNS = None
 
@@ -24,7 +25,9 @@ class ORMObject(object):
         '''
         if strict:
             for column in self.COLUMNS:
-                precondition(column in row, 'Row %s missing column: %s' % (row, column))
+                precondition(
+                    column in row, 'Row %s missing column: %s' % (row, column)
+                )
         for (key, value) in row.iteritems():
             message = 'Row %s has extra column: %s' % (row, key)
             precondition(key in self.COLUMNS or key == 'id', message)
@@ -39,7 +42,8 @@ class ORMObject(object):
         """
         result = {}
         for column in self.COLUMNS:
-            if not strict and not hasattr(self, column): continue
+            if not strict and not hasattr(self, column):
+                continue
             value = getattr(self, column)
             result[column] = value
         return result

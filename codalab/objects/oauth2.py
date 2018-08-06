@@ -21,12 +21,17 @@ class OAuth2Client(object):
             self.user_id = kwargs['user_id']
             self.grant_type = kwargs['grant_type']
             self.response_type = kwargs['response_type']
-            self.redirect_uris = kwargs['redirect_uris'].split(',') if kwargs['redirect_uris'] else []
-            self.default_scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
+            self.redirect_uris = kwargs['redirect_uris'].split(',') if kwargs[
+                'redirect_uris'
+            ] else []
+            self.default_scopes = kwargs['scopes'].split(',') if kwargs['scopes'
+                                                                       ] else []
         except KeyError as e:
             raise UsageError("Missing column %r" % e.args[0])
 
-        self.default_redirect_uri = self.redirect_uris[0] if len(self.redirect_uris) > 0 else None
+        self.default_redirect_uri = self.redirect_uris[0] if len(
+            self.redirect_uris
+        ) > 0 else None
 
     @property
     def allowed_grant_types(self):
@@ -63,6 +68,7 @@ class OAuth2AuthCode(object):
     """
     This does not have to be stored in the database, and can be stored in some ephemeral cache in the future.
     """
+
     def __init__(self, model, **kwargs):
         self.model = model
         self.id = kwargs['id'] if 'id' in kwargs else None
@@ -70,7 +76,8 @@ class OAuth2AuthCode(object):
             self.client_id = kwargs['client_id']
             self.code = kwargs['code']
             self.user_id = kwargs['user_id']
-            self.scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
+            self.scopes = kwargs['scopes'].split(',') if kwargs['scopes'
+                                                               ] else []
             self.expires = kwargs['expires']
             self.redirect_uri = kwargs['redirect_uri']
         except KeyError as e:
@@ -103,7 +110,8 @@ class OAuth2Token(object):
         try:
             self.client_id = kwargs['client_id']
             self.user_id = kwargs['user_id']
-            self.scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
+            self.scopes = kwargs['scopes'].split(',') if kwargs['scopes'
+                                                               ] else []
             self.access_token = kwargs['access_token']
             self.refresh_token = kwargs['refresh_token']
             self.expires = kwargs['expires']

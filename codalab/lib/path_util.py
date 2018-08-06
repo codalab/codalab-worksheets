@@ -23,11 +23,10 @@ import subprocess
 import sys
 
 from codalab.common import (
-  precondition,
-  UsageError,
+    precondition,
+    UsageError,
 )
 from codalab.lib import file_util
-
 
 # Block sizes and canonical strings used when hashing files.
 BLOCK_SIZE = 0x40000
@@ -65,10 +64,12 @@ def check_isvalid(path, fn_name):
     Raise a PreconditionViolation if the path is not absolute or normalized.
     Raise a UsageError if the file at that path does not exist.
     """
-    precondition(os.path.isabs(path), '%s got relative path: %s' % (fn_name, path))
+    precondition(
+        os.path.isabs(path), '%s got relative path: %s' % (fn_name, path)
+    )
     # Broken symbolic links are valid paths, so we use lexists instead of exists.
     if not os.path.lexists(path):
-        raise path_error('%s got non-existent path:' % (fn_name,), path)
+        raise path_error('%s got non-existent path:' % (fn_name, ), path)
 
 
 def check_isdir(path, fn_name):
@@ -77,7 +78,7 @@ def check_isdir(path, fn_name):
     """
     check_isvalid(path, fn_name)
     if not os.path.isdir(path):
-        raise path_error('%s got non-directory:' % (fn_name,), path)
+        raise path_error('%s got non-directory:' % (fn_name, ), path)
 
 
 def check_isfile(path, fn_name):
@@ -86,7 +87,7 @@ def check_isfile(path, fn_name):
     """
     check_isvalid(path, fn_name)
     if os.path.isdir(path):
-        raise path_error('%s got directory:' % (fn_name,), path)
+        raise path_error('%s got directory:' % (fn_name, ), path)
 
 
 def path_is_url(path):
@@ -95,6 +96,7 @@ def path_is_url(path):
             if path.startswith(prefix + '://'):
                 return True
     return False
+
 
 ################################################################################
 # Functions to list directories and to deal with subpaths of paths.
@@ -145,7 +147,8 @@ def recursive_ls(path):
     check_isdir(path, 'recursive_ls')
     (directories, files) = ([], [])
     for (root, _, file_names) in os.walk(path):
-        assert(os.path.isabs(root)), 'Got relative root in os.walk: %s' % (root,)
+        assert (os.path.isabs(root)
+               ), 'Got relative root in os.walk: %s' % (root, )
         directories.append(root)
         for file_name in file_names:
             files.append(os.path.join(root, file_name))
@@ -180,7 +183,9 @@ def get_size(path, dirs_and_files=None):
     if os.path.islink(path) or not os.path.isdir(path):
         return os.lstat(path).st_size
     dirs_and_files = dirs_and_files or recursive_ls(path)
-    return sum(os.lstat(path).st_size for path in itertools.chain(*dirs_and_files))
+    return sum(
+        os.lstat(path).st_size for path in itertools.chain(*dirs_and_files)
+    )
 
 
 def hash_directory(path, dirs_and_files=None):
@@ -216,7 +221,7 @@ def hash_file_contents(path):
     """
     Return the hash of the file's contents, read in blocks of size BLOCK_SIZE.
     """
-    message = 'hash_file called with relative path: %s' % (path,)
+    message = 'hash_file called with relative path: %s' % (path, )
     precondition(os.path.isabs(path), message)
     if os.path.islink(path):
         contents_hash = hashlib.sha1(LINK_PREFIX)
@@ -236,6 +241,7 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
+
 def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
     """
     Copy |source_path| to |dest_path|.
@@ -249,7 +255,12 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
-            file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
+            file_util.copy(
+                sys.stdin,
+                dest,
+                autoflush=False,
+                print_status='Copying %s to %s' % (source_path, dest_path)
+            )
     else:
         if not follow_symlinks and os.path.islink(source_path):
             raise path_error('not following symlinks', source_path)
@@ -258,7 +269,10 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
         command = [
             'rsync',
             '-pr%s' % ('L' if follow_symlinks else 'l'),
-            source_path + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
+            source_path + (
+                '/' if not os.path.islink(source_path) and
+                os.path.isdir(source_path) else ''
+            ),
             dest_path,
         ]
         if exclude_patterns is not None:
@@ -310,6 +324,7 @@ def remove(path):
         os.remove(path)
     if os.path.exists(path):
         print 'Failed to remove %s' % path
+
 
 def soft_link(source, path):
     """

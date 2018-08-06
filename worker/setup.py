@@ -7,7 +7,8 @@ def get_requirements(*requirements_file_paths):
         with open(requirements_file_path) as requirements_file:
             for line in requirements_file:
                 if line[0:2] != '-r' and line.find('git') == -1 and line.find(
-                        'codalabworker') == -1:
+                    'codalabworker'
+                ) == -1:
                     requirements.append(line)
     return requirements
 
@@ -28,8 +29,7 @@ setup(
     include_package_data=True,
     install_requires=get_requirements('./requirements.txt'),
     entry_points={
-        'console_scripts': [
-            'cl-worker=codalabworker.main:main',
-        ],
+        'console_scripts': ['cl-worker=codalabworker.main:main', ],
     },
-    zip_safe=False),
+    zip_safe=False
+),

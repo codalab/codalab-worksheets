@@ -31,7 +31,6 @@ import sys
 import time
 import traceback
 
-
 cl = 'codalab/bin/cl'
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -42,6 +41,7 @@ CodaLabInstance = namedtuple('CodaLabInstance', 'host home username password')
 def test_path(name):
     """Return the path to the test file ``name``."""
     return os.path.join(base_path, 'tests', 'files', name)
+
 
 # Note: when we talk about contents, we always apply rstrip() even if it's a
 # binary file.  This is fine as long as we're consistent about doing rstrip()
@@ -74,6 +74,7 @@ def current_worksheet():
     m = re.search('(http[^\(]+)', run_command([cl, 'work']))
     assert m is not None
     return m.group(1)
+
 
 def current_user():
     """
@@ -118,7 +119,11 @@ def run_command(args, expected_exit_code=0):
     except Exception, e:
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
-    print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
+    print(
+        Colorizer.cyan(
+            " (exit code %s, expected %s)" % (exitcode, expected_exit_code)
+        )
+    )
     print(sanitize(output))
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
@@ -161,7 +166,9 @@ def wait(uuid, expected_exit_code=0):
 
 
 def check_equals(true_value, pred_value):
-    assert true_value == pred_value, "expected '%s', but got '%s'" % (true_value, pred_value)
+    assert true_value == pred_value, "expected '%s', but got '%s'" % (
+        true_value, pred_value
+    )
     return pred_value
 
 
@@ -177,7 +184,9 @@ def check_contains(true_value, pred_value):
 
 def check_num_lines(true_value, pred_value):
     num_lines = len(pred_value.split('\n'))
-    assert num_lines == true_value, "expected %d lines, but got %s" % (true_value, num_lines)
+    assert num_lines == true_value, "expected %d lines, but got %s" % (
+        true_value, num_lines
+    )
     return pred_value
 
 
@@ -204,16 +213,20 @@ class Colorizer(object):
         return getattr(cls, color) + string + cls.RESET + cls.NEWLINE
 
     @classmethod
-    def red(cls, string): return cls._colorize(string, "RED")
+    def red(cls, string):
+        return cls._colorize(string, "RED")
 
     @classmethod
-    def green(cls, string): return cls._colorize(string, "GREEN")
+    def green(cls, string):
+        return cls._colorize(string, "GREEN")
 
     @classmethod
-    def yellow(cls, string): return cls._colorize(string, "YELLOW")
+    def yellow(cls, string):
+        return cls._colorize(string, "YELLOW")
 
     @classmethod
-    def cyan(cls, string): return cls._colorize(string, "CYAN")
+    def cyan(cls, string):
+        return cls._colorize(string, "CYAN")
 
 
 @contextmanager
@@ -230,7 +243,9 @@ def temp_instance():
     original_worksheet = current_worksheet()
 
     # Create another CodaLab instance.
-    old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
+    old_home = os.path.abspath(
+        os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab'))
+    )
     remote_home = temp_path('-home')
     os.mkdir(remote_home)
     remote_worker_scratch = temp_path('-worker-scratch')
@@ -248,7 +263,12 @@ def temp_instance():
 
     # Use simple local database
     run_command([cl, 'config', 'server/class', 'SQLiteModel'])
-    run_command([cl, 'config', 'server/engine_url', 'sqlite:///' + remote_home + '/bundle.db'])
+    run_command(
+        [
+            cl, 'config', 'server/engine_url',
+            'sqlite:///' + remote_home + '/bundle.db'
+        ]
+    )
 
     # Configure aux servers with alternate ports
     run_command([cl, 'config', 'server/rest_port', '3900'])
@@ -261,25 +281,37 @@ def temp_instance():
     rest_server_proc = None
     bundle_manager_proc = None
     worker_proc = None
-    os.environ['PYTHONUNBUFFERED'] = '1'  # prevents stalling when waiting for output
+    os.environ['PYTHONUNBUFFERED'
+              ] = '1'  # prevents stalling when waiting for output
     FNULL = open(os.devnull, 'w')
 
     error_occurred = False
 
     try:
         # Start auxiliary servers for the new auxiliary host
-        rest_server_proc = subprocess.Popen([cl, 'server'], stdout=FNULL, stderr=subprocess.PIPE)
-        bundle_manager_proc = subprocess.Popen([cl, 'bundle-manager'], stdout=FNULL, stderr=subprocess.PIPE)
+        rest_server_proc = subprocess.Popen(
+            [cl, 'server'], stdout=FNULL, stderr=subprocess.PIPE
+        )
+        bundle_manager_proc = subprocess.Popen(
+            [cl, 'bundle-manager'], stdout=FNULL, stderr=subprocess.PIPE
+        )
         wait_until_substring(rest_server_proc.stderr, 'Booting worker')
-        wait_until_substring(bundle_manager_proc.stderr, 'Bundle manager running')
+        wait_until_substring(
+            bundle_manager_proc.stderr, 'Bundle manager running'
+        )
 
         # Start worker after servers are up
-        worker_proc = subprocess.Popen([os.path.join(base_path, 'venv/bin/python'),
-                                        os.path.join(base_path, 'worker/codalabworker/main.py'),
-                                        '--server=' + remote_host,
-                                        '--work-dir=' + remote_worker_scratch,
-                                        '--password-file=' + password_file],
-                                       stdout=subprocess.PIPE, stderr=FNULL)
+        worker_proc = subprocess.Popen(
+            [
+                os.path.join(base_path, 'venv/bin/python'),
+                os.path.join(base_path, 'worker/codalabworker/main.py'),
+                '--server=' + remote_host,
+                '--work-dir=' + remote_worker_scratch,
+                '--password-file=' + password_file
+            ],
+            stdout=subprocess.PIPE,
+            stderr=FNULL
+        )
         wait_until_substring(worker_proc.stdout, 'Worker started')
 
         # Restore original config
@@ -291,7 +323,9 @@ def temp_instance():
         os.environ['CODALAB_PASSWORD'] = test_password
         run_command([cl, 'work', remote_worksheet])
 
-        yield CodaLabInstance(remote_host, remote_worksheet, test_username, test_password)
+        yield CodaLabInstance(
+            remote_host, remote_worksheet, test_username, test_password
+        )
 
     except:
         error_occurred = True
@@ -305,7 +339,11 @@ def temp_instance():
                 if error_occurred:
                     _, stderr = proc.communicate()
                     if stderr:
-                        print(Colorizer.yellow('[!] stderr captured from %s' % name))
+                        print(
+                            Colorizer.yellow(
+                                '[!] stderr captured from %s' % name
+                            )
+                        )
                         print(stderr)
 
         cleanup_process(worker_proc, 'worker')
@@ -363,7 +401,10 @@ class ModuleContext(object):
             if exc_type is AssertionError:
                 print(Colorizer.red("[!] ERROR: %s" % exc_value.message))
             elif exc_type is KeyboardInterrupt:
-                print(Colorizer.yellow("[!] Caught interrupt! Quitting after cleanup."))
+                print(
+                    Colorizer.
+                    yellow("[!] Caught interrupt! Quitting after cleanup.")
+                )
             else:
                 print(Colorizer.red("[!] ERROR: Test raised an exception!"))
                 traceback.print_exception(exc_type, exc_value, tb)
@@ -377,7 +418,9 @@ class ModuleContext(object):
 
         run_command([cl, 'work', self.original_worksheet])
         for worksheet in self.worksheets:
-            self.bundles.extend(run_command([cl, 'ls', '-w', worksheet, '-u']).split())
+            self.bundles.extend(
+                run_command([cl, 'ls', '-w', worksheet, '-u']).split()
+            )
             run_command([cl, 'wrm', '--force', worksheet])
 
         # Delete all bundles (kill and dedup first)
@@ -438,8 +481,10 @@ class TestModule(object):
         :param name: name of the test module
         :param default: True to include in the 'default' module set
         """
+
         def add_module(func):
             cls.modules[name] = TestModule(name, func, func.__doc__, default)
+
         return add_module
 
     @classmethod
@@ -471,12 +516,19 @@ class TestModule(object):
                 modules_to_run.append(cls.modules[name])
             else:
                 print(Colorizer.yellow("[!] Could not find module %s" % name))
-                print(Colorizer.yellow("[*] Modules: all %s" % " ".join(
-                                     cls.modules.keys())))
+                print(
+                    Colorizer.yellow(
+                        "[*] Modules: all %s" % " ".join(cls.modules.keys())
+                    )
+                )
                 sys.exit(1)
 
-        print(Colorizer.yellow("[*][*] Running modules %s" % " ".join(
-                             [m.name for m in modules_to_run])))
+        print(
+            Colorizer.yellow(
+                "[*][*] Running modules %s" %
+                " ".join([m.name for m in modules_to_run])
+            )
+        )
 
         # Run modules, continuing onto the next test module regardless of
         # failure
@@ -484,8 +536,11 @@ class TestModule(object):
         for module in modules_to_run:
             print(Colorizer.yellow("[*][*] BEGIN MODULE: %s" % module.name))
             if module.description is not None:
-                print(Colorizer.yellow("[*][*] DESCRIPTION: %s" %
-                                       module.description))
+                print(
+                    Colorizer.yellow(
+                        "[*][*] DESCRIPTION: %s" % module.description
+                    )
+                )
 
             with ModuleContext() as ctx:
                 module.func(ctx)
@@ -502,6 +557,7 @@ class TestModule(object):
             print(Colorizer.green("[*][*] All tests passed!"))
             return True
 
+
 ############################################################
 
 
@@ -514,7 +570,12 @@ def test(ctx):
 @TestModule.register('basic')
 def test(ctx):
     # upload
-    uuid = run_command([cl, 'upload', test_path('a.txt'), '--description', 'hello', '--tags', 'a', 'b'])
+    uuid = run_command(
+        [
+            cl, 'upload',
+            test_path('a.txt'), '--description', 'hello', '--tags', 'a', 'b'
+        ]
+    )
     check_equals('a.txt', get_info(uuid, 'name'))
     check_equals('hello', get_info(uuid, 'description'))
     check_contains(['a', 'b'], get_info(uuid, 'tags'))
@@ -528,11 +589,20 @@ def test(ctx):
 
     # cat, info
     check_equals(test_path_contents('a.txt'), run_command([cl, 'cat', uuid]))
-    check_contains(['bundle_type', 'uuid', 'owner', 'created'], run_command([cl, 'info', uuid]))
+    check_contains(
+        ['bundle_type', 'uuid', 'owner', 'created'],
+        run_command([cl, 'info', uuid])
+    )
     check_contains('license', run_command([cl, 'info', '--raw', uuid]))
-    check_contains(['host_worksheets', 'contents'], run_command([cl, 'info', '--verbose', uuid]))
+    check_contains(
+        ['host_worksheets', 'contents'],
+        run_command([cl, 'info', '--verbose', uuid])
+    )
     # test interpret_file_genpath
-    check_equals(' '.join(test_path_contents('a.txt').splitlines(False)), get_info(uuid, '/'))
+    check_equals(
+        ' '.join(test_path_contents('a.txt').splitlines(False)),
+        get_info(uuid, '/')
+    )
 
     # rm
     run_command([cl, 'rm', '--dry-run', uuid])
@@ -545,7 +615,7 @@ def test(ctx):
     uuid = run_command([cl, 'run', 'echo hello'])
     print('Waiting echo hello with uuid %s' % uuid)
     wait(uuid)
-#    run_command([cl, 'wait', uuid])
+    #    run_command([cl, 'wait', uuid])
     check_contains('0x', get_info(uuid, 'data_hash'))
 
 
@@ -571,25 +641,49 @@ def test(ctx):
     uuid = run_command([cl, 'upload', test_path('a-symlink.txt')], 1)
 
     # Upload symlink, follow link
-    uuid = run_command([cl, 'upload', test_path('a-symlink.txt'), '--follow-symlinks'])
-    check_equals(test_path_contents('a-symlink.txt'), run_command([cl, 'cat', uuid]))
+    uuid = run_command(
+        [cl, 'upload',
+         test_path('a-symlink.txt'), '--follow-symlinks']
+    )
+    check_equals(
+        test_path_contents('a-symlink.txt'), run_command([cl, 'cat', uuid])
+    )
     run_command([cl, 'cat', uuid])  # Should have the full contents
 
     # Upload broken symlink (should not be possible)
-    uuid = run_command([cl, 'upload', test_path('broken-symlink'), '--follow-symlinks'], 1)
+    uuid = run_command(
+        [cl, 'upload',
+         test_path('broken-symlink'), '--follow-symlinks'], 1
+    )
 
     # Upload directory with excluded files
-    uuid = run_command([cl, 'upload', test_path('dir1'), '--exclude-patterns', 'f*'])
-    check_num_lines(2 + 2, run_command([cl, 'cat', uuid]))  # 2 header lines, Only two files left after excluding and extracting.
+    uuid = run_command(
+        [cl, 'upload',
+         test_path('dir1'), '--exclude-patterns', 'f*']
+    )
+    check_num_lines(
+        2 + 2, run_command([cl, 'cat', uuid])
+    )  # 2 header lines, Only two files left after excluding and extracting.
 
     # Upload multiple files with excluded files
-    uuid = run_command([cl, 'upload', test_path('dir1'), test_path('echo'), test_path(crazy_name), '--exclude-patterns', 'f*'])
-    check_num_lines(2 + 3, run_command([cl, 'cat', uuid]))  # 2 header lines, 3 items at bundle target root
-    check_num_lines(2 + 2, run_command([cl, 'cat', uuid + '/dir1']))  # 2 header lines, Only two files left after excluding and extracting.
+    uuid = run_command(
+        [
+            cl, 'upload',
+            test_path('dir1'),
+            test_path('echo'),
+            test_path(crazy_name), '--exclude-patterns', 'f*'
+        ]
+    )
+    check_num_lines(2 + 3, run_command([cl, 'cat', uuid])
+                   )  # 2 header lines, 3 items at bundle target root
+    check_num_lines(
+        2 + 2, run_command([cl, 'cat', uuid + '/dir1'])
+    )  # 2 header lines, Only two files left after excluding and extracting.
 
     # Upload directory with only one file, should not simplify directory structure
     uuid = run_command([cl, 'upload', test_path('dir2')])
-    check_num_lines(2 + 1, run_command([cl, 'cat', uuid]))  # Directory listing with 2 headers lines and one file
+    check_num_lines(2 + 1, run_command([cl, 'cat', uuid])
+                   )  # Directory listing with 2 headers lines and one file
 
 
 @TestModule.register('upload2')
@@ -600,23 +694,47 @@ def test(ctx):
         archive_path = temp_path(suffix)
         contents_path = test_path('dir1')
         if suffix == '.tar.gz':
-            run_command(['tar', 'cfz', archive_path, '-C', os.path.dirname(contents_path), os.path.basename(contents_path)])
+            run_command(
+                [
+                    'tar', 'cfz', archive_path, '-C',
+                    os.path.dirname(contents_path),
+                    os.path.basename(contents_path)
+                ]
+            )
         else:
-            run_command(['bash', '-c', 'cd %s && zip -r %s %s' % (os.path.dirname(
-                contents_path), archive_path, os.path.basename(contents_path))])
+            run_command(
+                [
+                    'bash', '-c',
+                    'cd %s && zip -r %s %s' % (
+                        os.path.dirname(contents_path), archive_path,
+                        os.path.basename(contents_path)
+                    )
+                ]
+            )
 
         # Upload it and unpack
         uuid = run_command([cl, 'upload', archive_path])
-        check_equals(os.path.basename(archive_path).replace(suffix, ''), get_info(uuid, 'name'))
-        check_equals(test_path_contents('dir1/f1'), run_command([cl, 'cat', uuid + '/f1']))
+        check_equals(
+            os.path.basename(archive_path).replace(suffix, ''),
+            get_info(uuid, 'name')
+        )
+        check_equals(
+            test_path_contents('dir1/f1'),
+            run_command([cl, 'cat', uuid + '/f1'])
+        )
 
         # Upload it but don't unpack
         uuid = run_command([cl, 'upload', archive_path, '--pack'])
         check_equals(os.path.basename(archive_path), get_info(uuid, 'name'))
-        check_equals(test_path_contents(archive_path), run_command([cl, 'cat', uuid]))
+        check_equals(
+            test_path_contents(archive_path), run_command([cl, 'cat', uuid])
+        )
 
         # Force compression
-        uuid = run_command([cl, 'upload', test_path('echo'), '--force-compression'])
+        uuid = run_command(
+            [cl, 'upload',
+             test_path('echo'), '--force-compression']
+        )
         check_equals('echo', get_info(uuid, 'name'))
         check_equals(test_path_contents('echo'), run_command([cl, 'cat', uuid]))
 
@@ -630,12 +748,18 @@ def test(ctx):
     check_contains('<title>Wikipedia</title>', run_command([cl, 'cat', uuid]))
 
     # Upload URL that's an archive
-    uuid = run_command([cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2'])
+    uuid = run_command(
+        [cl, 'upload', 'http://alpha.gnu.org/gnu/bc/bc-1.06.95.tar.bz2']
+    )
     check_contains(['README', 'INSTALL', 'FAQ'], run_command([cl, 'cat', uuid]))
 
     # Upload URL from Git
-    uuid = run_command([cl, 'upload', 'https://github.com/codalab/codalab-cli', '--git'])
-    check_contains(['README.md', 'codalab', 'scripts'], run_command([cl, 'cat', uuid]))
+    uuid = run_command(
+        [cl, 'upload', 'https://github.com/codalab/codalab-cli', '--git']
+    )
+    check_contains(
+        ['README.md', 'codalab', 'scripts'], run_command([cl, 'cat', uuid])
+    )
 
 
 @TestModule.register('upload4')
@@ -645,11 +769,22 @@ def test(ctx):
     archive_exts = map(lambda p: p + '.tar.gz', archive_paths)
     contents_paths = [test_path('dir1'), test_path('a.txt')]
     for (archive, content) in zip(archive_exts, contents_paths):
-        run_command(['tar', 'cfz', archive, '-C', os.path.dirname(content), os.path.basename(content)])
+        run_command(
+            [
+                'tar', 'cfz', archive, '-C',
+                os.path.dirname(content),
+                os.path.basename(content)
+            ]
+        )
     uuid = run_command([cl, 'upload'] + archive_exts)
 
     # Make sure the names do not end with '.tar.gz' after being unpacked.
-    check_contains([os.path.basename(archive_paths[0]) + r'\s', os.path.basename(archive_paths[1]) + r'\s'], run_command([cl, 'cat', uuid]))
+    check_contains(
+        [
+            os.path.basename(archive_paths[0]) + r'\s',
+            os.path.basename(archive_paths[1]) + r'\s'
+        ], run_command([cl, 'cat', uuid])
+    )
 
     # Cleanup
     for archive in archive_exts:
@@ -661,13 +796,20 @@ def test(ctx):
     # Upload test files directory as archive to preserve everything invariant of the upload implementation
     archive_path = temp_path('.tar.gz')
     contents_path = test_path('')
-    run_command(['tar', 'cfz', archive_path, '-C', os.path.dirname(contents_path), '--'] + os.listdir(contents_path))
+    run_command(
+        [
+            'tar', 'cfz', archive_path, '-C',
+            os.path.dirname(contents_path), '--'
+        ] + os.listdir(contents_path)
+    )
     uuid = run_command([cl, 'upload', archive_path])
 
     # Download whole bundle
     path = temp_path('')
     run_command([cl, 'download', uuid, '-o', path])
-    check_contains(['a.txt', 'b.txt', 'echo', crazy_name], run_command(['ls', '-R', path]))
+    check_contains(
+        ['a.txt', 'b.txt', 'echo', crazy_name], run_command(['ls', '-R', path])
+    )
     shutil.rmtree(path)
 
     # Download a target inside (binary)
@@ -686,7 +828,8 @@ def test(ctx):
     os.unlink(path)
 
     # Download a target inside (symlink)
-    run_command([cl, 'download', uuid + '/a-symlink.txt', '-o', path], 1)  # Disallow symlinks
+    run_command([cl, 'download', uuid + '/a-symlink.txt', '-o', path],
+                1)  # Disallow symlinks
 
     # Download a target inside (directory)
     run_command([cl, 'download', uuid + '/dir1', '-o', path])
@@ -715,7 +858,8 @@ def test(ctx):
 def test(ctx):
     uuid = run_command([cl, 'upload', test_path('a.txt')])
     run_command([cl, 'add', 'bundle', uuid, '.'])  # Duplicate
-    run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
+    run_command([cl, 'rm', uuid]
+               )  # Can delete even though it exists twice on the same worksheet
 
 
 @TestModule.register('make')
@@ -723,10 +867,12 @@ def test(ctx):
     uuid1 = run_command([cl, 'upload', test_path('a.txt')])
     uuid2 = run_command([cl, 'upload', test_path('b.txt')])
     # make
-    uuid3 = run_command([cl, 'make', 'dep1:'+uuid1, 'dep2:'+uuid2])
+    uuid3 = run_command([cl, 'make', 'dep1:' + uuid1, 'dep2:' + uuid2])
     wait(uuid3)
     check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid3]))
-    check_contains(['dep1', uuid1, 'dep2', uuid2], run_command([cl, 'info', uuid3]))
+    check_contains(
+        ['dep1', uuid1, 'dep2', uuid2], run_command([cl, 'info', uuid3])
+    )
     # anonymous make
     uuid4 = run_command([cl, 'make', uuid3, '--name', 'foo'])
     wait(uuid4)
@@ -761,15 +907,25 @@ def test(ctx):
     run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"', '.'])
     run_command([cl, 'add', 'text', '% display table foo', '.'])
     run_command([cl, 'add', 'bundle', uuid, '.'])
-    run_command([cl, 'add', 'bundle', uuid, wuuid])  # not testing real copying ability
+    run_command([cl, 'add', 'bundle', uuid,
+                 wuuid])  # not testing real copying ability
     run_command([cl, 'add', 'worksheet', wuuid, '.'])
-    check_contains(['Worksheet', 'testing', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'], run_command([cl, 'print']))
+    check_contains(
+        [
+            'Worksheet', 'testing',
+            test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'
+        ], run_command([cl, 'print'])
+    )
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
-    run_command([cl, 'wedit', wuuid, '--title', u'fáncy ünicode'])  # try unicode in worksheet title
-    run_command([cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')])  # try unicode in worksheet contents
-    run_command([cl, 'wedit', wuuid, '--file', '/dev/null'])  # wipe out worksheet
+    run_command([cl, 'wedit', wuuid, '--title',
+                 u'fáncy ünicode'])  # try unicode in worksheet title
+    run_command([cl, 'wedit', wuuid, '--file',
+                 test_path('unicode-worksheet')]
+               )  # try unicode in worksheet contents
+    run_command([cl, 'wedit', wuuid, '--file',
+                 '/dev/null'])  # wipe out worksheet
 
 
 @TestModule.register('worksheet_search')
@@ -787,7 +943,10 @@ def test(ctx):
     group_wname = random_name()
     group_wuuid = run_command([cl, 'new', group_wname])
     ctx.collect_worksheet(group_wuuid)
-    check_contains(['Switched', group_wname, group_wuuid], run_command([cl, 'work', group_wuuid]))
+    check_contains(
+        ['Switched', group_wname, group_wuuid],
+        run_command([cl, 'work', group_wuuid])
+    )
     user_id, user_name = current_user()
     # Create new group
     group_name = random_name()
@@ -798,8 +957,14 @@ def test(ctx):
     run_command([cl, 'wperm', group_wuuid, 'public', 'n'])
     run_command([cl, 'wperm', group_wuuid, group_name, 'r'])
     check_contains(group_wuuid[:8], run_command([cl, 'wls', '.shared']))
-    check_contains(group_wuuid[:8], run_command([cl, 'wls', 'group={}'.format(group_uuid)]))
-    check_contains(group_wuuid[:8], run_command([cl, 'wls', 'group={}'.format(group_name)]))
+    check_contains(
+        group_wuuid[:8],
+        run_command([cl, 'wls', 'group={}'.format(group_uuid)])
+    )
+    check_contains(
+        group_wuuid[:8],
+        run_command([cl, 'wls', 'group={}'.format(group_name)])
+    )
 
 
 @TestModule.register('worksheet_tags')
@@ -811,10 +976,14 @@ def test(ctx):
     tags = ['foo', 'bar', 'baz']
     fewer_tags = ['bar', 'foo']
     run_command([cl, 'wedit', wname, '--tags'] + tags)
-    check_contains(['Tags: %s' % ' '.join(tags)], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(
+        ['Tags: %s' % ' '.join(tags)], run_command([cl, 'ls', '-w', wuuid])
+    )
     # Modify tags
     run_command([cl, 'wedit', wname, '--tags'] + fewer_tags)
-    check_contains(['Tags: %s' % fewer_tags], run_command([cl, 'ls', '-w', wuuid]))
+    check_contains(
+        ['Tags: %s' % fewer_tags], run_command([cl, 'ls', '-w', wuuid])
+    )
     # Delete tags
     run_command([cl, 'wedit', wname, '--tags'])
     check_contains(r'Tags:\s+###', run_command([cl, 'ls', '-w', wuuid]))
@@ -837,8 +1006,8 @@ def test(ctx):
     run_command([cl, 'detach', uuid1], 1)  # would remove an item
     run_command([cl, 'rm', uuid1], 1)  # would remove an item
     run_command([cl, 'add', 'text', 'message', '.'], 1)  # would add an item
-    run_command([cl, 'wedit', '-t', 'new_title']) # can edit
-    run_command([cl, 'wperm', wuuid, 'public', 'a']) # can edit
+    run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
+    run_command([cl, 'wperm', wuuid, 'public', 'a'])  # can edit
 
 
 @TestModule.register('detach')
@@ -850,18 +1019,20 @@ def test(ctx):
     run_command([cl, 'add', 'bundle', uuid2, '.'])
     ctx.collect_bundle(uuid2)
     # State after the above: 1 2 1 2
-    run_command([cl, 'detach', uuid1], 1) # multiple indices
-    run_command([cl, 'detach', uuid1, '-n', '3'], 1) # indes out of range
-    run_command([cl, 'detach', uuid2, '-n', '2']) # State: 1 1 2
+    run_command([cl, 'detach', uuid1], 1)  # multiple indices
+    run_command([cl, 'detach', uuid1, '-n', '3'], 1)  # indes out of range
+    run_command([cl, 'detach', uuid2, '-n', '2'])  # State: 1 1 2
     check_equals(get_info('^', 'uuid'), uuid2)
-    run_command([cl, 'detach', uuid2]) # State: 1 1
+    run_command([cl, 'detach', uuid2])  # State: 1 1
     check_equals(get_info('^', 'uuid'), uuid1)
 
 
 @TestModule.register('perm')
 def test(ctx):
     uuid = run_command([cl, 'upload', test_path('a.txt')])
-    check_equals('all', run_command([cl, 'info', '-v', '-f', 'permission', uuid]))
+    check_equals(
+        'all', run_command([cl, 'info', '-v', '-f', 'permission', uuid])
+    )
     check_contains('none', run_command([cl, 'perm', uuid, 'public', 'n']))
     check_contains('read', run_command([cl, 'perm', uuid, 'public', 'r']))
     check_contains('all', run_command([cl, 'perm', uuid, 'public', 'a']))
@@ -873,18 +1044,39 @@ def test(ctx):
     uuid1 = run_command([cl, 'upload', test_path('a.txt'), '-n', name])
     uuid2 = run_command([cl, 'upload', test_path('b.txt'), '-n', name])
     check_equals(uuid1, run_command([cl, 'search', uuid1, '-u']))
-    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, '-u']))
-    check_equals('', run_command([cl, 'search', 'uuid='+uuid1[0:8], '-u']))
-    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1[0:8]+'.*', '-u']))
-    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1[0:8]+'%', '-u']))
-    check_equals(uuid1, run_command([cl, 'search', 'uuid='+uuid1, 'name='+name, '-u']))
-    check_equals(uuid1 + '\n' + uuid2, run_command([cl, 'search', 'name='+name, 'id=.sort', '-u']))
-    check_equals(uuid1 + '\n' + uuid2, run_command([cl, 'search', 'uuid='+uuid1+','+uuid2, 'id=.sort', '-u']))
-    check_equals(uuid2 + '\n' + uuid1, run_command([cl, 'search', 'name='+name, 'id=.sort-', '-u']))
-    check_equals('2', run_command([cl, 'search', 'name='+name, '.count']))
+    check_equals(uuid1, run_command([cl, 'search', 'uuid=' + uuid1, '-u']))
+    check_equals('', run_command([cl, 'search', 'uuid=' + uuid1[0:8], '-u']))
+    check_equals(
+        uuid1, run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '.*', '-u'])
+    )
+    check_equals(
+        uuid1, run_command([cl, 'search', 'uuid=' + uuid1[0:8] + '%', '-u'])
+    )
+    check_equals(
+        uuid1,
+        run_command([cl, 'search', 'uuid=' + uuid1, 'name=' + name, '-u'])
+    )
+    check_equals(
+        uuid1 + '\n' + uuid2,
+        run_command([cl, 'search', 'name=' + name, 'id=.sort', '-u'])
+    )
+    check_equals(
+        uuid1 + '\n' + uuid2,
+        run_command(
+            [cl, 'search', 'uuid=' + uuid1 + ',' + uuid2, 'id=.sort', '-u']
+        )
+    )
+    check_equals(
+        uuid2 + '\n' + uuid1,
+        run_command([cl, 'search', 'name=' + name, 'id=.sort-', '-u'])
+    )
+    check_equals('2', run_command([cl, 'search', 'name=' + name, '.count']))
     size1 = float(run_command([cl, 'info', '-f', 'data_size', uuid1]))
     size2 = float(run_command([cl, 'info', '-f', 'data_size', uuid2]))
-    check_equals(size1 + size2, float(run_command([cl, 'search', 'name='+name, 'data_size=.sum'])))
+    check_equals(
+        size1 + size2,
+        float(run_command([cl, 'search', 'name=' + name, 'data_size=.sum']))
+    )
     # Check search by group
     group_bname = random_name()
     group_buuid = run_command([cl, 'run', 'echo hello', '-n', group_bname])
@@ -900,8 +1092,14 @@ def test(ctx):
     run_command([cl, 'perm', group_buuid, 'public', 'n'])
     run_command([cl, 'perm', group_buuid, group_name, 'r'])
     check_contains(group_buuid[:8], run_command([cl, 'search', '.shared']))
-    check_contains(group_buuid[:8], run_command([cl, 'search', 'group={}'.format(group_uuid)]))
-    check_contains(group_buuid[:8], run_command([cl, 'search', 'group={}'.format(group_name)]))
+    check_contains(
+        group_buuid[:8],
+        run_command([cl, 'search', 'group={}'.format(group_uuid)])
+    )
+    check_contains(
+        group_buuid[:8],
+        run_command([cl, 'search', 'group={}'.format(group_name)])
+    )
 
 
 @TestModule.register('run')
@@ -915,19 +1113,27 @@ def test(ctx):
     run_command([cl, 'search', name, '--append'])
     # get info
     check_equals('ready', run_command([cl, 'info', '-f', 'state', uuid]))
-    check_contains(['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid]))
+    check_contains(
+        ['run "echo hello"'], run_command([cl, 'info', '-f', 'args', uuid])
+    )
     check_equals('hello', run_command([cl, 'cat', uuid + '/stdout']))
     # block
     # TODO: Uncomment this when the tail bug is figured out
     # check_contains('hello', run_command([cl, 'run', 'echo hello', '--tail']))
     # invalid child path
-    run_command([cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1)
+    run_command(
+        [cl, 'run', 'not/allowed:' + uuid, 'date'], expected_exit_code=1
+    )
     # make sure special characters in the name of a bundle don't break
     special_name = random_name() + '-dashed.dotted'
     special_uuid = run_command([cl, 'run', 'echo hello', '-n', special_name])
-    dependent = run_command([cl, 'run', ':%s' % special_name, 'cat %s/stdout' % special_name])
+    dependent = run_command(
+        [cl, 'run',
+         ':%s' % special_name,
+         'cat %s/stdout' % special_name]
+    )
     wait(dependent)
-    check_equals('hello', run_command([cl, 'cat', dependent+'/stdout']))
+    check_equals('hello', run_command([cl, 'cat', dependent + '/stdout']))
 
     # test running with a reference to this worksheet
     source_worksheet_full = current_worksheet()
@@ -937,10 +1143,18 @@ def test(ctx):
     new_wname = random_name()
     new_wuuid = run_command([cl, 'new', new_wname])
     ctx.collect_worksheet(new_wuuid)
-    check_contains(['Switched', new_wname, new_wuuid], run_command([cl, 'work', new_wuuid]))
+    check_contains(
+        ['Switched', new_wname, new_wuuid],
+        run_command([cl, 'work', new_wuuid])
+    )
 
     remote_name = random_name()
-    remote_uuid = run_command([cl, 'run', 'source:{}//{}'.format(source_worksheet_name, name), "cat source/stdout", '-n', remote_name])
+    remote_uuid = run_command(
+        [
+            cl, 'run', 'source:{}//{}'.format(source_worksheet_name, name),
+            "cat source/stdout", '-n', remote_name
+        ]
+    )
     wait(remote_uuid)
     check_contains(remote_name, run_command([cl, 'search', remote_name]))
     check_equals(remote_uuid, run_command([cl, 'search', remote_name, '-u']))
@@ -948,24 +1162,45 @@ def test(ctx):
     check_equals('hello', run_command([cl, 'cat', remote_uuid + '/stdout']))
 
     sugared_remote_name = random_name()
-    sugared_remote_uuid = run_command([cl, 'run', 'cat %{}//{}%/stdout'.format(source_worksheet_name, name), '-n', sugared_remote_name])
+    sugared_remote_uuid = run_command(
+        [
+            cl, 'run',
+            'cat %{}//{}%/stdout'.format(source_worksheet_name,
+                                         name), '-n', sugared_remote_name
+        ]
+    )
     wait(sugared_remote_uuid)
-    check_contains(sugared_remote_name, run_command([cl, 'search', sugared_remote_name]))
-    check_equals(sugared_remote_uuid, run_command([cl, 'search', sugared_remote_name, '-u']))
-    check_equals('ready', run_command([cl, 'info', '-f', 'state', sugared_remote_uuid]))
-    check_equals('hello', run_command([cl, 'cat', sugared_remote_uuid + '/stdout']))
+    check_contains(
+        sugared_remote_name, run_command([cl, 'search', sugared_remote_name])
+    )
+    check_equals(
+        sugared_remote_uuid,
+        run_command([cl, 'search', sugared_remote_name, '-u'])
+    )
+    check_equals(
+        'ready', run_command([cl, 'info', '-f', 'state', sugared_remote_uuid])
+    )
+    check_equals(
+        'hello', run_command([cl, 'cat', sugared_remote_uuid + '/stdout'])
+    )
 
     # Explicitly fail when a remote instance name with : in it is supplied
-    run_command([cl, 'run', 'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)], expected_exit_code=1)
+    run_command(
+        [cl, 'run',
+         'cat %%%s//%s%%/stdout' % (source_worksheet_full, name)],
+        expected_exit_code=1
+    )
 
 
 @TestModule.register('read')
 def test(ctx):
     dep_uuid = run_command([cl, 'upload', test_path('')])
-    uuid = run_command([cl, 'run',
-                        'dir:' + dep_uuid,
-                        'file:' + dep_uuid + '/a.txt',
-                        'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done'])
+    uuid = run_command(
+        [
+            cl, 'run', 'dir:' + dep_uuid, 'file:' + dep_uuid + '/a.txt',
+            'ls dir; cat file; seq 1 10; touch done; while true; do sleep 60; done'
+        ]
+    )
     wait_until_running(uuid)
 
     # Tests reading first while the bundle is running and then after it is
@@ -998,8 +1233,10 @@ def test(ctx):
         # Download the whole bundle.
         path = temp_path('')
         run_command([cl, 'download', uuid, '-o', path])
-        assert not os.path.exists(os.path.join(path, 'dir')), '"dir" should not be in bundle'
-        assert not os.path.exists(os.path.join(path, 'file')), '"file" should not be in bundle'
+        assert not os.path.exists(os.path.join(path, 'dir')
+                                 ), '"dir" should not be in bundle'
+        assert not os.path.exists(os.path.join(path, 'file')
+                                 ), '"file" should not be in bundle'
         with open(os.path.join(path, 'stdout')) as fileobj:
             check_contains('5\n6\n7', fileobj.read())
         shutil.rmtree(path)
@@ -1024,11 +1261,14 @@ def test(ctx):
     uuid = run_command([cl, 'run', 'sleep 5'])
     wait_until_running(uuid)
     target = uuid + '/message'
-    run_command([cl, 'write', 'file with space', 'hello world'], 1)  # Not allowed
+    run_command([cl, 'write', 'file with space', 'hello world'],
+                1)  # Not allowed
     check_equals(uuid, run_command([cl, 'write', target, 'hello world']))
     run_command([cl, 'wait', uuid])
     check_equals('hello world', run_command([cl, 'cat', target]))
-    check_equals(str([u'write\tmessage\thello world']), get_info(uuid, 'actions'))
+    check_equals(
+        str([u'write\tmessage\thello world']), get_info(uuid, 'actions')
+    )
 
 
 @TestModule.register('mimic')
@@ -1039,32 +1279,59 @@ def test(ctx):
 
     simple_name = random_name()
 
-    input_uuid = run_command([cl, 'upload', test_path('a.txt'), '-n', simple_name + '-in1'])
-    simple_out_uuid = run_command([cl, 'make', input_uuid, '-n', simple_name + '-out'])
+    input_uuid = run_command(
+        [cl, 'upload',
+         test_path('a.txt'), '-n', simple_name + '-in1']
+    )
+    simple_out_uuid = run_command(
+        [cl, 'make', input_uuid, '-n', simple_name + '-out']
+    )
 
     new_input_uuid = run_command([cl, 'upload', test_path('a.txt')])
 
     # Try three ways of mimicing, should all produce the same answer
-    input_mimic_uuid = run_command([cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new'])
+    input_mimic_uuid = run_command(
+        [cl, 'mimic', input_uuid, new_input_uuid, '-n', 'new']
+    )
     check_equals(data_hash(simple_out_uuid), data_hash(input_mimic_uuid))
 
-    full_mimic_uuid = run_command([cl, 'mimic', input_uuid, simple_out_uuid, new_input_uuid, '-n', 'new'])
+    full_mimic_uuid = run_command(
+        [cl, 'mimic', input_uuid, simple_out_uuid, new_input_uuid, '-n', 'new']
+    )
     check_equals(data_hash(simple_out_uuid), data_hash(full_mimic_uuid))
 
-    simple_macro_uuid = run_command([cl, 'macro', simple_name, new_input_uuid, '-n', 'new'])
+    simple_macro_uuid = run_command(
+        [cl, 'macro', simple_name, new_input_uuid, '-n', 'new']
+    )
     check_equals(data_hash(simple_out_uuid), data_hash(simple_macro_uuid))
 
     complex_name = random_name()
 
-    numbered_input_uuid = run_command([cl, 'upload', test_path('a.txt'), '-n', complex_name + '-in1'])
-    named_input_uuid = run_command([cl, 'upload', test_path('b.txt'), '-n', complex_name + '-in-named'])
-    out_uuid = run_command([cl, 'make', 'numbered:' + numbered_input_uuid, 'named:' + named_input_uuid, '-n', complex_name + '-out'])
+    numbered_input_uuid = run_command(
+        [cl, 'upload',
+         test_path('a.txt'), '-n', complex_name + '-in1']
+    )
+    named_input_uuid = run_command(
+        [cl, 'upload',
+         test_path('b.txt'), '-n', complex_name + '-in-named']
+    )
+    out_uuid = run_command(
+        [
+            cl, 'make', 'numbered:' + numbered_input_uuid,
+            'named:' + named_input_uuid, '-n', complex_name + '-out'
+        ]
+    )
 
     new_numbered_input_uuid = run_command([cl, 'upload', test_path('a.txt')])
     new_named_input_uuid = run_command([cl, 'upload', test_path('b.txt')])
 
     # Try running macro with numbered and named inputs
-    macro_out_uuid = run_command([cl, 'macro', complex_name, new_numbered_input_uuid, 'named:' + new_named_input_uuid, '-n', 'new'])
+    macro_out_uuid = run_command(
+        [
+            cl, 'macro', complex_name, new_numbered_input_uuid,
+            'named:' + new_named_input_uuid, '-n', 'new'
+        ]
+    )
     check_equals(data_hash(out_uuid), data_hash(macro_out_uuid))
 
     # Another basic test
@@ -1075,8 +1342,14 @@ def test(ctx):
     wait(uuidCountA)
     wait(uuidCountB)
     # Check that the line counts for a.txt and b.txt are correct
-    check_contains('2', run_command([cl, 'cat', uuidCountA + '/stdout']).split())
-    check_contains('1', run_command([cl, 'cat', uuidCountB + '/stdout']).split())
+    check_contains(
+        '2',
+        run_command([cl, 'cat', uuidCountA + '/stdout']).split()
+    )
+    check_contains(
+        '1',
+        run_command([cl, 'cat', uuidCountB + '/stdout']).split()
+    )
 
 
 @TestModule.register('status')
@@ -1110,19 +1383,34 @@ def test(ctx):
     wuuid = run_command([cl, 'new', wother])
     ctx.collect_worksheet(wuuid)
     buuids = [
-        run_command([cl, 'upload', test_path('a.txt'), '-n', bnames[0]]),
-        run_command([cl, 'upload', test_path('a.txt'), '-n', bnames[1]]),
-        run_command([cl, 'upload', test_path('a.txt'), '-n', bnames[0], '-w', wother]),
-        run_command([cl, 'upload', test_path('a.txt'), '-n', bnames[1], '-w', wother])
+        run_command([cl, 'upload',
+                     test_path('a.txt'), '-n', bnames[0]]),
+        run_command([cl, 'upload',
+                     test_path('a.txt'), '-n', bnames[1]]),
+        run_command(
+            [cl, 'upload',
+             test_path('a.txt'), '-n', bnames[0], '-w', wother]
+        ),
+        run_command(
+            [cl, 'upload',
+             test_path('a.txt'), '-n', bnames[1], '-w', wother]
+        )
     ]
 
     # Test batch info call
-    output = run_command([cl, 'info', '-f', 'uuid', bnames[0], bnames[1],
-        '%s/%s' % (wother, bnames[0]), '%s/%s' % (wother, bnames[1])])
+    output = run_command(
+        [
+            cl, 'info', '-f', 'uuid', bnames[0], bnames[1],
+            '%s/%s' % (wother, bnames[0]),
+            '%s/%s' % (wother, bnames[1])
+        ]
+    )
     check_equals('\n'.join(buuids), output)
 
     # Test batch info call with combination of uuids and names
-    output = run_command([cl, 'info', '-f', 'uuid', buuids[0], bnames[0], bnames[0], buuids[0]])
+    output = run_command(
+        [cl, 'info', '-f', 'uuid', buuids[0], bnames[0], bnames[0], buuids[0]]
+    )
     check_equals('\n'.join([buuids[0]] * 4), output)
 
 
@@ -1131,31 +1419,73 @@ def test(ctx):
     """Test whether resource constraints are respected"""
     uuid = run_command([cl, 'upload', 'scripts/stress-test.pl'])
 
-    def stress(use_time, request_time, use_memory, request_memory, use_disk, request_disk, expected_exit_code, expected_failure_message):
-        run_uuid = run_command([
-            cl, 'run', 'main.pl:' + uuid, 'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
-            '--request-time', str(request_time),
-            '--request-memory', str(request_memory) + 'm',
-            '--request-disk', str(request_disk) + 'm',
-        ])
+    def stress(
+        use_time, request_time, use_memory, request_memory, use_disk,
+        request_disk, expected_exit_code, expected_failure_message
+    ):
+        run_uuid = run_command(
+            [
+                cl,
+                'run',
+                'main.pl:' + uuid,
+                'perl main.pl %s %s %s' % (use_time, use_memory, use_disk),
+                '--request-time',
+                str(request_time),
+                '--request-memory',
+                str(request_memory) + 'm',
+                '--request-disk',
+                str(request_disk) + 'm',
+            ]
+        )
         wait(run_uuid, expected_exit_code)
         if expected_failure_message:
-            check_equals(expected_failure_message, get_info(run_uuid, 'failure_message'))
+            check_equals(
+                expected_failure_message, get_info(run_uuid, 'failure_message')
+            )
 
     # Good
-    stress(use_time=1, request_time=10, use_memory=50, request_memory=1000, use_disk=10, request_disk=100, expected_exit_code=0, expected_failure_message=None)
+    stress(
+        use_time=1,
+        request_time=10,
+        use_memory=50,
+        request_memory=1000,
+        use_disk=10,
+        request_disk=100,
+        expected_exit_code=0,
+        expected_failure_message=None
+    )
     # Too much time
-    stress(use_time=10, request_time=1, use_memory=50, request_memory=1000, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Time limit 1.0s exceeded.')
+    stress(
+        use_time=10,
+        request_time=1,
+        use_memory=50,
+        request_memory=1000,
+        use_disk=10,
+        request_disk=100,
+        expected_exit_code=1,
+        expected_failure_message='Time limit 1.0s exceeded.'
+    )
     # Too much memory
     # TODO(klopyrev): CircleCI doesn't seem to support cgroups, so we can't get
     # the memory usage of a Docker container.
     # stress(use_time=2, request_time=10, use_memory=1000, request_memory=50, use_disk=10, request_disk=100, expected_exit_code=1, expected_failure_message='Memory limit 50mb exceeded.')
     # Too much disk
-    stress(use_time=2, request_time=10, use_memory=50, request_memory=1000, use_disk=10, request_disk=2, expected_exit_code=1, expected_failure_message='Disk limit 2mb exceeded.')
+    stress(
+        use_time=2,
+        request_time=10,
+        use_memory=50,
+        request_memory=1000,
+        use_disk=10,
+        request_disk=2,
+        expected_exit_code=1,
+        expected_failure_message='Disk limit 2mb exceeded.'
+    )
 
     # Test network access
     wait(run_command([cl, 'run', 'ping -c 1 google.com']), 1)
-    wait(run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0)
+    wait(
+        run_command([cl, 'run', 'ping -c 1 google.com', '--request-network']), 0
+    )
 
 
 @TestModule.register('copy')
@@ -1168,7 +1498,10 @@ def test(ctx):
         run_command([cl, 'work', remote_worksheet])
 
         def check_agree(command):
-            check_equals(run_command(command + ['-w', remote_worksheet]), run_command(command + ['-w', source_worksheet]))
+            check_equals(
+                run_command(command + ['-w', remote_worksheet]),
+                run_command(command + ['-w', source_worksheet])
+            )
 
         # Upload to original worksheet, transfer to remote
         run_command([cl, 'work', source_worksheet])
@@ -1233,16 +1566,27 @@ def test(ctx):
 
 @TestModule.register('netcat')
 def test(ctx):
-    run_command(['docker', 'pull', 'codalab/python:0.1']) # pull image in order to run python script
+    run_command(['docker', 'pull', 'codalab/python:0.1']
+               )  # pull image in order to run python script
 
     script_uuid = run_command([cl, 'upload', test_path('netcat-test.py')])
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/python:0.1',  'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = run_command(
+        [
+            cl, 'run', '--request-docker-image=codalab/python:0.1',
+            'netcat-test.py:' + script_uuid, 'python netcat-test.py'
+        ]
+    )
     wait_until_running(uuid)
     time.sleep(5)
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
     check_equals('No, this is dawg', output)
 
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/python:0.1', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
+    uuid = run_command(
+        [
+            cl, 'run', '--request-docker-image=codalab/python:0.1',
+            'netcat-test.py:' + script_uuid, 'python netcat-test.py'
+        ]
+    )
     wait_until_running(uuid)
     time.sleep(5)
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
@@ -1266,12 +1610,27 @@ def test(ctx):
     Check that certain Docker containers work with the CodaLab workers.
     """
     # Environment variables should load properly in codalab images
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
+    uuid = run_command(
+        [
+            cl, 'run', '--request-docker-image=codalab/ubuntu:1.9',
+            'echo $SCALA_HOME'
+        ]
+    )
     wait(uuid)
-    check_equals('/opt/scala/current', run_command([cl, 'cat', uuid+'/stdout']))
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1', 'echo $LUA_PATH'])
+    check_equals(
+        '/opt/scala/current', run_command([cl, 'cat', uuid + '/stdout'])
+    )
+    uuid = run_command(
+        [
+            cl, 'run', '--request-docker-image=codalab/torch:1.1',
+            'echo $LUA_PATH'
+        ]
+    )
     wait(uuid)
-    check_contains('/user/.luarocks/share/lua/5.1/?.lua', run_command([cl, 'cat', uuid+'/stdout']))
+    check_contains(
+        '/user/.luarocks/share/lua/5.1/?.lua',
+        run_command([cl, 'cat', uuid + '/stdout'])
+    )
 
 
 @TestModule.register('competition')
@@ -1286,55 +1645,75 @@ def test(ctx):
         devset_uuid = run_command([cl, 'upload', test_path('a.txt')])
         testset_uuid = run_command([cl, 'upload', test_path('b.txt')])
         script_uuid = run_command([cl, 'upload', test_path('evaluate.sh')])
-        submission_uuid = run_command([cl, 'run', 'dataset.txt:' + devset_uuid, 'echo dataset.txt > predictions.txt',
-                                       '--tags', submit_tag])
+        submission_uuid = run_command(
+            [
+                cl, 'run', 'dataset.txt:' + devset_uuid,
+                'echo dataset.txt > predictions.txt', '--tags', submit_tag
+            ]
+        )
 
         config_file = temp_path('-competition-config.json')
         with open(config_file, 'wb') as fp:
-            json.dump({
-                "host": remote.host,
-                "username": remote.username,
-                "password": remote.password,
-                "log_worksheet_uuid": log_worksheet_uuid,
-                "submission_tag": submit_tag,
-                "predict": {
-                    "mimic": [
+            json.dump(
+                {
+                    "host":
+                        remote.host,
+                    "username":
+                        remote.username,
+                    "password":
+                        remote.password,
+                    "log_worksheet_uuid":
+                        log_worksheet_uuid,
+                    "submission_tag":
+                        submit_tag,
+                    "predict":
                         {
-                            "old": devset_uuid,
-                            "new": testset_uuid
-                        }
-                    ],
-                    "tag": "predict"
-                },
-                "evaluate": {
-                    "dependencies": [
-                        {
-                            "parent_uuid": script_uuid,
-                            "child_path": "evaluate.sh"
+                            "mimic": [
+                                {
+                                    "old": devset_uuid,
+                                    "new": testset_uuid
+                                }
+                            ],
+                            "tag":
+                                "predict"
                         },
+                    "evaluate":
                         {
-                            "parent_uuid": "{predict}",
-                            "parent_path": "predictions.txt",
-                            "child_path": "predictions.txt"
-                        }
-                    ],
-                    "command": "cat predictions.txt | bash evaluate.sh",
-                    "tag": eval_tag,
-                },
-                "score_specs": [
-                    {
-                        "name": "goodness",
-                        "key": "/stdout:goodness"
+                            "dependencies":
+                                [
+                                    {
+                                        "parent_uuid": script_uuid,
+                                        "child_path": "evaluate.sh"
+                                    }, {
+                                        "parent_uuid": "{predict}",
+                                        "parent_path": "predictions.txt",
+                                        "child_path": "predictions.txt"
+                                    }
+                                ],
+                            "command":
+                                "cat predictions.txt | bash evaluate.sh",
+                            "tag":
+                                eval_tag,
+                        },
+                    "score_specs":
+                        [{
+                            "name": "goodness",
+                            "key": "/stdout:goodness"
+                        }],
+                    "metadata": {
+                        "name": "Cool Competition Leaderboard"
                     }
-                ],
-                "metadata": {
-                    "name": "Cool Competition Leaderboard"
-                }
-            }, fp)
+                }, fp
+            )
 
         out_file = temp_path('-competition-out.json')
         try:
-            run_command([os.path.join(base_path, 'scripts/competitiond.py'), config_file, out_file, '--verbose'])
+            run_command(
+                [
+                    os.path.join(base_path, 'scripts/competitiond.py'),
+                    config_file, out_file, '--verbose'
+                ]
+            )
 
             # Check that eval bundle gets created
             results = run_command([cl, 'search', 'tags=' + eval_tag, '-u'])
@@ -1347,7 +1726,9 @@ def test(ctx):
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('Usage: python %s <module> ... <module>' % sys.argv[0])
-        print('This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.')
+        print(
+            'This test will modify your current instance by creating temporary worksheets and bundles, but these should be deleted.'
+        )
         print('Modules: default all ' + ' '.join(TestModule.modules.keys()))
     else:
         success = TestModule.run(sys.argv[1:])

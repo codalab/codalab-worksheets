@@ -23,17 +23,15 @@ manager = CodaLabManager()
 model = manager.model()
 
 CODALAB_HOME = manager.codalab_home
-
 """Move data/ directory over to a temp area, and create a staging tree for uuid-based storage"""
 DATA_DIR = os.path.join(CODALAB_HOME, 'data')
 FINAL_LOCATION = os.path.join(CODALAB_HOME, 'bundles')
 
 if not dry_run:
     path_util.make_directory(FINAL_LOCATION)
-
 """For each data hash, get a list of all bundles that have that hash, and make a copy of the bundle in the staging
 area under the UUID for the bundle."""
-data_hashes = reduce(lambda x,y: x+y, path_util.ls(DATA_DIR))
+data_hashes = reduce(lambda x, y: x + y, path_util.ls(DATA_DIR))
 for data_hash in data_hashes:
     orig_location = os.path.join(DATA_DIR, data_hash)
 
@@ -45,7 +43,9 @@ for data_hash in data_hashes:
         # Build the command to be executed in a subshell
         uuid = bundle.uuid
         copy_location = os.path.join(FINAL_LOCATION, uuid)
-        command = '%s %s %s' % ('mv' if rename_allowed else 'cp -a', orig_location, copy_location)
+        command = '%s %s %s' % (
+            'mv' if rename_allowed else 'cp -a', orig_location, copy_location
+        )
         print command
         if not dry_run:
             exec_str = shlex.split(command)
@@ -54,7 +54,6 @@ for data_hash in data_hashes:
             if exit_code != 0:
                 print >> sys.stderr, 'command \'%s\' failed(status=%d), aborting...'
                 break
-
 
 dry_run_str = """
 This was a dry run, no migration occurred. To perform full migration, run again with `-f':

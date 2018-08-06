@@ -19,7 +19,10 @@ from codalab.objects.metadata import Metadata
 
 
 class Bundle(ORMObject):
-    COLUMNS = ('uuid', 'bundle_type', 'command', 'data_hash', 'state', 'owner_id', 'is_anonymous')
+    COLUMNS = (
+        'uuid', 'bundle_type', 'command', 'data_hash', 'state', 'owner_id',
+        'is_anonymous'
+    )
     # Bundle subclasses should have the following class-level attributes:
     #   - BUNDLE_TYPE: a string bundle type
     #   - METADATA_SPECS: a list of MetadataSpec objects
@@ -37,9 +40,13 @@ class Bundle(ORMObject):
         validation, but they should always call the super's method.
         '''
         spec_util.check_uuid(self.uuid)
-        abstract_init = 'init-ed abstract bundle: %s' % (self.__class__.__name__,)
+        abstract_init = 'init-ed abstract bundle: %s' % (
+            self.__class__.__name__,
+        )
         precondition(self.BUNDLE_TYPE, abstract_init)
-        type_mismatch = 'Mismatch: %s vs %s' % (self.bundle_type, self.BUNDLE_TYPE)
+        type_mismatch = 'Mismatch: %s vs %s' % (
+            self.bundle_type, self.BUNDLE_TYPE
+        )
         precondition(self.bundle_type == self.BUNDLE_TYPE, type_mismatch)
         # Check that metadata conforms to specs and check each dependency.
         self.metadata.validate(self.METADATA_SPECS)
@@ -48,16 +55,18 @@ class Bundle(ORMObject):
 
     def __repr__(self):
         return '%s(uuid=%r)' % (
-          self.__class__.__name__,
-          str(self.uuid),
+            self.__class__.__name__,
+            str(self.uuid),
         )
 
     def update_in_memory(self, row, strict=False):
         metadata = row.pop('metadata', None)
         dependencies = row.pop('dependencies', None)
         if strict:
-            precondition(metadata is not None, 'No metadata: %s' % (row,))
-            precondition(dependencies is not None, 'No dependencies: %s' % (row,))
+            precondition(metadata is not None, 'No metadata: %s' % (row, ))
+            precondition(
+                dependencies is not None, 'No dependencies: %s' % (row, )
+            )
             if 'uuid' not in row:
                 row['uuid'] = spec_util.generate_uuid()
         super(Bundle, self).update_in_memory(row)

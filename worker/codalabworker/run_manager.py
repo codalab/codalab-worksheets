@@ -121,7 +121,9 @@ class BaseRunManager(object):
 
 class Reader(object):
     def read(self, run_state, path, dep_paths, read_args, reply):
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+        dep_paths = set(
+            [dep['child_path'] for dep in run_state.bundle['dependencies']]
+        )
         read_type = read_args['type']
         if read_type == 'get_target_info':
             self.get_target_info(run_state, path, dep_paths, read_args, reply)
@@ -134,7 +136,10 @@ class Reader(object):
         elif read_type == 'summarize_file':
             self.summarize_file(run_state, path, dep_paths, read_args, reply)
         else:
-            err = (httplib.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
+            err = (
+                httplib.BAD_REQUEST,
+                "Unsupported read_type for read: %s" % read_type
+            )
             reply(err)
 
     @abstractmethod

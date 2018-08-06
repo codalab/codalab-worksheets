@@ -7,7 +7,8 @@ from codalab.common import CODALAB_VERSION
 if int(setuptools.__version__.split('.')[0]) < 25:
     print(
         "WARNING: Please upgrade setuptools to a newer version, otherwise installation may break. "
-        "Recommended command: `pip install -U setuptools`")
+        "Recommended command: `pip install -U setuptools`"
+    )
 
 
 def get_requirements(*requirements_file_paths):
@@ -24,10 +25,10 @@ setup(
     name='codalab',
     version=CODALAB_VERSION,
     description='CLI for CodaLab, a platform for reproducible computation',
-    long_description=
-    ('Visit https://worksheets.codalab.org/ or setup your own server by following the '
-     'instructions in the Wiki (https://github.com/codalab/codalab-worksheets/wiki/Server-Setup).'
-     ),
+    long_description=(
+        'Visit https://worksheets.codalab.org/ or setup your own server by following the '
+        'instructions in the Wiki (https://github.com/codalab/codalab-worksheets/wiki/Server-Setup).'
+    ),
     url='https://github.com/codalab/codalab-cli',
     author='CodaLab',
     author_email='codalab.worksheets@gmail.com',
@@ -37,8 +38,7 @@ setup(
     include_package_data=True,
     install_requires=get_requirements('worker/requirements.txt'),
     entry_points={
-        'console_scripts': [
-            'cl=codalab.bin.cl:main',
-        ],
+        'console_scripts': ['cl=codalab.bin.cl:main', ],
     },
-    zip_safe=False),
+    zip_safe=False
+),

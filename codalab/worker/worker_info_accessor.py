@@ -1,9 +1,11 @@
 from collections import defaultdict
 
+
 class WorkerInfoAccessor(object):
     """
     Helps with accessing the list of workers returned by the worker model.
     """
+
     def __init__(self, workers):
         self._workers = workers
         self._uuid_to_worker = {}
@@ -18,7 +20,8 @@ class WorkerInfoAccessor(object):
 
     def worker_with_id(self, user_id, worker_id):
         for worker in self._workers:
-            if worker['user_id'] == user_id and worker['worker_id'] == worker_id:
+            if worker['user_id'] == user_id and worker['worker_id'
+                                                      ] == worker_id:
                 return worker
         return None
 

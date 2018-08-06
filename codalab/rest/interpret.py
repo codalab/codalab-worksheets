@@ -120,8 +120,10 @@ def _interpret_file_genpaths():
     }
     ```
     """
-    queries = [(q['bundle_uuid'], q['genpath'], q['post'])
-               for q in request.json['queries']]
+    queries = [
+        (q['bundle_uuid'], q['genpath'], q['post'])
+        for q in request.json['queries']
+    ]
     results = interpret_file_genpaths(queries)
     return {'data': results}
 
@@ -175,7 +177,8 @@ def fetch_interpreted_worksheet(uuid):
     """
     bundle_uuids = request.query.getall('bundle_uuid')
     worksheet_info = get_worksheet_info(
-        uuid, fetch_items=True, fetch_permissions=True)
+        uuid, fetch_items=True, fetch_permissions=True
+    )
 
     # Shim in additional data for the frontend
     worksheet_info['items'] = resolve_items_into_infos(worksheet_info['items'])
@@ -195,21 +198,25 @@ def fetch_interpreted_worksheet(uuid):
 
     # Set permissions
     worksheet_info['edit_permission'] = (
-        worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL)
+        worksheet_info['permission'] == GROUP_OBJECT_PERMISSION_ALL
+    )
     # Check enable chat box
     worksheet_info['enable_chat'] = local.config.get('enable_chat', False)
     # Format permissions into strings
     worksheet_info['permission_spec'] = permission_str(
-        worksheet_info['permission'])
+        worksheet_info['permission']
+    )
     for group_permission in worksheet_info['group_permissions']:
         group_permission['permission_spec'] = permission_str(
-            group_permission['permission'])
+            group_permission['permission']
+        )
 
     # Go and fetch more information about the worksheet contents by
     # resolving the interpreted items.
     try:
-        interpreted_blocks = interpret_items(get_default_schemas(),
-                                             worksheet_info['items'])
+        interpreted_blocks = interpret_items(
+            get_default_schemas(), worksheet_info['items']
+        )
     except UsageError, e:
         interpreted_blocks = {'blocks': []}
         worksheet_info['error'] = str(e)
@@ -236,7 +243,8 @@ def fetch_interpreted_worksheet(uuid):
                     interpreted_blocks['blocks'][i] = None
 
     worksheet_info['items'] = resolve_interpreted_blocks(
-        interpreted_blocks['blocks'])
+        interpreted_blocks['blocks']
+    )
     worksheet_info['raw_to_block'] = interpreted_blocks['raw_to_block']
     worksheet_info['block_to_raw'] = interpreted_blocks['block_to_raw']
 
@@ -278,8 +286,8 @@ def cat_target(target):
     """
     rest_util.check_target_has_read_permission(target)
     with closing(
-            local.download_manager.stream_file(
-                target[0], target[1], gzipped=False)) as fileobj:
+        local.download_manager.stream_file(target[0], target[1], gzipped=False)
+    ) as fileobj:
         return fileobj.read()
 
 
@@ -305,7 +313,8 @@ def head_target(target, max_num_lines, replace_non_unicode=False):
         0,
         MAX_BYTES_PER_LINE,
         None,
-        gzipped=False).splitlines(True)
+        gzipped=False
+    ).splitlines(True)
 
     if replace_non_unicode:
         lines = map(formatting.verbose_contents_str, lines)
@@ -326,12 +335,12 @@ def resolve_interpreted_blocks(interpreted_blocks):
     """
 
     def set_error_data(block_index, message):
-        interpreted_blocks[block_index] = MarkupBlockSchema().load({
-            'id':
-            block_index,
-            'text':
-            'ERROR: ' + message,
-        }).data
+        interpreted_blocks[block_index] = MarkupBlockSchema().load(
+            {
+                'id': block_index,
+                'text': 'ERROR: ' + message,
+            }
+        ).data
 
     for block_index, block in enumerate(interpreted_blocks):
         if block is None:
@@ -353,25 +362,37 @@ def resolve_interpreted_blocks(interpreted_blocks):
             elif mode == BlockModes.contents_block or mode == BlockModes.image_block:
                 try:
                     target_info = rest_util.get_target_info(
-                        (block['bundles_spec']['bundle_infos'][0]['uuid'],
-                         block['target_genpath']), 0)
-                    if target_info['type'] == 'directory' and mode == BlockModes.contents_block:
+                        (
+                            block['bundles_spec']['bundle_infos'][0]['uuid'],
+                            block['target_genpath']
+                        ), 0
+                    )
+                    if target_info[
+                        'type'
+                    ] == 'directory' and mode == BlockModes.contents_block:
                         block['status']['code'] = FetchStatusCodes.ready
                         block['lines'] = ['<directory>']
                     elif target_info['type'] == 'file':
                         block['status']['code'] = FetchStatusCodes.ready
                         if mode == BlockModes.contents_block:
                             block['lines'] = head_target(
-                                (block['bundles_spec']['bundle_infos'][0]
-                                 ['uuid'], block['target_genpath']),
+                                (
+                                    block['bundles_spec']['bundle_infos'][0]
+                                    ['uuid'], block['target_genpath']
+                                ),
                                 block['max_lines'],
-                                replace_non_unicode=True)
+                                replace_non_unicode=True
+                            )
                         elif mode == BlockModes.image_block:
                             block['status']['code'] = FetchStatusCodes.ready
                             block['image_data'] = base64.b64encode(
-                                cat_target((block['bundles_spec'][
-                                    'bundle_infos'][0]['uuid'],
-                                            block['target_genpath'])))
+                                cat_target(
+                                    (
+                                        block['bundles_spec']['bundle_infos'][0]
+                                        ['uuid'], block['target_genpath']
+                                    )
+                                )
+                            )
                     else:
                         block['status']['code'] = FetchStatusCodes.not_found
                         if mode == BlockModes.contents_block:
@@ -398,7 +419,8 @@ def resolve_interpreted_blocks(interpreted_blocks):
                         contents = head_target(
                             target,
                             block['max_lines'],
-                            replace_non_unicode=True)
+                            replace_non_unicode=True
+                        )
                         # Assume TSV file without header for now, just return each line as a row
                         info['points'] = points = []
                         for line in contents:
@@ -428,7 +450,8 @@ def is_bundle_genpath_triple(value):
     need_gen_types = (types.TupleType, types.ListType)
 
     return isinstance(value, need_gen_types) and len(value) == 3 and all(
-        isinstance(elem, basestring) for elem in value)
+        isinstance(elem, basestring) for elem in value
+    )
 
 
 def interpret_genpath_table_contents(contents):
@@ -469,8 +492,7 @@ def interpret_file_genpaths(requests):
     target_cache = {}
     responses = []
     for (bundle_uuid, genpath, post) in requests:
-        value = interpret_file_genpath(target_cache, bundle_uuid, genpath,
-                                       post)
+        value = interpret_file_genpath(target_cache, bundle_uuid, genpath, post)
         responses.append(value)
     return responses
 
@@ -511,7 +533,8 @@ def interpret_file_genpath(target_cache, bundle_uuid, genpath, post):
                     info = {}
                     for x in contents:
                         kv = x.strip().split("\t", 1)
-                        if len(kv) == 2: info[kv[0]] = kv[1]
+                        if len(kv) == 2:
+                            info[kv[0]] = kv[1]
                 else:
                     try:
                         # JSON file
@@ -560,7 +583,8 @@ def resolve_items_into_infos(items):
     # However, we still make O(1) database calls because we use the
     # optimized batch_get_bundles multiget method.
     bundle_uuids = set(
-        i['bundle_uuid'] for i in items if i['bundle_uuid'] is not None)
+        i['bundle_uuid'] for i in items if i['bundle_uuid'] is not None
+    )
 
     bundle_dict = rest_util.get_bundle_infos(bundle_uuids)
 
@@ -568,12 +592,13 @@ def resolve_items_into_infos(items):
     new_items = []
     for i in items:
         bundle_info = bundle_dict.get(
-            i['bundle_uuid'],
-            {'uuid': i['bundle_uuid']}) if i['bundle_uuid'] else None
+            i['bundle_uuid'], {'uuid': i['bundle_uuid']}
+        ) if i['bundle_uuid'] else None
         if i['subworksheet_uuid']:
             try:
                 subworksheet_info = local.model.get_worksheet(
-                    i['subworksheet_uuid'], fetch_items=False).to_dict()
+                    i['subworksheet_uuid'], fetch_items=False
+                ).to_dict()
             except UsageError, e:
                 # If can't get the subworksheet, it's probably invalid, so just replace it with an error
                 # type = worksheet_util.TYPE_MARKUP
@@ -582,16 +607,18 @@ def resolve_items_into_infos(items):
         else:
             subworksheet_info = None
         value_obj = formatting.string_to_tokens(
-            i['value']) if i['type'] == TYPE_DIRECTIVE else i['value']
-        new_items.append((bundle_info, subworksheet_info, value_obj,
-                          i['type']))
+            i['value']
+        ) if i['type'] == TYPE_DIRECTIVE else i['value']
+        new_items.append((bundle_info, subworksheet_info, value_obj, i['type']))
     return new_items
 
 
 def expand_raw_items(raw_items):
     return list(
         chain.from_iterable(
-            [expand_raw_item(raw_item) for raw_item in raw_items]))
+            [expand_raw_item(raw_item) for raw_item in raw_items]
+        )
+    )
 
 
 def expand_raw_item(raw_item):
@@ -606,10 +633,12 @@ def expand_raw_item(raw_item):
 
     (bundle_info, subworksheet_info, value_obj, item_type) = raw_item
 
-    is_search = (item_type == TYPE_DIRECTIVE
-                 and get_command(value_obj) == 'search')
-    is_wsearch = (item_type == TYPE_DIRECTIVE
-                  and get_command(value_obj) == 'wsearch')
+    is_search = (
+        item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'search'
+    )
+    is_wsearch = (
+        item_type == TYPE_DIRECTIVE and get_command(value_obj) == 'wsearch'
+    )
 
     if is_search or is_wsearch:
         command = get_command(value_obj)
@@ -618,8 +647,9 @@ def expand_raw_item(raw_item):
 
         if is_search:
             keywords = rest_util.resolve_owner_in_keywords(keywords)
-            search_result = local.model.search_bundles(request.user.user_id,
-                                                       keywords)
+            search_result = local.model.search_bundles(
+                request.user.user_id, keywords
+            )
             if search_result['is_aggregate']:
                 raw_items.append(markup_item(str(search_result['result'])))
             else:

@@ -107,7 +107,9 @@ def authorize(*args, **kwargs):
         client_id = kwargs.get('client_id')
         redirect_uri = kwargs.get('redirect_uri')
         client = local.model.get_oauth2_client(client_id)
-        return template("oauth2_authorize", client=client, redirect_uri=redirect_uri)
+        return template(
+            "oauth2_authorize", client=client, redirect_uri=redirect_uri
+        )
     elif request.method == 'POST':
         # Return True back to the authorize_handler wrapper iff confirmed.
         confirm = request.forms.get('confirm', 'no')
@@ -162,5 +164,6 @@ def revoke_token():
 @get('/oauth2/errors', name='oauth2_errors')
 def show_errors():
     return template('oauth2_errors', **request.query)
+
 
 default_app().config['OAUTH2_PROVIDER_ERROR_ENDPOINT'] = 'oauth2_errors'

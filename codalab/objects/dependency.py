@@ -17,6 +17,6 @@ class Dependency(ORMObject):
         spec_util.check_uuid(self.parent_uuid)
         if not self.CHILD_PATH_REGEX.match(self.child_path):
             raise UsageError(
-              'child_subpath must match %s, was %s' %
-              (self.CHILD_PATH_REGEX.pattern, self.child_path)
+                'child_subpath must match %s, was %s' %
+                (self.CHILD_PATH_REGEX.pattern, self.child_path)
             )

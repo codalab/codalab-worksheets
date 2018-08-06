@@ -60,7 +60,10 @@ def get_faq():
     }
     Currently disabled. Needs further work.
     """
-    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
+    file_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)),
+        '../objects/chat_box_qa.yaml'
+    )
     with open(file_path, 'r') as stream:
         content = yaml.load(stream)
         return {'faq': content}
@@ -87,7 +90,9 @@ def add_chat_log_info(query_info):
         message = query_info.get('message')
         worksheet_uuid = query_info.get('worksheet_uuid')
         bundle_uuid = query_info.get('bundle_uuid')
-        bot_response = format_message_response(ChatBoxQA.answer(message, worksheet_uuid, bundle_uuid))
+        bot_response = format_message_response(
+            ChatBoxQA.answer(message, worksheet_uuid, bundle_uuid)
+        )
         info = {
             'sender_user_id': local.model.system_user_id,
             'recipient_user_id': request.user.user_id,
@@ -118,4 +123,3 @@ def format_message_response(params):
         result += 'You can try to run the following command: \n'
         result += command
         return result
-

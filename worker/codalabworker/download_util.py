@@ -45,7 +45,10 @@ def get_target_path(bundle_path, uuid, path):
     if os.path.islink(final_path):
         # We shouldn't get here, unless the user is a hacker or a developer
         # didn't use get_target_info correctly.
-        raise PathException('%s is a symlink and following symlinks is not allowed.' % error_path)
+        raise PathException(
+            '%s is a symlink and following symlinks is not allowed.' %
+            error_path
+        )
 
     return final_path
 
@@ -55,7 +58,9 @@ BUNDLE_NO_LONGER_RUNNING_MESSAGE = 'Bundle no longer running'
 
 def _get_normalized_target_path(bundle_path, uuid, path):
     real_bundle_path = os.path.realpath(bundle_path)
-    normalized_target_path = os.path.normpath(_get_target_path(real_bundle_path, path))
+    normalized_target_path = os.path.normpath(
+        _get_target_path(real_bundle_path, path)
+    )
     error_path = _get_target_path(uuid, path)
 
     if not normalized_target_path.startswith(real_bundle_path):
@@ -89,7 +94,8 @@ def _compute_target_info(path, depth):
         if depth > 0:
             result['contents'] = [
                 _compute_target_info(os.path.join(path, file_name), depth - 1)
-                for file_name in os.listdir(path)]
+                for file_name in os.listdir(path)
+            ]
     if result is None:
         raise PathException()
     return result

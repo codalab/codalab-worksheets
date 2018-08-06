@@ -13,8 +13,9 @@ from codalab.common import UsageError
 from codalab.lib.metadata_defaults import MetadataDefaults
 from codalab.lib import editor_util
 
-metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
+metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key, )
 metadata_argument_to_key = lambda arg_key: arg_key[3:]
+
 
 def fill_missing_metadata(bundle_subclass, args, initial_metadata):
     '''
@@ -40,10 +41,15 @@ def request_missing_metadata(bundle_subclass, initial_metadata):
     # command-line metadata options.
     template_lines = []
     bundle_type = bundle_subclass.BUNDLE_TYPE
-    template_lines.append(os.linesep.join([
-      '// Enter metadata for the new %s bundle, then save and quit.' % (bundle_type,),
-      '// To cancel the upload, delete the name.',
-    ]))
+    template_lines.append(
+        os.linesep.join(
+            [
+                '// Enter metadata for the new %s bundle, then save and quit.' %
+                (bundle_type, ),
+                '// To cancel the upload, delete the name.',
+            ]
+        )
+    )
     for spec in bundle_subclass.get_user_defined_metadata():
         initial_value = initial_metadata.get(spec.key) or ''
         if spec.type == list:
@@ -70,14 +76,16 @@ def parse_metadata_form(bundle_subclass, form_result):
         if line != '' and not line.startswith('//'):
             if ':' not in line:
                 # TODO: don't delete everything; go back to the editor and show the error message
-                raise UsageError('Malformatted line (no colon): %s' % (line,))
+                raise UsageError('Malformatted line (no colon): %s' % (line, ))
             (metadata_key, remainder) = line.split(':', 1)
             remainder = remainder.strip()
             if remainder == '':
                 remainder = None
 
             if metadata_key not in metadata_types:
-                raise UsageError('Unexpected metadata key: %s' % (metadata_key,))
+                raise UsageError(
+                    'Unexpected metadata key: %s' % (metadata_key, )
+                )
             metadata_type = metadata_types[metadata_key]
             if metadata_type == list:
                 result[metadata_key] = remainder.split() if remainder else []
@@ -85,9 +93,14 @@ def parse_metadata_form(bundle_subclass, form_result):
                 result[metadata_key] = remainder
             else:
                 try:
-                    result[metadata_key] = metadata_type(remainder) if remainder != None else None
+                    result[metadata_key] = metadata_type(
+                        remainder
+                    ) if remainder != None else None
                 except:
-                    raise UsageError('Invalid value %s for type %s' % (remainder, metadata_type))
+                    raise UsageError(
+                        'Invalid value %s for type %s' %
+                        (remainder, metadata_type)
+                    )
     if 'name' not in result:
         raise UsageError('No name specified; aborting')
     return result

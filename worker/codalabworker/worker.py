@@ -24,8 +24,10 @@ but they expect the platform specific RunManagers they use to implement a common
 
 
 class Worker(object):
-    def __init__(self, create_run_manager, commit_file, worker_id, tag,
-                 work_dir, bundle_service):
+    def __init__(
+        self, create_run_manager, commit_file, worker_id, tag, work_dir,
+        bundle_service
+    ):
         self.id = worker_id
         self._state_committer = JsonStateCommitter(commit_file)
         self._tag = tag
@@ -86,14 +88,19 @@ class Worker(object):
             if action_type == 'run':
                 self._run(response['bundle'], response['resources'])
             elif action_type == 'read':
-                self._read(socket_id, response['uuid'], response['path'],
-                           response['read_args'])
+                self._read(
+                    socket_id, response['uuid'], response['path'],
+                    response['read_args']
+                )
             elif action_type == 'netcat':
-                self._netcat(socket_id, response['uuid'], response['port'],
-                             response['message'])
+                self._netcat(
+                    socket_id, response['uuid'], response['port'],
+                    response['message']
+                )
             elif action_type == 'write':
-                self._write(response['uuid'], response['subpath'],
-                            response['string'])
+                self._write(
+                    response['uuid'], response['subpath'], response['string']
+                )
             elif action_type == 'kill':
                 self._kill(response['uuid'])
             elif action_type == 'mark_finalized':
@@ -111,12 +118,14 @@ class Worker(object):
             'start_time': int(now),
         }
 
-        if self._bundle_service.start_bundle(self.id, bundle['uuid'],
-                                             start_message):
+        if self._bundle_service.start_bundle(
+            self.id, bundle['uuid'], start_message
+        ):
             self._run_manager.create_run(bundle, resources)
         else:
             print >> sys.stdout, 'Bundle {} no longer assigned to this worker'.format(
-                bundle['uuid'])
+                bundle['uuid']
+            )
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
@@ -124,11 +133,10 @@ class Worker(object):
 
         try:
             run_state = self._run_manager.get_run(uuid)
-            dep_paths = set([
-                dep['child_path'] for dep in run_state.bundle['dependencies']
-            ])
-            self._run_manager.read(run_state, path, dep_paths, read_args,
-                                   reply)
+            dep_paths = set(
+                [dep['child_path'] for dep in run_state.bundle['dependencies']]
+            )
+            self._run_manager.read(run_state, path, dep_paths, read_args, reply)
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
@@ -153,7 +161,8 @@ class Worker(object):
     def _write(self, uuid, subpath, string):
         run_state = self._run_manager.get_run(uuid)
         dep_paths = set(
-            [dep['child_path'] for dep in run_state.bundle['dependencies']])
+            [dep['child_path'] for dep in run_state.bundle['dependencies']]
+        )
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
     def _kill(self, uuid):

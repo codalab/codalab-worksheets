@@ -5,13 +5,12 @@ from codalab.bundles.run_bundle import RunBundle
 from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.bundles.private_bundle import PrivateBundle
 
-
 BUNDLE_SUBCLASSES = (
-  DatasetBundle,
-  MakeBundle,
-  ProgramBundle,
-  RunBundle,
-  PrivateBundle,
+    DatasetBundle,
+    MakeBundle,
+    ProgramBundle,
+    RunBundle,
+    PrivateBundle,
 )
 
 BUNDLE_TYPE_MAP = {cls.BUNDLE_TYPE: cls for cls in BUNDLE_SUBCLASSES}

@@ -5,11 +5,13 @@ import shutil
 from codalab.common import UsageError
 from codalab.lib import crypt_util, file_util, path_util, zip_util
 
+
 class UploadManager(object):
     """
     Contains logic for uploading bundle data to the bundle store and updating
     the associated bundle metadata in the database.
     """
+
     def __init__(self, bundle_model, bundle_store):
         # exclude these patterns by default
         DEFAULT_EXCLUDE_PATTERNS = ['.DS_Store', '__MACOSX', '^\._.*']
@@ -17,8 +19,10 @@ class UploadManager(object):
         self._bundle_store = bundle_store
         self._default_exclude_patterns = DEFAULT_EXCLUDE_PATTERNS
 
-
-    def upload_to_bundle_store(self, bundle, sources, follow_symlinks, exclude_patterns, remove_sources, git, unpack, simplify_archives):
+    def upload_to_bundle_store(
+        self, bundle, sources, follow_symlinks, exclude_patterns,
+        remove_sources, git, unpack, simplify_archives
+    ):
         """
         Uploads contents for the given bundle to the bundle store.
 
@@ -48,36 +52,53 @@ class UploadManager(object):
             # Note that for uploads with a single source, the directory
             # structure is simplified at the end.
             for source in sources:
-                is_url, is_local_path, is_fileobj, filename = self._interpret_source(source)
+                is_url, is_local_path, is_fileobj, filename = self._interpret_source(
+                    source
+                )
                 source_output_path = os.path.join(bundle_path, filename)
                 if is_url:
                     if git:
-                        source_output_path = file_util.strip_git_ext(source_output_path)
+                        source_output_path = file_util.strip_git_ext(
+                            source_output_path
+                        )
                         file_util.git_clone(source, source_output_path)
                     else:
                         file_util.download_url(source, source_output_path)
                         if unpack and self._can_unpack_file(source_output_path):
                             self._unpack_file(
-                                source_output_path, zip_util.strip_archive_ext(source_output_path),
-                                remove_source=True, simplify_archive=simplify_archives)
+                                source_output_path,
+                                zip_util.strip_archive_ext(source_output_path),
+                                remove_source=True,
+                                simplify_archive=simplify_archives
+                            )
                 elif is_local_path:
                     source_path = path_util.normalize(source)
                     path_util.check_isvalid(source_path, 'upload')
 
                     if unpack and self._can_unpack_file(source_path):
                         self._unpack_file(
-                            source_path, zip_util.strip_archive_ext(source_output_path),
-                            remove_source=remove_sources, simplify_archive=simplify_archives)
+                            source_path,
+                            zip_util.strip_archive_ext(source_output_path),
+                            remove_source=remove_sources,
+                            simplify_archive=simplify_archives
+                        )
                     elif remove_sources:
                         path_util.rename(source_path, source_output_path)
                     else:
-                        path_util.copy(source_path, source_output_path, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns)
+                        path_util.copy(
+                            source_path,
+                            source_output_path,
+                            follow_symlinks=follow_symlinks,
+                            exclude_patterns=exclude_patterns
+                        )
                 elif is_fileobj:
                     if unpack and zip_util.path_is_archive(filename):
                         self._unpack_fileobj(
-                            source[0], source[1],
+                            source[0],
+                            source[1],
                             zip_util.strip_archive_ext(source_output_path),
-                            simplify_archive=simplify_archives)
+                            simplify_archive=simplify_archives
+                        )
                     else:
                         with open(source_output_path, 'wb') as out:
                             shutil.copyfileobj(source[1], out)
@@ -105,15 +126,23 @@ class UploadManager(object):
     def _can_unpack_file(self, path):
         return os.path.isfile(path) and zip_util.path_is_archive(path)
 
-    def _unpack_file(self, source_path, dest_path, remove_source, simplify_archive):
-        zip_util.unpack(zip_util.get_archive_ext(source_path), source_path, dest_path)
+    def _unpack_file(
+        self, source_path, dest_path, remove_source, simplify_archive
+    ):
+        zip_util.unpack(
+            zip_util.get_archive_ext(source_path), source_path, dest_path
+        )
         if remove_source:
             path_util.remove(source_path)
         if simplify_archive:
             self._simplify_archive(dest_path)
 
-    def _unpack_fileobj(self, source_filename, source_fileobj, dest_path, simplify_archive):
-        zip_util.unpack(zip_util.get_archive_ext(source_filename), source_fileobj, dest_path)
+    def _unpack_fileobj(
+        self, source_filename, source_fileobj, dest_path, simplify_archive
+    ):
+        zip_util.unpack(
+            zip_util.get_archive_ext(source_filename), source_fileobj, dest_path
+        )
         if simplify_archive:
             self._simplify_archive(dest_path)
 
@@ -126,10 +155,11 @@ class UploadManager(object):
         if not os.path.isdir(path):
             return
 
-        files = [f for f in os.listdir(path) if not self._ignore_file_in_archive(f)]
+        files = [
+            f for f in os.listdir(path) if not self._ignore_file_in_archive(f)
+        ]
         if len(files) == 1:
             self._simplify_directory(path, files[0])
-
 
     def _ignore_file_in_archive(self, filename):
         matchers = [re.compile(s) for s in self._default_exclude_patterns]
@@ -165,16 +195,23 @@ class UploadManager(object):
         else:
             dirs_and_files = [], [bundle_path]
 
-        data_hash = '0x%s' % (path_util.hash_directory(bundle_path, dirs_and_files))
+        data_hash = '0x%s' % (
+            path_util.hash_directory(bundle_path, dirs_and_files)
+        )
         data_size = path_util.get_size(bundle_path, dirs_and_files)
         if enforce_disk_quota:
-            disk_left = self._bundle_model.get_user_disk_quota_left(bundle.owner_id)
+            disk_left = self._bundle_model.get_user_disk_quota_left(
+                bundle.owner_id
+            )
             if data_size > disk_left:
-                raise UsageError("Can't save bundle, bundle size %s greater than user's disk quota left: %s" % (data_size, disk_left))
+                raise UsageError(
+                    "Can't save bundle, bundle size %s greater than user's disk quota left: %s"
+                    % (data_size, disk_left)
+                )
 
         bundle_update = {
-           'data_hash': data_hash,
-           'metadata': {
+            'data_hash': data_hash,
+            'metadata': {
                 'data_size': data_size,
             },
         }
@@ -182,7 +219,9 @@ class UploadManager(object):
         self._bundle_model.update_user_disk_used(bundle.owner_id)
 
     def has_contents(self, bundle):
-        return os.path.exists(self._bundle_store.get_bundle_location(bundle.uuid))
+        return os.path.exists(
+            self._bundle_store.get_bundle_location(bundle.uuid)
+        )
 
     def cleanup_existing_contents(self, bundle):
         self._bundle_store.cleanup(bundle.uuid, dry_run=False)

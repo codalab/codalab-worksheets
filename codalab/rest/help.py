@@ -12,9 +12,10 @@ from codalab.server.authenticated_plugin import (
 def send_help_message():
     message = request.json['message']
 
-    if 'server' in local.config and 'support_email' not in local.config['server']:
-        print >>sys.stderr, 'Warning: No support_email configured, so no email sent.'
-        print >>sys.stderr, 'User\'s message: %s' % message
+    if 'server' in local.config and 'support_email' not in local.config['server'
+                                                                       ]:
+        print >> sys.stderr, 'Warning: No support_email configured, so no email sent.'
+        print >> sys.stderr, 'User\'s message: %s' % message
         return
 
     support_email = local.config['server']['support_email']
@@ -29,8 +30,14 @@ def send_help_message():
 
     local.emailer.send_email(
         subject="Message from %s" % user_email,
-        body=template('help_message_to_codalab_body', real_name=real_name, username=username,
-                      email=user_email, message=message, originUrl=originUrl),
+        body=template(
+            'help_message_to_codalab_body',
+            real_name=real_name,
+            username=username,
+            email=user_email,
+            message=message,
+            originUrl=originUrl
+        ),
         recipient=support_email,
         sender=user_email,
         charset='utf-8',

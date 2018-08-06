@@ -42,7 +42,6 @@ class StateTransitioner(object):
 
 
 class BaseDependencyManager(object):
-
     def run(self):
         """ Start execution of this dependency manager. Returns immediately """
         raise NotImplementedError

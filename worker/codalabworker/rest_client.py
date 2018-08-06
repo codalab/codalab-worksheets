@@ -36,8 +36,16 @@ class RestClient(object):
         """
         raise NotImplementedError
 
-    def _make_request(self, method, path, query_params=None, headers=None,
-                      data=None, return_response=False, authorized=True):
+    def _make_request(
+        self,
+        method,
+        path,
+        query_params=None,
+        headers=None,
+        data=None,
+        return_response=False,
+        authorized=True
+    ):
         if headers is None:
             headers = {}
 
@@ -73,7 +81,8 @@ class RestClient(object):
                 return un_gzip_stream(response)
             else:
                 raise RestClientException(
-                    'Unsupported Content-Encoding: ' + encoding, False)
+                    'Unsupported Content-Encoding: ' + encoding, False
+                )
         with closing(urllib2.urlopen(request)) as response:
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
@@ -84,10 +93,12 @@ class RestClient(object):
                     return json.loads(response_data)
                 except ValueError:
                     raise RestClientException(
-                        'Invalid JSON: ' + response_data, False)
+                        'Invalid JSON: ' + response_data, False
+                    )
 
-    def _upload_with_chunked_encoding(self, method, url, query_params, fileobj,
-                                      progress_callback=None):
+    def _upload_with_chunked_encoding(
+        self, method, url, query_params, fileobj, progress_callback=None
+    ):
         """
         Uploads the fileobj to url using method with query_params,
         if progress_callback is specified, it is called with the
@@ -108,7 +119,9 @@ class RestClient(object):
             conn.putrequest(method, parsed_base_url.path + path)
 
             # Set headers.
-            conn.putheader('Authorization', 'Bearer ' + self._get_access_token())
+            conn.putheader(
+                'Authorization', 'Bearer ' + self._get_access_token()
+            )
             conn.putheader('Transfer-Encoding', 'chunked')
             conn.putheader('X-Requested-With', 'XMLHttpRequest')
             conn.endheaders()
@@ -132,8 +145,6 @@ class RestClient(object):
             if response.status != 200:
                 # Low-level httplib module doesn't throw HTTPError
                 raise urllib2.HTTPError(
-                    self._base_url + path,
-                    response.status,
-                    response.reason,
-                    dict(response.getheaders()),
-                    StringIO(response.read()))
+                    self._base_url + path, response.status, response.reason,
+                    dict(response.getheaders()), StringIO(response.read())
+                )

@@ -15,22 +15,30 @@ def create_bundle_actions():
     action string to the bundle metadata.
     """
     actions = BundleActionSchema(
-        strict=True, many=True,
+        strict=True,
+        many=True,
     ).load(request.json).data
 
-    check_bundles_have_all_permission(local.model, request.user, [a['uuid'] for a in actions])
+    check_bundles_have_all_permission(
+        local.model, request.user, [a['uuid'] for a in actions]
+    )
 
     for action in actions:
         bundle = local.model.get_bundle(action['uuid'])
         if bundle.state not in [State.RUNNING, State.PREPARING]:
-            raise UsageError('Cannot execute this action on a bundle that is not running.')
+            raise UsageError(
+                'Cannot execute this action on a bundle that is not running.'
+            )
 
         worker = local.worker_model.get_bundle_worker(action['uuid'])
         precondition(
-            local.worker_model.send_json_message(worker['socket_id'], action, 60),
-            'Unable to reach worker.')
+            local.worker_model.send_json_message(
+                worker['socket_id'], action, 60
+            ), 'Unable to reach worker.'
+        )
 
-        new_actions = getattr(bundle.metadata, 'actions', []) + [BundleAction.as_string(action)]
+        new_actions = getattr(bundle.metadata, 'actions',
+                              []) + [BundleAction.as_string(action)]
         db_update = {'metadata': {'actions': new_actions}}
         local.model.update_bundle(bundle, db_update)
 

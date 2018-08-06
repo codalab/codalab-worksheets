@@ -23,7 +23,7 @@ class Metadata(object):
         expected_keys = set(spec.key for spec in metadata_specs)
         for key in self._metadata_keys:
             if key not in expected_keys:
-                raise UsageError('Unexpected metadata key: %s' % (key,))
+                raise UsageError('Unexpected metadata key: %s' % (key, ))
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
@@ -31,7 +31,9 @@ class Metadata(object):
                     # cast int to float
                     value = float(value)
                 # Validate formatted string fields
-                if issubclass(spec.type, basestring) and spec.formatting is not None and value:
+                if issubclass(
+                    spec.type, basestring
+                ) and spec.formatting is not None and value:
                     try:
                         if spec.formatting == 'duration':
                             formatting.parse_duration(value)
@@ -43,11 +45,14 @@ class Metadata(object):
                         raise UsageError(e.message)
                 if value is not None and not isinstance(value, spec.type):
                     raise UsageError(
-                      'Metadata value for %s should be of type %s, was %s (type %s)' %
-                      (spec.key, spec.type.__name__, value, type(value).__name__)
+                        'Metadata value for %s should be of type %s, was %s (type %s)'
+                        % (
+                            spec.key, spec.type.__name__, value,
+                            type(value).__name__
+                        )
                     )
             elif not spec.generated:
-                raise UsageError('Missing metadata key: %s' % (spec.key,))
+                raise UsageError('Missing metadata key: %s' % (spec.key, ))
 
     def set_metadata_key(self, key, value):
         '''
@@ -68,7 +73,8 @@ class Metadata(object):
                 metadata_dict[spec.key] = spec.get_constructor()()
             metadata_spec_dict[spec.key] = spec
         for row in rows:
-            (maybe_unicode_key, value) = (row['metadata_key'], row['metadata_value'])
+            (maybe_unicode_key,
+             value) = (row['metadata_key'], row['metadata_value'])
             # If the key is Unicode text (which is the case if it was extracted from a
             # database), cast it to a string. This operation encodes it with UTF-8.
             key = str(maybe_unicode_key)
@@ -82,8 +88,8 @@ class Metadata(object):
             else:
                 if metadata_dict.get(key):
                     raise UsageError(
-                      'Got duplicate values %s and %s for key %s' %
-                      (metadata_dict[key], value, key)
+                        'Got duplicate values %s and %s for key %s' %
+                        (metadata_dict[key], value, key)
                     )
                 # Convert string to the right type (e.g., string to int)
                 metadata_dict[key] = spec.get_constructor()(value)
@@ -100,13 +106,16 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
-                if value == None: continue
-                values = value if spec.type == list else (value,)
+                if value == None:
+                    continue
+                values = value if spec.type == list else (value, )
                 for value in values:
-                    result.append({
-                      'metadata_key': unicode(spec.key),
-                      'metadata_value': unicode(value),
-                    })
+                    result.append(
+                        {
+                            'metadata_key': unicode(spec.key),
+                            'metadata_value': unicode(value),
+                        }
+                    )
         return result
 
     def to_dict(self):
@@ -115,7 +124,4 @@ class Metadata(object):
         an appropriate one to save to a database.
         '''
         items = [(key, getattr(self, key)) for key in self._metadata_keys]
-        return {
-          key: value
-          for (key, value) in items
-        }
+        return {key: value for (key, value) in items}

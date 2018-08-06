@@ -43,8 +43,10 @@ try:
     using_sysrandom = True
 except NotImplementedError:
     import warnings
-    warnings.warn('A secure pseudo-random number generator is not available '
-                  'on your system. Falling back to Mersenne Twister.')
+    warnings.warn(
+        'A secure pseudo-random number generator is not available '
+        'on your system. Falling back to Mersenne Twister.'
+    )
     using_sysrandom = False
 
 
@@ -65,10 +67,12 @@ def force_bytes(s, encoding='utf-8', errors='strict'):
         return s.encode(encoding, errors)
 
 
-def get_random_string(length=12,
-                      allowed_chars='abcdefghijklmnopqrstuvwxyz'
-                                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
-                      secret=''):
+def get_random_string(
+    length=12,
+    allowed_chars='abcdefghijklmnopqrstuvwxyz'
+    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+    secret=''
+):
     """
     Returns a securely generated random string.
     The default length of 12 with the a-z, A-Z, 0-9 character set returns
@@ -89,11 +93,10 @@ def get_random_string(length=12,
         # is better than absolute predictability.
         random.seed(
             hashlib.sha256(
-                ("%s%s%s" % (
-                    random.getstate(),
-                    time.time(),
-                    secret)).encode('utf-8')
-            ).digest())
+                ("%s%s%s" % (random.getstate(), time.time(),
+                             secret)).encode('utf-8')
+            ).digest()
+        )
     return ''.join(random.choice(allowed_chars) for i in range(length))
 
 
@@ -118,6 +121,7 @@ if hasattr(hmac, "compare_digest"):
     def constant_time_compare(val1, val2):
         return hmac.compare_digest(force_bytes(val1), force_bytes(val2))
 else:
+
     def constant_time_compare(val1, val2):
         """
         Returns True if the two strings are equal, False otherwise.
@@ -140,6 +144,7 @@ else:
 
 
 if hasattr(hashlib, "pbkdf2_hmac"):
+
     def pbkdf2(password, salt, iterations, dklen=0, digest=None):
         """
         Implements PBKDF2 with the same API as Django's existing
@@ -153,8 +158,10 @@ if hasattr(hashlib, "pbkdf2_hmac"):
         password = force_bytes(password)
         salt = force_bytes(salt)
         return hashlib.pbkdf2_hmac(
-            digest().name, password, salt, iterations, dklen)
+            digest().name, password, salt, iterations, dklen
+        )
 else:
+
     def pbkdf2(password, salt, iterations, dklen=0, digest=None):
         """
         Implements PBKDF2 as defined in RFC 2898, section 5.2
@@ -176,7 +183,7 @@ else:
         hlen = digest().digest_size
         if not dklen:
             dklen = hlen
-        if dklen > (2 ** 32 - 1) * hlen:
+        if dklen > (2**32 - 1) * hlen:
             raise OverflowError('dklen too big')
         l = -(-dklen // hlen)
         r = dklen - (l - 1) * hlen

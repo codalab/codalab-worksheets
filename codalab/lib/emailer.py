@@ -5,7 +5,6 @@ import logging
 import smtplib
 import sys
 
-
 log = logging.getLogger(__name__)
 
 
@@ -15,7 +14,16 @@ class Emailer(object):
 
 
 class SMTPEmailer(Emailer):
-    def __init__(self, host, user, password, default_sender, server_email, port=587, use_tls=True):
+    def __init__(
+        self,
+        host,
+        user,
+        password,
+        default_sender,
+        server_email,
+        port=587,
+        use_tls=True
+    ):
         """
         :param host: SMTP server hostname
         :param user: SMTP user name
@@ -35,8 +43,15 @@ class SMTPEmailer(Emailer):
         self.use_tls = use_tls
         self.do_login = (self.password != None)
 
-    def send_email(self, subject, body, recipient, sender=None,
-                   mime_type='plain', charset='us-ascii'):
+    def send_email(
+        self,
+        subject,
+        body,
+        recipient,
+        sender=None,
+        mime_type='plain',
+        charset='us-ascii'
+    ):
         """
         Send email
 
@@ -60,7 +75,7 @@ class SMTPEmailer(Emailer):
                 mail_server.starttls()
                 mail_server.ehlo()
 
-            if self.do_login: 
+            if self.do_login:
                 mail_server.login(self.user, self.password)
 
             message = MIMEText(body, mime_type, charset)
@@ -68,7 +83,9 @@ class SMTPEmailer(Emailer):
             message["To"] = recipient
             message["Subject"] = subject
 
-            mail_server.sendmail(self.server_email, recipient, message.as_string())
+            mail_server.sendmail(
+                self.server_email, recipient, message.as_string()
+            )
             mail_server.quit()
 
             log.info("Email sent to %s." % recipient)
@@ -76,7 +93,8 @@ class SMTPEmailer(Emailer):
 
         except smtplib.SMTPException:
             log.error("Failed to send email, defaulting to console.")
-            ConsoleEmailer(sys.stderr).send_email(subject, body, recipient, sender)
+            ConsoleEmailer(sys.stderr
+                          ).send_email(subject, body, recipient, sender)
 
 
 class ConsoleEmailer(Emailer):
@@ -88,10 +106,10 @@ class ConsoleEmailer(Emailer):
         self.out = out
 
     def send_email(self, subject, body, recipient, sender=None):
-        print >>self.out, ("=" * 40)
-        print >>self.out, "From: %s" % (sender or 'console')
-        print >>self.out, "To: %s" % recipient
-        print >>self.out, "Subject: %s" % subject
-        print >>self.out
-        print >>self.out, body
-        print >>self.out, ("=" * 40)
+        print >> self.out, ("=" * 40)
+        print >> self.out, "From: %s" % (sender or 'console')
+        print >> self.out, "To: %s" % recipient
+        print >> self.out, "Subject: %s" % subject
+        print >> self.out
+        print >> self.out, body
+        print >> self.out, ("=" * 40)

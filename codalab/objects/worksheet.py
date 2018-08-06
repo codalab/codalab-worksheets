@@ -47,10 +47,12 @@ class Worksheet(ORMObject):
         super(Worksheet, self).update_in_memory(row)
         if items is not None:
             self.items = [
-                {str(k): v for k, v in item.iteritems()}  # Ensure key is string
+                {str(k): v
+                 for k, v in item.iteritems()}  # Ensure key is string
                 for item in items
             ]
-            self.last_item_id = max(item['id'] for item in items) if items else -1
+            self.last_item_id = max(item['id']
+                                    for item in items) if items else -1
         else:
             self.items = None
             self.last_item_id = None
@@ -61,8 +63,7 @@ class Worksheet(ORMObject):
             # Convert to the canonical tuple form that the model methods currently use
             return (
                 item.get('bundle_uuid', None),
-                item.get('subworksheet_uuid', None),
-                item.get('value', ''),
+                item.get('subworksheet_uuid', None), item.get('value', ''),
                 item['type']
             )
 

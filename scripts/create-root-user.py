@@ -21,21 +21,30 @@ if len(sys.argv) == 2:
     password = sys.argv[1]
 else:
     while True:
-        password = getpass.getpass('Password for %s(%s): ' % (username, user_id))
+        password = getpass.getpass(
+            'Password for %s(%s): ' % (username, user_id)
+        )
         if getpass.getpass('Confirm password: ') == password:
             break
-    
+
         print 'Passwords don\'t match. Try again.'
         print
 
 if model.get_user(user_id=user_id, check_active=False):
     update = {
-        "user_id": user_id,
-        "user_name": username,
-        "password": User.encode_password(password, crypt_util.get_random_string()),
-        "is_active": True,
-        "is_verified": True,
+        "user_id":
+            user_id,
+        "user_name":
+            username,
+        "password":
+            User.encode_password(password, crypt_util.get_random_string()),
+        "is_active":
+            True,
+        "is_verified":
+            True,
     }
     model.update_user_info(update)
 else:
-    model.add_user(username, '', '', '', password, '', user_id=user_id, is_verified=True)
+    model.add_user(
+        username, '', '', '', password, '', user_id=user_id, is_verified=True
+    )

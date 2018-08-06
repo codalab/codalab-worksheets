@@ -9,7 +9,6 @@ import pipes
 
 from codalabworker import formatting as worker_formatting
 
-
 NONE_PLACEHOLDER = u'<none>'
 BINARY_PLACEHOLDER = u'<binary>'
 
@@ -93,6 +92,7 @@ def parse_duration(s):
     except (IndexError, ValueError):
         pass  # continue to next line and throw error
     raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
+
 
 ############################################################
 

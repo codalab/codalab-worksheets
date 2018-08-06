@@ -24,7 +24,9 @@ class JsonApiPlugin(object):
                 if format_errors:
                     msg = err.messages
                 else:
-                    msg = '\n'.join([e['detail'] for e in err.messages['errors']])
+                    msg = '\n'.join(
+                        [e['detail'] for e in err.messages['errors']]
+                    )
                 abort(httplib.BAD_REQUEST, msg)
 
         return wrapper
