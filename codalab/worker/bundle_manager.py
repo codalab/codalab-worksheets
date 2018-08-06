@@ -134,10 +134,17 @@ class BundleManager(object):
                 failed_uuids = [
                     uuid for uuid, state in parent_states.iteritems()
                     if state == State.FAILED]
+                killed_uuids = [
+                    uuid for uuid, state in parent_states.iteritems()
+                    if state == State.KILLED]
+                failure_message = ''
                 if failed_uuids:
-                    bundles_to_fail.append(
-                        (bundle,
-                         'Parent bundles failed: %s' % ', '.join(failed_uuids)))
+                    failure_message += ' Parent bundles failed: %s' % ', '.join(failed_uuids)
+                if killed_uuids:
+                    failure_message += ' Parent bundles were killed: %s' % ', '.join(failed_uuids)
+                if failure_message:
+                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results fo failed or killed bundles)'
+                    bundles_to_fail.append((bundle, failure_message))
                     continue
 
             if all(state in acceptable_states for state in parent_states.itervalues()):
@@ -256,9 +263,10 @@ class BundleManager(object):
         """
         for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
             worker = workers.get_bundle_worker(bundle.uuid)
-            if (worker is not None and
-                    self._worker_model.send_json_message(worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2)):
-
+            if worker is None:
+                logger.info('Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle')
+                self._model.set_offline_bundle(bundle)
+            if self._worker_model.send_json_message(worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2):
                     logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
                     self._model.finish_bundle(bundle)
 
@@ -268,11 +276,13 @@ class BundleManager(object):
         Bundles in WORKER_OFFLINE state can be moved back to the RUNNING or PREPARING state if a
         worker resumes the bundle indicating that it's still in one of those states.
         """
-        for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run') + self._model.batch_get_bundles(state=State.PREPARING, bundle_type='run'):
+        active_bundles = self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run') + self._model.batch_get_bundles(state=State.PREPARING, bundle_type='run')
+        now = time.time()
+        for bundle in active_bundles:
             failure_message = None
             if not workers.is_running(bundle.uuid):
                 failure_message = 'No worker claims bundle'
-            if time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS:
+            if now - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS:
                 failure_message = 'Worker offline'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
