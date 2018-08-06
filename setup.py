@@ -11,7 +11,7 @@ if int(setuptools.__version__.split('.')[0]) < 25:
 
 
 def get_requirements(*requirements_file_paths):
-    requirements = ['codalabworker']
+    requirements = ['codalabworker>=0.2.31']
     for requirements_file_path in requirements_file_paths:
         with open(requirements_file_path) as requirements_file:
             for line in requirements_file:
