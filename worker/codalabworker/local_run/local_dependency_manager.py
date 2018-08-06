@@ -170,12 +170,12 @@ class LocalFileSystemDependencyManager(StateTransitioner,
                     failed_deps = {
                         dep: state
                         for dep, state in self._dependencies.items()
-                        if dep.stage == DependencyStage.FAILED
+                        if state.stage == DependencyStage.FAILED
                     }
                     ready_deps = {
                         dep: state
                         for dep, state in self._dependencies.items()
-                        if dep.stage == DependencyStage.READY
+                        if state.stage == DependencyStage.READY
                         and not state.dependents
                     }
                     if failed_deps:
