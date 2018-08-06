@@ -139,13 +139,12 @@ class BundleManager(object):
             else:
                 failed_uuids = [
                     uuid for uuid, state in parent_states.iteritems()
-                    if state == State.FAILED or state == State.KILLED
+                    if state == State.FAILED
                 ]
                 if failed_uuids:
                     bundles_to_fail.append((
                         bundle,
-                        'Parent bundles failed: %s (please use the --allow-failed-dependencies flag if you want to run with failed dependencies)'
-                        % ', '.join(failed_uuids)))
+                        'Parent bundles failed: %s' % ', '.join(failed_uuids)))
                     continue
 
             if all(state in acceptable_states
