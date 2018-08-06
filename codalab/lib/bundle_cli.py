@@ -2804,7 +2804,7 @@ class BundleCLI(object):
             user = client.fetch('users', args.user_spec)
         self.print_user_info(user, args.field)
 
-    def print_user_info(self, user, fields):
+    def print_user_info(self, user, fields=None):
         def print_attribute(key, user, should_pretty_print):
             # These fields will not be returned by the server if the
             # authenticated user is not root, so don't crash if you can't read them
