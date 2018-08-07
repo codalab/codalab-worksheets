@@ -1,0 +1,123 @@
+FROM ubuntu:xenial
+MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
+
+# Installed packages:
+
+# default-jdk
+# scala (2.12.6)
+# sbt
+# python (2.7)
+# python3 (3.5)
+# pip
+# pip3
+# cmake
+# numpy
+# scipy
+# matplotlib
+# pandas
+# sympy
+# nose
+# spacy
+# spacy-en
+# tqdm
+# wheel
+# scikit-learn
+# scikit-image
+# dlib
+# OpenAI gym[all]
+# NLTK (no data)
+# tensorflow CPU
+# keras
+# tensorboard
+# pytorch CPU
+# torchvision
+
+RUN apt-get -y update; apt-get -y upgrade;
+RUN apt-get -y install apt-transport-https;
+RUN apt-get -y install git;
+RUN apt-get -y install python2.7;
+RUN apt-get -y install python-pip;
+RUN apt-get -y install python-dev;
+RUN apt-get -y install python-software-properties;
+RUN apt-get -y install python-tk;
+RUN apt-get -y install software-properties-common;
+RUN apt-get -y install build-essential;
+RUN apt-get -y install cmake;
+RUN apt-get -y install default-jdk;
+RUN apt-get -y install libhdf5-dev;
+RUN apt-get -y install swig;
+RUN apt-get -y install wget;
+
+## Scala
+RUN wget http://scala-lang.org/files/archive/scala-2.12.6.deb
+RUN dpkg -i scala-2.12.6.deb
+RUN echo "deb https://dl.bintray.com/sbt/debian /" | tee -a /etc/apt/sources.list.d/sbt.list
+RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 2EE0EA64E40A89B84B2DF73499E82A75642AC823
+RUN apt-get -y update
+RUN apt-get -y install sbt
+
+RUN apt-get clean && apt-get autoremove
+
+RUN pip2 install -U pip
+RUN pip2 install -U \
+      spacy \
+      tqdm \
+      wheel \
+      scikit-learn \
+      scikit-image \
+      dlib \
+      gym[all] \
+      nltk \
+      numpy \
+      scipy \
+      matplotlib \
+      pandas \
+      sympy \
+      nose;
+
+RUN python -m spacy download en
+
+# Set up python3
+
+RUN apt-get -y install python3-pip;
+RUN apt-get -y install python3-dev;
+RUN apt-get -y install python3-software-properties;
+
+RUN pip3 install -U pip
+RUN pip3 install -U \
+      numpy \
+      spacy \
+      tqdm \
+      wheel \
+      scikit-learn \
+      scikit-image \
+      dlib \
+      gym[all] \
+      nltk \
+      scipy \
+      matplotlib \
+      pandas \
+      sympy \
+      nose;
+
+RUN python3 -m spacy download en
+
+
+# CPU-specific commands
+
+RUN pip2 install -U \
+      tensorflow \
+      tensorboard \
+      keras
+
+RUN pip2 install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27mu-linux_x86_64.whl || pip install -U http://download.pytorch.org/whl/cpu/torch-0.4.1-cp27-cp27m-linux_x86_64.whl
+RUN pip2 install torchvision
+
+
+RUN pip3 install -U \
+      tensorflow \
+      tensorboard \
+      keras
+
+RUN pip3 install http://download.pytorch.org/whl/cpu/torch-0.4.1-cp35-cp35m-linux_x86_64.whl
+RUN pip3 install torchvision
