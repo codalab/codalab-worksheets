@@ -10,41 +10,39 @@ from codalab.objects.chat_box_qa import ChatBoxQA
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
-@get('/chats', apply=AuthenticatedPlugin())
+@get("/chats", apply=AuthenticatedPlugin())
 def get_chat_box():
     """
     Return a list of chats that the current user has had
     """
-    query = {
-        'user_id': request.user.user_id,
-    }
+    query = {"user_id": request.user.user_id}
     return {
-        'chats': local.model.get_chat_log_info(query),
-        'root_user_id': local.model.root_user_id,
-        'system_user_id': local.model.system_user_id,
+        "chats": local.model.get_chat_log_info(query),
+        "root_user_id": local.model.root_user_id,
+        "system_user_id": local.model.system_user_id,
     }
 
 
-@post('/chats', apply=AuthenticatedPlugin())
+@post("/chats", apply=AuthenticatedPlugin())
 def post_chat_box():
     """
     Add the chat to the log.
     Return an auto response, if the chat is directed to the system.
     Otherwise, return an updated chat list of the sender.
     """
-    recipient_user_id = request.POST.get('recipientUserId', None)
-    message = request.POST.get('message', None)
-    worksheet_uuid = request.POST.get('worksheetId', -1)
-    bundle_uuid = request.POST.get('bundleId', -1)
+    recipient_user_id = request.POST.get("recipientUserId", None)
+    message = request.POST.get("message", None)
+    worksheet_uuid = request.POST.get("worksheetId", -1)
+    bundle_uuid = request.POST.get("bundleId", -1)
     info = {
-        'sender_user_id': request.user.user_id,
-        'recipient_user_id': recipient_user_id,
-        'message': message,
-        'worksheet_uuid': worksheet_uuid,
-        'bundle_uuid': bundle_uuid,
+        "sender_user_id": request.user.user_id,
+        "recipient_user_id": recipient_user_id,
+        "message": message,
+        "worksheet_uuid": worksheet_uuid,
+        "bundle_uuid": bundle_uuid,
     }
     chats = add_chat_log_info(info)
-    return {'chats': chats}
+    return {"chats": chats}
 
 
 # @get('/faqs')
@@ -60,10 +58,12 @@ def get_faq():
     }
     Currently disabled. Needs further work.
     """
-    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/chat_box_qa.yaml')
-    with open(file_path, 'r') as stream:
+    file_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), "../objects/chat_box_qa.yaml"
+    )
+    with open(file_path, "r") as stream:
         content = yaml.load(stream)
-        return {'faq': content}
+        return {"faq": content}
 
 
 def add_chat_log_info(query_info):
@@ -81,19 +81,21 @@ def add_chat_log_info(query_info):
     Otherwise, return an updated chat list of the sender.
     """
     updated_data = local.model.add_chat_log_info(query_info)
-    if query_info.get('recipient_user_id') != local.model.system_user_id:
+    if query_info.get("recipient_user_id") != local.model.system_user_id:
         return updated_data
     else:
-        message = query_info.get('message')
-        worksheet_uuid = query_info.get('worksheet_uuid')
-        bundle_uuid = query_info.get('bundle_uuid')
-        bot_response = format_message_response(ChatBoxQA.answer(message, worksheet_uuid, bundle_uuid))
+        message = query_info.get("message")
+        worksheet_uuid = query_info.get("worksheet_uuid")
+        bundle_uuid = query_info.get("bundle_uuid")
+        bot_response = format_message_response(
+            ChatBoxQA.answer(message, worksheet_uuid, bundle_uuid)
+        )
         info = {
-            'sender_user_id': local.model.system_user_id,
-            'recipient_user_id': request.user.user_id,
-            'message': bot_response,
-            'worksheet_uuid': worksheet_uuid,
-            'bundle_uuid': bundle_uuid,
+            "sender_user_id": local.model.system_user_id,
+            "recipient_user_id": request.user.user_id,
+            "message": bot_response,
+            "worksheet_uuid": worksheet_uuid,
+            "bundle_uuid": bundle_uuid,
         }
         local.model.add_chat_log_info(info)
         return bot_response
@@ -110,12 +112,11 @@ def format_message_response(params):
     Return the automatic response that will be sent back to the user's chat box.
     """
     if params is None:
-        return 'Thank you for your question. Our staff will get back to you as soon as we can.'
+        return "Thank you for your question. Our staff will get back to you as soon as we can."
     else:
         question, response, command = params
-        result = 'This is the question we are trying to answer: ' + question + '\n'
-        result += response + '\n'
-        result += 'You can try to run the following command: \n'
+        result = "This is the question we are trying to answer: " + question + "\n"
+        result += response + "\n"
+        result += "You can try to run the following command: \n"
         result += command
         return result
-

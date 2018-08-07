@@ -27,14 +27,15 @@ def nested_dict_get(obj, *args, **kwargs):
                    Any other kwarg will raise an exception.
     :return: retrieved value or default if it doesn't exist
     """
-    default = kwargs.pop('default', None)
-    precondition(not kwargs, 'unsupported kwargs %s' % kwargs.keys())
+    default = kwargs.pop("default", None)
+    precondition(not kwargs, "unsupported kwargs %s" % kwargs.keys())
     try:
         for arg in args:
             obj = obj[arg]
         return obj
     except (KeyError, TypeError):
         return default
+
 
 def parse_key_target(spec):
     """
@@ -71,6 +72,7 @@ def parse_target_spec(spec):
     match = re.match(TARGET_REGEX, spec)
     return match.groups() if match else (None, None, None, None)
 
+
 def desugar_command(orig_target_spec, command):
     """
     Desugar command, returning mutated target_spec and command.
@@ -83,30 +85,33 @@ def desugar_command(orig_target_spec, command):
         [glove.6B/vector.txt:word-vectors//glove.6B/vector.txt], glove.6B/vector.txt
     """
     # If key is not specified, use b1, b2, b3 by default.
-    pattern = re.compile('^([^%]*)%([^%]+)%(.*)$')
-    buf = ''  # Build up the modified command
+    pattern = re.compile("^([^%]*)%([^%]+)%(.*)$")
+    buf = ""  # Build up the modified command
 
     key2val = {}  # e.g., b1 => a.txt
     val2key = {}  # e.g., a.txt => b1 (use first key)
 
     def get(dep):  # Return the key
         key, val = parse_key_target(dep)
-        if key == '':
+        if key == "":
             # key only matches empty string if ':' present
             _, _, bundle, subpath = parse_target_spec(val)
             key = subpath if subpath is not None else bundle
         elif key is None:
             # key only returns None if ':' not present in original spec
-            key = val2key[val] if val in val2key else 'b' + str(len(target_spec) + 1)
+            key = val2key[val] if val in val2key else "b" + str(len(target_spec) + 1)
 
         if val not in val2key:
             val2key[val] = key
         if key in key2val:
             if key2val[key] != val:
-                raise UsageError('key %s exists with multiple values: %s and %s' % (key, key2val[key], val))
+                raise UsageError(
+                    "key %s exists with multiple values: %s and %s"
+                    % (key, key2val[key], val)
+                )
         else:
             key2val[key] = val
-            target_spec.append(key + ':' + val)
+            target_spec.append(key + ":" + val)
         return key
 
     target_spec = []

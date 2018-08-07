@@ -49,35 +49,35 @@ def rate_limited(max_calls_per_hour):
     A running count of remaining calls allowed is kept for the last hour.
     Every call beyond this limit will raise a RateLimitExceededError.
     """
+
     def decorate(func):
         lock = threading.Lock()
-        state = {
-            'calls_left': max_calls_per_hour,
-            'time_of_last_call': time.time(),
-        }
+        state = {"calls_left": max_calls_per_hour, "time_of_last_call": time.time()}
 
         @wraps(func)
         def rate_limited_function(*args, **kwargs):
             with lock:
                 # Measure elapsed time since last call
                 now = time.time()
-                seconds_since_last_call = now - state['time_of_last_call']
-                state['time_of_last_call'] = now
-                
+                seconds_since_last_call = now - state["time_of_last_call"]
+                state["time_of_last_call"] = now
+
                 # Increment the running count of allowed calls for the last
                 # hour at a steady rate
-                state['calls_left'] += seconds_since_last_call * (max_calls_per_hour / 3600)
+                state["calls_left"] += seconds_since_last_call * (
+                    max_calls_per_hour / 3600
+                )
 
                 # Cap the count at the defined max
-                if state['calls_left'] > max_calls_per_hour:
-                    state['calls_left'] = max_calls_per_hour
+                if state["calls_left"] > max_calls_per_hour:
+                    state["calls_left"] = max_calls_per_hour
 
                 # No credit left - abort
-                if state['calls_left'] < 1.0:
+                if state["calls_left"] < 1.0:
                     raise RateLimitExceededError
 
                 # Debit the running count for this call
-                state['calls_left'] -= 1
+                state["calls_left"] -= 1
 
             return func(*args, **kwargs)
 
@@ -94,12 +94,12 @@ def decoded_body():
     # e.g. Content-Type: text/plain; charset=utf-8
     #        -> content_type = 'text/plain'
     #        -> charset = 'utf-8'
-    m = re.match(r'([^;]+)(?:;\s*charset=(.+))?', request.content_type)
+    m = re.match(r"([^;]+)(?:;\s*charset=(.+))?", request.content_type)
     if m is not None:
         content_type = m.group(1)  # unused
-        charset = m.group(2) or 'iso-8859-1'  # could be None
+        charset = m.group(2) or "iso-8859-1"  # could be None
     else:
-        charset = 'iso-8859-1'
+        charset = "iso-8859-1"
     return request.body.read().decode(charset)
 
 
@@ -129,7 +129,7 @@ def query_get_bool(key, default=False):
     try:
         return bool(int(value))
     except ValueError:
-        abort(httplib.BAD_REQUEST, '%r parameter must be integer boolean' % key)
+        abort(httplib.BAD_REQUEST, "%r parameter must be integer boolean" % key)
 
 
 def query_get_json_api_include_set(supported):
@@ -139,18 +139,21 @@ def query_get_json_api_include_set(supported):
 
     :param set[str] supported: set of supported resources to include
     """
-    query_str = request.query.get('include', None)
+    query_str = request.query.get("include", None)
     if query_str is None:
         return set()
-    requested = set(query_str.split(','))
+    requested = set(query_str.split(","))
     if not requested <= supported:
-        abort(httplib.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported)))
+        abort(
+            httplib.BAD_REQUEST,
+            "?include=%s not supported" % ",".join(list(requested - supported)),
+        )
     return requested
 
 
 def json_api_meta(doc, meta_update):
     precondition(isinstance(meta_update, dict), "Meta data must be dict")
-    meta = doc.setdefault('meta', {})
+    meta = doc.setdefault("meta", {})
     meta.update(meta_update)
     return doc
 
@@ -159,11 +162,11 @@ def json_api_include(doc, schema, resources):
     if not isinstance(resources, list):
         resources = [resources]
 
-    if 'included' not in doc:
-        doc['included'] = []
+    if "included" not in doc:
+        doc["included"] = []
 
     schema.many = True
-    doc['included'].extend(schema.dump(resources).data['data'])
+    doc["included"].extend(schema.dump(resources).data["data"])
     return doc
 
 
@@ -171,14 +174,14 @@ def bottle_patch(path=None, **options):
     """Convenience decorator of the same form as @get and @post in the
     Bottle module.
     """
-    return app().route(path, 'PATCH', **options)
+    return app().route(path, "PATCH", **options)
 
 
 def redirect_with_query(redirect_uri, params):
     """Return a Bottle redirect to the given target URI with query parameters
     encoded from the params dict.
     """
-    return redirect(redirect_uri + '?' + urllib.urlencode(params))
+    return redirect(redirect_uri + "?" + urllib.urlencode(params))
 
 
 """
@@ -223,15 +226,15 @@ def extract_params(extract_body):
     else:
         body = None
     headers = dict(request.headers)
-    if 'wsgi.input' in headers:
-        del headers['wsgi.input']
-    if 'wsgi.errors' in headers:
-        del headers['wsgi.errors']
+    if "wsgi.input" in headers:
+        del headers["wsgi.input"]
+    if "wsgi.errors" in headers:
+        del headers["wsgi.errors"]
 
     return uri, http_method, body, headers
 
 
-def to_bytes(text, encoding='utf-8'):
+def to_bytes(text, encoding="utf-8"):
     """Make sure text is bytes type."""
     if not text:
         return text
@@ -240,7 +243,7 @@ def to_bytes(text, encoding='utf-8'):
     return text
 
 
-def decode_base64(text, encoding='utf-8'):
+def decode_base64(text, encoding="utf-8"):
     """Decode base64 string."""
     text = to_bytes(text, encoding)
     return to_unicode(base64.b64decode(text), encoding)
@@ -248,7 +251,8 @@ def decode_base64(text, encoding='utf-8'):
 
 def create_response(headers, body, status):
     """Create response class for Bottle."""
-    return HTTPResponse(body or '', status=status, headers=headers)
+    return HTTPResponse(body or "", status=status, headers=headers)
+
 
 # END ADAPTED FROM flask_oauthlib.utils #
 
@@ -342,16 +346,16 @@ def import_string(import_name, silent=False):
     # force the import name to automatically convert to strings
     # __import__ is not able to handle unicode strings in the fromlist
     # if the module is a package
-    import_name = str(import_name).replace(':', '.')
+    import_name = str(import_name).replace(":", ".")
     try:
         __import__(import_name)
     except ImportError:
-        if '.' not in import_name:
+        if "." not in import_name:
             raise
     else:
         return sys.modules[import_name]
 
-    module_name, obj_name = import_name.rsplit('.', 1)
+    module_name, obj_name = import_name.rsplit(".", 1)
     try:
         module = __import__(module_name, None, None, [obj_name])
     except ImportError:
@@ -363,5 +367,6 @@ def import_string(import_name, silent=False):
         return getattr(module, obj_name)
     except AttributeError as e:
         raise ImportError(e)
+
 
 # END ADAPTED FROM werkzeug.utils #

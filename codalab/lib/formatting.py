@@ -10,8 +10,8 @@ import pipes
 from codalabworker import formatting as worker_formatting
 
 
-NONE_PLACEHOLDER = u'<none>'
-BINARY_PLACEHOLDER = u'<binary>'
+NONE_PLACEHOLDER = u"<none>"
+BINARY_PLACEHOLDER = u"<binary>"
 
 
 def contents_str(input_string, verbose=False):
@@ -22,7 +22,7 @@ def contents_str(input_string, verbose=False):
     Return a printable unicode string.
     """
     if input_string is None:
-        return NONE_PLACEHOLDER if verbose else u''
+        return NONE_PLACEHOLDER if verbose else u""
 
     # Unicode is always printable
     if isinstance(input_string, unicode):
@@ -30,9 +30,9 @@ def contents_str(input_string, verbose=False):
 
     # Assume string is UTF-8 or else it contains arbitrary binary data that should not be rendered
     try:
-        return input_string.decode('utf-8')
+        return input_string.decode("utf-8")
     except UnicodeDecodeError:
-        return BINARY_PLACEHOLDER if verbose else u''
+        return BINARY_PLACEHOLDER if verbose else u""
 
 
 def verbose_contents_str(input_string):
@@ -47,7 +47,7 @@ size_str = worker_formatting.size_str
 
 
 def date_str(ts):
-    return datetime.datetime.fromtimestamp(ts).isoformat(sep=' ')
+    return datetime.datetime.fromtimestamp(ts).isoformat(sep=" ")
 
 
 def datetime_str(dt):
@@ -65,7 +65,7 @@ def ratio_str(to_str, a, b):
     """
     Example: to_str = duration_str, a = 60, b = 120 => "1m / 2m (50%)"
     """
-    return '%s / %s (%.1f%%)' % (to_str(a), to_str(b), 100.0 * a / b)
+    return "%s / %s (%.1f%%)" % (to_str(a), to_str(b), 100.0 * a / b)
 
 
 parse_size = worker_formatting.parse_size
@@ -80,19 +80,20 @@ def parse_duration(s):
         if s[-1].isdigit():
             return float(s)
         n, unit = float(s[0:-1]), s[-1].lower()
-        if unit == 's':
+        if unit == "s":
             return n
-        if unit == 'm':
+        if unit == "m":
             return n * 60
-        if unit == 'h':
+        if unit == "h":
             return n * 60 * 60
-        if unit == 'd':
+        if unit == "d":
             return n * 60 * 60 * 24
-        if unit == 'y':
+        if unit == "y":
             return n * 60 * 60 * 24 * 365
     except (IndexError, ValueError):
         pass  # continue to next line and throw error
-    raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
+    raise ValueError("Invalid duration: %s, expected <number>[<s|m|h|d|y>]" % s)
+
 
 ############################################################
 
@@ -105,7 +106,7 @@ def quote(token):
     :param token: string token
     :return: properly-quoted string token
     """
-    if ' ' in token or '"' in token:
+    if " " in token or '"' in token:
         return '"' + token.replace('"', '\\"') + '"'
     return token
 
@@ -117,7 +118,7 @@ def tokens_to_string(tokens):
     :param tokens: list of string tokens
     :return: space-separated string of tokens
     """
-    return ' '.join(map(pipes.quote, tokens))
+    return " ".join(map(pipes.quote, tokens))
 
 
 def string_to_tokens(s):
@@ -135,7 +136,7 @@ def string_to_tokens(s):
 
 
 def pretty_json(obj):
-    return json.dumps(obj, sort_keys=True, indent=4, separators=(',', ': '))
+    return json.dumps(obj, sort_keys=True, indent=4, separators=(",", ": "))
 
 
 def verbose_pretty_json(obj):

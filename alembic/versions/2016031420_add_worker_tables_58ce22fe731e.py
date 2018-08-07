@@ -7,8 +7,8 @@ Create Date: 2016-03-14 20:56:10.411474
 """
 
 # revision identifiers, used by Alembic.
-revision = '58ce22fe731e'
-down_revision = '40d61632fd13'
+revision = "58ce22fe731e"
+down_revision = "40d61632fd13"
 
 from alembic import op
 
@@ -19,7 +19,7 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_table('worker_socket')
-    op.drop_table('worker_run')
-    op.drop_table('worker_dependency')
-    op.drop_table('worker')
+    op.drop_table("worker_socket")
+    op.drop_table("worker_run")
+    op.drop_table("worker_dependency")
+    op.drop_table("worker")

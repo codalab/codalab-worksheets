@@ -1,13 +1,14 @@
-'''
+"""
 ORMObject is an abstract base class for an object can be serialized to and
 deserialized from a database row. Subclasses of this class can be initialized
 with a database row, and their to_dict method serializes them back to a row.
 
 To use this class, subclass it and set its COLUMNS class attribute to be the
 non-id columns of a SQLAlchemy table.
-'''
+"""
 from codalab.common import precondition
 import datetime
+
 
 class ORMObject(object):
     COLUMNS = None
@@ -16,18 +17,18 @@ class ORMObject(object):
         self.update_in_memory(dict(row), strict=strict)
 
     def update_in_memory(self, row, strict=False):
-        '''
+        """
         Initialize the attributes on this object from the data in the row.
         The attributes of the row are inferred from the table columns.
 
         If strict is True, checks that all columns are included in the row.
-        '''
+        """
         if strict:
             for column in self.COLUMNS:
-                precondition(column in row, 'Row %s missing column: %s' % (row, column))
+                precondition(column in row, "Row %s missing column: %s" % (row, column))
         for (key, value) in row.iteritems():
-            message = 'Row %s has extra column: %s' % (row, key)
-            precondition(key in self.COLUMNS or key == 'id', message)
+            message = "Row %s has extra column: %s" % (row, key)
+            precondition(key in self.COLUMNS or key == "id", message)
             setattr(self, key, value)
 
     def to_dict(self, strict=True):
@@ -39,7 +40,8 @@ class ORMObject(object):
         """
         result = {}
         for column in self.COLUMNS:
-            if not strict and not hasattr(self, column): continue
+            if not strict and not hasattr(self, column):
+                continue
             value = getattr(self, column)
             result[column] = value
         return result

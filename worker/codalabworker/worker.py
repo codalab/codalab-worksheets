@@ -24,8 +24,9 @@ but they expect the platform specific RunManagers they use to implement a common
 
 
 class Worker(object):
-    def __init__(self, create_run_manager, commit_file, worker_id, tag,
-                 work_dir, bundle_service):
+    def __init__(
+        self, create_run_manager, commit_file, worker_id, tag, work_dir, bundle_service
+    ):
         self.id = worker_id
         self._state_committer = JsonStateCommitter(commit_file)
         self._tag = tag
@@ -45,7 +46,7 @@ class Worker(object):
                 self._run_manager.save_state()
 
                 if not self._last_checkin_successful:
-                    logger.info('Connected! Successful check in.')
+                    logger.info("Connected! Successful check in.")
                 self._last_checkin_successful = True
 
             except Exception:
@@ -64,40 +65,41 @@ class Worker(object):
         processes must be handled asynchronously.
         """
         request = {
-            'version': VERSION,
-            'tag': self._tag,
-            'cpus': self._run_manager.cpus,
-            'gpus': self._run_manager.gpus,
-            'memory_bytes': self._run_manager.memory_bytes,
-            'dependencies': self._run_manager.all_dependencies,
-            'hostname': socket.gethostname(),
-            'runs': self._run_manager.all_runs
+            "version": VERSION,
+            "tag": self._tag,
+            "cpus": self._run_manager.cpus,
+            "gpus": self._run_manager.gpus,
+            "memory_bytes": self._run_manager.memory_bytes,
+            "dependencies": self._run_manager.all_dependencies,
+            "hostname": socket.gethostname(),
+            "runs": self._run_manager.all_runs,
         }
         response = self._bundle_service.checkin(self.id, request)
         if response:
-            action_type = response['type']
-            logger.debug('Received %s message: %s', action_type, response)
-            if action_type in ['read', 'netcat']:
-                run_state = self._run_manager.get_run(response['uuid'])
-                socket_id = response['socket_id']
+            action_type = response["type"]
+            logger.debug("Received %s message: %s", action_type, response)
+            if action_type in ["read", "netcat"]:
+                run_state = self._run_manager.get_run(response["uuid"])
+                socket_id = response["socket_id"]
                 if run_state is None:
                     self.read_run_missing(socket_id)
                     return
-            if action_type == 'run':
-                self._run(response['bundle'], response['resources'])
-            elif action_type == 'read':
-                self._read(socket_id, response['uuid'], response['path'],
-                           response['read_args'])
-            elif action_type == 'netcat':
-                self._netcat(socket_id, response['uuid'], response['port'],
-                             response['message'])
-            elif action_type == 'write':
-                self._write(response['uuid'], response['subpath'],
-                            response['string'])
-            elif action_type == 'kill':
-                self._kill(response['uuid'])
-            elif action_type == 'mark_finalized':
-                self._mark_finalized(response['uuid'])
+            if action_type == "run":
+                self._run(response["bundle"], response["resources"])
+            elif action_type == "read":
+                self._read(
+                    socket_id, response["uuid"], response["path"], response["read_args"]
+                )
+            elif action_type == "netcat":
+                self._netcat(
+                    socket_id, response["uuid"], response["port"], response["message"]
+                )
+            elif action_type == "write":
+                self._write(response["uuid"], response["subpath"], response["string"])
+            elif action_type == "kill":
+                self._kill(response["uuid"])
+            elif action_type == "mark_finalized":
+                self._mark_finalized(response["uuid"])
 
     def _run(self, bundle, resources):
         """
@@ -106,17 +108,14 @@ class Worker(object):
         Otherwise, tell RunManager to create the run.
         """
         now = time.time()
-        start_message = {
-            'hostname': socket.gethostname(),
-            'start_time': int(now),
-        }
+        start_message = {"hostname": socket.gethostname(), "start_time": int(now)}
 
-        if self._bundle_service.start_bundle(self.id, bundle['uuid'],
-                                             start_message):
+        if self._bundle_service.start_bundle(self.id, bundle["uuid"], start_message):
             self._run_manager.create_run(bundle, resources)
         else:
-            print >> sys.stdout, 'Bundle {} no longer assigned to this worker'.format(
-                bundle['uuid'])
+            print >>sys.stdout, "Bundle {} no longer assigned to this worker".format(
+                bundle["uuid"]
+            )
 
     def _read(self, socket_id, uuid, path, read_args):
         def reply(err, message={}, data=None):
@@ -124,11 +123,10 @@ class Worker(object):
 
         try:
             run_state = self._run_manager.get_run(uuid)
-            dep_paths = set([
-                dep['child_path'] for dep in run_state.bundle['dependencies']
-            ])
-            self._run_manager.read(run_state, path, dep_paths, read_args,
-                                   reply)
+            dep_paths = set(
+                [dep["child_path"] for dep in run_state.bundle["dependencies"]]
+            )
+            self._run_manager.read(run_state, path, dep_paths, read_args, reply)
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
@@ -152,8 +150,7 @@ class Worker(object):
 
     def _write(self, uuid, subpath, string):
         run_state = self._run_manager.get_run(uuid)
-        dep_paths = set(
-            [dep['child_path'] for dep in run_state.bundle['dependencies']])
+        dep_paths = set([dep["child_path"] for dep in run_state.bundle["dependencies"]])
         self._run_manager.write(run_state, subpath, dep_paths, string)
 
     def _kill(self, uuid):
@@ -166,21 +163,20 @@ class Worker(object):
     def upload_bundle_contents(self, bundle_uuid, bundle_path, update_status):
         self._execute_bundle_service_command_with_retry(
             lambda: self._bundle_service.update_bundle_contents(
-                self.id, bundle_uuid, bundle_path, update_status))
+                self.id, bundle_uuid, bundle_path, update_status
+            )
+        )
 
     def read_run_missing(self, socket_id):
         message = {
-            'error_code': httplib.INTERNAL_SERVER_ERROR,
-            'error_message': BUNDLE_NO_LONGER_RUNNING_MESSAGE,
+            "error_code": httplib.INTERNAL_SERVER_ERROR,
+            "error_message": BUNDLE_NO_LONGER_RUNNING_MESSAGE,
         }
         self._bundle_service.reply(self.id, socket_id, message)
 
     def _bundle_service_reply(self, socket_id, err, message, data):
         if err:
-            err = {
-                'error_code': err[0],
-                'error_message': err[1],
-            }
+            err = {"error_code": err[0], "error_message": err[1]}
             self._bundle_service.reply(self.id, socket_id, err)
         elif data:
             self._bundle_service.reply_data(self.id, socket_id, message, data)

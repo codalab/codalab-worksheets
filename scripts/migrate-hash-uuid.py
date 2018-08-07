@@ -12,12 +12,13 @@ import os
 import sys
 import shlex
 from subprocess import Popen
-sys.path.append('.')
+
+sys.path.append(".")
 
 from codalab.lib.codalab_manager import CodaLabManager
 from codalab.lib import path_util
 
-dry_run = False if len(sys.argv) > 1 and sys.argv[1] == '-f' else True
+dry_run = False if len(sys.argv) > 1 and sys.argv[1] == "-f" else True
 
 manager = CodaLabManager()
 model = manager.model()
@@ -25,15 +26,15 @@ model = manager.model()
 CODALAB_HOME = manager.codalab_home
 
 """Move data/ directory over to a temp area, and create a staging tree for uuid-based storage"""
-DATA_DIR = os.path.join(CODALAB_HOME, 'data')
-FINAL_LOCATION = os.path.join(CODALAB_HOME, 'bundles')
+DATA_DIR = os.path.join(CODALAB_HOME, "data")
+FINAL_LOCATION = os.path.join(CODALAB_HOME, "bundles")
 
 if not dry_run:
     path_util.make_directory(FINAL_LOCATION)
 
 """For each data hash, get a list of all bundles that have that hash, and make a copy of the bundle in the staging
 area under the UUID for the bundle."""
-data_hashes = reduce(lambda x,y: x+y, path_util.ls(DATA_DIR))
+data_hashes = reduce(lambda x, y: x + y, path_util.ls(DATA_DIR))
 for data_hash in data_hashes:
     orig_location = os.path.join(DATA_DIR, data_hash)
 
@@ -45,23 +46,30 @@ for data_hash in data_hashes:
         # Build the command to be executed in a subshell
         uuid = bundle.uuid
         copy_location = os.path.join(FINAL_LOCATION, uuid)
-        command = '%s %s %s' % ('mv' if rename_allowed else 'cp -a', orig_location, copy_location)
-        print command
+        command = "%s %s %s" % (
+            "mv" if rename_allowed else "cp -a",
+            orig_location,
+            copy_location,
+        )
+        print(command)
         if not dry_run:
             exec_str = shlex.split(command)
             cmd = Popen(exec_str)
             exit_code = cmd.wait()
             if exit_code != 0:
-                print >> sys.stderr, 'command \'%s\' failed(status=%d), aborting...'
+                print >>sys.stderr, "command '%s' failed(status=%d), aborting..."
                 break
 
 
-dry_run_str = """
+dry_run_str = (
+    """
 This was a dry run, no migration occurred. To perform full migration, run again with `-f':
 
     %s -f
-""".rstrip() % sys.argv[0]
+""".rstrip()
+    % sys.argv[0]
+)
 
 explain_str = "Migration complete!"
 
-print >> sys.stderr, dry_run_str if dry_run else explain_str
+print >>sys.stderr, dry_run_str if dry_run else explain_str

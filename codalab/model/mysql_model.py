@@ -2,17 +2,11 @@
 MySQLModel is a subclass of BundleModel that stores metadata on a MySQL
 server that it connects to with the given connect parameters.
 """
-from sqlalchemy import (
-    create_engine,
-    event,
-    exc,
-)
+from sqlalchemy import create_engine, event, exc
 from sqlalchemy.pool import Pool
 
 from codalab.model.bundle_model import BundleModel
-from codalab.common import (
-    UsageError,
-)
+from codalab.common import UsageError
 
 
 @event.listens_for(Pool, "checkout")
@@ -44,9 +38,16 @@ def ping_connection(dbapi_connection, connection_record, connection_proxy):
 
 class MySQLModel(BundleModel):
     def __init__(self, engine_url, default_user_info):
-        if not engine_url.startswith('mysql://'):
-            raise UsageError('Engine URL should start with mysql://')
-        engine = create_engine(engine_url, strategy='threadlocal', pool_size=20, max_overflow=100, pool_recycle=3600, encoding='utf-8')
+        if not engine_url.startswith("mysql://"):
+            raise UsageError("Engine URL should start with mysql://")
+        engine = create_engine(
+            engine_url,
+            strategy="threadlocal",
+            pool_size=20,
+            max_overflow=100,
+            pool_recycle=3600,
+            encoding="utf-8",
+        )
         super(MySQLModel, self).__init__(engine, default_user_info)
 
     def do_multirow_insert(self, connection, table, values):
@@ -59,7 +60,7 @@ class MySQLModel(BundleModel):
     # (See tables.py for more details.)
 
     def encode_str(self, value):
-        return value.encode('utf-8')
+        return value.encode("utf-8")
 
     def decode_str(self, value):
-        return value.decode('utf-8')
+        return value.decode("utf-8")

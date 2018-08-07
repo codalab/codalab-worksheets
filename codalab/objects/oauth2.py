@@ -13,20 +13,26 @@ from codalab.common import UsageError
 class OAuth2Client(object):
     def __init__(self, model, **kwargs):
         self.model = model
-        self.id = kwargs['id'] if 'id' in kwargs else None
+        self.id = kwargs["id"] if "id" in kwargs else None
         try:
-            self.client_id = kwargs['client_id']
-            self.client_secret = kwargs['secret']
-            self.name = kwargs['name']
-            self.user_id = kwargs['user_id']
-            self.grant_type = kwargs['grant_type']
-            self.response_type = kwargs['response_type']
-            self.redirect_uris = kwargs['redirect_uris'].split(',') if kwargs['redirect_uris'] else []
-            self.default_scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
+            self.client_id = kwargs["client_id"]
+            self.client_secret = kwargs["secret"]
+            self.name = kwargs["name"]
+            self.user_id = kwargs["user_id"]
+            self.grant_type = kwargs["grant_type"]
+            self.response_type = kwargs["response_type"]
+            self.redirect_uris = (
+                kwargs["redirect_uris"].split(",") if kwargs["redirect_uris"] else []
+            )
+            self.default_scopes = (
+                kwargs["scopes"].split(",") if kwargs["scopes"] else []
+            )
         except KeyError as e:
             raise UsageError("Missing column %r" % e.args[0])
 
-        self.default_redirect_uri = self.redirect_uris[0] if len(self.redirect_uris) > 0 else None
+        self.default_redirect_uri = (
+            self.redirect_uris[0] if len(self.redirect_uris) > 0 else None
+        )
 
     @property
     def allowed_grant_types(self):
@@ -39,7 +45,7 @@ class OAuth2Client(object):
     @property
     def client_type(self):
         # Assume all clients are public for now
-        return 'public'
+        return "public"
 
     @property
     def user(self):
@@ -48,14 +54,14 @@ class OAuth2Client(object):
     @property
     def columns(self):
         return {
-            'client_id': self.client_id,
-            'secret': self.client_secret,
-            'name': self.name,
-            'user_id': self.user_id,
-            'grant_type': self.grant_type,
-            'response_type': self.response_type,
-            'redirect_uris': ','.join(self.redirect_uris),
-            'scopes': ','.join(self.default_scopes),
+            "client_id": self.client_id,
+            "secret": self.client_secret,
+            "name": self.name,
+            "user_id": self.user_id,
+            "grant_type": self.grant_type,
+            "response_type": self.response_type,
+            "redirect_uris": ",".join(self.redirect_uris),
+            "scopes": ",".join(self.default_scopes),
         }
 
 
@@ -63,16 +69,17 @@ class OAuth2AuthCode(object):
     """
     This does not have to be stored in the database, and can be stored in some ephemeral cache in the future.
     """
+
     def __init__(self, model, **kwargs):
         self.model = model
-        self.id = kwargs['id'] if 'id' in kwargs else None
+        self.id = kwargs["id"] if "id" in kwargs else None
         try:
-            self.client_id = kwargs['client_id']
-            self.code = kwargs['code']
-            self.user_id = kwargs['user_id']
-            self.scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
-            self.expires = kwargs['expires']
-            self.redirect_uri = kwargs['redirect_uri']
+            self.client_id = kwargs["client_id"]
+            self.code = kwargs["code"]
+            self.user_id = kwargs["user_id"]
+            self.scopes = kwargs["scopes"].split(",") if kwargs["scopes"] else []
+            self.expires = kwargs["expires"]
+            self.redirect_uri = kwargs["redirect_uri"]
         except KeyError as e:
             raise UsageError("Missing column %r" % e.args[0])
 
@@ -86,27 +93,27 @@ class OAuth2AuthCode(object):
     @property
     def columns(self):
         return {
-            'client_id': self.client_id,
-            'code': self.code,
-            'user_id': self.user_id,
-            'scopes': ','.join(self.scopes),
-            'expires': self.expires,
-            'redirect_uri': self.redirect_uri,
+            "client_id": self.client_id,
+            "code": self.code,
+            "user_id": self.user_id,
+            "scopes": ",".join(self.scopes),
+            "expires": self.expires,
+            "redirect_uri": self.redirect_uri,
         }
 
 
 class OAuth2Token(object):
     def __init__(self, model, **kwargs):
         self.model = model
-        self.token_type = 'Bearer'
-        self.id = kwargs['id'] if 'id' in kwargs else None
+        self.token_type = "Bearer"
+        self.id = kwargs["id"] if "id" in kwargs else None
         try:
-            self.client_id = kwargs['client_id']
-            self.user_id = kwargs['user_id']
-            self.scopes = kwargs['scopes'].split(',') if kwargs['scopes'] else []
-            self.access_token = kwargs['access_token']
-            self.refresh_token = kwargs['refresh_token']
-            self.expires = kwargs['expires']
+            self.client_id = kwargs["client_id"]
+            self.user_id = kwargs["user_id"]
+            self.scopes = kwargs["scopes"].split(",") if kwargs["scopes"] else []
+            self.access_token = kwargs["access_token"]
+            self.refresh_token = kwargs["refresh_token"]
+            self.expires = kwargs["expires"]
         except KeyError as e:
             raise UsageError("Missing column %r" % e.args[0])
 
@@ -120,10 +127,10 @@ class OAuth2Token(object):
     @property
     def columns(self):
         return {
-            'client_id': self.client_id,
-            'user_id': self.user_id,
-            'access_token': self.access_token,
-            'refresh_token': self.refresh_token,
-            'scopes': ','.join(self.scopes),
-            'expires': self.expires,
+            "client_id": self.client_id,
+            "user_id": self.user_id,
+            "access_token": self.access_token,
+            "refresh_token": self.refresh_token,
+            "scopes": ",".join(self.scopes),
+            "expires": self.expires,
         }

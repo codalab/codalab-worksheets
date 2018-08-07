@@ -1,20 +1,20 @@
 class DependencyStage(object):
-    '''
+    """
     Defines the finite set of possible stages and transition functions
     Note that it is important that each state be able to be re-executed
     without unintended adverse effects (which happens upon manager resume)
-    '''
+    """
 
     # if not in _downloading, create and start _downloading thread.
     # (thread recreates directories and downloads)
     # if thread still alive -> DOWNLOADING else -> READY
-    DOWNLOADING = 'DOWNLOADING'
+    DOWNLOADING = "DOWNLOADING"
 
     # -> READY
-    READY = 'READY'
+    READY = "READY"
 
     # -> FAILED
-    FAILED = 'FAILED'
+    FAILED = "FAILED"
 
 
 class StateTransitioner(object):
@@ -23,10 +23,13 @@ class StateTransitioner(object):
         self._terminal_states = []  # stage_name
 
     def add_terminal(self, stage_name):
-        if stage_name not in self._transition_functions and stage_name not in self._terminal_states:
+        if (
+            stage_name not in self._transition_functions
+            and stage_name not in self._terminal_states
+        ):
             self._terminal_states.append(stage_name)
         else:
-            raise Exception('Stage name already exists!')
+            raise Exception("Stage name already exists!")
 
     def transition(self, state):
         """ Return the updated state """
@@ -35,14 +38,16 @@ class StateTransitioner(object):
         return self._transition_functions[state.stage](state)
 
     def add_transition(self, stage_name, transition_function):
-        if stage_name not in self._transition_functions and stage_name not in self._terminal_states:
+        if (
+            stage_name not in self._transition_functions
+            and stage_name not in self._terminal_states
+        ):
             self._transition_functions[stage_name] = transition_function
         else:
-            raise Exception('Stage name already exists!')
+            raise Exception("Stage name already exists!")
 
 
 class BaseDependencyManager(object):
-
     def run(self):
         """ Start execution of this dependency manager. Returns immediately """
         raise NotImplementedError

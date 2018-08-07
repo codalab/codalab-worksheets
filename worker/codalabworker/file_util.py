@@ -9,8 +9,9 @@ import zlib
 import bz2
 
 
-def tar_gzip_directory(directory_path, follow_symlinks=False,
-                       exclude_patterns=[], exclude_names=[]):
+def tar_gzip_directory(
+    directory_path, follow_symlinks=False, exclude_patterns=[], exclude_names=[]
+):
     """
     Returns a file-like object containing a tarred and gzipped archive of the
     given directory.
@@ -21,18 +22,18 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
     exclude_patterns: Any directory entries with the given names at any depth in
                       the directory structure are excluded.
     """
-    args = ['tar', 'czf', '-', '-C', directory_path]
+    args = ["tar", "czf", "-", "-C", directory_path]
     if follow_symlinks:
-        args.append('-h')
+        args.append("-h")
     if exclude_patterns:
         for pattern in exclude_patterns:
-            args.append('--exclude=' + pattern)
+            args.append("--exclude=" + pattern)
     names = [name for name in os.listdir(directory_path) if name not in exclude_names]
     if names:
-        args.append('--')  # Ensure no filename gets misinterpreted as an option
+        args.append("--")  # Ensure no filename gets misinterpreted as an option
         args.extend(names)
     else:
-        args.extend(['--files-from', '/dev/null'])
+        args.extend(["--files-from", "/dev/null"])
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         return proc.stdout
@@ -40,7 +41,7 @@ def tar_gzip_directory(directory_path, follow_symlinks=False,
         raise IOError(e.output)
 
 
-def un_tar_directory(fileobj, directory_path, compression=''):
+def un_tar_directory(fileobj, directory_path, compression=""):
     """
     Extracts the given file-like object containing a tar archive into the given
     directory, which will be created and should not already exist.
@@ -52,13 +53,13 @@ def un_tar_directory(fileobj, directory_path, compression=''):
     """
     directory_path = os.path.realpath(directory_path)
     os.mkdir(directory_path)
-    with tarfile.open(fileobj=fileobj, mode='r|' + compression) as tar:
+    with tarfile.open(fileobj=fileobj, mode="r|" + compression) as tar:
         for member in tar:
             # Make sure that there is no trickery going on (see note in
             # TarFile.extractall() documentation.
             member_path = os.path.realpath(os.path.join(directory_path, member.name))
             if not member_path.startswith(directory_path):
-                raise tarfile.TarError('Archive member extracts outside the directory.')
+                raise tarfile.TarError("Archive member extracts outside the directory.")
 
             tar.extract(member, directory_path)
 
@@ -67,7 +68,7 @@ def gzip_file(file_path):
     """
     Returns a file-like object containing the gzipped version of the given file.
     """
-    args = ['gzip', '-c', '-n', file_path]
+    args = ["gzip", "-c", "-n", file_path]
     try:
         proc = subprocess.Popen(args, stdout=subprocess.PIPE)
         return proc.stdout
@@ -85,9 +86,9 @@ def un_bz2_file(source, dest_path):
     # fileno(). Our version requires only read() and close().
 
     BZ2_BUFFER_SIZE = 100 * 1024 * 1024  # Unzip in chunks of 100MB
-    with open(dest_path, 'wb') as dest:
+    with open(dest_path, "wb") as dest:
         decompressor = bz2.BZ2Decompressor()
-        for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b''):
+        for data in iter(lambda: source.read(BZ2_BUFFER_SIZE), b""):
             dest.write(decompressor.decompress(data))
 
 
@@ -98,17 +99,24 @@ def un_gzip_stream(fileobj):
 
     Raises an IOError if the archive is not valid.
     """
+
     class UnGzipStream(object):
         def __init__(self, fileobj):
             self._fileobj = fileobj
             self._decoder = zlib.decompressobj(16 + zlib.MAX_WBITS)
-            self._buffer = ''
+            self._buffer = ""
             self._finished = False
 
         def read(self, num_bytes=None):
             # Read more data, if we need to.
-            while not self._finished and (num_bytes is None or len(self._buffer) < num_bytes):
-                chunk = self._fileobj.read(num_bytes) if num_bytes is not None else self._fileobj.read()
+            while not self._finished and (
+                num_bytes is None or len(self._buffer) < num_bytes
+            ):
+                chunk = (
+                    self._fileobj.read(num_bytes)
+                    if num_bytes is not None
+                    else self._fileobj.read()
+                )
                 if chunk:
                     self._buffer += self._decoder.decompress(chunk)
                 else:
@@ -143,7 +151,7 @@ def gzip_string(string):
     Gzips the given string.
     """
     with closing(StringIO()) as output_fileobj:
-        with gzip.GzipFile(None, 'wb', 6, output_fileobj) as fileobj:
+        with gzip.GzipFile(None, "wb", 6, output_fileobj) as fileobj:
             fileobj.write(string)
         return output_fileobj.getvalue()
 
@@ -155,7 +163,7 @@ def un_gzip_string(string):
     Raises an IOError if the archive is not valid.
     """
     with closing(StringIO(string)) as input_fileobj:
-        with gzip.GzipFile(None, 'rb', fileobj=input_fileobj) as fileobj:
+        with gzip.GzipFile(None, "rb", fileobj=input_fileobj) as fileobj:
             return fileobj.read()
 
 
@@ -165,26 +173,28 @@ def read_file_section(file_path, offset, length):
     """
     file_size = os.stat(file_path).st_size
     if offset >= file_size:
-        return ''
+        return ""
     with open(file_path) as fileobj:
         fileobj.seek(offset, os.SEEK_SET)
         return fileobj.read(length)
 
 
-def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text):
+def summarize_file(
+    file_path, num_head_lines, num_tail_lines, max_line_length, truncation_text
+):
     """
     Summarizes the file at the given path, returning a string containing the
     given numbers of lines from beginning and end of the file. If the file needs
     to be truncated, places truncation_text at the truncation point.
     """
-    assert(num_head_lines > 0 or num_tail_lines > 0)
+    assert num_head_lines > 0 or num_tail_lines > 0
 
     def ensure_ends_with_newline(lines, remove_line_without_newline=False):
-        if lines and not lines[-1].endswith('\n'):
+        if lines and not lines[-1].endswith("\n"):
             if remove_line_without_newline:
                 lines.pop()
             else:
-                lines[-1] += '\n'
+                lines[-1] += "\n"
 
     file_size = os.stat(file_path).st_size
     with open(file_path) as fileobj:
@@ -192,7 +202,9 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
             if num_head_lines > 0:
                 # To ensure that the last line is a whole line, we remove the
                 # last line if it doesn't have a newline character.
-                head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(True)[:num_head_lines]
+                head_lines = fileobj.read(num_head_lines * max_line_length).splitlines(
+                    True
+                )[:num_head_lines]
                 ensure_ends_with_newline(head_lines, remove_line_without_newline=True)
 
             if num_tail_lines > 0:
@@ -203,8 +215,12 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
                 # character is not a new line, then the first line, had we not
                 # read the extra character, would not be a whole line. Thus, it
                 # should also be dropped.
-                fileobj.seek(file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET)
-                tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(True)[1:][-num_tail_lines:]
+                fileobj.seek(
+                    file_size - num_tail_lines * max_line_length - 1, os.SEEK_SET
+                )
+                tail_lines = fileobj.read(num_tail_lines * max_line_length).splitlines(
+                    True
+                )[1:][-num_tail_lines:]
                 ensure_ends_with_newline(tail_lines)
 
             if num_head_lines > 0 and num_tail_lines > 0:
@@ -218,13 +234,17 @@ def summarize_file(file_path, num_head_lines, num_tail_lines, max_line_length, t
             ensure_ends_with_newline(lines)
             if len(lines) > num_head_lines + num_tail_lines:
                 if num_head_lines > 0 and num_tail_lines > 0:
-                    lines = lines[:num_head_lines] + [truncation_text] + lines[-num_tail_lines:]
+                    lines = (
+                        lines[:num_head_lines]
+                        + [truncation_text]
+                        + lines[-num_tail_lines:]
+                    )
                 elif num_head_lines > 0:
                     lines = lines[:num_head_lines]
                 else:
                     lines = lines[-num_tail_lines:]
 
-    return ''.join(lines)
+    return "".join(lines)
 
 
 def get_path_size(path, exclude_names=[]):

@@ -9,18 +9,20 @@
 import sys, os, yaml
 
 for path in sys.argv[1:]:
-    info = yaml.load(open(os.path.join(path, 'metadata')))
-    if 'format' in info:
-        bundle_type = 'dataset'
-        tags = info['format']
-    elif 'task' in info:
-        bundle_type = 'program'
-        tags = info['task']
+    info = yaml.load(open(os.path.join(path, "metadata")))
+    if "format" in info:
+        bundle_type = "dataset"
+        tags = info["format"]
+    elif "task" in info:
+        bundle_type = "program"
+        tags = info["task"]
     else:
-        raise 'Weird info: %s' % info
- 
-    name = info['name'].replace(' ', '_')
-    cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags mlcomp %s --description \"%s\"" % \
-        (bundle_type, path, name, tags, info['description'].replace('"', '\\"'))
-    print cmd
+        raise "Weird info: %s" % info
+
+    name = info["name"].replace(" ", "_")
+    cmd = (
+        'cl upload %s `/bin/ls -d %s/*` --name %s --tags mlcomp %s --description "%s"'
+        % (bundle_type, path, name, tags, info["description"].replace('"', '\\"'))
+    )
+    print(cmd)
     os.system(cmd)

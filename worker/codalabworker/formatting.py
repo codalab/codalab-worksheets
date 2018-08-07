@@ -6,11 +6,11 @@ def size_str(size):
     if size is None:
         return None
 
-    for unit in ('', 'k', 'm', 'g', 't'):
+    for unit in ("", "k", "m", "g", "t"):
         if size < 100 and size != int(size):
-            return '%.1f%s' % (size, unit)
+            return "%.1f%s" % (size, unit)
         if size < 1024:
-            return '%d%s' % (size, unit)
+            return "%d%s" % (size, unit)
         size /= 1024.0
 
 
@@ -55,14 +55,14 @@ def parse_size(s):
         if s[-1].isdigit():
             return int(s)
         n, unit = float(s[0:-1]), s[-1].lower()
-        if unit == 'k':
+        if unit == "k":
             return int(n * 1024)
-        if unit == 'm':
+        if unit == "m":
             return int(n * 1024 * 1024)
-        if unit == 'g':
+        if unit == "g":
             return int(n * 1024 * 1024 * 1024)
-        if unit == 't':
+        if unit == "t":
             return int(n * 1024 * 1024 * 1024 * 1024)
     except (IndexError, ValueError):
         pass  # continue to next line and throw error
-    raise ValueError('Invalid size: %s, expected <number>[<k|m|g|t>]' % s)
+    raise ValueError("Invalid size: %s, expected <number>[<k|m|g|t>]" % s)
