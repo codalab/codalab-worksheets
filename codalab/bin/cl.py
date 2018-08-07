@@ -58,6 +58,7 @@ def run_server_with_watch():
     observer.join()
 
 
+# fmt: off
 @Commands.command(
     "server",
     help="Start an instance of a CodaLab bundle service with a REST API.",
@@ -69,8 +70,7 @@ def run_server_with_watch():
             "-p",
             "--processes",
             help="Number of processes to use. A production deployment should "
-            "use more than 1 process to make the best use of multiple "
-            "CPUs.",
+                 "use more than 1 process to make the best use of multiple CPUs.",
             type=int,
             default=1,
         ),
@@ -78,7 +78,7 @@ def run_server_with_watch():
             "-t",
             "--threads",
             help="Number of threads to use. The server will be able to handle "
-            "(--processes) x (--threads) requests at the same time.",
+                 "(--processes) x (--threads) requests at the same time.",
             type=int,
             default=50,
         ),
@@ -90,6 +90,7 @@ def run_server_with_watch():
         ),
     ),
 )
+# fmt: on
 def do_rest_server_command(bundle_cli, args):
     bundle_cli._fail_if_headless(args)
     # Force initialization of the bundle store, so that the misc_temp directory is created
