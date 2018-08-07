@@ -110,12 +110,13 @@ class LocalFileSystemDependencyManager(StateTransitioner,
                         "Dependency {} in loaded state but its path {} is not in the loaded paths {}".
                         format(dep, dep_state.path, state['paths']))
             for path in state['paths']:
-                if os.path.exists(path):
+                full_path = os.path.join(self.dependencies_dir, path)
+                if os.path.exists(full_path):
                     paths.add(path)
                 else:
                     logger.info(
                         "Path {} in loaded state but doesn't exist in the filesystem".
-                        format(path))
+                        format(full_path))
 
             self._dependencies = dependencies
             self._paths = paths
