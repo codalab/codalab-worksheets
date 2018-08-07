@@ -61,7 +61,7 @@ RUN pip2 install -U \
       matplotlib \
       pandas \
       sympy \
-      nose;
+      nose &&
 
 RUN python -m spacy download en
 
@@ -82,7 +82,7 @@ RUN pip3 install -U \
       matplotlib \
       pandas \
       sympy \
-      nose;
+      nose
 
 RUN python3 -m spacy download en
 

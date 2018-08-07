@@ -1,7 +1,6 @@
 FROM ubuntu:xenial
 MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 
-<<<<<<< e6f436966a94a37520925da2a7ff2613705d989f
 # Common steps below (Should be the same between CPU and GPU docker images
 RUN apt-get update && apt-get install -y \
     apt-transport-https \
@@ -83,7 +82,7 @@ RUN pip3 install -U \
       matplotlib \
       pandas \
       sympy \
-      nose;
+      nose
 
 RUN python3 -m spacy download en
 
