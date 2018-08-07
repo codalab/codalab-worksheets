@@ -4,7 +4,7 @@ marshmallow==2.15.4
 setuptools>=40.0.0
 argcomplete==1.9.4
 PyYAML==3.13
-psutil==5.5.0
+psutil==5.4.6
 six==1.11.0
 SQLAlchemy==1.2.10
 watchdog==0.8.3
