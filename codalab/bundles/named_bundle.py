@@ -15,12 +15,32 @@ class NamedBundle(Bundle):
     NAME_LENGTH = 32
 
     METADATA_SPECS = (
-      MetadataSpec('name', basestring, 'Short variable name (not necessarily unique); must conform to %s.' % spec_util.NAME_REGEX.pattern, short_key='n'),
-      MetadataSpec('description', basestring, 'Full description of the bundle.', short_key='d'),
-      MetadataSpec('tags', list, 'Space-separated list of tags used for search (e.g., machine-learning).', metavar='TAG'),
-      MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),
-      MetadataSpec('data_size', int, 'Size of this bundle (in bytes).', generated=True, formatting='size'),
-      MetadataSpec('failure_message', basestring, 'Error message if this run bundle failed.', generated=True),
+        MetadataSpec(
+            'name',
+            basestring,
+            'Short variable name (not necessarily unique); must conform to %s.'
+            % spec_util.NAME_REGEX.pattern,
+            short_key='n',
+        ),
+        MetadataSpec('description', basestring, 'Full description of the bundle.', short_key='d'),
+        MetadataSpec(
+            'tags',
+            list,
+            'Space-separated list of tags used for search (e.g., machine-learning).',
+            metavar='TAG',
+        ),
+        MetadataSpec(
+            'created', int, 'Time when this bundle was created.', generated=True, formatting='date'
+        ),
+        MetadataSpec(
+            'data_size', int, 'Size of this bundle (in bytes).', generated=True, formatting='size'
+        ),
+        MetadataSpec(
+            'failure_message',
+            basestring,
+            'Error message if this run bundle failed.',
+            generated=True,
+        ),
     )
 
     @classmethod
@@ -39,9 +59,9 @@ class NamedBundle(Bundle):
 
     def __repr__(self):
         return '%s(uuid=%r, name=%r)' % (
-          self.__class__.__name__,
-          str(self.uuid),
-          str(self.metadata.name),
+            self.__class__.__name__,
+            str(self.uuid),
+            str(self.metadata.name),
         )
 
     def simple_str(self):

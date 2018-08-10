@@ -16,6 +16,7 @@ from codalab.lib import editor_util
 metadata_key_to_argument = lambda metadata_key: 'md_%s' % (metadata_key,)
 metadata_argument_to_key = lambda arg_key: arg_key[3:]
 
+
 def fill_missing_metadata(bundle_subclass, args, initial_metadata):
     '''
     Return metadata for bundles by filling in the missing metadata with default values.
@@ -40,10 +41,14 @@ def request_missing_metadata(bundle_subclass, initial_metadata):
     # command-line metadata options.
     template_lines = []
     bundle_type = bundle_subclass.BUNDLE_TYPE
-    template_lines.append(os.linesep.join([
-      '// Enter metadata for the new %s bundle, then save and quit.' % (bundle_type,),
-      '// To cancel the upload, delete the name.',
-    ]))
+    template_lines.append(
+        os.linesep.join(
+            [
+                '// Enter metadata for the new %s bundle, then save and quit.' % (bundle_type,),
+                '// To cancel the upload, delete the name.',
+            ]
+        )
+    )
     for spec in bundle_subclass.get_user_defined_metadata():
         initial_value = initial_metadata.get(spec.key) or ''
         if spec.type == list:

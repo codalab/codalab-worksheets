@@ -15,6 +15,7 @@ from codalab.bundles.uploaded_bundle import UploadedBundle
 from codalab.lib import path_util, spec_util
 from codalab.common import UsageError
 
+
 class MetadataDefaults(object):
     @staticmethod
     def get_default(spec, bundle_subclass, args):

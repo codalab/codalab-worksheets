@@ -12,6 +12,7 @@ import os
 import sys
 import shlex
 from subprocess import Popen
+
 sys.path.append('.')
 
 from codalab.lib.codalab_manager import CodaLabManager
@@ -33,7 +34,7 @@ if not dry_run:
 
 """For each data hash, get a list of all bundles that have that hash, and make a copy of the bundle in the staging
 area under the UUID for the bundle."""
-data_hashes = reduce(lambda x,y: x+y, path_util.ls(DATA_DIR))
+data_hashes = reduce(lambda x, y: x + y, path_util.ls(DATA_DIR))
 for data_hash in data_hashes:
     orig_location = os.path.join(DATA_DIR, data_hash)
 
@@ -52,16 +53,19 @@ for data_hash in data_hashes:
             cmd = Popen(exec_str)
             exit_code = cmd.wait()
             if exit_code != 0:
-                print >> sys.stderr, 'command \'%s\' failed(status=%d), aborting...'
+                print >>sys.stderr, 'command \'%s\' failed(status=%d), aborting...'
                 break
 
 
-dry_run_str = """
+dry_run_str = (
+    """
 This was a dry run, no migration occurred. To perform full migration, run again with `-f':
 
     %s -f
-""".rstrip() % sys.argv[0]
+""".rstrip()
+    % sys.argv[0]
+)
 
 explain_str = "Migration complete!"
 
-print >> sys.stderr, dry_run_str if dry_run else explain_str
+print >>sys.stderr, dry_run_str if dry_run else explain_str

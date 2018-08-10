@@ -47,8 +47,7 @@ class Worksheet(ORMObject):
         super(Worksheet, self).update_in_memory(row)
         if items is not None:
             self.items = [
-                {str(k): v for k, v in item.iteritems()}  # Ensure key is string
-                for item in items
+                {str(k): v for k, v in item.iteritems()} for item in items  # Ensure key is string
             ]
             self.last_item_id = max(item['id'] for item in items) if items else -1
         else:
@@ -63,7 +62,7 @@ class Worksheet(ORMObject):
                 item.get('bundle_uuid', None),
                 item.get('subworksheet_uuid', None),
                 item.get('value', ''),
-                item['type']
+                item['type'],
             )
 
     def to_dict(self, strict=False):

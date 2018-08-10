@@ -3,6 +3,7 @@
 Script that creates the root user.
 """
 import sys
+
 sys.path.append('.')
 
 import getpass

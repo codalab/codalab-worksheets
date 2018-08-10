@@ -33,10 +33,11 @@ class SMTPEmailer(Emailer):
         self.server_email = server_email
         self.port = port
         self.use_tls = use_tls
-        self.do_login = (self.password != None)
+        self.do_login = self.password != None
 
-    def send_email(self, subject, body, recipient, sender=None,
-                   mime_type='plain', charset='us-ascii'):
+    def send_email(
+        self, subject, body, recipient, sender=None, mime_type='plain', charset='us-ascii'
+    ):
         """
         Send email
 
@@ -60,7 +61,7 @@ class SMTPEmailer(Emailer):
                 mail_server.starttls()
                 mail_server.ehlo()
 
-            if self.do_login: 
+            if self.do_login:
                 mail_server.login(self.user, self.password)
 
             message = MIMEText(body, mime_type, charset)

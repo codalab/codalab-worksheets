@@ -13,6 +13,7 @@ from contextlib import closing
 
 try:
     from fuse import FUSE, FuseOSError, Operations
+
     fuse_is_available = True
 except EnvironmentError:
     fuse_is_available = False
@@ -31,14 +32,14 @@ if fuse_is_available:
 
         def __init__(self, client, bundle_uuid, timeout=60, max_num_chunks=100, chunk_size=None):
             if chunk_size is None:
-                chunk_size = 1 * 1000 * 1000 # 1 MB
+                chunk_size = 1 * 1000 * 1000  # 1 MB
 
             self.chunk_size = chunk_size
             self.max_num_chunks = max_num_chunks
             self.timeout = timeout
             self.client = client
             self.bundle_uuid = bundle_uuid
-            self.cache = OrderedDict() # (path, chunk_id) -> (time, bytearray)
+            self.cache = OrderedDict()  # (path, chunk_id) -> (time, bytearray)
 
         def read(self, path, length, offset):
             start_offset = offset
@@ -49,7 +50,12 @@ if fuse_is_available:
             arr = ''
             for chunk_id in range(start_chunk, end_chunk + 1):
                 arr += self._fetch_chunk(path, chunk_id)
-            return arr[offset - start_chunk * self.chunk_size:offset - start_chunk * self.chunk_size + length]
+            return arr[
+                offset
+                - start_chunk * self.chunk_size : offset
+                - start_chunk * self.chunk_size
+                + length
+            ]
 
         def _fetch_chunk(self, path, chunk_id):
             '''
@@ -65,17 +71,22 @@ if fuse_is_available:
             if key in self.cache:
                 t, arr = self.cache[key]
                 if now - t < self.timeout:
-                    return arr # return chunk from cache
+                    return arr  # return chunk from cache
                 else:
-                    self.cache.pop(key) # pop out expired entry
+                    self.cache.pop(key)  # pop out expired entry
 
             # grab from client
-            byte_range = (chunk_id * self.chunk_size, chunk_id * self.chunk_size + self.chunk_size - 1)
-            with closing(self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)) as contents:
+            byte_range = (
+                chunk_id * self.chunk_size,
+                chunk_id * self.chunk_size + self.chunk_size - 1,
+            )
+            with closing(
+                self.client.fetch_contents_blob(self.bundle_uuid, path, byte_range)
+            ) as contents:
                 arr = contents.read()
 
-            if len(arr) == self.chunk_size: # only cache if fetched full chunk
-                if len(self.cache) >= self.max_num_chunks: # if full, remove the oldest item
+            if len(arr) == self.chunk_size:  # only cache if fetched full chunk
+                if len(self.cache) >= self.max_num_chunks:  # if full, remove the oldest item
                     self.cache.popitem(last=False)
                 self.cache[key] = (now, arr)
 
@@ -94,7 +105,7 @@ if fuse_is_available:
         _caches = {}
         _timeouts = {}
 
-        def __init__(self,timeout=2):
+        def __init__(self, timeout=2):
             self.timeout = timeout
 
         def collect(self):
@@ -119,14 +130,16 @@ if fuse_is_available:
                     if (time.time() - v[1]) > self.timeout:
                         raise KeyError
                 except KeyError:
-                    v = self.cache[key] = f(*args,**kwargs),time.time()
+                    v = self.cache[key] = f(*args, **kwargs), time.time()
                 return v[0]
+
             func.func_name = f.func_name
 
             return func
 
     class Memoize(MWT):
         '''A superset of MWT that adds the possibility to yank paths from cached results'''
+
         def yank_path(self, path):
             """Clear cache of results from a specific path"""
             for func in self._caches:
@@ -149,7 +162,7 @@ if fuse_is_available:
             self.client = client
             self.target = target
             self.bundle_uuid = target[0]
-            self.fd = 0 # file descriptor
+            self.fd = 0  # file descriptor
             self.verbose = verbose
             self.bundle_metadata = self.client.fetch('bundles', self.bundle_uuid)['metadata']
 
@@ -158,7 +171,9 @@ if fuse_is_available:
             info = self._get_info('/')
             if info['type'] == 'file':
                 self.single_file_bundle = True
-                print('Note: specified bundle is a single file; mountpoint will look like a directory that contains that single file.')
+                print(
+                    'Note: specified bundle is a single file; mountpoint will look like a directory that contains that single file.'
+                )
 
         # Helpers
         # =======
@@ -220,7 +235,6 @@ if fuse_is_available:
             self.verbose_print('getattr path={}, attr={}'.format(path, attributes))
             return attributes
 
-
         def readdir(self, path, fh):
             ''' Yield a sequence of entries in the filesystem under the current path '''
             dirents = ['.', '..']
@@ -249,13 +263,12 @@ if fuse_is_available:
             pathname = info['link']
             self.verbose_print('readlink path={}, pathname={}'.format(path, pathname))
 
-            #TODO: not sure if this is completely correct
+            # TODO: not sure if this is completely correct
             if pathname.startswith("/"):
                 # Path name is absolute, sanitize it.
                 return os.path.relpath(pathname, self.root)
             else:
                 return pathname
-
 
         # File methods
         # ============
@@ -280,7 +293,6 @@ if fuse_is_available:
 
             self.verbose_print('read path={}, length={}, offset={}'.format(path, length, offset))
             return result
-
 
     def bundle_mount(client, mountpoint, target, verbose=False):
         ''' Mount the filesystem on the mountpoint. '''

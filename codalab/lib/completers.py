@@ -20,6 +20,7 @@ class CodaLabCompleter(object):
     """
     A CodaLabCompleter is just a class that needs to be initialized with a BundleCLI instance.
     """
+
     def __init__(self, cli):
         self.cli = cli
 
@@ -28,11 +29,10 @@ class WorksheetsCompleter(CodaLabCompleter):
     """
     Complete worksheet specs with suggestions pulled from the current client.
     """
+
     def __call__(self, prefix, **kwargs):
         client, worksheet_spec = self.cli.parse_spec(prefix)
-        worksheets = client.fetch('worksheets', params={
-            'keywords': worksheet_spec,
-        })
+        worksheets = client.fetch('worksheets', params={'keywords': worksheet_spec})
 
         tokens = prefix.split('::')
         if len(tokens) == 1:
@@ -41,7 +41,11 @@ class WorksheetsCompleter(CodaLabCompleter):
             format_string = tokens[0] + '::{}'
 
         if spec_util.UUID_PREFIX_REGEX.match(worksheet_spec):
-            return (format_string.format(w['uuid']) for w in worksheets if w['uuid'].startswith(worksheet_spec))
+            return (
+                format_string.format(w['uuid'])
+                for w in worksheets
+                if w['uuid'].startswith(worksheet_spec)
+            )
         else:
             return (format_string.format(w['name']) for w in worksheets)
 
@@ -51,28 +55,34 @@ class BundlesCompleter(CodaLabCompleter):
     Complete bundle specs with suggestions from the current worksheet, or from the
     worksheet specified in the current arguments if one exists.
     """
+
     def __call__(self, prefix, action=None, parsed_args=None, worksheet_uuid=None):
         worksheet_spec = getattr(parsed_args, 'worksheet_spec', None)
         client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
         if spec_util.UUID_PREFIX_REGEX.match(prefix):
             # uuids are matched globally
-            return client.fetch('bundles', params={
-                'keywords': 'uuid=' + prefix + '%',
-            })
+            return client.fetch('bundles', params={'keywords': 'uuid=' + prefix + '%'})
         else:
             # Names are matched locally on worksheet
-            worksheet_info = client.fetch('worksheets', worksheet_uuid, params={
-                'include': ['items', 'items.bundle']
-            })
-            bundle_infos = [item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle']
-            return (b['metadata']['name'] for b in bundle_infos if b['metadata']['name'].startswith(prefix))
+            worksheet_info = client.fetch(
+                'worksheets', worksheet_uuid, params={'include': ['items', 'items.bundle']}
+            )
+            bundle_infos = [
+                item['bundle'] for item in worksheet_info['items'] if item['type'] == 'bundle'
+            ]
+            return (
+                b['metadata']['name']
+                for b in bundle_infos
+                if b['metadata']['name'].startswith(prefix)
+            )
 
 
 class AddressesCompleter(CodaLabCompleter):
     """
     Complete address with suggestions from the current worksheet.
     """
+
     def __call__(self, prefix, action=None, parsed_args=None):
         return (a for a in self.cli.manager.config.get('aliases', {}) if a.startswith(prefix))
 
@@ -81,6 +91,7 @@ class GroupsCompleter(CodaLabCompleter):
     """
     Complete group specs with suggestions pulled from the current client.
     """
+
     def __call__(self, prefix, action=None, parsed_args=None):
         client = self.cli.manager.current_client()
         # TODO: allow fetch slice of attributes in API to optimize this
@@ -104,10 +115,17 @@ def UnionCompleter(*completers):
     Return a CodaLabCompleter that suggests the union of the suggestions provided
     by the given completers.
     """
+
     class _UnionCompleter(CodaLabCompleter):
         def __call__(self, *args, **kwargs):
-            initialized_completers = [initialize_completer(completer, self.cli) for completer in completers]
-            return set(itertools.chain(*[completer(*args, **kwargs) for completer in initialized_completers]))
+            initialized_completers = [
+                initialize_completer(completer, self.cli) for completer in completers
+            ]
+            return set(
+                itertools.chain(
+                    *[completer(*args, **kwargs) for completer in initialized_completers]
+                )
+            )
 
     return _UnionCompleter
 
@@ -130,16 +148,23 @@ class TargetsCompleter(CodaLabCompleter):
         client, worksheet_uuid = self.cli.parse_client_worksheet_uuid(worksheet_spec)
 
         # Build parameterizable format string for suggestions
-        suggestion_format = ''.join([
-            (key + ':') if key is not None else '',
-            (worksheet_spec + '//') if worksheet_spec is not None else '',
-            (bundle_spec + '/') if subpath is not None else '',
-            '{}',
-        ])
+        suggestion_format = ''.join(
+            [
+                (key + ':') if key is not None else '',
+                (worksheet_spec + '//') if worksheet_spec is not None else '',
+                (bundle_spec + '/') if subpath is not None else '',
+                '{}',
+            ]
+        )
 
         if subpath is None:
             # then suggest completions for bundle_spec
-            return (suggestion_format.format(b) for b in BundlesCompleter(self.cli)(bundle_spec, action, parsed_args, worksheet_uuid))
+            return (
+                suggestion_format.format(b)
+                for b in BundlesCompleter(self.cli)(
+                    bundle_spec, action, parsed_args, worksheet_uuid
+                )
+            )
         else:
             # then suggest completions for subpath
             resolved_target = self.cli.resolve_target(client, worksheet_uuid, target)
@@ -155,7 +180,10 @@ class TargetsCompleter(CodaLabCompleter):
                 for child in info['contents']:
                     if child['name'].startswith(basename):
                         matching_child_names.append(child['name'])
-                return (suggestion_format.format(os.path.join(dir_target[1], child_name)) for child_name in matching_child_names)
+                return (
+                    suggestion_format.format(os.path.join(dir_target[1], child_name))
+                    for child_name in matching_child_names
+                )
             else:
                 return ()
 
@@ -164,14 +192,17 @@ class DockerImagesCompleter(CodaLabCompleter):
     """
     Matches the first column image tag output in 'docker search'
     """
+
     IMAGE_TAG_REGEX = re.compile(r'^(?P<tag>\S+)\s+')
 
     """
     Completes names of Docker images available on DockerHub.
     """
+
     def __call__(self, prefix, action=None, parsed_args=None):
         def handle_err(exitcode, msg):
             warn("Error: %s (exitcode %d)" % (msg, exitcode))
+
         if prefix == "":
             prefix = "codalab"
         first_slash = prefix.find('/')
@@ -188,6 +219,7 @@ def require_not_headless(completer):
     Given a completer (that is not a CodaLabCompleter), return a CodaLabCompleter that will only call the
     given completer if the client is not headless.
     """
+
     class SafeCompleter(CodaLabCompleter):
         def __call__(self, *args, **kwargs):
             if self.cli.headless:

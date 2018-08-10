@@ -4,12 +4,7 @@ The schemas also perform some basic validation.
 Placed here in this central location to avoid circular imports.
 """
 from bottle import local
-from marshmallow import (
-    Schema as PlainSchema,
-    ValidationError,
-    validate,
-    validates_schema,
-)
+from marshmallow import Schema as PlainSchema, ValidationError, validate, validates_schema
 from marshmallow_jsonapi import Schema, fields
 
 from codalab.common import UsageError
@@ -54,9 +49,15 @@ def validate_child_path(path):
 
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
-    worksheet = fields.Relationship(include_data=True, attribute='worksheet_uuid', type_='worksheets', required=True)
-    subworksheet = fields.Relationship(include_data=True, type_='worksheets', attribute='subworksheet_uuid', allow_none=True)
-    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True)
+    worksheet = fields.Relationship(
+        include_data=True, attribute='worksheet_uuid', type_='worksheets', required=True
+    )
+    subworksheet = fields.Relationship(
+        include_data=True, type_='worksheets', attribute='subworksheet_uuid', allow_none=True
+    )
+    bundle = fields.Relationship(
+        include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True
+    )
     value = fields.String()
     type = fields.String(validate=validate.OneOf(set(WORKSHEET_ITEM_TYPES)), required=True)
     sort_key = fields.Integer(allow_none=True)
@@ -67,8 +68,16 @@ class WorksheetItemSchema(Schema):
 
 class WorksheetPermissionSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
-    worksheet = fields.Relationship(include_data=True, attribute='object_uuid', type_='worksheets', load_only=True, required=True)
-    group = fields.Relationship(include_data=True, attribute='group_uuid', type_='groups', required=True)
+    worksheet = fields.Relationship(
+        include_data=True,
+        attribute='object_uuid',
+        type_='worksheets',
+        load_only=True,
+        required=True,
+    )
+    group = fields.Relationship(
+        include_data=True, attribute='group_uuid', type_='groups', required=True
+    )
     group_name = fields.String(dump_only=True)  # for convenience
     permission = fields.Integer(validate=lambda p: 0 <= p <= 2)
     permission_spec = PermissionSpec(attribute='permission')  # for convenience
@@ -91,8 +100,12 @@ class WorksheetSchema(Schema):
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
     tags = fields.List(fields.String())
-    group_permissions = fields.Relationship(include_data=True, type_='worksheet-permissions', id_field='id', many=True)
-    items = fields.Relationship(include_data=True, type_='worksheet-items', id_field='id', many=True)
+    group_permissions = fields.Relationship(
+        include_data=True, type_='worksheet-permissions', id_field='id', many=True
+    )
+    items = fields.Relationship(
+        include_data=True, type_='worksheet-items', id_field='id', many=True
+    )
     last_item_id = fields.Integer(dump_only=True)
 
     # Bundle permission of the authenticated user for convenience, read-only
@@ -109,6 +122,7 @@ class BundleDependencySchema(PlainSchema):
     Not defining this as a separate resource with Relationships because we only
     create a set of dependencies once at bundle creation.
     """
+
     child_uuid = fields.String(validate=validate_uuid, dump_only=True)
     child_path = fields.String()  # Validated in Bundle ORMObject
     parent_uuid = fields.String(validate=validate_uuid)
@@ -122,8 +136,12 @@ class BundleDependencySchema(PlainSchema):
 
 class BundlePermissionSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
-    bundle = fields.Relationship(include_data=True, attribute='object_uuid', type_='bundles', load_only=True, required=True)
-    group = fields.Relationship(include_data=True, attribute='group_uuid', type_='groups', required=True)
+    bundle = fields.Relationship(
+        include_data=True, attribute='object_uuid', type_='bundles', load_only=True, required=True
+    )
+    group = fields.Relationship(
+        include_data=True, attribute='group_uuid', type_='groups', required=True
+    )
     group_name = fields.String(dump_only=True)  # for convenience
     permission = fields.Integer(validate=lambda p: 0 <= p <= 2)
     permission_spec = PermissionSpec(attribute='permission')  # for convenience
@@ -140,7 +158,9 @@ class BundlePermissionSchema(Schema):
 class BundleSchema(Schema):
     id = fields.String(validate=validate_uuid, attribute='uuid')
     uuid = fields.String(attribute='uuid')  # for backwards compatibility
-    bundle_type = fields.String(validate=validate.OneOf({bsc.BUNDLE_TYPE for bsc in BUNDLE_SUBCLASSES}))
+    bundle_type = fields.String(
+        validate=validate.OneOf({bsc.BUNDLE_TYPE for bsc in BUNDLE_SUBCLASSES})
+    )
     command = fields.String(allow_none=True)
     data_hash = fields.String()
     state = fields.String()
@@ -149,8 +169,12 @@ class BundleSchema(Schema):
     metadata = fields.Dict()
     dependencies = fields.Nested(BundleDependencySchema, many=True)
     children = fields.Relationship(include_data=True, type_='bundles', id_field='uuid', many=True)
-    group_permissions = fields.Relationship(include_data=True, type_='bundle-permissions', id_field='id', many=True)
-    host_worksheets = fields.Relationship(include_data=True, type_='worksheets', id_field='uuid', many=True)
+    group_permissions = fields.Relationship(
+        include_data=True, type_='bundle-permissions', id_field='id', many=True
+    )
+    host_worksheets = fields.Relationship(
+        include_data=True, type_='worksheets', id_field='uuid', many=True
+    )
     args = fields.String()
 
     # Bundle permission of the authenticated user for convenience, read-only
@@ -164,17 +188,32 @@ class BundleSchema(Schema):
 # Field-update restrictions are specified as lists below because the
 # restrictions differ depending on the action
 
-BUNDLE_CREATE_RESTRICTED_FIELDS = ('data_hash', 'state', 'owner',
-                                   'children', 'group_permissions',
-                                   'host_worksheets', 'args', 'permission',
-                                   'permission_spec')
+BUNDLE_CREATE_RESTRICTED_FIELDS = (
+    'data_hash',
+    'state',
+    'owner',
+    'children',
+    'group_permissions',
+    'host_worksheets',
+    'args',
+    'permission',
+    'permission_spec',
+)
 
 
-BUNDLE_UPDATE_RESTRICTED_FIELDS = ('command', 'data_hash', 'state',
-                                   'dependencies', 'children',
-                                   'group_permissions', 'host_worksheets',
-                                   'args', 'permission', 'permission_spec',
-                                   'bundle_type')
+BUNDLE_UPDATE_RESTRICTED_FIELDS = (
+    'command',
+    'data_hash',
+    'state',
+    'dependencies',
+    'children',
+    'group_permissions',
+    'host_worksheets',
+    'args',
+    'permission',
+    'permission_spec',
+    'bundle_type',
+)
 
 
 class BundleActionSchema(Schema):
@@ -214,8 +253,15 @@ class AuthenticatedUserSchema(UserSchema):
 # Email must be updated through the /account/changeemail interface.
 # We cannot use the `dump_only` arguments to specify these filters, since
 # some users (i.e. the admin) CAN use the API to update some of these fields.
-USER_READ_ONLY_FIELDS = ('email', 'time_quota', 'time_used', 'disk_quota',
-                         'disk_used', 'date_joined', 'last_login')
+USER_READ_ONLY_FIELDS = (
+    'email',
+    'time_quota',
+    'time_used',
+    'disk_quota',
+    'disk_used',
+    'date_joined',
+    'last_login',
+)
 
 
 class GroupSchema(Schema):

@@ -1,4 +1,6 @@
-from __future__ import absolute_import  # Without this line "from worker.worker import VERSION" doesn't work.
+from __future__ import (
+    absolute_import
+)  # Without this line "from worker.worker import VERSION" doesn't work.
 from contextlib import closing
 import httplib
 import json
@@ -15,8 +17,7 @@ from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalabworker.worker import VERSION
 
 
-@post('/workers/<worker_id>/checkin',
-      name='worker_checkin', apply=AuthenticatedPlugin())
+@post('/workers/<worker_id>/checkin', name='worker_checkin', apply=AuthenticatedPlugin())
 def checkin(worker_id):
     """
     Checks in with the bundle service, storing information about the worker.
@@ -32,15 +33,14 @@ def checkin(worker_id):
         request.json['cpus'],
         request.json['gpus'],
         request.json['memory_bytes'],
-        request.json['dependencies'])
+        request.json['dependencies'],
+    )
 
     for uuid, run in request.json['runs'].items():
         bundle = local.model.get_bundle(uuid)
-        local.model.bundle_checkin(bundle,
-                                   run,
-                                   request.user.user_id,
-                                   worker_id,
-                                   request.json['hostname'])
+        local.model.bundle_checkin(
+            bundle, run, request.user.user_id, worker_id, request.json['hostname']
+        )
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
@@ -55,8 +55,11 @@ def check_reply_permission(worker_id, socket_id):
         abort(httplib.FORBIDDEN, 'Not your socket ID!')
 
 
-@post('/workers/<worker_id>/reply/<socket_id:int>',
-      name='worker_reply_json', apply=AuthenticatedPlugin())
+@post(
+    '/workers/<worker_id>/reply/<socket_id:int>',
+    name='worker_reply_json',
+    apply=AuthenticatedPlugin(),
+)
 def reply(worker_id, socket_id):
     """
     Replies with a single JSON message to the given socket ID.
@@ -65,8 +68,11 @@ def reply(worker_id, socket_id):
     local.worker_model.send_json_message(socket_id, request.json, 60, autoretry=False)
 
 
-@post('/workers/<worker_id>/reply_data/<socket_id:int>',
-      name='worker_reply_blob', apply=AuthenticatedPlugin())
+@post(
+    '/workers/<worker_id>/reply_data/<socket_id:int>',
+    name='worker_reply_blob',
+    apply=AuthenticatedPlugin(),
+)
 def reply_data(worker_id, socket_id):
     """
     Replies with a stream of data to the given socket ID. This reply mechanism
@@ -99,8 +105,11 @@ def check_run_permission(bundle):
         abort(httplib.FORBIDDEN, 'User does not have permission to run bundle.')
 
 
-@post('/workers/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-      name='worker_start_bundle', apply=AuthenticatedPlugin())
+@post(
+    '/workers/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
+    name='worker_start_bundle',
+    apply=AuthenticatedPlugin(),
+)
 def start_bundle(worker_id, uuid):
     """
     Checks whether the bundle is still assigned to run on the worker with the
@@ -110,22 +119,42 @@ def start_bundle(worker_id, uuid):
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
     response.content_type = 'application/json'
-    if local.model.start_bundle(bundle, request.user.user_id, worker_id,
-                                request.json['hostname'],
-                                request.json['start_time']):
+    if local.model.start_bundle(
+        bundle,
+        request.user.user_id,
+        worker_id,
+        request.json['hostname'],
+        request.json['start_time'],
+    ):
         print('Started bundle %s' % uuid)
         return json.dumps(True)
     return json.dumps(False)
 
-@put('/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
-     name='worker_update_bundle_metadata', apply=AuthenticatedPlugin())
+
+@put(
+    '/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
+    name='worker_update_bundle_metadata',
+    apply=AuthenticatedPlugin(),
+)
 def update_bundle_metadata(worker_id, uuid):
     """
     Updates metadata related to a running bundle.
     """
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
-    allowed_keys = set(['run_status', 'time', 'time_user', 'time_system', 'memory', 'memory_max', 'data_size', 'last_updated', 'docker_image'])
+    allowed_keys = set(
+        [
+            'run_status',
+            'time',
+            'time_user',
+            'time_system',
+            'memory',
+            'memory_max',
+            'data_size',
+            'last_updated',
+            'docker_image',
+        ]
+    )
     metadata_update = {}
     for key, value in request.json.iteritems():
         if key in allowed_keys:
@@ -143,7 +172,9 @@ def workers_info():
     # edit entries in data to make them suitable for human reading
     for worker in data:
         # checkin_time: seconds since epoch
-        worker['checkin_time'] = int((worker['checkin_time'] - datetime.utcfromtimestamp(0)).total_seconds())
+        worker['checkin_time'] = int(
+            (worker['checkin_time'] - datetime.utcfromtimestamp(0)).total_seconds()
+        )
         del worker['dependencies']
 
         running_bundles = local.model.batch_get_bundles(uuid=worker['run_uuids'])

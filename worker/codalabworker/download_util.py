@@ -89,7 +89,8 @@ def _compute_target_info(path, depth):
         if depth > 0:
             result['contents'] = [
                 _compute_target_info(os.path.join(path, file_name), depth - 1)
-                for file_name in os.listdir(path)]
+                for file_name in os.listdir(path)
+            ]
     if result is None:
         raise PathException()
     return result

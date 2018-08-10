@@ -4,6 +4,7 @@
 Generate REST docs.
 """
 import sys
+
 sys.path.append('.')
 from inspect import isclass
 from collections import defaultdict, namedtuple
@@ -15,6 +16,7 @@ from marshmallow_jsonapi import Schema as JsonApiSchema
 from textwrap import dedent
 
 from codalab.common import CODALAB_VERSION
+
 # Ensure all REST modules are loaded
 from codalab.server import rest_server
 
@@ -45,11 +47,9 @@ def get_api_routes():
     api_specs = []
     for base in bases:
         default_name = ' '.join(base.title().split('-'))
-        name = {
-            'oauth2': 'OAuth2',
-            'cli': 'CLI',
-            'interpret': 'Worksheet Interpretation',
-        }.get(base, default_name)
+        name = {'oauth2': 'OAuth2', 'cli': 'CLI', 'interpret': 'Worksheet Interpretation'}.get(
+            base, default_name
+        )
         anchor = '-'.join(name.lower().split())
         api_specs.append(APISpec(name, anchor, base2routes[base]))
 
@@ -58,11 +58,16 @@ def get_api_routes():
 
 def get_codalab_schemas():
     from codalab.rest import schemas as schemas_module
+
     for k, v in vars(schemas_module).iteritems():
-        if not isclass(v): continue
-        if not issubclass(v, Schema): continue
-        if v is Schema: continue
-        if v is JsonApiSchema: continue
+        if not isclass(v):
+            continue
+        if not issubclass(v, Schema):
+            continue
+        if v is Schema:
+            continue
+        if v is JsonApiSchema:
+            continue
         yield k, v
 
 

@@ -4,12 +4,7 @@ Used for serializing resource dicts into JSON API documents, and vice-versa.
 The schemas also perform some basic validation.
 """
 from bottle import local
-from marshmallow import (
-    Schema as PlainSchema,
-    ValidationError,
-    validate,
-    validates_schema,
-)
+from marshmallow import Schema as PlainSchema, ValidationError, validate, validates_schema
 from marshmallow_jsonapi import Schema, fields
 import sys
 
@@ -24,8 +19,15 @@ class BlockModes:
     graph_block = 'graph_block'
     subworksheets_block = 'subworksheets_block'
 
-    values = (markup_block, record_block, table_block, contents_block,
-              image_block, graph_block, subworksheets_block)
+    values = (
+        markup_block,
+        record_block,
+        table_block,
+        contents_block,
+        image_block,
+        graph_block,
+        subworksheets_block,
+    )
 
 
 class FetchStatusCodes:
@@ -42,28 +44,23 @@ class FetchStatusSchema(PlainSchema):
     """
     Schema that represents the status of fetching a resource.
     """
+
     code = fields.String(validate=validate.OneOf(set(FetchStatusCodes.values)))
     error_message = fields.String()
 
     @staticmethod
     def get_unknown_status():
-        return {
-            'code': FetchStatusCodes.unknown,
-            'error_message': '',
-        }
+        return {'code': FetchStatusCodes.unknown, 'error_message': ''}
 
     @staticmethod
     def get_ready_status():
-        return {
-            'code': FetchStatusCodes.ready,
-            'error_message': '',
-        }
+        return {'code': FetchStatusCodes.ready, 'error_message': ''}
 
 
 class BundlesSpecSchema(PlainSchema):
     uuid_spec_type = 'uuid_spec'
 
-    spec_types = (uuid_spec_type)
+    spec_types = uuid_spec_type
 
     # Fields
     spec_type = fields.String(validate=validate.OneOf(set(spec_types)))
@@ -89,6 +86,7 @@ class WorksheetBlockSchema(PlainSchema):
     """
     Parent schema for all worksheet blocks.
     """
+
     mode = fields.String(validate=validate.OneOf(set(BlockModes.values)))
     is_refined = fields.Bool(default=False)
 
@@ -101,6 +99,7 @@ class MarkupBlockSchema(WorksheetBlockSchema):
     Schema for blocks that contain markup.
     Does not need refining, contains markup text as payload.
     """
+
     mode = fields.Constant(BlockModes.markup_block)
     is_refined = fields.Bool(validate=validate.Equal(True))  # always refined
     text = fields.String()

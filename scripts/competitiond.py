@@ -43,11 +43,7 @@ import yaml
 sys.path.append('.')
 from codalab.bundles import RunBundle
 from codalab.common import NotFoundError, PermissionError
-from codalab.client.json_api_client import (
-    JsonApiClient,
-    JsonApiRelationship,
-    JsonApiException,
-)
+from codalab.client.json_api_client import JsonApiClient, JsonApiRelationship, JsonApiException
 from codalab.lib.bundle_util import mimic_bundles
 from codalab.lib.metadata_util import fill_missing_metadata
 from codalab.lib.print_util import pretty_json
@@ -65,6 +61,7 @@ class JsonApiClientWithRetry(JsonApiClient):
     """
     JsonApiClient with a retry block around every request.
     """
+
     def __init__(self, *args, **kwargs):
         self.__num_retries = kwargs.pop('num_retries', 4)
         self.__wait_seconds = kwargs.pop('wait_seconds', 1)
@@ -79,7 +76,9 @@ class JsonApiClientWithRetry(JsonApiClient):
             except JsonApiException:
                 if num_retries_left > 0:
                     num_retries_left -= 1
-                    logger.exception('Request failed, retrying in %s second(s)...', self.__wait_seconds)
+                    logger.exception(
+                        'Request failed, retrying in %s second(s)...', self.__wait_seconds
+                    )
                     time.sleep(wait_seconds)
                     wait_seconds *= 5  # exponential backoff
                     wait_seconds += random.uniform(-1, 1)  # small jitter
@@ -91,48 +90,84 @@ class JsonApiClientWithRetry(JsonApiClient):
 class RunConfigSchema(Schema):
     command = fields.String(required=True, metadata='bash command')
     dependencies = fields.List(fields.Nested(BundleDependencySchema), required=True)
-    tag = fields.String(missing='competition-evaluate', metadata='how to tag new evaluation bundles')
+    tag = fields.String(
+        missing='competition-evaluate', metadata='how to tag new evaluation bundles'
+    )
     metadata = fields.Dict(missing={}, metadata='metadata keys for new evaluation bundles')
 
 
 class MimicReplacementSchema(Schema):
-    old = fields.String(validate=validate_uuid, required=True, metadata='uuid of bundle to swap out')
+    old = fields.String(
+        validate=validate_uuid, required=True, metadata='uuid of bundle to swap out'
+    )
     new = fields.String(validate=validate_uuid, required=True, metadata='uuid of bundle to swap in')
 
 
 class MimicConfigSchema(Schema):
     tag = fields.String(missing='competition-predict', metadata='how to tag new prediction bundles')
     metadata = fields.Dict(missing={}, metadata='overwrite metadata keys in mimicked bundles')
-    depth = fields.Integer(missing=10, metadata='how far up the dependency tree to look for replacements')
+    depth = fields.Integer(
+        missing=10, metadata='how far up the dependency tree to look for replacements'
+    )
     mimic = fields.List(fields.Nested(MimicReplacementSchema), required=True)
 
 
 class ScoreSpecSchema(Schema):
     name = fields.String(required=True, metadata='name of the score (for convenience)')
-    key = fields.String(required=True, metadata='target path of the score in the evaluate bundle (e.g. \"/results.json:f1_score\")')
+    key = fields.String(
+        required=True,
+        metadata='target path of the score in the evaluate bundle (e.g. \"/results.json:f1_score\")',
+    )
 
 
 class ConfigSchema(Schema):
-    max_submissions_per_period = fields.Integer(missing=1, metadata='number of submissions allowed per user per quota period')
-    max_submissions_total = fields.Integer(missing=10000, metadata='number of submissions allowed per user for eternity')
-    refresh_period_seconds = fields.Integer(missing=60, metadata='(for daemon mode) number of seconds to wait before checking for new submissions again')
-    max_leaderboard_size = fields.Integer(missing=10000, metadata='maximum number of bundles you expect to have on the log worksheet')
-    quota_period_seconds = fields.Integer(missing=24*60*60, metadata='window size for the user submission quotas in seconds')
-    count_failed_submissions = fields.Boolean(missing=True, metadata='whether to count failed evaluations toward submission quotas')
-    make_predictions_public = fields.Boolean(missing=False, metadata='whether to make newly-created prediction bundles publicly readable')
-    allow_orphans = fields.Boolean(missing=True, metadata='whether to keep leaderboard entries that no longer have corresponding submission bundles')
-    allow_multiple_models = fields.Boolean(missing=False, metadata='whether to distinguish multiple models per user by bundle name')
-    host = fields.Url(missing='https://worksheets.codalab.org', metadata='address of the CodaLab instance to connect to')
+    max_submissions_per_period = fields.Integer(
+        missing=1, metadata='number of submissions allowed per user per quota period'
+    )
+    max_submissions_total = fields.Integer(
+        missing=10000, metadata='number of submissions allowed per user for eternity'
+    )
+    refresh_period_seconds = fields.Integer(
+        missing=60,
+        metadata='(for daemon mode) number of seconds to wait before checking for new submissions again',
+    )
+    max_leaderboard_size = fields.Integer(
+        missing=10000, metadata='maximum number of bundles you expect to have on the log worksheet'
+    )
+    quota_period_seconds = fields.Integer(
+        missing=24 * 60 * 60, metadata='window size for the user submission quotas in seconds'
+    )
+    count_failed_submissions = fields.Boolean(
+        missing=True, metadata='whether to count failed evaluations toward submission quotas'
+    )
+    make_predictions_public = fields.Boolean(
+        missing=False, metadata='whether to make newly-created prediction bundles publicly readable'
+    )
+    allow_orphans = fields.Boolean(
+        missing=True,
+        metadata='whether to keep leaderboard entries that no longer have corresponding submission bundles',
+    )
+    allow_multiple_models = fields.Boolean(
+        missing=False, metadata='whether to distinguish multiple models per user by bundle name'
+    )
+    host = fields.Url(
+        missing='https://worksheets.codalab.org',
+        metadata='address of the CodaLab instance to connect to',
+    )
     username = fields.String(metadata='username for CodaLab account to use')
     password = fields.String(metadata='password for CodaLab account to use')
     submission_tag = fields.String(required=True, metadata='tag for searching for submissions')
-    log_worksheet_uuid = fields.String(validate=validate_uuid, metadata='UUID of worksheet to create new bundles in')
+    log_worksheet_uuid = fields.String(
+        validate=validate_uuid, metadata='UUID of worksheet to create new bundles in'
+    )
     predict = fields.Nested(MimicConfigSchema, required=True)
     evaluate = fields.Nested(RunConfigSchema, required=True)
     # Leaderboard sorted by the first key in this list
     score_specs = fields.List(fields.Nested(ScoreSpecSchema), required=True)
     # Gets passed directly to the output JSON
-    metadata = fields.Dict(missing={}, metadata='additional metadata to include in the leaderboard file')
+    metadata = fields.Dict(
+        missing={}, metadata='additional metadata to include in the leaderboard file'
+    )
 
 
 class AuthHelper(object):
@@ -147,8 +182,9 @@ class AuthHelper(object):
 
     def get_access_token(self):
         if not self.grant or time.time() > self.expires_at - self.REFRESH_BUFFER_SECONDS:
-            self.grant = self.auth_handler.generate_token('credentials',
-                                                          self.username, self.password)
+            self.grant = self.auth_handler.generate_token(
+                'credentials', self.username, self.password
+            )
             if self.grant is None:
                 raise PermissionError('Invalid username or password.')
             self.expires_at = time.time() + self.grant['expires_in']
@@ -169,6 +205,7 @@ class Competition(object):
 
     the prediction bundles maintain the record of all submissions.
     """
+
     def __init__(self, config_path, output_path, leaderboard_only):
         self.config = self._load_config(config_path)
         self.output_path = output_path
@@ -176,7 +213,8 @@ class Competition(object):
         auth = AuthHelper(
             self.config['host'],
             self.config.get('username') or raw_input('Username: '),
-            self.config.get('password') or getpass.getpass('Password: '))
+            self.config.get('password') or getpass.getpass('Password: '),
+        )
 
         # Remove credentials from config to prevent them from being copied
         # into the leaderboard file.
@@ -193,7 +231,7 @@ class Competition(object):
         try:
             config = ConfigSchema(strict=True).load(config).data
         except ValidationError as e:
-            print >> sys.stderr, 'Invalid config file:', e
+            print >>sys.stderr, 'Invalid config file:', e
             sys.exit(1)
         return config
 
@@ -213,10 +251,7 @@ class Competition(object):
         Clears competition-specific metadata from a bundle on the server.
         """
         bundle['metadata']['description'] = ''
-        self.client.update('bundles', {
-            'id': bundle['id'],
-            'metadata': {'description': ''}
-        })
+        self.client.update('bundles', {'id': bundle['id'], 'metadata': {'description': ''}})
 
     def ensure_log_worksheet_private(self):
         """
@@ -230,11 +265,14 @@ class Competition(object):
         public = self.client.fetch('groups', 'public')
 
         # Set permissions
-        self.client.create('worksheet-permissions', {
-            'group': JsonApiRelationship('groups', public['id']),
-            'worksheet': JsonApiRelationship('worksheets', self.config['log_worksheet_uuid']),
-            'permission': 0,
-        })
+        self.client.create(
+            'worksheet-permissions',
+            {
+                'group': JsonApiRelationship('groups', public['id']),
+                'worksheet': JsonApiRelationship('worksheets', self.config['log_worksheet_uuid']),
+                'permission': 0,
+            },
+        )
 
     def _make_public_readable(self, bundle):
         """
@@ -244,31 +282,43 @@ class Competition(object):
         public = self.client.fetch('groups', 'public')
 
         # Set permissions
-        self.client.create('bundle-permissions', {
-            'group': JsonApiRelationship('groups', public['id']),
-            'bundle': JsonApiRelationship('bundles', bundle['id']),
-            'permission': 1,
-        })
+        self.client.create(
+            'bundle-permissions',
+            {
+                'group': JsonApiRelationship('groups', public['id']),
+                'bundle': JsonApiRelationship('bundles', bundle['id']),
+                'permission': 1,
+            },
+        )
 
     def _untag(self, bundles, tag):
         """
         Remove the given `tag` from each of the bundles in `bundles`.
         """
-        self.client.update('bundles', [{
-            'id': b['id'],
-            'metadata': {'tags': [t for t in b['metadata']['tags'] if t != tag]}
-        } for b in bundles])
+        self.client.update(
+            'bundles',
+            [
+                {
+                    'id': b['id'],
+                    'metadata': {'tags': [t for t in b['metadata']['tags'] if t != tag]},
+                }
+                for b in bundles
+            ],
+        )
 
     def _fetch_latest_submissions(self):
         # Fetch all submissions
-        all_submissions = self.client.fetch('bundles', params={
-            'keywords': [
-                'tags={submission_tag}'.format(**self.config),
-                'created=.sort-',
-                '.limit={max_leaderboard_size}'.format(**self.config),
-            ],
-            'include': ['owner']
-        })
+        all_submissions = self.client.fetch(
+            'bundles',
+            params={
+                'keywords': [
+                    'tags={submission_tag}'.format(**self.config),
+                    'created=.sort-',
+                    '.limit={max_leaderboard_size}'.format(**self.config),
+                ],
+                'include': ['owner'],
+            },
+        )
 
         # Drop all but the latest submission for each user
         # (or for each model, as distinguished by the bundle name)
@@ -289,17 +339,22 @@ class Competition(object):
 
     def _fetch_submission_history(self):
         # Fetch latest evaluation bundles
-        last_tests = self.client.fetch('bundles', params={
-            'keywords': [
-                '.mine',  # don't allow others to forge evaluations
-                'tags={evaluate[tag]}'.format(**self.config),
-                '.limit={max_leaderboard_size}'.format(**self.config),
-            ],
-        })
+        last_tests = self.client.fetch(
+            'bundles',
+            params={
+                'keywords': [
+                    '.mine',  # don't allow others to forge evaluations
+                    'tags={evaluate[tag]}'.format(**self.config),
+                    '.limit={max_leaderboard_size}'.format(**self.config),
+                ]
+            },
+        )
 
         # Collect data in preparation for computing submission counts
-        submission_times = defaultdict(list)  # map from submitter_user_id -> UNIX timestamps of submissions, sorted
-        previous_submission_ids = set()                # set of submission bundle uuids
+        submission_times = defaultdict(
+            list
+        )  # map from submitter_user_id -> UNIX timestamps of submissions, sorted
+        previous_submission_ids = set()  # set of submission bundle uuids
         for eval_bundle in last_tests:
             submit_info = self._get_competition_metadata(eval_bundle)
             if submit_info is None:
@@ -323,13 +378,16 @@ class Competition(object):
 
         return previous_submission_ids, num_total_submissions, num_period_submissions
 
-    def _filter_submissions(self, submissions, previous_submission_ids, num_total_submissions, num_period_submissions):
+    def _filter_submissions(
+        self, submissions, previous_submission_ids, num_total_submissions, num_period_submissions
+    ):
         # Drop submission if user has exceeded their quota
         for key, bundle in submissions.items():
             # Drop submission if we already ran it before
             if bundle['id'] in previous_submission_ids:
-                logger.debug('Already mimicked last submission by '
-                             '{owner[user_name]}.'.format(**bundle))
+                logger.debug(
+                    'Already mimicked last submission by ' '{owner[user_name]}.'.format(**bundle)
+                )
                 del submissions[key]
                 continue
 
@@ -339,7 +397,9 @@ class Competition(object):
                     "({used}/{allowed} total submissions)".format(
                         used=num_total_submissions[key.owner_id],
                         allowed=self.config['max_submissions_total'],
-                        **bundle))
+                        **bundle
+                    )
+                )
                 del submissions[key]
                 continue
 
@@ -349,7 +409,9 @@ class Competition(object):
                     "({used}/{allowed} submissions per day)".format(
                         used=num_period_submissions[key.owner_id],
                         allowed=self.config['max_submissions_per_period'],
-                        **bundle))
+                        **bundle
+                    )
+                )
                 del submissions[key]
                 continue
         return submissions
@@ -360,8 +422,12 @@ class Competition(object):
         """
         logger.debug("Collecting latest submissions")
         submissions = self._fetch_latest_submissions()
-        previous_submission_ids, num_total_submissions, num_period_submissions = self._fetch_submission_history()
-        submissions = self._filter_submissions(submissions, previous_submission_ids, num_total_submissions, num_period_submissions)
+        previous_submission_ids, num_total_submissions, num_period_submissions = (
+            self._fetch_submission_history()
+        )
+        submissions = self._filter_submissions(
+            submissions, previous_submission_ids, num_total_submissions, num_period_submissions
+        )
         return submissions.values(), num_total_submissions, num_period_submissions
 
     def run_prediction(self, submit_bundle):
@@ -386,9 +452,7 @@ class Competition(object):
                     return new_info
             return None
 
-        metadata = {
-            'tags': [predict_config['tag']],
-        }
+        metadata = {'tags': [predict_config['tag']]}
         metadata.update(predict_config['metadata'])
         mimic_args = {
             'client': self.client,
@@ -410,7 +474,8 @@ class Competition(object):
         if find_mimicked(mimic_bundles(dry_run=True, **mimic_args)) is None:
             logger.info(
                 "Submission {uuid} by {owner[user_name]} is missing "
-                "expected dependencies.".format(**submit_bundle))
+                "expected dependencies.".format(**submit_bundle)
+            )
             return None
 
         # Actually perform the mimic now
@@ -422,13 +487,16 @@ class Competition(object):
         eval_bundle_name = '{owner[user_name]}-{metadata[name]}-results'.format(**submit_bundle)
 
         # Untag any old evaluation run(s) for this submitter
-        old_evaluations = self.client.fetch('bundles', params={
-            'keywords': [
-                '.mine',  # don't allow others to forge evaluations
-                'tags={evaluate[tag]}'.format(**self.config),
-                'name=' + eval_bundle_name,
+        old_evaluations = self.client.fetch(
+            'bundles',
+            params={
+                'keywords': [
+                    '.mine',  # don't allow others to forge evaluations
+                    'tags={evaluate[tag]}'.format(**self.config),
+                    'name=' + eval_bundle_name,
                 ]
-        })
+            },
+        )
         if old_evaluations:
             self._untag(old_evaluations, self.config['evaluate']['tag'])
 
@@ -437,11 +505,13 @@ class Competition(object):
         metadata = {
             'name': eval_bundle_name,
             'tags': [self.config['evaluate']['tag']],
-            'description': json.dumps({
-                'submit_id': submit_bundle['id'],
-                'submitter_id': submit_bundle['owner']['id'],
-                'predict_id': predict_bundle['id'],
-            }),
+            'description': json.dumps(
+                {
+                    'submit_id': submit_bundle['id'],
+                    'submitter_id': submit_bundle['owner']['id'],
+                    'predict_id': predict_bundle['id'],
+                }
+            ),
         }
         metadata.update(self.config['evaluate']['metadata'])
         metadata = fill_missing_metadata(RunBundle, argparse.Namespace(), metadata)
@@ -452,12 +522,16 @@ class Competition(object):
             dep['parent_uuid'] = dep['parent_uuid'].format(predict=predict_bundle['uuid'])
             dependencies.append(dep)
         # Create the bundle
-        eval_bundle = self.client.create('bundles', {
-            'bundle_type': 'run',
-            'command': self.config['evaluate']['command'],
-            'dependencies': dependencies,
-            'metadata': metadata,
-        }, params={'worksheet': self.config['log_worksheet_uuid']})
+        eval_bundle = self.client.create(
+            'bundles',
+            {
+                'bundle_type': 'run',
+                'command': self.config['evaluate']['command'],
+                'dependencies': dependencies,
+                'metadata': metadata,
+            },
+            params={'worksheet': self.config['log_worksheet_uuid']},
+        )
         self._make_public_readable(eval_bundle)
         return eval_bundle
 
@@ -482,13 +556,16 @@ class Competition(object):
         """
         logger.debug('Fetching the leaderboard')
         # Fetch bundles on current leaderboard
-        eval_bundles = self.client.fetch('bundles', params={
-            'keywords': [
-                '.mine',  # don't allow others to forge evaluations
-                'tags={evaluate[tag]}'.format(**self.config),
-                '.limit={max_leaderboard_size}'.format(**self.config),
-            ]
-        })
+        eval_bundles = self.client.fetch(
+            'bundles',
+            params={
+                'keywords': [
+                    '.mine',  # don't allow others to forge evaluations
+                    'tags={evaluate[tag]}'.format(**self.config),
+                    '.limit={max_leaderboard_size}'.format(**self.config),
+                ]
+            },
+        )
         eval_bundles = {b['id']: b for b in eval_bundles}
 
         # Build map from submission bundle id => eval bundle
@@ -519,11 +596,16 @@ class Competition(object):
                 submit_bundles = []
                 for start in range(0, len(uuids), 50):
                     end = start + 50
-                    submit_bundles.extend(self.client.fetch('bundles', params={
-                        'specs': uuids[start:end],
-                        'worksheet': self.config['log_worksheet_uuid'],
-                        'include': ['owner', 'group_permissions'],
-                    }))
+                    submit_bundles.extend(
+                        self.client.fetch(
+                            'bundles',
+                            params={
+                                'specs': uuids[start:end],
+                                'worksheet': self.config['log_worksheet_uuid'],
+                                'include': ['owner', 'group_permissions'],
+                            },
+                        )
+                    )
                 break
             except NotFoundError as e:
                 missing_submit_uuid = re.search(UUID_STR, e.message).group(0)
@@ -598,7 +680,8 @@ class Competition(object):
                     # Can include any information we want from the submission
                     # within bounds of reason (since submitter may want to
                     # keep some of the metadata private).
-                    'description': meta.get('description', None) or submit_bundle['metadata']['description'],  # Allow description override
+                    'description': meta.get('description', None)
+                    or submit_bundle['metadata']['description'],  # Allow description override
                     'public': self._is_publicly_readable(submit_bundle),
                     'user_name': submit_bundle['owner']['user_name'],
                     'num_total_submissions': num_total_submissions[submit_bundle['owner']['id']],
@@ -616,24 +699,22 @@ class Competition(object):
                     'num_period_submissions': 0,
                     'created': eval_bundle['metadata']['created'],
                 }
-            leaderboard.append({
-                'bundle': eval_bundle,
-                'scores': scores[eval_bundle['id']],
-                'submission': submission_info,
-            })
+            leaderboard.append(
+                {
+                    'bundle': eval_bundle,
+                    'scores': scores[eval_bundle['id']],
+                    'submission': submission_info,
+                }
+            )
 
         # Sort by the scores, descending
         leaderboard.sort(
             key=lambda e: tuple(e['scores'][spec['name']] for spec in self.config['score_specs']),
-            reverse=True
+            reverse=True,
         )
 
         # Write table to JSON file along with other data
-        output = {
-            'leaderboard': leaderboard,
-            'config': self.config,
-            'updated': time.time(),
-        }
+        output = {'leaderboard': leaderboard, 'config': self.config, 'updated': time.time()}
         with open(self.output_path, 'w') as fp:
             fp.write(pretty_json(output))
 
@@ -646,16 +727,20 @@ class Competition(object):
 
         if not self.leaderboard_only:
             for submit_bundle in submissions:
-                logger.info("Mimicking submission for "
-                            "{owner[user_name]}".format(**submit_bundle))
+                logger.info(
+                    "Mimicking submission for " "{owner[user_name]}".format(**submit_bundle)
+                )
                 predict_bundle = self.run_prediction(submit_bundle)
                 if predict_bundle is None:
-                    logger.info("Aborting submission for "
-                                "{owner[user_name]}".format(**submit_bundle))
+                    logger.info(
+                        "Aborting submission for " "{owner[user_name]}".format(**submit_bundle)
+                    )
                     continue
                 self.run_evaluation(submit_bundle, predict_bundle)
-                logger.info("Finished mimicking submission for "
-                            "{owner[user_name]}".format(**submit_bundle))
+                logger.info(
+                    "Finished mimicking submission for "
+                    "{owner[user_name]}".format(**submit_bundle)
+                )
 
                 # Update local counts for the leaderboard
                 owner_id = submit_bundle['owner']['id']
@@ -696,7 +781,9 @@ def generate_description():
                 doc = display_schema(field.nested, doc, (indent + '  '))
             elif field_class is fields.List:
                 doc += indent + '%s:\n' % field_name
-                doc = display_schema(field.container.nested, doc, (indent + '    '), first_indent=(indent + '  - '))
+                doc = display_schema(
+                    field.container.nested, doc, (indent + '    '), first_indent=(indent + '  - ')
+                )
                 doc += indent + '  - ...\n'
             else:
                 field_type = field.__class__.__name__.lower()
@@ -705,29 +792,40 @@ def generate_description():
                 elif field.missing is missing and not field.required:
                     doc += indent + '%s: %s, %s\n' % (field_name, field_type, field_help)
                 else:
-                    doc += indent + '%s: %s, %s [default: %s]\n' % (field_name, field_type, field_help, json.dumps(field.missing).strip())
+                    doc += indent + '%s: %s, %s [default: %s]\n' % (
+                        field_name,
+                        field_type,
+                        field_help,
+                        json.dumps(field.missing).strip(),
+                    )
             indent = saved_indent
         return doc
-    return display_schema(ConfigSchema, __doc__, ' '*4)
+
+    return display_schema(ConfigSchema, __doc__, ' ' * 4)
 
 
 def main():
     # Support all configs as command line arguments too
-    parser = argparse.ArgumentParser(description=generate_description(),
-                                     formatter_class=argparse.RawTextHelpFormatter)
-    parser.add_argument('config_file',
-                        help='YAML/JSON file containing configurations.')
-    parser.add_argument('output_path',
-                        help='path to write JSON file containing leaderboard.')
-    parser.add_argument('-l', '--leaderboard-only', action='store_true',
-                        help='Generate a new leaderboard but without creating any new runs.')
-    parser.add_argument('-d', '--daemon', action='store_true',
-                        help='Run as a daemon. (By default only runs once.)')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        help='Output verbose log messages.')
+    parser = argparse.ArgumentParser(
+        description=generate_description(), formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument('config_file', help='YAML/JSON file containing configurations.')
+    parser.add_argument('output_path', help='path to write JSON file containing leaderboard.')
+    parser.add_argument(
+        '-l',
+        '--leaderboard-only',
+        action='store_true',
+        help='Generate a new leaderboard but without creating any new runs.',
+    )
+    parser.add_argument(
+        '-d', '--daemon', action='store_true', help='Run as a daemon. (By default only runs once.)'
+    )
+    parser.add_argument('-v', '--verbose', action='store_true', help='Output verbose log messages.')
     args = parser.parse_args()
-    logging.basicConfig(format='[%(levelname)s] %(asctime)s: %(message)s',
-                        level=(logging.DEBUG if args.verbose else logging.INFO))
+    logging.basicConfig(
+        format='[%(levelname)s] %(asctime)s: %(message)s',
+        level=(logging.DEBUG if args.verbose else logging.INFO),
+    )
     comp = Competition(args.config_file, args.output_path, args.leaderboard_only)
     if args.daemon:
         # Catch interrupt signals so that eval loop doesn't get interrupted in the
