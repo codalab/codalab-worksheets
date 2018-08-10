@@ -286,7 +286,7 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
                 subworksheet_uuid = canonicalize.get_worksheet_uuid(model, user, worksheet_uuid, subworksheet_spec)
                 subworksheet_info = {'uuid': subworksheet_uuid}  # info doesn't need anything other than uuid
                 items.append(subworksheet_item(subworksheet_info))
-            except UsageError, e:
+            except UsageError as e:
                 items.append(markup_item(e.message + ': ' + line))
         elif line_type == TYPE_DIRECTIVE:
             directive = DIRECTIVE_REGEX.match(line).group(1)

@@ -210,7 +210,7 @@ def fetch_interpreted_worksheet(uuid):
     try:
         interpreted_blocks = interpret_items(get_default_schemas(),
                                              worksheet_info['items'])
-    except UsageError, e:
+    except UsageError as e:
         interpreted_blocks = {'blocks': []}
         worksheet_info['error'] = str(e)
 
@@ -574,7 +574,7 @@ def resolve_items_into_infos(items):
             try:
                 subworksheet_info = local.model.get_worksheet(
                     i['subworksheet_uuid'], fetch_items=False).to_dict()
-            except UsageError, e:
+            except UsageError as e:
                 # If can't get the subworksheet, it's probably invalid, so just replace it with an error
                 # type = worksheet_util.TYPE_MARKUP
                 subworksheet_info = {'uuid': i['subworksheet_uuid']}

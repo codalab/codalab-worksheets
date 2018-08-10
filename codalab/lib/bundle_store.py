@@ -161,7 +161,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
 
         try:
             path_util.make_directory(mdata)
-        except Exception, e:
+        except Exception as e:
             print >> sys.stderr, e
             print >> sys.stderr, "Could not make directory %s on partition %s, aborting" % (mdata, target)
             sys.exit(1)

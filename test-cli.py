@@ -112,10 +112,10 @@ def run_command(args, expected_exit_code=0):
     try:
         output = subprocess.check_output(args)
         exitcode = 0
-    except subprocess.CalledProcessError, e:
+    except subprocess.CalledProcessError as e:
         output = e.output
         exitcode = e.returncode
-    except Exception, e:
+    except Exception as e:
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
     print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))

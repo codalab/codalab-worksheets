@@ -775,11 +775,11 @@ class BundleCLI(object):
         else:
             try:
                 structured_result = command_fn()
-            except PermissionError, e:
+            except PermissionError as e:
                 if self.headless:
                     raise e
                 self.exit(e.message)
-            except UsageError, e:
+            except UsageError as e:
                 if self.headless:
                     raise e
                 self.exit('%s: %s' % (e.__class__.__name__, e))
@@ -2384,7 +2384,7 @@ class BundleCLI(object):
                     maxlines = int(maxlines)
                 try:
                     self.print_target_info(client, bundle_info['uuid'], block['target_genpath'], head=maxlines)
-                except UsageError, e:
+                except UsageError as e:
                     print >>self.stdout, 'ERROR:', e
             elif mode == BlockModes.record_block or mode == BlockModes.table_block:
                 # header_name_posts is a list of (name, post-processing) pairs.

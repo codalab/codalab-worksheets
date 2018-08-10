@@ -370,7 +370,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 command
             )
             output = subprocess.check_output(cli_command.split(' '))
-        except subprocess.CalledProcessError, e:
+        except subprocess.CalledProcessError as e:
             output = e.output
             raise
 

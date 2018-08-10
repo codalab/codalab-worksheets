@@ -251,7 +251,7 @@ while True:
             run_command(['cl', 'wait', uuid], 30, 300)  # Running might take a while
             run_command(['cl', 'rm', upload_uuid, uuid])
 
-    except Exception, e:
+    except Exception as e:
         error_logs('exception', 'Exception: %s' % e)
 
     if ping_time():

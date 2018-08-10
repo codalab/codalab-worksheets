@@ -274,7 +274,7 @@ def make_directory(path):
     """
     try:
         os.mkdir(path)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.EEXIST:
             raise
     check_isdir(path, 'make_directories')
