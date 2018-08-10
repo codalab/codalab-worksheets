@@ -1,6 +1,6 @@
 bottle==0.12.9
-marshmallow-jsonapi==0.7.1
-marshmallow==2.15.4
+marshmallow-jsonapi==0.6.0
+marshmallow==2.6.1
 setuptools>=40.0.0
 argcomplete==1.9.4
 PyYAML==3.13
