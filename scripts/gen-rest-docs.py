@@ -4,8 +4,7 @@
 Generate REST docs.
 """
 import sys
-
-sys.path.append(".")
+sys.path.append('.')
 from inspect import isclass
 from collections import defaultdict, namedtuple
 import os
@@ -16,16 +15,15 @@ from marshmallow_jsonapi import Schema as JsonApiSchema
 from textwrap import dedent
 
 from codalab.common import CODALAB_VERSION
-
 # Ensure all REST modules are loaded
 from codalab.server import rest_server
 
 
-REST_DOCS_PATH = "docs/rest.md"
-EXCLUDED_APIS = {"account", "titlejs", "api", "static", "chats", "faq", "help"}
+REST_DOCS_PATH = 'docs/rest.md'
+EXCLUDED_APIS = {'account', 'titlejs', 'api', 'static', 'chats', 'faq', 'help'}
 
 
-APISpec = namedtuple("APISpec", "name anchor routes")
+APISpec = namedtuple('APISpec', 'name anchor routes')
 
 
 def get_api_routes():
@@ -37,7 +35,7 @@ def get_api_routes():
     base2routes = defaultdict(list)
     bases = set()
     for route in app.routes:
-        path = route.rule.split("/")
+        path = route.rule.split('/')
         base = path[1]
         if base in EXCLUDED_APIS:
             continue
@@ -46,13 +44,13 @@ def get_api_routes():
 
     api_specs = []
     for base in bases:
-        default_name = " ".join(base.title().split("-"))
+        default_name = ' '.join(base.title().split('-'))
         name = {
-            "oauth2": "OAuth2",
-            "cli": "CLI",
-            "interpret": "Worksheet Interpretation",
+            'oauth2': 'OAuth2',
+            'cli': 'CLI',
+            'interpret': 'Worksheet Interpretation',
         }.get(base, default_name)
-        anchor = "-".join(name.lower().split())
+        anchor = '-'.join(name.lower().split())
         api_specs.append(APISpec(name, anchor, base2routes[base]))
 
     return api_specs
@@ -60,20 +58,15 @@ def get_api_routes():
 
 def get_codalab_schemas():
     from codalab.rest import schemas as schemas_module
-
     for k, v in vars(schemas_module).iteritems():
-        if not isclass(v):
-            continue
-        if not issubclass(v, Schema):
-            continue
-        if v is Schema:
-            continue
-        if v is JsonApiSchema:
-            continue
+        if not isclass(v): continue
+        if not issubclass(v, Schema): continue
+        if v is Schema: continue
+        if v is JsonApiSchema: continue
         yield k, v
 
 
-INDEX_DOC = """\
+INDEX_DOC = '''\
 # REST API Reference
 
 _version {{version}}_
@@ -89,9 +82,9 @@ subject to change at any time. Feedback through our GitHub issues is appreciated
   - [{{spec.name}} API](#{{spec.anchor}}-api)
 % end
 
-"""
+'''
 
-INTRODUCTION_DOC = """\
+INTRODUCTION_DOC = '''\
 # Introduction
 We use the JSON API v1.0 specification with the Bulk extension.
 - http://jsonapi.org/format/
@@ -189,10 +182,10 @@ If the token is expired, does not authorize the application to access the
 target resource, or is otherwise invalid, the Bundle Service will respond with
 a `401 Unauthorized` or `403 Forbidden` status.
 
-"""
+'''
 
 
-SCHEMA_DOC = """\
+SCHEMA_DOC = '''\
 <%
     from marshmallow_jsonapi import Schema as JsonApiSchema
     from textwrap import dedent
@@ -224,7 +217,7 @@ Name | Type
 `{{field_name}}` | {{field_class.__name__}}
 %end
 % end
-"""
+'''
 
 # TODO: parse out things and convert them to markdown tables
 # Search bundles
@@ -244,7 +237,7 @@ Name | Type
 #   % request-resource 'bundles' bulk
 #   % response-resource 'bundles'
 #   % response { JSON format }
-API_ROUTE_DOC = """\
+API_ROUTE_DOC = '''\
 <%
     from textwrap import dedent
     docstring = route.get_undecorated_callback().__doc__
@@ -253,7 +246,7 @@ API_ROUTE_DOC = """\
 % if docstring:
 {{!dedent(docstring)}}
 % end
-"""
+'''
 
 
 INDEX_LINK = "\n&uarr; [Back to Top](#table-of-contents)\n"
@@ -263,15 +256,11 @@ def main():
     if not os.path.exists(os.path.dirname(REST_DOCS_PATH)):
         os.makedirs(os.path.dirname(REST_DOCS_PATH))
 
-    with open(REST_DOCS_PATH, "wb") as out:
-        out.write(
-            template(
-                dedent(INDEX_DOC), api_specs=get_api_routes(), version=CODALAB_VERSION
-            )
-        )
+    with open(REST_DOCS_PATH, 'wb') as out:
+        out.write(template(dedent(INDEX_DOC), api_specs=get_api_routes(), version=CODALAB_VERSION))
         out.write(dedent(INTRODUCTION_DOC))
 
-        out.write("# Resource Object Schemas\n")
+        out.write('# Resource Object Schemas\n')
         for schema_name, schema in get_codalab_schemas():
             out.write(template(dedent(SCHEMA_DOC), schema=schema))
             # For debugging.
@@ -279,13 +268,13 @@ def main():
             #     print vars(field)
         out.write(INDEX_LINK)
 
-        out.write("# API Endpoints\n")
+        out.write('# API Endpoints\n')
         for spec in get_api_routes():
-            out.write("## %s API\n" % spec.name)
+            out.write('## %s API\n' % spec.name)
             for route in spec.routes:
                 out.write(template(dedent(API_ROUTE_DOC), route=route))
             out.write(INDEX_LINK)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()

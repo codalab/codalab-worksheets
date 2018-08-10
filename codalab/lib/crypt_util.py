@@ -43,15 +43,12 @@ try:
     using_sysrandom = True
 except NotImplementedError:
     import warnings
-
-    warnings.warn(
-        "A secure pseudo-random number generator is not available "
-        "on your system. Falling back to Mersenne Twister."
-    )
+    warnings.warn('A secure pseudo-random number generator is not available '
+                  'on your system. Falling back to Mersenne Twister.')
     using_sysrandom = False
 
 
-def force_bytes(s, encoding="utf-8", errors="strict"):
+def force_bytes(s, encoding='utf-8', errors='strict'):
     """
     Return a bytestring version of s.
 
@@ -60,19 +57,18 @@ def force_bytes(s, encoding="utf-8", errors="strict"):
     :return: bytestring version of s
     """
     if isinstance(s, bytes):
-        if encoding == "utf-8":
+        if encoding == 'utf-8':
             return s
         else:
-            return s.decode("utf-8", errors).encode(encoding, errors)
+            return s.decode('utf-8', errors).encode(encoding, errors)
     else:
         return s.encode(encoding, errors)
 
 
-def get_random_string(
-    length=12,
-    allowed_chars="abcdefghijklmnopqrstuvwxyz" "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789",
-    secret="",
-):
+def get_random_string(length=12,
+                      allowed_chars='abcdefghijklmnopqrstuvwxyz'
+                                    'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789',
+                      secret=''):
     """
     Returns a securely generated random string.
     The default length of 12 with the a-z, A-Z, 0-9 character set returns
@@ -93,10 +89,12 @@ def get_random_string(
         # is better than absolute predictability.
         random.seed(
             hashlib.sha256(
-                ("%s%s%s" % (random.getstate(), time.time(), secret)).encode("utf-8")
-            ).digest()
-        )
-    return "".join(random.choice(allowed_chars) for i in range(length))
+                ("%s%s%s" % (
+                    random.getstate(),
+                    time.time(),
+                    secret)).encode('utf-8')
+            ).digest())
+    return ''.join(random.choice(allowed_chars) for i in range(length))
 
 
 def _bin_to_long(x):
@@ -112,17 +110,14 @@ def _long_to_bin(x, hex_format_string):
     Convert a long integer into a binary string.
     hex_format_string is like "%020x" for padding 10 characters.
     """
-    return binascii.unhexlify((hex_format_string % x).encode("ascii"))
+    return binascii.unhexlify((hex_format_string % x).encode('ascii'))
 
 
 if hasattr(hmac, "compare_digest"):
     # Prefer the stdlib implementation, when available.
     def constant_time_compare(val1, val2):
         return hmac.compare_digest(force_bytes(val1), force_bytes(val2))
-
-
 else:
-
     def constant_time_compare(val1, val2):
         """
         Returns True if the two strings are equal, False otherwise.
@@ -145,7 +140,6 @@ else:
 
 
 if hasattr(hashlib, "pbkdf2_hmac"):
-
     def pbkdf2(password, salt, iterations, dklen=0, digest=None):
         """
         Implements PBKDF2 with the same API as Django's existing
@@ -158,11 +152,9 @@ if hasattr(hashlib, "pbkdf2_hmac"):
             dklen = None
         password = force_bytes(password)
         salt = force_bytes(salt)
-        return hashlib.pbkdf2_hmac(digest().name, password, salt, iterations, dklen)
-
-
+        return hashlib.pbkdf2_hmac(
+            digest().name, password, salt, iterations, dklen)
 else:
-
     def pbkdf2(password, salt, iterations, dklen=0, digest=None):
         """
         Implements PBKDF2 as defined in RFC 2898, section 5.2
@@ -185,7 +177,7 @@ else:
         if not dklen:
             dklen = hlen
         if dklen > (2 ** 32 - 1) * hlen:
-            raise OverflowError("dklen too big")
+            raise OverflowError('dklen too big')
         l = -(-dklen // hlen)
         r = dklen - (l - 1) * hlen
 
@@ -194,12 +186,12 @@ else:
         inner, outer = digest(), digest()
         if len(password) > inner.block_size:
             password = digest(password).digest()
-        password += b"\x00" * (inner.block_size - len(password))
+        password += b'\x00' * (inner.block_size - len(password))
         inner.update(password.translate(hmac.trans_36))
         outer.update(password.translate(hmac.trans_5C))
 
         def F(i):
-            u = salt + struct.pack(b">I", i)
+            u = salt + struct.pack(b'>I', i)
             result = 0
             for j in range(int(iterations)):
                 dig1, dig2 = inner.copy(), outer.copy()
@@ -210,4 +202,4 @@ else:
             return _long_to_bin(result, hex_format_string)
 
         T = [F(x) for x in range(1, l)]
-        return b"".join(T) + F(l)[:r]
+        return b''.join(T) + F(l)[:r]

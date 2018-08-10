@@ -9,13 +9,10 @@ in Javascript that is loaded in the <head> section.
 from bottle import get, local, request, template
 
 from codalab.lib import spec_util
-from codalab.objects.permission import (
-    check_bundles_have_read_permission,
-    check_worksheet_has_read_permission,
-)
+from codalab.objects.permission import check_bundles_have_read_permission, check_worksheet_has_read_permission
 
 
-@get("/titlejs/worksheet/<uuid:re:%s>/" % spec_util.UUID_STR)
+@get('/titlejs/worksheet/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_worksheet_title_js(uuid):
     """
     Returns Javascript code that updates the worksheet title.
@@ -26,14 +23,14 @@ def get_worksheet_title_js(uuid):
         title = worksheet.title
     else:
         title = worksheet.name
-    return template("title_setter_js", title=title)
+    return template('title_setter_js', title=title)
 
 
-@get("/titlejs/bundle/<uuid:re:%s>/" % spec_util.UUID_STR)
+@get('/titlejs/bundle/<uuid:re:%s>/' % spec_util.UUID_STR)
 def get_bundle_title_js(uuid):
     """
     Returns Javascript code that updates the bundle title.
     """
     bundle = local.model.get_bundle(uuid)
     check_bundles_have_read_permission(local.model, request.user, [uuid])
-    return template("title_setter_js", title=bundle.metadata.name)
+    return template('title_setter_js', title=bundle.metadata.name)

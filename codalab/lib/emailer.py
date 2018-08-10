@@ -15,9 +15,7 @@ class Emailer(object):
 
 
 class SMTPEmailer(Emailer):
-    def __init__(
-        self, host, user, password, default_sender, server_email, port=587, use_tls=True
-    ):
+    def __init__(self, host, user, password, default_sender, server_email, port=587, use_tls=True):
         """
         :param host: SMTP server hostname
         :param user: SMTP user name
@@ -35,17 +33,10 @@ class SMTPEmailer(Emailer):
         self.server_email = server_email
         self.port = port
         self.use_tls = use_tls
-        self.do_login = self.password != None
+        self.do_login = (self.password != None)
 
-    def send_email(
-        self,
-        subject,
-        body,
-        recipient,
-        sender=None,
-        mime_type="plain",
-        charset="us-ascii",
-    ):
+    def send_email(self, subject, body, recipient, sender=None,
+                   mime_type='plain', charset='us-ascii'):
         """
         Send email
 
@@ -69,7 +60,7 @@ class SMTPEmailer(Emailer):
                 mail_server.starttls()
                 mail_server.ehlo()
 
-            if self.do_login:
+            if self.do_login: 
                 mail_server.login(self.user, self.password)
 
             message = MIMEText(body, mime_type, charset)
@@ -98,7 +89,7 @@ class ConsoleEmailer(Emailer):
 
     def send_email(self, subject, body, recipient, sender=None):
         print >>self.out, ("=" * 40)
-        print >>self.out, "From: %s" % (sender or "console")
+        print >>self.out, "From: %s" % (sender or 'console')
         print >>self.out, "To: %s" % recipient
         print >>self.out, "Subject: %s" % subject
         print >>self.out

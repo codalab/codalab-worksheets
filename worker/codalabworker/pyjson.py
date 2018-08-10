@@ -8,50 +8,32 @@ class PyJSONEncoder(json.JSONEncoder):
     Also allows dicts with tuple keys to be JSON-encoded (as long as the keys don't include
     the special token strings used for encoding)
     """
-
-    TUPLE_KEY_STR = "_tuple_key_"
-    TUPLE_ELEM_STR = "_tuple_sep_"
+    TUPLE_KEY_STR = '_tuple_key_'
+    TUPLE_ELEM_STR = '_tuple_sep_'
 
     def encode_key(self, key):
         """
         Encodes a dict key. Currently only supports encoding tuples and strings as keys
         """
-        if not (
-            isinstance(key, tuple) or isinstance(key, str) or isinstance(key, unicode)
-        ):
-            raise Exception(
-                "PyJSON can only encode dicts with str, unicode or tuple keys"
-            )
+        if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, unicode)):
+            raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
         if isinstance(key, tuple):
-            if not all(
-                isinstance(tuple_el, str) or isinstance(tuple_el, unicode)
-                for tuple_el in key
-            ):
-                raise Exception(
-                    "Tuple elements need to be all strings (or unicode) for PyJSON to work"
-                )
+            if not all(isinstance(tuple_el, str) or isinstance(tuple_el, unicode) for tuple_el in key):
+                raise Exception('Tuple elements need to be all strings (or unicode) for PyJSON to work')
 
             if any(PyJSONEncoder.TUPLE_KEY_STR in tuple_el for tuple_el in key):
-                raise Exception(
-                    "%s is reserved for pyjson encoder but found in keys. Can't encode this dict"
-                    % PyJSONEncoder.TUPLE_KEY_STR
-                )
+                raise Exception('%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict' % PyJSONEncoder.TUPLE_KEY_STR)
 
             if any(PyJSONEncoder.TUPLE_ELEM_STR in tuple_el for tuple_el in key):
-                raise Exception(
-                    "%s is reserved for pyjson encoder but found in keys. Can't encode this dict"
-                    % PyJSONEncoder.TUPLE_ELEM_STR
-                )
+                raise Exception('%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict' % PyJSONEncoder.TUPLE_ELEM_STR)
 
-            key = "%s%s" % (
-                PyJSONEncoder.TUPLE_KEY_STR,
-                PyJSONEncoder.TUPLE_ELEM_STR.join(key),
-            )
+            key = '%s%s' % (PyJSONEncoder.TUPLE_KEY_STR,
+                            PyJSONEncoder.TUPLE_ELEM_STR.join(key))
 
         return key
 
     def default(self, obj):
-        if hasattr(obj, "_asdict"):  # detect namedtuple
+        if hasattr(obj, '_asdict'):  # detect namedtuple
             odct = obj._asdict()
             return dict(
                 _namedtuple_name=type(obj).__name__,
@@ -75,35 +57,29 @@ class PyJSONDecoder(json.JSONDecoder):
     """ Decoder """
 
     def __init__(self, *args, **kwargs):
-        json.JSONDecoder.__init__(
-            self, *args, object_hook=self.json_as_python, **kwargs
-        )
+        json.JSONDecoder.__init__(self, *args, object_hook=self.json_as_python, **kwargs)
 
     def decode_key(self, key):
         """
         Should do the opposite of what encode_key does
         """
         if isinstance(key, basestring) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
-            key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR) :]
+            key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR):]
             return tuple(key_str.split(PyJSONEncoder.TUPLE_ELEM_STR))
         return key
 
     def json_as_python(self, dct):
         if isinstance(dct, dict):
-            if "_set_object" in dct:
-                return set(self.json_as_python(item) for item in dct["_set_object"])
-            elif "_namedtuple_name" in dct:
-                ntc = namedtuple(dct["_namedtuple_name"], dct["_namedtuple_fields"])
-                t = list(
-                    self.json_as_python(item) for item in dct["_namedtuple_values"]
-                )
+            if '_set_object' in dct:
+                return set(self.json_as_python(item) for item in dct['_set_object'])
+            elif '_namedtuple_name' in dct:
+                ntc = namedtuple(dct['_namedtuple_name'], dct['_namedtuple_fields'])
+                t = list(self.json_as_python(item) for item in dct['_namedtuple_values'])
                 return ntc(*t)
-            elif "_tuple_object" in dct:
-                return tuple(self.json_as_python(item) for item in dct["_tuple_object"])
+            elif '_tuple_object' in dct:
+                return tuple(self.json_as_python(item) for item in dct['_tuple_object'])
             else:
-                return {
-                    self.decode_key(k): self.json_as_python(v) for k, v in dct.items()
-                }
+                return {self.decode_key(k): self.json_as_python(v) for k, v in dct.items()}
         return dct
 
 

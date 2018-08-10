@@ -16,31 +16,24 @@ import sys
 
 # Enum that represents different modes for a block.
 class BlockModes:
-    markup_block = "markup_block"
-    record_block = "record_block"
-    table_block = "table_block"
-    contents_block = "contents_block"
-    image_block = "image_block"
-    graph_block = "graph_block"
-    subworksheets_block = "subworksheets_block"
+    markup_block = 'markup_block'
+    record_block = 'record_block'
+    table_block = 'table_block'
+    contents_block = 'contents_block'
+    image_block = 'image_block'
+    graph_block = 'graph_block'
+    subworksheets_block = 'subworksheets_block'
 
-    values = (
-        markup_block,
-        record_block,
-        table_block,
-        contents_block,
-        image_block,
-        graph_block,
-        subworksheets_block,
-    )
+    values = (markup_block, record_block, table_block, contents_block,
+              image_block, graph_block, subworksheets_block)
 
 
 class FetchStatusCodes:
-    unknown = "unknown"
-    pending = "pending"
-    ready = "ready"
-    not_found = "not_found"
-    no_permission = "no_permission"
+    unknown = 'unknown'
+    pending = 'pending'
+    ready = 'ready'
+    not_found = 'not_found'
+    no_permission = 'no_permission'
 
     values = (unknown, pending, ready, not_found, no_permission)
 
@@ -49,23 +42,28 @@ class FetchStatusSchema(PlainSchema):
     """
     Schema that represents the status of fetching a resource.
     """
-
     code = fields.String(validate=validate.OneOf(set(FetchStatusCodes.values)))
     error_message = fields.String()
 
     @staticmethod
     def get_unknown_status():
-        return {"code": FetchStatusCodes.unknown, "error_message": ""}
+        return {
+            'code': FetchStatusCodes.unknown,
+            'error_message': '',
+        }
 
     @staticmethod
     def get_ready_status():
-        return {"code": FetchStatusCodes.ready, "error_message": ""}
+        return {
+            'code': FetchStatusCodes.ready,
+            'error_message': '',
+        }
 
 
 class BundlesSpecSchema(PlainSchema):
-    uuid_spec_type = "uuid_spec"
+    uuid_spec_type = 'uuid_spec'
 
-    spec_types = uuid_spec_type
+    spec_types = (uuid_spec_type)
 
     # Fields
     spec_type = fields.String(validate=validate.OneOf(set(spec_types)))
@@ -80,10 +78,10 @@ class BundleUUIDSpecSchema(BundlesSpecSchema):
     @staticmethod
     def create_json(bundle_infos):
         return {
-            "spec_type": BundlesSpecSchema.uuid_spec_type,
-            "uuid_spec": [bundle_info["uuid"] for bundle_info in bundle_infos],
-            "bundle_infos": bundle_infos,
-            "fetch_status": FetchStatusSchema.get_ready_status(),
+            'spec_type': BundlesSpecSchema.uuid_spec_type,
+            'uuid_spec': [bundle_info['uuid'] for bundle_info in bundle_infos],
+            'bundle_infos': bundle_infos,
+            'fetch_status': FetchStatusSchema.get_ready_status(),
         }
 
 
@@ -91,12 +89,11 @@ class WorksheetBlockSchema(PlainSchema):
     """
     Parent schema for all worksheet blocks.
     """
-
     mode = fields.String(validate=validate.OneOf(set(BlockModes.values)))
     is_refined = fields.Bool(default=False)
 
     class Meta:
-        type_ = "worksheet-block"
+        type_ = 'worksheet-block'
 
 
 class MarkupBlockSchema(WorksheetBlockSchema):
@@ -104,7 +101,6 @@ class MarkupBlockSchema(WorksheetBlockSchema):
     Schema for blocks that contain markup.
     Does not need refining, contains markup text as payload.
     """
-
     mode = fields.Constant(BlockModes.markup_block)
     is_refined = fields.Bool(validate=validate.Equal(True))  # always refined
     text = fields.String()
@@ -155,7 +151,7 @@ class RecordsBlockSchema(BundleBlockSchema):
     bundles_spec = fields.Nested(BundlesSpecSchema, required=True)
     status = fields.Nested(FetchStatusSchema, required=True)
 
-    header = fields.Constant(("key", "value"))
+    header = fields.Constant(('key', 'value'))
     rows = fields.Nested(RecordsRowSchema, many=True, required=True)
 
 

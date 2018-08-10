@@ -25,9 +25,8 @@ class ServerUtilTest(unittest.TestCase):
         def limited_function():
             pass
 
-        self.assertRaises(
-            RateLimitExceededError, lambda: [limited_function() for _ in xrange(11)]
-        )
+        self.assertRaises(RateLimitExceededError,
+                          lambda: [limited_function() for _ in xrange(11)])
 
     def test_exc_frame_locals(self):
         def baz():
@@ -48,9 +47,9 @@ class ServerUtilTest(unittest.TestCase):
         try:
             baz()
         except NotImplementedError:
-            self.assertEqual(exc_frame_locals(), {"a": 1, "b": 2})
+            self.assertEqual(exc_frame_locals(), {'a': 1, 'b': 2})
 
         try:
             foo()
         except NotImplementedError:
-            self.assertEqual(exc_frame_locals(), {"a": 1, "b": 2})
+            self.assertEqual(exc_frame_locals(), {'a': 1, 'b': 2})

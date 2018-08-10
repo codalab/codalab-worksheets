@@ -21,7 +21,7 @@ from codalabworker.file_util import (
 
 
 # Files with these extensions are considered archive.
-ARCHIVE_EXTS = [".tar.gz", ".tgz", ".tar.bz2", ".zip", ".gz", ".bz2"]
+ARCHIVE_EXTS = ['.tar.gz', '.tgz', '.tar.bz2', '.zip', '.gz', '.bz2']
 
 
 def path_is_archive(path):
@@ -37,14 +37,14 @@ def get_archive_ext(fname):
     for ext in ARCHIVE_EXTS:
         if fname.endswith(ext):
             return ext
-    return ""
+    return ''
 
 
 def strip_archive_ext(path):
     for ext in ARCHIVE_EXTS:
         if path.endswith(ext):
-            return path[: -len(ext)]
-    raise UsageError("Not an archive: %s" % path)
+            return path[:-len(ext)]
+    raise UsageError('Not an archive: %s' % path)
 
 
 def unpack(ext, source, dest_path):
@@ -53,26 +53,26 @@ def unpack(ext, source, dest_path):
     Note: |source| can be a file handle or a path.
     |ext| contains the extension of the archive.
     """
-    if ext != ".zip":
+    if ext != '.zip':
         close_source = False
         try:
             if isinstance(source, basestring):
-                source = open(source, "rb")
+                source = open(source, 'rb')
                 close_source = True
 
-            if ext == ".tar.gz" or ext == ".tgz":
-                un_tar_directory(source, dest_path, "gz")
-            elif ext == ".tar.bz2":
-                un_tar_directory(source, dest_path, "bz2")
-            elif ext == ".bz2":
+            if ext == '.tar.gz' or ext == '.tgz':
+                un_tar_directory(source, dest_path, 'gz')
+            elif ext == '.tar.bz2':
+                un_tar_directory(source, dest_path, 'bz2')
+            elif ext == '.bz2':
                 un_bz2_file(source, dest_path)
-            elif ext == ".gz":
-                with open(dest_path, "wb") as f:
+            elif ext == '.gz':
+                with open(dest_path, 'wb') as f:
                     shutil.copyfileobj(un_gzip_stream(source), f)
             else:
-                raise UsageError("Not an archive.")
+                raise UsageError('Not an archive.')
         except (tarfile.TarError, IOError):
-            raise UsageError("Invalid archive upload.")
+            raise UsageError('Invalid archive upload.')
         finally:
             if close_source:
                 source.close()
@@ -82,27 +82,22 @@ def unpack(ext, source, dest_path):
             # unzip doesn't accept input from standard input, so we have to save
             # to a temporary file.
             if not isinstance(source, basestring):
-                temp_path = dest_path + ".zip"
-                with open(temp_path, "wb") as f:
+                temp_path = dest_path + '.zip'
+                with open(temp_path, 'wb') as f:
                     shutil.copyfileobj(source, f)
                 source = temp_path
                 delete_source = True
 
-            exitcode = subprocess.call(["unzip", "-q", source, "-d", dest_path])
+            exitcode = subprocess.call(['unzip', '-q', source, '-d', dest_path])
             if exitcode != 0:
-                raise UsageError("Invalid archive upload.")
+                raise UsageError('Invalid archive upload.')
         finally:
             if delete_source:
                 path_util.remove(source)
 
 
-def pack_files_for_upload(
-    sources,
-    should_unpack,
-    follow_symlinks,
-    exclude_patterns=None,
-    force_compression=False,
-):
+def pack_files_for_upload(sources, should_unpack, follow_symlinks,
+                          exclude_patterns=None, force_compression=False):
     """
     Create a single flat tarfile containing all the sources.
     Caller is responsible for closing the returned fileobj.
@@ -133,9 +128,9 @@ def pack_files_for_upload(
         if follow_symlinks:
             resolved_source = os.path.realpath(source)
             if not os.path.exists(resolved_source):
-                raise UsageError("Broken symlink")
+                raise UsageError('Broken symlink')
         elif os.path.islink(source):
-            raise UsageError("Not following symlinks.")
+            raise UsageError('Not following symlinks.')
         return resolved_source
 
     sources = map(resolve_source, sources)
@@ -146,40 +141,38 @@ def pack_files_for_upload(
         filename = os.path.basename(source)
         if os.path.isdir(sources[0]):
             archived = tar_gzip_directory(
-                source,
-                follow_symlinks=follow_symlinks,
-                exclude_patterns=exclude_patterns,
-            )
+                source, follow_symlinks=follow_symlinks,
+                exclude_patterns=exclude_patterns)
             return {
-                "fileobj": archived,
-                "filename": filename + ".tar.gz",
-                "filesize": None,
-                "should_unpack": True,
-                "should_simplify": False,
+                'fileobj': archived,
+                'filename': filename + '.tar.gz',
+                'filesize': None,
+                'should_unpack': True,
+                'should_simplify': False,
             }
         elif path_is_archive(source):
             return {
-                "fileobj": open(source),
-                "filename": filename,
-                "filesize": os.path.getsize(source),
-                "should_unpack": should_unpack,
-                "should_simplify": True,
+                'fileobj': open(source),
+                'filename': filename,
+                'filesize': os.path.getsize(source),
+                'should_unpack': should_unpack,
+                'should_simplify': True,
             }
         elif force_compression:
             return {
-                "fileobj": gzip_file(source),
-                "filename": filename + ".gz",
-                "filesize": None,
-                "should_unpack": True,
-                "should_simplify": False,
+                'fileobj': gzip_file(source),
+                'filename': filename + '.gz',
+                'filesize': None,
+                'should_unpack': True,
+                'should_simplify': False,
             }
         else:
             return {
-                "fileobj": open(source),
-                "filename": filename,
-                "filesize": os.path.getsize(source),
-                "should_unpack": False,
-                "should_simplify": False,
+                'fileobj': open(source),
+                'filename': filename,
+                'filesize': os.path.getsize(source),
+                'should_unpack': False,
+                'should_simplify': False,
             }
 
     # Build archive file incrementally from all sources
@@ -190,7 +183,7 @@ def pack_files_for_upload(
     # to the client to be sent to the server.
     scratch_dir = tempfile.mkdtemp()
     archive_fileobj = tempfile.SpooledTemporaryFile()
-    archive = tarfile.open(name="we", mode="w:gz", fileobj=archive_fileobj)
+    archive = tarfile.open(name='we', mode='w:gz', fileobj=archive_fileobj)
 
     def should_exclude(fn):
         basefn = os.path.basename(fn)
@@ -207,12 +200,8 @@ def pack_files_for_upload(
             archive.add(dest_path, arcname=dest_basename, recursive=True)
         else:
             # Add file to archive, or add files recursively if directory
-            archive.add(
-                source,
-                arcname=os.path.basename(source),
-                recursive=True,
-                exclude=should_exclude,
-            )
+            archive.add(source, arcname=os.path.basename(source),
+                        recursive=True, exclude=should_exclude)
 
     # Clean up, rewind archive file, and return it
     archive.close()
@@ -220,9 +209,9 @@ def pack_files_for_upload(
     filesize = archive_fileobj.tell()
     archive_fileobj.seek(0)
     return {
-        "fileobj": archive_fileobj,
-        "filename": "contents.tar.gz",
-        "filesize": filesize,
-        "should_unpack": True,
-        "should_simplify": False,
+        'fileobj': archive_fileobj,
+        'filename': 'contents.tar.gz',
+        'filesize': filesize,
+        'should_unpack': True,
+        'should_simplify': False,
     }

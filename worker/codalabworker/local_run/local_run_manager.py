@@ -20,26 +20,15 @@ class LocalRunManager(BaseRunManager):
     container. It manages its cache of local Docker images and its own local
     Docker network.
     """
-
     # Network buffer size to use while proxying with netcat
     NETCAT_BUFFER_SIZE = 4096
     # Number of seconds to wait for bundle kills to propagate before forcing kill
     KILL_TIMEOUT = 100
     # Directory name to store running bundles in worker filesystem
-    BUNDLES_DIR_NAME = "runs"
+    BUNDLES_DIR_NAME = 'runs'
 
-    def __init__(
-        self,
-        worker,
-        docker,
-        image_manager,
-        dependency_manager,
-        commit_file,
-        cpuset,
-        gpuset,
-        work_dir,
-        docker_network_prefix="codalab_worker_network",
-    ):
+    def __init__(self, worker, docker, image_manager, dependency_manager,
+                 commit_file, cpuset, gpuset, work_dir, docker_network_prefix='codalab_worker_network'):
         self._worker = worker
         self._state_committer = JsonStateCommitter(commit_file)
         self._run_state_manager = LocalRunStateMachine(self)
@@ -47,8 +36,8 @@ class LocalRunManager(BaseRunManager):
         self._docker_network_prefix = docker_network_prefix
         self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
         if not os.path.exists(self._bundles_dir):
-            logger.info("{} doesn't exist, creating.".format(self._bundles_dir))
-            os.makedirs(self._bundles_dir, 0o770)
+            logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
+            os.makedirs(self._bundles_dir, 0770)
 
         # These members are public as the run state manager needs access to them
         self.docker = docker
@@ -60,11 +49,11 @@ class LocalRunManager(BaseRunManager):
 
         self.runs = {}  # bundle_uuid -> LocalRunState
         # bundle_uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
-        self.disk_utilization = ThreadDict(
-            fields={"disk_utilization": 0, "running": True, "lock": None}
-        )
+        self.disk_utilization = ThreadDict(fields={'disk_utilization': 0,
+                                                   'running': True,
+                                                   'lock': None})
         # bundle_uuid -> {'thread': Thread, 'run_status': str}
-        self.uploading = ThreadDict(fields={"run_status": "Upload started"})
+        self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
         self.lock = threading.RLock()
         self._init_docker_networks()
 
@@ -74,31 +63,19 @@ class LocalRunManager(BaseRunManager):
         """
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
         if self.docker_network_external_name not in self.docker.list_networks():
-            logger.debug(
-                "Creating docker network: {}".format(self.docker_network_external_name)
-            )
-            self.docker.create_network(
-                self.docker_network_external_name, internal=False
-            )
+            logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
+            self.docker.create_network(self.docker_network_external_name, internal=False)
         else:
-            logger.debug(
-                "Docker network already exists, not creating: {}".format(
-                    self.docker_network_external_name
-                )
-            )
+            logger.debug('Docker network already exists, not creating: {}'.format(
+                self.docker_network_external_name))
 
         self.docker_network_internal_name = self._docker_network_prefix + "_int"
         if self.docker_network_internal_name not in self.docker.list_networks():
-            logger.debug(
-                "Creating docker network: {}".format(self.docker_network_internal_name)
-            )
+            logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
             self.docker.create_network(self.docker_network_internal_name)
         else:
-            logger.debug(
-                "Docker network already exists, not creating: {}".format(
-                    self.docker_network_internal_name
-                )
-            )
+            logger.debug('Docker network already exists, not creating: {}'.format(
+                self.docker_network_internal_name))
 
     def save_state(self):
         self._state_committer.commit(self.runs)
@@ -124,7 +101,7 @@ class LocalRunManager(BaseRunManager):
         self.image_manager.stop()
         self.dependency_manager.stop()
         for uuid in self.disk_utilization.keys():
-            self.disk_utilization[uuid]["running"] = False
+            self.disk_utilization[uuid]['running'] = False
         self.disk_utilization.stop()
         self.uploading.stop()
         self.save_state()
@@ -139,23 +116,16 @@ class LocalRunManager(BaseRunManager):
         with self.lock:
             for uuid in self.runs.keys():
                 run_state = self.runs[uuid]
-                run_state.info["kill_message"] = "Worker stopped"
+                run_state.info['kill_message'] = 'Worker stopped'
                 run_state = run_state._replace(info=run_state.info, is_killed=True)
                 self.runs[uuid] = run_state
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
         for attempt in range(LocalRunManager.KILL_TIMEOUT):
             with self.lock:
-                self.runs = {
-                    k: v
-                    for k, v in self.runs.items()
-                    if v.stage != LocalRunStage.FINISHED
-                }
+                self.runs = {k: v for k, v in self.runs.items() if v.stage != LocalRunStage.FINISHED}
                 if len(self.runs) > 0:
-                    logger.debug(
-                        "Waiting for {} more bundles. {} seconds until force quit.".format(
-                            len(self.runs), LocalRunManager.KILL_TIMEOUT - attempt
-                        )
-                    )
+                    logger.debug("Waiting for {} more bundles. {} seconds until force quit.".format(
+                        len(self.runs), LocalRunManager.KILL_TIMEOUT - attempt))
             time.sleep(1)
 
     def process_runs(self):
@@ -167,9 +137,7 @@ class LocalRunManager(BaseRunManager):
                 self.runs[bundle_uuid] = self._run_state_manager.transition(run_state)
 
             # filter out finished runs
-            self.runs = {
-                k: v for k, v in self.runs.items() if v.stage != LocalRunStage.FINISHED
-            }
+            self.runs = {k: v for k, v in self.runs.items() if v.stage != LocalRunStage.FINISHED}
 
     def create_run(self, bundle, resources):
         """
@@ -179,27 +147,25 @@ class LocalRunManager(BaseRunManager):
         if self._stop:
             # Run Manager stopped, refuse more runs
             return
-        bundle_uuid = bundle["uuid"]
+        bundle_uuid = bundle['uuid']
         bundle_path = os.path.join(self._bundles_dir, bundle_uuid)
         now = time.time()
-        run_state = LocalRunState(
-            stage=LocalRunStage.PREPARING,
-            run_status="",
-            bundle=bundle,
-            bundle_path=os.path.realpath(bundle_path),
-            resources=resources,
-            start_time=now,
-            container_id=None,
-            docker_image=None,
-            is_killed=False,
-            has_contents=False,
-            cpuset=None,
-            gpuset=None,
-            time_used=0,
-            max_memory=0,
-            disk_utilization=0,
-            info={},
-        )
+        run_state = LocalRunState(stage=LocalRunStage.PREPARING,
+                                  run_status='',
+                                  bundle=bundle,
+                                  bundle_path=os.path.realpath(bundle_path),
+                                  resources=resources,
+                                  start_time=now,
+                                  container_id=None,
+                                  docker_image=None,
+                                  is_killed=False,
+                                  has_contents=False,
+                                  cpuset=None,
+                                  gpuset=None,
+                                  time_used=0,
+                                  max_memory=0,
+                                  disk_utilization=0,
+                                  info={})
         with self.lock:
             self.runs[bundle_uuid] = run_state
 
@@ -248,7 +214,7 @@ class LocalRunManager(BaseRunManager):
         """
         if uuid in self.runs:
             with self.lock:
-                self.runs[uuid].info["finalized"] = True
+                self.runs[uuid].info['finalized'] = True
 
     def upload_bundle_contents(self, bundle_uuid, bundle_path, progress_callback):
         """
@@ -268,7 +234,7 @@ class LocalRunManager(BaseRunManager):
         """
         if os.path.normpath(path) in dep_paths:
             return
-        with open(os.path.join(run_state.bundle_path, path), "w") as f:
+        with open(os.path.join(run_state.bundle_path, path), 'w') as f:
             f.write(string)
 
     def netcat(self, run_state, port, message, reply):
@@ -276,13 +242,11 @@ class LocalRunManager(BaseRunManager):
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
         """
-        container_ip = self.docker.get_container_ip(
-            self.docker_network_external_name, run_state.container_id
-        )
+        container_ip = self.docker.get_container_ip(self.docker_network_external_name,
+                                                    run_state.container_id)
         if not container_ip:
-            container_ip = self.docker.get_container_ip(
-                self.docker_network_internal_name, run_state.container_id
-            )
+            container_ip = self.docker.get_container_ip(self.docker_network_internal_name,
+                                                        run_state.container_id)
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((container_ip, port))
         s.sendall(message)
@@ -294,16 +258,16 @@ class LocalRunManager(BaseRunManager):
                 break
             total_data.append(data)
         s.close()
-        reply(None, {}, "".join(total_data))
+        reply(None, {}, ''.join(total_data))
 
     def kill(self, run_state):
         """
         Kill bundle with uuid
         """
         with self.lock:
-            run_state.info["kill_message"] = "Kill requested"
+            run_state.info['kill_message'] = 'Kill requested'
             run_state = run_state._replace(info=run_state.info, is_killed=True)
-            self.runs[run_state.bundle["uuid"]] = run_state
+            self.runs[run_state.bundle['uuid']] = run_state
 
     @property
     def all_runs(self):
@@ -313,15 +277,12 @@ class LocalRunManager(BaseRunManager):
         with self.lock:
             result = {
                 bundle_uuid: {
-                    "run_status": run_state.run_status,
-                    "start_time": run_state.start_time,
-                    "docker_image": run_state.docker_image,
-                    "info": run_state.info,
-                    "state": LocalRunStage.WORKER_STATE_TO_SERVER_STATE[
-                        run_state.stage
-                    ],
-                }
-                for bundle_uuid, run_state in self.runs.items()
+                    'run_status': run_state.run_status,
+                    'start_time': run_state.start_time,
+                    'docker_image': run_state.docker_image,
+                    'info': run_state.info,
+                    'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage]
+                } for bundle_uuid, run_state in self.runs.items()
             }
             return result
 
@@ -352,10 +313,10 @@ class LocalRunManager(BaseRunManager):
         Total installed memory of this RunManager
         """
         try:
-            return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+            return os.sysconf('SC_PAGE_SIZE') * os.sysconf('SC_PHYS_PAGES')
         except ValueError:
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
-            return int(check_output(["sysctl", "-n", "hw.memsize"]).strip())
+            return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
 
     @property
     def dependencies_dir(self):

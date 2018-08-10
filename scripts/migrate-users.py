@@ -19,32 +19,33 @@ This scripts assumes that you are running it from the codalab-cli directory.
 
 import os
 import sys
+sys.path.append('.')
 
-sys.path.append(".")
-
-from sqlalchemy import select, bindparam
+from sqlalchemy import (
+    select,
+    bindparam,
+)
 
 from codalab.common import UsageError
 from codalab.model.tables import user as cl_user
-from codalab.lib.codalab_manager import CodaLabManager, read_json_or_die
+from codalab.lib.codalab_manager import (
+    CodaLabManager,
+    read_json_or_die,
+)
 
 
 class DryRunAbort(Exception):
     """Raised at end of transaction of dry run."""
-
     def __str__(self):
-        return (
-            """
+        return """
         This was a dry run, no migration occurred. To perform full migration,
         run again with `-f':
 
             %s -f
-        """.rstrip()
-            % sys.argv[0]
-        )
+        """.rstrip() % sys.argv[0]
 
 
-dry_run = False if len(sys.argv) > 1 and sys.argv[1] == "-f" else True
+dry_run = False if len(sys.argv) > 1 and sys.argv[1] == '-f' else True
 
 manager = CodaLabManager()
 model = manager.model()
@@ -57,34 +58,34 @@ model.engine.echo = True
 ###############################################################
 # Configure connection to Django database
 ###############################################################
-django_config = read_json_or_die(os.path.join(CODALAB_HOME, "website-config.json"))
+django_config = read_json_or_die(os.path.join(CODALAB_HOME,
+                                              'website-config.json'))
 
 # Use default settings as defined in codalab-worksheets
-if "database" not in django_config:
-    django_config["database"] = {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": "codalab.sqlite3",
+if 'database' not in django_config:
+    django_config['database'] = {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': 'codalab.sqlite3',
     }
 
 # Create database connections
-if django_config["database"]["ENGINE"] == "django.db.backends.mysql":
+if django_config['database']['ENGINE'] == 'django.db.backends.mysql':
     import MySQLdb
     from MySQLdb.cursors import DictCursor
-
     db_params = {
-        "db": django_config["database"]["NAME"],
-        "user": django_config["database"]["USER"],
-        "passwd": django_config["database"]["PASSWORD"],
-        "cursorclass": DictCursor,
+        'db': django_config['database']['NAME'],
+        'user': django_config['database']['USER'],
+        'passwd': django_config['database']['PASSWORD'],
+        'cursorclass': DictCursor,
     }
-    if django_config["database"].get("HOST", None):
-        db_params["host"] = django_config["database"]["HOST"]
-    if django_config["database"].get("PORT", None):
-        db_params["port"] = django_config["database"]["PORT"]
-        if isinstance(db_params["port"], unicode):
-            db_params["port"] = int(db_params["port"])
+    if django_config['database'].get('HOST', None):
+        db_params['host'] = django_config['database']['HOST']
+    if django_config['database'].get('PORT', None):
+        db_params['port'] = django_config['database']['PORT']
+        if isinstance(db_params['port'], unicode):
+            db_params['port'] = int(db_params['port'])
     django_db = MySQLdb.connect(**db_params)
-elif django_config["database"]["ENGINE"] == "django.db.backends.sqlite3":
+elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':
     import sqlite3
 
     # Use basic dict factory, not sqlite3.Row, for mutability
@@ -95,16 +96,15 @@ elif django_config["database"]["ENGINE"] == "django.db.backends.sqlite3":
         return d
 
     # Default location: ../codalab-worksheets/codalab/$NAME
-    sqlite_path = os.path.join(
-        os.path.dirname(os.getcwd()),
-        "codalab-worksheets",
-        "codalab",
-        django_config["database"]["NAME"],
-    )
+    sqlite_path = os.path.join(os.path.dirname(os.getcwd()),
+                               'codalab-worksheets',
+                               'codalab',
+                               django_config['database']['NAME'])
     django_db = sqlite3.connect(sqlite_path)
     django_db.row_factory = dict_factory
 else:
-    raise UsageError("Invalid database engine %r" % django_config["database"]["ENGINE"])
+    raise UsageError("Invalid database engine %r" %
+                     django_config['database']['ENGINE'])
 
 
 ###############################################################
@@ -117,8 +117,7 @@ with model.engine.begin() as bundle_db:
     ###############################################################
     # General SQL query should work on both MySQL and sqlite3
     django_cursor = django_db.cursor()
-    django_cursor.execute(
-        """
+    django_cursor.execute("""
         SELECT
         cluser.id as b_user_id,  -- prevent clash with user_id column on update
         cluser.password,
@@ -135,35 +134,35 @@ with model.engine.begin() as bundle_db:
         FROM authenz_cluser AS cluser
         LEFT OUTER JOIN account_emailaddress AS email
         ON cluser.id = email.user_id
-        WHERE cluser.id != -1 AND cluser.is_active = 1"""
-    )
+        WHERE cluser.id != -1 AND cluser.is_active = 1""")
     django_users = list(django_cursor.fetchall())
 
     # Get set of user ids in bundles db
     bundle_users = bundle_db.execute(select([cl_user.c.user_id])).fetchall()
 
     # Find intersection of user ids
-    django_user_ids = set(str(user["b_user_id"]) for user in django_users)
-    bundle_user_ids = set(user["user_id"] for user in bundle_users)
+    django_user_ids = set(str(user['b_user_id']) for user in django_users)
+    bundle_user_ids = set(user['user_id'] for user in bundle_users)
     to_update = django_user_ids & bundle_user_ids
     to_insert = django_user_ids - bundle_user_ids
 
-    print("Users to update:", ", ".join(list(to_update)))
-    print("Users to insert:", ", ".join(list(to_insert)))
+    print "Users to update:", ', '.join(list(to_update))
+    print "Users to insert:", ', '.join(list(to_insert))
 
-    to_update = [user for user in django_users if (str(user["b_user_id"]) in to_update)]
-    to_insert = [user for user in django_users if (str(user["b_user_id"]) in to_insert)]
+    to_update = [user for user in django_users
+                 if (str(user['b_user_id']) in to_update)]
+    to_insert = [user for user in django_users
+                 if (str(user['b_user_id']) in to_insert)]
 
     ###############################################################
     # Update existing users in bundles db
     ###############################################################
 
     if to_update:
-        print("Updating existing users in bundle service database...")
+        print "Updating existing users in bundle service database..."
 
-        update_query = cl_user.update().where(
-            cl_user.c.user_id == bindparam("b_user_id")
-        )
+        update_query = cl_user.update().\
+            where(cl_user.c.user_id == bindparam('b_user_id'))
         bundle_db.execute(update_query, to_update)
 
     ###############################################################
@@ -171,17 +170,16 @@ with model.engine.begin() as bundle_db:
     ###############################################################
 
     if to_insert:
-        print("Inserting new users into bundle service database...")
+        print "Inserting new users into bundle service database..."
 
         default_user_info = manager.default_user_info()
 
-        insert_query = cl_user.insert().values(
-            time_quota=default_user_info["time_quota"],
-            disk_quota=default_user_info["disk_quota"],
-            time_used=0,
-            disk_used=0,
-            user_id=bindparam("b_user_id"),
-        )
+        insert_query = cl_user.insert().\
+            values(time_quota=default_user_info['time_quota'],
+                   disk_quota=default_user_info['disk_quota'],
+                   time_used=0,
+                   disk_used=0,
+                   user_id=bindparam('b_user_id'))
 
         bundle_db.execute(insert_query, to_insert)
 
@@ -192,4 +190,4 @@ with model.engine.begin() as bundle_db:
 # Last words
 ###############################################################
 
-print("Migration complete!")
+print "Migration complete!"

@@ -12,42 +12,32 @@ def bundle_to_bundle_info(model, bundle):
     """
     # See tables.py
     result = {
-        "uuid": bundle.uuid,
-        "bundle_type": bundle.bundle_type,
-        "owner_id": bundle.owner_id,
-        "command": bundle.command,
-        "data_hash": bundle.data_hash,
-        "state": bundle.state,
-        "is_anonymous": bundle.is_anonymous,
-        "metadata": bundle.metadata.to_dict(),
-        "dependencies": [dep.to_dict() for dep in bundle.dependencies],
+        'uuid': bundle.uuid,
+        'bundle_type': bundle.bundle_type,
+        'owner_id': bundle.owner_id,
+        'command': bundle.command,
+        'data_hash': bundle.data_hash,
+        'state': bundle.state,
+        'is_anonymous': bundle.is_anonymous,
+        'metadata': bundle.metadata.to_dict(),
+        'dependencies': [dep.to_dict() for dep in bundle.dependencies],
     }
-    if result["dependencies"]:
+    if result['dependencies']:
         dep_names = model.get_bundle_names(
-            [dep["parent_uuid"] for dep in result["dependencies"]]
-        )
-        for dep in result["dependencies"]:
-            dep["parent_name"] = dep_names.get(dep["parent_uuid"])
+            [dep['parent_uuid'] for dep in result['dependencies']])
+        for dep in result['dependencies']:
+            dep['parent_name'] = dep_names.get(dep['parent_uuid'])
 
     # Shim in args
-    result["args"] = worksheet_util.interpret_genpath(result, "args")
+    result['args'] = worksheet_util.interpret_genpath(result, 'args')
 
     return result
 
 
-def mimic_bundles(
-    client,
-    old_inputs,
-    old_output,
-    new_inputs,
-    new_output_name,
-    worksheet_uuid,
-    depth,
-    shadow,
-    dry_run,
-    metadata_override=None,
-    skip_prelude=False,
-):
+def mimic_bundles(client,
+                  old_inputs, old_output, new_inputs, new_output_name,
+                  worksheet_uuid, depth, shadow, dry_run,
+                  metadata_override=None, skip_prelude=False):
     """
     :param JsonApiClient client: client
     :param old_inputs: list of bundle uuids
@@ -69,13 +59,18 @@ def mimic_bundles(
     # reached some depth.  If it's not given, we first get all the
     # descendants first, and then get their ancestors.
     if old_output:
-        infos = client.fetch("bundles", params={"specs": old_output})
+        infos = client.fetch('bundles', params={
+            'specs': old_output,
+        })
         assert isinstance(infos, list)
     else:
         # Fetch bundles specified in `old_inputs` and their descendants
         # down by `depth` levesl
-        infos = client.fetch("bundles", params={"specs": old_inputs, "depth": depth})
-    infos = {b["uuid"]: b for b in infos}  # uuid -> bundle info
+        infos = client.fetch('bundles', params={
+            'specs': old_inputs,
+            'depth': depth
+        })
+    infos = {b['uuid']: b for b in infos}  # uuid -> bundle info
 
     def get_self_and_ancestors(bundle_uuids):
         # Traverse up ancestors by at most `depth` levels and returns
@@ -91,12 +86,12 @@ def mimic_bundles(
 
                 # Add to infos if not there yet
                 if bundle_uuid not in infos:
-                    infos[bundle_uuid] = client.fetch("bundles", bundle_uuid)
+                    infos[bundle_uuid] = client.fetch('bundles', bundle_uuid)
 
                 # Append all of the parents to the next batch of bundles to look at
                 info = infos[bundle_uuid]
-                for dep in info["dependencies"]:
-                    parent_uuid = dep["parent_uuid"]
+                for dep in info['dependencies']:
+                    parent_uuid = dep['parent_uuid']
                     if parent_uuid not in infos:
                         next_bundle_uuids.append(parent_uuid)
 
@@ -114,9 +109,7 @@ def mimic_bundles(
 
     # Now go recursively create the bundles.
     old_to_new = {}  # old_uuid -> new_uuid
-    downstream = (
-        set()
-    )  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
+    downstream = set()  # old_uuid -> whether we're downstream of an input (and actually needs to be mapped onto a new uuid)
     created_uuids = set()  # set of uuids which were newly created
     plan = []  # sequence of (old, new) bundle infos to make
     for old, new in zip(old_inputs, new_inputs):
@@ -134,52 +127,44 @@ def mimic_bundles(
 
         # Get information about the old bundle.
         old_info = infos[old_bundle_uuid]
-        new_dependencies = [
-            {
-                "parent_uuid": recurse(dep["parent_uuid"]),
-                "parent_path": dep["parent_path"],
-                "child_uuid": dep[
-                    "child_uuid"
-                ],  # This is just a placeholder to do the equality test
-                "child_path": dep["child_path"],
-            }
-            for dep in old_info["dependencies"]
-        ]
+        new_dependencies = [{
+                                'parent_uuid': recurse(dep['parent_uuid']),
+                                'parent_path': dep['parent_path'],
+                                'child_uuid': dep['child_uuid'],  # This is just a placeholder to do the equality test
+                                'child_path': dep['child_path']
+                            } for dep in old_info['dependencies']]
 
         # If there are no inputs or if we're downstream of any inputs, we need to make a new bundle.
-        lone_output = len(old_inputs) == 0 and old_bundle_uuid == old_output
-        downstream_of_inputs = any(
-            dep["parent_uuid"] in downstream for dep in old_info["dependencies"]
-        )
+        lone_output = (len(old_inputs) == 0 and
+                       old_bundle_uuid == old_output)
+        downstream_of_inputs = any(dep['parent_uuid'] in downstream
+                                   for dep in old_info['dependencies'])
         if lone_output or downstream_of_inputs:
             # Now create a new bundle that mimics the old bundle.
             new_info = copy.deepcopy(old_info)
 
             # Make sure that new uuids are generated
-            new_info.pop("uuid", None)
-            new_info.pop("id", None)
+            new_info.pop('uuid', None)
+            new_info.pop('id', None)
 
             # Only change the name if the output name is supplied.
-            new_metadata = new_info["metadata"]
+            new_metadata = new_info['metadata']
             if new_output_name:
                 if old_bundle_uuid == old_output:
-                    new_metadata["name"] = new_output_name
+                    new_metadata['name'] = new_output_name
                 else:
                     # Just make up a name heuristically
-                    new_metadata["name"] = (
-                        new_output_name + "-" + old_info["metadata"]["name"]
-                    )
+                    new_metadata['name'] = new_output_name + '-' + \
+                                           old_info['metadata']['name']
 
             # By default, the mimic bundle uses whatever image the old bundle uses
             # Preferably it uses the SHA256 image digest, but it may simply copy request_docker_image
             # if it is not present
-            if new_info["bundle_type"] == "run" and new_metadata.get(
-                "docker_image", ""
-            ):
+            if new_info['bundle_type'] == 'run' and new_metadata.get('docker_image', ''):
                 # Put docker_image in requested_docker_image if it is present and this is a run bundle
-                new_metadata["request_docker_image"] = new_metadata["docker_image"]
+                new_metadata['request_docker_image'] = new_metadata['docker_image']
 
-            cls = get_bundle_subclass(new_info["bundle_type"])
+            cls = get_bundle_subclass(new_info['bundle_type'])
             for spec in cls.METADATA_SPECS:
                 # Remove automatically generated keys
                 if spec.generated and spec.key in new_metadata:
@@ -189,29 +174,29 @@ def mimic_bundles(
                     new_metadata[spec.key] = metadata_override[spec.key]
 
             # Set up info dict
-            new_info["metadata"] = new_metadata
-            new_info["dependencies"] = new_dependencies
+            new_info['metadata'] = new_metadata
+            new_info['dependencies'] = new_dependencies
 
             if dry_run:
-                new_info["uuid"] = None
+                new_info['uuid'] = None
             else:
-                if new_info["bundle_type"] not in ("make", "run"):
+                if new_info['bundle_type'] not in ('make', 'run'):
                     raise UsageError(
-                        "Can't mimic %s since it is not make or run" % old_bundle_uuid
-                    )
+                        'Can\'t mimic %s since it is not make or run' %
+                        old_bundle_uuid)
 
                 # Create the new bundle, requesting to shadow the old
                 # bundle in its worksheet if shadow is specified, otherwise
                 # leave the bundle detached, to be added later below.
                 params = {}
-                params["worksheet"] = worksheet_uuid
+                params['worksheet'] = worksheet_uuid
                 if shadow:
-                    params["shadow"] = old_info["uuid"]
+                    params['shadow'] = old_info['uuid']
                 else:
-                    params["detached"] = True
-                new_info = client.create("bundles", new_info, params=params)
+                    params['detached'] = True
+                new_info = client.create('bundles', new_info, params=params)
 
-            new_bundle_uuid = new_info["uuid"]
+            new_bundle_uuid = new_info['uuid']
             plan.append((old_info, new_info))
             downstream.add(old_bundle_uuid)
             created_uuids.add(new_bundle_uuid)
@@ -243,10 +228,10 @@ def mimic_bundles(
             anchor_uuid = old_inputs[0]
 
         # Find worksheets that contain the anchor bundle
-        host_worksheets = client.fetch(
-            "worksheets", params={"keywords": "bundle=" + anchor_uuid}
-        )
-        host_worksheet_uuids = [hw["id"] for hw in host_worksheets]
+        host_worksheets = client.fetch('worksheets', params={
+            'keywords': 'bundle=' + anchor_uuid,
+        })
+        host_worksheet_uuids = [hw['id'] for hw in host_worksheets]
         new_bundle_uuids_added = set()
 
         if len(host_worksheet_uuids) > 0:
@@ -259,17 +244,16 @@ def mimic_bundles(
                 host_worksheet_uuid = host_worksheet_uuids[0]
 
             # Fetch the worksheet
-            worksheet_info = client.fetch(
-                "worksheets",
-                host_worksheet_uuid,
-                params={"include": ["items", "items.bundle"]},
-            )
+            worksheet_info = client.fetch('worksheets', host_worksheet_uuid, params={
+                'include': ['items', 'items.bundle']
+            })
 
             prelude_items = []  # The prelude that we're building up
-            for item in worksheet_info["items"]:
+            for item in worksheet_info['items']:
+                just_added = False
 
-                if item["type"] == worksheet_util.TYPE_BUNDLE:
-                    old_bundle_uuid = item["bundle"]["id"]
+                if item['type'] == worksheet_util.TYPE_BUNDLE:
+                    old_bundle_uuid = item['bundle']['id']
                     if old_bundle_uuid in old_to_new:
                         # Flush the prelude gathered so far.
                         new_bundle_uuid = old_to_new[old_bundle_uuid]
@@ -279,45 +263,33 @@ def mimic_bundles(
                                 for item2 in prelude_items:
                                     # Create a copy of the item on the destination worksheet
                                     item2 = item2.copy()
-                                    item2["worksheet"] = JsonApiRelationship(
-                                        "worksheets", worksheet_uuid
-                                    )
-                                    client.create("worksheet-items", data=item2)
+                                    item2['worksheet'] = JsonApiRelationship('worksheets', worksheet_uuid)
+                                    client.create('worksheet-items', data=item2)
 
                             # Add the bundle item
-                            client.create(
-                                "worksheet-items",
-                                data={
-                                    "type": worksheet_util.TYPE_BUNDLE,
-                                    "worksheet": JsonApiRelationship(
-                                        "worksheets", worksheet_uuid
-                                    ),
-                                    "bundle": JsonApiRelationship(
-                                        "bundles", new_bundle_uuid
-                                    ),
-                                },
-                            )
+                            client.create('worksheet-items', data={
+                                'type': worksheet_util.TYPE_BUNDLE,
+                                'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
+                                'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
+                            })
                             new_bundle_uuids_added.add(new_bundle_uuid)
+                            just_added = True
 
-                if (
-                    item["type"] == worksheet_util.TYPE_MARKUP and item["value"] != ""
-                ) or item["type"] == worksheet_util.TYPE_DIRECTIVE:
+                if ((item['type'] == worksheet_util.TYPE_MARKUP and item['value'] != '') or
+                            item['type'] == worksheet_util.TYPE_DIRECTIVE):
                     prelude_items.append(item)  # Include in prelude
                 else:
                     prelude_items = []  # Reset
 
         # Add the bundles that haven't been added yet
         for info, new_info in plan:
-            new_bundle_uuid = new_info["uuid"]
+            new_bundle_uuid = new_info['uuid']
             if new_bundle_uuid not in new_bundle_uuids_added:
-                print("adding: " + new_bundle_uuid)
-                client.create(
-                    "worksheet-items",
-                    data={
-                        "type": worksheet_util.TYPE_BUNDLE,
-                        "worksheet": JsonApiRelationship("worksheets", worksheet_uuid),
-                        "bundle": JsonApiRelationship("bundles", new_bundle_uuid),
-                    },
-                )
+                print 'adding: ' + new_bundle_uuid
+                client.create('worksheet-items', data={
+                    'type': worksheet_util.TYPE_BUNDLE,
+                    'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
+                    'bundle': JsonApiRelationship('bundles', new_bundle_uuid),
+                })
 
     return plan

@@ -121,23 +121,20 @@ class BaseRunManager(object):
 
 class Reader(object):
     def read(self, run_state, path, dep_paths, read_args, reply):
-        dep_paths = set([dep["child_path"] for dep in run_state.bundle["dependencies"]])
-        read_type = read_args["type"]
-        if read_type == "get_target_info":
+        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
+        read_type = read_args['type']
+        if read_type == 'get_target_info':
             self.get_target_info(run_state, path, dep_paths, read_args, reply)
-        elif read_type == "stream_directory":
+        elif read_type == 'stream_directory':
             self.stream_directory(run_state, path, dep_paths, read_args, reply)
-        elif read_type == "stream_file":
+        elif read_type == 'stream_file':
             self.stream_file(run_state, path, dep_paths, read_args, reply)
-        elif read_type == "read_file_section":
+        elif read_type == 'read_file_section':
             self.read_file_section(run_state, path, dep_paths, read_args, reply)
-        elif read_type == "summarize_file":
+        elif read_type == 'summarize_file':
             self.summarize_file(run_state, path, dep_paths, read_args, reply)
         else:
-            err = (
-                httplib.BAD_REQUEST,
-                "Unsupported read_type for read: %s" % read_type,
-            )
+            err = (httplib.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
             reply(err)
 
     @abstractmethod

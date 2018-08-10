@@ -48,11 +48,11 @@ def set_grant(client_id, code, _request, *args, **kwargs):
     grant = OAuth2AuthCode(
         local.model,
         client_id=client_id,
-        code=code["code"],
+        code=code['code'],
         redirect_uri=_request.redirect_uri,
-        scopes=",".join(_request.scopes),
+        scopes=','.join(_request.scopes),
         user_id=request.user.user_id,
-        expires=expires,
+        expires=expires
     )
     return local.model.save_oauth2_auth_code(grant)
 
@@ -72,14 +72,14 @@ def set_token(token, _request, *args, **kwargs):
     # Make sure that every client has only one token connected to a user
     local.model.clear_oauth2_tokens(_request.client.client_id, user.user_id)
 
-    expires_in = token.get("expires_in")
+    expires_in = token.get('expires_in')
     expires = datetime.utcnow() + timedelta(seconds=expires_in)
 
     token = OAuth2Token(
         local.model,
-        access_token=token["access_token"],
-        refresh_token=token.get("refresh_token", None),
-        scopes=token["scope"],
+        access_token=token['access_token'],
+        refresh_token=token.get('refresh_token', None),
+        scopes=token['scope'],
         expires=expires,
         client_id=_request.client.client_id,
         user_id=user.user_id,
@@ -97,24 +97,24 @@ def get_user(username, password, *args, **kwargs):
 
 
 # Not currently used by CodaLab website nor by the CLI client.
-@route("/oauth2/authorize", ["GET", "POST"], apply=AuthenticatedPlugin())
+@route('/oauth2/authorize', ['GET', 'POST'], apply=AuthenticatedPlugin())
 @oauth2_provider.authorize_handler
 def authorize(*args, **kwargs):
     """
     'authorize' endpoint for OAuth2 authorization code flow.
     """
-    if request.method == "GET":
-        client_id = kwargs.get("client_id")
-        redirect_uri = kwargs.get("redirect_uri")
+    if request.method == 'GET':
+        client_id = kwargs.get('client_id')
+        redirect_uri = kwargs.get('redirect_uri')
         client = local.model.get_oauth2_client(client_id)
         return template("oauth2_authorize", client=client, redirect_uri=redirect_uri)
-    elif request.method == "POST":
+    elif request.method == 'POST':
         # Return True back to the authorize_handler wrapper iff confirmed.
-        confirm = request.forms.get("confirm", "no")
-        return confirm == "yes"
+        confirm = request.forms.get('confirm', 'no')
+        return confirm == 'yes'
 
 
-@post("/oauth2/token")
+@post('/oauth2/token')
 @oauth2_provider.token_handler
 def handle_token():
     """
@@ -152,16 +152,15 @@ def handle_token():
     pass
 
 
-@post("/oauth2/revoke")
+@post('/oauth2/revoke')
 @oauth2_provider.revoke_handler
 def revoke_token():
     """Revoke OAuth2 token."""
     pass
 
 
-@get("/oauth2/errors", name="oauth2_errors")
+@get('/oauth2/errors', name='oauth2_errors')
 def show_errors():
-    return template("oauth2_errors", **request.query)
+    return template('oauth2_errors', **request.query)
 
-
-default_app().config["OAUTH2_PROVIDER_ERROR_ENDPOINT"] = "oauth2_errors"
+default_app().config['OAUTH2_PROVIDER_ERROR_ENDPOINT'] = 'oauth2_errors'

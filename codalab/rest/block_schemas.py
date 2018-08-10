@@ -23,16 +23,8 @@ class BlockModes:
     GRAPH_MODE = "graph_block"
     WSEARCH_MODE = "wsearch_block"
     SEARCH_MODE = "search_block"
-    values = (
-        MARKUP_MODE,
-        RECORD_MODE,
-        TABLE_MODE,
-        BUNDLE_CONTENTS_MODE,
-        BUNDLE_IMAGE_MODE,
-        GRAPH_MODE,
-        WSEARCH_MODE,
-        SEARCH_MODE,
-    )
+    values = (MARKUP_MODE, RECORD_MODE, TABLE_MODE, BUNDLE_CONTENTS_MODE,
+              BUNDLE_IMAGE_MODE, GRAPH_MODE, WSEARCH_MODE, SEARCH_MODE)
 
 
 STATUS_STRINGS = ("unknown", "ready", "not_found", "no_permission")
@@ -49,7 +41,7 @@ class WorksheetBlockSchema(PlainSchema):
     is_refined = fields.Bool()
 
     class Meta:
-        type_ = "worksheet-block"
+        type_ = 'worksheet-block'
 
 
 class MarkupBlockSchema(WorksheetBlockSchema):
@@ -61,9 +53,7 @@ class MarkupBlockSchema(WorksheetBlockSchema):
 class BundleContentsBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.BUNDLE_CONTENTS_MODE)
     path = fields.String()
-    bundle = fields.Relationship(
-        include_data=True, type_="bundles", attribute="bundle_uuid", allow_none=True
-    )
+    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True)
     max_lines = fields.Integer()
 
     status = fields.Nested(FetchStatusSchema)
@@ -74,9 +64,7 @@ class BundleContentsBlockSchema(WorksheetBlockSchema):
 class BundleImageBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.BUNDLE_IMAGE_MODE)
     path = fields.String()
-    bundle = fields.Relationship(
-        include_data=True, type_="bundles", attribute="bundle_uuid", allow_none=True
-    )
+    bundle = fields.Relationship(include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True)
     max_lines = fields.Integer()
 
     status = fields.Nested(FetchStatusSchema)

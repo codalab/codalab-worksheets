@@ -1,11 +1,14 @@
 import httplib
 import socket
 import sys
-import six
 import urllib
 import urllib2
 
-from codalab.common import http_error_to_exception, precondition, UsageError
+from codalab.common import (
+    http_error_to_exception,
+    precondition,
+    UsageError,
+)
 from codalabworker.rest_client import RestClient, RestClientException
 
 
@@ -20,41 +23,26 @@ def wrap_exception(message):
                 exc = http_error_to_exception(e.code, error_body)
                 # All standard CodaLab errors are subclasses of UsageError
                 if isinstance(exc, UsageError):
-                    six.reraise(exc.__class__, exc, sys.exc_info()[2])
+                    raise exc.__class__, exc, sys.exc_info()[2]
                 else:
                     # Shunt other exceptions into one class
-                    six.reraise(
-                        JsonApiException,
-                        JsonApiException(
-                            message.format(*args, **kwargs)
-                            + ": "
-                            + httplib.responses[e.code]
-                            + " - "
-                            + error_body,
-                            400 <= e.code < 500,
-                        ),
-                        sys.exc_info()[2],
-                    )
+                    raise JsonApiException, \
+                        JsonApiException(message.format(*args, **kwargs) +
+                                         ': ' + httplib.responses[e.code] +
+                                         ' - ' + error_body,
+                                         400 <= e.code < 500), \
+                        sys.exc_info()[2]
             except RestClientException as e:
-                six.reraise(
-                    JsonApiException,
-                    JsonApiException(
-                        message.format(*args, **kwargs) + ": " + e.message,
-                        e.client_error,
-                    ),
-                    sys.exc_info()[2],
-                )
+                raise JsonApiException, \
+                    JsonApiException(message.format(*args, **kwargs) +
+                                     ': ' + e.message, e.client_error), \
+                    sys.exc_info()[2]
             except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
-                six.reraise(
-                    JsonApiException,
-                    JsonApiException(
-                        message.format(*args, **kwargs) + ": " + str(e), False
-                    ),
-                    sys.exc_info()[2],
-                )
-
+                raise JsonApiException, \
+                    JsonApiException(message.format(*args, **kwargs) +
+                                     ': ' + str(e), False), \
+                    sys.exc_info()[2]
         return wrapper
-
     return decorator
 
 
@@ -80,7 +68,6 @@ class JsonApiRelationship(dict):
     JsonApiRelationship is also a subclass of dict, to store and provide access
     to the attributes of the referred object.
     """
-
     def __init__(self, type_, id_, *args):
         self.type_ = type_
         self.id_ = id_
@@ -88,29 +75,29 @@ class JsonApiRelationship(dict):
         # Allow the JSON API resource object "attributes" [not Python instance
         # attributes] to override the type and id keys in the dict.
         # The actual type and id will still be accessible as instance attrs.
-        self.setdefault("type", type_)
-        self.setdefault("id", id_)
+        self.setdefault('type', type_)
+        self.setdefault('id', id_)
 
     def as_linkage(self):
         """Serialize into relationship linkage dict for JSON API requests."""
-        return {"data": {"type": self.type_, "id": self.id_}}
+        return {
+            'data': {
+                'type': self.type_,
+                'id': self.id_,
+            }
+        }
 
     def __eq__(self, other):
-        return (
-            self.type_ == other.type_
-            and self.id_ == other.id_
-            and dict.__eq__(self, other)
-        )
+        return self.type_ == other.type_ and \
+               self.id_ == other.id_ and \
+               dict.__eq__(self, other)
 
     def __neq__(self, other):
         return not self.__eq__(other)
 
     def __repr__(self):
-        return "JsonApiRelationship(type_=%s, id_=%s, data=%s)" % (
-            self.type_,
-            self.id_,
-            dict.__repr__(self),
-        )
+        return 'JsonApiRelationship(type_=%s, id_=%s, data=%s)' % \
+               (self.type_, self.id_, dict.__repr__(self))
 
     def __nonzero__(self):
         """
@@ -133,32 +120,30 @@ class EmptyJsonApiRelationship(JsonApiRelationship):
     unable to figure out whether the user is attempting to set an attribute
     or a relationship to null.
     """
-
     def __init__(self):
         JsonApiRelationship.__init__(self, None, None)
 
     def as_linkage(self):
         """Empty relationships should be serialized as a null linkage."""
-        return {"data": None}
+        return {'data': None}
 
     def __nonzero__(self):
         """Empty relationship should be falsey."""
         return False
 
     def __repr__(self):
-        return "EmptyJsonApiRelationship()"
+        return 'EmptyJsonApiRelationship()'
 
 
 class JsonApiClient(RestClient):
     """
     Simple JSON API client.
     """
-
     def __init__(self, address, get_access_token, check_version=lambda _: None):
         self._get_access_token = get_access_token
         self._check_version = check_version
         self.address = address  # Used as key in client and token caches
-        base_url = address + "/rest"
+        base_url = address + '/rest'
         super(JsonApiClient, self).__init__(base_url)
 
     @staticmethod
@@ -166,11 +151,11 @@ class JsonApiClient(RestClient):
         """
         Build and return API path.
         """
-        path = "/" + resource_type
+        path = '/' + resource_type
         if resource_id is not None:
-            path += "/" + str(resource_id)
+            path += '/' + str(resource_id)
         if relationship is not None:
-            path += "/relationships/" + relationship
+            path += '/relationships/' + relationship
         return path
 
     @staticmethod
@@ -188,11 +173,11 @@ class JsonApiClient(RestClient):
 
         # `include` query parameter is a comma-separated list, as defined by:
         # http://jsonapi.org/format/#fetching-includes
-        include = params.pop("include", None)
+        include = params.pop('include', None)
         if include is not None:
-            result.append(("include", ",".join(include)))
+            result.append(('include', ','.join(include)))
 
-        for k, v in params.iteritems() if isinstance(params, dict) else params:
+        for k, v in (params.iteritems() if isinstance(params, dict) else params):
             if isinstance(v, list):
                 for item in map(unicode, v):
                     result.append((k, item))
@@ -266,34 +251,33 @@ class JsonApiClient(RestClient):
         :param document: the JSON-API payload as a dict
         :return: unpacked resource info as a dict
         """
-
         def unpack_linkage(linkage):
             # Return recursively unpacked object if the data was included in the
             # document, otherwise just return the linkage object
             if linkage is None:
                 return EmptyJsonApiRelationship()
-            elif (linkage["type"], linkage["id"]) in included:
+            elif (linkage['type'], linkage['id']) in included:
                 # Wrap in a JsonApiRelationship proxy
                 # This allows you to send an unpacked object back up through
                 # create or update requests.
                 return JsonApiRelationship(
-                    linkage["type"],
-                    linkage["id"],
-                    unpack_object(included[linkage["type"], linkage["id"]]),
+                    linkage['type'],
+                    linkage['id'],
+                    unpack_object(included[linkage['type'], linkage['id']])
                 )
             else:
-                return JsonApiRelationship(linkage["type"], linkage["id"])
+                return JsonApiRelationship(linkage['type'], linkage['id'])
 
         def unpack_object(obj_data):
             # Merge attributes, id, meta, and relationships into a single dict
             obj = {}
-            obj["id"] = obj_data["id"]
-            if "attributes" in obj_data:
-                obj.update(obj_data["attributes"])
-            if "meta" in obj_data:
-                obj["meta"] = obj_data["meta"]
-            for key, relationship in obj_data.get("relationships", {}).iteritems():
-                linkage = relationship["data"]
+            obj['id'] = obj_data['id']
+            if 'attributes' in obj_data:
+                obj.update(obj_data['attributes'])
+            if 'meta' in obj_data:
+                obj['meta'] = obj_data['meta']
+            for key, relationship in obj_data.get('relationships', {}).iteritems():
+                linkage = relationship['data']
                 if isinstance(linkage, list):
                     obj[key] = [unpack_linkage(l) for l in linkage]
                 else:
@@ -306,13 +290,13 @@ class JsonApiClient(RestClient):
 
         # Load included resources into dict indexed by (type, id)
         included = {
-            (resource["type"], resource["id"]): resource
-            for resource in document.get("included", [])
+            (resource['type'], resource['id']): resource
+            for resource in document.get('included', [])
         }
 
         # Build result info dict
         try:
-            data = document.get("data", None)
+            data = document.get('data', None)
             if isinstance(data, list):
                 result = [unpack_object(d) for d in data]
             elif isinstance(data, dict):
@@ -320,20 +304,19 @@ class JsonApiClient(RestClient):
             else:
                 result = {}
         except KeyError:
-            raise JsonApiException(
-                "Invalid or unsupported JSON API " "document format", True
-            )
+            raise JsonApiException('Invalid or unsupported JSON API '
+                                   'document format', True)
 
-        if "meta" in document:
-            meta = document["meta"]
+        if 'meta' in document:
+            meta = document['meta']
             # Check version
-            if "version" in meta:
-                self._check_version(meta["version"])
+            if 'version' in meta:
+                self._check_version(meta['version'])
 
             # Include document meta if there is only a single object
             # (Warning: this will overwrite any meta present at the resource object level.)
             if isinstance(result, dict):
-                result["meta"] = meta
+                result['meta'] = meta
 
         return result
 
@@ -374,24 +357,23 @@ class JsonApiClient(RestClient):
         :param type_: resource type as string
         :return: packed JSON API document
         """
-
         def pack_object(obj):
-            packed_obj = {"type": type_}
+            packed_obj = {'type': type_}
             attributes = {}
             relationships = {}
             for key, value in obj.iteritems():
                 if isinstance(value, JsonApiRelationship):
                     relationships[key] = value.as_linkage()
-                elif key == "id":
-                    packed_obj["id"] = value
+                elif key == 'id':
+                    packed_obj['id'] = value
                 else:
                     attributes[key] = value
 
             if attributes:
-                packed_obj["attributes"] = attributes
+                packed_obj['attributes'] = attributes
 
             if relationships:
-                packed_obj["relationships"] = relationships
+                packed_obj['relationships'] = relationships
 
             return packed_obj
 
@@ -401,11 +383,13 @@ class JsonApiClient(RestClient):
             else:
                 packed_objects = pack_object(objects)
         except KeyError:
-            raise JsonApiException("Invalid resource info format", True)
+            raise JsonApiException('Invalid resource info format', True)
 
-        return {"data": packed_objects}
+        return {
+            'data': packed_objects
+        }
 
-    @wrap_exception("Unable to fetch {1}")
+    @wrap_exception('Unable to fetch {1}')
     def fetch(self, resource_type, resource_id=None, params=None, include=None):
         """
         Request to fetch a resource or resources.
@@ -418,11 +402,9 @@ class JsonApiClient(RestClient):
         """
         return self._unpack_document(
             self._make_request(
-                method="GET",
+                method='GET',
                 path=self._get_resource_path(resource_type, resource_id),
-                query_params=self._pack_params(params),
-            )
-        )
+                query_params=self._pack_params(params)))
 
     def fetch_one(self, resource_type, resource_id=None, params=None):
         """
@@ -430,17 +412,17 @@ class JsonApiClient(RestClient):
         dictionary, or throws a NotFoundError if the results contain any more
         or less than exactly one.
         """
-        results = self.fetch(resource_type, resource_id=resource_id, params=params)
-        precondition(
-            not isinstance(results, list) or len(results) == 1,
-            "Got %d %s when expecting exactly 1." % (len(results), resource_type),
-        )
+        results = self.fetch(resource_type,
+                             resource_id=resource_id, params=params)
+        precondition(not isinstance(results, list) or len(results) == 1,
+                     "Got %d %s when expecting exactly 1." %
+                     (len(results), resource_type))
         if not isinstance(results, list):
             return results
         else:
             return results[0]
 
-    @wrap_exception("Unable to netcat {1}")
+    @wrap_exception('Unable to netcat {1}')
     def netcat(self, bundle_id, port, data):
         """
         Request to send data to a running bundle
@@ -450,10 +432,10 @@ class JsonApiClient(RestClient):
         :param port: service port running on bundle
         :return: the response
         """
-        request_path = "/bundles/%s/netcat/%s/" % (bundle_id, port)
-        return self._make_request("PUT", request_path, data=data)
+        request_path = '/bundles/%s/netcat/%s/' % (bundle_id, port)
+        return self._make_request('PUT', request_path, data=data)
 
-    @wrap_exception("Unable to create {1}")
+    @wrap_exception('Unable to create {1}')
     def create(self, resource_type, data, params=None):
         """
         Request to create a resource or resources.
@@ -466,18 +448,15 @@ class JsonApiClient(RestClient):
         """
         result = self._unpack_document(
             self._make_request(
-                method="POST",
+                method='POST',
                 path=self._get_resource_path(resource_type),
                 query_params=self._pack_params(params),
                 data=self._pack_document(
-                    data if isinstance(data, list) else [data], resource_type
-                ),
-            )
-        )
+                    data if isinstance(data, list) else [data], resource_type)))
         # Return list iff original data was list
         return result if isinstance(data, list) else result[0]
 
-    @wrap_exception("Unable to update {1}")
+    @wrap_exception('Unable to update {1}')
     def update(self, resource_type, data, params=None):
         """
         Request to update a resource or resources.
@@ -491,18 +470,15 @@ class JsonApiClient(RestClient):
         """
         result = self._unpack_document(
             self._make_request(
-                method="PATCH",
+                method='PATCH',
                 path=self._get_resource_path(resource_type),
                 query_params=self._pack_params(params),
                 data=self._pack_document(
-                    data if isinstance(data, list) else [data], resource_type
-                ),
-            )
-        )
+                    data if isinstance(data, list) else [data], resource_type)))
         # Return list iff original data was list
         return result if isinstance(data, list) else result[0]
 
-    @wrap_exception("Unable to delete {1}")
+    @wrap_exception('Unable to delete {1}')
     def delete(self, resource_type, resource_ids, params=None):
         """
         Request to delete a resource or resources.
@@ -514,20 +490,22 @@ class JsonApiClient(RestClient):
         """
         if not isinstance(resource_ids, list):
             resource_ids = [resource_ids]
-        data = {"data": [{"id": id_, "type": resource_type} for id_ in resource_ids]}
+        data = {
+            'data': [{
+                'id': id_,
+                'type': resource_type,
+            } for id_ in resource_ids],
+        }
         return self._unpack_document(
             self._make_request(
-                method="DELETE",
+                method='DELETE',
                 path=self._get_resource_path(resource_type),
                 query_params=self._pack_params(params),
-                data=data,
-            )
-        )
+                data=data))
 
-    @wrap_exception("Unable to create {1}/{2}/relationships/{3}")
-    def create_relationship(
-        self, resource_type, resource_id, relationship_key, relationship, params=None
-    ):
+    @wrap_exception('Unable to create {1}/{2}/relationships/{3}')
+    def create_relationship(self, resource_type, resource_id, relationship_key,
+                            relationship, params=None):
         """
         Request to add to a to-many relationship.
 
@@ -540,19 +518,15 @@ class JsonApiClient(RestClient):
         """
         return self._unpack_document(
             self._make_request(
-                method="POST",
+                method='POST',
                 path=self._get_resource_path(
-                    resource_type, resource_id, relationship_key
-                ),
+                    resource_type, resource_id, relationship_key),
                 query_params=self._pack_params(params),
-                data=(relationship and relationship.as_linkage()),
-            )
-        )
+                data=(relationship and relationship.as_linkage())))
 
-    @wrap_exception("Unable to delete {1}/{2}/relationships/{3}")
-    def delete_relationship(
-        self, resource_type, resource_id, relationship_key, relationship, params=None
-    ):
+    @wrap_exception('Unable to delete {1}/{2}/relationships/{3}')
+    def delete_relationship(self, resource_type, resource_id, relationship_key,
+                            relationship, params=None):
         """
         Request to delete from a to-many relationship.
 
@@ -565,16 +539,13 @@ class JsonApiClient(RestClient):
         """
         return self._unpack_document(
             self._make_request(
-                method="DELETE",
+                method='DELETE',
                 path=self._get_resource_path(
-                    resource_type, resource_id, relationship_key
-                ),
+                    resource_type, resource_id, relationship_key),
                 query_params=self._pack_params(params),
-                data=(relationship and relationship.as_linkage()),
-            )
-        )
+                data=(relationship and relationship.as_linkage())))
 
-    @wrap_exception("Unable to update authenticated user")
+    @wrap_exception('Unable to update authenticated user')
     def update_authenticated_user(self, data, params=None):
         """
         Request to update the authenticated user.
@@ -586,40 +557,28 @@ class JsonApiClient(RestClient):
         """
         return self._unpack_document(
             self._make_request(
-                method="PATCH",
-                path=self._get_resource_path("user"),
+                method='PATCH',
+                path=self._get_resource_path('user'),
                 query_params=self._pack_params(params),
-                data=self._pack_document(data, "users"),
-            )
-        )
+                data=self._pack_document(data, 'users')))
 
-    @wrap_exception("Unable to fetch contents info of bundle {1}")
+    @wrap_exception('Unable to fetch contents info of bundle {1}')
     def fetch_interpreted_worksheet(self, worksheet_uuid):
-        request_path = "/interpret/worksheet/%s" % worksheet_uuid
-        response = self._make_request("GET", request_path)
+        request_path = '/interpret/worksheet/%s' % worksheet_uuid
+        response = self._make_request('GET', request_path)
         return response
 
-    @wrap_exception("Unable to fetch contents info of bundle {1}")
-    def fetch_contents_info(self, bundle_id, target_path="", depth=0):
-        request_path = "/bundles/%s/contents/info/%s" % (
-            bundle_id,
-            urllib.quote(target_path),
-        )
-        response = self._make_request(
-            "GET", request_path, query_params={"depth": depth}
-        )
-        return response["data"]
+    @wrap_exception('Unable to fetch contents info of bundle {1}')
+    def fetch_contents_info(self, bundle_id, target_path='', depth=0):
+        request_path = '/bundles/%s/contents/info/%s' % \
+                       (bundle_id, urllib.quote(target_path))
+        response = self._make_request('GET', request_path,
+                                      query_params={'depth': depth})
+        return response['data']
 
-    @wrap_exception("Unable to fetch contents blob of bundle {1}")
-    def fetch_contents_blob(
-        self,
-        bundle_id,
-        target_path="",
-        range_=None,
-        head=None,
-        tail=None,
-        truncation_text=None,
-    ):
+    @wrap_exception('Unable to fetch contents blob of bundle {1}')
+    def fetch_contents_blob(self, bundle_id, target_path='', range_=None,
+                            head=None, tail=None, truncation_text=None):
         """
         Returns a file-like object for the target on the given bundle.
 
@@ -630,32 +589,24 @@ class JsonApiClient(RestClient):
         :param tail: number of lines to summarize from end of file
         :return: file-like object containing requested data blob
         """
-        request_path = "/bundles/%s/contents/blob/%s" % (
-            bundle_id,
-            urllib.quote(target_path),
-        )
-        headers = {"Accept-Encoding": "gzip"}
+        request_path = '/bundles/%s/contents/blob/%s' % \
+                       (bundle_id, urllib.quote(target_path))
+        headers = {'Accept-Encoding': 'gzip'}
         if range_ is not None:
-            headers["Range"] = "bytes=%d-%d" % range_
+            headers['Range'] = 'bytes=%d-%d' % range_
         params = {}
         if head is not None:
-            params["head"] = head
+            params['head'] = head
         if tail is not None:
-            params["tail"] = tail
+            params['tail'] = tail
         if truncation_text is not None:
-            params["truncation_text"] = truncation_text
-        return self._make_request(
-            "GET",
-            request_path,
-            headers=headers,
-            query_params=params,
-            return_response=True,
-        )
+            params['truncation_text'] = truncation_text
+        return self._make_request('GET', request_path, headers=headers,
+                                  query_params=params, return_response=True)
 
-    @wrap_exception("Unable to upload contents of bundle {1}")
-    def upload_contents_blob(
-        self, bundle_id, fileobj=None, params=None, progress_callback=None
-    ):
+    @wrap_exception('Unable to upload contents of bundle {1}')
+    def upload_contents_blob(self, bundle_id, fileobj=None, params=None,
+                             progress_callback=None):
         """
         Uploads the contents of the given fileobj as the contents of specified
         bundle.
@@ -667,57 +618,62 @@ class JsonApiClient(RestClient):
                                   with the number of bytes uploaded so far
         :return: None
         """
-        request_path = "/bundles/%s/contents/blob/" % bundle_id
+        request_path = '/bundles/%s/contents/blob/' % bundle_id
         params = params or {}
-        params["finalize_on_failure"] = True  # no retry mechanism implemented yet
+        params['finalize_on_failure'] = True  # no retry mechanism implemented yet
         params = self._pack_params(params)
         if fileobj is None:
-            self._make_request(method="PUT", path=request_path, query_params=params)
+            self._make_request(
+                method='PUT',
+                path=request_path,
+                query_params=params)
         else:
             self._upload_with_chunked_encoding(
-                method="PUT",
+                method='PUT',
                 url=request_path,
                 query_params=params,
                 fileobj=fileobj,
-                progress_callback=progress_callback,
-            )
+                progress_callback=progress_callback)
 
-    @wrap_exception("Unable to interpret file genpaths")
+    @wrap_exception('Unable to interpret file genpaths')
     def interpret_file_genpaths(self, queries):
         """
         :param queries: list of (bundle_uuid, genpath, post) tuples
         :return: list of strings
         """
         return self._make_request(
-            method="POST",
-            path="/interpret/file-genpaths",
+            method='POST',
+            path='/interpret/file-genpaths',
             data={
-                "queries": [
-                    {"bundle_uuid": bundle_uuid, "genpath": genpath, "post": post}
-                    for bundle_uuid, genpath, post in queries
-                ]
-            },
-        )["data"]
+                'queries': [{
+                    'bundle_uuid': bundle_uuid,
+                    'genpath': genpath,
+                    'post': post,
+                } for bundle_uuid, genpath, post in queries]
+            }
+        )['data']
 
-    @wrap_exception("Unable to interpret genpath table contents")
+    @wrap_exception('Unable to interpret genpath table contents')
     def interpret_genpath_table_contents(self, contents):
         return self._make_request(
-            method="POST",
-            path="/interpret/genpath-table-contents",
-            data={"contents": contents},
-        )["contents"]
+            method='POST',
+            path='/interpret/genpath-table-contents',
+            data={
+                'contents': contents
+            }
+        )['contents']
 
-    @wrap_exception("Unable to update worksheet")
+    @wrap_exception('Unable to update worksheet')
     def update_worksheet_raw(self, worksheet_id, lines):
         self._make_request(
-            method="POST",
-            path="/worksheets/%s/raw" % worksheet_id,
-            headers={"Content-Type": "text/plain"},
-            data="\n".join(lines),
-        )
+            method='POST',
+            path='/worksheets/%s/raw' % worksheet_id,
+            headers={'Content-Type': 'text/plain'},
+            data='\n'.join(lines))
 
-    @wrap_exception("Unable to fetch worker information")
+    @wrap_exception('Unable to fetch worker information')
     def get_workers_info(self):
-        request_path = "/workers/info"
-        response = self._make_request("GET", request_path)
-        return response["data"]
+        request_path = '/workers/info'
+        response = self._make_request('GET', request_path)
+        return response['data']
+

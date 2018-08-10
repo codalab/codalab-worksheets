@@ -36,36 +36,28 @@ class RestClient(object):
         """
         raise NotImplementedError
 
-    def _make_request(
-        self,
-        method,
-        path,
-        query_params=None,
-        headers=None,
-        data=None,
-        return_response=False,
-        authorized=True,
-    ):
+    def _make_request(self, method, path, query_params=None, headers=None,
+                      data=None, return_response=False, authorized=True):
         if headers is None:
             headers = {}
 
         access_token = self._get_access_token()
         if authorized and access_token:
-            headers["Authorization"] = "Bearer " + self._get_access_token()
+            headers['Authorization'] = 'Bearer ' + self._get_access_token()
 
         if data is not None and isinstance(data, dict):
-            headers["Content-Type"] = "application/json"
+            headers['Content-Type'] = 'application/json'
             data = json.dumps(data)
-        headers["X-Requested-With"] = "XMLHttpRequest"
+        headers['X-Requested-With'] = 'XMLHttpRequest'
         if query_params is not None:
-            path = path + "?" + urllib.urlencode(query_params)
+            path = path + '?' + urllib.urlencode(query_params)
 
         # Everything needs to be utf-8 encoded or else urllib2 will complain
-        if "Content-Type" in headers:
-            headers["Content-Type"] += "; charset=utf-8"
+        if 'Content-Type' in headers:
+            headers['Content-Type'] += '; charset=utf-8'
         if data and isinstance(data, unicode):
-            data = data.encode("utf-8")
-        request_url = (self._base_url + path).encode("utf-8")
+            data = data.encode('utf-8')
+        request_url = (self._base_url + path).encode('utf-8')
 
         request = urllib2.Request(request_url, data=data, headers=headers)
         request.get_method = lambda: method
@@ -74,29 +66,28 @@ class RestClient(object):
             # body, transparently decoding gzip streams if indicated by the
             # Content-Encoding header.
             response = urllib2.urlopen(request)
-            encoding = response.headers.get("Content-Encoding")
-            if not encoding or encoding == "identity":
+            encoding = response.headers.get('Content-Encoding')
+            if not encoding or encoding == 'identity':
                 return response
-            elif encoding == "gzip":
+            elif encoding == 'gzip':
                 return un_gzip_stream(response)
             else:
                 raise RestClientException(
-                    "Unsupported Content-Encoding: " + encoding, False
-                )
+                    'Unsupported Content-Encoding: ' + encoding, False)
         with closing(urllib2.urlopen(request)) as response:
             # If the response is a JSON document, as indicated by the
             # Content-Type header, try to deserialize it and return the result.
             # Otherwise, just ignore the response body and return None.
-            if response.headers.get("Content-Type") == "application/json":
+            if response.headers.get('Content-Type') == 'application/json':
                 response_data = response.read()
                 try:
                     return json.loads(response_data)
                 except ValueError:
-                    raise RestClientException("Invalid JSON: " + response_data, False)
+                    raise RestClientException(
+                        'Invalid JSON: ' + response_data, False)
 
-    def _upload_with_chunked_encoding(
-        self, method, url, query_params, fileobj, progress_callback=None
-    ):
+    def _upload_with_chunked_encoding(self, method, url, query_params, fileobj,
+                                      progress_callback=None):
         """
         Uploads the fileobj to url using method with query_params,
         if progress_callback is specified, it is called with the
@@ -108,8 +99,8 @@ class RestClient(object):
         CHUNK_SIZE = 16 * 1024
         # Start the request.
         parsed_base_url = urlparse.urlparse(self._base_url)
-        path = url + "?" + urllib.urlencode(query_params)
-        if parsed_base_url.scheme == "http":
+        path = url + '?' + urllib.urlencode(query_params)
+        if parsed_base_url.scheme == 'http':
             conn = httplib.HTTPConnection(parsed_base_url.netloc)
         else:
             conn = httplib.HTTPSConnection(parsed_base_url.netloc)
@@ -117,9 +108,9 @@ class RestClient(object):
             conn.putrequest(method, parsed_base_url.path + path)
 
             # Set headers.
-            conn.putheader("Authorization", "Bearer " + self._get_access_token())
-            conn.putheader("Transfer-Encoding", "chunked")
-            conn.putheader("X-Requested-With", "XMLHttpRequest")
+            conn.putheader('Authorization', 'Bearer ' + self._get_access_token())
+            conn.putheader('Transfer-Encoding', 'chunked')
+            conn.putheader('X-Requested-With', 'XMLHttpRequest')
             conn.endheaders()
 
             # Use chunked transfer encoding to send the data through.
@@ -128,13 +119,13 @@ class RestClient(object):
                 to_send = fileobj.read(CHUNK_SIZE)
                 if not to_send:
                     break
-                conn.send("%X\r\n%s\r\n" % (len(to_send), to_send))
+                conn.send('%X\r\n%s\r\n' % (len(to_send), to_send))
                 bytes_uploaded += len(to_send)
                 if progress_callback is not None:
                     should_resume = progress_callback(bytes_uploaded)
                     if not should_resume:
-                        raise Exception("Upload aborted by client")
-            conn.send("0\r\n\r\n")
+                        raise Exception('Upload aborted by client')
+            conn.send('0\r\n\r\n')
 
             # Read the response.
             response = conn.getresponse()
@@ -145,5 +136,4 @@ class RestClient(object):
                     response.status,
                     response.reason,
                     dict(response.getheaders()),
-                    StringIO(response.read()),
-                )
+                    StringIO(response.read()))

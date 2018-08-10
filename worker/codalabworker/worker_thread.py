@@ -12,8 +12,8 @@ class WorkerThread(object):
         :param thread: Thread object
         :param fields: A Dict from strings(field names) to values
         """
-        if fields and "thread" in fields:
-            raise KeyError("Field name 'thread' reserved for threads")
+        if fields and 'thread' in fields:
+            raise KeyError('Field name \'thread\' reserved for threads')
         self.thread = thread
         self.fields = fields
 
@@ -21,7 +21,7 @@ class WorkerThread(object):
         """
         Getitem acts on the fields dict, treating the 'thread' key as a special key
         """
-        if key == "thread":
+        if key == 'thread':
             return self.thread
         else:
             return self.fields[key]
@@ -30,7 +30,7 @@ class WorkerThread(object):
         """
         Setitem acts on the fields dict, treating the 'thread' key as a special key
         """
-        if key == "thread":
+        if key == 'thread':
             self.thread = val
         else:
             self.fields[key] = val
@@ -107,3 +107,4 @@ class ThreadDict(dict):
         """
         for key in self.keys():
             self[key].join()
+
