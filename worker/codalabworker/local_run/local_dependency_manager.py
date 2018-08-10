@@ -156,8 +156,7 @@ class LocalFileSystemDependencyManager(StateTransitioner,
         Deletes oldest failed dependencies first and then oldest finished dependencies.
         Doesn't touch downloading dependencies.
         """
-        deleting = True
-        while deleting:
+        while True:
             with self._lock:
                 bytes_used = sum(
                     dep.size_bytes for dep in self._dependencies.values())
@@ -192,7 +191,7 @@ class LocalFileSystemDependencyManager(StateTransitioner,
                         logger.info(
                             'Dependency quota full but there are only downloading dependencies, not cleaning up until downloads are over'
                         )
-                        deleting = False
+                        break
                     try:
                         self._paths.remove(
                             self._dependencies[dep_to_remove].path)
@@ -200,7 +199,7 @@ class LocalFileSystemDependencyManager(StateTransitioner,
                         if dep_to_remove:
                             del self._dependencies[dep_to_remove]
                 else:
-                    deleting = False
+                    break
 
     def has(self, dependency):
         """
