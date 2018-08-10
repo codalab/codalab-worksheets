@@ -35,12 +35,15 @@ def checkin(worker_id):
         request.json['dependencies'])
 
     for uuid, run in request.json['runs'].items():
-        bundle = local.model.get_bundle(uuid)
-        local.model.bundle_checkin(bundle,
-                                   run,
-                                   request.user.user_id,
-                                   worker_id,
-                                   request.json['hostname'])
+        try:
+            bundle = local.model.get_bundle(uuid)
+            local.model.bundle_checkin(bundle,
+                                       run,
+                                       request.user.user_id,
+                                       worker_id,
+                                       request.json['hostname'])
+        except Exception:
+            pass
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)

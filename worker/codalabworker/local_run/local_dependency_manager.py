@@ -222,7 +222,7 @@ class LocalFileSystemDependencyManager(StateTransitioner,
                     dependency=dependency,
                     path=self._assign_path(dependency),
                     size_bytes=0,
-                    dependents=set((uuid)),
+                    dependents=set([uuid]),
                     last_used=now,
                     message="Starting download",
                     killed=False)
