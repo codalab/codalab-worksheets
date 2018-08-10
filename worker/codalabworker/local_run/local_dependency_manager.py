@@ -64,7 +64,7 @@ class LocalFileSystemDependencyManager(StateTransitioner,
         if not os.path.exists(self.dependencies_dir):
             logger.info('{} doesn\'t exist, creating.'.format(
                 self.dependencies_dir))
-            os.makedirs(self.dependencies_dir, 0770)
+            os.makedirs(self.dependencies_dir, 0o770)
 
         self._lock = threading.RLock()
 

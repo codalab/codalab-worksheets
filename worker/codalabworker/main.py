@@ -111,7 +111,7 @@ chmod 600 %s""" % args.password_file
     docker_client = DockerClient()
     bundle_service = BundleServiceClient(args.server, username, password)
     if not os.path.exists(args.work_dir):
-        os.makedirs(args.work_dir, 0770)
+        os.makedirs(args.work_dir, 0o770)
 
     def create_local_run_manager(worker):
         """

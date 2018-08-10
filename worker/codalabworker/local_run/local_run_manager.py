@@ -37,7 +37,7 @@ class LocalRunManager(BaseRunManager):
         self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
         if not os.path.exists(self._bundles_dir):
             logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
-            os.makedirs(self._bundles_dir, 0770)
+            os.makedirs(self._bundles_dir, 0o770)
 
         # These members are public as the run state manager needs access to them
         self.docker = docker
