@@ -10,16 +10,15 @@ from codalabworker.bundle_state import State
 
 class UploadedBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
+    # Don't format specs
+    # fmt: off
     METADATA_SPECS.append(
-        MetadataSpec(
-            'license', basestring, 'The license under which this program/dataset is released.'
-        )
+        MetadataSpec('license', basestring, 'The license under which this program/dataset is released.')
     )
     METADATA_SPECS.append(
-        MetadataSpec(
-            'source_url', basestring, 'URL corresponding to the original source of this bundle.'
-        )
+        MetadataSpec('source_url', basestring, 'URL corresponding to the original source of this bundle.')
     )
+    # fmt: on
 
     @classmethod
     def construct(cls, metadata, owner_id, uuid=None):
