@@ -1,6 +1,7 @@
 import httplib
 import socket
 import sys
+import six
 import urllib
 import urllib2
 
@@ -23,25 +24,25 @@ def wrap_exception(message):
                 exc = http_error_to_exception(e.code, error_body)
                 # All standard CodaLab errors are subclasses of UsageError
                 if isinstance(exc, UsageError):
-                    raise exc.__class__, exc, sys.exc_info()[2]
+                    six.reraise(exc.__class__, exc, sys.exc_info()[2])
                 else:
                     # Shunt other exceptions into one class
-                    raise JsonApiException, \
+                    six.reraise(JsonApiException,
                         JsonApiException(message.format(*args, **kwargs) +
                                          ': ' + httplib.responses[e.code] +
                                          ' - ' + error_body,
-                                         400 <= e.code < 500), \
-                        sys.exc_info()[2]
+                                         400 <= e.code < 500),
+                        sys.exc_info()[2])
             except RestClientException as e:
-                raise JsonApiException, \
+                six.reraise(JsonApiException,
                     JsonApiException(message.format(*args, **kwargs) +
-                                     ': ' + e.message, e.client_error), \
-                    sys.exc_info()[2]
+                                     ': ' + e.message, e.client_error),
+                    sys.exc_info()[2])
             except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
-                raise JsonApiException, \
+                six.reraise(JsonApiException,
                     JsonApiException(message.format(*args, **kwargs) +
-                                     ': ' + str(e), False), \
-                    sys.exc_info()[2]
+                                     ': ' + str(e), False),
+                    sys.exc_info()[2])
         return wrapper
     return decorator
 
