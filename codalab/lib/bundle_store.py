@@ -195,7 +195,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
         partition_abs_path = os.path.join(self.partitions, partition)
 
         try:
-            print partition_abs_path
+            print(partition_abs_path)
             path_util.check_isvalid(partition_abs_path, 'rm-partition')
         except:
             print >> sys.stderr, "Partition with name '%s' does not exist. Run `cl ls-partitions` to see a list of mounted partitions." % partition
@@ -212,12 +212,12 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
     def ls_partitions(self):
         """List all partitions available for storing bundles and how many bundles are currently stored."""
         partitions, _ = path_util.ls(self.partitions)
-        print '%d %s' % (len(partitions), 'partition' if len(partitions) == 1 else 'partitions')
+        print('%d %s' % (len(partitions), 'partition' if len(partitions) == 1 else 'partitions'))
         for d in partitions:
             partition_path = os.path.join(self.partitions, d)
             real_path = os.readlink(partition_path)
             bundles = reduce(lambda x,y: x+y, path_util.ls(os.path.join(partition_path, MultiDiskBundleStore.DATA_SUBDIRECTORY)))
-            print '- %-016s\n\tmountpoint: %s\n\t%d %s' % (d, real_path, len(bundles), 'bundle' if len(bundles) == 1 else 'bundles')
+            print('- %-016s\n\tmountpoint: %s\n\t%d %s' % (d, real_path, len(bundles), 'bundle' if len(bundles) == 1 else 'bundles'))
 
     def cleanup(self, uuid, dry_run):
         '''
@@ -248,7 +248,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
 
         def _delete_path(loc):
             cmd = 'rm -r \'%s\'' % loc
-            print cmd
+            print(cmd)
             if force:
                 path_util.remove(loc)
 

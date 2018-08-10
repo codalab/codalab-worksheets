@@ -935,7 +935,7 @@ class BundleCLI(object):
             config[key] = auto_convert_type(args.value)
             self.manager.save_config()
         else:  # Print out value
-            print config[key]
+            print(config[key])
 
     @Commands.command(
         'workers',

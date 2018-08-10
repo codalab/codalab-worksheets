@@ -77,8 +77,8 @@ def read_json_or_die(path):
             string = f.read()
         return json.loads(string)
     except ValueError as e:
-        print "Invalid JSON in %s:\n%s" % (path, string)
-        print e
+        print("Invalid JSON in %s:\n%s" % (path, string))
+        print(e)
         sys.exit(1)
 
 def prompt_bool(prompt, default=None):
@@ -98,7 +98,7 @@ def prompt_bool(prompt, default=None):
         try:
             return bool(strtobool(response))
         except ValueError:
-            print "Please enter y(es) or n(o)."
+            print("Please enter y(es) or n(o).")
             continue
 
 def prompt_str(prompt, default=None):
@@ -115,7 +115,7 @@ def prompt_str(prompt, default=None):
             return default
 
 def print_block(text):
-    print textwrap.dedent(text)
+    print(textwrap.dedent(text))
 
 class CodaLabManager(object):
     '''
@@ -462,7 +462,7 @@ class CodaLabManager(object):
         username = os.environ.get('CODALAB_USERNAME')
         password = os.environ.get('CODALAB_PASSWORD')
         if username is None or password is None:
-            print 'Requesting access at %s' % cache_key
+            print('Requesting access at %s' % cache_key)
         if username is None:
             sys.stdout.write('Username: ')  # Use write to avoid extra space
             username = sys.stdin.readline().rstrip()

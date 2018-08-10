@@ -158,7 +158,7 @@ if fuse_is_available:
             info = self._get_info('/')
             if info['type'] == 'file':
                 self.single_file_bundle = True
-                print 'Note: specified bundle is a single file; mountpoint will look like a directory that contains that single file.'
+                print('Note: specified bundle is a single file; mountpoint will look like a directory that contains that single file.')
 
         # Helpers
         # =======
@@ -174,7 +174,7 @@ if fuse_is_available:
 
         def verbose_print(self, msg):
             if self.verbose:
-                print '[BundleFUSE]:', msg
+                print('[BundleFUSE]:', msg)
 
         # Filesystem methods
         # ==================

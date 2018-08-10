@@ -44,14 +44,14 @@ config = json.loads(open(config_path).read())
 engine_url = config['server']['engine_url']
 m = re.match('mysql://(.+):(.+)@([^:]+)(:(\d+))?/(.+)', engine_url)
 if not m:
-    print 'Can\'t extract server.engine_url from %s' % config_path
+    print('Can\'t extract server.engine_url from %s' % config_path)
     sys.exit(1)
 bundles_user = m.group(1)
 bundles_password = m.group(2)
 bundles_host = m.group(3)
 bundles_port = m.group(5) or 3306
 bundles_db = m.group(6)
-print 'user = {}, password = {}, db = {}, host = {}, port = {}'.format(bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port)
+print('user = {}, password = {}, db = {}, host = {}, port = {}'.format(bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port))
 
 hostname = config['server'].get('instance_name', socket.gethostname())
 
@@ -69,7 +69,7 @@ report = []  # Build up the current report to send in an email
 def send_email(subject, message):
     # Not enough information to send email?
     if not recipient or not sender_info:
-        print 'send_email; subject: %s; message contains %d lines' % (subject, len(message))
+        print('send_email; subject: %s; message contains %d lines' % (subject, len(message)))
         return
 
     sender_host = sender_info['host']
@@ -80,8 +80,8 @@ def send_email(subject, message):
     sender_user = sender_info.get('user', 'noreply@codalab.org') 
     sender_password = sender_info.get('password', None)
     do_login = (sender_password != None)
-    print 'send_email to %s from %s@%s; subject: %s; message contains %d lines' % \
-        (recipient, sender_user, sender_host, subject, len(message))
+    print('send_email to %s from %s@%s; subject: %s; message contains %d lines' % \
+        (recipient, sender_user, sender_host, subject, len(message)))
     s = SMTP(sender_host, 587)
     s.ehlo()
     s.starttls()
@@ -103,9 +103,9 @@ def get_date():
 def log(line, newline=True):
     line = '[%s] %s' % (get_date(), line)
     if newline:
-        print line
+        print(line)
     else:
-        print line,
+        print(line)
     report.append(line)
     out = open(args.log_path, 'a')
     print >>out, line

@@ -22,5 +22,5 @@ for path in sys.argv[1:]:
     name = info['name'].replace(' ', '_')
     cmd = "cl upload %s `/bin/ls -d %s/*` --name %s --tags mlcomp %s --description \"%s\"" % \
         (bundle_type, path, name, tags, info['description'].replace('"', '\\"'))
-    print cmd
+    print(cmd)
     os.system(cmd)

@@ -146,8 +146,8 @@ with model.engine.begin() as bundle_db:
     to_update = django_user_ids & bundle_user_ids
     to_insert = django_user_ids - bundle_user_ids
 
-    print "Users to update:", ', '.join(list(to_update))
-    print "Users to insert:", ', '.join(list(to_insert))
+    print("Users to update:", ', '.join(list(to_update)))
+    print("Users to insert:", ', '.join(list(to_insert)))
 
     to_update = [user for user in django_users
                  if (str(user['b_user_id']) in to_update)]
@@ -159,7 +159,7 @@ with model.engine.begin() as bundle_db:
     ###############################################################
 
     if to_update:
-        print "Updating existing users in bundle service database..."
+        print("Updating existing users in bundle service database...")
 
         update_query = cl_user.update().\
             where(cl_user.c.user_id == bindparam('b_user_id'))
@@ -170,7 +170,7 @@ with model.engine.begin() as bundle_db:
     ###############################################################
 
     if to_insert:
-        print "Inserting new users into bundle service database..."
+        print("Inserting new users into bundle service database...")
 
         default_user_info = manager.default_user_info()
 
@@ -190,4 +190,4 @@ with model.engine.begin() as bundle_db:
 # Last words
 ###############################################################
 
-print "Migration complete!"
+print("Migration complete!")

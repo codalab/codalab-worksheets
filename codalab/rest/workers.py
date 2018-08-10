@@ -113,7 +113,7 @@ def start_bundle(worker_id, uuid):
     if local.model.start_bundle(bundle, request.user.user_id, worker_id,
                                 request.json['hostname'],
                                 request.json['start_time']):
-        print 'Started bundle %s' % uuid
+        print('Started bundle %s' % uuid)
         return json.dumps(True)
     return json.dumps(False)
 

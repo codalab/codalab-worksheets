@@ -63,7 +63,7 @@ def main(args):
     sent_list = get_sent_list(args.sent_file)
     sent_emails = set(info['email'] for info in sent_list)
     pending_to_send_list = [info for info in to_send_list if info['email'] not in sent_emails]
-    print 'Already sent %d emails, %d to go' % (len(sent_list), len(pending_to_send_list))
+    print('Already sent %d emails, %d to go' % (len(sent_list), len(pending_to_send_list)))
 
     for i, info in enumerate(pending_to_send_list):
         if args.only_email and args.only_email != info['email']:
@@ -75,8 +75,8 @@ def main(args):
         info['email_description'] = '%s <%s>' % (info['full_name'], info['email']) if info['full_name'] else info['email']
         info['sent_time'] = time.time()
 
-        print 'Sending %s/%s (%s>=%s, doit=%s): [%s] %s' % \
-            (i, len(pending_to_send_list), info['notifications'], args.threshold, args.doit, info['user_name'], info['email_description'])
+        print('Sending %s/%s (%s>=%s, doit=%s): [%s] %s' % 
+            (i, len(pending_to_send_list), info['notifications'], args.threshold, args.doit, info['user_name'], info['email_description']))
 
         # Apply template to get body of message
         body = body_template
@@ -84,10 +84,10 @@ def main(args):
             body = body.replace('{{' + field + '}}', unicode(value or ''))
 
         if args.verbose >= 1:
-            print 'To      : %s' % info['email_description']
-            print 'Subject : %s' % subject
-            print body
-            print '-------'
+            print('To      : %s' % info['email_description'])
+            print('Subject : %s' % subject)
+            print(body)
+            print('-------')
 
         if not args.doit:
             continue

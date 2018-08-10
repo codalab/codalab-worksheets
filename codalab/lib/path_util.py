@@ -309,7 +309,7 @@ def remove(path):
     else:
         os.remove(path)
     if os.path.exists(path):
-        print 'Failed to remove %s' % path
+        print('Failed to remove %s' % path)
 
 def soft_link(source, path):
     """

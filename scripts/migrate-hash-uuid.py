@@ -46,7 +46,7 @@ for data_hash in data_hashes:
         uuid = bundle.uuid
         copy_location = os.path.join(FINAL_LOCATION, uuid)
         command = '%s %s %s' % ('mv' if rename_allowed else 'cp -a', orig_location, copy_location)
-        print command
+        print(command)
         if not dry_run:
             exec_str = shlex.split(command)
             cmd = Popen(exec_str)

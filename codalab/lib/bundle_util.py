@@ -285,7 +285,7 @@ def mimic_bundles(client,
         for info, new_info in plan:
             new_bundle_uuid = new_info['uuid']
             if new_bundle_uuid not in new_bundle_uuids_added:
-                print 'adding: ' + new_bundle_uuid
+                print('adding: ' + new_bundle_uuid)
                 client.create('worksheet-items', data={
                     'type': worksheet_util.TYPE_BUNDLE,
                     'worksheet': JsonApiRelationship('worksheets', worksheet_uuid),
