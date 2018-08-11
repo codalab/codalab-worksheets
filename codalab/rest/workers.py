@@ -15,9 +15,7 @@ from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
-@post(
-    "/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin()
-)
+@post("/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin())
 def checkin(worker_id):
     """
     Checks in with the bundle service, storing information about the worker.
@@ -54,9 +52,7 @@ def check_reply_permission(worker_id, socket_id):
     Checks if the authenticated user running a worker with the given ID can
     reply to messages on the given socket ID.
     """
-    if not local.worker_model.has_reply_permission(
-        request.user.user_id, worker_id, socket_id
-    ):
+    if not local.worker_model.has_reply_permission(request.user.user_id, worker_id, socket_id):
         abort(httplib.FORBIDDEN, "Not your socket ID!")
 
 
@@ -183,12 +179,8 @@ def workers_info():
         del worker["dependencies"]
 
         running_bundles = local.model.batch_get_bundles(uuid=worker["run_uuids"])
-        worker["cpus_in_use"] = sum(
-            bundle.metadata.request_cpus for bundle in running_bundles
-        )
-        worker["gpus_in_use"] = sum(
-            bundle.metadata.request_gpus for bundle in running_bundles
-        )
+        worker["cpus_in_use"] = sum(bundle.metadata.request_cpus for bundle in running_bundles)
+        worker["gpus_in_use"] = sum(bundle.metadata.request_gpus for bundle in running_bundles)
 
     return {"data": data}
 
@@ -200,9 +192,7 @@ def code():
     """
     response.set_header("Content-Disposition", 'attachment; filename="code.tar.gz"')
     response.set_header("Content-Type", "application/gzip")
-    codalab_cli = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
+    codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     code_dir = os.path.join(codalab_cli, "worker", "codalabworker")
     args = ["tar", "czf", "-", "-C", code_dir]
     for filename in os.listdir(code_dir):
