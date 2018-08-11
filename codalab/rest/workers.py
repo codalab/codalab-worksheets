@@ -6,7 +6,6 @@ import httplib
 import json
 import os
 import subprocess
-import time
 from datetime import datetime
 
 from bottle import abort, get, local, post, put, request, response
@@ -14,10 +13,11 @@ from bottle import abort, get, local, post, put, request, response
 from codalab.lib import spec_util
 from codalab.objects.permission import check_bundle_have_run_permission
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
-from codalabworker.worker import VERSION
 
 
-@post('/workers/<worker_id>/checkin', name='worker_checkin', apply=AuthenticatedPlugin())
+@post(
+    "/workers/<worker_id>/checkin", name="worker_checkin", apply=AuthenticatedPlugin()
+)
 def checkin(worker_id):
     """
     Checks in with the bundle service, storing information about the worker.
@@ -29,18 +29,21 @@ def checkin(worker_id):
     socket_id = local.worker_model.worker_checkin(
         request.user.user_id,
         worker_id,
-        request.json['tag'],
-        request.json['cpus'],
-        request.json['gpus'],
-        request.json['memory_bytes'],
-        request.json['dependencies'],
+        request.json["tag"],
+        request.json["cpus"],
+        request.json["gpus"],
+        request.json["memory_bytes"],
+        request.json["dependencies"],
     )
 
-    for uuid, run in request.json['runs'].items():
-        bundle = local.model.get_bundle(uuid)
-        local.model.bundle_checkin(
-            bundle, run, request.user.user_id, worker_id, request.json['hostname']
-        )
+    for uuid, run in request.json["runs"].items():
+        try:
+            bundle = local.model.get_bundle(uuid)
+            local.model.bundle_checkin(
+                bundle, run, request.user.user_id, worker_id, request.json["hostname"]
+            )
+        except Exception:
+            pass
 
     with closing(local.worker_model.start_listening(socket_id)) as sock:
         return local.worker_model.get_json_message(sock, WAIT_TIME_SECS)
@@ -51,13 +54,15 @@ def check_reply_permission(worker_id, socket_id):
     Checks if the authenticated user running a worker with the given ID can
     reply to messages on the given socket ID.
     """
-    if not local.worker_model.has_reply_permission(request.user.user_id, worker_id, socket_id):
-        abort(httplib.FORBIDDEN, 'Not your socket ID!')
+    if not local.worker_model.has_reply_permission(
+        request.user.user_id, worker_id, socket_id
+    ):
+        abort(httplib.FORBIDDEN, "Not your socket ID!")
 
 
 @post(
-    '/workers/<worker_id>/reply/<socket_id:int>',
-    name='worker_reply_json',
+    "/workers/<worker_id>/reply/<socket_id:int>",
+    name="worker_reply_json",
     apply=AuthenticatedPlugin(),
 )
 def reply(worker_id, socket_id):
@@ -69,8 +74,8 @@ def reply(worker_id, socket_id):
 
 
 @post(
-    '/workers/<worker_id>/reply_data/<socket_id:int>',
-    name='worker_reply_blob',
+    "/workers/<worker_id>/reply_data/<socket_id:int>",
+    name="worker_reply_blob",
     apply=AuthenticatedPlugin(),
 )
 def reply_data(worker_id, socket_id):
@@ -84,17 +89,17 @@ def reply_data(worker_id, socket_id):
 
     The contents of the second message go in the body of the HTTP request.
     """
-    if not 'header_message' in request.query:
-        abort(httplib.BAD_REQUEST, 'Missing header message.')
+    if "header_message" not in request.query:
+        abort(httplib.BAD_REQUEST, "Missing header message.")
 
     try:
         header_message = json.loads(request.query.header_message)
     except ValueError:
-        abort(httplib.BAD_REQUEST, 'Header message should be in JSON format.')
+        abort(httplib.BAD_REQUEST, "Header message should be in JSON format.")
 
     check_reply_permission(worker_id, socket_id)
     local.worker_model.send_json_message(socket_id, header_message, 60, autoretry=False)
-    local.worker_model.send_stream(socket_id, request['wsgi.input'], 60)
+    local.worker_model.send_stream(socket_id, request["wsgi.input"], 60)
 
 
 def check_run_permission(bundle):
@@ -102,12 +107,12 @@ def check_run_permission(bundle):
     Checks whether the current user can run the bundle.
     """
     if not check_bundle_have_run_permission(local.model, request.user.user_id, bundle):
-        abort(httplib.FORBIDDEN, 'User does not have permission to run bundle.')
+        abort(httplib.FORBIDDEN, "User does not have permission to run bundle.")
 
 
 @post(
-    '/workers/<worker_id>/start_bundle/<uuid:re:%s>' % spec_util.UUID_STR,
-    name='worker_start_bundle',
+    "/workers/<worker_id>/start_bundle/<uuid:re:%s>" % spec_util.UUID_STR,
+    name="worker_start_bundle",
     apply=AuthenticatedPlugin(),
 )
 def start_bundle(worker_id, uuid):
@@ -118,22 +123,22 @@ def start_bundle(worker_id, uuid):
     """
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
-    response.content_type = 'application/json'
+    response.content_type = "application/json"
     if local.model.start_bundle(
         bundle,
         request.user.user_id,
         worker_id,
-        request.json['hostname'],
-        request.json['start_time'],
+        request.json["hostname"],
+        request.json["start_time"],
     ):
-        print('Started bundle %s' % uuid)
+        print("Started bundle %s" % uuid)
         return json.dumps(True)
     return json.dumps(False)
 
 
 @put(
-    '/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>' % spec_util.UUID_STR,
-    name='worker_update_bundle_metadata',
+    "/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>" % spec_util.UUID_STR,
+    name="worker_update_bundle_metadata",
     apply=AuthenticatedPlugin(),
 )
 def update_bundle_metadata(worker_id, uuid):
@@ -144,58 +149,64 @@ def update_bundle_metadata(worker_id, uuid):
     check_run_permission(bundle)
     allowed_keys = set(
         [
-            'run_status',
-            'time',
-            'time_user',
-            'time_system',
-            'memory',
-            'memory_max',
-            'data_size',
-            'last_updated',
-            'docker_image',
+            "run_status",
+            "time",
+            "time_user",
+            "time_system",
+            "memory",
+            "memory_max",
+            "data_size",
+            "last_updated",
+            "docker_image",
         ]
     )
     metadata_update = {}
     for key, value in request.json.iteritems():
         if key in allowed_keys:
             metadata_update[key] = value
-    local.model.update_bundle(bundle, {'metadata': metadata_update})
+    local.model.update_bundle(bundle, {"metadata": metadata_update})
 
 
-@get('/workers/info', name='workers_info', apply=AuthenticatedPlugin())
+@get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
 def workers_info():
     if request.user.user_id != local.model.root_user_id:
-        abort(httplib.UNAUTHORIZED, 'User is not root user')
+        abort(httplib.UNAUTHORIZED, "User is not root user")
 
     data = local.worker_model.get_workers()
 
     # edit entries in data to make them suitable for human reading
     for worker in data:
         # checkin_time: seconds since epoch
-        worker['checkin_time'] = int(
-            (worker['checkin_time'] - datetime.utcfromtimestamp(0)).total_seconds()
+        worker["checkin_time"] = int(
+            (worker["checkin_time"] - datetime.utcfromtimestamp(0)).total_seconds()
         )
-        del worker['dependencies']
+        del worker["dependencies"]
 
-        running_bundles = local.model.batch_get_bundles(uuid=worker['run_uuids'])
-        worker['cpus_in_use'] = sum(bundle.metadata.request_cpus for bundle in running_bundles)
-        worker['gpus_in_use'] = sum(bundle.metadata.request_gpus for bundle in running_bundles)
+        running_bundles = local.model.batch_get_bundles(uuid=worker["run_uuids"])
+        worker["cpus_in_use"] = sum(
+            bundle.metadata.request_cpus for bundle in running_bundles
+        )
+        worker["gpus_in_use"] = sum(
+            bundle.metadata.request_gpus for bundle in running_bundles
+        )
 
-    return {'data': data}
+    return {"data": data}
 
 
-@get('/workers/code.tar.gz', name='worker_download_code')
+@get("/workers/code.tar.gz", name="worker_download_code")
 def code():
     """
     Returns .tar.gz archive containing the code of the worker.
     """
-    response.set_header('Content-Disposition', 'attachment; filename="code.tar.gz"')
-    response.set_header('Content-Type', 'application/gzip')
-    codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    code_dir = os.path.join(codalab_cli, 'worker', 'codalabworker')
-    args = ['tar', 'czf', '-', '-C', code_dir]
+    response.set_header("Content-Disposition", 'attachment; filename="code.tar.gz"')
+    response.set_header("Content-Type", "application/gzip")
+    codalab_cli = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
+    code_dir = os.path.join(codalab_cli, "worker", "codalabworker")
+    args = ["tar", "czf", "-", "-C", code_dir]
     for filename in os.listdir(code_dir):
-        if filename.endswith('.py') or filename.endswith('.sh'):
+        if filename.endswith(".py") or filename.endswith(".sh"):
             args.append(filename)
     proc = subprocess.Popen(args, stdout=subprocess.PIPE)
     result = proc.stdout.read()
