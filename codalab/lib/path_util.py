@@ -22,10 +22,7 @@ import shutil
 import subprocess
 import sys
 
-from codalab.common import (
-  precondition,
-  UsageError,
-)
+from codalab.common import precondition, UsageError
 from codalab.lib import file_util
 
 
@@ -96,6 +93,7 @@ def path_is_url(path):
                 return True
     return False
 
+
 ################################################################################
 # Functions to list directories and to deal with subpaths of paths.
 ################################################################################
@@ -115,7 +113,7 @@ def get_relative_path(root, path):
     Return the relative path from root to path, which should be nested under root.
     """
     precondition(path.startswith(root), '%s is not under %s' % (path, root))
-    return path[len(root):]
+    return path[len(root) :]
 
 
 def ls(path):
@@ -145,7 +143,7 @@ def recursive_ls(path):
     check_isdir(path, 'recursive_ls')
     (directories, files) = ([], [])
     for (root, _, file_names) in os.walk(path):
-        assert(os.path.isabs(root)), 'Got relative root in os.walk: %s' % (root,)
+        assert os.path.isabs(root), 'Got relative root in os.walk: %s' % (root,)
         directories.append(root)
         for file_name in file_names:
             files.append(os.path.join(root, file_name))
@@ -236,6 +234,7 @@ def hash_file_contents(path):
 # Functions that modify that filesystem in controlled ways.
 ################################################################################
 
+
 def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
     """
     Copy |source_path| to |dest_path|.
@@ -249,7 +248,12 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
 
     if source_path == '/dev/stdin':
         with open(dest_path, 'wb') as dest:
-            file_util.copy(sys.stdin, dest, autoflush=False, print_status='Copying %s to %s' % (source_path, dest_path))
+            file_util.copy(
+                sys.stdin,
+                dest,
+                autoflush=False,
+                print_status='Copying %s to %s' % (source_path, dest_path),
+            )
     else:
         if not follow_symlinks and os.path.islink(source_path):
             raise path_error('not following symlinks', source_path)
@@ -258,7 +262,8 @@ def copy(source_path, dest_path, follow_symlinks=False, exclude_patterns=None):
         command = [
             'rsync',
             '-pr%s' % ('L' if follow_symlinks else 'l'),
-            source_path + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
+            source_path
+            + ('/' if not os.path.islink(source_path) and os.path.isdir(source_path) else ''),
             dest_path,
         ]
         if exclude_patterns is not None:
@@ -274,7 +279,7 @@ def make_directory(path):
     """
     try:
         os.mkdir(path)
-    except OSError, e:
+    except OSError as e:
         if e.errno != errno.EEXIST:
             raise
     check_isdir(path, 'make_directories')
@@ -309,7 +314,8 @@ def remove(path):
     else:
         os.remove(path)
     if os.path.exists(path):
-        print 'Failed to remove %s' % path
+        print('Failed to remove %s' % path)
+
 
 def soft_link(source, path):
     """

@@ -78,7 +78,7 @@ def _compute_target_info(path, depth):
     result['name'] = os.path.basename(path)
     stat = os.lstat(path)
     result['size'] = stat.st_size
-    result['perm'] = stat.st_mode & 0777
+    result['perm'] = stat.st_mode & 0o777
     if os.path.islink(path):
         result['type'] = 'link'
         result['link'] = os.readlink(path)
@@ -89,7 +89,8 @@ def _compute_target_info(path, depth):
         if depth > 0:
             result['contents'] = [
                 _compute_target_info(os.path.join(path, file_name), depth - 1)
-                for file_name in os.listdir(path)]
+                for file_name in os.listdir(path)
+            ]
     if result is None:
         raise PathException()
     return result

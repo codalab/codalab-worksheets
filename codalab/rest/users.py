@@ -6,22 +6,10 @@ import httplib
 from bottle import abort, get, request, local, delete
 
 from codalab.lib.spec_util import NAME_REGEX
-from codalab.lib.server_util import (
-    bottle_patch as patch,
-    json_api_meta,
-)
-from codalab.rest.schemas import (
-    AuthenticatedUserSchema,
-    USER_READ_ONLY_FIELDS,
-    UserSchema,
-)
-from codalab.server.authenticated_plugin import (
-    AuthenticatedPlugin,
-    UserVerifiedPlugin,
-)
-from codalab.rest.util import (
-    get_resource_ids,
-)
+from codalab.lib.server_util import bottle_patch as patch, json_api_meta
+from codalab.rest.schemas import AuthenticatedUserSchema, USER_READ_ONLY_FIELDS, UserSchema
+from codalab.server.authenticated_plugin import AuthenticatedPlugin, UserVerifiedPlugin
+from codalab.rest.util import get_resource_ids
 
 
 @get('/user', apply=AuthenticatedPlugin(), skip=UserVerifiedPlugin)
@@ -34,25 +22,26 @@ def fetch_authenticated_user():
 def update_authenticated_user():
     """Update one or multiple fields of the authenticated user."""
     # Load update request data
-    user_info = AuthenticatedUserSchema(
-        strict=True,
-    ).load(request.json, partial=False).data
+    user_info = AuthenticatedUserSchema(strict=True).load(request.json, partial=False).data
 
     if any(k in user_info for k in USER_READ_ONLY_FIELDS):
-        abort(httplib.FORBIDDEN,
-              "These fields are read-only: " + ', '.join(USER_READ_ONLY_FIELDS))
+        abort(httplib.FORBIDDEN, "These fields are read-only: " + ', '.join(USER_READ_ONLY_FIELDS))
 
     # Patch in user_id manually (do not allow requests to change id)
     user_info['user_id'] = request.user.user_id
 
     # Ensure that user name is not taken
-    if (user_info.get('user_name', request.user.user_name) != request.user.user_name and
-        local.model.user_exists(user_info['user_name'], None)):
+    if user_info.get(
+        'user_name', request.user.user_name
+    ) != request.user.user_name and local.model.user_exists(user_info['user_name'], None):
         abort(httplib.BAD_REQUEST, "User name %s is already taken." % user_info['user_name'])
 
     # Validate user name
     if not NAME_REGEX.match(user_info.get('user_name', request.user.user_name)):
-        abort(httplib.BAD_REQUEST, "User name characters must be alphanumeric, underscores, periods, or dashes.")
+        abort(
+            httplib.BAD_REQUEST,
+            "User name characters must be alphanumeric, underscores, periods, or dashes.",
+        )
 
     # Update user
     local.model.update_user_info(user_info)
@@ -105,20 +94,25 @@ def delete_user():
         bundles = local.model.batch_get_bundles(owner_id=user_id)
         if bundles is not None and len(bundles) > 0:
             bundle_uuids = [bundle.uuid for bundle in bundles]
-            error_messages.append('User %s owns bundles, can\'t delete user. UUIDs: %s\n'
-                                  % (user_id, ','.join(bundle_uuids)))
+            error_messages.append(
+                'User %s owns bundles, can\'t delete user. UUIDs: %s\n'
+                % (user_id, ','.join(bundle_uuids))
+            )
 
         worksheets = local.model.batch_get_worksheets(fetch_items=False, owner_id=user_id)
         if worksheets is not None and len(worksheets) > 0:
             worksheet_uuids = [worksheet.uuid for worksheet in worksheets]
-            error_messages.append('User %s owns worksheets, can\'t delete. UUIDs: %s\n'
-                                  % (user_id, ','.join(worksheet_uuids)))
+            error_messages.append(
+                'User %s owns worksheets, can\'t delete. UUIDs: %s\n'
+                % (user_id, ','.join(worksheet_uuids))
+            )
 
         groups = local.model.batch_get_groups(owner_id=user_id)
         if groups is not None and len(groups) > 0:
             group_uuids = [group.uuid for group in groups]
-            error_messages.append('User %s owns groups, can\'t delete. UUIDs: %s\n'
-                                  % (user_id, ','.join(group_uuids)))
+            error_messages.append(
+                'User %s owns groups, can\'t delete. UUIDs: %s\n' % (user_id, ','.join(group_uuids))
+            )
 
         if error_messages:
             abort(httplib.NOT_FOUND, '\n'.join(error_messages))
@@ -161,9 +155,7 @@ def update_users():
     if request.user.user_id != local.model.root_user_id:
         abort(httplib.FORBIDDEN, "Only root user can update other users.")
 
-    users = AuthenticatedUserSchema(
-        strict=True, many=True
-    ).load(request.json, partial=True).data
+    users = AuthenticatedUserSchema(strict=True, many=True).load(request.json, partial=True).data
 
     if len(users) != 1:
         abort(httplib.BAD_REQUEST, "Users can only be updated on at a time.")

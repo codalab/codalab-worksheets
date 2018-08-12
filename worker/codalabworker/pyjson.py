@@ -8,6 +8,7 @@ class PyJSONEncoder(json.JSONEncoder):
     Also allows dicts with tuple keys to be JSON-encoded (as long as the keys don't include
     the special token strings used for encoding)
     """
+
     TUPLE_KEY_STR = '_tuple_key_'
     TUPLE_ELEM_STR = '_tuple_sep_'
 
@@ -18,17 +19,26 @@ class PyJSONEncoder(json.JSONEncoder):
         if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, unicode)):
             raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
         if isinstance(key, tuple):
-            if not all(isinstance(tuple_el, str) or isinstance(tuple_el, unicode) for tuple_el in key):
-                raise Exception('Tuple elements need to be all strings (or unicode) for PyJSON to work')
+            if not all(
+                isinstance(tuple_el, str) or isinstance(tuple_el, unicode) for tuple_el in key
+            ):
+                raise Exception(
+                    'Tuple elements need to be all strings (or unicode) for PyJSON to work'
+                )
 
             if any(PyJSONEncoder.TUPLE_KEY_STR in tuple_el for tuple_el in key):
-                raise Exception('%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict' % PyJSONEncoder.TUPLE_KEY_STR)
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict'
+                    % PyJSONEncoder.TUPLE_KEY_STR
+                )
 
             if any(PyJSONEncoder.TUPLE_ELEM_STR in tuple_el for tuple_el in key):
-                raise Exception('%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict' % PyJSONEncoder.TUPLE_ELEM_STR)
+                raise Exception(
+                    '%s is reserved for pyjson encoder but found in keys. Can\'t encode this dict'
+                    % PyJSONEncoder.TUPLE_ELEM_STR
+                )
 
-            key = '%s%s' % (PyJSONEncoder.TUPLE_KEY_STR,
-                            PyJSONEncoder.TUPLE_ELEM_STR.join(key))
+            key = '%s%s' % (PyJSONEncoder.TUPLE_KEY_STR, PyJSONEncoder.TUPLE_ELEM_STR.join(key))
 
         return key
 
@@ -64,7 +74,7 @@ class PyJSONDecoder(json.JSONDecoder):
         Should do the opposite of what encode_key does
         """
         if isinstance(key, basestring) and key.startswith(PyJSONEncoder.TUPLE_KEY_STR):
-            key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR):]
+            key_str = key[len(PyJSONEncoder.TUPLE_KEY_STR) :]
             return tuple(key_str.split(PyJSONEncoder.TUPLE_ELEM_STR))
         return key
 

@@ -9,6 +9,7 @@ class JsonApiPlugin(object):
     """
     Captures marshmallow ValidationErrors and returns the appropriate result.
     """
+
     api = 2
 
     def apply(self, callback, route):

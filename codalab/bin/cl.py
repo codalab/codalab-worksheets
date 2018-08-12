@@ -13,6 +13,7 @@ from watchdog.events import FileSystemEventHandler
 from codalab.lib.bundle_cli import BundleCLI, Commands
 from codalab.lib.codalab_manager import CodaLabManager
 
+
 class ClFileWatcherEventHandler(FileSystemEventHandler):
     SERVER_PROCESS = None
 
@@ -32,7 +33,7 @@ class ClFileWatcherEventHandler(FileSystemEventHandler):
         file_extension = os.path.splitext(event.src_path)[1]
 
         if file_extension in extensions_to_watch:
-            print "Saw file change: %s -- restarting!" % (os.path.basename(event.src_path))
+            print("Saw file change: %s -- restarting!" % (os.path.basename(event.src_path)))
             self.restart()
 
 
@@ -54,6 +55,8 @@ def run_server_with_watch():
     observer.join()
 
 
+# Don't format command args
+# fmt: off
 @Commands.command(
     'server',
     help='Start an instance of a CodaLab bundle service with a REST API.',
@@ -77,6 +80,7 @@ def run_server_with_watch():
             action='store_true')
     ),
 )
+# fmt: on
 def do_rest_server_command(bundle_cli, args):
     bundle_cli._fail_if_headless(args)
     # Force initialization of the bundle store, so that the misc_temp directory is created
@@ -114,7 +118,7 @@ def main():
     try:
         cli.do_command(sys.argv[1:])
     except KeyboardInterrupt:
-        print 'Terminated by Ctrl-C'
+        print('Terminated by Ctrl-C')
         sys.exit(130)
 
 if __name__ == '__main__':

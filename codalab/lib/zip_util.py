@@ -43,7 +43,7 @@ def get_archive_ext(fname):
 def strip_archive_ext(path):
     for ext in ARCHIVE_EXTS:
         if path.endswith(ext):
-            return path[:-len(ext)]
+            return path[: -len(ext)]
     raise UsageError('Not an archive: %s' % path)
 
 
@@ -96,8 +96,9 @@ def unpack(ext, source, dest_path):
                 path_util.remove(source)
 
 
-def pack_files_for_upload(sources, should_unpack, follow_symlinks,
-                          exclude_patterns=None, force_compression=False):
+def pack_files_for_upload(
+    sources, should_unpack, follow_symlinks, exclude_patterns=None, force_compression=False
+):
     """
     Create a single flat tarfile containing all the sources.
     Caller is responsible for closing the returned fileobj.
@@ -141,8 +142,8 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
         filename = os.path.basename(source)
         if os.path.isdir(sources[0]):
             archived = tar_gzip_directory(
-                source, follow_symlinks=follow_symlinks,
-                exclude_patterns=exclude_patterns)
+                source, follow_symlinks=follow_symlinks, exclude_patterns=exclude_patterns
+            )
             return {
                 'fileobj': archived,
                 'filename': filename + '.tar.gz',
@@ -200,8 +201,9 @@ def pack_files_for_upload(sources, should_unpack, follow_symlinks,
             archive.add(dest_path, arcname=dest_basename, recursive=True)
         else:
             # Add file to archive, or add files recursively if directory
-            archive.add(source, arcname=os.path.basename(source),
-                        recursive=True, exclude=should_exclude)
+            archive.add(
+                source, arcname=os.path.basename(source), recursive=True, exclude=should_exclude
+            )
 
     # Clean up, rewind archive file, and return it
     archive.close()

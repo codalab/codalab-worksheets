@@ -94,6 +94,7 @@ def parse_duration(s):
         pass  # continue to next line and throw error
     raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
 
+
 ############################################################
 
 # Tokens are serialized as a space-separated list, where we use " to quote.

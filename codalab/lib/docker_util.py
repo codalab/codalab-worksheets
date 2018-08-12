@@ -32,5 +32,7 @@ class Docker(object):
         if docker.wait() != 0 and failure_cb is not None:
             failure_cb(docker.returncode, docker.stderr.read())
         else:
-            return (cls.DOCKER_SEARCH_TAG_REGEX.match(line).group('tag') for line in docker.stdout.readlines()[1:])
-
+            return (
+                cls.DOCKER_SEARCH_TAG_REGEX.match(line).group('tag')
+                for line in docker.stdout.readlines()[1:]
+            )

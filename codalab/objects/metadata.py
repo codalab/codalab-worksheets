@@ -43,8 +43,8 @@ class Metadata(object):
                         raise UsageError(e.message)
                 if value is not None and not isinstance(value, spec.type):
                     raise UsageError(
-                      'Metadata value for %s should be of type %s, was %s (type %s)' %
-                      (spec.key, spec.type.__name__, value, type(value).__name__)
+                        'Metadata value for %s should be of type %s, was %s (type %s)'
+                        % (spec.key, spec.type.__name__, value, type(value).__name__)
                     )
             elif not spec.generated:
                 raise UsageError('Missing metadata key: %s' % (spec.key,))
@@ -73,7 +73,7 @@ class Metadata(object):
             # database), cast it to a string. This operation encodes it with UTF-8.
             key = str(maybe_unicode_key)
             if key not in metadata_spec_dict:
-                #print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
+                # print 'Warning: %s not in %s, skipping value %s!' % (key, metadata_spec_dict.keys(), value)
                 continue  # Somewhat dangerous since we might lose information
 
             spec = metadata_spec_dict[key]
@@ -82,8 +82,8 @@ class Metadata(object):
             else:
                 if metadata_dict.get(key):
                     raise UsageError(
-                      'Got duplicate values %s and %s for key %s' %
-                      (metadata_dict[key], value, key)
+                        'Got duplicate values %s and %s for key %s'
+                        % (metadata_dict[key], value, key)
                     )
                 # Convert string to the right type (e.g., string to int)
                 metadata_dict[key] = spec.get_constructor()(value)
@@ -100,13 +100,13 @@ class Metadata(object):
         for spec in metadata_specs:
             if spec.key in self._metadata_keys:
                 value = getattr(self, spec.key)
-                if value == None: continue
+                if value == None:
+                    continue
                 values = value if spec.type == list else (value,)
                 for value in values:
-                    result.append({
-                      'metadata_key': unicode(spec.key),
-                      'metadata_value': unicode(value),
-                    })
+                    result.append(
+                        {'metadata_key': unicode(spec.key), 'metadata_value': unicode(value)}
+                    )
         return result
 
     def to_dict(self):
@@ -115,7 +115,4 @@ class Metadata(object):
         an appropriate one to save to a database.
         '''
         items = [(key, getattr(self, key)) for key in self._metadata_keys]
-        return {
-          key: value
-          for (key, value) in items
-        }
+        return {key: value for (key, value) in items}

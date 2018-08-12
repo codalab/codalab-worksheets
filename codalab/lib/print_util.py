@@ -5,11 +5,11 @@ from codalab.lib.formatting import pretty_json, ratio_str
 
 
 def open_line(s, f=sys.stderr):
-    print >>f, '\r\033[K%s' % s,
+    print >> f, '\r\033[K%s' % s,
 
 
 def clear_line(f=sys.stderr):
-    print >>f, '\r\033[K',
+    print >> f, '\r\033[K',
 
 
 def pretty_print_json(obj, f=sys.stdout):
@@ -30,6 +30,7 @@ class FileTransferProgress(object):
                 progress.update(num_bytes)
                 ...
     """
+
     def __init__(self, prefix, bytes_total=None, f=sys.stderr):
         """
         :param prefix: Message to prepend the progress text.
