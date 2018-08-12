@@ -6,11 +6,7 @@ import datetime
 from bottle import get, post, put, delete, response, local, redirect, request
 
 from codalab.common import PermissionError, UsageError, NotFoundError
-from codalab.lib import (
-    canonicalize,
-    spec_util,
-    worksheet_util,
-)
+from codalab.lib import canonicalize, spec_util, worksheet_util
 from codalab.lib.canonicalize import HOME_WORKSHEET
 from codalab.lib.server_util import (
     bottle_patch as patch,
@@ -20,23 +16,20 @@ from codalab.lib.server_util import (
     query_get_json_api_include_set,
     query_get_list,
 )
-from codalab.model.tables import (
-    GROUP_OBJECT_PERMISSION_ALL,
-    GROUP_OBJECT_PERMISSION_READ,
-)
+from codalab.model.tables import GROUP_OBJECT_PERMISSION_ALL, GROUP_OBJECT_PERMISSION_READ
 from codalab.objects.permission import (
     check_worksheet_has_all_permission,
     check_worksheet_has_read_permission,
 )
 from codalab.objects.worksheet import Worksheet
-from codalab.rest.schemas import WorksheetSchema, WorksheetPermissionSchema, \
-    BundleSchema, WorksheetItemSchema
-from codalab.rest.users import UserSchema
-from codalab.rest.util import (
-    get_bundle_infos,
-    resolve_owner_in_keywords,
-    get_resource_ids,
+from codalab.rest.schemas import (
+    WorksheetSchema,
+    WorksheetPermissionSchema,
+    BundleSchema,
+    WorksheetItemSchema,
 )
+from codalab.rest.users import UserSchema
+from codalab.rest.util import get_bundle_infos, resolve_owner_in_keywords, get_resource_ids
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
@@ -49,7 +42,16 @@ def fetch_worksheet(uuid):
 
      - `include`: comma-separated list of related resources to include, such as "owner"
     """
-    include_set = query_get_json_api_include_set(supported={'owner', 'group_permissions', 'items', 'items.bundle', 'items.bundle.owner', 'items.subworksheet'})
+    include_set = query_get_json_api_include_set(
+        supported={
+            'owner',
+            'group_permissions',
+            'items',
+            'items.bundle',
+            'items.bundle.owner',
+            'items.subworksheet',
+        }
+    )
     worksheet = get_worksheet_info(
         uuid,
         fetch_items='items' in include_set,
@@ -67,8 +69,11 @@ def fetch_worksheet(uuid):
 
     # Include bundles
     if 'items.bundle' in include_set:
-        bundle_uuids = {item['bundle_uuid'] for item in worksheet['items']
-                        if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None}
+        bundle_uuids = {
+            item['bundle_uuid']
+            for item in worksheet['items']
+            if item['type'] == worksheet_util.TYPE_BUNDLE and item['bundle_uuid'] is not None
+        }
         bundle_infos = get_bundle_infos(bundle_uuids).values()
         json_api_include(document, BundleSchema(), bundle_infos)
         if 'items.bundle.owner' in include_set:
@@ -82,10 +87,17 @@ def fetch_worksheet(uuid):
 
     # Include subworksheets
     if 'items.subworksheets' in include_set:
-        subworksheet_uuids = {item['subworksheet_uuid']
-                              for item in worksheet['items']
-                              if item['type'] == worksheet_util.TYPE_WORKSHEET and item['subworksheet_uuid'] is not None}
-        json_api_include(document, WorksheetSchema(), local.model.batch_get_worksheets(fetch_items=False, uuid=subworksheet_uuids))
+        subworksheet_uuids = {
+            item['subworksheet_uuid']
+            for item in worksheet['items']
+            if item['type'] == worksheet_util.TYPE_WORKSHEET
+            and item['subworksheet_uuid'] is not None
+        }
+        json_api_include(
+            document,
+            WorksheetSchema(),
+            local.model.batch_get_worksheets(fetch_items=False, uuid=subworksheet_uuids),
+        )
 
     # Include permissions
     if 'group_permissions' in include_set:
@@ -110,7 +122,9 @@ def fetch_worksheets():
 
     if specs:
         uuids = [get_worksheet_uuid_or_create(base_worksheet_uuid, spec) for spec in specs]
-        worksheets = [w.to_dict() for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)]
+        worksheets = [
+            w.to_dict() for w in local.model.batch_get_worksheets(fetch_items=False, uuid=uuids)
+        ]
     else:
         keywords = resolve_owner_in_keywords(keywords)
         worksheets = local.model.search_worksheets(request.user.user_id, keywords)
@@ -136,9 +150,9 @@ def fetch_worksheets():
 @post('/worksheets', apply=AuthenticatedPlugin())
 def create_worksheets():
     # TODO: support more attributes
-    worksheets = WorksheetSchema(
-        strict=True, many=True  # only allow name for now
-    ).load(request.json).data
+    worksheets = (
+        WorksheetSchema(strict=True, many=True).load(request.json).data  # only allow name for now
+    )
 
     for w in worksheets:
         w['uuid'] = new_worksheet(w['name'])
@@ -164,9 +178,9 @@ def update_worksheets():
     """
     Bulk update worksheets metadata.
     """
-    worksheet_updates = WorksheetSchema(
-        strict=True, many=True,
-    ).load(request.json, partial=True).data
+    worksheet_updates = (
+        WorksheetSchema(strict=True, many=True).load(request.json, partial=True).data
+    )
 
     for w in worksheet_updates:
         update_worksheet_metadata(w['uuid'], w)
@@ -198,9 +212,7 @@ def create_worksheet_items():
     """
     replace = query_get_bool('replace', False)
 
-    new_items = WorksheetItemSchema(
-        strict=True, many=True,
-    ).load(request.json).data
+    new_items = WorksheetItemSchema(strict=True, many=True).load(request.json).data
 
     worksheet_to_items = {}
     for item in new_items:
@@ -210,9 +222,9 @@ def create_worksheet_items():
         worksheet_info = get_worksheet_info(worksheet_uuid, fetch_items=True)
         if replace:
             # Replace items in the worksheet
-            update_worksheet_items(worksheet_info,
-                                   [Worksheet.Item.as_tuple(i) for i in items],
-                                   convert_items=False)
+            update_worksheet_items(
+                worksheet_info, [Worksheet.Item.as_tuple(i) for i in items], convert_items=False
+            )
         else:
             # Append items to the worksheet
             for item in items:
@@ -226,9 +238,7 @@ def set_worksheet_permissions():
     """
     Bulk set worksheet permissions.
     """
-    new_permissions = WorksheetPermissionSchema(
-        strict=True, many=True,
-    ).load(request.json).data
+    new_permissions = WorksheetPermissionSchema(strict=True, many=True).load(request.json).data
 
     for p in new_permissions:
         worksheet = local.model.get_worksheet(p['object_uuid'], fetch_items=False)
@@ -250,9 +260,14 @@ def get_sample_worksheets():
     list_worksheets = search_worksheets(['name=home']) + list_worksheets
 
     # Reformat
-    list_worksheets = [{'uuid': val['uuid'],
-                        'display_name': val.get('title') or val['name'],
-                        'owner_name': val['owner_name']} for val in list_worksheets]
+    list_worksheets = [
+        {
+            'uuid': val['uuid'],
+            'display_name': val.get('title') or val['name'],
+            'owner_name': val['owner_name'],
+        }
+        for val in list_worksheets
+    ]
 
     response.content_type = 'application/json'
     return json.dumps(list_worksheets)
@@ -283,7 +298,9 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
     # Create the info by starting out with the metadata.
     result = worksheet.to_dict()
     result['permission'] = permission
-    is_anonymous = permission < GROUP_OBJECT_PERMISSION_READ or (worksheet.is_anonymous and not permission >= GROUP_OBJECT_PERMISSION_ALL)
+    is_anonymous = permission < GROUP_OBJECT_PERMISSION_READ or (
+        worksheet.is_anonymous and not permission >= GROUP_OBJECT_PERMISSION_ALL
+    )
 
     # Mask owner identity on anonymous worksheet if don't have ALL permission
     if is_anonymous:
@@ -296,7 +313,8 @@ def get_worksheet_info(uuid, fetch_items=False, fetch_permissions=True):
             result['group_permissions'] = []
         else:
             result['group_permissions'] = local.model.get_group_worksheet_permissions(
-                request.user.user_id, worksheet.uuid)
+                request.user.user_id, worksheet.uuid
+            )
 
     return result
 
@@ -348,7 +366,9 @@ def set_worksheet_permission(worksheet, group_uuid, permission):
 
 
 def populate_worksheet(worksheet, name, title):
-    file_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws')
+    file_path = os.path.join(
+        os.path.dirname(os.path.realpath(__file__)), '../objects/' + name + '.ws'
+    )
     lines = [line.rstrip() for line in open(file_path, 'r').readlines()]
     items = worksheet_util.parse_worksheet_form(lines, local.model, request.user, worksheet.uuid)
     info = get_worksheet_info(worksheet.uuid, fetch_items=True)
@@ -364,8 +384,13 @@ def ensure_unused_worksheet_name(name):
     """
     # If trying to set the name to a home worksheet, then it better be
     # user's home worksheet.
-    if spec_util.is_home_worksheet(name) and spec_util.home_worksheet(request.user.user_name) != name:
-        raise UsageError('Cannot create %s because this is potentially the home worksheet of another user' % name)
+    if (
+        spec_util.is_home_worksheet(name)
+        and spec_util.home_worksheet(request.user.user_name) != name
+    ):
+        raise UsageError(
+            'Cannot create %s because this is potentially the home worksheet of another user' % name
+        )
     try:
         canonicalize.get_worksheet_uuid(local.model, request.user, None, name)
         raise UsageError('Worksheet with name %s already exists' % name)
@@ -382,18 +407,13 @@ def new_worksheet(name):
     ensure_unused_worksheet_name(name)
 
     # Don't need any permissions to do this.
-    worksheet = Worksheet({
-        'name': name,
-        'title': None,
-        'frozen': None,
-        'items': [],
-        'owner_id': request.user.user_id
-    })
+    worksheet = Worksheet(
+        {'name': name, 'title': None, 'frozen': None, 'items': [], 'owner_id': request.user.user_id}
+    )
     local.model.new_worksheet(worksheet)
 
     # Make worksheet publicly readable by default
-    set_worksheet_permission(worksheet, local.model.public_group_uuid,
-                             GROUP_OBJECT_PERMISSION_READ)
+    set_worksheet_permission(worksheet, local.model.public_group_uuid, GROUP_OBJECT_PERMISSION_READ)
     if spec_util.is_dashboard(name):
         populate_worksheet(worksheet, 'dashboard', 'CodaLab Dashboard')
     if spec_util.is_public_home(name):
@@ -408,7 +428,9 @@ def get_worksheet_uuid_or_create(base_worksheet_uuid, worksheet_spec):
     or dashboard. Otherwise, throw an error.
     """
     try:
-        return canonicalize.get_worksheet_uuid(local.model, request.user, base_worksheet_uuid, worksheet_spec)
+        return canonicalize.get_worksheet_uuid(
+            local.model, request.user, base_worksheet_uuid, worksheet_spec
+        )
     except NotFoundError:
         # A bit hacky, duplicates a bit of canonicalize
         if (worksheet_spec == '' or worksheet_spec == HOME_WORKSHEET) and request.user:
@@ -434,11 +456,15 @@ def delete_worksheet(uuid, force):
     check_worksheet_has_all_permission(local.model, request.user, worksheet)
     if not force:
         if worksheet.frozen:
-            raise UsageError("Can't delete worksheet %s because it is frozen (--force to override)." %
-                             worksheet.uuid)
+            raise UsageError(
+                "Can't delete worksheet %s because it is frozen (--force to override)."
+                % worksheet.uuid
+            )
         if len(worksheet.items) > 0:
-            raise UsageError("Can't delete worksheet %s because it is not empty (--force to override)." %
-                             worksheet.uuid)
+            raise UsageError(
+                "Can't delete worksheet %s because it is not empty (--force to override)."
+                % worksheet.uuid
+            )
     local.model.delete_worksheet(uuid)
 
 
@@ -456,5 +482,3 @@ def _set_owner_names(results):
     owners = [local.model.get_user(r['owner_id']) for r in results]
     for r, o in zip(results, owners):
         r['owner_name'] = o.user_name
-
-

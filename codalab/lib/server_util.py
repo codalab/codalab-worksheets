@@ -49,12 +49,10 @@ def rate_limited(max_calls_per_hour):
     A running count of remaining calls allowed is kept for the last hour.
     Every call beyond this limit will raise a RateLimitExceededError.
     """
+
     def decorate(func):
         lock = threading.Lock()
-        state = {
-            'calls_left': max_calls_per_hour,
-            'time_of_last_call': time.time(),
-        }
+        state = {'calls_left': max_calls_per_hour, 'time_of_last_call': time.time()}
 
         @wraps(func)
         def rate_limited_function(*args, **kwargs):
@@ -63,7 +61,7 @@ def rate_limited(max_calls_per_hour):
                 now = time.time()
                 seconds_since_last_call = now - state['time_of_last_call']
                 state['time_of_last_call'] = now
-                
+
                 # Increment the running count of allowed calls for the last
                 # hour at a steady rate
                 state['calls_left'] += seconds_since_last_call * (max_calls_per_hour / 3600)
@@ -144,7 +142,9 @@ def query_get_json_api_include_set(supported):
         return set()
     requested = set(query_str.split(','))
     if not requested <= supported:
-        abort(httplib.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported)))
+        abort(
+            httplib.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported))
+        )
     return requested
 
 
@@ -249,6 +249,7 @@ def decode_base64(text, encoding='utf-8'):
 def create_response(headers, body, status):
     """Create response class for Bottle."""
     return HTTPResponse(body or '', status=status, headers=headers)
+
 
 # END ADAPTED FROM flask_oauthlib.utils #
 
@@ -363,5 +364,6 @@ def import_string(import_name, silent=False):
         return getattr(module, obj_name)
     except AttributeError as e:
         raise ImportError(e)
+
 
 # END ADAPTED FROM werkzeug.utils #

@@ -9,7 +9,10 @@ in Javascript that is loaded in the <head> section.
 from bottle import get, local, request, template
 
 from codalab.lib import spec_util
-from codalab.objects.permission import check_bundles_have_read_permission, check_worksheet_has_read_permission
+from codalab.objects.permission import (
+    check_bundles_have_read_permission,
+    check_worksheet_has_read_permission,
+)
 
 
 @get('/titlejs/worksheet/<uuid:re:%s>/' % spec_util.UUID_STR)

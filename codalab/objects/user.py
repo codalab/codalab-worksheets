@@ -5,20 +5,32 @@ import base64
 
 from codalab.common import UsageError
 from codalab.lib import formatting
-from codalab.lib.crypt_util import (
-    force_bytes,
-    get_random_string,
-    pbkdf2,
-    constant_time_compare,
-)
+from codalab.lib.crypt_util import force_bytes, get_random_string, pbkdf2, constant_time_compare
 from codalab.model.orm_object import ORMObject
 from codalab.model.tables import NOTIFICATIONS_NONE
 
 
 class User(ORMObject):
-    COLUMNS = ('user_id', 'user_name', 'email', 'notifications', 'last_login', 'is_active', 'first_name', 'last_name', 'date_joined',
-               'is_verified', 'is_superuser', 'password', 'time_quota', 'time_used', 'disk_quota', 'disk_used',
-               'affiliation', 'url')
+    COLUMNS = (
+        'user_id',
+        'user_name',
+        'email',
+        'notifications',
+        'last_login',
+        'is_active',
+        'first_name',
+        'last_name',
+        'date_joined',
+        'is_verified',
+        'is_superuser',
+        'password',
+        'time_quota',
+        'time_used',
+        'disk_quota',
+        'disk_used',
+        'affiliation',
+        'url',
+    )
 
     PASSWORD_MIN_LENGTH = 8
 
@@ -62,10 +74,14 @@ class User(ORMObject):
         """
 
         if not all(33 <= ord(c) <= 126 for c in password):
-            raise UsageError("Password must consist of only printable, non-whitespace ASCII characters.")
+            raise UsageError(
+                "Password must consist of only printable, non-whitespace ASCII characters."
+            )
 
         if len(password) < User.PASSWORD_MIN_LENGTH:
-            raise UsageError("Password must contain at least %d characters." % User.PASSWORD_MIN_LENGTH)
+            raise UsageError(
+                "Password must contain at least %d characters." % User.PASSWORD_MIN_LENGTH
+            )
 
     def set_password(self, password):
         """
@@ -93,34 +109,40 @@ class User(ORMObject):
     def check_quota(self, need_time=False, need_disk=False):
         if need_time:
             if self.time_used >= self.time_quota:
-                raise UsageError('Out of time quota: %s' %
-                                 formatting.ratio_str(formatting.duration_str, self.time_used, self.time_quota))
+                raise UsageError(
+                    'Out of time quota: %s'
+                    % formatting.ratio_str(formatting.duration_str, self.time_used, self.time_quota)
+                )
         if need_disk:
             if self.disk_used >= self.disk_quota:
-                raise UsageError('Out of disk quota: %s' %
-                                 formatting.ratio_str(formatting.size_str, self.disk_used, self.disk_quota))
+                raise UsageError(
+                    'Out of disk quota: %s'
+                    % formatting.ratio_str(formatting.size_str, self.disk_used, self.disk_quota)
+                )
 
     def __str__(self):
         return "%s(%s)" % (self.user_name, self.user_id)
 
 
-PUBLIC_USER = User({
-    "user_id": None,  # sentinel for BundleModel methods indicating public user
-    "user_name": 'public',
-    "email": None,
-    "notifications": NOTIFICATIONS_NONE,
-    "last_login": None,
-    "is_active": True,
-    "first_name": None,
-    "last_name": None,
-    "date_joined": None,
-    "is_verified": True,
-    "is_superuser": False,
-    "password": None,
-    "time_quota": 0,
-    "time_used": 0,
-    "disk_quota": 0,
-    "disk_used": 0,
-    "affiliation": None,
-    "url": None,
-})
+PUBLIC_USER = User(
+    {
+        "user_id": None,  # sentinel for BundleModel methods indicating public user
+        "user_name": 'public',
+        "email": None,
+        "notifications": NOTIFICATIONS_NONE,
+        "last_login": None,
+        "is_active": True,
+        "first_name": None,
+        "last_name": None,
+        "date_joined": None,
+        "is_verified": True,
+        "is_superuser": False,
+        "password": None,
+        "time_quota": 0,
+        "time_used": 0,
+        "disk_quota": 0,
+        "disk_used": 0,
+        "affiliation": None,
+        "url": None,
+    }
+)

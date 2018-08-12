@@ -23,7 +23,9 @@ def wrap_exception(message):
                 raise DockerException(message + ': ' + e.message)
             except (httplib.HTTPException, socket.error) as e:
                 raise DockerException(message + ': ' + str(e))
+
         return wrapper
+
     return decorator
 
 
@@ -54,6 +56,7 @@ class DockerClient(object):
     only mount the GPU device corresponding to the indices listed in the
     variable. The order in which the devices are listed is ignored.
     """
+
     # Where to look for nvidia-docker-plugin
     # https://github.com/NVIDIA/nvidia-docker/wiki/nvidia-docker-plugin
     NV_HOST = 'localhost:3476'
@@ -67,18 +70,17 @@ class DockerClient(object):
         self._ssl_context = None
         cert_path = os.environ.get('DOCKER_CERT_PATH') or None
         if cert_path:
-            self._ssl_context = ssl.create_default_context(
-                cafile=os.path.join(cert_path, 'ca.pem'))
+            self._ssl_context = ssl.create_default_context(cafile=os.path.join(cert_path, 'ca.pem'))
             self._ssl_context.load_cert_chain(
-                os.path.join(cert_path, 'cert.pem'),
-                os.path.join(cert_path, 'key.pem'))
+                os.path.join(cert_path, 'cert.pem'), os.path.join(cert_path, 'key.pem')
+            )
             self._ssl_context.check_hostname = False
 
         # Test to make sure that a connection can be established.
         try:
             self.test()
         except DockerException:
-            print >> sys.stderr, """
+            print >>sys.stderr, """
 On Linux, a valid Docker installation should create a Unix socket at
 /var/run/docker.sock.
 
@@ -97,7 +99,7 @@ to run the worker from the Docker shell.
         try:
             self._test_nvidia_docker()
         except DockerException:
-            print >> sys.stderr, """
+            print >>sys.stderr, """
 nvidia-docker-plugin not available, no GPU support on this worker.
 """
             self._use_nvidia_docker = False
@@ -110,8 +112,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
     def _create_connection(self):
         if self._docker_host:
             if self._ssl_context:
-                return httplib.HTTPSConnection(self._docker_host,
-                                               context=self._ssl_context)
+                return httplib.HTTPSConnection(self._docker_host, context=self._ssl_context)
             return httplib.HTTPConnection(self._docker_host)
         return DockerUnixConnection()
 
@@ -153,11 +154,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             cli_args = json.loads(cli_response.read())
 
         # Build device jsons
-        devices = [{
-            "PathOnHost": device_path,
-            "PathInContainer": device_path,
-            "CgroupPermissions": "mrw",
-        } for device_path in cli_args['Devices']]
+        devices = [
+            {"PathOnHost": device_path, "PathInContainer": device_path, "CgroupPermissions": "mrw"}
+            for device_path in cli_args['Devices']
+        ]
 
         # Set configurations in request json
         host_config = request.setdefault('HostConfig', {})
@@ -178,8 +178,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 version_info = json.loads(version_response.read())
             except Exception:
                 raise DockerException('Invalid version information')
-            if map(int, version_info['ApiVersion'].split('.')) < \
-                    map(int, self.MIN_API_VERSION.split('.')):
+            if map(int, version_info['ApiVersion'].split('.')) < map(
+                int, self.MIN_API_VERSION.split('.')
+            ):
                 raise DockerException('Please upgrade your version of Docker')
 
     @wrap_exception('Unable to get disk usage info')
@@ -240,8 +241,12 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
         create_request = {"Name": network_name, "Internal": internal}
         with closing(self._create_connection()) as conn:
-            conn.request('POST', '/networks/create',
-                         json.dumps(create_request), {'Content-Type': 'application/json'})
+            conn.request(
+                'POST',
+                '/networks/create',
+                json.dumps(create_request),
+                {'Content-Type': 'application/json'},
+            )
             response = conn.getresponse()
             if response.status != 201:
                 raise DockerException(response.read())
@@ -256,7 +261,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             if response.status != 200:
                 raise DockerException(response.read())
             try:
-                return json.loads(response.read())["NetworkSettings"]["Networks"][network_name]["IPAddress"]
+                return json.loads(response.read())["NetworkSettings"]["Networks"][network_name][
+                    "IPAddress"
+                ]
             except KeyError:  # if container ip cannot be found in provided network, return None
                 return None
 
@@ -273,7 +280,11 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             return info['RepoDigests'][0]
         except (KeyError, IndexError):
             # If this happens, need to upgrade docker and delete the images and re-get them.
-            logger.debug('ERROR: empty RepoDigests for image {}, need to upgrade docker and delete image'.format(request_docker_image))
+            logger.debug(
+                'ERROR: empty RepoDigests for image {}, need to upgrade docker and delete image'.format(
+                    request_docker_image
+                )
+            )
             return ''
 
     @wrap_exception('Unable to remove Docker image')
@@ -296,16 +307,19 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                     logger.debug('docker image %s: %s', action.lower(), target)
 
     ''' Download the specified docker image with tag/digest. If no tag is specified, downloads the latest '''
+
     @wrap_exception('Unable to download Docker image')
     def download_image(self, docker_image, progress_callback):
         if len(docker_image.split(":")) < 2:
-            logger.debug('Missing tag/digest on request docker image "%s", defaulting to latest', docker_image)
+            logger.debug(
+                'Missing tag/digest on request docker image "%s", defaulting to latest',
+                docker_image,
+            )
             docker_image = ':'.join([docker_image, 'latest'])
 
         logger.debug('Downloading Docker image %s', docker_image)
         with closing(self._create_connection()) as conn:
-            conn.request('POST',
-                         '/images/create?fromImage=%s' % docker_image)
+            conn.request('POST', '/images/create?fromImage=%s' % docker_image)
             create_image_response = conn.getresponse()
             if create_image_response.status != 200:
                 raise DockerException(create_image_response.read())
@@ -340,23 +354,25 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 try:
                     status += ' (%s / %s)' % (
                         size_str(response['progressDetail']['current']),
-                        size_str(response['progressDetail']['total']))
+                        size_str(response['progressDetail']['total']),
+                    )
                 except KeyError:
                     pass
                 should_resume = progress_callback(status)
                 if not should_resume:
                     raise DockerException('Download aborted by user')
 
-    def create_container(self, bundle_path, uuid, command, docker_image,
-                         request_network, dependencies, extra_args=[]):
+    def create_container(
+        self, bundle_path, uuid, command, docker_image, request_network, dependencies, extra_args=[]
+    ):
         docker_bundle_path = '/' + uuid
 
         # Set up the volumes.
         volume_bindings = ['%s:%s' % (bundle_path, docker_bundle_path)]
         for dependency_path, docker_dependency_path in dependencies:
-            volume_bindings.append('%s:%s:ro' % (
-                os.path.abspath(dependency_path),
-                docker_dependency_path))
+            volume_bindings.append(
+                '%s:%s:ro' % (os.path.abspath(dependency_path), docker_dependency_path)
+            )
 
         # Create the container.
         try:
@@ -367,10 +383,10 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 '-w={}'.format(docker_bundle_path),
                 '-e {}={}'.format('HOME', docker_bundle_path),
                 docker_image,
-                command
+                command,
             )
             output = subprocess.check_output(cli_command.split(' '))
-        except subprocess.CalledProcessError, e:
+        except subprocess.CalledProcessError as e:
             output = e.output
             raise
 
@@ -387,21 +403,30 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         ]
         return docker_commands
 
-    def _get_volume_bindings(self, bundle_path, uuid, command, docker_image,
-                             dependencies):
+    def _get_volume_bindings(self, bundle_path, uuid, command, docker_image, dependencies):
         docker_bundle_path = '/' + uuid
 
         # Set up the volumes.
         volume_bindings = ['%s:%s' % (bundle_path, docker_bundle_path)]
         for dependency_path, docker_dependency_path in dependencies:
-            volume_bindings.append('%s:%s:ro' % (
-                os.path.abspath(dependency_path),
-                docker_dependency_path))
+            volume_bindings.append(
+                '%s:%s:ro' % (os.path.abspath(dependency_path), docker_dependency_path)
+            )
         return volume_bindings
 
     @wrap_exception('Unable to start Docker container')
-    def start_container(self, bundle_path, uuid, command, docker_image,
-                        network_name, dependencies, cpuset, gpuset, memory_bytes=0):
+    def start_container(
+        self,
+        bundle_path,
+        uuid,
+        command,
+        docker_image,
+        network_name,
+        dependencies,
+        cpuset,
+        gpuset,
+        memory_bytes=0,
+    ):
 
         # Impose a minimum container request memory 4mb, same as docker's minimum allowed value
         # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
@@ -411,10 +436,12 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             raise DockerException('Minimum memory must be 4m ({} bytes)'.format(parse_size('4m')))
 
         docker_commands = self._get_docker_commands(
-            bundle_path, uuid, command, docker_image, dependencies)
+            bundle_path, uuid, command, docker_image, dependencies
+        )
 
         volume_bindings = self._get_volume_bindings(
-            bundle_path, uuid, command, docker_image, dependencies)
+            bundle_path, uuid, command, docker_image, dependencies
+        )
 
         # Get user/group that owns the bundle directory
         # Then we can ensure that any created files are owned by the user/group
@@ -448,17 +475,25 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             self._add_nvidia_docker_arguments(create_request, [str(k) for k in gpuset])
 
         with closing(self._create_connection()) as create_conn:
-            create_conn.request('POST', '/containers/create',
-                                json.dumps(create_request),
-                                {'Content-Type': 'application/json'})
+            create_conn.request(
+                'POST',
+                '/containers/create',
+                json.dumps(create_request),
+                {'Content-Type': 'application/json'},
+            )
             create_response = create_conn.getresponse()
             if create_response.status != 201:
                 raise DockerException(create_response.read())
             container_id = json.loads(create_response.read())['Id']
 
         # Start the container.
-        logger.debug('Starting Docker container for UUID %s with command %s, container ID %s,\n \t\t volume bindings: %s',
-                     uuid, command, container_id, volume_bindings)
+        logger.debug(
+            'Starting Docker container for UUID %s with command %s, container ID %s,\n \t\t volume bindings: %s',
+            uuid,
+            command,
+            container_id,
+            volume_bindings,
+        )
         with closing(self._create_connection()) as start_conn:
             start_conn.request('POST', '/containers/%s/start' % container_id)
             start_response = start_conn.getresponse()
@@ -496,7 +531,9 @@ nvidia-docker-plugin not available, no GPU support on this worker.
 
         # Get memory usage
         try:
-            memory_path = os.path.join(cgroup, 'memory/docker', container_id, 'memory.usage_in_bytes')
+            memory_path = os.path.join(
+                cgroup, 'memory/docker', container_id, 'memory.usage_in_bytes'
+            )
             with open(memory_path) as f:
                 stats['memory'] = int(f.read())
         except Exception:
@@ -563,8 +600,8 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             stdout = []
             start = 0
             while start < len(contents):
-                fp, size = struct.unpack('>BxxxL', contents[start: start + 8])
-                payload = contents[start + 8: start + 8 + size]
+                fp, size = struct.unpack('>BxxxL', contents[start : start + 8])
+                payload = contents[start + 8 : start + 8 + size]
                 if fp == 1:
                     stdout.append(payload)
                 elif fp == 2:

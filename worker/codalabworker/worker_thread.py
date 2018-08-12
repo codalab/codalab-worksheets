@@ -107,4 +107,3 @@ class ThreadDict(dict):
         """
         for key in self.keys():
             self[key].join()
-

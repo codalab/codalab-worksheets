@@ -5,16 +5,13 @@ import threading
 
 from codalabworker.run_manager import Reader
 import codalabworker.download_util as download_util
-from codalabworker.download_util import (
-    get_target_path,
-    PathException
-)
+from codalabworker.download_util import get_target_path, PathException
 from codalabworker.file_util import (
     gzip_file,
     gzip_string,
     read_file_section,
     summarize_file,
-    tar_gzip_directory
+    tar_gzip_directory,
 )
 
 
@@ -22,6 +19,7 @@ class LocalReader(Reader):
     """
     Class that implements read functions for bundles executed on the local filesystem
     """
+
     def __init__(self):
         self.read_threads = []  # Threads
 
@@ -58,7 +56,9 @@ class LocalReader(Reader):
             return
         else:
             try:
-                target_info = download_util.get_target_info(run_state.bundle_path, bundle_uuid, path, args['depth'])
+                target_info = download_util.get_target_info(
+                    run_state.bundle_path, bundle_uuid, path, args['depth']
+                )
             except PathException as e:
                 err = (httplib.NOT_FOUND, e.message)
                 reply_fn(err, None, None)
@@ -66,8 +66,8 @@ class LocalReader(Reader):
 
         if not path and args['depth'] > 0:
             target_info['contents'] = [
-                child for child in target_info['contents']
-                if child['name'] not in dep_paths]
+                child for child in target_info['contents'] if child['name'] not in dep_paths
+            ]
 
         reply_fn(None, {'target_info': target_info}, None)
 
@@ -87,9 +87,11 @@ class LocalReader(Reader):
         """
         Stream the file  at path using a separate thread
         """
+
         def stream_file(final_path):
             with closing(gzip_file(final_path)) as fileobj:
                 reply_fn(None, {}, fileobj)
+
         self._threaded_read(run_state, path, stream_file, reply_fn)
 
     def read_file_section(self, run_state, path, dep_paths, args, reply_fn):
@@ -97,10 +99,11 @@ class LocalReader(Reader):
         Read the section of file at path of length args['length'] starting at
         args['offset'] using a separate thread
         """
+
         def read_file_section_thread(final_path):
-            string = gzip_string(read_file_section(
-                final_path, args['offset'], args['length']))
+            string = gzip_string(read_file_section(final_path, args['offset'], args['length']))
             reply_fn(None, {}, string)
+
         self._threaded_read(run_state, path, read_file_section_thread, reply_fn)
 
     def summarize_file(self, run_state, path, dep_paths, args, reply_fn):
@@ -109,10 +112,17 @@ class LocalReader(Reader):
         args['num_tail_lines'] but limited with args['max_line_length'] using
         args['truncation_text'] on a separate thread
         """
+
         def summarize_file_thread(final_path):
-            string = gzip_string(summarize_file(
-                final_path, args['num_head_lines'],
-                args['num_tail_lines'], args['max_line_length'],
-                args['truncation_text']))
+            string = gzip_string(
+                summarize_file(
+                    final_path,
+                    args['num_head_lines'],
+                    args['num_tail_lines'],
+                    args['max_line_length'],
+                    args['truncation_text'],
+                )
+            )
             reply_fn(None, {}, string)
+
         self._threaded_read(run_state, path, summarize_file_thread, reply_fn)

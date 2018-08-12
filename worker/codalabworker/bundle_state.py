@@ -2,6 +2,7 @@ class State(object):
     """
     An enumeration of states that a bundle can be in.
     """
+
     # Waiting for contents to be uploaded
     UPLOADING = 'uploading'
     # Just created
@@ -29,6 +30,17 @@ class State(object):
     # Assigned worker has gone offline
     WORKER_OFFLINE = 'worker_offline'
 
-    OPTIONS = {CREATED, STAGED, MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
+    OPTIONS = {
+        CREATED,
+        STAGED,
+        MAKING,
+        WAITING_FOR_WORKER_STARTUP,
+        STARTING,
+        RUNNING,
+        READY,
+        FAILED,
+        PREPARING,
+        FINALIZING,
+    }
     ACTIVE_STATES = {MAKING, WAITING_FOR_WORKER_STARTUP, STARTING, RUNNING, FINALIZING, PREPARING}
     FINAL_STATES = {READY, FAILED, KILLED}

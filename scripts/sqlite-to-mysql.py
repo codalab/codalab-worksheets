@@ -20,7 +20,6 @@ start from the right place (this is important!):
 
 # Suppress errors when record contains invalid foreign key.  This is here
 # because sqlite is less strict than mysql, but avoid doing this.
-#print 'SET FOREIGN_KEY_CHECKS=0;'
 
 for line in fileinput.input():
     line = line.strip()
@@ -28,17 +27,20 @@ for line in fileinput.input():
     line = line.replace("AUTOINCREMENT", "AUTO_INCREMENT")
 
     # Skip stuff
-    if line == 'PRAGMA foreign_keys=OFF;': continue
-    if line == 'BEGIN TRANSACTION;': continue
-    if line == 'COMMIT;': continue
-    if line == 'DELETE FROM sqlite_sequence;': continue
-    if line.startswith('INSERT INTO `sqlite_sequence`'): continue
+    if line == 'PRAGMA foreign_keys=OFF;':
+        continue
+    if line == 'BEGIN TRANSACTION;':
+        continue
+    if line == 'COMMIT;':
+        continue
+    if line == 'DELETE FROM sqlite_sequence;':
+        continue
+    if line.startswith('INSERT INTO `sqlite_sequence`'):
+        continue
 
     # http://stackoverflow.com/questions/1827063/mysql-error-key-specification-without-a-key-length
     # The sqlite dump doesn't put a maximum character limit on indexes for text fields.
     # Hack: hard code it.
     if line.startswith('CREATE INDEX'):
         line = line.replace('metadata_value', 'metadata_value(255)')
-    print line
-
-#print 'SET FOREIGN_KEY_CHECKS=1;'
+    print(line)
