@@ -14,7 +14,7 @@ FIELDS = ['request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag
 def parse_field(field, val):
     if field == 'request_time':
         duration_in_secs = parse_duration(val)
-        return str(math.ceil(duration_in_secs * 60))
+        return str(int(math.ceil(duration_in_secs * 60)))
     else:
         return val
 
