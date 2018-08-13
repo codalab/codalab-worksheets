@@ -8,7 +8,7 @@ SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
 BASE_NLPRUN_INVOCATION = '/u/nlp/bin/nlprun'
 DEFAULT_PASSWORD_FILE_LOCATION = '~/codalab.password'
 BASE_WORKER_INVOCATION = 'cl-worker --server {} --password {}'.format(SERVER_INSTANCE, DEFAULT_PASSWORD_FILE_LOCATION)
-SLEEP_INTERVAL = 10
+SLEEP_INTERVAL = 30
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
 
 
