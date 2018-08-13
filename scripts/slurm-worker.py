@@ -8,7 +8,7 @@ SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
 BASE_NLPRUN_INVOCATION = '/u/nlp/bin/nlprun'
 BASE_WORKER_INVOCATION = 'cl-worker --server {}'.format(SERVER_INSTANCE)
 SLEEP_INTERVAL = 10
-FIELDS = ['request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
+FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
 
 
 def parse_field(field, val):
