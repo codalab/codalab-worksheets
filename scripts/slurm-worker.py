@@ -14,7 +14,7 @@ FIELDS = ['request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag
 def parse_field(field, val):
     if field == 'request_time':
         duration_in_secs = parse_duration(val)
-        return str(int(math.ceil(duration_in_secs * 60)))
+        return str(int(math.ceil(duration_in_secs)) * 60)
     else:
         return val
 
@@ -46,7 +46,7 @@ def main():
                 run for run in runs if run['request_gpus'] != '0' and 'jag-hi' not in run['tags']
             ]
             for run in cpu_runs:
-                run_command = '{0} -q john -t {request_time} -r {request_memory} -c {request_cpus}'.format(
+                run_command = '{0} -q john -r {request_memory} -c {request_cpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
                 )
                 worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
@@ -55,7 +55,7 @@ def main():
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
             for run in jag_hi_runs:
-                run_command = '{0} -q jag -p high -t {request_time} -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
+                run_command = '{0} -q jag -p high -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
                 )
                 worker_invocation = '{} --tag jag-hi'.format(BASE_WORKER_INVOCATION)
@@ -64,7 +64,7 @@ def main():
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
             for run in jag_lo_runs:
-                run_command = '{0} -q jag -p low -t {request_time} -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
+                run_command = '{0} -q jag -p low -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
                 )
                 worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
