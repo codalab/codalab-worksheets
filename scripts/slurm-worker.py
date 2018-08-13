@@ -52,7 +52,7 @@ def main():
                 worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
                 final_command = '{} {}'.format(run_command, worker_invocation)
                 print(final_command)
-                subprocess.check_call(final_command)
+                subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
             for run in jag_hi_runs:
                 run_command = '{0} -q jag -p high -t {request_time} -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
@@ -61,7 +61,7 @@ def main():
                 worker_invocation = '{} --tag jag-hi'.format(BASE_WORKER_INVOCATION)
                 final_command = '{} {}'.format(run_command, worker_invocation)
                 print(final_command)
-                subprocess.check_call(final_command)
+                subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
             for run in jag_lo_runs:
                 run_command = '{0} -q jag -p low -t {request_time} -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
@@ -70,7 +70,7 @@ def main():
                 worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
                 final_command = '{} {}'.format(run_command, worker_invocation)
                 print(final_command)
-                subprocess.check_call(final_command)
+                subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
 
         time.sleep(SLEEP_INTERVAL)
