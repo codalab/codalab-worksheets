@@ -54,7 +54,7 @@ def main():
                 final_command = '{} \'{}\''.format(run_command, worker_invocation)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
-                print('Started worker for run {uuid}'.format(run))
+                print('Started worker for run {uuid}'.format(**run))
             for run in jag_hi_runs:
                 run_command = '{0} -q jag -p high -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
@@ -63,7 +63,7 @@ def main():
                 final_command = '{} \'{}\''.format(run_command, worker_invocation)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
-                print('Started worker for run {uuid}'.format(run))
+                print('Started worker for run {uuid}'.format(**run))
             for run in jag_lo_runs:
                 run_command = '{0} -q jag -p low -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
@@ -72,7 +72,7 @@ def main():
                 final_command = '{} \'{}\''.format(run_command, worker_invocation)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
-                print('Started worker for run {uuid}'.format(run))
+                print('Started worker for run {uuid}'.format(**run))
 
         time.sleep(SLEEP_INTERVAL)
 
