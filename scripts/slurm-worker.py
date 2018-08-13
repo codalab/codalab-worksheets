@@ -50,7 +50,7 @@ def main():
                     BASE_NLPRUN_INVOCATION, **run
                 )
                 worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
-                final_command = '{} {}'.format(run_command, worker_invocation)
+                final_command = '{} \'{}\''.format(run_command, worker_invocation)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
@@ -59,7 +59,7 @@ def main():
                     BASE_NLPRUN_INVOCATION, **run
                 )
                 worker_invocation = '{} --tag jag-hi'.format(BASE_WORKER_INVOCATION)
-                final_command = '{} {}'.format(run_command, worker_invocation)
+                final_command = '{} \'{}\''.format(run_command, worker_invocation)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
@@ -68,7 +68,7 @@ def main():
                     BASE_NLPRUN_INVOCATION, **run
                 )
                 worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
-                final_command = '{} {}'.format(run_command, worker_invocation)
+                final_command = '{} \'{}\''.format(run_command, worker_invocation)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(run))
