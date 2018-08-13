@@ -7,7 +7,10 @@ from codalab.lib.formatting import parse_duration
 SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
 BASE_NLPRUN_INVOCATION = '/u/nlp/bin/nlprun'
 DEFAULT_PASSWORD_FILE_LOCATION = '~/codalab.password'
-BASE_WORKER_INVOCATION = 'cl-worker --server {} --password {}'.format(SERVER_INSTANCE, DEFAULT_PASSWORD_FILE_LOCATION)
+DEFAULT_WORK_DIR = '~/codalab-worker'
+BASE_WORKER_INVOCATION = 'cl-worker --server {} --password {} --work-dir'.format(
+    SERVER_INSTANCE, DEFAULT_PASSWORD_FILE_LOCATION, DEFAULT_WORK_DIR
+)
 SLEEP_INTERVAL = 10
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
 
