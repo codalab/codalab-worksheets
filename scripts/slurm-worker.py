@@ -7,10 +7,7 @@ from codalab.lib.formatting import parse_duration
 SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
 BASE_NLPRUN_INVOCATION = '/u/nlp/bin/nlprun'
 DEFAULT_PASSWORD_FILE_LOCATION = '~/codalab.password'
-DEFAULT_WORK_DIR = '~/codalab-worker'
-BASE_WORKER_INVOCATION = 'cl-worker --server {} --password {} --work-dir {}'.format(
-    SERVER_INSTANCE, DEFAULT_PASSWORD_FILE_LOCATION, DEFAULT_WORK_DIR
-)
+BASE_WORKER_INVOCATION = 'cl-worker --server {} --password {}'.format(SERVER_INSTANCE, DEFAULT_PASSWORD_FILE_LOCATION)
 SLEEP_INTERVAL = 10
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
 
@@ -29,6 +26,7 @@ def main():
     print('Logged in to {}'.format(SERVER_INSTANCE))
 
     # Infinite loop until user kills us
+    num_runs = 0
     while True:
         run_lines = subprocess.check_output('cl search .mine state=staged', shell=True)
         run_lines = run_lines.splitlines()[2:]
@@ -53,8 +51,11 @@ def main():
                 run_command = '{0} -q john -r {request_memory} -c {request_cpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
                 )
-                worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
-                final_command = '{} \'{}\''.format(run_command, worker_invocation)
+                worker_home = '~/worker-{}'.format(num_runs)
+                num_runs += 1
+                worker_invocation = '{} --work-dir {}'.format(BASE_WORKER_INVOCATION, worker_home)
+                cleanup_command = 'rm -rf {}'.format(worker_home)
+                final_command = '{} \'{}; {}\''.format(run_command, worker_invocation, cleanup_command)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(**run))
@@ -62,8 +63,11 @@ def main():
                 run_command = '{0} -q jag -p high -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
                 )
-                worker_invocation = '{} --tag jag-hi'.format(BASE_WORKER_INVOCATION)
-                final_command = '{} \'{}\''.format(run_command, worker_invocation)
+                worker_home = '~/worker-{}'.format(num_runs)
+                num_runs += 1
+                worker_invocation = '{} --work-dir {} --tag jag-hi'.format(BASE_WORKER_INVOCATION, worker_home)
+                cleanup_command = 'rm -rf {}'.format(worker_home)
+                final_command = '{} \'{}; {}\''.format(run_command, worker_invocation, cleanup_command)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(**run))
@@ -71,8 +75,11 @@ def main():
                 run_command = '{0} -q jag -p low -r {request_memory} -c {request_cpus} -g {request_gpus}'.format(
                     BASE_NLPRUN_INVOCATION, **run
                 )
-                worker_invocation = '{}'.format(BASE_WORKER_INVOCATION)
-                final_command = '{} \'{}\''.format(run_command, worker_invocation)
+                worker_home = '~/worker-{}'.format(num_runs)
+                num_runs += 1
+                worker_invocation = '{} --work-dir {}'.format(BASE_WORKER_INVOCATION, worker_home)
+                cleanup_command = 'rm -rf {}'.format(worker_home)
+                final_command = '{} \'{}; {}\''.format(run_command, worker_invocation, cleanup_command)
                 print(final_command)
                 subprocess.check_call(final_command, shell=True)
                 print('Started worker for run {uuid}'.format(**run))
