@@ -11,9 +11,10 @@ on all slurm machines on a consitent location.
 """
 
 import math
+import os
 import subprocess
 import time
-
+from tempfile import NamedTemporaryFile
 from codalab.lib.formatting import parse_duration
 
 SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
@@ -26,34 +27,41 @@ SLEEP_INTERVAL = 30
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
 
 
-def get_worker_invocation(
+def write_worker_invocation(
     server=SERVER_INSTANCE,
     password=DEFAULT_PASSWORD_FILE_LOCATION,
-    work_dir=None,
+    work_dir='',
     tag=None,
     num_cpus=1,
     num_gpus=0,
     verbose=False,
 ):
     """
-    Return a command string that would invoke a one-run worker for the
-    given parameters
+    Return the name to a local NamedTemporaryFile that has
+    the commands that prepare the worker work dir, run the worker
+    and clean up the work dir upon exit
     """
+    prepare_command = 'mkdir {}'.format(work_dir)
+    cleanup_command = 'rm -rf {}'.format(work_dir)
     flags = [
         '--exit-when-idle',
         '--server {}'.format(server),
         '--password {}'.format(password),
         '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
         '--gpuset {}'.format(','.join(str(idx) for idx in range(num_gpus))),
+        '--work-dir {}'.format(work_dir),
     ]
 
-    if work_dir is not None:
-        flags.append('--work-dir {}'.format(work_dir))
     if tag is not None:
         flags.append('--tag {}'.format(tag))
     if verbose:
         flags.append('--verbose')
-    return '{} {}'.format(CL_WORKER_BINARY, ' '.join(flags))
+    worker_command = '{} {}'.format(CL_WORKER_BINARY, ' '.join(flags))
+    with NamedTemporaryFile(delete=False) as script_file:
+        script_file.write(prepare_command)
+        script_file.write(worker_command)
+        script_file.write(cleanup_command)
+    return script_file.name
 
 
 def start_worker_for(run_number, run_fields):
@@ -83,21 +91,18 @@ def start_worker_for(run_number, run_fields):
 
     srun_command = ' '.join(srun_flags)
     worker_home = '{}{}'.format(WORKER_PREFIX, run_number)
-    prepare_command = 'mkdir {}'.format(worker_home)
-    cleanup_command = 'rm -rf {}'.format(worker_home)
-    worker_invocation = get_worker_invocation(
+    worker_command_script = write_worker_invocation(
         work_dir=worker_home,
         tag=tag,
         num_cpus=run_fields['request_cpus'],
         num_gpus=run_fields['request_gpus'],
         verbose=True,
     )
-    final_command = '{} \'{}; {}; {}\''.format(
-        srun_command, prepare_command, worker_invocation, cleanup_command
-    )
+    final_command = '{} {}'.format(srun_command, worker_command_script)
     print(final_command)
     subprocess.check_call(final_command, shell=True)
     print('Started worker for run {}'.format(run_fields['uuid']))
+    os.remove(worker_command_script)
 
 
 def parse_field(field, val):
