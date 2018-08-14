@@ -42,8 +42,8 @@ def write_worker_invocation(
     and clean up the work dir upon exit
     """
     work_dir = os.path.join(WORKER_DIR_LOCATION, worker_name)
-    prepare_command = 'mkdir -p {}/runs || True;'.format(work_dir)
-    cleanup_command = 'rm -rf {} || True;'.format(work_dir)
+    prepare_command = 'mkdir -p {}/runs || true;'.format(work_dir)
+    cleanup_command = 'rm -rf {} || true;'.format(work_dir)
     flags = [
         '--exit-when-idle',
         '--server {}'.format(server),
@@ -56,7 +56,7 @@ def write_worker_invocation(
         flags.append('--tag {}'.format(tag))
     if verbose:
         flags.append('--verbose')
-    worker_command = '{} {} || True;'.format(CL_WORKER_BINARY, ' '.join(flags))
+    worker_command = '{} {} || true;'.format(CL_WORKER_BINARY, ' '.join(flags))
     with open('start-{}.sh'.format(worker_name), 'w') as script_file:
         script_file.write(prepare_command)
         script_file.write(worker_command)
