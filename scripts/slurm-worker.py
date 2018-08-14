@@ -49,7 +49,6 @@ def write_worker_invocation(
         '--server {}'.format(server),
         '--password {}'.format(password),
         '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
-        '--gpuset {}'.format(','.join(str(idx) for idx in range(num_gpus))),
         '--work-dir {}'.format(work_dir),
     ]
 
@@ -72,7 +71,7 @@ def start_worker_for(run_number, run_fields):
     This function makes the actual command call to start the
     job on Slurm
     """
-    current_directory = os.path.dirname(os.path.realpath(__file__))
+    current_directory = os.getcwd()
     worker_name = '{}-{}'.format(WORKER_NAME_PREFIX, run_number)
     tag = None
     if run_fields['request_gpus']:
@@ -102,7 +101,7 @@ def start_worker_for(run_number, run_fields):
         num_gpus=run_fields['request_gpus'],
         verbose=True,
     )
-    final_command = '{} {}'.format(srun_command, worker_command_script)
+    final_command = '{} bash {}'.format(srun_command, worker_command_script)
     print(final_command)
     subprocess.check_call(final_command, shell=True)
     print('Started worker for run {}'.format(run_fields['uuid']))
@@ -149,7 +148,7 @@ def main():
                     for field, val in zip(FIELDS, field_values.split())
                 }
                 start_worker_for(num_runs, run)
-                cooldown_runs.append(uuid)
+                cooldown_runs.add(uuid)
                 num_runs += 1
             else:
                 print(
