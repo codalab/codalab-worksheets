@@ -75,7 +75,7 @@ def start_worker_for(run_number, run_fields):
     srun_flags = [
         SRUN_BINARY,
         '--partition={}'.format(partition),
-        '--cpus-per-task={}'.format(run_fields['num_cpus']),
+        '--cpus-per-task={}'.format(run_fields['request_cpus']),
         '--mem={}'.format(run_fields['request_memory']),
         '--gres=gpu:{}'.format(run_fields['request_gpus']),
     ]
