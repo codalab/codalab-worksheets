@@ -30,15 +30,15 @@ class LocalRunManager(BaseRunManager):
 
     def __init__(
         self,
-        worker,
-        docker,
-        image_manager,
-        dependency_manager,
-        commit_file,
-        cpuset,
-        gpuset,
-        work_dir,
-        docker_network_prefix='codalab_worker_network',
+        worker,  # type: Worker
+        docker,  # type: DockerClient
+        image_manager,  # type: DockerImageManager
+        dependency_manager,  # type: LocalFileSystemDependencyManager
+        commit_file,  # type: str
+        cpuset,  # type: Set[str]
+        gpuset,  # type: Set[str]
+        work_dir,  # type: str
+        docker_network_prefix='codalab_worker_network',  # type: str
     ):
         self._worker = worker
         self._state_committer = JsonStateCommitter(commit_file)
