@@ -2,16 +2,8 @@
 Defines ORM classes for groups and permissions.
 '''
 from codalab.model.orm_object import ORMObject
-from codalab.common import (
-    NotFoundError,
-    precondition,
-    UsageError,
-    PermissionError,
-    IntegrityError,
-)
-from codalab.lib import (
-    spec_util,
-)
+from codalab.common import NotFoundError, precondition, UsageError, PermissionError, IntegrityError
+from codalab.lib import spec_util
 from codalab.model.tables import (
     GROUP_OBJECT_PERMISSION_ALL,
     GROUP_OBJECT_PERMISSION_READ,
@@ -23,6 +15,7 @@ from codalab.model.util import LikeQuery
 
 
 ############################################################
+
 
 def unique_group(model, group_spec, user_id):
     '''
@@ -38,18 +31,21 @@ def unique_group(model, group_spec, user_id):
     TODO: function returning different columns based on a flag is not good design
 
     '''
+
     def search_all(model, **spec_filters):
         return model.batch_get_groups(**spec_filters)
+
     def search_user(model, **spec_filters):
         return model.batch_get_all_groups(
-            spec_filters,
-            {'owner_id': user_id, 'user_defined': True},
-            {'user_id': user_id})
+            spec_filters, {'owner_id': user_id, 'user_defined': True}, {'user_id': user_id}
+        )
+
     if user_id == None:
         search = search_all
     else:
         search = search_user
     return get_single_group(model, group_spec, search)
+
 
 def get_single_group(model, group_spec, search_fn):
     '''
@@ -73,19 +69,23 @@ def get_single_group(model, group_spec, search_fn):
         raise NotFoundError('Found no group with %s' % (message,))
     elif len(groups) > 1:
         raise UsageError(
-          'Found multiple groups with %s:%s' %
-          (message, ''.join('\n  uuid=%s' % (group['uuid'],) for group in groups))
+            'Found multiple groups with %s:%s'
+            % (message, ''.join('\n  uuid=%s' % (group['uuid'],) for group in groups))
         )
     return groups[0]
+
 
 ############################################################
 # Checking permissions
 
+
 def _check_permissions(model, table, user, object_uuids, owner_ids, need_permission):
     if len(object_uuids) == 0:
         return
-    have_permissions = model.get_user_permissions(table, user.unique_id if user else None, object_uuids, owner_ids)
-    #print '_check_permissions %s %s, have %s, need %s' % (user, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission))
+    have_permissions = model.get_user_permissions(
+        table, user.unique_id if user else None, object_uuids, owner_ids
+    )
+    # print '_check_permissions %s %s, have %s, need %s' % (user, object_uuids, map(permission_str, have_permissions.values()), permission_str(need_permission))
     if min(have_permissions.values()) >= need_permission:
         return
     if user:
@@ -98,26 +98,71 @@ def _check_permissions(model, table, user, object_uuids, owner_ids, need_permiss
         object_type = 'worksheet'
     else:
         raise IntegrityError('Unexpected table: %s' % table)
-    raise PermissionError("User %s does not have sufficient permissions on %s %s (have %s, need %s)." % \
-        (user_str, object_type, ' '.join(object_uuids), ' '.join(map(permission_str, have_permissions.values())), permission_str(need_permission)))
+    raise PermissionError(
+        "User %s does not have sufficient permissions on %s %s (have %s, need %s)."
+        % (
+            user_str,
+            object_type,
+            ' '.join(object_uuids),
+            ' '.join(map(permission_str, have_permissions.values())),
+            permission_str(need_permission),
+        )
+    )
+
 
 def check_bundles_have_read_permission(model, user, bundle_uuids):
-    _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, model.get_bundle_owner_ids(bundle_uuids), GROUP_OBJECT_PERMISSION_READ)
+    _check_permissions(
+        model,
+        cl_group_bundle_permission,
+        user,
+        bundle_uuids,
+        model.get_bundle_owner_ids(bundle_uuids),
+        GROUP_OBJECT_PERMISSION_READ,
+    )
+
+
 def check_bundles_have_all_permission(model, user, bundle_uuids):
-    _check_permissions(model, cl_group_bundle_permission, user, bundle_uuids, model.get_bundle_owner_ids(bundle_uuids), GROUP_OBJECT_PERMISSION_ALL)
+    _check_permissions(
+        model,
+        cl_group_bundle_permission,
+        user,
+        bundle_uuids,
+        model.get_bundle_owner_ids(bundle_uuids),
+        GROUP_OBJECT_PERMISSION_ALL,
+    )
+
 
 def check_worksheet_has_read_permission(model, user, worksheet):
-    _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}, GROUP_OBJECT_PERMISSION_READ)
+    _check_permissions(
+        model,
+        cl_group_worksheet_permission,
+        user,
+        [worksheet.uuid],
+        {worksheet.uuid: worksheet.owner_id},
+        GROUP_OBJECT_PERMISSION_READ,
+    )
+
+
 def check_worksheet_has_all_permission(model, user, worksheet):
-    _check_permissions(model, cl_group_worksheet_permission, user, [worksheet.uuid], {worksheet.uuid: worksheet.owner_id}, GROUP_OBJECT_PERMISSION_ALL)
+    _check_permissions(
+        model,
+        cl_group_worksheet_permission,
+        user,
+        [worksheet.uuid],
+        {worksheet.uuid: worksheet.owner_id},
+        GROUP_OBJECT_PERMISSION_ALL,
+    )
+
 
 # We use a simpler permission model for running bundles. Only the root user
 # or the user who owns the bundle can run it.
 def check_bundle_have_run_permission(model, user_id, bundle):
     return user_id in [model.root_user_id, bundle.owner_id]
 
+
 ############################################################
 # Parsing functions for permissions.
+
 
 def parse_permission(permission_str):
     if 'r' == permission_str or 'read' == permission_str:
@@ -128,11 +173,16 @@ def parse_permission(permission_str):
         return GROUP_OBJECT_PERMISSION_NONE
     raise UsageError("Invalid permission flag specified (%s)" % (permission_str))
 
+
 def permission_str(permission):
-    if permission == 0: return 'none'
-    if permission == 1: return 'read'
-    if permission == 2: return 'all'
+    if permission == 0:
+        return 'none'
+    if permission == 1:
+        return 'read'
+    if permission == 2:
+        return 'all'
     raise UsageError("Invalid permission: %s" % permission)
+
 
 # [{'group_name':'a', 'permission:1}, {'group_name':'b', 'permission':2}] => 'a:read,b:all'
 def group_permissions_str(group_permissions):
@@ -143,7 +193,7 @@ def group_permissions_str(group_permissions):
     if len(group_permissions) == 0:
         return '-'
     return ','.join(
-        '%s(%s):%s' % (row['group_name'],
-                       row['group']['id'][0:8],
-                       permission_str(row['permission']))
-        for row in group_permissions)
+        '%s(%s):%s'
+        % (row['group_name'], row['group']['id'][0:8], permission_str(row['permission']))
+        for row in group_permissions
+    )

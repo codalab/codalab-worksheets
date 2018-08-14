@@ -52,7 +52,7 @@ def set_grant(client_id, code, _request, *args, **kwargs):
         redirect_uri=_request.redirect_uri,
         scopes=','.join(_request.scopes),
         user_id=request.user.user_id,
-        expires=expires
+        expires=expires,
     )
     return local.model.save_oauth2_auth_code(grant)
 
@@ -162,5 +162,6 @@ def revoke_token():
 @get('/oauth2/errors', name='oauth2_errors')
 def show_errors():
     return template('oauth2_errors', **request.query)
+
 
 default_app().config['OAUTH2_PROVIDER_ERROR_ENDPOINT'] = 'oauth2_errors'

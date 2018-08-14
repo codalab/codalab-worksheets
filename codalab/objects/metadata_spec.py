@@ -11,10 +11,13 @@ a list of string tags, then its METADATA_SPECS would be:
 The description, short_key, and default of a metadata spec are used to produce
 nicely-formatted help strings for bundle creation commands.
 '''
+
+
 def bool_constructor(x=False):
     # Need this method because metadata values are stored as strings in the database,
     # and bool('False') returns True.
     return x == 'True'
+
 
 class MetadataSpec(object):
     def __init__(

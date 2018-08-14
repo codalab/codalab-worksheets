@@ -25,17 +25,29 @@ CODALAB_CLI = os.path.dirname(__file__)
 
 # Parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument('--codalab-home', help='where the CodaLab instance lives',
-    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME'), '.codalab')))
+parser.add_argument(
+    '--codalab-home',
+    help='where the CodaLab instance lives',
+    default=os.getenv('CODALAB_HOME', os.path.join(os.getenv('HOME'), '.codalab')),
+)
 
 # Where to write out information
 parser.add_argument('--log-path', help='file to write the log', default='monitor.log')
 parser.add_argument('--backup-path', help='directory to backup database', default='monitor.backup')
 
 # How often to do things
-parser.add_argument('--ping-interval', help='ping the server every this many seconds', type=int, default=30)
-parser.add_argument('--run-interval', help='run a job every this many seconds', type=int, default=5*60)
-parser.add_argument('--email-interval', help='email a report every this many seconds', type=int, default=24*60*60)
+parser.add_argument(
+    '--ping-interval', help='ping the server every this many seconds', type=int, default=30
+)
+parser.add_argument(
+    '--run-interval', help='run a job every this many seconds', type=int, default=5 * 60
+)
+parser.add_argument(
+    '--email-interval',
+    help='email a report every this many seconds',
+    type=int,
+    default=24 * 60 * 60,
+)
 args = parser.parse_args()
 
 # Get MySQL username and password for bundles
@@ -44,14 +56,18 @@ config = json.loads(open(config_path).read())
 engine_url = config['server']['engine_url']
 m = re.match('mysql://(.+):(.+)@([^:]+)(:(\d+))?/(.+)', engine_url)
 if not m:
-    print 'Can\'t extract server.engine_url from %s' % config_path
+    print('Can\'t extract server.engine_url from %s' % config_path)
     sys.exit(1)
 bundles_user = m.group(1)
 bundles_password = m.group(2)
 bundles_host = m.group(3)
 bundles_port = m.group(5) or 3306
 bundles_db = m.group(6)
-print 'user = {}, password = {}, db = {}, host = {}, port = {}'.format(bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port)
+print(
+    'user = {}, password = {}, db = {}, host = {}, port = {}'.format(
+        bundles_user, '*' * len(bundles_password), bundles_db, bundles_host, bundles_port
+    )
+)
 
 hostname = config['server'].get('instance_name', socket.gethostname())
 
@@ -69,19 +85,21 @@ report = []  # Build up the current report to send in an email
 def send_email(subject, message):
     # Not enough information to send email?
     if not recipient or not sender_info:
-        print 'send_email; subject: %s; message contains %d lines' % (subject, len(message))
+        print('send_email; subject: %s; message contains %d lines' % (subject, len(message)))
         return
 
     sender_host = sender_info['host']
-    
+
     # Default to authless SMTP (supported by some servers) if user/password is unspecified.
     #   Default sender_user has to be a valid RFC 822 from-address string for transport (distinct from msg headers)
     #   Ref: https://docs.python.org/2/library/smtplib.html#smtplib.SMTP.sendmail
-    sender_user = sender_info.get('user', 'noreply@codalab.org') 
+    sender_user = sender_info.get('user', 'noreply@codalab.org')
     sender_password = sender_info.get('password', None)
-    do_login = (sender_password != None)
-    print 'send_email to %s from %s@%s; subject: %s; message contains %d lines' % \
-        (recipient, sender_user, sender_host, subject, len(message))
+    do_login = sender_password != None
+    print(
+        'send_email to %s from %s@%s; subject: %s; message contains %d lines'
+        % (recipient, sender_user, sender_host, subject, len(message))
+    )
     s = SMTP(sender_host, 587)
     s.ehlo()
     s.starttls()
@@ -90,33 +108,39 @@ def send_email(subject, message):
     msg['Subject'] = 'CodaLab on %s: %s' % (hostname, subject)
     msg['To'] = recipient
     msg['From'] = 'noreply@codalab.org'
-    if do_login: 
+    if do_login:
         s.login(sender_user, sender_password)
     s.sendmail(sender_user, recipient, msg.as_string())
     s.quit()
 
+
 def get_date():
     # Only save a backup for every month to save space
     return datetime.datetime.now().strftime('%Y-%m')
-    #return datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+    # return datetime.datetime.now().strftime('%Y-%m-%d-%H:%M:%S')
+
 
 def log(line, newline=True):
     line = '[%s] %s' % (get_date(), line)
     if newline:
-        print line
+        print(line)
     else:
-        print line,
+        print(line)
     report.append(line)
     out = open(args.log_path, 'a')
-    print >>out, line
+    print >> out, line
     out.close()
+
 
 def logs(s):
     for line in s.split('\n'):
         log(line)
 
+
 num_errors = defaultdict(int)
 last_sent = defaultdict(int)
+
+
 def error_logs(error_type, s):
     logs(s)
 
@@ -127,11 +151,14 @@ def error_logs(error_type, s):
     t = time.time()
 
     # Send email only every 4 hours
-    if t > last_t + 60*60*4:
+    if t > last_t + 60 * 60 * 4:
         send_email('%s [%d times]' % (error_type, n), s.split('\n'))
         last_sent[error_type] = t
 
+
 durations = defaultdict(list)  # Command => durations for that command
+
+
 def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=True):
     # We cap the running time to hard_time_limit, but print out an error if we exceed soft_time_limit.
     start_time = time.time()
@@ -158,9 +185,16 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
     if exitcode != 0:
         full_output += err_output
 
-    message = '>> %s (exit code %s, time %.2fs [limit: %ds,%ds]; avg %.2fs; max %.2fs)\n%s' % \
-        (' '.join(args), exitcode, duration, soft_time_limit, hard_time_limit,
-        average_duration, max_duration, full_output if include_output else '')
+    message = '>> %s (exit code %s, time %.2fs [limit: %ds,%ds]; avg %.2fs; max %.2fs)\n%s' % (
+        ' '.join(args),
+        exitcode,
+        duration,
+        soft_time_limit,
+        hard_time_limit,
+        average_duration,
+        max_duration,
+        full_output if include_output else '',
+    )
     if exitcode == 0:
         logs(message)
     else:
@@ -171,34 +205,52 @@ def run_command(args, soft_time_limit=15, hard_time_limit=60, include_output=Tru
 
     return output.rstrip()
 
+
 timer = 0
+
+
 def ping_time():
     global timer
     return timer % args.ping_interval == 0
+
+
 def run_time():
     global timer
     return timer % args.run_interval == 0
+
+
 def email_time():
     global timer
     return timer % args.email_interval == 0
+
 
 def backup_db():
     log('Backup DB (note that errors are not detected due to shell pipes)')
     date = get_date()
     mysql_conf_path = os.path.join(args.codalab_home, 'monitor-mysql.cnf')
     with open(mysql_conf_path, 'w') as f:
-        print >>f, '[client]'
-        print >>f, 'host="%s"' % bundles_host
-        print >>f, 'port="%s"' % bundles_port
-        print >>f, 'user="%s"' % bundles_user
-        print >>f, 'password="%s"' % bundles_password
+        print >> f, '[client]'
+        print >> f, 'host="%s"' % bundles_host
+        print >> f, 'port="%s"' % bundles_port
+        print >> f, 'user="%s"' % bundles_user
+        print >> f, 'password="%s"' % bundles_password
     path = '%s/%s-%s.mysqldump.gz' % (args.backup_path, bundles_db, date)
-    run_command(['bash', '-c', 'mysqldump --defaults-file=%s --single-transaction --quick %s | gzip > %s' % (mysql_conf_path, bundles_db, path)], 600, 600)  # Backup might take a while.
+    run_command(
+        [
+            'bash',
+            '-c',
+            'mysqldump --defaults-file=%s --single-transaction --quick %s | gzip > %s'
+            % (mysql_conf_path, bundles_db, path),
+        ],
+        600,
+        600,
+    )  # Backup might take a while.
     os.unlink(mysql_conf_path)
     size = os.path.getsize(path)
     log('Size of backup {} is {}'.format(path, size))
     if size < 100:
         log('Size is suspiciously small!')
+
 
 def check_disk_space(paths):
     lines = run_command(['df'] + paths).split('\n')[1:]
@@ -206,7 +258,11 @@ def check_disk_space(paths):
     # Flag an error if disk space running low
     total = sum(results)
     if total < 1000 * 1024:
-        error_logs('low disk space', 'Only %s MB of disk space left on %s!' % (total / 1024, ' '.join(paths)))
+        error_logs(
+            'low disk space',
+            'Only %s MB of disk space left on %s!' % (total / 1024, ' '.join(paths)),
+        )
+
 
 # Make sure we can connect (might prompt for username/password)
 if subprocess.call(['cl', 'work', 'localhost::']) != 0:
@@ -243,15 +299,22 @@ while True:
 
         # Try uploading, downloading and running a job with a dependency.
         if run_time():
-            upload_uuid = run_command(['cl', 'upload', os.path.join(CODALAB_CLI, 'scripts', 'stress-test.pl')])
+            upload_uuid = run_command(
+                ['cl', 'upload', os.path.join(CODALAB_CLI, 'scripts', 'stress-test.pl')]
+            )
             cat_result = run_command(['cl', 'cat', upload_uuid], include_output=False)
             if 'BYTES_IN_MB' not in cat_result:
-                error_logs('download failed', 'Uploaded file should contain the string BYTES_IN_MB, contents:\n' + cat_result)
-            uuid = run_command(['cl', 'run', 'stress-test.pl:' + upload_uuid, 'perl stress-test.pl 5 10 10'])
+                error_logs(
+                    'download failed',
+                    'Uploaded file should contain the string BYTES_IN_MB, contents:\n' + cat_result,
+                )
+            uuid = run_command(
+                ['cl', 'run', 'stress-test.pl:' + upload_uuid, 'perl stress-test.pl 5 10 10']
+            )
             run_command(['cl', 'wait', uuid], 30, 300)  # Running might take a while
             run_command(['cl', 'rm', upload_uuid, uuid])
 
-    except Exception, e:
+    except Exception as e:
         error_logs('exception', 'Exception: %s' % e)
 
     if ping_time():

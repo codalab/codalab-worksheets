@@ -8,11 +8,7 @@ from bottle import abort, get, delete, post, request, local
 from codalab.common import UsageError
 from codalab.lib.server_util import json_api_include
 from codalab.rest.schemas import GroupSchema, UserSchema
-from codalab.rest.util import (
-    ensure_unused_group_name,
-    get_group_info,
-    get_resource_ids,
-)
+from codalab.rest.util import ensure_unused_group_name, get_group_info, get_resource_ids
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 
 
@@ -30,16 +26,12 @@ def fetch_group(group_spec):
 def fetch_groups():
     """Fetch list of groups readable by the authenticated user."""
     if request.user.user_id == local.model.root_user_id:
-        groups = local.model.batch_get_all_groups(
-            None,
-            {'user_defined': True},
-            None
-        )
+        groups = local.model.batch_get_all_groups(None, {'user_defined': True}, None)
     else:
         groups = local.model.batch_get_all_groups(
             None,
             {'owner_id': request.user.user_id, 'user_defined': True},
-            {'user_id': request.user.user_id}
+            {'user_id': request.user.user_id},
         )
 
     for group in groups:
@@ -115,14 +107,15 @@ def add_group_members(group_spec):
 
 def add_group_members_helper(group_spec, is_admin):
     user_ids = get_resource_ids(request.json, 'users')
-    group_info = get_group_info(group_spec, need_admin=True,
-                                access_all_groups=False)
+    group_info = get_group_info(group_spec, need_admin=True, access_all_groups=False)
     group_uuid = group_info['uuid']
     group_owner = group_info['owner_id']
     if group_owner in user_ids:
         raise UsageError("Cannot relegate the group owner into non-admin status")
-    members = set(m['user_id'] for m in local.model.batch_get_user_in_group(
-        user_id=user_ids, group_uuid=group_uuid))
+    members = set(
+        m['user_id']
+        for m in local.model.batch_get_user_in_group(user_id=user_ids, group_uuid=group_uuid)
+    )
     for user_id in user_ids:
         if user_id in members:
             local.model.update_user_in_group(user_id, group_uuid, is_admin)

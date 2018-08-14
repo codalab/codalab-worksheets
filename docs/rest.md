@@ -1,6 +1,6 @@
 # REST API Reference
 
-_version 0.2.27_
+_version 0.2.28_
 
 This reference and the REST API itself is still under heavy development and is
 subject to change at any time. Feedback through our GitHub issues is appreciated!
@@ -671,9 +671,12 @@ Query parameters:
 - `finalize_on_failure`: (optional) 1 if bundle state should be set
   to 'failed' in the case of a failure during upload, or 0 if the bundle
   state should not change on failure. Default is 0.
+- `finalize_on_success`: (optional) if true update the bundle state to this
+  if the upload completes successfully. Default true, false should be
+  specified.
 - `state_on_success`: (optional) Update the bundle state to this state if
   the upload completes successfully. Must be either 'ready' or 'failed'.
-  Default is empty in which case the state is not updated.
+  Default is 'ready'.
 
 
 &uarr; [Back to Top](#table-of-contents)

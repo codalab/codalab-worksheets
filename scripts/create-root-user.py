@@ -3,6 +3,7 @@
 Script that creates the root user.
 """
 import sys
+
 sys.path.append('.')
 
 import getpass
@@ -24,9 +25,7 @@ else:
         password = getpass.getpass('Password for %s(%s): ' % (username, user_id))
         if getpass.getpass('Confirm password: ') == password:
             break
-    
-        print 'Passwords don\'t match. Try again.'
-        print
+        print('Passwords don\'t match. Try again.')
 
 if model.get_user(user_id=user_id, check_active=False):
     update = {

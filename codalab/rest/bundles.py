@@ -7,30 +7,10 @@ import sys
 import time
 from itertools import izip
 
-from bottle import (
-    abort,
-    get,
-    post,
-    put,
-    delete,
-    local,
-    request,
-    response
-)
-from codalab.bundles import (
-    get_bundle_subclass,
-    UploadedBundle,
-)
-from codalab.common import (
-    precondition,
-    UsageError,
-    NotFoundError
-)
-from codalab.lib import (
-    canonicalize,
-    spec_util,
-    worksheet_util,
-)
+from bottle import abort, get, post, put, delete, local, request, response
+from codalab.bundles import get_bundle_subclass, UploadedBundle
+from codalab.common import precondition, UsageError, NotFoundError
+from codalab.lib import canonicalize, spec_util, worksheet_util
 from codalab.lib.server_util import (
     bottle_patch as patch,
     json_api_include,
@@ -53,15 +33,12 @@ from codalab.rest.schemas import (
     WorksheetSchema,
 )
 from codalab.rest.users import UserSchema
-from codalab.rest.util import (
-    get_bundle_infos,
-    get_resource_ids,
-    resolve_owner_in_keywords,
-)
+from codalab.rest.util import get_bundle_infos, get_resource_ids, resolve_owner_in_keywords
 from codalab.server.authenticated_plugin import AuthenticatedPlugin
 from codalabworker.bundle_state import State
 
 logger = logging.getLogger(__name__)
+
 
 @get('/bundles/<uuid:re:%s>' % spec_util.UUID_STR)
 def _fetch_bundle(uuid):
@@ -138,22 +115,26 @@ def _fetch_bundles():
         bundle_uuids = search_result['result']
     elif specs:
         # Resolve bundle specs
-        bundle_uuids = canonicalize.get_bundle_uuids(local.model, request.user, worksheet_uuid, specs)
+        bundle_uuids = canonicalize.get_bundle_uuids(
+            local.model, request.user, worksheet_uuid, specs
+        )
     else:
-        abort(httplib.BAD_REQUEST,
-              "Request must include either 'keywords' "
-              "or 'specs' query parameter")
+        abort(
+            httplib.BAD_REQUEST,
+            "Request must include either 'keywords' " "or 'specs' query parameter",
+        )
 
     # Find all descendants down to the provided depth
     if descendant_depth is not None:
         bundle_uuids = local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth)
 
-
     return build_bundles_document(bundle_uuids)
 
 
 def build_bundles_document(bundle_uuids):
-    include_set = query_get_json_api_include_set(supported={'owner', 'group_permissions', 'children', 'host_worksheets'})
+    include_set = query_get_json_api_include_set(
+        supported={'owner', 'group_permissions', 'children', 'host_worksheets'}
+    )
 
     bundles_dict = get_bundle_infos(
         bundle_uuids,
@@ -173,12 +154,15 @@ def build_bundles_document(bundle_uuids):
     if query_get_bool('include_display_metadata', default=False):
         for bundle, data in izip(bundles, document['data']):
             bundle_class = get_bundle_subclass(bundle['bundle_type'])
-            json_api_meta(data, {
-                'editable_metadata_keys':
-                    worksheet_util.get_editable_metadata_fields(bundle_class),
-                'metadata_type':
-                    worksheet_util.get_metadata_types(bundle_class),
-            })
+            json_api_meta(
+                data,
+                {
+                    'editable_metadata_keys': worksheet_util.get_editable_metadata_fields(
+                        bundle_class
+                    ),
+                    'metadata_type': worksheet_util.get_metadata_types(bundle_class),
+                },
+            )
 
     if 'owner' in include_set:
         owner_ids = set(b['owner_id'] for b in bundles if b['owner_id'] is not None)
@@ -186,7 +170,9 @@ def build_bundles_document(bundle_uuids):
 
     if 'group_permissions' in include_set:
         for bundle in bundles:
-            json_api_include(document, BundlePermissionSchema(), bundle.get('group_permissions', []))
+            json_api_include(
+                document, BundlePermissionSchema(), bundle.get('group_permissions', [])
+            )
 
     if 'children' in include_set:
         for bundle in bundles:
@@ -221,14 +207,17 @@ def _create_bundles():
     shadow_parent_uuid = request.query.get('shadow')
     detached = query_get_bool('detached', default=False)
     if worksheet_uuid is None:
-        abort(httplib.BAD_REQUEST, "Parent worksheet id must be specified as"
-                                   "'worksheet' query parameter")
+        abort(
+            httplib.BAD_REQUEST,
+            "Parent worksheet id must be specified as" "'worksheet' query parameter",
+        )
 
     # Deserialize bundle fields
-    bundles = BundleSchema(
-        strict=True, many=True,
-        dump_only=BUNDLE_CREATE_RESTRICTED_FIELDS,
-    ).load(request.json).data
+    bundles = (
+        BundleSchema(strict=True, many=True, dump_only=BUNDLE_CREATE_RESTRICTED_FIELDS)
+        .load(request.json)
+        .data
+    )
 
     # Check for all necessary permissions
     worksheet = local.model.get_worksheet(worksheet_uuid, fetch_items=False)
@@ -263,21 +252,27 @@ def _create_bundles():
 
         # Inherit worksheet permissions
         group_permissions = local.model.get_group_worksheet_permissions(
-            request.user.user_id, worksheet_uuid)
-        set_bundle_permissions([{
-            'object_uuid': bundle_uuid,
-            'group_uuid': p['group_uuid'],
-            'permission': p['permission'],
-        } for p in group_permissions])
+            request.user.user_id, worksheet_uuid
+        )
+        set_bundle_permissions(
+            [
+                {
+                    'object_uuid': bundle_uuid,
+                    'group_uuid': p['group_uuid'],
+                    'permission': p['permission'],
+                }
+                for p in group_permissions
+            ]
+        )
 
         # Add as item to worksheet
         if not detached:
             if shadow_parent_uuid is None:
                 local.model.add_worksheet_item(
-                    worksheet_uuid, worksheet_util.bundle_item(bundle_uuid))
+                    worksheet_uuid, worksheet_util.bundle_item(bundle_uuid)
+                )
             else:
-                local.model.add_shadow_worksheet_items(
-                    shadow_parent_uuid, bundle_uuid)
+                local.model.add_shadow_worksheet_items(shadow_parent_uuid, bundle_uuid)
 
     # Get created bundles
     bundles_dict = get_bundle_infos(created_uuids)
@@ -292,10 +287,11 @@ def _update_bundles():
     """
     Bulk update bundles.
     """
-    bundle_updates = BundleSchema(
-        strict=True, many=True,
-        dump_only=BUNDLE_UPDATE_RESTRICTED_FIELDS,
-    ).load(request.json, partial=True).data
+    bundle_updates = (
+        BundleSchema(strict=True, many=True, dump_only=BUNDLE_UPDATE_RESTRICTED_FIELDS)
+        .load(request.json, partial=True)
+        .data
+    )
 
     # Check permissions
     bundle_uuids = [b.pop('uuid') for b in bundle_updates]
@@ -338,8 +334,9 @@ def _delete_bundles():
     recursive = query_get_bool('recursive', default=False)
     data_only = query_get_bool('data-only', default=False)
     dry_run = query_get_bool('dry-run', default=False)
-    deleted_uuids = delete_bundles(uuids, force=force, recursive=recursive,
-                                   data_only=data_only, dry_run=dry_run)
+    deleted_uuids = delete_bundles(
+        uuids, force=force, recursive=recursive, data_only=data_only, dry_run=dry_run
+    )
 
     # Return list of deleted ids as meta
     return json_api_meta({}, {'ids': deleted_uuids})
@@ -353,15 +350,16 @@ def _set_bundle_permissions():
     A bundle permission created on a bundle-group pair will replace any
     existing permissions on the same bundle-group pair.
     """
-    new_permissions = BundlePermissionSchema(
-        strict=True, many=True,
-    ).load(request.json).data
+    new_permissions = BundlePermissionSchema(strict=True, many=True).load(request.json).data
     set_bundle_permissions(new_permissions)
     return BundlePermissionSchema(many=True).dump(new_permissions).data
 
 
 @get('/bundles/<uuid:re:%s>/contents/info/' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
-@get('/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_info')
+@get(
+    '/bundles/<uuid:re:%s>/contents/info/<path:path>' % spec_util.UUID_STR,
+    name='fetch_bundle_contents_info',
+)
 def _fetch_bundle_contents_info(uuid, path=''):
     """
     Fetch metadata of the bundle contents or a subpath within the bundle.
@@ -402,9 +400,7 @@ def _fetch_bundle_contents_info(uuid, path=''):
     except Exception as e:
         abort(httplib.BAD_REQUEST, e.message)
 
-    return {
-        'data': info
-    }
+    return {'data': info}
 
 
 @put('/bundles/<uuid:re:%s>/netcat/<port:int>/' % spec_util.UUID_STR, name='netcat_bundle')
@@ -422,11 +418,26 @@ def _netcat_bundle(uuid, port):
     return {'data': info}
 
 
-@post('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
-@put('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
-@delete('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
-@get('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
-@patch('/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR, name='netcurl_bundle')
+@post(
+    '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
+    name='netcurl_bundle',
+)
+@put(
+    '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
+    name='netcurl_bundle',
+)
+@delete(
+    '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
+    name='netcurl_bundle',
+)
+@get(
+    '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
+    name='netcurl_bundle',
+)
+@patch(
+    '/bundles/<uuid:re:%s>/netcurl/<port:int>/<path:re:.*>' % spec_util.UUID_STR,
+    name='netcurl_bundle',
+)
 def _netcurl_bundle(uuid, port, path=''):
     """
     Forward an HTTP request into the specified port of the running bundle with uuid.
@@ -440,7 +451,9 @@ def _netcurl_bundle(uuid, port, path=''):
     try:
         request.path_shift(4)  # shift away the routing parts of the URL
 
-        headers_string = ['{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()]
+        headers_string = [
+            '{}: {}'.format(h, request.headers.get(h)) for h in request.headers.keys()
+        ]
         message = "{} {} HTTP/1.1\r\n".format(request.method, request.path)
         message += "\r\n".join(headers_string) + "\r\n"
         message += "\r\n"
@@ -457,7 +470,10 @@ def _netcurl_bundle(uuid, port, path=''):
 
 
 @get('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
-@get('/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR, name='fetch_bundle_contents_blob')
+@get(
+    '/bundles/<uuid:re:%s>/contents/blob/<path:path>' % spec_util.UUID_STR,
+    name='fetch_bundle_contents_blob',
+)
 def _fetch_bundle_contents_blob(uuid, path=''):
     """
     API to download the contents of a bundle or a subpath within a bundle.
@@ -546,9 +562,13 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             abort(httplib.BAD_REQUEST, 'Head and range not supported on the same request.')
         elif byte_range:
             start, end = byte_range
-            fileobj = local.download_manager.read_file_section(uuid, path, start, end - start + 1, gzipped_stream)
+            fileobj = local.download_manager.read_file_section(
+                uuid, path, start, end - start + 1, gzipped_stream
+            )
         elif head_lines or tail_lines:
-            fileobj = local.download_manager.summarize_file(uuid, path, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream)
+            fileobj = local.download_manager.summarize_file(
+                uuid, path, head_lines, tail_lines, max_line_length, truncation_text, gzipped_stream
+            )
         else:
             fileobj = local.download_manager.stream_file(uuid, path, gzipped_stream)
     else:
@@ -564,8 +584,11 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     return fileobj
 
 
-@put('/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
-     name='update_bundle_contents_blob', apply=AuthenticatedPlugin())
+@put(
+    '/bundles/<uuid:re:%s>/contents/blob/' % spec_util.UUID_STR,
+    name='update_bundle_contents_blob',
+    apply=AuthenticatedPlugin(),
+)
 def _update_bundle_contents_blob(uuid):
     """
     Update the contents of the given running or uploading bundle.
@@ -584,6 +607,9 @@ def _update_bundle_contents_blob(uuid):
     - `finalize_on_failure`: (optional) 1 if bundle state should be set
       to 'failed' in the case of a failure during upload, or 0 if the bundle
       state should not change on failure. Default is 0.
+    - `finalize_on_success`: (optional) 1 if bundle state should be set
+      to 'state_on_success' when the upload finishes successfully. Default is
+      True
     - `state_on_success`: (optional) Update the bundle state to this state if
       the upload completes successfully. Must be either 'ready' or 'failed'.
       Default is 'ready'.
@@ -595,9 +621,12 @@ def _update_bundle_contents_blob(uuid):
 
     # Get and validate query parameters
     finalize_on_failure = query_get_bool('finalize_on_failure', default=False)
-    final_state = request.query.get('state_on_success', default=None)
-    if final_state is not None and final_state not in State.FINAL_STATES:
-        abort(httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES))
+    finalize_on_success = query_get_bool('finalize_on_success', default=True)
+    final_state = request.query.get('state_on_success', default=State.READY)
+    if finalize_on_success and final_state not in State.FINAL_STATES:
+        abort(
+            httplib.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES)
+        )
 
     # If this bundle already has data, remove it.
     if local.upload_manager.has_contents(bundle):
@@ -612,11 +641,15 @@ def _update_bundle_contents_blob(uuid):
             sources = [(filename, request['wsgi.input'])]
 
         local.upload_manager.upload_to_bundle_store(
-            bundle, sources=sources, follow_symlinks=False,
-            exclude_patterns=None, remove_sources=False,
+            bundle,
+            sources=sources,
+            follow_symlinks=False,
+            exclude_patterns=None,
+            remove_sources=False,
             git=query_get_bool('git', default=False),
             unpack=query_get_bool('unpack', default=True),
-            simplify_archives=query_get_bool('simplify', default=True))  # See UploadManager for full explanation of 'simplify'
+            simplify_archives=query_get_bool('simplify', default=True),
+        )  # See UploadManager for full explanation of 'simplify'
 
         local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
@@ -634,15 +667,14 @@ def _update_bundle_contents_blob(uuid):
         # running bundles, and they should use finalize_on_failure=0 to avoid
         # letting transient errors during upload fail the bundles prematurely.
         if finalize_on_failure:
-            local.model.update_bundle(bundle, {
-                'state': State.FAILED,
-                'metadata': {'failure_message': msg},
-            })
+            local.model.update_bundle(
+                bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+            )
 
         abort(httplib.INTERNAL_SERVER_ERROR, msg)
 
     else:
-        if final_state is not None:
+        if finalize_on_success:
             # Upload succeeded: update state
             local.model.update_bundle(bundle, {'state': final_state})
 
@@ -650,6 +682,7 @@ def _update_bundle_contents_blob(uuid):
 #############################################################
 #  BUNDLE HELPER FUNCTIONS
 #############################################################
+
 
 def get_request_range():
     """
@@ -696,10 +729,10 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         # If any descendants exist, then we only delete uuids if force = True.
         if (not force) and set(uuids) != set(relevant_uuids):
             relevant = local.model.batch_get_bundles(uuid=(set(relevant_uuids) - set(uuids)))
-            raise UsageError('Can\'t delete bundles %s because the following bundles depend on them:\n  %s' % (
-                ' '.join(uuids),
-                '\n  '.join(bundle.simple_str() for bundle in relevant),
-            ))
+            raise UsageError(
+                'Can\'t delete bundles %s because the following bundles depend on them:\n  %s'
+                % (' '.join(uuids), '\n  '.join(bundle.simple_str() for bundle in relevant))
+            )
         relevant_uuids = uuids
     check_bundles_have_all_permission(local.model, request.user, relevant_uuids)
 
@@ -709,11 +742,13 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
     active_uuids = [uuid for (uuid, state) in states.items() if state in State.ACTIVE_STATES]
     logger.debug('delete actives: %s', active_uuids)
     if len(active_uuids) > 0:
-        raise UsageError('Can\'t delete bundles: %s. ' % (' '.join(active_uuids)) +
-                         'For run bundles, kill them first. ' +
-                         'Bundles stuck not running will eventually ' +
-                         'automatically be moved to a state where they ' +
-                         'can be deleted.')
+        raise UsageError(
+            'Can\'t delete bundles: %s. ' % (' '.join(active_uuids))
+            + 'For run bundles, kill them first. '
+            + 'Bundles stuck not running will eventually '
+            + 'automatically be moved to a state where they '
+            + 'can be deleted.'
+        )
 
     # Make sure that bundles are not referenced in multiple places (otherwise, it's very dangerous)
     result = local.model.get_host_worksheet_uuids(relevant_uuids)
@@ -721,13 +756,17 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
         worksheets = local.model.batch_get_worksheets(fetch_items=False, uuid=host_worksheet_uuids)
         frozen_worksheets = [worksheet for worksheet in worksheets if worksheet.frozen]
         if len(frozen_worksheets) > 0:
-            raise UsageError("Can't delete bundle %s because it appears in frozen worksheets "
-                             "(need to delete worksheet first):\n  %s" %
-                             (uuid, '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets)))
+            raise UsageError(
+                "Can't delete bundle %s because it appears in frozen worksheets "
+                "(need to delete worksheet first):\n  %s"
+                % (uuid, '\n  '.join(worksheet.simple_str() for worksheet in frozen_worksheets))
+            )
         if not force and len(host_worksheet_uuids) > 1:
-            raise UsageError("Can't delete bundle %s because it appears in multiple worksheets "
-                             "(--force to override):\n  %s" %
-                             (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets)))
+            raise UsageError(
+                "Can't delete bundle %s because it appears in multiple worksheets "
+                "(--force to override):\n  %s"
+                % (uuid, '\n  '.join(worksheet.simple_str() for worksheet in worksheets))
+            )
 
     # Delete the actual bundle
     if not dry_run:
@@ -754,8 +793,8 @@ def delete_bundles(uuids, force, recursive, data_only, dry_run):
 def set_bundle_permissions(new_permissions):
     # Check if current user has permission to set bundle permissions
     check_bundles_have_all_permission(
-        local.model, request.user, [p['object_uuid'] for p in new_permissions])
+        local.model, request.user, [p['object_uuid'] for p in new_permissions]
+    )
     # Sequentially set bundle permissions
     for p in new_permissions:
-        local.model.set_group_bundle_permission(
-            p['group_uuid'], p['object_uuid'], p['permission'])
+        local.model.set_group_bundle_permission(p['group_uuid'], p['object_uuid'], p['permission'])

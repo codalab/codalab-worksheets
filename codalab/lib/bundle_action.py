@@ -7,6 +7,7 @@ class BundleAction(object):
     directed to the worker running the bundle.
     A bundle action is serialized as a string, which consists of a sequence of arguments.
     """
+
     KILL = 'kill'
     WRITE = 'write'
 
@@ -18,6 +19,8 @@ class BundleAction(object):
             return BundleAction.KILL
         elif action['type'] == BundleAction.WRITE:
             # Note: assume subpath must not have the separator in it.
-            return BundleAction.SEPARATOR.join([BundleAction.WRITE, action['subpath'], action['string']])
+            return BundleAction.SEPARATOR.join(
+                [BundleAction.WRITE, action['subpath'], action['string']]
+            )
         else:
             raise PreconditionViolation("Unsupported bundle action %r" % action['type'])

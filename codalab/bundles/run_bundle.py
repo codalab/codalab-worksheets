@@ -9,9 +9,7 @@ symlinks the input target in to ./input, and then streams output to ./stdout
 and ./stderr. The ./output directory may also be used to store output files.
 '''
 from codalab.bundles.derived_bundle import DerivedBundle
-from codalab.common import (
-    UsageError,
-)
+from codalab.common import UsageError
 
 from codalab.lib.completers import DockerImagesCompleter
 from codalab.objects.metadata_spec import MetadataSpec
@@ -23,6 +21,8 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS = list(DerivedBundle.METADATA_SPECS)
     # Note that these are strings, which need to be parsed
     # Request a machine with this much resources and don't let run exceed these resources
+    # Don't format metadata specs
+    # fmt: off
     METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (either tag or digest, e.g., codalab/ubuntu:1.9) we wish to use.', completer=DockerImagesCompleter, hide_when_anonymous=True, default='codalab/ubuntu:1.9'))
     METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run.', formatting='duration', default='1d'))
     METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='2g'))
@@ -50,9 +50,14 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('exitcode', int, 'Exitcode of the process.', generated=True))
     METADATA_SPECS.append(MetadataSpec('job_handle', basestring, 'Identifies the job handle (internal).', generated=True, hide_when_anonymous=True))
     METADATA_SPECS.append(MetadataSpec('remote', basestring, 'Where this job is/was run (internal).', generated=True, hide_when_anonymous=True))
+    # fmt: on
 
     @classmethod
-    def construct(cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED):
+    def construct(
+        cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED
+    ):
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
-        return super(RunBundle, cls).construct(targets, command, metadata, owner_id, uuid, data_hash, state)
+        return super(RunBundle, cls).construct(
+            targets, command, metadata, owner_id, uuid, data_hash, state
+        )

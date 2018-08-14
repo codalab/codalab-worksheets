@@ -9,6 +9,7 @@ non-id columns of a SQLAlchemy table.
 from codalab.common import precondition
 import datetime
 
+
 class ORMObject(object):
     COLUMNS = None
 
@@ -39,7 +40,8 @@ class ORMObject(object):
         """
         result = {}
         for column in self.COLUMNS:
-            if not strict and not hasattr(self, column): continue
+            if not strict and not hasattr(self, column):
+                continue
             value = getattr(self, column)
             result[column] = value
         return result

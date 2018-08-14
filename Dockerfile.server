@@ -1,5 +1,5 @@
 FROM ubuntu:16.04
-MAINTAINER Fabian Chan <fabianc@stanford.edu>
+MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
 ENV DEBIAN_FRONTEND noninteractive
 

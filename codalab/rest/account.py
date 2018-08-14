@@ -39,10 +39,9 @@ def do_login():
 
     user = local.model.get_user(username=username)
     if not (user and user.check_password(password)):
-        return redirect_with_query(error_uri, {
-            "error": "Login/password did not match.",
-            "next": success_uri,
-        })
+        return redirect_with_query(
+            error_uri, {"error": "Login/password did not match.", "next": success_uri}
+        )
 
     # Update last login
     local.model.update_user_last_login(user.user_id)
@@ -61,7 +60,9 @@ def do_login():
 @post('/account/signup')
 def do_signup():
     if request.user.is_authenticated:
-        return redirect(default_app().get_url('success', message="You are already logged into your account."))
+        return redirect(
+            default_app().get_url('success', message="You are already logged into your account.")
+        )
 
     success_uri = request.forms.get('success_uri')
     error_uri = request.forms.get('error_uri')
@@ -74,20 +75,24 @@ def do_signup():
 
     errors = []
     if request.user.is_authenticated:
-        errors.append("You are already logged in as %s, please log out before "
-                      "creating a new account." % request.user.user_name)
+        errors.append(
+            "You are already logged in as %s, please log out before "
+            "creating a new account." % request.user.user_name
+        )
 
     if request.forms.get('confirm_password') != password:
         errors.append("Passwords do not match.")
 
     if not spec_util.NAME_REGEX.match(username):
-        errors.append("Username must only contain letter, digits, hyphens, underscores, and periods.")
+        errors.append(
+            "Username must only contain letter, digits, hyphens, underscores, and periods."
+        )
 
     try:
         User.validate_password(password)
     except UsageError as e:
         errors.append(e.message)
-        
+
     # Only do a basic validation of email -- the only guaranteed way to check
     # whether an email address is valid is by sending an actual email.
     if not spec_util.BASIC_EMAIL_REGEX.match(email):
@@ -100,15 +105,18 @@ def do_signup():
         errors.append("Username characters must be alphanumeric, underscores, periods, or dashes.")
 
     if errors:
-        return redirect_with_query(error_uri, {
-            'error': ' '.join(errors),
-            'next': success_uri,
-            'email': email,
-            'username': username,
-            'first_name': first_name,
-            'last_name': last_name,
-            'affiliation': affiliation
-        })
+        return redirect_with_query(
+            error_uri,
+            {
+                'error': ' '.join(errors),
+                'next': success_uri,
+                'email': email,
+                'username': username,
+                'first_name': first_name,
+                'last_name': last_name,
+                'affiliation': affiliation,
+            },
+        )
 
     # If user leaves it blank, empty string is obtained - make it of NoneType.
     if not affiliation:
@@ -116,17 +124,14 @@ def do_signup():
 
     # Create unverified user
     _, verification_key = local.model.add_user(
-        username, email, first_name, last_name, 
-        password, affiliation,
+        username, email, first_name, last_name, password, affiliation
     )
 
     # Send key
     send_verification_key(username, email, verification_key)
 
     # Redirect to success page
-    return redirect_with_query(success_uri, {
-        'email': email
-    })
+    return redirect_with_query(success_uri, {'email': email})
 
 
 @get('/account/verify/<key>', skip=UserVerifiedPlugin)
@@ -143,9 +148,7 @@ def resend_key():
         return redirect('/account/verify/success')
     key = local.model.get_verification_key(request.user.user_id)
     send_verification_key(request.user.user_name, request.user.email, key)
-    return redirect_with_query('/account/signup/success', {
-        'email': request.user.email,
-    })
+    return redirect_with_query('/account/signup/success', {'email': request.user.email})
 
 
 @get('/account/css', skip=UserVerifiedPlugin)
@@ -170,7 +173,9 @@ def request_reset():
     user_name = request.user.first_name or request.user.user_name
     local.emailer.send_email(
         subject="CodaLab password reset link",
-        body=template('password_reset_body', user=user_name, current_site=hostname, code=reset_code),
+        body=template(
+            'password_reset_body', user=user_name, current_site=hostname, code=reset_code
+        ),
         recipient=request.user.email,
     )
 
@@ -187,9 +192,9 @@ def request_reset():
     user = local.model.get_user(username=email)
     if user is None:
         # Redirect back to form page
-        return redirect_with_query('/account/reset', {
-            'error': "User with email %s not found." % email
-        })
+        return redirect_with_query(
+            '/account/reset', {'error': "User with email %s not found." % email}
+        )
 
     # Generate reset code
     reset_code = local.model.new_user_reset_code(user.user_id)
@@ -199,7 +204,9 @@ def request_reset():
     user_name = user.first_name or user.user_name
     local.emailer.send_email(
         subject="CodaLab password reset link",
-        body=template('password_reset_body', user=user_name, current_site=hostname, code=reset_code),
+        body=template(
+            'password_reset_body', user=user_name, current_site=hostname, code=reset_code
+        ),
         recipient=email,
     )
 
@@ -215,14 +222,9 @@ def verify_reset_code(code):
     frontend page with the appropriate parameters.
     """
     if local.model.get_reset_code_user_id(code, delete=False) is not None:
-        redirect_with_query('/account/reset/verified', {
-            'code_valid': True,
-            'code': code,
-        })
+        redirect_with_query('/account/reset/verified', {'code_valid': True, 'code': code})
     else:
-        redirect_with_query('/account/reset/verified', {
-            'code_valid': False,
-        })
+        redirect_with_query('/account/reset/verified', {'code_valid': False})
 
 
 @post('/account/reset/finalize')
@@ -236,30 +238,25 @@ def reset_password():
 
     # Validate password
     if confirm_password != password:
-        return redirect_with_query('/account/reset/verified', {
-            'code_valid': True,
-            'code': code,
-            'error': "Passwords do not match."
-        })
+        return redirect_with_query(
+            '/account/reset/verified',
+            {'code_valid': True, 'code': code, 'error': "Passwords do not match."},
+        )
     try:
         User.validate_password(password)
     except UsageError as e:
-        return redirect_with_query('/account/reset/verified', {
-            'code_valid': True,
-            'code': code,
-            'error': e.message
-        })
+        return redirect_with_query(
+            '/account/reset/verified', {'code_valid': True, 'code': code, 'error': e.message}
+        )
 
     # Verify reset code again and get user_id
     user_id = local.model.get_reset_code_user_id(code, delete=True)
     if user_id is None:
-        return redirect_with_query('/account/reset/verified', {
-            'code_valid': False,
-        })
+        return redirect_with_query('/account/reset/verified', {'code_valid': False})
 
     # Update user password
     user_info = local.model.get_user_info(user_id)
-    user_info['password'] = User.encode_password(password, crypt_util.get_random_string()),
+    user_info['password'] = (User.encode_password(password, crypt_util.get_random_string()),)
     local.model.update_user_info(user_info)
 
     return redirect('/account/reset/complete')
@@ -273,28 +270,23 @@ def request_reset():
     email = request.forms.get('email').strip()
 
     if email == request.user.email:
-        return redirect_with_query('/account/changeemail', {
-            'error': "Your email address is already %s." % email
-        })
+        return redirect_with_query(
+            '/account/changeemail', {'error': "Your email address is already %s." % email}
+        )
 
     if not spec_util.BASIC_EMAIL_REGEX.match(email):
-        return redirect_with_query('/account/changeemail', {
-            'error': "Invalid email address."
-        })
+        return redirect_with_query('/account/changeemail', {'error': "Invalid email address."})
 
     if local.model.user_exists(None, email):
-        return redirect_with_query('/account/changeemail', {
-            'error': "User with this email already exists."
-        })
+        return redirect_with_query(
+            '/account/changeemail', {'error': "User with this email already exists."}
+        )
 
-    local.model.update_user_info({
-        'user_id': request.user.user_id,
-        'email': email,
-        'is_verified': False,
-    })
+    local.model.update_user_info(
+        {'user_id': request.user.user_id, 'email': email, 'is_verified': False}
+    )
 
     key = local.model.get_verification_key(request.user.user_id)
     send_verification_key(request.user.user_name, request.user.email, key)
 
     return redirect('/account/changeemail/sent')
-

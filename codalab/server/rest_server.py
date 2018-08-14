@@ -40,24 +40,19 @@ import codalab.rest.titlejs
 import codalab.rest.users
 import codalab.rest.workers
 import codalab.rest.worksheets
-from codalab.server.authenticated_plugin import (
-    PublicUserPlugin,
-    UserVerifiedPlugin,
-)
+from codalab.server.authenticated_plugin import PublicUserPlugin, UserVerifiedPlugin
 from codalab.server.cookie import CookieAuthenticationPlugin
 from codalab.server.json_api_plugin import JsonApiPlugin
 from codalab.server.oauth2_provider import oauth2_provider
 
 
 # Don't log requests to routes matching these regexes.
-ROUTES_NOT_LOGGED_REGEXES = [
-    re.compile(r'/oauth2/.*'),
-    re.compile(r'/workers/.*'),
-]
+ROUTES_NOT_LOGGED_REGEXES = [re.compile(r'/oauth2/.*'), re.compile(r'/workers/.*')]
 
 
 class SaveEnvironmentPlugin(object):
     """Saves environment objects in the local request variable."""
+
     api = 2
 
     def __init__(self, manager):
@@ -82,7 +77,9 @@ class SaveEnvironmentPlugin(object):
 
 class CheckJsonPlugin(object):
     """Checks that the input JSON data can be parsed."""
+
     api = 2
+
     def apply(self, callback, route):
         def wrapper(*args, **kwargs):
             try:
@@ -93,11 +90,13 @@ class CheckJsonPlugin(object):
             except ValueError:
                 abort(BAD_REQUEST, 'Invalid JSON')
             return callback(*args, **kwargs)
+
         return wrapper
 
 
 class LoggingPlugin(object):
     """Logs successful requests to the events log."""
+
     api = 2
 
     def apply(self, callback, route):
@@ -111,8 +110,7 @@ class LoggingPlugin(object):
 
             # Use explicitly defined route name or 'METHOD /rule'
             command = route.name or (route.method + ' ' + route.rule)
-            query_dict = (
-                dict(map(lambda k: (k, request.query[k]), request.query)))
+            query_dict = dict(map(lambda k: (k, request.query[k]), request.query))
             args = [request.path, query_dict]
             # if (route.method == 'POST'
             #     and request.content_type == 'application/json'):
@@ -123,7 +121,8 @@ class LoggingPlugin(object):
                 user_id=getattr(getattr(local, 'user', None), 'user_id', ''),
                 user_name=getattr(getattr(local, 'user', None), 'user_name', ''),
                 command=command,
-                args=args)
+                args=args,
+            )
 
             return res
 
@@ -138,6 +137,7 @@ class LoggingPlugin(object):
 
 class ErrorAdapter(object):
     """Converts known exceptions to HTTP errors."""
+
     api = 2
 
     MAX_AUX_INFO_LENGTH = 5000
@@ -152,7 +152,10 @@ class ErrorAdapter(object):
                 code, message = exception_to_http_error(e)
                 if code == INTERNAL_SERVER_ERROR:
                     self.report_exception(e)
-                    message = "Unexpected Internal Error (%s). The administrators have been notified." % message
+                    message = (
+                        "Unexpected Internal Error (%s). The administrators have been notified."
+                        % message
+                    )
                 raise HTTPError(code, message)
 
         return wrapper
@@ -165,11 +168,14 @@ class ErrorAdapter(object):
     def report_exception(self, exc):
         query = formatting.key_value_list(request.query.allitems())
         forms = formatting.key_value_list(
-            self._censor_passwords(request.forms.allitems()) if request.json is None else [])
+            self._censor_passwords(request.forms.allitems()) if request.json is None else []
+        )
         body = formatting.verbose_pretty_json(request.json)
         local_vars = formatting.key_value_list(
-            self._censor_passwords(server_util.exc_frame_locals().items()))
-        aux_info = textwrap.dedent("""\
+            self._censor_passwords(server_util.exc_frame_locals().items())
+        )
+        aux_info = textwrap.dedent(
+            """\
                     Query params:
                     {0}
 
@@ -180,21 +186,26 @@ class ErrorAdapter(object):
                     {2}
 
                     Local variables:
-                    {3}""").format(query, forms, body, local_vars)
+                    {3}"""
+        ).format(query, forms, body, local_vars)
 
         if len(aux_info) > self.MAX_AUX_INFO_LENGTH:
-            aux_info = aux_info[:(self.MAX_AUX_INFO_LENGTH / 2)] + \
-                       "(...truncated...)" + \
-                       aux_info[-(self.MAX_AUX_INFO_LENGTH / 2):]
+            aux_info = (
+                aux_info[: (self.MAX_AUX_INFO_LENGTH / 2)]
+                + "(...truncated...)"
+                + aux_info[-(self.MAX_AUX_INFO_LENGTH / 2) :]
+            )
 
-        message = textwrap.dedent("""\
+        message = textwrap.dedent(
+            """\
              Error on request by {0.user}:
 
              {0.method} {0.path}
 
              {1}
 
-             {2}""").format(request, aux_info, traceback.format_exc())
+             {2}"""
+        ).format(request, aux_info, traceback.format_exc())
 
         # Both print to console and send email
         print >>sys.stderr, message
@@ -214,13 +225,14 @@ class ErrorAdapter(object):
         if 'instance_name' in local.config['server']:
             subject = "[%s] %s" % (local.config['server']['instance_name'], subject)
 
-        local.emailer.send_email(subject=subject,
-                                 body=message,
-                                 recipient=local.config['server']['admin_email'])
+        local.emailer.send_email(
+            subject=subject, body=message, recipient=local.config['server']['admin_email']
+        )
 
 
 class DatetimeEncoder(json.JSONEncoder):
     """Extend JSON encoder to handle datetime objects."""
+
     def default(self, obj):
         if isinstance(obj, datetime.datetime):
             return obj.isoformat()
@@ -276,7 +288,11 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     root_app.mount('/rest', default_app())
 
     # Look for templates in codalab-cli/views
-    bottle.TEMPLATE_PATH = [os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views')]
+    bottle.TEMPLATE_PATH = [
+        os.path.join(
+            os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'views'
+        )
+    ]
 
     # Increase the request body size limit to 8 MiB
     bottle.BaseRequest.MEMFILE_MAX = 8 * 1024 * 1024
@@ -284,10 +300,18 @@ def run_rest_server(manager, debug, num_processes, num_threads):
     # We use gunicorn to create a server with multiple processes, since in
     # Python a single process uses at most 1 CPU due to the Global Interpreter
     # Lock.
-    sys.argv = sys.argv[:1] # Small hack to work around a Gunicorn arg parsing
-                            # bug. None of the arguments to cl should go to
-                            # Gunicorn.
-    run(app=root_app, host=host, port=port, debug=debug, server='gunicorn',
-        workers=num_processes, worker_class='gthread', threads=num_threads,
+    sys.argv = sys.argv[:1]  # Small hack to work around a Gunicorn arg parsing
+    # bug. None of the arguments to cl should go to
+    # Gunicorn.
+    run(
+        app=root_app,
+        host=host,
+        port=port,
+        debug=debug,
+        server='gunicorn',
+        workers=num_processes,
+        worker_class='gthread',
+        threads=num_threads,
         worker_tmp_dir='/tmp',  # don't use globally set tempdir
-        timeout=5 * 60)
+        timeout=5 * 60,
+    )

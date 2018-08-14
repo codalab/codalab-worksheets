@@ -29,10 +29,11 @@ class BundleManager(object):
     def create(codalab_manager):
         config = codalab_manager.config.get('workers')
         if not config:
-            print >> sys.stderr, 'config.json file missing a workers section.'
+            print >>sys.stderr, 'config.json file missing a workers section.'
             exit(1)
 
         from codalab.worker.default_bundle_manager import DefaultBundleManager
+
         self = DefaultBundleManager()
 
         self._model = codalab_manager.model()
@@ -48,12 +49,12 @@ class BundleManager(object):
 
         def parse(to_value, field):
             return to_value(config[field]) if field in config else None
+
         self._max_request_time = parse(formatting.parse_duration, 'max_request_time')
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
-        logging.basicConfig(format='%(asctime)s %(message)s',
-                            level=logging.INFO)
+        logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
         return self
 
@@ -96,8 +97,7 @@ class BundleManager(object):
             2) Staging any bundles that have all ready dependencies.
         """
         bundles = self._model.batch_get_bundles(state=State.CREATED)
-        parent_uuids = set(
-            dep.parent_uuid for bundle in bundles for dep in bundle.dependencies)
+        parent_uuids = set(dep.parent_uuid for bundle in bundles for dep in bundle.dependencies)
         parents = self._model.batch_get_bundles(uuid=parent_uuids)
 
         all_parent_states = {parent.uuid: parent.state for parent in parents}
@@ -109,22 +109,21 @@ class BundleManager(object):
             parent_uuids = set(dep.parent_uuid for dep in bundle.dependencies)
 
             try:
-                check_bundles_have_read_permission(self._model, self._model.get_user(bundle.owner_id), parent_uuids)
-            except PermissionError as e:
-                bundles_to_fail.append(
-                    (bundle, str(e))
+                check_bundles_have_read_permission(
+                    self._model, self._model.get_user(bundle.owner_id), parent_uuids
                 )
+            except PermissionError as e:
+                bundles_to_fail.append((bundle, str(e)))
                 continue
 
             missing_uuids = parent_uuids - all_parent_uuids
             if missing_uuids:
                 bundles_to_fail.append(
-                    (bundle,
-                     'Missing parent bundles: %s' % ', '.join(missing_uuids)))
+                    (bundle, 'Missing parent bundles: %s' % ', '.join(missing_uuids))
+                )
                 continue
 
-            parent_states = {uuid: all_parent_states[uuid]
-                             for uuid in parent_uuids}
+            parent_states = {uuid: all_parent_states[uuid] for uuid in parent_uuids}
 
             acceptable_states = [State.READY]
             if bundle.metadata.allow_failed_dependencies:
@@ -132,12 +131,19 @@ class BundleManager(object):
                 acceptable_states.append(State.KILLED)
             else:
                 failed_uuids = [
-                    uuid for uuid, state in parent_states.iteritems()
-                    if state == State.FAILED]
+                    uuid for uuid, state in parent_states.iteritems() if state == State.FAILED
+                ]
+                killed_uuids = [
+                    uuid for uuid, state in parent_states.iteritems() if state == State.KILLED
+                ]
+                failure_message = ''
                 if failed_uuids:
-                    bundles_to_fail.append(
-                        (bundle,
-                         'Parent bundles failed: %s' % ', '.join(failed_uuids)))
+                    failure_message += ' Parent bundles failed: %s' % ', '.join(failed_uuids)
+                if killed_uuids:
+                    failure_message += ' Parent bundles were killed: %s' % ', '.join(killed_uuids)
+                if failure_message:
+                    failure_message += ' (Please use the --allow-failed-dependencies flag to depend on results fo failed or killed bundles)'
+                    bundles_to_fail.append((bundle, failure_message))
                     continue
 
             if all(state in acceptable_states for state in parent_states.itervalues()):
@@ -146,12 +152,11 @@ class BundleManager(object):
         for bundle, failure_message in bundles_to_fail:
             logger.info('Failing bundle %s: %s', bundle.uuid, failure_message)
             self._model.update_bundle(
-                bundle, {'state': State.FAILED,
-                         'metadata': {'failure_message': failure_message}})
+                bundle, {'state': State.FAILED, 'metadata': {'failure_message': failure_message}}
+            )
         for bundle in bundles_to_stage:
             logger.info('Staging %s', bundle.uuid)
-            self._model.update_bundle(
-                bundle, {'state': State.STAGED})
+            self._model.update_bundle(bundle, {'state': State.STAGED})
 
     def _make_bundles(self):
         # Re-stage any stuck bundles. This would happen if the bundle manager
@@ -168,9 +173,7 @@ class BundleManager(object):
                 self._make_uuids.add(bundle.uuid)
             # Making a bundle could take time, so do the work in a separate
             # thread to ensure quick scheduling.
-            threading.Thread(
-                target=BundleManager._make_bundle, args=[self, bundle]
-            ).start()
+            threading.Thread(target=BundleManager._make_bundle, args=[self, bundle]).start()
 
     def _is_making_bundles(self):
         with self._make_uuids_lock:
@@ -187,20 +190,22 @@ class BundleManager(object):
             deps = []
             for dep in bundle.dependencies:
                 parent_bundle_path = os.path.normpath(
-                    self._bundle_store.get_bundle_location(dep.parent_uuid))
+                    self._bundle_store.get_bundle_location(dep.parent_uuid)
+                )
                 dependency_path = os.path.normpath(
-                    os.path.join(parent_bundle_path, dep.parent_path))
-                if (not dependency_path.startswith(parent_bundle_path) or
-                    (not os.path.islink(dependency_path) and
-                     not os.path.exists(dependency_path))):
-                    raise Exception('Invalid dependency %s' % (
-                        path_util.safe_join(dep.parent_uuid, dep.parent_path)))
+                    os.path.join(parent_bundle_path, dep.parent_path)
+                )
+                if not dependency_path.startswith(parent_bundle_path) or (
+                    not os.path.islink(dependency_path) and not os.path.exists(dependency_path)
+                ):
+                    raise Exception(
+                        'Invalid dependency %s'
+                        % (path_util.safe_join(dep.parent_uuid, dep.parent_path))
+                    )
 
-                child_path = os.path.normpath(
-                    os.path.join(path, dep.child_path))
+                child_path = os.path.normpath(os.path.join(path, dep.child_path))
                 if not child_path.startswith(path):
-                    raise Exception('Invalid key for dependency: %s' % (
-                        dep.child_path))
+                    raise Exception('Invalid key for dependency: %s' % (dep.child_path))
 
                 deps.append((dependency_path, child_path))
 
@@ -219,8 +224,8 @@ class BundleManager(object):
         except Exception as e:
             logger.info('Failing bundle %s: %s', bundle.uuid, str(e))
             self._model.update_bundle(
-                bundle, {'state': State.FAILED,
-                         'metadata': {'failure_message': str(e)}})
+                bundle, {'state': State.FAILED, 'metadata': {'failure_message': str(e)}}
+            )
         finally:
             with self._make_uuids_lock:
                 self._make_uuids.remove(bundle.uuid)
@@ -231,8 +236,12 @@ class BundleManager(object):
         Such workers probably died without checking out properly.
         """
         for worker in workers.workers():
-            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(seconds=WORKER_TIMEOUT_SECONDS):
-                logger.info('Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id'])
+            if datetime.datetime.now() - worker['checkin_time'] > datetime.timedelta(
+                seconds=WORKER_TIMEOUT_SECONDS
+            ):
+                logger.info(
+                    'Cleaning up dead worker (%s, %s)', worker['user_id'], worker['worker_id']
+                )
                 self._worker_model.worker_cleanup(worker['user_id'], worker['worker_id'])
                 workers.remove(worker)
                 if callback is not None:
@@ -244,8 +253,10 @@ class BundleManager(object):
         state so that they can be scheduled to run again.
         """
         for bundle in self._model.batch_get_bundles(state=State.STARTING, bundle_type='run'):
-            if (not workers.is_running(bundle.uuid) or
-                    time.time() - bundle.metadata.last_updated > 5 * 60):  # Run message went missing.
+            if (
+                not workers.is_running(bundle.uuid)
+                or time.time() - bundle.metadata.last_updated > 5 * 60
+            ):  # Run message went missing.
                 logger.info('Re-staging run bundle %s', bundle.uuid)
                 if self._model.restage_bundle(bundle):
                     workers.restage(bundle.uuid)
@@ -256,11 +267,16 @@ class BundleManager(object):
         """
         for bundle in self._model.batch_get_bundles(state=State.FINALIZING, bundle_type='run'):
             worker = workers.get_bundle_worker(bundle.uuid)
-            if (worker is not None and
-                    self._worker_model.send_json_message(worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2)):
-
-                    logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
-                    self._model.finish_bundle(bundle)
+            if worker is None:
+                logger.info(
+                    'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
+                )
+                self._model.set_offline_bundle(bundle)
+            if self._worker_model.send_json_message(
+                worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
+            ):
+                logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
+                self._model.finish_bundle(bundle)
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -268,11 +284,15 @@ class BundleManager(object):
         Bundles in WORKER_OFFLINE state can be moved back to the RUNNING or PREPARING state if a
         worker resumes the bundle indicating that it's still in one of those states.
         """
-        for bundle in self._model.batch_get_bundles(state=State.RUNNING, bundle_type='run') + self._model.batch_get_bundles(state=State.PREPARING, bundle_type='run'):
+        active_bundles = self._model.batch_get_bundles(
+            state=State.RUNNING, bundle_type='run'
+        ) + self._model.batch_get_bundles(state=State.PREPARING, bundle_type='run')
+        now = time.time()
+        for bundle in active_bundles:
             failure_message = None
             if not workers.is_running(bundle.uuid):
                 failure_message = 'No worker claims bundle'
-            if time.time() - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS:
+            if now - bundle.metadata.last_updated > WORKER_TIMEOUT_SECONDS:
                 failure_message = 'Worker offline'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
@@ -327,28 +347,26 @@ class BundleManager(object):
         # Filter by CPUs.
         request_cpus = self._compute_request_cpus(bundle)
         if request_cpus:
-            workers_list = filter(lambda worker: worker['cpus'] >= request_cpus,
-                                  workers_list)
+            workers_list = filter(lambda worker: worker['cpus'] >= request_cpus, workers_list)
 
         # Filter by GPUs.
         request_gpus = self._compute_request_gpus(bundle)
         if request_gpus:
-            workers_list = filter(lambda worker: worker['gpus'] >= request_gpus,
-                                  workers_list)
+            workers_list = filter(lambda worker: worker['gpus'] >= request_gpus, workers_list)
 
         # Filter by memory.
         request_memory = self._compute_request_memory(bundle)
         if request_memory:
-            workers_list = filter(lambda worker: worker['memory_bytes'] >= request_memory,
-                                  workers_list)
+            workers_list = filter(
+                lambda worker: worker['memory_bytes'] >= request_memory, workers_list
+            )
 
         # Filter by tag.
         request_queue = bundle.metadata.request_queue
         if request_queue:
             tagm = re.match('tag=(.+)', request_queue)
             if tagm:
-                workers_list = filter(lambda worker: worker['tag'] == tagm.group(1),
-                                      workers_list)
+                workers_list = filter(lambda worker: worker['tag'] == tagm.group(1), workers_list)
             else:
                 # We don't know how to handle this type of request queue
                 # argument.
@@ -367,8 +385,7 @@ class BundleManager(object):
         # is not a problem for the performance of the jobs themselves, this can
         # cause one worker to collect a disproportionate number of dependencies
         # in its cache.
-        needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path),
-                              bundle.dependencies))
+        needed_deps = set(map(lambda dep: (dep.parent_uuid, dep.parent_path), bundle.dependencies))
 
         def get_sort_key(worker):
             deps = set(worker['dependencies'])
@@ -377,6 +394,7 @@ class BundleManager(object):
             # if the bundle doesn't request GPUs (only request CPUs), prioritize workers that don't have GPUs
             gpu_priority = self._compute_request_gpus(bundle) or not has_gpu[worker_id]
             return (gpu_priority, len(needed_deps & deps), worker['cpus'], random.random())
+
         workers_list.sort(key=get_sort_key, reverse=True)
 
         return workers_list
@@ -388,14 +406,18 @@ class BundleManager(object):
         """
         if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
-            if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
+            if (
+                self._worker_model.shared_file_system
+                and worker['user_id'] == self._model.root_user_id
+            ):
                 # On a shared file system we create the path here to avoid NFS
                 # directory cache issues.
                 path = self._bundle_store.get_bundle_location(bundle.uuid)
                 remove_path(path)
                 os.mkdir(path)
             if self._worker_model.send_json_message(
-               worker['socket_id'], self._construct_run_message(worker, bundle), 0.2):
+                worker['socket_id'], self._construct_run_message(worker, bundle), 0.2
+            ):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
@@ -476,7 +498,9 @@ class BundleManager(object):
         if self._worker_model.shared_file_system and worker['user_id'] == self._model.root_user_id:
             message['bundle']['location'] = self._bundle_store.get_bundle_location(bundle.uuid)
             for dependency in message['bundle']['dependencies']:
-                dependency['location'] = self._bundle_store.get_bundle_location(dependency['parent_uuid'])
+                dependency['location'] = self._bundle_store.get_bundle_location(
+                    dependency['parent_uuid']
+                )
 
         # Figure out the resource requirements.
         resources = message['resources'] = {}
