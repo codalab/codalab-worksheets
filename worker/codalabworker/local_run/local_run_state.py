@@ -202,17 +202,21 @@ class LocalRunStateMachine(StateTransitioner):
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         # 4) Start container
-        container_id = self._run_manager.docker.start_container(
-            run_state.bundle_path,
-            bundle_uuid,
-            run_state.bundle['command'],
-            run_state.resources['docker_image'],
-            docker_network,
-            dependencies,
-            cpuset,
-            gpuset,
-            run_state.resources['request_memory'],
-        )
+        try:
+            container_id = self._run_manager.docker.start_container(
+                run_state.bundle_path,
+                bundle_uuid,
+                run_state.bundle['command'],
+                run_state.resources['docker_image'],
+                docker_network,
+                dependencies,
+                cpuset,
+                gpuset,
+                run_state.resources['request_memory'],
+            )
+        except DockerException as e:
+            run_state.info['failure_message'] = 'Cannot start Docker container'.format(e)
+            return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         digest = self._run_manager.docker.get_image_repo_digest(run_state.resources['docker_image'])
 
