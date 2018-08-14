@@ -11,7 +11,6 @@ on all slurm machines on a consitent location.
 """
 
 import math
-import os
 import subprocess
 import time
 from tempfile import NamedTemporaryFile
@@ -102,7 +101,6 @@ def start_worker_for(run_number, run_fields):
     print(final_command)
     subprocess.check_call(final_command, shell=True)
     print('Started worker for run {}'.format(run_fields['uuid']))
-    os.remove(worker_command_script)
 
 
 def parse_field(field, val):
