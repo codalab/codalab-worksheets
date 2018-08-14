@@ -14,7 +14,6 @@ import math
 import os
 import subprocess
 import time
-from tempfile import NamedTemporaryFile
 from codalab.lib.formatting import parse_duration
 
 SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
@@ -22,7 +21,8 @@ SRUN_BINARY = 'srun'
 CL_WORKER_BINARY = '/u/nlp/bin/cl-worker'
 CL_BINARY = '/u/nlp/bin/cl'
 DEFAULT_PASSWORD_FILE_LOCATION = '~/codalab.password'
-WORKER_PREFIX = '~/worker-'
+WORKER_NAME_PREFIX = 'worker'
+WORKER_DIR_LOCATION = '~'
 SLEEP_INTERVAL = 30
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
 
@@ -30,7 +30,7 @@ FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_tim
 def write_worker_invocation(
     server=SERVER_INSTANCE,
     password=DEFAULT_PASSWORD_FILE_LOCATION,
-    work_dir='',
+    worker_name='worker',
     tag=None,
     num_cpus=1,
     num_gpus=0,
@@ -41,6 +41,7 @@ def write_worker_invocation(
     the commands that prepare the worker work dir, run the worker
     and clean up the work dir upon exit
     """
+    work_dir = os.path.join(WORKER_DIR_LOCATION, worker_name)
     prepare_command = 'mkdir {};'.format(work_dir)
     cleanup_command = 'rm -rf {};'.format(work_dir)
     flags = [
@@ -57,7 +58,7 @@ def write_worker_invocation(
     if verbose:
         flags.append('--verbose')
     worker_command = '{} {};'.format(CL_WORKER_BINARY, ' '.join(flags))
-    with open('start-{}.sh'.format(work_dir), 'w') as script_file:
+    with open('start-{}.sh'.format(worker_name), 'w') as script_file:
         script_file.write(prepare_command)
         script_file.write(worker_command)
         script_file.write(cleanup_command)
@@ -72,6 +73,7 @@ def start_worker_for(run_number, run_fields):
     job on Slurm
     """
     current_directory = os.path.dirname(os.path.realpath(__file__))
+    worker_name = '{}-{}'.format(WORKER_NAME_PREFIX, run_number)
     tag = None
     if run_fields['request_gpus']:
         if 'jag_hi' in run_fields['tags']:
@@ -93,9 +95,8 @@ def start_worker_for(run_number, run_fields):
     ]
 
     srun_command = ' '.join(srun_flags)
-    worker_home = '{}{}'.format(WORKER_PREFIX, run_number)
     worker_command_script = write_worker_invocation(
-        work_dir=worker_home,
+        worker_name=worker_name,
         tag=tag,
         num_cpus=run_fields['request_cpus'],
         num_gpus=run_fields['request_gpus'],
