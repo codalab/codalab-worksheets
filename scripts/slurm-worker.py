@@ -43,8 +43,8 @@ def get_worker_invocation(
         '--exit-when-idle',
         '--server {}'.format(server),
         '--password {}'.format(password),
-        '--cpuset {}'.format(','.join(range(num_cpus))),
-        '--gpuset {}'.format(','.join(range(num_gpus))),
+        '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
+        '--gpuset {}'.format(','.join(str(idx) for idx in range(num_gpus))),
     ]
 
     if work_dir is not None:
@@ -88,8 +88,8 @@ def start_worker_for(run_number, run_fields):
     worker_invocation = get_worker_invocation(
         work_dir=worker_home,
         tag=tag,
-        num_cpus=run_fields['num_cpus'],
-        num_gpus=run_fields['num_gpus'],
+        num_cpus=run_fields['request_cpus'],
+        num_gpus=run_fields['request_gpus'],
         verbose=True,
     )
     final_command = '{} \'{}; {}; {}\''.format(
