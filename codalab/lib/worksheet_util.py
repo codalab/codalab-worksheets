@@ -893,12 +893,12 @@ def interpret_items(schemas, raw_items):
                 new_last_was_empty_line = value_obj == ''
                 if (
                     len(blocks) > 0
-                    and blocks[-1]['mode'] == TYPE_MARKUP
+                    and blocks[-1]['mode'] == BlockModes.markup_block
                     and not last_was_empty_line
                     and not new_last_was_empty_line
                 ):
                     # Join with previous markup item
-                    blocks[-1].text += '\n' + value_obj
+                    blocks[-1]['text'] += '\n' + value_obj
                 elif not new_last_was_empty_line:
                     blocks.append(
                         MarkupBlockSchema().load({'id': len(blocks), 'text': value_obj}).data
