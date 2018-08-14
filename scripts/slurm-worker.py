@@ -42,8 +42,8 @@ def write_worker_invocation(
     and clean up the work dir upon exit
     """
     work_dir = os.path.join(WORKER_DIR_LOCATION, worker_name)
-    prepare_command = 'mkdir {};'.format(work_dir)
-    cleanup_command = 'rm -rf {};'.format(work_dir)
+    prepare_command = 'mkdir {} || True;'.format(work_dir)
+    cleanup_command = 'rm -rf {} || True;'.format(work_dir)
     flags = [
         '--exit-when-idle',
         '--server {}'.format(server),
@@ -56,7 +56,7 @@ def write_worker_invocation(
         flags.append('--tag {}'.format(tag))
     if verbose:
         flags.append('--verbose')
-    worker_command = '{} {};'.format(CL_WORKER_BINARY, ' '.join(flags))
+    worker_command = '{} {} || True;'.format(CL_WORKER_BINARY, ' '.join(flags))
     with open('start-{}.sh'.format(worker_name), 'w') as script_file:
         script_file.write(prepare_command)
         script_file.write(worker_command)
@@ -102,10 +102,16 @@ def start_worker_for(run_number, run_fields):
         verbose=True,
     )
     final_command = '{} bash {}'.format(srun_command, worker_command_script)
-    print(final_command)
-    subprocess.check_call(final_command, shell=True)
-    print('Started worker for run {}'.format(run_fields['uuid']))
-    os.remove(worker_command_script)
+    print('Starting worker for run {}'.format(run_fields['uuid']))
+    try:
+        subprocess.check_call(final_command, shell=True)
+    except Exception as e:
+        print('Anomaly in worker run: {}'.format(e))
+    finally:
+        try:
+            os.remove(worker_command_script)
+        except Exception as ex:
+            print('Anomaly when trying to remove old worker script: {}'.format(ex))
 
 
 def parse_field(field, val):
