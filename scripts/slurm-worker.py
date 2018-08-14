@@ -63,6 +63,7 @@ def start_worker_for(run_number, run_fields):
     This function makes the actual command call to start the
     job on Slurm
     """
+    tag = None
     if run_fields['request_gpus']:
         if 'jag_hi' in run_fields['tags']:
             partition = 'jag-hi'
