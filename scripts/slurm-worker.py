@@ -11,6 +11,7 @@ on all slurm machines on a consitent location.
 """
 
 import math
+import os
 import subprocess
 import time
 from tempfile import NamedTemporaryFile
@@ -56,7 +57,7 @@ def write_worker_invocation(
     if verbose:
         flags.append('--verbose')
     worker_command = '{} {}'.format(CL_WORKER_BINARY, ' '.join(flags))
-    with NamedTemporaryFile(delete=False) as script_file:
+    with open('start-{}.sh'.format(work_dir), 'w') as script_file:
         script_file.write(prepare_command)
         script_file.write(worker_command)
         script_file.write(cleanup_command)
@@ -70,6 +71,7 @@ def start_worker_for(run_number, run_fields):
     This function makes the actual command call to start the
     job on Slurm
     """
+    current_directory = os.path.dirname(os.path.realpath(__file__))
     tag = None
     if run_fields['request_gpus']:
         if 'jag_hi' in run_fields['tags']:
@@ -86,6 +88,8 @@ def start_worker_for(run_number, run_fields):
         '--cpus-per-task={}'.format(run_fields['request_cpus']),
         '--mem={}'.format(run_fields['request_memory']),
         '--gres=gpu:{}'.format(run_fields['request_gpus']),
+        '--chdir={}'.format(current_directory),
+        '--nodes 1',
     ]
 
     srun_command = ' '.join(srun_flags)
@@ -101,6 +105,7 @@ def start_worker_for(run_number, run_fields):
     print(final_command)
     subprocess.check_call(final_command, shell=True)
     print('Started worker for run {}'.format(run_fields['uuid']))
+    os.remove(worker_command_script)
 
 
 def parse_field(field, val):
