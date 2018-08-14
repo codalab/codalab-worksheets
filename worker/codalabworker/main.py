@@ -96,7 +96,7 @@ def main():
         '--verbose', action='store_true', help='Whether to output verbose log messages.'
     )
     parser.add_argument(
-        '--kill-when-idle',
+        '--exit-when-idle',
         action='store_true',
         help='If specified the worker quits if it finds itself with no jobs after a checkin',
     )
@@ -191,7 +191,7 @@ chmod 600 %s""" % args.password_file
         args.id,
         args.tag,
         args.work_dir,
-        args.kill_when_idle,
+        args.exit_when_idle,
         bundle_service,
     )
 

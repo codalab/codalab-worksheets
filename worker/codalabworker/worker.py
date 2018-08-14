@@ -31,7 +31,7 @@ class Worker(object):
         worker_id,  # type: str
         tag,  # type: str
         work_dir,  # type: str
-        kill_when_idle,  # type: str
+        exit_when_idle,  # type: str
         bundle_service,  # type: BundleServiceClient
     ):
         self.id = worker_id
@@ -39,7 +39,7 @@ class Worker(object):
         self._tag = tag
         self._work_dir = work_dir
         self._bundle_service = bundle_service
-        self._kill_when_idle = kill_when_idle
+        self._exit_when_idle = exit_when_idle
         self._stop = False
         self._last_checkin_successful = False
         self._run_manager = create_run_manager(self)
@@ -51,7 +51,7 @@ class Worker(object):
                 self._run_manager.process_runs()
                 self._run_manager.save_state()
                 if (
-                    self._kill_when_idle
+                    self._exit_when_idle
                     and self._last_checkin_successful
                     and len(self._run_manager.all_runs) == 0
                 ):
