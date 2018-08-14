@@ -42,7 +42,7 @@ def write_worker_invocation(
     and clean up the work dir upon exit
     """
     work_dir = os.path.join(WORKER_DIR_LOCATION, worker_name)
-    prepare_command = 'mkdir {} || True;'.format(work_dir)
+    prepare_command = 'mkdir -p {}/runs || True;'.format(work_dir)
     cleanup_command = 'rm -rf {} || True;'.format(work_dir)
     flags = [
         '--exit-when-idle',
