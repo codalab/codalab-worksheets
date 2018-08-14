@@ -126,7 +126,9 @@ def main():
     # iteration to start booting new workers for them
     cooldown_runs = set()
     while True:
-        run_lines = subprocess.check_output('cl search .mine state=staged -u', shell=True)
+        run_lines = subprocess.check_output(
+            '{} search .mine state=staged -u'.format(CL_BINARY), shell=True
+        )
         uuids = run_lines.splitlines()
         for uuid in uuids:
             if uuid not in cooldown_runs:
