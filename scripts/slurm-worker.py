@@ -37,9 +37,8 @@ def write_worker_invocation(
     verbose=False,
 ):
     """
-    Return the name to a local NamedTemporaryFile that has
-    the commands that prepare the worker work dir, run the worker
-    and clean up the work dir upon exit
+    Return the name to a local file that has the commands that prepare the worker work dir,
+    run the worker and clean up the work dir upon exit.
     """
     work_dir = os.path.join(WORKER_DIR_LOCATION, worker_name)
     prepare_command = 'mkdir -vp {}/runs;'.format(work_dir)
@@ -68,8 +67,7 @@ def start_worker_for(run_number, run_fields):
     """
     Start a worker suitable to run the given run with run_fields
     with the given run_number for the worker directory.
-    This function makes the actual command call to start the
-    job on Slurm
+    This function makes the actual command call to start the job on Slurm.
     """
     current_directory = os.getcwd()
     worker_name = '{}-{}'.format(WORKER_NAME_PREFIX, run_number)
