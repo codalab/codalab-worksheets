@@ -23,7 +23,7 @@ DEFAULT_PASSWORD_FILE_LOCATION = '~/codalab.password'
 WORKER_NAME_PREFIX = 'worker'
 WORKER_DIR_LOCATION = '~'
 SLEEP_INTERVAL = 30
-FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
+FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tags']
 
 
 def parse_duration(dur):
@@ -96,7 +96,7 @@ def start_worker_for(run_number, run_fields):
     worker_name = '{}-{}'.format(WORKER_NAME_PREFIX, run_number)
     tag = None
     if run_fields['request_gpus']:
-        if 'tags' in run_fields and 'jag_hi' in run_fields['tags']:
+        if 'jag_hi' in run_fields['tags']:
             partition = 'jag-hi'
             tag = 'jag-hi'
         else:
