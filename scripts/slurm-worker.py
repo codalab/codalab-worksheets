@@ -14,7 +14,6 @@ import math
 import os
 import subprocess
 import time
-from codalab.lib.formatting import parse_duration
 
 SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
 SRUN_BINARY = 'srun'
@@ -25,6 +24,30 @@ WORKER_NAME_PREFIX = 'worker'
 WORKER_DIR_LOCATION = '~'
 SLEEP_INTERVAL = 30
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
+
+
+def parse_duration(s):
+    """
+    s: <number>[<s|m|h|d|y>]
+    Returns the number of minutes
+    """
+    try:
+        if s[-1].isdigit():
+            return float(s)
+        n, unit = float(s[0:-1]), s[-1].lower()
+        if unit == 's':
+            return math.ceil(n / 60.0)
+        if unit == 'm':
+            return n
+        if unit == 'h':
+            return n * 60
+        if unit == 'd':
+            return n * 60 * 24
+        if unit == 'y':
+            return n * 60 * 24 * 365
+    except (IndexError, ValueError):
+        pass  # continue to next line and throw error
+    raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
 
 
 def write_worker_invocation(
@@ -41,7 +64,7 @@ def write_worker_invocation(
     run the worker and clean up the work dir upon exit.
     """
     work_dir = os.path.join(WORKER_DIR_LOCATION, worker_name)
-    prepare_command = 'mkdir -vp {}/runs;'.format(work_dir)
+    prepare_command = 'mkdir -vp {0} && mkdir -vp {0}/runs;'.format(work_dir)
     cleanup_command = 'rm -rf {};'.format(work_dir)
     flags = [
         '--exit-when-idle',
@@ -119,8 +142,7 @@ def parse_field(field, val):
     takes in
     """
     if field == 'request_time':
-        duration_in_secs = parse_duration(val)
-        return int(math.ceil(duration_in_secs)) * 60
+        return parse_duration(val)
     elif field in ['request_cpus', 'request_gpus']:
         return int(val)
     else:
@@ -142,6 +164,11 @@ def main():
         run_lines = subprocess.check_output(
             '{} search .mine state=staged -u'.format(CL_BINARY), shell=True
         )
+        try:
+            # Make python3 compatible by decoding if we can
+            run_lines = run_lines.decode('utf-8')
+        except Exception:
+            pass
         uuids = run_lines.splitlines()
         for uuid in uuids:
             if uuid not in cooldown_runs:
