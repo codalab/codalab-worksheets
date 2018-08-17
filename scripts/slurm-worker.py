@@ -96,7 +96,7 @@ def start_worker_for(run_number, run_fields):
     worker_name = '{}-{}'.format(WORKER_NAME_PREFIX, run_number)
     tag = None
     if run_fields['request_gpus']:
-        if 'jag_hi' in run_fields['tags']:
+        if 'tags' in run_fields and 'jag_hi' in run_fields['tags']:
             partition = 'jag-hi'
             tag = 'jag-hi'
         else:
