@@ -26,15 +26,15 @@ SLEEP_INTERVAL = 30
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tag']
 
 
-def parse_duration(s):
+def parse_duration(dur):
     """
     s: <number>[<s|m|h|d|y>]
     Returns the number of minutes
     """
     try:
-        if s[-1].isdigit():
-            return float(s)
-        n, unit = float(s[0:-1]), s[-1].lower()
+        if isinstance(dur, float) or isinstance(dur, int) or dur[-1].isdigit():
+            return math.ceil(float(dur) / 60.0)
+        n, unit = float(dur[0:-1]), dur[-1].lower()
         if unit == 's':
             return math.ceil(n / 60.0)
         if unit == 'm':
@@ -47,7 +47,7 @@ def parse_duration(s):
             return n * 60 * 24 * 365
     except (IndexError, ValueError):
         pass  # continue to next line and throw error
-    raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % s)
+    raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
 
 
 def write_worker_invocation(
