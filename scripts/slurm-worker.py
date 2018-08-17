@@ -32,7 +32,7 @@ def parse_duration(dur):
     Returns the number of minutes
     """
     try:
-        if isinstance(dur, float) or isinstance(dur, int) or dur[-1].isdigit():
+        if dur[-1].isdigit():
             return math.ceil(float(dur) / 60.0)
         n, unit = float(dur[0:-1]), dur[-1].lower()
         if unit == 's':
@@ -174,6 +174,11 @@ def main():
             if uuid not in cooldown_runs:
                 info_cmd = '{} info {} -f {}'.format(CL_BINARY, uuid, ','.join(FIELDS))
                 field_values = subprocess.check_output(info_cmd, shell=True)
+                try:
+                    # Make python3 compatible by decoding if we can
+                    field_values = field_values.decode('utf-8')
+                except Exception:
+                    pass
                 run = {
                     field: parse_field(field, val)
                     for field, val in zip(FIELDS, field_values.split())
