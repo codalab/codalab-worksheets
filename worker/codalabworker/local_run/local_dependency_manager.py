@@ -179,9 +179,13 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         if state.stage == DependencyStage.READY and not state.dependents
                     }
                     if failed_deps:
-                        dep_to_remove = min(failed_deps, key=lambda i: failed_deps[i].last_used)
+                        dep_to_remove = min(
+                            failed_deps.iteritems(), key=lambda dep, state: state.last_used
+                        )[0]
                     elif ready_deps:
-                        dep_to_remove = min(ready_deps, key=lambda i: ready_deps[i].last_used)
+                        dep_to_remove = min(
+                            ready_deps.iteritems(), key=lambda dep, state: state.last_used
+                        )[0]
                     else:
                         logger.info(
                             'Dependency quota full but there are only downloading dependencies, not cleaning up until downloads are over'
@@ -245,7 +249,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
 
     def _assign_path(self, dependency):
         """
-        Normalize the path for the dependency by replacing / with _, aboiding conflicts
+        Normalize the path for the dependency by replacing / with _, avoiding conflicts
         """
         parent_uuid, parent_path = dependency
         if parent_path:
