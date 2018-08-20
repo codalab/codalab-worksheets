@@ -7,7 +7,7 @@ import traceback
 import time
 import shutil
 
-from codalabworker.file_util import un_tar_directory
+from codalabworker.file_util import remove_path, un_tar_directory
 from codalabworker.formatting import size_str
 from codalabworker.fsm import BaseDependencyManager, DependencyStage, StateTransitioner
 import codalabworker.pyjson
@@ -192,7 +192,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         )
                         break
                     try:
-                        self._paths.remove(self._dependencies[dep_to_remove].path)
+                        path_to_remove = self._dependencies[dep_to_remove].path
+                        self._paths.remove(path_to_remove)
+                        remove_path(path_to_remove)
                     finally:
                         if dep_to_remove:
                             del self._dependencies[dep_to_remove]
