@@ -273,7 +273,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Acquires all dependency locks in the thread it's called from
         """
         with self._global_lock:
-            for lock in self._dependency_locks:
+            for dependency, lock in self._dependency_locks:
                 lock.acquire()
 
     def _release_all_locks(self):
@@ -281,7 +281,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Releases all dependency locks in the thread it's called from
         """
         with self._global_lock:
-            for lock in self._dependency_locks:
+            for dependency, lock in self._dependency_locks:
                 lock.release()
 
     def _assign_path(self, dependency):
