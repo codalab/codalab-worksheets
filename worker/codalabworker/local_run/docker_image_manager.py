@@ -117,12 +117,12 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     }
                     if failed_images:
                         digest_to_remove = min(
-                            failed_images, key=lambda i: failed_images[i].last_used
-                        )
+                            failed_images.iteritems(), key=lambda image, state: state.last_used
+                        )[0]
                     elif ready_images:
                         digest_to_remove = min(
-                            ready_images, key=lambda i: ready_images[i].last_used
-                        )
+                            ready_images.iteritems(), key=lambda image, state: state.last_used
+                        )[0]
                     else:
                         logger.debug(
                             'Docker image manager disk quota is full but there are only downloading images. Waiting for downloads to finishe before cleanup.'
