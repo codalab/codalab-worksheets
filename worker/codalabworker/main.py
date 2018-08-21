@@ -70,9 +70,8 @@ def main():
     parser.add_argument(
         '--max-dependencies-serialized-length',
         type=int,
-        default=60000,
-        help='Maximum length of serialized json of dependency list of worker '
-        '(e.g., 50, 30000, 60000).',
+        default=10000000,
+        help='Maximum length of serialized json of dependency list of worker in bytes',
     )
     parser.add_argument(
         '--max-image-cache-size',
