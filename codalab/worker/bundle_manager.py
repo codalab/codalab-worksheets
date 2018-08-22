@@ -272,7 +272,7 @@ class BundleManager(object):
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
                 )
                 self._model.set_offline_bundle(bundle)
-            if self._worker_model.send_json_message(
+            elif self._worker_model.send_json_message(
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
                 logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
