@@ -117,11 +117,13 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     }
                     if failed_images:
                         digest_to_remove = min(
-                            failed_images.iteritems(), key=lambda image, state: state.last_used
+                            failed_images.iteritems(),
+                            key=lambda image_state: image_state[1].last_used,
                         )[0]
                     elif ready_images:
                         digest_to_remove = min(
-                            ready_images.iteritems(), key=lambda image, state: state.last_used
+                            ready_images.iteritems(),
+                            key=lambda image_state: image_state[1].last_used,
                         )[0]
                     else:
                         logger.debug(
