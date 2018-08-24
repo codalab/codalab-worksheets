@@ -26,6 +26,11 @@ class RestClient(object):
     Generic class for communicating with a REST API authenticated by OAuth.
     """
 
+    """
+    A dictionary of additional headers to send along with HTTP requests.
+    """
+    _extra_headers = {}
+
     def __init__(self, base_url):
         self._base_url = base_url
 
@@ -58,6 +63,8 @@ class RestClient(object):
         if data and isinstance(data, unicode):
             data = data.encode('utf-8')
         request_url = (self._base_url + path).encode('utf-8')
+
+        headers.update(self._extra_headers)
 
         request = urllib2.Request(request_url, data=data, headers=headers)
         request.get_method = lambda: method
@@ -99,9 +106,14 @@ class RestClient(object):
             conn.putrequest(method, parsed_base_url.path + path)
 
             # Set headers.
-            conn.putheader('Authorization', 'Bearer ' + self._get_access_token())
-            conn.putheader('Transfer-Encoding', 'chunked')
-            conn.putheader('X-Requested-With', 'XMLHttpRequest')
+            headers = {
+                'Authorization': 'Bearer ' + self._get_access_token(),
+                'Transfer-Encoding': 'chunked',
+                'X-Requested-With': 'XMLHttpRequest',
+            }
+            headers.update(self._extra_headers)
+            for header_name, header_value in headers.iteritems():
+                conn.putheader(header_name, header_value)
             conn.endheaders()
 
             # Use chunked transfer encoding to send the data through.
