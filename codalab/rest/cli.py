@@ -104,7 +104,8 @@ def create_cli(worksheet_uuid):
     requests directly to the appropriate Bottle view functions.
     """
     output_buffer = StringIO()
-    rest_client = JsonApiClient(rest_url(), get_user_token)
+    rest_extra_headers = local.config['server'].get('extra_headers', {})
+    rest_client = JsonApiClient(rest_url(), get_user_token, rest_extra_headers)
     manager = CodaLabManager(
         temporary=True,
         config=local.config,
