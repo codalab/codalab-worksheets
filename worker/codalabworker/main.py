@@ -68,12 +68,6 @@ def main():
         help='Maximum size of the temporary bundle data ' '(e.g., 3, 3k, 3m, 3g, 3t).',
     )
     parser.add_argument(
-        '--max-dependencies-serialized-length',
-        type=int,
-        default=10000000,
-        help='Maximum length of serialized json of dependency list of worker in bytes',
-    )
-    parser.add_argument(
         '--max-image-cache-size',
         type=str,
         metavar='SIZE',
@@ -165,7 +159,6 @@ chmod 600 %s""" % args.password_file
             bundle_service,
             args.work_dir,
             max_work_dir_size_bytes,
-            args.max_dependencies_serialized_length,
         )
 
         image_manager = DockerImageManager(
