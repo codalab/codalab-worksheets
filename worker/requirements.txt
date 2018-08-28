@@ -1,4 +1,5 @@
 bottle==0.12.9
+docker==3.5.0
 marshmallow-jsonapi==0.6.0
 marshmallow==2.6.1
 setuptools>=40.0.0

@@ -25,7 +25,6 @@ before_script:
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then mysql -e "CREATE DATABASE codalab_bundles;"; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config cli/default_address http://localhost:2900; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./scripts/create-root-user.py $CODALAB_PASSWORD; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl server; fi &
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl bundle-manager; fi &
