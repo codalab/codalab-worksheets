@@ -41,10 +41,14 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     """
 
     DEPENDENCIES_DIR_NAME = 'dependencies'
+    # TODO(bkgoksel): The server writes these to the worker_dependencies table, which stores the dependencies
+    # json as a SqlAlchemy LargeBinary, which defaults to MySQL BLOB, which has a size limit of
+    # 65K. For now we limit this value to about 58K to avoid any issues but we probably want to do
+    # something better (either specify MEDIUMBLOB in the SqlAlchemy definition of the table or change
+    # the data format of how we store this)
+    MAX_SERIALIZED_LEN = 60000
 
-    def __init__(
-        self, commit_file, bundle_service, worker_dir, max_cache_size_bytes, max_serialized_length
-    ):
+    def __init__(self, commit_file, bundle_service, worker_dir, max_cache_size_bytes):
         super(LocalFileSystemDependencyManager, self).__init__()
         self.add_transition(DependencyStage.DOWNLOADING, self._transition_from_DOWNLOADING)
         self.add_terminal(DependencyStage.READY)
@@ -53,7 +57,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         self._state_committer = JsonStateCommitter(commit_file)
         self._bundle_service = bundle_service
         self._max_cache_size_bytes = max_cache_size_bytes
-        self._max_serialized_length = max_serialized_length or float('inf')
         self.dependencies_dir = os.path.join(
             worker_dir, LocalFileSystemDependencyManager.DEPENDENCIES_DIR_NAME
         )
@@ -161,7 +164,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 serialized_length = len(codalabworker.pyjson.dumps(self._dependencies))
                 if (
                     bytes_used > self._max_cache_size_bytes
-                    or serialized_length > self._max_serialized_length
+                    or serialized_length > LocalFileSystemDependencyManager.MAX_SERIALIZED_LEN
                 ):
                     logger.debug(
                         '%d dependencies in cache, disk usage: %s (max %s), serialized size: %s (max %s)',
@@ -169,7 +172,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         size_str(bytes_used),
                         size_str(self._max_cache_size_bytes),
                         size_str(serialized_length),
-                        size_str(self._max_serialized_length),
+                        LocalFileSystemDependencyManager.MAX_SERIALIZED_LEN,
                     )
                     failed_deps = {
                         dep: state
