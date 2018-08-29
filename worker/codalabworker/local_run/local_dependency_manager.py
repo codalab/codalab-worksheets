@@ -41,7 +41,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     """
 
     DEPENDENCIES_DIR_NAME = 'dependencies'
-    # TODO:bkgoksel: The server writes these to the worker_dependencies table, which stores the dependencies
+    # TODO(bkgoksel): The server writes these to the worker_dependencies table, which stores the dependencies
     # json as a SqlAlchemy LargeBinary, which defaults to MySQL BLOB, which has a size limit of
     # 65K. For now we limit this value to about 58K to avoid any issues but we probably want to do
     # something better (either specify MEDIUMBLOB in the SqlAlchemy definition of the table or change
