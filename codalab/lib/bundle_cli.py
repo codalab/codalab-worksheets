@@ -114,6 +114,7 @@ BUNDLE_COMMANDS = (
     'search',
     'ls',
     'info',
+    'ancestors',
     'cat',
     'wait',
     'download',
@@ -2113,6 +2114,38 @@ class BundleCLI(object):
                     continue
                 print >>self.stdout, wrap(item['name'])
                 self.print_target_info(client, bundle_uuid, item['name'], head=10)
+
+    @Commands.command(
+        'ancestors',
+        help='Show entire history of dependencies for a bundle.',
+        arguments=(
+                Commands.Argument(
+                    'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs=1, completer=BundlesCompleter
+                ),
+                Commands.Argument(
+                    '-w',
+                    '--worksheet-spec',
+                    help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                    completer=WorksheetsCompleter,
+                ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+
+        # bundles = client.fetch(
+        #     'bundles',
+        #     params={
+        #         'specs': args.bundle_spec,
+        #         'worksheet': worksheet_uuid,
+        #         'include': ['owner']
+        #                    + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
+        #     },
+        # )
+
+        print >>self.stdout, "HERRO WORLD!"
+        # print >>self.stdout, bundles
 
     @Commands.command(
         'mount',
