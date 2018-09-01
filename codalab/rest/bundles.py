@@ -103,6 +103,7 @@ def _fetch_bundles():
     specs = query_get_list('specs')
     worksheet_uuid = request.query.get('worksheet')
     descendant_depth = query_get_type(int, 'depth', None)
+    ancestor_level = query_get_type(int, 'level', None)
 
     if keywords:
         # Handle search keywords
@@ -124,9 +125,14 @@ def _fetch_bundles():
             "Request must include either 'keywords' " "or 'specs' query parameter",
         )
 
-    # Find all descendants down to the provided depth
+    # Find all relatives (descendants or ancestors) within the provided levels
+    relative_uuids = set()
     if descendant_depth is not None:
-        bundle_uuids = local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth)
+        relative_uuids.update(local.model.get_self_and_descendants(bundle_uuids, depth=descendant_depth))
+    if ancestor_level is not None:
+        relative_uuids.update(local.model.get_self_and_ancestors(bundle_uuids, level=ancestor_level))
+    if len(relative_uuids) > 0:
+        bundle_uuids = list(relative_uuids)
 
     return build_bundles_document(bundle_uuids)
 

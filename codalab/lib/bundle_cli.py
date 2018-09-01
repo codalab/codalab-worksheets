@@ -2123,6 +2123,12 @@ class BundleCLI(object):
                     'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs=1, completer=BundlesCompleter
                 ),
                 Commands.Argument(
+                    '-l',
+                    '--levels',
+                    default=100,
+                    help="Number of levels of ancestors to show (default: 100).",
+                ),
+                Commands.Argument(
                     '-w',
                     '--worksheet-spec',
                     help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
@@ -2134,18 +2140,18 @@ class BundleCLI(object):
         args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
         client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
 
-        # bundles = client.fetch(
-        #     'bundles',
-        #     params={
-        #         'specs': args.bundle_spec,
-        #         'worksheet': worksheet_uuid,
-        #         'include': ['owner']
-        #                    + (['children', 'group_permissions', 'host_worksheets'] if args.verbose else []),
-        #     },
-        # )
+        print >>self.stdout, "levels", args.levels
+        bundles = client.fetch(
+            'bundles',
+            params={
+                'specs': args.bundle_spec,
+                'worksheet': worksheet_uuid,
+                'levels': args.levels,
+            },
+        )
 
         print >>self.stdout, "HERRO WORLD!"
-        # print >>self.stdout, bundles
+        print >>self.stdout, bundles
 
     @Commands.command(
         'mount',
