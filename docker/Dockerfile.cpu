@@ -89,7 +89,8 @@ RUN pip3 install -U \
       gym[all] \
       nltk
 
-RUN python3 -m spacy download en
+RUN python3.6 -m spacy download en
+RUN echo "alias python3=python3.6" >> ~/.bashrc
 
 
 # Common steps are over, below are CPU-specific commands
