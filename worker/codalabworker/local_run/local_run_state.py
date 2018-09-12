@@ -215,7 +215,7 @@ class LocalRunStateMachine(StateTransitioner):
                 run_state.resources['request_memory'],
             )
         except DockerException as e:
-            run_state.info['failure_message'] = 'Cannot start Docker container'.format(e)
+            run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
         digest = self._run_manager.docker.get_image_repo_digest(run_state.resources['docker_image'])
