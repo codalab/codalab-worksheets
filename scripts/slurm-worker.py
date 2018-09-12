@@ -247,7 +247,7 @@ def parse_field(field, val):
 def main():
     args = parse_args()
 
-    login(args.password_file)
+    login(args)
     # Infinite loop until user kills us
     num_runs = 0
     # Cache runs that we started workers for for one extra iteration in case they're still staged
