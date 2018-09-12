@@ -23,7 +23,7 @@ FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_tim
 
 
 def parse_args():
-    parser = argparse.ArgumentParse(
+    parser = argparse.ArgumentParser(
         description='Script to automatically start slurm jobs to run Codalab bundles in'
     )
     parser.add_argument(
