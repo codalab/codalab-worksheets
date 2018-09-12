@@ -245,7 +245,7 @@ def parse_field(field, val):
 
 
 def main():
-    args = argparse.parse_args()
+    args = parse_args()
 
     login(args.password_file)
     # Infinite loop until user kills us
