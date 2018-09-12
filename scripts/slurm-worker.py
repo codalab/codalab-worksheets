@@ -23,6 +23,7 @@ FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_tim
 
 
 def parse_args():
+    home = os.environ.get('HOME')
     parser = argparse.ArgumentParser(
         description='Script to automatically start slurm jobs to run Codalab bundles in'
     )
@@ -30,7 +31,7 @@ def parse_args():
         '--password-file',
         type=str,
         help='Read the Codalab username and password from this file. Each should be on its own line',
-        default=os.path.join(os.environ.get('HOME'), '/codalab.password'),
+        default=os.path.join(home, 'codalab.password'),
     )
     parser.add_argument(
         '--server-instance',
@@ -48,19 +49,19 @@ def parse_args():
         '--cl-worker-binary',
         type=str,
         help='Where the cl-worker binary lives (default is the location on the Stanford NLP cluster',
-        default='u/nlp/bin/cl-worker',
+        default='/u/nlp/bin/cl-worker',
     )
     parser.add_argument(
         '--cl-binary',
         type=str,
         help='Where the cl (Codalab CLI) binary lives (default is the location on the Stanford NLP cluster',
-        default='u/nlp/bin/cl',
+        default='/u/nlp/bin/cl',
     )
     parser.add_argument(
         '--worker-parent-dir',
         type=str,
         help='Where the temporary working directories for workers should be created (default home directory of user)',
-        default=os.environ.get('HOME'),
+        default=home,
     )
     parser.add_argument(
         '--worker-dir-prefix',
