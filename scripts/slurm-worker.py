@@ -102,42 +102,6 @@ def parse_duration(dur):
     raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
 
 
-def get_user_info(password_file):
-    if password_file:
-        if os.stat(password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-            print >>sys.stderr, """
-Permissions on password file are too lax.
-Only the user should be allowed to access the file.
-On Linux, run:
-chmod 600 %s""" % password_file
-            exit(1)
-        with open(password_file) as f:
-            username = f.readline().strip()
-            password = f.readline().strip()
-    else:
-        username = os.environ.get('CODALAB_USERNAME')
-        password = os.environ.get('CODALAB_PASSWORD')
-    return username, password
-
-
-def login(args):
-    username, password = get_user_info(args.password_file)
-    if username and password:
-        proc = subprocess.Popen(
-            '{} work {}::'.format(args.cl_binary, args.server_instance),
-            shell=True,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-        proc.stdin.write('{}\n'.format(username))
-        proc.stdin.flush()
-        proc.stdin.write('{}\n'.format(password))
-        proc.stdin.flush()
-    subprocess.check_call('{} work {}::'.format(args.cl_binary, args.server_instance), shell=True)
-    print('Logged in to {}'.format(args.server_instance))
-
-
 def write_worker_invocation(
     worker_binary,
     server,
@@ -248,7 +212,9 @@ def parse_field(field, val):
 def main():
     args = parse_args()
 
-    login(args)
+    # Login
+    subprocess.check_call('{} work {}::'.format(args.cl_binary, args.server_instance), shell=True)
+    print('Logged in to {}'.format(args.server_instance))
     # Infinite loop until user kills us
     num_runs = 0
     # Cache runs that we started workers for for one extra iteration in case they're still staged
