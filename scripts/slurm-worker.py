@@ -30,7 +30,7 @@ def parse_args():
         '--password-file',
         type=str,
         help='Read the Codalab username and password from this file. Each should be on its own line',
-        default='~/codalab.password',
+        default=os.path.join(os.environ.get('HOME'), '/codalab.password'),
     )
     parser.add_argument(
         '--server-instance',
@@ -60,7 +60,7 @@ def parse_args():
         '--worker-parent-dir',
         type=str,
         help='Where the temporary working directories for workers should be created (default home directory of user)',
-        default='~',
+        default=os.environ.get('HOME'),
     )
     parser.add_argument(
         '--worker-dir-prefix',
