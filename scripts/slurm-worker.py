@@ -14,6 +14,8 @@ import math
 import os
 import subprocess
 import time
+import stat
+import sys
 
 SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
 SRUN_BINARY = 'srun'
@@ -48,6 +50,42 @@ def parse_duration(dur):
     except (IndexError, ValueError):
         pass  # continue to next line and throw error
     raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
+
+
+def get_user_info(args):
+    if args.password_file:
+        if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+            print >>sys.stderr, """
+Permissions on password file are too lax.
+Only the user should be allowed to access the file.
+On Linux, run:
+chmod 600 %s""" % args.password_file
+            exit(1)
+        with open(args.password_file) as f:
+            username = f.readline().strip()
+            password = f.readline().strip()
+    else:
+        username = os.environ.get('CODALAB_USERNAME')
+        password = os.environ.get('CODALAB_PASSWORD')
+    return username, password
+
+
+def login(args):
+    username, password = get_user_info(args)
+    if username and password:
+        proc = subprocess.Popen(
+            '{} work {}::'.format(CL_BINARY, SERVER_INSTANCE),
+            shell=True,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        proc.stdin.write('{}\n'.format(username))
+        proc.stdin.flush()
+        proc.stdin.write('{}\n'.format(password))
+        proc.stdin.flush()
+    subprocess.check_call('{} work {}::'.format(CL_BINARY, SERVER_INSTANCE), shell=True)
+    print('Logged in to {}'.format(SERVER_INSTANCE))
 
 
 def write_worker_invocation(
@@ -153,8 +191,8 @@ def parse_field(field, val):
 
 def main():
     # Log in with the server
-    subprocess.check_call('{} work {}::'.format(CL_BINARY, SERVER_INSTANCE), shell=True)
-    print('Logged in to {}'.format(SERVER_INSTANCE))
+    args = argparse.parse_args()
+    login(args)
 
     # Infinite loop until user kills us
     num_runs = 0
