@@ -27,49 +27,49 @@ def parse_args():
         description='Script to automatically start slurm jobs to run Codalab bundles in'
     )
     parser.add_argument(
-        'password-file',
+        '--password-file',
         type=str,
         help='Read the Codalab username and password from this file. Each should be on its own line',
         default='~/codalab.password',
     )
     parser.add_argument(
-        'server-instance',
+        '--server-instance',
         type=str,
         help='Codalab server to run the workers for (default Stanford NLP cluster instance), use https://worksheets.codalab.org for the public Codalab instance',
         default='https://worksheets-dev.codalab.org',
     )
     parser.add_argument(
-        'srun-binary',
+        '--srun-binary',
         type=str,
         help='Where the binary for the srun command lives (default is the location on the Stanford NLP cluster)',
         default='srun',
     )
     parser.add_argument(
-        'cl-worker-binary',
+        '--cl-worker-binary',
         type=str,
         help='Where the cl-worker binary lives (default is the location on the Stanford NLP cluster',
         default='u/nlp/bin/cl-worker',
     )
     parser.add_argument(
-        'cl-binary',
+        '--cl-binary',
         type=str,
         help='Where the cl (Codalab CLI) binary lives (default is the location on the Stanford NLP cluster',
         default='u/nlp/bin/cl',
     )
     parser.add_argument(
-        'worker-parent-dir',
+        '--worker-parent-dir',
         type=str,
         help='Where the temporary working directories for workers should be created (default home directory of user)',
         default='~',
     )
     parser.add_argument(
-        'worker-dir-prefix',
+        '--worker-dir-prefix',
         type=str,
         help='Prefix to use for temporary worker directories (they are named \{prefix\}-\{worker number\})',
         default='worker',
     )
     parser.add_argument(
-        'sleep-interval',
+        '--sleep-interval',
         type=int,
         help='Number of seconds to wait between each time the server is polled for new runs (default 30)',
         default=30,
