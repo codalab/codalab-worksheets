@@ -78,7 +78,7 @@ def write_worker_invocation(
         flags.append('--tag {}'.format(tag))
     if verbose:
         flags.append('--verbose')
-    worker_command = '{} {} || true;'.format(CL_WORKER_BINARY, ' '.join(flags))
+    worker_command = '{} {};'.format(CL_WORKER_BINARY, ' '.join(flags))
     with open('start-{}.sh'.format(worker_name), 'w') as script_file:
         script_file.write(prepare_command)
         script_file.write(worker_command)
@@ -107,12 +107,14 @@ def start_worker_for(run_number, run_fields):
     srun_flags = [
         SRUN_BINARY,
         '--partition={}'.format(partition),
-        '--cpus-per-task={}'.format(run_fields['request_cpus']),
         '--mem={}'.format(run_fields['request_memory']),
         '--gres=gpu:{}'.format(run_fields['request_gpus']),
         '--chdir={}'.format(current_directory),
         '--nodes 1',
     ]
+
+    if run_fields['request_cpus'] > 1:
+        srun_flags.append('--cpus-per-task={}'.format(run_fields['request_cpus']))
 
     srun_command = ' '.join(srun_flags)
     worker_command_script = write_worker_invocation(
