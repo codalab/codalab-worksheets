@@ -312,7 +312,7 @@ while True:
                 ['cl', 'run', 'stress-test.pl:' + upload_uuid, 'perl stress-test.pl 5 10 10']
             )
             run_command(
-                ['cl', 'wait', uuid], 30, 3600
+                ['cl', 'wait', uuid], 600, 3600
             )  # Running might take a while (includes staged time)
             run_command(['cl', 'rm', upload_uuid, uuid])
 
