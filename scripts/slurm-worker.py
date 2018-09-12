@@ -15,8 +15,6 @@ import math
 import os
 import subprocess
 import time
-import stat
-import sys
 
 
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tags']
