@@ -10,6 +10,7 @@ but can be configured for other Slurm clusters. The script just requires codalab
 on all slurm machines on a consitent location.
 """
 
+import argparse
 import math
 import os
 import subprocess
@@ -17,15 +18,63 @@ import time
 import stat
 import sys
 
-SERVER_INSTANCE = 'https://worksheets-dev.codalab.org'
-SRUN_BINARY = 'srun'
-CL_WORKER_BINARY = '/u/nlp/bin/cl-worker'
-CL_BINARY = '/u/nlp/bin/cl'
-DEFAULT_PASSWORD_FILE_LOCATION = '~/codalab.password'
-WORKER_NAME_PREFIX = 'worker'
-WORKER_DIR_LOCATION = '~'
-SLEEP_INTERVAL = 30
+
 FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tags']
+
+
+def parse_args():
+    parser = argparse.ArgumentParse(
+        description='Script to automatically start slurm jobs to run Codalab bundles in'
+    )
+    parser.add_argument(
+        'password-file',
+        type=str,
+        help='Read the Codalab username and password from this file. Each should be on its own line',
+        default='~/codalab.password',
+    )
+    parser.add_argument(
+        'server-instance',
+        type=str,
+        help='Codalab server to run the workers for (default Stanford NLP cluster instance), use https://worksheets.codalab.org for the public Codalab instance',
+        default='https://worksheets-dev.codalab.org',
+    )
+    parser.add_argument(
+        'srun-binary',
+        type=str,
+        help='Where the binary for the srun command lives (default is the location on the Stanford NLP cluster)',
+        default='srun',
+    )
+    parser.add_argument(
+        'cl-worker-binary',
+        type=str,
+        help='Where the cl-worker binary lives (default is the location on the Stanford NLP cluster',
+        default='u/nlp/bin/cl-worker',
+    )
+    parser.add_argument(
+        'cl-binary',
+        type=str,
+        help='Where the cl (Codalab CLI) binary lives (default is the location on the Stanford NLP cluster',
+        default='u/nlp/bin/cl',
+    )
+    parser.add_argument(
+        'worker-parent-dir',
+        type=str,
+        help='Where the temporary working directories for workers should be created (default home directory of user)',
+        default='~',
+    )
+    parser.add_argument(
+        'worker-dir-prefix',
+        type=str,
+        help='Prefix to use for temporary worker directories (they are named \{prefix\}-\{worker number\})',
+        default='worker',
+    )
+    parser.add_argument(
+        'sleep-interval',
+        type=int,
+        help='Number of seconds to wait between each time the server is polled for new runs (default 30)',
+        default=30,
+    )
+    return parser.parse_args()
 
 
 def parse_duration(dur):
@@ -52,16 +101,16 @@ def parse_duration(dur):
     raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
 
 
-def get_user_info(args):
-    if args.password_file:
-        if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+def get_user_info(password_file):
+    if password_file:
+        if os.stat(password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
             print >>sys.stderr, """
 Permissions on password file are too lax.
 Only the user should be allowed to access the file.
 On Linux, run:
-chmod 600 %s""" % args.password_file
+chmod 600 %s""" % password_file
             exit(1)
-        with open(args.password_file) as f:
+        with open(password_file) as f:
             username = f.readline().strip()
             password = f.readline().strip()
     else:
@@ -71,10 +120,10 @@ chmod 600 %s""" % args.password_file
 
 
 def login(args):
-    username, password = get_user_info(args)
+    username, password = get_user_info(args.password_file)
     if username and password:
         proc = subprocess.Popen(
-            '{} work {}::'.format(CL_BINARY, SERVER_INSTANCE),
+            '{} work {}::'.format(args.cl_binary, args.server_instance),
             shell=True,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
@@ -84,13 +133,15 @@ def login(args):
         proc.stdin.flush()
         proc.stdin.write('{}\n'.format(password))
         proc.stdin.flush()
-    subprocess.check_call('{} work {}::'.format(CL_BINARY, SERVER_INSTANCE), shell=True)
-    print('Logged in to {}'.format(SERVER_INSTANCE))
+    subprocess.check_call('{} work {}::'.format(args.cl_binary, args.server_instance), shell=True)
+    print('Logged in to {}'.format(args.server_instance))
 
 
 def write_worker_invocation(
-    server=SERVER_INSTANCE,
-    password=DEFAULT_PASSWORD_FILE_LOCATION,
+    worker_binary,
+    server,
+    password_file,
+    worker_parent_dir,
     worker_name='worker',
     tag=None,
     num_cpus=1,
@@ -101,13 +152,13 @@ def write_worker_invocation(
     Return the name to a local file that has the commands that prepare the worker work dir,
     run the worker and clean up the work dir upon exit.
     """
-    work_dir = os.path.join(WORKER_DIR_LOCATION, worker_name)
+    work_dir = os.path.join(worker_parent_dir, worker_name)
     prepare_command = 'mkdir -vp {0} && mkdir -vp {0}/runs;'.format(work_dir)
     cleanup_command = 'rm -rf {};'.format(work_dir)
     flags = [
         '--exit-when-idle',
         '--server {}'.format(server),
-        '--password {}'.format(password),
+        '--password {}'.format(password_file),
         '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
         '--work-dir {}'.format(work_dir),
     ]
@@ -116,7 +167,7 @@ def write_worker_invocation(
         flags.append('--tag {}'.format(tag))
     if verbose:
         flags.append('--verbose')
-    worker_command = '{} {};'.format(CL_WORKER_BINARY, ' '.join(flags))
+    worker_command = '{} {};'.format(worker_binary, ' '.join(flags))
     with open('start-{}.sh'.format(worker_name), 'w') as script_file:
         script_file.write(prepare_command)
         script_file.write(worker_command)
@@ -124,14 +175,14 @@ def write_worker_invocation(
     return script_file.name
 
 
-def start_worker_for(run_number, run_fields):
+def start_worker_for(args, run_number, run_fields):
     """
     Start a worker suitable to run the given run with run_fields
     with the given run_number for the worker directory.
     This function makes the actual command call to start the job on Slurm.
     """
     current_directory = os.getcwd()
-    worker_name = '{}-{}'.format(WORKER_NAME_PREFIX, run_number)
+    worker_name = '{}-{}'.format(args.worker_dir_prefix, run_number)
     tag = None
     if run_fields['request_gpus']:
         if 'jag_hi' in run_fields['tags']:
@@ -143,7 +194,7 @@ def start_worker_for(run_number, run_fields):
         partition = 'john'
 
     srun_flags = [
-        SRUN_BINARY,
+        args.srun_binary,
         '--partition={}'.format(partition),
         '--mem={}'.format(run_fields['request_memory']),
         '--gres=gpu:{}'.format(run_fields['request_gpus']),
@@ -156,6 +207,10 @@ def start_worker_for(run_number, run_fields):
 
     srun_command = ' '.join(srun_flags)
     worker_command_script = write_worker_invocation(
+        args.cl_worker_binary,
+        args.server_instance,
+        args.password_file,
+        args.worker_parent_dir,
         worker_name=worker_name,
         tag=tag,
         num_cpus=run_fields['request_cpus'],
@@ -190,10 +245,9 @@ def parse_field(field, val):
 
 
 def main():
-    # Log in with the server
     args = argparse.parse_args()
-    login(args)
 
+    login(args.password_file)
     # Infinite loop until user kills us
     num_runs = 0
     # Cache runs that we started workers for for one extra iteration in case they're still staged
@@ -202,7 +256,7 @@ def main():
     cooldown_runs = set()
     while True:
         run_lines = subprocess.check_output(
-            '{} search .mine state=staged -u'.format(CL_BINARY), shell=True
+            '{} search .mine state=staged -u'.format(args.cl_binary), shell=True
         )
         try:
             # Make python3 compatible by decoding if we can
@@ -212,7 +266,7 @@ def main():
         uuids = run_lines.splitlines()
         for uuid in uuids:
             if uuid not in cooldown_runs:
-                info_cmd = '{} info {} -f {}'.format(CL_BINARY, uuid, ','.join(FIELDS))
+                info_cmd = '{} info {} -f {}'.format(args.cl_binary, uuid, ','.join(FIELDS))
                 field_values = subprocess.check_output(info_cmd, shell=True)
                 try:
                     # Make python3 compatible by decoding if we can
@@ -223,7 +277,7 @@ def main():
                     field: parse_field(field, val)
                     for field, val in zip(FIELDS, field_values.split())
                 }
-                start_worker_for(num_runs, run)
+                start_worker_for(args, num_runs, run)
                 cooldown_runs.add(uuid)
                 num_runs += 1
             else:
@@ -232,7 +286,7 @@ def main():
                 )
                 cooldown_runs.remove(uuid)
 
-        time.sleep(SLEEP_INTERVAL)
+        time.sleep(args.sleep_interval)
 
 
 if __name__ == '__main__':
