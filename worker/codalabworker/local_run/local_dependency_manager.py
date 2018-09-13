@@ -309,6 +309,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     def _store_dependency(self, dependency_path, fileobj, target_type):
         """
         Copy the dependency fileobj to its path in the local filesystem
+        Overwrite existing files by the same name if found
         """
         try:
             if os.path.exists(dependency_path):
