@@ -311,6 +311,12 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Copy the dependency fileobj to its path in the local filesystem
         """
         try:
+            if os.path.exists(dependency_path):
+                logger.info('Path %s already exists, overwriting', dependency_path)
+                if os.path.isdir(dependency_path):
+                    shutil.rmtree(dependency_path)
+                else:
+                    os.remove(dependency_path)
             if target_type == 'directory':
                 un_tar_directory(fileobj, dependency_path, 'gz')
             else:
