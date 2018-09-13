@@ -1,5 +1,4 @@
-"""
-Script that's designed for individual users of a Slurm managed cluster to run on a machine
+""" Script that's designed for individual users of a Slurm managed cluster to run on a machine
 with srun access. Once the user starts the script and logs in, the script busy loops, querying
 the given CodaLab instance for staged bundles belonging to the user. Every time there's a staged
 bundle, its CodaLab resource requests (gpu, cpu, memory etc) are converted to srun options and a
@@ -72,6 +71,12 @@ def parse_args():
         type=int,
         help='Number of seconds to wait between each time the server is polled for new runs (default 30)',
         default=30,
+    )
+    parser.add_argument(
+        '--max-concurrent-workers',
+        type=int,
+        help='Maximum number of concurrent workers this script will launch (default 10)',
+        default=10,
     )
     return parser.parse_args()
 
