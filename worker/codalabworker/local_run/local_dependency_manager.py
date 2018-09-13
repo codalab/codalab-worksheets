@@ -41,6 +41,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     """
 
     DEPENDENCIES_DIR_NAME = 'dependencies'
+    DEPENDENCY_FAILURE_COOLDOWN = 10
     # TODO(bkgoksel): The server writes these to the worker_dependencies table, which stores the dependencies
     # json as a SqlAlchemy LargeBinary, which defaults to MySQL BLOB, which has a size limit of
     # 65K. For now we limit this value to about 58K to avoid any issues but we probably want to do
@@ -197,17 +198,38 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                             'Dependency quota full but there are only downloading dependencies, not cleaning up until downloads are over'
                         )
                         break
-                    try:
-                        path_to_remove = self._dependencies[dep_to_remove].path
-                        self._paths.remove(path_to_remove)
-                        remove_path(path_to_remove)
-                    finally:
-                        if dep_to_remove:
-                            del self._dependencies[dep_to_remove]
+                    if dep_to_remove:
+                        self._delete_dependency(dep_to_remove)
                     self._release_all_locks()
                 else:
+                    failed_deps = {
+                        dep: state
+                        for dep, state in self._dependencies.items()
+                        if state.stage == DependencyStage.FAILED
+                    }
+                    for dependency, dependency_state in failed_deps.items():
+                        seconds_since_failure = time.time() - dependency_state.last_used
+                        if (
+                            seconds_since_failure
+                            > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
+                        ):
+                            self._delete_dependency(dependency)
                     self._release_all_locks()
                     break
+
+    def _delete_dependency(self, dependency):
+        """
+        Remove the given dependency from the manager's state
+        Also delete any known files on the filesystem if any exist
+        """
+        if self._acquire_if_exists(dependency):
+            try:
+                path_to_remove = self._dependencies[dependency].path
+                self._paths.remove(path_to_remove)
+                remove_path(path_to_remove)
+            finally:
+                del self._dependencies[dependency]
+                self._dependency_locks[dependency].release()
 
     def has(self, dependency):
         """
