@@ -309,8 +309,18 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
     def _store_dependency(self, dependency_path, fileobj, target_type):
         """
         Copy the dependency fileobj to its path in the local filesystem
+        Overwrite existing files by the same name if found
+        (may happen if filesystem modified outside the dependency manager,
+         for example during an update if the state gets reset but filesystem
+         doesn't get cleared)
         """
         try:
+            if os.path.exists(dependency_path):
+                logger.info('Path %s already exists, overwriting', dependency_path)
+                if os.path.isdir(dependency_path):
+                    shutil.rmtree(dependency_path)
+                else:
+                    os.remove(dependency_path)
             if target_type == 'directory':
                 un_tar_directory(fileobj, dependency_path, 'gz')
             else:
@@ -381,7 +391,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     self._downloading[dependency]['success'] = False
                     self._downloading[dependency][
                         'failure_message'
-                    ] = "Depdendency download failed: %s " % str(e)
+                    ] = "Dependency download failed: %s " % str(e)
 
         dependency = dependency_state.dependency
         parent_uuid, parent_path = dependency
