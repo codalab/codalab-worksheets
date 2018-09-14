@@ -187,7 +187,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         def download():
             def update_status_message_and_check_killed(status_message):
                 with self._lock:
-                    image_state = self.get(digest)
+                    image_state = self._images[digest]
                     if self._stop or image_state.killed:
                         return False  # should_resume = False
                     else:
@@ -201,7 +201,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 logger.debug('Finished downloading image %s', digest)
             except DockerException as err:
                 with self._lock:
-                    image_state = self.get(digest)
+                    image_state = self._images[digest]
                     self._images[digest] = image_state._replace(message=str(err))
 
         digest = image_state.digest
