@@ -310,6 +310,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         """
         Copy the dependency fileobj to its path in the local filesystem
         Overwrite existing files by the same name if found
+        (may happen if filesystem modified outside the dependency manager,
+         for example during an update if the state gets reset but filesystem
+         doesn't get cleared)
         """
         try:
             if os.path.exists(dependency_path):
@@ -388,7 +391,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     self._downloading[dependency]['success'] = False
                     self._downloading[dependency][
                         'failure_message'
-                    ] = "Depdendency download failed: %s " % str(e)
+                    ] = "Dependency download failed: %s " % str(e)
 
         dependency = dependency_state.dependency
         parent_uuid, parent_path = dependency
