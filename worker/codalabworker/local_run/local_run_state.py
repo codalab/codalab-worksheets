@@ -120,13 +120,12 @@ class LocalRunStateMachine(StateTransitioner):
 
         dependencies_ready = True
         status_messages = []
+        bundle_uuid = run_state.bundle['uuid']
 
         # get dependencies
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
-            dependency_state = self._run_manager.dependency_manager.get(
-                run_state.bundle['uuid'], dependency
-            )
+            dependency_state = self._run_manager.dependency_manager.get(bundle_uuid, dependency)
             if dependency_state.stage == DependencyStage.DOWNLOADING:
                 status_messages.append(
                     'Downloading dependency %s: %s done (archived size)'
@@ -143,7 +142,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         # get the docker image
         docker_image = run_state.resources['docker_image']
-        image_state = self._run_manager.image_manager.get(docker_image)
+        image_state = self._run_manager.image_manager.get(bundle_uuid, docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append('Pulling docker image: ' + (image_state.message or docker_image))
             dependencies_ready = False
@@ -167,7 +166,6 @@ class LocalRunStateMachine(StateTransitioner):
         os.mkdir(run_state.bundle_path)
 
         # 2) Set up symlinks
-        bundle_uuid = run_state.bundle['uuid']
         dependencies = []
         docker_dependencies_path = '/' + bundle_uuid + '_dependencies'
         for dep in run_state.bundle['dependencies']:
@@ -363,6 +361,7 @@ class LocalRunStateMachine(StateTransitioner):
                     traceback.print_exc()
                     time.sleep(1)
 
+        self._run_manager.image_manager.release(bundle_uuid, run_state.resources['docker_image'])
         for dep in run_state.bundle['dependencies']:
             self._run_manager.dependency_manager.release(
                 bundle_uuid, (dep['parent_uuid'], dep['parent_path'])
