@@ -151,6 +151,26 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             with self._dependency_locks[entry]:
                 self._dependencies[entry] = self.transition(state)
 
+    def _prune_failed_dependencies(self):
+        """
+        Remove all failed dependencies older than 10 seconds. Without this
+        if a dependency download ever fails any future run assigned to this
+        worker with the same dependency will automatically fail.
+        """
+        with self._global_lock:
+            failed_deps = {
+                dep: state
+                for dep, state in self._dependencies.items()
+                if state.stage == DependencyStage.FAILED
+            }
+            for dependency, dependency_state in failed_deps.items():
+                seconds_since_failure = time.time() - dependency_state.last_used
+                if (
+                    seconds_since_failure
+                    > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
+                ):
+                    self._delete_dependency(dependency)
+
     def _cleanup(self):
         """
         Limit the disk usage of the dependencies (both the bundle files and the serialized state file size)
@@ -158,6 +178,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Doesn't touch downloading dependencies.
         """
         # With all the locks (should be fast if no cleanup needed, otherwise make sure nothing is corrupted
+        self._prune_failed_dependencies()
         while True:
             with self._global_lock:
                 self._acquire_all_locks()
@@ -200,22 +221,9 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                         break
                     if dep_to_remove:
                         self._delete_dependency(dep_to_remove)
-                    self._release_all_locks()
                 else:
-                    failed_deps = {
-                        dep: state
-                        for dep, state in self._dependencies.items()
-                        if state.stage == DependencyStage.FAILED
-                    }
-                    for dependency, dependency_state in failed_deps.items():
-                        seconds_since_failure = time.time() - dependency_state.last_used
-                        if (
-                            seconds_since_failure
-                            > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
-                        ):
-                            self._delete_dependency(dependency)
-                    self._release_all_locks()
                     break
+            self._release_all_locks()
 
     def _delete_dependency(self, dependency):
         """
