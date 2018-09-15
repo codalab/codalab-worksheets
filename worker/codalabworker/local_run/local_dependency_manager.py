@@ -224,7 +224,6 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 else:
                     break
             self._release_all_locks()
-        self._release_all_locks()
 
     def _delete_dependency(self, dependency):
         """
