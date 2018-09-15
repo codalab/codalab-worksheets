@@ -50,10 +50,18 @@ class BaseDependencyManager(object):
         """ Return whether or not the corresponding DependencyState exists in the manager """
         raise NotImplementedError
 
-    def get(self, dependency):
+    def get(self, uuid, dependency):
         """
         Start downloading the corresponding dependency if not already in progress.
+        Register that the given uuid is a dependent of this dependency.
         Return the corresponding DependencyState.
+        """
+        raise NotImplementedError
+
+    def release(self, uuid, digest):
+        """
+        Register that the run with uuid is no longer dependent on this dependency
+        If no more runs are dependent on this dependency image, kill it
         """
         raise NotImplementedError
 

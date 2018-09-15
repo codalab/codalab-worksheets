@@ -12,7 +12,9 @@ from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
-DockerImageState = namedtuple('DockerImageState', 'stage digest killed last_used message')
+DockerImageState = namedtuple(
+    'DockerImageState', 'stage digest killed dependents last_used message'
+)
 
 
 class DockerImageManager(StateTransitioner, BaseDependencyManager):
@@ -113,7 +115,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     ready_images = {
                         digest: image
                         for digest, image in self._images.items()
-                        if image.stage == DependencyStage.READY
+                        if image.stage == DependencyStage.READY and not image.dependents
                     }
                     if failed_images:
                         digest_to_remove = min(
@@ -137,20 +139,14 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
             else:
                 break
 
-    def remove(self, digest):
-        """
-        Set the image to be removed. This will fail the active downloads
-        """
-        if not self.has(digest):
-            return
-        with self._lock:
-            self._images[digest] = self._images[digest]._replace(killed=True)
-
     def has(self, digest):
         with self._lock:
             return digest in self._images
 
-    def get(self, digest):
+    def get(self, uuid, digest):
+        """
+        Request the docker image for the run with uuid, registering uuid as a dependent of this docker image
+        """
         now = time.time()
         with self._lock:
             if not self.has(digest):
@@ -158,14 +154,29 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                     stage=DependencyStage.DOWNLOADING,
                     digest=digest,
                     killed=False,
+                    dependents=set([uuid]),
                     last_used=now,
                     message="",
                 )
 
             # update last_used as long as it isn't in FAILED
             if self._images[digest].stage != DependencyStage.FAILED:
+                self._images[digest].dependents.add(uuid)
                 self._images[digest] = self._images[digest]._replace(last_used=now)
             return self._images[digest]
+
+    def release(self, uuid, digest):
+        """
+        Register that the run with uuid is no longer dependent on this docker image
+        If no more runs are dependent on this docker image, kill it
+        """
+        if self.has(digest):
+            image_state = self._images[digest]
+            if uuid in image_state.dependents:
+                image_state.dependents.remove(uuid)
+            if not image_state.dependents:
+                image_state = image_state._replace(killed=True)
+                self._images[digest] = image_state
 
     @property
     def all_images(self):
@@ -176,7 +187,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
         def download():
             def update_status_message_and_check_killed(status_message):
                 with self._lock:
-                    image_state = self.get(digest)
+                    image_state = self._images[digest]
                     if self._stop or image_state.killed:
                         return False  # should_resume = False
                     else:
@@ -190,7 +201,7 @@ class DockerImageManager(StateTransitioner, BaseDependencyManager):
                 logger.debug('Finished downloading image %s', digest)
             except DockerException as err:
                 with self._lock:
-                    image_state = self.get(digest)
+                    image_state = self._images[digest]
                     self._images[digest] = image_state._replace(message=str(err))
 
         digest = image_state.digest
