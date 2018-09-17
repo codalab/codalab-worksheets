@@ -18,7 +18,6 @@ import errno
 import getpass
 import math
 import os
-import shutil
 import subprocess
 import stat
 import sys
@@ -497,9 +496,7 @@ def main():
         daemon.login(*daemon.last_args)
         daemon.restart()
     elif args.action == 'logs':
-        with open(args.logfile.format('stdout'), 'r') as stdout, open(
-            args.logfile.format('stderr'), 'r'
-        ) as stderr:
+        with open(daemon.stdout, 'r') as stdout, open(daemon.stderr, 'r') as stderr:
             print(">>>>>>STDOUT")
             print(stdout.read())
             print(">>>>>>STDERR")
