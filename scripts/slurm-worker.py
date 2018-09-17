@@ -36,12 +36,14 @@ class Daemon:
     Source: http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
     """
 
-    def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
-
+    def __init__(
+        self, pidfile, chdir='/', stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'
+    ):
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
         self.pidfile = pidfile
+        self.chdir = chdir
         self.last_args = []
         self.last_kwargs = {}
 
@@ -61,7 +63,7 @@ class Daemon:
             sys.exit(1)
 
         # decouple from parent environment
-        os.chdir("/")
+        os.chdir(self.chdir)
         os.setsid()
         os.umask(0)
 
@@ -198,6 +200,13 @@ class Daemon:
 
 
 class SlurmWorkerDaemon(Daemon):
+    def __init__(self, script_dir):
+        pidfile = os.path.join(script_dir, 'worker.pid')
+        stdout = os.path.join(script_dir, 'worker.stdout.log')
+        stderr = os.path.join(script_dir, 'worker.stderr.log')
+        self.password_file = os.path.join(script_dir, 'worker.password')
+        Daemon.__init__(self, pidfile, chdir=script_dir, stdout=stdout, stderr=stderr)
+
     def login(self, args):
         """
         Log in to the CLI
@@ -207,9 +216,9 @@ class SlurmWorkerDaemon(Daemon):
         subprocess.check_call(
             '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
         )
-        if os.path.isfile(args.password_file):
-            if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
-                os.chmod(args.password_file, 0o600)
+        if os.path.isfile(self.password_file):
+            if os.stat(self.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+                os.chmod(self.password_file, 0o600)
         else:
             print("No password file for workers, getting from user")
             username = os.environ.get('CODALAB_USERNAME')
@@ -218,9 +227,9 @@ class SlurmWorkerDaemon(Daemon):
             password = os.environ.get('CODALAB_PASSWORD')
             if password is None:
                 password = getpass.getpass()
-            with open(args.password_file, 'w+') as password_file:
+            with open(self.password_file, 'w+') as password_file:
                 password_file.write('{0}\n{1}'.format(username, password))
-            os.chmod(args.password_file, 0o600)
+            os.chmod(self.password_file, 0o600)
 
         print('Logged in to {}'.format(args.server_instance))
 
@@ -232,7 +241,6 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
         self.num_runs = 0
-        self.password_file = args.password_file
         self.srun_binary = args.srun_binary
         self.worker_dir_prefix = args.worker_dir_prefix
         self.worker_parent_dir = args.worker_parent_dir
@@ -413,21 +421,9 @@ def parse_args():
         help='start, stop or restart the daemon or use logs to print the logs',
     )
     parser.add_argument(
-        '--pidfile',
+        '--script-dir',
         type=str,
-        help='ONLY FOR ADVANCED USE: location of daemon pidfile, don\'t change if you don\'t know what you\'re doing',
-        default=os.path.join(home, '.cl_slurm_worker', 'worker.pid'),
-    )
-    parser.add_argument(
-        '--logfile',
-        type=str,
-        help='ONLY FOR ADVANCED USE: location of daemon logfile, don\'t change if you don\'t know what you\'re doing',
-        default=os.path.join(home, '.cl_slurm_worker', 'worker.{}.log'),
-    )
-    parser.add_argument(
-        '--password-file',
-        type=str,
-        help='ONLY FOR ADVANCED USE: read the Codalab username and password from this file, don\'t change if you don\'t know what you\'re doing',
+        help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation for the same run (ie. logs, restart, stop). Do not change if you do not know what you are doing.',
         default=os.path.join(home, '.cl_slurm_worker', 'worker.password'),
     )
     parser.add_argument(
@@ -483,9 +479,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    daemon = SlurmWorkerDaemon(
-        args.pidfile, stdout=args.logfile.format('stdout'), stderr=args.logfile.format('stderr')
-    )
+    daemon = SlurmWorkerDaemon(args.script_dir)
     if args.action == 'start':
         # Login to the server given in the args before we daemonize
         daemon.login(args)
