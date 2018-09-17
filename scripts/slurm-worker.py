@@ -199,7 +199,7 @@ class SlurmWorkerDaemon(Daemon):
                 ) as pidfile:
                     pid = pidfile.read().trim()
                     instances.append((instance_dir, pid))
-            except IOError:
+            except (IOError, OSError):
                 continue
         return instances
 
