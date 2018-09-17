@@ -99,40 +99,6 @@ class Daemon:
         """
         Start the daemon
         """
-        # Prepare the log files
-        def make_parent_dir(filepath):
-            """
-            Make all the directories in filepath until the leaf is reached
-            Raises an error if a non-directory file exists by the same name
-            as one of the directories in the filesystem (or if the directories
-            cannot be created for some other reason). Quietly exits if the
-            directories already exist.
-            """
-            dirpath = os.path.dirname(filepath)
-            try:
-                os.makedirs(dirpath)
-            except OSError as exc:
-                if not exc.errno == errno.EEXIST:
-                    raise exc
-                elif not os.path.isdir(dirpath):
-                    raise IOError(
-                        'Directory in a given path exists but is not a directory: (%s in %s)'
-                        % (dirpath, filepath)
-                    )
-
-        def reset_file(filepath):
-            """
-            If the given filepath exists, appends '.old' to its filename
-            """
-            if os.path.isfile(filepath):
-                os.rename(filepath, '{}.old'.format(filepath))
-
-        for path in (self.stdin, self.stdout, self.stderr, self.pidfile):
-            make_parent_dir(path)
-
-        for path in (self.stdout, self.stderr):
-            reset_file(path)
-
         # Check for a pidfile to see if the daemon already runs
         try:
             pf = file(self.pidfile, 'r')
@@ -199,12 +165,12 @@ class Daemon:
 
 
 class SlurmWorkerDaemon(Daemon):
-    def __init__(self, script_dir):
-        pidfile = os.path.join(script_dir, 'worker.pid')
-        stdout = os.path.join(script_dir, 'worker.stdout.log')
-        stderr = os.path.join(script_dir, 'worker.stderr.log')
-        self.password_file = os.path.join(script_dir, 'worker.password')
-        Daemon.__init__(self, pidfile, chdir=script_dir, stdout=stdout, stderr=stderr)
+    def __init__(self, daemon_dir):
+        pidfile = os.path.join(daemon_dir, 'worker.pid')
+        stdout = os.path.join(daemon_dir, 'worker.stdout.log')
+        stderr = os.path.join(daemon_dir, 'worker.stderr.log')
+        self.password_file = os.path.join(daemon_dir, 'worker.password')
+        Daemon.__init__(self, pidfile, chdir=daemon_dir, stdout=stdout, stderr=stderr)
 
     def login(self, args):
         """
@@ -212,6 +178,41 @@ class SlurmWorkerDaemon(Daemon):
         Also ensure the password_file in args exists with the correct permissions so workers may be easily
         created in the future
         """
+
+        # Prepare the log files
+        def make_parent_dir(filepath):
+            """
+            Make all the directories in filepath until the leaf is reached
+            Raises an error if a non-directory file exists by the same name
+            as one of the directories in the filesystem (or if the directories
+            cannot be created for some other reason). Quietly exits if the
+            directories already exist.
+            """
+            dirpath = os.path.dirname(filepath)
+            try:
+                os.makedirs(dirpath)
+            except OSError as exc:
+                if not exc.errno == errno.EEXIST:
+                    raise exc
+                elif not os.path.isdir(dirpath):
+                    raise IOError(
+                        'Directory in a given path exists but is not a directory: (%s in %s)'
+                        % (dirpath, filepath)
+                    )
+
+        def reset_file(filepath):
+            """
+            If the given filepath exists, appends '.old' to its filename
+            """
+            if os.path.isfile(filepath):
+                os.rename(filepath, '{}.old'.format(filepath))
+
+        for path in (self.stdin, self.stdout, self.stderr, self.pidfile, self.password_file):
+            make_parent_dir(path)
+
+        for path in (self.stdout, self.stderr):
+            reset_file(path)
+
         subprocess.check_call(
             '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
         )
@@ -411,7 +412,10 @@ class SlurmWorkerDaemon(Daemon):
 def parse_args():
     home = os.environ.get('HOME')
     parser = argparse.ArgumentParser(
-        description='Script to automatically start slurm jobs to run Codalab bundles in'
+        description='Controller for the CodaLab Slurm Worker daemon. The daemon logs in to the specified CodaLab instance with your credentials '
+        'and continuously polls for runs. Every time it encounters a stage run, it launches a Slurm job that contains a single-use CodaLab '
+        'worker that has access to the resources requested in the bundle. The daemon needs to be started only once, and it keeps starting '
+        'new workers as needed until it is stopped with the stop command.'
     )
     parser.add_argument(
         'action',
@@ -420,9 +424,15 @@ def parse_args():
         help='start, stop or restart the daemon or use logs to print the logs',
     )
     parser.add_argument(
+        '--name',
+        type=str,
+        help='Name of the daemon instance to be worked on. If you want to run multiple instances of Slurm Worker (e.g. one for the internal CodaLab instance and one for the public CodaLab instance), name the latter ones differently using this argument. You need to use the same name when using any of the daemon commands for a given instance (start, stop, logs, restart)',
+        default='default',
+    )
+    parser.add_argument(
         '--script-dir',
         type=str,
-        help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation for the same run (ie. logs, restart, stop). Do not change if you do not know what you are doing.',
+        help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation. Do not change if you do not know what you are doing.',
         default=os.path.join(home, '.cl_slurm_worker'),
     )
     parser.add_argument(
@@ -478,7 +488,8 @@ def parse_args():
 
 def main():
     args = parse_args()
-    daemon = SlurmWorkerDaemon(args.script_dir)
+    daemon_dir = os.path.join(args.script_dir, args.name)
+    daemon = SlurmWorkerDaemon(daemon_dir)
     if args.action == 'start':
         # Login to the server given in the args before we daemonize
         daemon.login(args)
