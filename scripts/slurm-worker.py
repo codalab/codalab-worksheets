@@ -172,6 +172,7 @@ class SlurmWorkerDaemon(Daemon):
         stdout = os.path.join(daemon_dir, 'worker.stdout.log')
         stderr = os.path.join(daemon_dir, 'worker.stderr.log')
         self.password_file = os.path.join(daemon_dir, 'worker.password')
+        self.worker_threads = []  # type: List[threading.Thread]
         Daemon.__init__(self, pidfile, chdir=daemon_dir, stdout=stdout, stderr=stderr)
 
     def login(self, args):
