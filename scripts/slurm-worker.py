@@ -45,39 +45,6 @@ class Daemon:
         self.last_args = []
         self.last_kwargs = {}
 
-        def make_parent_dir(filepath):
-            """
-            Make all the directories in filepath until the leaf is reached
-            Raises an error if a non-directory file exists by the same name
-            as one of the directories in the filesystem (or if the directories
-            cannot be created for some other reason). Quietly exits if the
-            directories already exist.
-            """
-            dirpath = os.path.dirname(filepath)
-            try:
-                os.makedirs(dirpath)
-            except OSError as exc:
-                if not exc.errno == errno.EEXIST:
-                    raise exc
-                elif not os.path.isdir(dirpath):
-                    raise IOError(
-                        'Directory in a given path exists but is not a directory: (%s in %s)'
-                        % (dirpath, filepath)
-                    )
-
-        def reset_file(filepath):
-            """
-            If the given filepath exists, appends '.old' to its filename
-            """
-            if os.path.isfile(filepath):
-                os.rename(filepath, '{}.old'.format(filepath))
-
-        for path in (self.stdin, self.stdout, self.stderr, self.pidfile):
-            make_parent_dir(path)
-
-        for path in (self.stdout, self.stderr):
-            reset_file(path)
-
     def daemonize(self):
         """
         Do the UNIX double-fork magic, see Stevens' "Advanced
@@ -131,6 +98,40 @@ class Daemon:
         """
         Start the daemon
         """
+        # Prepare the log files
+        def make_parent_dir(filepath):
+            """
+            Make all the directories in filepath until the leaf is reached
+            Raises an error if a non-directory file exists by the same name
+            as one of the directories in the filesystem (or if the directories
+            cannot be created for some other reason). Quietly exits if the
+            directories already exist.
+            """
+            dirpath = os.path.dirname(filepath)
+            try:
+                os.makedirs(dirpath)
+            except OSError as exc:
+                if not exc.errno == errno.EEXIST:
+                    raise exc
+                elif not os.path.isdir(dirpath):
+                    raise IOError(
+                        'Directory in a given path exists but is not a directory: (%s in %s)'
+                        % (dirpath, filepath)
+                    )
+
+        def reset_file(filepath):
+            """
+            If the given filepath exists, appends '.old' to its filename
+            """
+            if os.path.isfile(filepath):
+                os.rename(filepath, '{}.old'.format(filepath))
+
+        for path in (self.stdin, self.stdout, self.stderr, self.pidfile):
+            make_parent_dir(path)
+
+        for path in (self.stdout, self.stderr):
+            reset_file(path)
+
         # Check for a pidfile to see if the daemon already runs
         try:
             pf = file(self.pidfile, 'r')
