@@ -4,6 +4,7 @@ MAINTAINER CodaLab Team "codalab.worksheets@gmail.com"
 # Begin common steps (Must be the same in the CPU and GPU images)
 RUN apt-get update && apt-get install -y \
     apt-transport-https \
+    iputils-ping \
     git \
     python2.7 \
     python-pip \
