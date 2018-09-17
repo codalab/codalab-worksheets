@@ -69,7 +69,7 @@ class Daemon:
             """
             If the given filepath exists, appends '.old' to its filename
             """
-            if os.exists(filepath):
+            if os.path.isfile(filepath):
                 os.rename(filepath, '{}.old'.format(filepath))
 
         for path in (self.stdin, self.stdout, self.stderr, self.pidfile):
