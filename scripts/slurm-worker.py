@@ -458,7 +458,7 @@ class SlurmWorkerDaemon(Daemon):
         for instance_dir in os.listdir(script_dir):
             try:
                 with open(os.path.join(script_dir, instance_dir, 'worker.pid'), 'r') as pidfile:
-                    pid = pidfile.read().trim()
+                    pid = pidfile.read().strip()
                     instances.append((instance_dir, pid))
             except (IOError, OSError):
                 continue
