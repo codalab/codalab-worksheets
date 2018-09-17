@@ -114,6 +114,7 @@ BUNDLE_COMMANDS = (
     'search',
     'ls',
     'info',
+    'ancestors',
     'cat',
     'wait',
     'download',
@@ -2113,6 +2114,64 @@ class BundleCLI(object):
                     continue
                 print >>self.stdout, wrap(item['name'])
                 self.print_target_info(client, bundle_uuid, item['name'], head=10)
+
+    @Commands.command(
+        'ancestors',
+        help='Show entire history of dependencies for a bundle.',
+        arguments=(
+                Commands.Argument(
+                    'bundle_spec', help=BUNDLE_SPEC_FORMAT, completer=BundlesCompleter,
+                ),
+                Commands.Argument(
+                    '-l',
+                    '--levels',
+                    type=int,
+                    default=100,
+                    help="Number of levels of ancestors to show (default: 100).",
+                ),
+                Commands.Argument(
+                    '-w',
+                    '--worksheet-spec',
+                    help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                    completer=WorksheetsCompleter,
+                ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(args.worksheet_spec)
+        client, worksheet_uuid, bundle_uuid, subpath = self.resolve_target(
+            client, worksheet_uuid, args.bundle_spec
+        )
+
+        # TODO(nikhilxb, 8/31/2018): Move ancestor traversal to server for performance.
+        # I've made the necessary changes to the REST API, but until those changes are
+        # deployed, the following algorithm with work for both hosted and local servers.
+        #
+        # bundles = client.fetch(
+        #     'bundles',
+        #     params={
+        #         'specs': args.bundle_spec,
+        #         'worksheet': worksheet_uuid,
+        #         'levels': args.levels,
+        #     },
+        # )
+
+        lines = []
+        cache = {}
+
+        def traverse_ancestors(uuid, level):
+            if level == args.levels + 1: return
+            bundle = cache[uuid] if uuid in cache else client.fetch('bundles/' + uuid)
+            cache[uuid] = bundle
+            lines.append("{indent:s}{name:s}({uuid:s})".format(
+                indent="    " * level,
+                name=bundle["metadata"]["name"],
+                uuid=worksheet_util.apply_func(UUID_POST_FUNC, uuid)))
+            for dep in bundle['dependencies']:
+                traverse_ancestors(dep["parent_uuid"], level + 1)
+
+        traverse_ancestors(bundle_uuid, 0)
+        print >>self.stdout, '\n'.join(lines)
 
     @Commands.command(
         'mount',

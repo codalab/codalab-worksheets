@@ -187,7 +187,7 @@ class BundleModel(object):
 
     def get_children_uuids(self, uuids):
         """
-        Get all bundles that depend on the bundle with the given uuids.
+        Get all bundles that depend on the bundles with the given uuids.
         Return {parent_uuid: [child_uuid, ...], ...}
         """
         with self.engine.begin() as connection:
@@ -199,6 +199,22 @@ class BundleModel(object):
         result = dict((uuid, []) for uuid in uuids)
         for row in rows:
             result[row.parent_uuid].append(row.child_uuid)
+        return result
+
+    def get_parents_uuids(self, uuids):
+        """
+        Get all bundles that the bundles with the given uuids depend on.
+        Return {child_uuid: [parent_uuid, ...], ...}
+        """
+        with self.engine.begin() as connection:
+            rows = connection.execute(
+                select(
+                    [cl_bundle_dependency.c.parent_uuid, cl_bundle_dependency.c.child_uuid]
+                ).where(cl_bundle_dependency.c.child_uuid.in_(uuids))
+            ).fetchall()
+        result = dict((uuid, []) for uuid in uuids)
+        for row in rows:
+            result[row.child_uuid].append(row.parent_uuid)
         return result
 
     def get_host_worksheet_uuids(self, bundle_uuids):
@@ -220,6 +236,27 @@ class BundleModel(object):
         for uuid in result.keys():
             result[uuid] = list(set(result[uuid]))
         return result
+
+    def get_self_and_ancestors(self, uuids, level):
+        """
+        Get all bundles that bundles with the given uuids depend on.
+        level = 1 gets only parents
+        """
+        frontier = uuids
+        visited = list(frontier)
+        while len(frontier) > 0 and level > 0:
+            # Get parents of all nodes in frontier
+            result = self.get_parents_uuids(frontier)
+            new_frontier = []
+            for l in result.values():
+                for uuid in l:
+                    if uuid in visited:
+                        continue
+                    new_frontier.append(uuid)
+                    visited.append(uuid)
+            frontier = new_frontier
+            level -= 1
+        return visited
 
     def get_self_and_descendants(self, uuids, depth):
         """
