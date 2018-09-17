@@ -13,7 +13,7 @@ from codalab.common import PreconditionViolation
 
 class JsonApiClientTest(unittest.TestCase):
     def setUp(self):
-        self.client = JsonApiClient('', lambda: None)
+        self.client = JsonApiClient('', {}, lambda: None)
 
     def test_pack_params(self):
         self.assertItemsEqual(
