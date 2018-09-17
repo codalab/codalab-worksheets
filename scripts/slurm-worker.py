@@ -369,8 +369,8 @@ def parse_args():
     parser.add_argument(
         'action',
         type=str,
-        choices={'start', 'stop', 'restart'},
-        help='start, stop or restart the daemon, if start',
+        choices={'start', 'stop', 'restart', 'logs'},
+        help='start, stop or restart the daemon or use logs to print the logs',
     )
     parser.add_argument(
         '--pidfile',
@@ -382,7 +382,7 @@ def parse_args():
         '--logfile',
         type=str,
         help='ONLY FOR ADVANCED USE: location of daemon logfile, don\'t change if you don\'t know what you\'re doing',
-        default=os.path.join(home, '.cl_slurm_worker', 'worker.log'),
+        default=os.path.join(home, '.cl_slurm_worker', 'worker.{}.log'),
     )
     parser.add_argument(
         '--password-file',
@@ -443,7 +443,9 @@ def parse_args():
 
 def main():
     args = parse_args()
-    daemon = SlurmWorkerDaemon(args.pidfile, stdout=args.logfile, stderr=args.logfile)
+    daemon = SlurmWorkerDaemon(
+        args.pidfile, stdout=args.logfile.format('stdout'), stderr=args.logfile.format('stderr')
+    )
     if args.action == 'start':
         # Login to the server given in the args before we daemonize
         daemon.login(args)
@@ -460,6 +462,14 @@ def main():
         # Login to the server we last logged in to before we daemonize
         daemon.login(*daemon.last_args)
         daemon.restart()
+    elif args.action == 'logs':
+        with open(args.logfile.format('stdout'), 'r') as stdout, open(
+            args.logfile.format('stderr'), 'r'
+        ) as stderr:
+            print(">>>>>>STDOUT")
+            print(stdout.read())
+            print(">>>>>>STDERR")
+            print(stderr.read())
     else:
         print("Unknown command %s" % args.action)
         sys.exit(2)
