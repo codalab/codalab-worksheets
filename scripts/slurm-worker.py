@@ -15,9 +15,11 @@ on all slurm machines on a consitent location.
 import argparse
 import atexit
 import errno
+import getpass
 import math
 import os
 import subprocess
+import stat
 import sys
 import time
 from signal import SIGTERM
@@ -185,11 +187,30 @@ class Daemon:
 
 class SlurmWorkerDaemon(Daemon):
     def login(self, args):
+        """
+        Log in to the CLI
+        Also ensure the password_file in args exists with the correct permissions so workers may be easily
+        created in the future
+        """
         self.cl_binary = args.cl_binary
         self.server_instance = args.server_instance
         subprocess.check_call(
             '{} work {}::'.format(self.cl_binary, self.server_instance), shell=True
         )
+        if os.path.isfile(args.password_file):
+            if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+                os.chmod(args.password_file, 0o600)
+        else:
+            username = os.environ.get('CODALAB_USERNAME')
+            if username is None:
+                username = raw_input('Username: ')
+            password = os.environ.get('CODALAB_PASSWORD')
+            if password is None:
+                password = getpass.getpass()
+            with open(args.password_file, 'w+') as password_file:
+                password_file.write('{0}\n{1}'.format(username, password))
+            os.chmod(args.password_file, 0o600)
+
         print('Logged in to {}'.format(self.server_instance))
 
     def run(self, args):
