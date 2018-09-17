@@ -232,6 +232,7 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
         self.num_runs = 0
+        self.password_file = args.password_file
         self.srun_binary = args.srun_binary
         self.worker_dir_prefix = args.worker_dir_prefix
         self.worker_parent_dir = args.worker_parent_dir
