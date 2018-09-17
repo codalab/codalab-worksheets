@@ -455,11 +455,9 @@ class SlurmWorkerDaemon(Daemon):
         Returns a list of tuples where the first element is the name and the second the pid
         """
         instances = []
-        for instance_dir in os.listdir(self.script_dir):
+        for instance_dir in os.listdir(script_dir):
             try:
-                with open(
-                    os.path.join(self.daemon_dir, instance_dir, 'worker.pid'), 'r'
-                ) as pidfile:
+                with open(os.path.join(script_dir, instance_dir, 'worker.pid'), 'r') as pidfile:
                     pid = pidfile.read().trim()
                     instances.append((instance_dir, pid))
             except (IOError, OSError):
