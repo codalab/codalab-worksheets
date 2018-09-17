@@ -229,6 +229,9 @@ class SlurmWorkerDaemon(Daemon):
         # during the next iteration as worker booting might take some time. Un-cache them after one
         # iteration to start booting new workers for them
         cooldown_runs = set()
+        subprocess.check_call(
+            '{} work {}::'.format(self.cl_binary, self.server_instance), shell=True
+        )
         status = subprocess.check_output('{} status'.format(self.cl_binary), shell=True)
         print("Starting daemon, status: {}".format(status))
         while True:
