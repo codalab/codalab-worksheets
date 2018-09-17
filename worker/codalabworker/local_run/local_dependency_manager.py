@@ -163,14 +163,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 dep: state
                 for dep, state in self._dependencies.items()
                 if state.stage == DependencyStage.FAILED
+                and time.time() - state.last_used
+                > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
             }
             for dependency, dependency_state in failed_deps.items():
-                seconds_since_failure = time.time() - dependency_state.last_used
-                if (
-                    seconds_since_failure
-                    > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
-                ):
-                    self._delete_dependency(dependency)
+                self._delete_dependency(dependency)
             self._release_all_locks()
 
     def _cleanup(self):
