@@ -88,13 +88,13 @@ class Daemon:
         os.dup2(se.fileno(), sys.stderr.fileno())
 
         # write pidfile
-        atexit.register(self.atexit)
+        atexit.register(self.exit)
         pid = str(os.getpid())
         with open(self.pidfile, 'w+') as pidfile:
             pidfile.write("%s\n" % pid)
 
-    def atexit(self):
-        self.stop()
+    def exit(self):
+        self.cleanup()
         os.remove(self.pidfile)
 
     def start(self, *args, **kwargs):
@@ -162,6 +162,12 @@ class Daemon:
         """
         You should override this method when you subclass Daemon. It will be called after the process has been
         daemonized by start() or restart().
+        """
+        raise NotImplementedError
+
+    def cleanup(self):
+        """
+        Do the necessary cleanup before exiting
         """
         raise NotImplementedError
 
@@ -309,7 +315,7 @@ class SlurmWorkerDaemon(Daemon):
 
             time.sleep(self.sleep_interval)
 
-    def stop(self):
+    def cleanup(self):
         """
         Do the necessary cleanup before exiting
         """
