@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 """
 Script that's designed for individual users of a Slurm managed cluster to run on a machine
-with srun access. Once the user starts the script and logs in, the script busy loops, querying
-the given CodaLab instance for staged bundles belonging to the user. Every time there's a staged
-bundle, its CodaLab resource requests (gpu, cpu, memory etc) are converted to srun options and a
-new worker with that many resources is fired up on slurm. These workers die when they're idle.
+with srun access. Once the user starts the script and logs in, the script fires a daemon that
+busy loops, querying the given CodaLab instance for staged bundles belonging to the user.
+Every time there's a staged bundle, its CodaLab resource requests (gpu, cpu, memory etc)
+are converted to srun options and a new worker with that many resources is fired up on slurm.
+These workers die when they're idle.
 
 Some values are Stanford NLP cluster specific (CodaLab instance used, worker binary locations),
 but can be configured for other Slurm clusters. The script just requires codalab-worker to be installed
@@ -28,6 +29,7 @@ class Daemon:
     """
     A generic daemon class.
     Usage: subclass the Daemon class and override the run() method
+    Source: http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
     """
 
     def __init__(
@@ -431,6 +433,12 @@ def main():
     elif args.action == 'stop':
         daemon.stop()
     elif args.action == 'restart':
+        # if daemon wasn't started previously, fail
+        if not daemon.last_args:
+            print(
+                "Trying to restart a non-started daemon, please use start with the rest of your args"
+            )
+            sys.exit(2)
         # Login to the server we last logged in to before we daemonize
         daemon.login(*daemon.last_args)
         daemon.restart()
