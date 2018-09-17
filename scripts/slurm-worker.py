@@ -18,6 +18,7 @@ import errno
 import getpass
 import math
 import os
+import shutil
 import subprocess
 import stat
 import sys
@@ -64,8 +65,18 @@ class Daemon:
                         % (dirpath, filepath)
                     )
 
+        def reset_file(filepath):
+            """
+            If the given filepath exists, appends '.old' to its filename
+            """
+            if os.exists(filepath):
+                os.rename(filepath, '{}.old'.format(filepath))
+
         for path in (self.stdin, self.stdout, self.stderr, self.pidfile):
             make_parent_dir(path)
+
+        for path in (self.stdout, self.stderr):
+            reset_file(path)
 
     def daemonize(self):
         """
