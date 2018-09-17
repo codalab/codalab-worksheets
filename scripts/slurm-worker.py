@@ -302,7 +302,7 @@ class SlurmWorkerDaemon(Daemon):
 
                     worker_thread = threading.Thread(target=worker)
                     self.worker_threads.append(worker_thread)
-                    worker_thread.run()
+                    worker_thread.start()
                     cooldown_runs.add(uuid)
                     self.num_runs += 1
                 else:
