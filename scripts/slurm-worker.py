@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
 Script that's designed for individual users of a Slurm managed cluster to run on a machine
-with sbatch access. Once the user starts the script and logs in, the script fires a daemon that
+with srun access. Once the user starts the script and logs in, the script fires a daemon that
 busy loops, querying the given CodaLab instance for staged bundles belonging to the user.
 Every time there's a staged bundle, its CodaLab resource requests (gpu, cpu, memory etc)
-are converted to sbatch options and a new worker with that many resources is fired up on slurm.
+are converted to srun options and a new worker with that many resources is fired up on slurm.
 These workers die when they're idle.
 
 Some values are Stanford NLP cluster specific (CodaLab instance used, worker binary locations),
@@ -241,7 +241,7 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
         self.num_runs = 0
-        self.sbatch_binary = args.sbatch_binary
+        self.srun_binary = args.srun_binary
         self.worker_dir_prefix = args.worker_dir_prefix
         self.worker_parent_dir = args.worker_parent_dir
         self.sleep_interval = args.sleep_interval
@@ -309,30 +309,27 @@ class SlurmWorkerDaemon(Daemon):
         else:
             partition = 'john'
 
-        sbatch_flags = [
-            '#!/bin/bash',
-            '#SBATCH --partition={}'.format(partition),
-            '#SBATCH --mem={}'.format(run_fields['request_memory']),
-            '#SBATCH --gres=gpu:{}'.format(run_fields['request_gpus']),
-            '#SBATCH --chdir={}'.format(current_directory),
-            '#SBATCH --nodes 1',
+        srun_flags = [
+            self.srun_binary,
+            '--partition={}'.format(partition),
+            '--mem={}'.format(run_fields['request_memory']),
+            '--gres=gpu:{}'.format(run_fields['request_gpus']),
+            '--chdir={}'.format(current_directory),
+            '--nodes 1',
         ]
 
         if run_fields['request_cpus'] > 1:
-            sbatch_flags.append('#SBATCH --cpus-per-task={}'.format(run_fields['request_cpus']))
+            srun_flags.append('--cpus-per-task={}'.format(run_fields['request_cpus']))
 
-        worker_commands = self.write_worker_invocation(
+        srun_command = ' '.join(srun_flags)
+        worker_command_script = self.write_worker_invocation(
             worker_name=worker_name,
             tag=tag,
             num_cpus=run_fields['request_cpus'],
             num_gpus=run_fields['request_gpus'],
             verbose=True,
         )
-        final_command = sbatch_flags + worker_commands
-        with open('start-{}.sh'.format(worker_name), 'w') as script_file:
-            for line in final_command:
-                script_file.write(line)
-        final_command = '{} {}'.format(self.sbatch_binary, script_file.name)
+        final_command = '{} bash {}'.format(srun_command, worker_command_script)
         print('Starting worker for run {}'.format(run_fields['uuid']))
         try:
             subprocess.check_call(final_command, shell=True)
@@ -340,34 +337,9 @@ class SlurmWorkerDaemon(Daemon):
             print('Anomaly in worker run: {}'.format(e))
         finally:
             try:
-                os.remove(script_file.name)
+                os.remove(worker_command_script)
             except Exception as ex:
                 print('Anomaly when trying to remove old worker script: {}'.format(ex))
-
-    def write_worker_invocation(
-        self, worker_name='worker', tag=None, num_cpus=1, num_gpus=0, verbose=False
-    ):
-        """
-        Return the name to a local file that has the commands that prepare the worker work dir,
-        run the worker and clean up the work dir upon exit.
-        """
-        work_dir = os.path.join(self.worker_parent_dir, worker_name)
-        prepare_command = 'mkdir -vp {0} && mkdir -vp {0}/runs;'.format(work_dir)
-        cleanup_command = 'rm -rf {};'.format(work_dir)
-        flags = [
-            '--exit-when-idle',
-            '--server {}'.format(self.server_instance),
-            '--password {}'.format(self.password_file),
-            '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
-            '--work-dir {}'.format(work_dir),
-        ]
-
-        if tag is not None:
-            flags.append('--tag {}'.format(tag))
-        if verbose:
-            flags.append('--verbose')
-        worker_command = '{} {};'.format(self.cl_worker_binary, ' '.join(flags))
-        return [prepare_command, worker_command, cleanup_command]
 
     @staticmethod
     def parse_duration(dur):
@@ -392,6 +364,35 @@ class SlurmWorkerDaemon(Daemon):
         except (IndexError, ValueError):
             pass  # continue to next line and throw error
         raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
+
+    def write_worker_invocation(
+        self, worker_name='worker', tag=None, num_cpus=1, num_gpus=0, verbose=False
+    ):
+        """
+        Return the name to a local file that has the commands that prepare the worker work dir,
+        run the worker and clean up the work dir upon exit.
+        """
+        work_dir = os.path.join(self.worker_parent_dir, worker_name)
+        prepare_command = 'mkdir -vp {0} && mkdir -vp {0}/runs;'.format(work_dir)
+        cleanup_command = 'rm -rf {};'.format(work_dir)
+        flags = [
+            '--exit-when-idle',
+            '--server {}'.format(self.server_instance),
+            '--password {}'.format(self.password_file),
+            '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
+            '--work-dir {}'.format(work_dir),
+        ]
+
+        if tag is not None:
+            flags.append('--tag {}'.format(tag))
+        if verbose:
+            flags.append('--verbose')
+        worker_command = '{} {};'.format(self.cl_worker_binary, ' '.join(flags))
+        with open('start-{}.sh'.format(worker_name), 'w') as script_file:
+            script_file.write(prepare_command)
+            script_file.write(worker_command)
+            script_file.write(cleanup_command)
+        return script_file.name
 
     @staticmethod
     def parse_field(field, val):
@@ -441,10 +442,10 @@ def parse_args():
         default='https://worksheets-dev.codalab.org',
     )
     parser.add_argument(
-        '--sbatch-binary',
+        '--srun-binary',
         type=str,
-        help='Where the binary for the sbatch command lives (default is the location on the Stanford NLP cluster)',
-        default='sbatch',
+        help='Where the binary for the srun command lives (default is the location on the Stanford NLP cluster)',
+        default='srun',
     )
     parser.add_argument(
         '--cl-worker-binary',
