@@ -32,7 +32,7 @@ FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_tim
 class Daemon:
     """
     A generic daemon class.
-    Usage: subclass the Daemon class and override the run() method
+    Usage: subclass the Daemon class and override the run() and cleanup() methods
     Source: http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
     """
 
@@ -177,10 +177,31 @@ class SlurmWorkerDaemon(Daemon):
         pidfile = os.path.join(daemon_dir, 'worker.pid')
         stdout = os.path.join(daemon_dir, 'worker.stdout.log')
         stderr = os.path.join(daemon_dir, 'worker.stderr.log')
+        self.daemon_dir = daemon_dir
         self.password_file = os.path.join(daemon_dir, 'worker.password')
         self.worker_parent_dir = os.path.join(daemon_dir, 'workers')
         self.worker_threads = []  # type: List[threading.Thread]
         Daemon.__init__(self, pidfile, chdir=daemon_dir, stdout=stdout, stderr=stderr)
+
+    def list_instances(self):
+        """
+        List all currently running instances of Slurm worker.
+        This works off the assumption that all instances are subdirectories of the daemon
+        directory, and subsequently cannot catch instances that are started with a different
+        script_dir argument.
+        Returns a list of tuples where the first element is the name and the second the pid
+        """
+        instances = []
+        for instance_dir in os.listdir(self.daemon_dir):
+            try:
+                with open(
+                    os.path.join(self.daemon_dir, instance_dir, 'worker.pid'), 'r'
+                ) as pidfile:
+                    pid = pidfile.read().trim()
+                    instances.append((instance_dir, pid))
+            except IOError:
+                continue
+        return instances
 
     def login(self, args):
         """
@@ -456,8 +477,8 @@ def parse_args():
     parser.add_argument(
         'action',
         type=str,
-        choices={'start', 'stop', 'restart', 'logs'},
-        help='start, stop or restart the daemon or use logs to print the logs',
+        choices={'start', 'stop', 'restart', 'logs', 'list'},
+        help='start, stop or restart the daemon or use logs to print the logs. Use list to list all running daemons for this user',
     )
     parser.add_argument(
         '--name',
@@ -536,6 +557,12 @@ def main():
             print(stdout.read())
             print(">>>>>>STDERR")
             print(stderr.read())
+    elif args.action == 'list':
+        print('Active slurm worker daemons:')
+        print('{:^10} {:^10}'.format('Name', 'Pid'))
+        print('-' * 21)
+        for name, pid in daemon.list_instances():
+            print('{:<10} {:<10}'.format(name, pid))
     else:
         print("Unknown command %s" % args.action)
         sys.exit(2)
