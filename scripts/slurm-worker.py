@@ -21,6 +21,7 @@ import os
 import subprocess
 import stat
 import sys
+import threading
 import time
 from signal import SIGTERM
 
@@ -87,12 +88,13 @@ class Daemon:
         os.dup2(se.fileno(), sys.stderr.fileno())
 
         # write pidfile
-        atexit.register(self.delpid)
+        atexit.register(self.atexit)
         pid = str(os.getpid())
         with open(self.pidfile, 'w+') as pidfile:
             pidfile.write("%s\n" % pid)
 
-    def delpid(self):
+    def atexit(self):
+        self.stop()
         os.remove(self.pidfile)
 
     def start(self, *args, **kwargs):
@@ -240,11 +242,13 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_binary = args.cl_binary
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
-        self.num_runs = 0
         self.srun_binary = args.srun_binary
         self.worker_dir_prefix = args.worker_dir_prefix
         self.worker_parent_dir = args.worker_parent_dir
         self.sleep_interval = args.sleep_interval
+        self.max_concurrent_workers = args.max_concurrent_workers
+        self.num_runs = 0
+        self.worker_threads = []  # type: List[threading.Thread]
 
         # Cache runs that we started workers for for one extra iteration in case they're still staged
         # during the next iteration as worker booting might take some time. Un-cache them after one
@@ -256,6 +260,8 @@ class SlurmWorkerDaemon(Daemon):
         status = subprocess.check_output('{} status'.format(self.cl_binary), shell=True)
         print("Starting daemon, status: {}".format(status))
         while True:
+            # Prune finished threads
+            self.worker_threads = [thread for thread in self.worker_threads if thread.is_alive()]
             run_lines = subprocess.check_output(
                 '{} search .mine state=staged -u'.format(self.cl_binary), shell=True
             )
@@ -266,6 +272,11 @@ class SlurmWorkerDaemon(Daemon):
                 pass
             uuids = run_lines.splitlines()
             for uuid in uuids:
+                if len(self.worker_threads) > self.max_concurrent_workers:
+                    print(
+                        "Maximum number of concurrent workers reached, waiting for some to finish"
+                    )
+                    break
                 if uuid not in cooldown_runs:
                     info_cmd = '{} info {} -f {}'.format(self.cl_binary, uuid, ','.join(FIELDS))
                     field_values = subprocess.check_output(info_cmd, shell=True)
@@ -278,7 +289,13 @@ class SlurmWorkerDaemon(Daemon):
                         field: SlurmWorkerDaemon.parse_field(field, val)
                         for field, val in zip(FIELDS, field_values.split())
                     }
-                    self.start_worker_for(run)
+
+                    def worker():
+                        self.start_worker_for(run)
+
+                    worker_thread = threading.Thread(target=worker)
+                    self.worker_threads.append(worker_thread)
+                    worker_thread.run()
                     cooldown_runs.add(uuid)
                     self.num_runs += 1
                 else:
@@ -290,6 +307,14 @@ class SlurmWorkerDaemon(Daemon):
                     cooldown_runs.remove(uuid)
 
             time.sleep(self.sleep_interval)
+
+    def stop(self):
+        """
+        Do the necessary cleanup before exiting
+        """
+        print("Waiting for all the current workers to finish")
+        for thread in self.worker_threads:
+            thread.join()
 
     def start_worker_for(self, run_fields):
         """
@@ -341,30 +366,6 @@ class SlurmWorkerDaemon(Daemon):
             except Exception as ex:
                 print('Anomaly when trying to remove old worker script: {}'.format(ex))
 
-    @staticmethod
-    def parse_duration(dur):
-        """
-        s: <number>[<s|m|h|d|y>]
-        Returns the number of minutes
-        """
-        try:
-            if dur[-1].isdigit():
-                return math.ceil(float(dur) / 60.0)
-            n, unit = float(dur[0:-1]), dur[-1].lower()
-            if unit == 's':
-                return math.ceil(n / 60.0)
-            if unit == 'm':
-                return n
-            if unit == 'h':
-                return n * 60
-            if unit == 'd':
-                return n * 60 * 24
-            if unit == 'y':
-                return n * 60 * 24 * 365
-        except (IndexError, ValueError):
-            pass  # continue to next line and throw error
-        raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
-
     def write_worker_invocation(
         self, worker_name='worker', tag=None, num_cpus=1, num_gpus=0, verbose=False
     ):
@@ -393,6 +394,30 @@ class SlurmWorkerDaemon(Daemon):
             script_file.write(worker_command)
             script_file.write(cleanup_command)
         return script_file.name
+
+    @staticmethod
+    def parse_duration(dur):
+        """
+        s: <number>[<s|m|h|d|y>]
+        Returns the number of minutes
+        """
+        try:
+            if dur[-1].isdigit():
+                return math.ceil(float(dur) / 60.0)
+            n, unit = float(dur[0:-1]), dur[-1].lower()
+            if unit == 's':
+                return math.ceil(n / 60.0)
+            if unit == 'm':
+                return n
+            if unit == 'h':
+                return n * 60
+            if unit == 'd':
+                return n * 60 * 24
+            if unit == 'y':
+                return n * 60 * 24 * 365
+        except (IndexError, ValueError):
+            pass  # continue to next line and throw error
+        raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
 
     @staticmethod
     def parse_field(field, val):
