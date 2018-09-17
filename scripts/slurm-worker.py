@@ -164,7 +164,18 @@ class Daemon:
 
 
 class SlurmWorkerDaemon(Daemon):
+    def login(self, args):
+        self.cl_binary = args.cl_binary
+        self.server_instance = args.server_instance
+        subprocess.check_call(
+            '{} work {}::'.format(self.cl_binary, self.server_instance), shell=True
+        )
+        print('Logged in to {}'.format(self.server_instance))
+
     def run(self, args):
+        """
+        Run the daemon, expect the CLI to be logged in to the given server instance already
+        """
         self.cl_binary = args.cl_binary
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
@@ -173,11 +184,7 @@ class SlurmWorkerDaemon(Daemon):
         self.worker_dir_prefix = args.worker_dir_prefix
         self.worker_parent_dir = args.worker_parent_dir
         self.sleep_interval = args.sleep_interval
-        # Login
-        subprocess.check_call(
-            '{} work {}::'.format(self.cl_binary, self.server_instance), shell=True
-        )
-        print('Logged in to {}'.format(self.server_instance))
+
         # Cache runs that we started workers for for one extra iteration in case they're still staged
         # during the next iteration as worker booting might take some time. Un-cache them after one
         # iteration to start booting new workers for them
@@ -416,12 +423,16 @@ def parse_args():
 
 def main():
     args = parse_args()
-    daemon = SlurmWorkerDaemon(args.pidfile, logfile=args.logfile)
+    daemon = SlurmWorkerDaemon(args.pidfile, stdout=args.logfile, stderr=args.logfile)
     if args.action == 'start':
+        # Login to the server given in the args before we daemonize
+        daemon.login(args)
         daemon.start(args)
     elif args.action == 'stop':
         daemon.stop()
     elif args.action == 'restart':
+        # Login to the server we last logged in to before we daemonize
+        daemon.login(*daemon.last_args)
         daemon.restart()
     else:
         print("Unknown command %s" % args.action)
