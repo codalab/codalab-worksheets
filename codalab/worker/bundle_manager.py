@@ -54,6 +54,9 @@ class BundleManager(object):
         self._max_request_memory = parse(formatting.parse_size, 'max_request_memory')
         self._max_request_disk = parse(formatting.parse_size, 'max_request_disk')
 
+        self._default_cpu_image = config.get('default_cpu_image')
+        self._default_gpu_image = config.get('default_gpu_image')
+
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
         return self
@@ -483,9 +486,9 @@ class BundleManager(object):
         """
         if not bundle.metadata.request_docker_image:
             if bundle.metadata.request_gpus:
-                return 'codalab/default-gpu:latest'
+                return self._default_gpu_image
             else:
-                return 'codalab/default-cpu:latest'
+                return self._default_cpu_image
         return bundle.metadata.request_docker_image
 
     def _construct_run_message(self, worker, bundle):
