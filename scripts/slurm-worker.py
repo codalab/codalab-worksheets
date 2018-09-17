@@ -254,7 +254,7 @@ class SlurmWorkerDaemon(Daemon):
                     except Exception:
                         pass
                     run = {
-                        field: self.parse_field(field, val)
+                        field: SlurmWorkerDaemon.parse_field(field, val)
                         for field, val in zip(FIELDS, field_values.split())
                     }
                     self.start_worker_for(run)
@@ -320,6 +320,7 @@ class SlurmWorkerDaemon(Daemon):
             except Exception as ex:
                 print('Anomaly when trying to remove old worker script: {}'.format(ex))
 
+    @staticmethod
     def parse_duration(dur):
         """
         s: <number>[<s|m|h|d|y>]
@@ -372,14 +373,15 @@ class SlurmWorkerDaemon(Daemon):
             script_file.write(cleanup_command)
         return script_file.name
 
-    def parse_field(self, field, val):
+    @staticmethod
+    def parse_field(field, val):
         """
         Parses cl's printed bundle info fields into typed constructs
         Currently converts request_time to minutes as that's what slurm
         takes in
         """
         if field == 'request_time':
-            return self.parse_duration(val)
+            return SlurmWorkerDaemon.parse_duration(val)
         elif field in ['request_cpus', 'request_gpus']:
             return int(val)
         else:
