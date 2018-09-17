@@ -408,8 +408,8 @@ def parse_args():
     parser.add_argument(
         '--password-file',
         type=str,
-        help='Read the Codalab username and password from this file. Each should be on its own line',
-        default=os.path.join(home, 'codalab.password'),
+        help='ONLY FOR ADVANCED USE: read the Codalab username and password from this file, don\'t change if you don\'t know what you\'re doing',
+        default=os.path.join(home, '.cl_slurm_worker', 'worker.password'),
     )
     parser.add_argument(
         '--server-instance',
