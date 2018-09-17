@@ -19,12 +19,13 @@ class RestOAuthHandler(object):
     other user records from the local database.
     """
 
-    def __init__(self, address):
+    def __init__(self, address, extra_headers={}):
         """
         address: the address of the server
         model: BundleModel instance
         """
         self._address = address
+        self._extra_headers = extra_headers
 
     def generate_token(self, grant_type, username, key):
         """
@@ -51,6 +52,7 @@ class RestOAuthHandler(object):
             'Authorization': 'Basic ' + base64.b64encode('codalab_cli_client:'),
             'X-Requested-With': 'XMLHttpRequest',
         }
+        headers.update(self._extra_headers)
         request = urllib2.Request(
             self._address + '/rest/oauth2/token', headers=headers, data=urllib.urlencode(data)
         )

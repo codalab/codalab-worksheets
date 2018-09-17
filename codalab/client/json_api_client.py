@@ -147,8 +147,9 @@ class JsonApiClient(RestClient):
     Simple JSON API client.
     """
 
-    def __init__(self, address, get_access_token, check_version=lambda _: None):
+    def __init__(self, address, get_access_token, extra_headers={}, check_version=lambda _: None):
         self._get_access_token = get_access_token
+        self._extra_headers = extra_headers
         self._check_version = check_version
         self.address = address  # Used as key in client and token caches
         base_url = address + '/rest'
