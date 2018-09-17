@@ -146,6 +146,7 @@ class JsonApiClient(RestClient):
     """
     Simple JSON API client.
     """
+
     def __init__(self, address, get_access_token, extra_headers={}, check_version=lambda _: None):
         self._get_access_token = get_access_token
         self._extra_headers = extra_headers

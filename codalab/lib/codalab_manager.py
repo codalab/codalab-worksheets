@@ -369,6 +369,7 @@ class CodaLabManager(object):
     @cached
     def rest_oauth_handler(self):
         from codalab.server.auth import RestOAuthHandler
+
         address = 'http://%s:%d' % (
             self.config['server']['rest_host'],
             self.config['server']['rest_port'],
@@ -420,10 +421,16 @@ class CodaLabManager(object):
         # Create RestOAuthHandler that authenticates directly with
         # OAuth endpoints on the REST server
         from codalab.server.auth import RestOAuthHandler
+
         auth_handler = RestOAuthHandler(address, extra_headers)
 
         # Create JsonApiClient with a callback to get access tokens
-        client = JsonApiClient(address, lambda: self._authenticate(address, auth_handler), extra_headers, self.check_version)
+        client = JsonApiClient(
+            address,
+            lambda: self._authenticate(address, auth_handler),
+            extra_headers,
+            self.check_version,
+        )
 
         # Cache and return client
         self.clients[address] = client
