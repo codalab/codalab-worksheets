@@ -178,6 +178,7 @@ class SlurmWorkerDaemon(Daemon):
         stdout = os.path.join(daemon_dir, 'worker.stdout.log')
         stderr = os.path.join(daemon_dir, 'worker.stderr.log')
         self.password_file = os.path.join(daemon_dir, 'worker.password')
+        self.worker_parent_dir = os.path.join(daemon_dir, 'workers')
         self.worker_threads = []  # type: List[threading.Thread]
         Daemon.__init__(self, pidfile, chdir=daemon_dir, stdout=stdout, stderr=stderr)
 
@@ -216,7 +217,14 @@ class SlurmWorkerDaemon(Daemon):
             if os.path.isfile(filepath):
                 os.rename(filepath, '{}.old'.format(filepath))
 
-        for path in (self.stdin, self.stdout, self.stderr, self.pidfile, self.password_file):
+        for path in (
+            self.stdin,
+            self.stdout,
+            self.stderr,
+            self.pidfile,
+            self.password_file,
+            self.worker_parent_dir,
+        ):
             make_parent_dir(path)
 
         for path in (self.stdout, self.stderr):
@@ -250,8 +258,6 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
         self.srun_binary = args.srun_binary
-        self.worker_dir_prefix = args.worker_dir_prefix
-        self.worker_parent_dir = args.worker_parent_dir
         self.sleep_interval = args.sleep_interval
         self.max_concurrent_workers = args.max_concurrent_workers
         self.num_runs = 0
@@ -330,7 +336,7 @@ class SlurmWorkerDaemon(Daemon):
         This function makes the actual command call to start the job on Slurm.
         """
         current_directory = os.getcwd()
-        worker_name = '{}-{}'.format(self.worker_dir_prefix, self.num_runs)
+        worker_name = 'worker-{}'.format(self.num_runs)
         tag = None
         if run_fields['request_gpus']:
             if 'jag_hi' in run_fields['tags']:
@@ -462,16 +468,22 @@ def parse_args():
         default='default',
     )
     parser.add_argument(
-        '--script-dir',
-        type=str,
-        help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation. Do not change if you do not know what you are doing.',
-        default=os.path.join(home, '.cl_slurm_worker'),
-    )
-    parser.add_argument(
         '--server-instance',
         type=str,
         help='Codalab server to run the workers for (default Stanford NLP cluster instance), use https://worksheets.codalab.org for the public Codalab instance',
         default='https://worksheets-dev.codalab.org',
+    )
+    parser.add_argument(
+        '--max-concurrent-workers',
+        type=int,
+        help='Maximum number of concurrent workers this script will launch (default 10)',
+        default=10,
+    )
+    parser.add_argument(
+        '--sleep-interval',
+        type=int,
+        help='Number of seconds to wait between each time the server is polled for new runs (default 30)',
+        default=30,
     )
     parser.add_argument(
         '--srun-binary',
@@ -492,28 +504,10 @@ def parse_args():
         default='/u/nlp/bin/cl',
     )
     parser.add_argument(
-        '--worker-parent-dir',
+        '--script-dir',
         type=str,
-        help='Where the temporary working directories for workers should be created (default home directory of user)',
-        default=home,
-    )
-    parser.add_argument(
-        '--worker-dir-prefix',
-        type=str,
-        help='Prefix to use for temporary worker directories (they are named \{prefix\}-\{worker number\})',
-        default='worker',
-    )
-    parser.add_argument(
-        '--sleep-interval',
-        type=int,
-        help='Number of seconds to wait between each time the server is polled for new runs (default 30)',
-        default=30,
-    )
-    parser.add_argument(
-        '--max-concurrent-workers',
-        type=int,
-        help='Maximum number of concurrent workers this script will launch (default 10)',
-        default=10,
+        help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation. Do not change if you do not know what you are doing.',
+        default=os.path.join(home, '.cl_slurm_worker'),
     )
     return parser.parse_args()
 
