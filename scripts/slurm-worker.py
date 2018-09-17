@@ -260,7 +260,6 @@ class SlurmWorkerDaemon(Daemon):
         self.srun_binary = args.srun_binary
         self.sleep_interval = args.sleep_interval
         self.max_concurrent_workers = args.max_concurrent_workers
-        self.num_runs = 0
         self.worker_threads = []  # type: List[threading.Thread]
 
         # Cache runs that we started workers for for one extra iteration in case they're still staged
@@ -310,7 +309,6 @@ class SlurmWorkerDaemon(Daemon):
                     self.worker_threads.append(worker_thread)
                     worker_thread.start()
                     cooldown_runs.add(uuid)
-                    self.num_runs += 1
                 else:
                     print(
                         "Previous worker for run {} hasn't been successful, uncaching it".format(
@@ -336,7 +334,7 @@ class SlurmWorkerDaemon(Daemon):
         This function makes the actual command call to start the job on Slurm.
         """
         current_directory = os.getcwd()
-        worker_name = 'worker-{}'.format(self.num_runs)
+        worker_name = 'worker-{}'.format(run_fields['uuid'])
         tag = None
         if run_fields['request_gpus']:
             if 'jag_hi' in run_fields['tags']:
