@@ -192,15 +192,14 @@ class SlurmWorkerDaemon(Daemon):
         Also ensure the password_file in args exists with the correct permissions so workers may be easily
         created in the future
         """
-        self.cl_binary = args.cl_binary
-        self.server_instance = args.server_instance
         subprocess.check_call(
-            '{} work {}::'.format(self.cl_binary, self.server_instance), shell=True
+            '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
         )
         if os.path.isfile(args.password_file):
             if os.stat(args.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
                 os.chmod(args.password_file, 0o600)
         else:
+            print("No password file for workers, getting from user")
             username = os.environ.get('CODALAB_USERNAME')
             if username is None:
                 username = raw_input('Username: ')
@@ -211,7 +210,7 @@ class SlurmWorkerDaemon(Daemon):
                 password_file.write('{0}\n{1}'.format(username, password))
             os.chmod(args.password_file, 0o600)
 
-        print('Logged in to {}'.format(self.server_instance))
+        print('Logged in to {}'.format(args.server_instance))
 
     def run(self, args):
         """
@@ -230,6 +229,8 @@ class SlurmWorkerDaemon(Daemon):
         # during the next iteration as worker booting might take some time. Un-cache them after one
         # iteration to start booting new workers for them
         cooldown_runs = set()
+        status = subprocess.check_output('{} status'.format(self.cl_binary), shell=True)
+        print("Starting daemon, status: {}".format(status))
         while True:
             run_lines = subprocess.check_output(
                 '{} search .mine state=staged -u'.format(self.cl_binary), shell=True
