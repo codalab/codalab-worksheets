@@ -424,7 +424,7 @@ def parse_args():
         '--script-dir',
         type=str,
         help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation for the same run (ie. logs, restart, stop). Do not change if you do not know what you are doing.',
-        default=os.path.join(home, '.cl_slurm_worker', 'worker.password'),
+        default=os.path.join(home, '.cl_slurm_worker'),
     )
     parser.add_argument(
         '--server-instance',
