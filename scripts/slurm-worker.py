@@ -183,26 +183,6 @@ class SlurmWorkerDaemon(Daemon):
         self.worker_threads = []  # type: List[threading.Thread]
         Daemon.__init__(self, pidfile, chdir=daemon_dir, stdout=stdout, stderr=stderr)
 
-    def list_instances(self):
-        """
-        List all currently running instances of Slurm worker.
-        This works off the assumption that all instances are subdirectories of the daemon
-        directory, and subsequently cannot catch instances that are started with a different
-        script_dir argument.
-        Returns a list of tuples where the first element is the name and the second the pid
-        """
-        instances = []
-        for instance_dir in os.listdir(self.daemon_dir):
-            try:
-                with open(
-                    os.path.join(self.daemon_dir, instance_dir, 'worker.pid'), 'r'
-                ) as pidfile:
-                    pid = pidfile.read().trim()
-                    instances.append((instance_dir, pid))
-            except (IOError, OSError):
-                continue
-        return instances
-
     def login(self, args):
         """
         Log in to the CLI
@@ -465,6 +445,27 @@ class SlurmWorkerDaemon(Daemon):
         else:
             return val
 
+    @staticmethod
+    def list_instances(script_dir):
+        """
+        List all currently running instances of Slurm worker.
+        This works off the assumption that all instances are subdirectories of the daemon
+        directory, and subsequently cannot catch instances that are started with a different
+        script_dir argument.
+        Returns a list of tuples where the first element is the name and the second the pid
+        """
+        instances = []
+        for instance_dir in os.listdir(self.script_dir):
+            try:
+                with open(
+                    os.path.join(self.daemon_dir, instance_dir, 'worker.pid'), 'r'
+                ) as pidfile:
+                    pid = pidfile.read().trim()
+                    instances.append((instance_dir, pid))
+            except (IOError, OSError):
+                continue
+        return instances
+
 
 def parse_args():
     home = os.environ.get('HOME')
@@ -561,7 +562,7 @@ def main():
         print('Active slurm worker daemons:')
         print('{:^10} {:^10}'.format('Name', 'Pid'))
         print('-' * 21)
-        for name, pid in daemon.list_instances():
+        for name, pid in SlurmWorkerDaemon.list_instances(args.script_dir):
             print('{:<10} {:<10}'.format(name, pid))
     else:
         print("Unknown command %s" % args.action)
