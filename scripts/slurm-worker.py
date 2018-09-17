@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
 Script that's designed for individual users of a Slurm managed cluster to run on a machine
-with srun access. Once the user starts the script and logs in, the script fires a daemon that
+with sbatch access. Once the user starts the script and logs in, the script fires a daemon that
 busy loops, querying the given CodaLab instance for staged bundles belonging to the user.
 Every time there's a staged bundle, its CodaLab resource requests (gpu, cpu, memory etc)
-are converted to srun options and a new worker with that many resources is fired up on slurm.
+are converted to sbatch options and a new worker with that many resources is fired up on slurm.
 These workers die when they're idle.
 
 Some values are Stanford NLP cluster specific (CodaLab instance used, worker binary locations),
@@ -241,7 +241,7 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
         self.num_runs = 0
-        self.srun_binary = args.srun_binary
+        self.sbatch_binary = args.sbatch_binary
         self.worker_dir_prefix = args.worker_dir_prefix
         self.worker_parent_dir = args.worker_parent_dir
         self.sleep_interval = args.sleep_interval
@@ -309,27 +309,30 @@ class SlurmWorkerDaemon(Daemon):
         else:
             partition = 'john'
 
-        srun_flags = [
-            self.srun_binary,
-            '--partition={}'.format(partition),
-            '--mem={}'.format(run_fields['request_memory']),
-            '--gres=gpu:{}'.format(run_fields['request_gpus']),
-            '--chdir={}'.format(current_directory),
-            '--nodes 1',
+        sbatch_flags = [
+            '#!/bin/bash',
+            '#SBATCH --partition={}'.format(partition),
+            '#SBATCH --mem={}'.format(run_fields['request_memory']),
+            '#SBATCH --gres=gpu:{}'.format(run_fields['request_gpus']),
+            '#SBATCH --chdir={}'.format(current_directory),
+            '#SBATCH --nodes 1',
         ]
 
         if run_fields['request_cpus'] > 1:
-            srun_flags.append('--cpus-per-task={}'.format(run_fields['request_cpus']))
+            sbatch_flags.append('#SBATCH --cpus-per-task={}'.format(run_fields['request_cpus']))
 
-        srun_command = ' '.join(srun_flags)
-        worker_command_script = self.write_worker_invocation(
+        worker_commands = self.write_worker_invocation(
             worker_name=worker_name,
             tag=tag,
             num_cpus=run_fields['request_cpus'],
             num_gpus=run_fields['request_gpus'],
             verbose=True,
         )
-        final_command = '{} bash {}'.format(srun_command, worker_command_script)
+        final_command = sbatch_flags + worker_commands
+        with open('start-{}.sh'.format(worker_name), 'w') as script_file:
+            for line in final_command:
+                script_file.write(line)
+        final_command = '{} {}'.format(self.sbatch_binary, script_file.name)
         print('Starting worker for run {}'.format(run_fields['uuid']))
         try:
             subprocess.check_call(final_command, shell=True)
@@ -337,33 +340,9 @@ class SlurmWorkerDaemon(Daemon):
             print('Anomaly in worker run: {}'.format(e))
         finally:
             try:
-                os.remove(worker_command_script)
+                os.remove(script_file.name)
             except Exception as ex:
                 print('Anomaly when trying to remove old worker script: {}'.format(ex))
-
-    @staticmethod
-    def parse_duration(dur):
-        """
-        s: <number>[<s|m|h|d|y>]
-        Returns the number of minutes
-        """
-        try:
-            if dur[-1].isdigit():
-                return math.ceil(float(dur) / 60.0)
-            n, unit = float(dur[0:-1]), dur[-1].lower()
-            if unit == 's':
-                return math.ceil(n / 60.0)
-            if unit == 'm':
-                return n
-            if unit == 'h':
-                return n * 60
-            if unit == 'd':
-                return n * 60 * 24
-            if unit == 'y':
-                return n * 60 * 24 * 365
-        except (IndexError, ValueError):
-            pass  # continue to next line and throw error
-        raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
 
     def write_worker_invocation(
         self, worker_name='worker', tag=None, num_cpus=1, num_gpus=0, verbose=False
@@ -388,11 +367,31 @@ class SlurmWorkerDaemon(Daemon):
         if verbose:
             flags.append('--verbose')
         worker_command = '{} {};'.format(self.cl_worker_binary, ' '.join(flags))
-        with open('start-{}.sh'.format(worker_name), 'w') as script_file:
-            script_file.write(prepare_command)
-            script_file.write(worker_command)
-            script_file.write(cleanup_command)
-        return script_file.name
+        return [prepare_command, worker_command, cleanup_command]
+
+    @staticmethod
+    def parse_duration(dur):
+        """
+        s: <number>[<s|m|h|d|y>]
+        Returns the number of minutes
+        """
+        try:
+            if dur[-1].isdigit():
+                return math.ceil(float(dur) / 60.0)
+            n, unit = float(dur[0:-1]), dur[-1].lower()
+            if unit == 's':
+                return math.ceil(n / 60.0)
+            if unit == 'm':
+                return n
+            if unit == 'h':
+                return n * 60
+            if unit == 'd':
+                return n * 60 * 24
+            if unit == 'y':
+                return n * 60 * 24 * 365
+        except (IndexError, ValueError):
+            pass  # continue to next line and throw error
+        raise ValueError('Invalid duration: %s, expected <number>[<s|m|h|d|y>]' % dur)
 
     @staticmethod
     def parse_field(field, val):
@@ -442,10 +441,10 @@ def parse_args():
         default='https://worksheets-dev.codalab.org',
     )
     parser.add_argument(
-        '--srun-binary',
+        '--sbatch-binary',
         type=str,
-        help='Where the binary for the srun command lives (default is the location on the Stanford NLP cluster)',
-        default='srun',
+        help='Where the binary for the sbatch command lives (default is the location on the Stanford NLP cluster)',
+        default='sbatch',
     )
     parser.add_argument(
         '--cl-worker-binary',
