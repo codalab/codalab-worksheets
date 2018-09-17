@@ -197,8 +197,8 @@ class CodaLabManager(object):
             'aliases': {'main': MAIN_BUNDLE_SERVICE, 'localhost': 'http://localhost:2900'},
             'workers': {
                 'default_cpu_image': 'codalab/default-cpu:latest',
-                'default_gpu_image': 'codalab/default-gpu:latest'
-            }
+                'default_gpu_image': 'codalab/default-gpu:latest',
+            },
         }
 
         # Generate secret key
