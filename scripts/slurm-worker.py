@@ -14,6 +14,7 @@ on all slurm machines on a consitent location.
 
 import argparse
 import atexit
+import errno
 import math
 import os
 import subprocess
@@ -32,21 +33,37 @@ class Daemon:
     Source: http://www.jejik.com/articles/2007/02/a_simple_unix_linux_daemon_in_python/
     """
 
-    def __init__(
-        self,
-        pidfile,
-        logfile='/dev/null',
-        stdin='/dev/null',
-        stdout='/dev/null',
-        stderr='/dev/null',
-    ):
+    def __init__(self, pidfile, stdin='/dev/null', stdout='/dev/null', stderr='/dev/null'):
+
         self.stdin = stdin
         self.stdout = stdout
         self.stderr = stderr
         self.pidfile = pidfile
-        self.logfile = logfile
         self.last_args = []
         self.last_kwargs = {}
+
+        def make_parent_dir(filepath):
+            """
+            Make all the directories in filepath until the leaf is reached
+            Raises an error if a non-directory file exists by the same name
+            as one of the directories in the filesystem (or if the directories
+            cannot be created for some other reason). Quietly exits if the
+            directories already exist.
+            """
+            dirpath = os.path.dirname(filepath)
+            try:
+                os.makedirs(dirpath)
+            except OSError as exc:
+                if not exc.errno == errno.EEXIST:
+                    raise exc
+                elif not os.path.isdir(dirpath):
+                    raise IOError(
+                        'Directory in a given path exists but is not a directory: (%s in %s)'
+                        % (dirpath, filepath)
+                    )
+
+        for path in (self.stdin, self.stdout, self.stderr, self.pidfile):
+            make_parent_dir(path)
 
     def daemonize(self):
         """
