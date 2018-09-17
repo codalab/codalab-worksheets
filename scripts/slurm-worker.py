@@ -108,7 +108,8 @@ class Daemon:
         # write pidfile
         atexit.register(self.delpid)
         pid = str(os.getpid())
-        file(self.pidfile, 'w+').write("%s\n" % pid)
+        with open(self.pidfile, 'w+') as pidfile:
+            pidfile.write("%s\n" % pid)
 
     def delpid(self):
         os.remove(self.pidfile)
@@ -371,13 +372,13 @@ def parse_args():
         choices={'start', 'stop', 'restart'},
         help='start, stop or restart the daemon, if start',
     )
-    parser.add_argumen(
+    parser.add_argument(
         '--pidfile',
         type=str,
         help='ONLY FOR ADVANCED USE: location of daemon pidfile, don\'t change if you don\'t know what you\'re doing',
         default=os.path.join(home, '.cl_slurm_worker', 'worker.pid'),
     )
-    parser.add_argumen(
+    parser.add_argument(
         '--logfile',
         type=str,
         help='ONLY FOR ADVANCED USE: location of daemon logfile, don\'t change if you don\'t know what you\'re doing',
