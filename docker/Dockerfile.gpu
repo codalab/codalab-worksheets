@@ -29,6 +29,9 @@ RUN add-apt-repository ppa:deadsnakes/ppa && \
 
 RUN curl https://bootstrap.pypa.io/get-pip.py | python3.6
 
+### Without this Python thinks we're ASCII and unicode chars fail
+ENV LANG C.UTF-8
+
 ## Oracle JDK 8
 RUN echo oracle-java8-installer shared/accepted-oracle-license-v1-1 select true | debconf-set-selections && \
     add-apt-repository -y ppa:webupd8team/java && \
