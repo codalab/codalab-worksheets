@@ -469,19 +469,43 @@ class SlurmWorkerDaemon(Daemon):
 
     @staticmethod
     def list_instances(script_dir):
+        print('Active slurm worker daemons:')
+        print('{:^10} {:^10} {:^10}'.format('Name', 'Run Status', 'Pid'))
+        print('-' * 32)
+        for name, running, pid in SlurmWorkerDaemon.get_instances(script_dir):
+            status = 'Running' if running else 'Stopped'
+            print('{:<10} {:<10} {:<10}'.format(name, status, pid))
+
+    @staticmethod
+    def get_instances(script_dir):
         """
-        List all currently running instances of Slurm worker.
+        List all current known instances of Slurm worker.
         This works off the assumption that all instances are subdirectories of the daemon
         directory, and subsequently cannot catch instances that are started with a different
         script_dir argument.
-        Returns a list of tuples where the first element is the name and the second the pid
+        Returns a list of tuples where the first element is the name, the second run status and the third the pid
         """
         instances = []
         for instance_dir in os.listdir(script_dir):
             try:
                 with open(os.path.join(script_dir, instance_dir, 'worker.pid'), 'r') as pidfile:
                     pid = pidfile.read().strip()
-                    instances.append((instance_dir, pid))
+                    try:
+                        # send SIG 0 to check if PID exists
+                        os.kill(pid, 0)
+                        is_running = True
+                    except OSError as err:
+                        if err.errno == errno.ESRCH:
+                            # ESRCH == No such process
+                            is_running = False
+                        elif err.errno == errno.EPERM:
+                            # EPERM clearly means there's a process to deny access to
+                            is_running = True
+                        else:
+                            # According to "man 2 kill" possible error values are
+                            # (EINVAL, EPERM, ESRCH)
+                            raise
+                instances.append((instance_dir, is_running, pid))
             except (IOError, OSError):
                 continue
         return instances
@@ -498,8 +522,8 @@ def parse_args():
     parser.add_argument(
         'action',
         type=str,
-        choices={'start', 'stop', 'restart', 'logs', 'list'},
-        help='start, stop or restart the daemon or use logs to print the logs. Use list to list all running daemons for this user',
+        choices={'start', 'stop', 'restart', 'logs', 'list', 'status'},
+        help='start, stop or restart the daemon or use logs to print the logs. Use list or status to list all known daemons for this user',
     )
     parser.add_argument(
         '--name',
@@ -577,12 +601,8 @@ def main():
         daemon.restart()
     elif args.action == 'logs':
         daemon.print_logs(args.tail)
-    elif args.action == 'list':
-        print('Active slurm worker daemons:')
-        print('{:^10} {:^10}'.format('Name', 'Pid'))
-        print('-' * 21)
-        for name, pid in SlurmWorkerDaemon.list_instances(args.script_dir):
-            print('{:<10} {:<10}'.format(name, pid))
+    elif args.action == 'list' or args.action == 'status':
+        daemon.list_instances(args.script_dir)
     else:
         print("Unknown command %s" % args.action)
         sys.exit(2)
