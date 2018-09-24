@@ -531,6 +531,9 @@ def parse_args():
         help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation. Do not change if you do not know what you are doing.',
         default=os.path.join(home, '.cl_slurm_worker'),
     )
+    parser.add_argument(
+        '--tail', type=int, help='If specified only print this many lines from logs', default=None
+    )
     return parser.parse_args()
 
 
@@ -556,10 +559,15 @@ def main():
         daemon.restart()
     elif args.action == 'logs':
         with open(daemon.stdout, 'r') as stdout, open(daemon.stderr, 'r') as stderr:
+            stdout_lines = stdout.readlines()
+            stderr_lines = stderr.readlines()
+            if args.tail:
+                stdout_lines = stdout_lines[-args.tail :]
+                stderr_lines = stderr_lines[-args.tail :]
             print(">>>>>>STDOUT")
-            print(stdout.read())
+            print(stdout_lines)
             print(">>>>>>STDERR")
-            print(stderr.read())
+            print(stderr_lines)
     elif args.action == 'list':
         print('Active slurm worker daemons:')
         print('{:^10} {:^10}'.format('Name', 'Pid'))
