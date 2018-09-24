@@ -255,6 +255,24 @@ class SlurmWorkerDaemon(Daemon):
 
         print('Logged in to {}'.format(args.server_instance))
 
+    def print_logs(self, tail=None):
+        """
+        Print the logs of this daemon.
+        :param tail: If specified print last N lines from both STDERR and STDOUT
+        """
+        with open(self.stdout, 'r') as stdout, open(self.stderr, 'r') as stderr:
+            stdout_lines = stdout.readlines()
+            stderr_lines = stderr.readlines()
+            if tail:
+                stdout_lines = stdout_lines[-tail:]
+                stderr_lines = stderr_lines[-tail:]
+            stdout = os.linesep.join(stdout_lines)
+            stderr = os.linesep.join(stderr_lines)
+            print(">>>>>>STDOUT")
+            print(stdout)
+            print(">>>>>>STDERR")
+            print(stderr)
+
     def run(self, args):
         """
         Run the daemon, expect the CLI to be logged in to the given server instance already
@@ -558,16 +576,7 @@ def main():
         daemon.login(*daemon.last_args)
         daemon.restart()
     elif args.action == 'logs':
-        with open(daemon.stdout, 'r') as stdout, open(daemon.stderr, 'r') as stderr:
-            stdout_lines = stdout.readlines()
-            stderr_lines = stderr.readlines()
-            if args.tail:
-                stdout_lines = stdout_lines[-args.tail :]
-                stderr_lines = stderr_lines[-args.tail :]
-            print(">>>>>>STDOUT")
-            print(stdout_lines)
-            print(">>>>>>STDERR")
-            print(stderr_lines)
+        daemon.print_logs(args.tail)
     elif args.action == 'list':
         print('Active slurm worker daemons:')
         print('{:^10} {:^10}'.format('Name', 'Pid'))
