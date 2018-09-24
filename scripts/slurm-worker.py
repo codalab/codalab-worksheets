@@ -474,7 +474,7 @@ class SlurmWorkerDaemon(Daemon):
         print('-' * 32)
         for name, running, pid in SlurmWorkerDaemon.get_instances(script_dir):
             status = 'Running' if running else 'Stopped'
-            print('{:<10} {:<10} {:<10}'.format(name, status, pid))
+            print('{:<10} {:^10} {:^10}'.format(name, status, pid))
 
     @staticmethod
     def get_instances(script_dir):
