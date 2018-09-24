@@ -507,6 +507,7 @@ class SlurmWorkerDaemon(Daemon):
                             raise
                 instances.append((instance_dir, is_running, pid))
             except (IOError, OSError):
+                instances.append((instance_dir, False, 'N/A'))
                 continue
         return instances
 
