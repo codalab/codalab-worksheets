@@ -236,6 +236,8 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                 path_to_remove = self._dependencies[dependency].path
                 self._paths.remove(path_to_remove)
                 remove_path(path_to_remove)
+            except Exception:
+                pass
             finally:
                 del self._dependencies[dependency]
                 self._dependency_locks[dependency].release()
