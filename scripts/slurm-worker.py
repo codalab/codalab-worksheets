@@ -469,7 +469,7 @@ class SlurmWorkerDaemon(Daemon):
 
     @staticmethod
     def list_instances(script_dir):
-        print('Active slurm worker daemons:')
+        print('Slurm worker daemons:')
         print('{:^10} {:^10} {:^10}'.format('Name', 'Run Status', 'Pid'))
         print('-' * 32)
         for name, running, pid in SlurmWorkerDaemon.get_instances(script_dir):
