@@ -231,9 +231,13 @@ class SlurmWorkerDaemon(Daemon):
         for path in (self.stdout, self.stderr):
             reset_file(path)
 
-        subprocess.check_call(
-            '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
-        )
+        logged_in = False
+        while not logged_in:
+            cli_login_output = subprocess.check_output(
+                '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
+            )
+            logged_in = 'Invalid' not in cli_login_output
+
         if os.path.isfile(self.password_file):
             if os.stat(self.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
                 os.chmod(self.password_file, 0o600)
@@ -488,8 +492,8 @@ def parse_args():
     parser.add_argument(
         '--server-instance',
         type=str,
-        help='Codalab server to run the workers for (default Stanford NLP cluster instance), use https://worksheets.codalab.org for the public Codalab instance',
-        default='https://worksheets-dev.codalab.org',
+        help='Codalab server to run the workers for',
+        default='https://worksheets.codalab.org',
     )
     parser.add_argument(
         '--max-concurrent-workers',
