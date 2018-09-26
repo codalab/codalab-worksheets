@@ -246,7 +246,11 @@ def get_path_size(path, exclude_names=[]):
     if not os.path.islink(path) and os.path.isdir(path):
         for child in os.listdir(path):
             if child not in exclude_names:
-                result += get_path_size(os.path.join(path, child))
+                try:
+                    full_child_path = os.path.join(path, child)
+                except UnicodeDecodeError:
+                    full_child_path = os.path.join(path.decode('utf-8'), child.decode('utf-8'))
+                result += get_path_size(full_child_path)
     return result
 
 
