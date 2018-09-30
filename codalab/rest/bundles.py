@@ -51,7 +51,6 @@ def _fetch_bundle(uuid):
        for displaying the bundle info, `0` to omit them. Default is `0`.
      - `include`: comma-separated list of related resources to include, such as "owner"
     """
-    print 'bundles?'
     document = build_bundles_document([uuid])
     precondition(len(document['data']) == 1, "data should have exactly one element")
     document['data'] = document['data'][0]  # Flatten data list
