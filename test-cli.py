@@ -1420,33 +1420,17 @@ def test(ctx):
 @TestModule.register('netcat')
 def test(ctx):
     run_command(
-        ['docker', 'pull', 'codalab/python:0.1']
+        ['docker', 'pull', 'codalab/default-cpu:latest']
     )  # pull image in order to run python script
 
     script_uuid = run_command([cl, 'upload', test_path('netcat-test.py')])
-    uuid = run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/python:0.1',
-            'netcat-test.py:' + script_uuid,
-            'python netcat-test.py',
-        ]
-    )
+    uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_running(uuid)
     time.sleep(5)
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'hi patrick'])
     check_equals('No, this is dawg', output)
 
-    uuid = run_command(
-        [
-            cl,
-            'run',
-            '--request-docker-image=codalab/python:0.1',
-            'netcat-test.py:' + script_uuid,
-            'python netcat-test.py',
-        ]
-    )
+    uuid = run_command([cl, 'run', 'netcat-test.py:' + script_uuid, 'python netcat-test.py'])
     wait_until_running(uuid)
     time.sleep(5)
     output = run_command([cl, 'netcat', uuid, '5005', '---', 'yo dawg!'])
@@ -1467,17 +1451,111 @@ def test(ctx):
 @TestModule.register('docker', default=False)
 def test(ctx):
     """
-    Check that certain Docker containers work with the CodaLab workers.
+    Placeholder for tests for default Codalab docker images
     """
-    # Environment variables should load properly in codalab images
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python --version']
+    )
+    wait(uuid)
+    check_contains('2.7', run_command([cl, 'cat', uuid + '/stdout']))
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python3.6 --version']
+    )
+    wait(uuid)
+    check_contains('3.6', run_command([cl, 'cat', uuid + '/stdout']))
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python -c "import tensorflow"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import torch"']
+    )
+    wait(uuid)
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import numpy"']
+    )
+    wait(uuid)
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import nltk"']
+    )
+    wait(uuid)
+    uuid = run_command(
+        [cl, 'run', '--request-docker-image=codalab/default-cpu:latest', 'python -c "import spacy"']
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python -c "import matplotlib"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3.6 -c "import tensorflow"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3.6 -c "import torch"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3.6 -c "import numpy"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3.6 -c "import nltk"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3.6 -c "import spacy"',
+        ]
+    )
+    wait(uuid)
+    uuid = run_command(
+        [
+            cl,
+            'run',
+            '--request-docker-image=codalab/default-cpu:latest',
+            'python3.6 -c "import matplotlib"',
+        ]
+    )
+    wait(uuid)
     uuid = run_command([cl, 'run', '--request-docker-image=codalab/ubuntu:1.9', 'echo $SCALA_HOME'])
     wait(uuid)
-    check_equals('/opt/scala/current', run_command([cl, 'cat', uuid + '/stdout']))
-    uuid = run_command([cl, 'run', '--request-docker-image=codalab/torch:1.1', 'echo $LUA_PATH'])
-    wait(uuid)
-    check_contains(
-        '/user/.luarocks/share/lua/5.1/?.lua', run_command([cl, 'cat', uuid + '/stdout'])
-    )
+    check_equals('/usr/share/java', run_command([cl, 'cat', uuid + '/stdout']))
+    # TODO (bkgoksel): Test CUDA?
+    pass
 
 
 @TestModule.register('competition')
