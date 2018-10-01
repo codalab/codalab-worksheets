@@ -153,7 +153,7 @@ def pack_files_for_upload(
             }
         elif path_is_archive(source):
             return {
-                'fileobj': open(source),
+                'fileobj': open(source, mode='rb'),
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': should_unpack,
@@ -169,7 +169,7 @@ def pack_files_for_upload(
             }
         else:
             return {
-                'fileobj': open(source),
+                'fileobj': open(source, mode='rb'),
                 'filename': filename,
                 'filesize': os.path.getsize(source),
                 'should_unpack': False,
