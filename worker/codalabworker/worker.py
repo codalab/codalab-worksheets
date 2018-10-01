@@ -5,7 +5,7 @@ import socket
 import httplib
 import sys
 
-from bundle_service_client import BundleServiceException
+from bundle_service_client import BundleServiceException, BundleAuthException
 from download_util import BUNDLE_NO_LONGER_RUNNING_MESSAGE
 from state_committer import JsonStateCommitter
 
@@ -89,7 +89,11 @@ class Worker(object):
             'hostname': socket.gethostname(),
             'runs': self._run_manager.all_runs,
         }
-        response = self._bundle_service.checkin(self.id, request)
+        try:
+            response = self._bundle_service.checkin(self.id, request)
+        except BundleAuthException:
+            self.signal()
+            raise
         if response:
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)
