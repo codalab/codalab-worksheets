@@ -3520,9 +3520,9 @@ class BundleCLI(object):
                     else:
                         value = user[key]
                 except KeyError:
-                    pass
+                    return
             else:
-                value = user.get(key, None)
+                value = user[key]
 
             if should_pretty_print:
                 print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
