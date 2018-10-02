@@ -279,7 +279,7 @@ class CodaLabManager(object):
         #                  | return this
         # This way, it's easy to write scripts that have embedded 'cl' commands
         # which modify the current session.
-        process = psutil.Process(os.getppid())
+        process = psutil.Process().parent()
         session = 'top'
         max_depth = 10
         while process and max_depth:
@@ -287,7 +287,7 @@ class CodaLabManager(object):
                 name = os.path.basename(process.cmdline()[0])
                 # When a shell is invoked as a login shell, its process command
                 # will be preceded by a dash '-'.
-                if re.match(r'-?(sh|bash|csh|tcsh|zsh|python|ruby)', name) is None:
+                if re.match(r'-?(sh|bash|csh|tcsh|zsh|python|ruby|powershell|cmd)(\.exe)?', name) is None:
                     break
                 session = str(process.pid)
                 process = process.parent()

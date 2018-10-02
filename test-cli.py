@@ -35,7 +35,7 @@ import traceback
 cl = 'codalab/bin/cl'
 # Directory where this script lives.
 base_path = os.path.dirname(os.path.abspath(__file__))
-crazy_name = 'crazy ("ain\'t it?")'
+crazy_name = 'crazy (ain\'t it)'
 CodaLabInstance = namedtuple('CodaLabInstance', 'host home username password')
 
 
