@@ -34,7 +34,6 @@ fi
 echo
 
 codalabdir=`dirname $0`
-workerdir=$codalabdir/worker
 env=$codalabdir/venv
 
 if [ ! -e $env ]; then
@@ -48,7 +47,7 @@ $env/bin/pip install -U setuptools
 echo -e "${info}[*] Installing Python packages into $env...${reset}"
 if [ "$1" == "server" ]; then
   $env/bin/pip install -r $codalabdir/requirements-server.txt
-  $env/bin/pip install -e $workerdir
+  $env/bin/pip install -e $codalabdir/worker
 elif [ "$1" == "client" ]; then
   $env/bin/pip install -r $codalabdir/requirements.txt
 fi

@@ -30,7 +30,7 @@ script:
   - chmod 600 /home/travis/.codalab/root.password
   - sleep 15
   - pip install ./worker
-  - ./worker/codalabworker/worker.sh --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose &
+  - cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose &
   - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
   - ./codalab/bin/cl upload -c stuff
   - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
