@@ -208,11 +208,11 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     }
                     if failed_deps:
                         dep_to_remove = min(
-                            failed_deps.iteritems(), key=lambda dep, state: state.last_used
+                            failed_deps.iteritems(), key=lambda dep_state: dep_state[1].last_used
                         )[0]
                     elif ready_deps:
                         dep_to_remove = min(
-                            ready_deps.iteritems(), key=lambda dep, state: state.last_used
+                            ready_deps.iteritems(), key=lambda dep_state: dep_state[1].last_used
                         )[0]
                     else:
                         logger.info(
