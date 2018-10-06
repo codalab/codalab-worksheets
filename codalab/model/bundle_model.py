@@ -786,7 +786,12 @@ class BundleModel(object):
             ).fetchone()
             if not row:
                 return False
+
             if state == State.FINALIZING:
+                # update bundle metadata using resume_bundle one last time before finalizing it
+                self.resume_bundle(
+                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
+                )
                 return self.finalize_bundle(
                     bundle,
                     user_id,
@@ -892,8 +897,14 @@ class BundleModel(object):
         state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message == 'Kill requested':
             state = State.KILLED
+
+        metadata = {
+            'run_status': 'Finished',
+            'last_updated': int(time.time()),
+        }
+
         with self.engine.begin() as connection:
-            self.update_bundle(bundle, {'state': state}, connection)
+            self.update_bundle(bundle, {'state': state, 'metadata': metadata}, connection)
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
