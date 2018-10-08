@@ -38,11 +38,12 @@ env=$codalabdir/venv
 
 if [ ! -e $env ]; then
   echo -e "${info}[*] Setting up a Python virtual environment (in $env)...${reset}"
-  virtualenv -p /usr/bin/python2.7 $env
+  python2 -m virtualenv -p /usr/bin/python2.7 $env
+  curl https://bootstrap.pypa.io/get-pip.py | $env/bin/python
   echo
 fi
 
-$env/bin/pip install -U setuptools
+$env/bin/pip install -U setuptools pip
 
 echo -e "${info}[*] Installing Python packages into $env...${reset}"
 if [ "$1" == "server" ]; then
