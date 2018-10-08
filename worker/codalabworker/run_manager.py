@@ -120,19 +120,21 @@ class BaseRunManager(object):
 
 
 class Reader(object):
+    def __init__(self):
+        self.read_handlers = {
+            'get_target_info': self.get_target_info,
+            'stream_directory': self.stream_directory,
+            'stream_file': self.stream_file,
+            'read_file_section': self.read_file_section,
+            'summarize_file': self.summarize_file,
+        }
+
     def read(self, run_state, path, dep_paths, read_args, reply):
         dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
         read_type = read_args['type']
-        if read_type == 'get_target_info':
-            self.get_target_info(run_state, path, dep_paths, read_args, reply)
-        elif read_type == 'stream_directory':
-            self.stream_directory(run_state, path, dep_paths, read_args, reply)
-        elif read_type == 'stream_file':
-            self.stream_file(run_state, path, dep_paths, read_args, reply)
-        elif read_type == 'read_file_section':
-            self.read_file_section(run_state, path, dep_paths, read_args, reply)
-        elif read_type == 'summarize_file':
-            self.summarize_file(run_state, path, dep_paths, read_args, reply)
+        handler = self.read_handlers.get(read_type, None)
+        if handler:
+             handler(run_state, path, dep_paths, read_args, reply)
         else:
             err = (httplib.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
             reply(err)

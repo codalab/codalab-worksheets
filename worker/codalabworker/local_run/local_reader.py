@@ -21,6 +21,7 @@ class LocalReader(Reader):
     """
 
     def __init__(self):
+        super(LocalReader, self).__init__()
         self.read_threads = []  # Threads
 
     def stop(self):
