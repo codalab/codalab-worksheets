@@ -3,6 +3,7 @@ import threading
 import time
 import traceback
 import logging
+import sys
 
 from codalabworker.formatting import size_str
 from codalabworker.docker_client import DockerException
