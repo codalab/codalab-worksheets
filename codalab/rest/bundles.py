@@ -499,13 +499,13 @@ def _fetch_bundle_contents_blob(uuid, path=''):
       if either `head` or `tail` is specified. Default is 128.
 
     HTTP Response headers (for single-file targets):
-    - `Content-Disposition: filename=<bundle name or target filename>`
+    - `Content-Disposition: inline; filename=<bundle name or target filename>`
     - `Content-Type: <guess of mimetype based on file extension>`
     - `Content-Encoding: [gzip|identity]`
     - `Target-Type: file`
 
     HTTP Response headers (for directories):
-    - `Content-Disposition: filename=<bundle or directory name>.tar.gz`
+    - `Content-Disposition: attachment; filename=<bundle or directory name>.tar.gz`
     - `Content-Type: application/gzip`
     - `Content-Encoding: identity`
     - `Target-Type: directory`
@@ -578,7 +578,10 @@ def _fetch_bundle_contents_blob(uuid, path=''):
     # Set headers.
     response.set_header('Content-Type', mimetype or 'text/plain')
     response.set_header('Content-Encoding', 'gzip' if gzipped_stream else 'identity')
-    response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
+    if target_info['type'] == 'file':
+        response.set_header('Content-Disposition', 'inline; filename="%s"' % filename)
+    else:
+        response.set_header('Content-Disposition', 'attachment; filename="%s"' % filename)
     response.set_header('Target-Type', target_info['type'])
 
     return fileobj
