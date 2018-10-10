@@ -149,6 +149,7 @@ def update_bundle_metadata(worker_id, uuid):
             "time",
             "time_user",
             "time_system",
+            "time_codalab",
             "memory",
             "memory_max",
             "data_size",

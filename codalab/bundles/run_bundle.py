@@ -24,7 +24,7 @@ class RunBundle(DerivedBundle):
     # Don't format metadata specs
     # fmt: off
     METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.', completer=DockerImagesCompleter, hide_when_anonymous=True, default=None))
-    METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.', formatting='duration', default=None))
+    METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Only counts command run time (not additional codalab time). Defaults to user time quota left.', formatting='duration', default=None))
     METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='2g'))
     METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.', formatting='size', default=None))
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'Number of CPUs allowed for this run.', default=1))
@@ -35,9 +35,10 @@ class RunBundle(DerivedBundle):
 
     METADATA_SPECS.append(MetadataSpec('actions', list, 'Actions (e.g., kill) that were performed on this run.', generated=True))
 
-    METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of time (seconds) used by this run (total).', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of time (seconds) by user.', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of time (seconds) by the system.', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of time (seconds) used by the run command in total (user + system).', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of user time (seconds) used by the run command.', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of system time (seconds) used by the run command.', generated=True, formatting='duration'))
+    METADATA_SPECS.append(MetadataSpec('time_codalab', float, 'Amount of time (seconds) used by the run command and codalab (setup/teardown) in total.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('memory_max', float, 'Maximum amount of memory (bytes) used by this run at any time during execution.', generated=True, formatting='size'))
 

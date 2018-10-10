@@ -829,7 +829,9 @@ class BundleModel(object):
         metadata_update = {
             'run_status': bundle_update['run_status'],
             'last_updated': int(time.time()),
-            'time': time.time() - bundle_update['start_time'],
+            'time': bundle_update['time'],
+            'time_user': bundle_update['time_user'],
+            'time_system': bundle_update['time_system'],
         }
 
         if bundle_update['docker_image'] is not None:
@@ -869,9 +871,7 @@ class BundleModel(object):
         if exitcode is not None:
             metadata['exitcode'] = exitcode
 
-        bundle_update = {'state': State.FINALIZING, 'metadata': metadata}
-
-        self.update_bundle(bundle, bundle_update, connection)
+        self.update_bundle(bundle, {'state': State.FINALIZING, 'metadata': metadata}, connection)
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
