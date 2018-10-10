@@ -16,16 +16,17 @@ info="${bold}\033[36m"     # cyan
 success="${bold}\033[32m"  # green
 # =======================================
 
-
+# Ensure proper command usage
 if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] ); then
   echo "Usage:"
   echo "  $0 [client | server]"
   exit 1
 fi
 
-echo -e "${info}[*] Checking for virtualenv...${reset}"
+# Virtualenv must be for standard Python 2.x distribution (not conda)
+echo -e "${info}[*] Checking for virtualenv --> Must be for standard Python 2.x (not conda) ...${reset}"
 if ! which virtualenv; then
-  echo -e "${warning}[!] Python virtualenv is not installed.${reset}"
+  echo -e "${warning}[!] virtualenv is not found.${reset}"
   echo -e "${warning}[!] If you are using Ubuntu, run the following to install:${reset}"
   echo
   echo -e "${warning}  sudo apt-get install python-virtualenv${reset}"
@@ -38,8 +39,7 @@ env=$codalabdir/venv
 
 if [ ! -e $env ]; then
   echo -e "${info}[*] Setting up a Python virtual environment (in $env)...${reset}"
-  python2 -m virtualenv -p /usr/bin/python2.7 $env
-  curl https://bootstrap.pypa.io/get-pip.py | $env/bin/python
+  virtualenv -p /usr/bin/python2.7 $env
   echo
 fi
 
@@ -68,9 +68,6 @@ fi
 if [ $? = 3 ]; then
   exit
 fi
-
-#echo "=== Initializing the database..."
-#$env/bin/alembic stamp head
 
 echo
 echo -e "${warning}[!] Add the following line to your .bashrc to put CodaLab in your path:${reset}"
