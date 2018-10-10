@@ -3,6 +3,7 @@ import logging
 from codalab.worker.bundle_manager import BundleManager
 from codalab.worker.worker_info_accessor import WorkerInfoAccessor
 from codalabworker.bundle_state import State
+from codalab.lib.formatting import size_str, duration_str
 
 
 logger = logging.getLogger(__name__)
@@ -36,13 +37,14 @@ class DefaultBundleManager(BundleManager):
         self._schedule_run_bundles_on_workers(workers, user_owned=False)
 
     def _check_resource_failure(
-        self, value, user_fail_string=None, global_fail_string=None, user_max=None, global_max=None
+        self, value, user_fail_string=None, global_fail_string=None, user_max=None, global_max=None,
+            pretty_print=lambda x: str(x)
     ):
         if value:
             if user_max and value > user_max:
-                return user_fail_string % (value, user_max)
+                return user_fail_string % (pretty_print(value), pretty_print(user_max))
             elif global_max and value > global_max:
-                return global_fail_string % (value, global_max)
+                return global_fail_string % (pretty_print(value), pretty_print(global_max))
         return None
 
     def _fail_on_too_many_resources(self, workers):
@@ -82,6 +84,7 @@ class DefaultBundleManager(BundleManager):
                     user_max=self._model.get_user_disk_quota_left(bundle.owner_id),
                     global_fail_string='Maximum job disk size (%s) exceeded (%s)',
                     global_max=self._max_request_disk,
+                    pretty_print=size_str,
                 )
             )
 
@@ -92,14 +95,16 @@ class DefaultBundleManager(BundleManager):
                     user_max=self._model.get_user_time_quota_left(bundle.owner_id),
                     global_fail_string='Maximum job time (%s) exceeded (%s)',
                     global_max=self._max_request_time,
+                    pretty_print=duration_str,
                 )
             )
 
             failures.append(
                 self._check_resource_failure(
                     self._compute_request_memory(bundle),
-                    global_fail_string='Maximum memory limit (%s) exceeded (%s)',
+                    global_fail_string='Requested more memory (%s) than maximum limit (%s)',
                     global_max=self._max_request_memory,
+                    pretty_print=size_str,
                 )
             )
 
