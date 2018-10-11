@@ -8,6 +8,7 @@ exclude = '''
      venv
    | \.venv
    | \.git
+   | \.ropeproject
    | alembic
    | sdist
    | dist
