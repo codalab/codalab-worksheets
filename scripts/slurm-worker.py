@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """
 Script that's designed for individual users of a Slurm managed cluster to run on a machine
-with srun access. Once the user starts the script and logs in, the script fires a daemon that
+with sbatch access. Once the user starts the script and logs in, the script fires a daemon that
 busy loops, querying the given CodaLab instance for staged bundles belonging to the user.
 Every time there's a staged bundle, its CodaLab resource requests (gpu, cpu, memory etc)
-are converted to srun options and a new worker with that many resources is fired up on slurm.
+are converted to sbatch options and a new worker with that many resources is fired up on slurm.
 These workers die when they're idle.
 
 Some values are Stanford NLP cluster specific (CodaLab instance used, worker binary locations),
@@ -193,15 +193,16 @@ class SlurmWorkerDaemon(Daemon):
         """
 
         # Prepare the log files
-        def make_parent_dir(filepath):
+        def make_dir(filepath, is_dir):
             """
             Make all the directories in filepath until the leaf is reached
             Raises an error if a non-directory file exists by the same name
             as one of the directories in the filesystem (or if the directories
             cannot be created for some other reason). Quietly exits if the
             directories already exist.
+            If is_dir = True, then also makes the leaf as a directory
             """
-            dirpath = os.path.dirname(filepath)
+            dirpath = filepath if is_dir else os.path.dirname(filepath)
             try:
                 os.makedirs(dirpath)
             except OSError as exc:
@@ -226,9 +227,15 @@ class SlurmWorkerDaemon(Daemon):
             self.stderr,
             self.pidfile,
             self.password_file,
-            self.worker_parent_dir,
         ):
-            make_parent_dir(path)
+            make_dir(path, is_dir=False)
+
+        for dirpath in (
+            self.worker_parent_dir,
+            self.script_dir,
+            self.log_dir,
+        ):
+            make_dir(dirpath, is_dir=True)
 
         for path in (self.stdout, self.stderr):
             reset_file(path)
@@ -287,7 +294,7 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_binary = args.cl_binary
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
-        self.srun_binary = args.srun_binary
+        self.sbatch_binary = args.sbatch_binary
         self.sleep_interval = args.sleep_interval
         self.max_concurrent_workers = args.max_concurrent_workers
 
@@ -505,7 +512,7 @@ class SlurmWorkerDaemon(Daemon):
                     pid = pidfile.read().strip()
                     try:
                         # send SIG 0 to check if PID exists
-                        os.kill(pid, 0)
+                        os.kill(int(pid), 0)
                         is_running = True
                     except OSError as err:
                         if err.errno == errno.ESRCH:
@@ -564,10 +571,10 @@ def parse_args():
         default=30,
     )
     parser.add_argument(
-        '--srun-binary',
+        '--sbatch-binary',
         type=str,
-        help='Where the binary for the srun command lives (default is the location on the Stanford NLP cluster)',
-        default='srun',
+        help='Where the binary for the sbatch command lives (default is the location on the Stanford NLP cluster)',
+        default='sbatch',
     )
     parser.add_argument(
         '--cl-worker-binary',
