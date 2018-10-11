@@ -175,12 +175,14 @@ class Daemon:
 class SlurmWorkerDaemon(Daemon):
     def __init__(self, daemon_dir):
         pidfile = os.path.join(daemon_dir, 'worker.pid')
-        stdout = os.path.join(daemon_dir, 'worker.stdout.log')
-        stderr = os.path.join(daemon_dir, 'worker.stderr.log')
+        self.log_dir = os.path.join(daemon_dir, 'log')
+        stdout = os.path.join(self.log_dir, 'worker.stdout.log')
+        stderr = os.path.join(self.log_dir, 'worker.stderr.log')
         self.daemon_dir = daemon_dir
+        self.script_dir = os.path.join(daemon_dir, 'scripts')
         self.password_file = os.path.join(daemon_dir, 'worker.password')
         self.worker_parent_dir = os.path.join(daemon_dir, 'workers')
-        self.worker_threads = []  # type: List[threading.Thread]
+        self.username = None
         Daemon.__init__(self, pidfile, chdir=daemon_dir, stdout=stdout, stderr=stderr)
 
     def login(self, args):
@@ -241,18 +243,21 @@ class SlurmWorkerDaemon(Daemon):
         if os.path.isfile(self.password_file):
             if os.stat(self.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
                 os.chmod(self.password_file, 0o600)
+            with open(self.password_file, 'r') as pw_file:
+                self.username = pw_file.readline().strip()
         else:
             print("No password file for workers, getting from user")
-            username = os.environ.get('CODALAB_USERNAME')
-            if username is None:
-                username = raw_input('Username: ')
+            self.username = os.environ.get('CODALAB_USERNAME')
+            if self.username is None:
+                self.username = raw_input('Username: ')
             password = os.environ.get('CODALAB_PASSWORD')
             if password is None:
                 password = getpass.getpass()
             with open(self.password_file, 'w+') as password_file:
-                password_file.write('{0}\n{1}'.format(username, password))
+                password_file.write('{0}\n{1}'.format(self.username, password))
             os.chmod(self.password_file, 0o600)
 
+        self.job_name = 'codalab-worker-{}'.format(self.username)
         print('Logged in to {}'.format(args.server_instance))
 
     def print_logs(self, tail=None):
@@ -272,6 +277,8 @@ class SlurmWorkerDaemon(Daemon):
             print(stdout)
             print(">>>>>>STDERR")
             print(stderr)
+            print(">>>>>>LOGFILES")
+            print(os.listdir(self.log_dir))
 
     def run(self, args):
         """
@@ -283,7 +290,6 @@ class SlurmWorkerDaemon(Daemon):
         self.srun_binary = args.srun_binary
         self.sleep_interval = args.sleep_interval
         self.max_concurrent_workers = args.max_concurrent_workers
-        self.worker_threads = []  # type: List[threading.Thread]
 
         # Cache runs that we started workers for for one extra iteration in case they're still staged
         # during the next iteration as worker booting might take some time. Un-cache them after one
@@ -295,8 +301,6 @@ class SlurmWorkerDaemon(Daemon):
         status = subprocess.check_output('{} status'.format(self.cl_binary), shell=True)
         print("Starting daemon, status: {}".format(status))
         while True:
-            # Prune finished threads
-            self.worker_threads = [thread for thread in self.worker_threads if thread.is_alive()]
             run_lines = subprocess.check_output(
                 '{} search .mine state=staged -u'.format(self.cl_binary), shell=True
             )
@@ -307,7 +311,7 @@ class SlurmWorkerDaemon(Daemon):
                 pass
             uuids = run_lines.splitlines()
             for uuid in uuids:
-                if len(self.worker_threads) > self.max_concurrent_workers:
+                if self._get_num_running_jobs() > self.max_concurrent_workers:
                     print(
                         "Maximum number of concurrent workers reached, waiting for some to finish"
                     )
@@ -325,12 +329,7 @@ class SlurmWorkerDaemon(Daemon):
                         for field, val in zip(FIELDS, field_values.split())
                     }
 
-                    def worker():
-                        self.start_worker_for(run)
-
-                    worker_thread = threading.Thread(target=worker)
-                    self.worker_threads.append(worker_thread)
-                    worker_thread.start()
+                    self.start_worker_for(run)
                     cooldown_runs.add(uuid)
                 else:
                     print(
@@ -347,8 +346,16 @@ class SlurmWorkerDaemon(Daemon):
         Do the necessary cleanup before exiting
         """
         print("Waiting for all the current workers to finish")
-        for thread in self.worker_threads:
-            thread.join()
+
+    def _get_num_running_jobs(self):
+        """
+        Returns the number of currently running jobs this script has launched
+        """
+        squeue_command = 'squeue --name={}'.format(self.job_name)
+        squeue_output = subprocess.check_output(squeue_command, shell=True)
+        # Get rid of the header line, all other jobs are one per line
+        num_jobs = len(squeue_output.splitlines()) - 1
+        return num_jobs
 
     def start_worker_for(self, run_fields):
         """
@@ -356,8 +363,8 @@ class SlurmWorkerDaemon(Daemon):
         with the given run_number for the worker directory.
         This function makes the actual command call to start the job on Slurm.
         """
-        current_directory = os.getcwd()
         worker_name = 'worker-{}'.format(run_fields['uuid'])
+        output_file = os.path.join(self.log_dir, '{}.out'.format(worker_name))
         tag = None
         if run_fields['request_gpus']:
             if 'jag_hi' in run_fields['tags']:
@@ -368,19 +375,21 @@ class SlurmWorkerDaemon(Daemon):
         else:
             partition = 'john'
 
-        srun_flags = [
-            self.srun_binary,
+        sbatch_flags = [
+            self.sbatch_binary,
             '--partition={}'.format(partition),
             '--mem={}'.format(run_fields['request_memory']),
             '--gres=gpu:{}'.format(run_fields['request_gpus']),
-            '--chdir={}'.format(current_directory),
+            '--chdir={}'.format(self.daemon_dir),
+            '--job-name={}'.format(self.job_name),
+            '--output={}'.format(output_file),
             '--nodes 1',
         ]
 
         if run_fields['request_cpus'] > 1:
-            srun_flags.append('--cpus-per-task={}'.format(run_fields['request_cpus']))
+            sbatch_flags.append('--cpus-per-task={}'.format(run_fields['request_cpus']))
 
-        srun_command = ' '.join(srun_flags)
+        sbatch_command = ' '.join(sbatch_flags)
         worker_command_script = self.write_worker_invocation(
             worker_name=worker_name,
             tag=tag,
@@ -388,7 +397,7 @@ class SlurmWorkerDaemon(Daemon):
             num_gpus=run_fields['request_gpus'],
             verbose=True,
         )
-        final_command = '{} bash {}'.format(srun_command, worker_command_script)
+        final_command = '{} {}'.format(sbatch_command, worker_command_script)
         print('Starting worker for run {}'.format(run_fields['uuid']))
         try:
             subprocess.check_call(final_command, shell=True)
@@ -408,6 +417,8 @@ class SlurmWorkerDaemon(Daemon):
         run the worker and clean up the work dir upon exit.
         """
         work_dir = os.path.join(self.worker_parent_dir, worker_name)
+        # sbatch requires an interpreter
+        interpreter = '#!/bin/bash'
         prepare_command = 'mkdir -vp {0} && mkdir -vp {0}/runs;'.format(work_dir)
         cleanup_command = 'rm -rf {};'.format(work_dir)
         flags = [
@@ -423,7 +434,9 @@ class SlurmWorkerDaemon(Daemon):
         if verbose:
             flags.append('--verbose')
         worker_command = '{} {};'.format(self.cl_worker_binary, ' '.join(flags))
-        with open('start-{}.sh'.format(worker_name), 'w') as script_file:
+        script_path = os.path.join(self.script_dir, 'start-{}.sh'.format(worker_name))
+        with open(script_path, 'w') as script_file:
+            script_file.write(interpreter)
             script_file.write(prepare_command)
             script_file.write(worker_command)
             script_file.write(cleanup_command)
@@ -468,27 +481,27 @@ class SlurmWorkerDaemon(Daemon):
             return val
 
     @staticmethod
-    def list_instances(script_dir):
+    def list_instances(root_dir):
         print('Slurm worker daemons:')
         print('{:^10} {:^10} {:^10}'.format('Name', 'Run Status', 'Pid'))
         print('-' * 32)
-        for name, running, pid in SlurmWorkerDaemon.get_instances(script_dir):
+        for name, running, pid in SlurmWorkerDaemon.get_instances(root_dir):
             status = 'Running' if running else 'Stopped'
             print('{:<10} {:^10} {:^10}'.format(name, status, pid))
 
     @staticmethod
-    def get_instances(script_dir):
+    def get_instances(root_dir):
         """
         List all current known instances of Slurm worker.
         This works off the assumption that all instances are subdirectories of the daemon
         directory, and subsequently cannot catch instances that are started with a different
-        script_dir argument.
+        root_dir argument.
         Returns a list of tuples where the first element is the name, the second run status and the third the pid
         """
         instances = []
-        for instance_dir in os.listdir(script_dir):
+        for instance_dir in os.listdir(root_dir):
             try:
-                with open(os.path.join(script_dir, instance_dir, 'worker.pid'), 'r') as pidfile:
+                with open(os.path.join(root_dir, instance_dir, 'worker.pid'), 'r') as pidfile:
                     pid = pidfile.read().strip()
                     try:
                         # send SIG 0 to check if PID exists
@@ -569,7 +582,7 @@ def parse_args():
         default='/u/nlp/bin/cl',
     )
     parser.add_argument(
-        '--script-dir',
+        '--root-dir',
         type=str,
         help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation. Do not change if you do not know what you are doing.',
         default=os.path.join(home, '.cl_slurm_worker'),
@@ -582,7 +595,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    daemon_dir = os.path.join(args.script_dir, args.name)
+    daemon_dir = os.path.join(args.root_dir, args.name)
     daemon = SlurmWorkerDaemon(daemon_dir)
     if args.action == 'start':
         # Login to the server given in the args before we daemonize
@@ -603,7 +616,7 @@ def main():
     elif args.action == 'logs':
         daemon.print_logs(args.tail)
     elif args.action == 'list' or args.action == 'status':
-        daemon.list_instances(args.script_dir)
+        daemon.list_instances(args.root_dir)
     else:
         print("Unknown command %s" % args.action)
         sys.exit(2)
