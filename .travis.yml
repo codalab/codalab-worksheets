@@ -22,7 +22,7 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then virtualenv -p python3.6 blackenv; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./blackenv/bin/pip install --upgrade black; fi
 before_script:
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then mysql -e "CREATE DATABASE codalab_bundles;"
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then mysql -e "CREATE DATABASE codalab_bundles;"; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config cli/default_address http://localhost:2900; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04; fi
