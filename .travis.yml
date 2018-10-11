@@ -18,6 +18,8 @@ install:
   - ./setup.sh server
   - ./venv/bin/pip install --upgrade setuptools
   - ./venv/bin/pip install --upgrade pip
+  - virtualenv -p python3.6 .blackenv
+  - ./blackenv/bin/pip install --upgrade black
 script:
   - mysql -e "CREATE DATABASE codalab_bundles;"
   - ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles
@@ -35,3 +37,4 @@ script:
   - ./codalab/bin/cl upload -c stuff
   - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
   - ./venv/bin/python test-cli.py default
+  - ./.blackenv/bin/black .
