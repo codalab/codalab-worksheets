@@ -38,5 +38,5 @@ before_script:
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl upload -c stuff; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^; fi
 script:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/black .; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/black . --check; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/python test-cli.py default; fi
