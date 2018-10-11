@@ -5,14 +5,14 @@ services:
 env:
   - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword
 python:
-  - "3.6"
-  - "2.7"
+  - 3.6
+  - 2.7
 before_install:
   - docker --version
 install:
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then "pip install sqlalchemy"; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install sqlalchemy; fi
 #   add packages required by tests (mock and nose are on Travis VM by default)
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then "pip install pyyaml psutil"; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install pyyaml psutil; fi
   - sudo apt-get update
   - sudo apt-get install -y sshpass python-virtualenv
   - sudo apt-get install -y libmysqlclient-dev
