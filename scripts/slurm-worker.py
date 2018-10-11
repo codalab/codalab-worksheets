@@ -221,20 +221,10 @@ class SlurmWorkerDaemon(Daemon):
             if os.path.isfile(filepath):
                 os.rename(filepath, '{}.old'.format(filepath))
 
-        for path in (
-            self.stdin,
-            self.stdout,
-            self.stderr,
-            self.pidfile,
-            self.password_file,
-        ):
+        for path in (self.stdin, self.stdout, self.stderr, self.pidfile, self.password_file):
             make_dir(path, is_dir=False)
 
-        for dirpath in (
-            self.worker_parent_dir,
-            self.script_dir,
-            self.log_dir,
-        ):
+        for dirpath in (self.worker_parent_dir, self.script_dir, self.log_dir):
             make_dir(dirpath, is_dir=True)
 
         for path in (self.stdout, self.stderr):
@@ -284,7 +274,7 @@ class SlurmWorkerDaemon(Daemon):
             print(stdout)
             print(">>>>>>STDERR")
             print(stderr)
-            print(">>>>>>LOGFILES")
+            print(">>>>>>LOGFILES: [in {}]".format(self.log_dir))
             print(os.listdir(self.log_dir))
 
     def run(self, args):
