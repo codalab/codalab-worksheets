@@ -134,7 +134,7 @@ class Reader(object):
         read_type = read_args['type']
         handler = self.read_handlers.get(read_type, None)
         if handler:
-             handler(run_state, path, dep_paths, read_args, reply)
+            handler(run_state, path, dep_paths, read_args, reply)
         else:
             err = (httplib.BAD_REQUEST, "Unsupported read_type for read: %s" % read_type)
             reply(err)

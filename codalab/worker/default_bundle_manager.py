@@ -37,8 +37,13 @@ class DefaultBundleManager(BundleManager):
         self._schedule_run_bundles_on_workers(workers, user_owned=False)
 
     def _check_resource_failure(
-        self, value, user_fail_string=None, global_fail_string=None, user_max=None, global_max=None,
-            pretty_print=lambda x: str(x)
+        self,
+        value,
+        user_fail_string=None,
+        global_fail_string=None,
+        user_max=None,
+        global_max=None,
+        pretty_print=lambda x: str(x),
     ):
         if value:
             if user_max and value > user_max:

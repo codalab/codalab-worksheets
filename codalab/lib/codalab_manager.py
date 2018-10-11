@@ -287,7 +287,10 @@ class CodaLabManager(object):
                 name = os.path.basename(process.cmdline()[0])
                 # When a shell is invoked as a login shell, its process command
                 # will be preceded by a dash '-'.
-                if re.match(r'-?(sh|bash|csh|tcsh|zsh|python|ruby|powershell|cmd)(\.exe)?', name) is None:
+                if (
+                    re.match(r'-?(sh|bash|csh|tcsh|zsh|python|ruby|powershell|cmd)(\.exe)?', name)
+                    is None
+                ):
                     break
                 session = str(process.pid)
                 process = process.parent()
