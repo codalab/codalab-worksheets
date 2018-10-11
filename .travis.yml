@@ -27,13 +27,13 @@ before_script:
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config cli/default_address http://localhost:2900; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./scripts/create-root-user.py $CODALAB_PASSWORD; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl server & ; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl bundle-manager & ; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl server; fi &
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl bundle-manager; fi &
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/travis/.codalab/root.password; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then chmod 600 /home/travis/.codalab/root.password; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then sleep 15; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install ./worker; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose & ; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose; fi &
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl upload -c stuff; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^; fi
