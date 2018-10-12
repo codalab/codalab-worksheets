@@ -20,7 +20,7 @@ install:
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/pip install --upgrade setuptools; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/pip install --upgrade pip; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then virtualenv -p python3.6 venv; fi
-  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/pip install --upgrade black; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/pip install --upgrade black==18.9b0; fi
 before_script:
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then mysql -e "CREATE DATABASE codalab_bundles;"; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles; fi
