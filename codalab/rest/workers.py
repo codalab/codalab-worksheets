@@ -1,5 +1,5 @@
 from __future__ import (
-    absolute_import
+    absolute_import,
 )  # Without this line "from worker.worker import VERSION" doesn't work.
 from contextlib import closing
 import httplib
