@@ -648,25 +648,6 @@ class BundleModel(object):
     # Bundle state machine transition methods.
     # =============================================================================================
 
-    def set_waiting_for_worker_startup_bundle(self, bundle, job_handle):
-        """
-        Sets the bundle to WAITING_FOR_WORKER_STARTUP, updating the job_handle.
-        """
-        with self.engine.begin() as connection:
-            # Check that it still exists.
-            row = connection.execute(
-                cl_bundle.select().where(cl_bundle.c.id == bundle.id)
-            ).fetchone()
-            if not row:
-                # The user deleted the bundle.
-                return
-
-            bundle_update = {
-                'state': State.WAITING_FOR_WORKER_STARTUP,
-                'metadata': {'job_handle': job_handle},
-            }
-            self.update_bundle(bundle, bundle_update, connection)
-
     def set_starting_bundle(self, bundle, user_id, worker_id):
         """
         Sets the bundle to STARTING. Adds a worker_run row that tracks which worker will run

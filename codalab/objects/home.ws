@@ -3,7 +3,7 @@ bundles and worksheets in the system.
 
 ## **Pending bundles**
 % display table run owner:owner_name
-% search state=created,staged,making,waiting_for_worker_startup,starting,running id=.sort- .limit=10000
+% search state=created,staged,making,starting,running id=.sort- .limit=10000
 % search id=.sort- .limit=10
 
 ## **Recent bundles**
