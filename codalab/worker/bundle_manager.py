@@ -261,7 +261,7 @@ class BundleManager(object):
                 or time.time() - bundle.metadata.last_updated > 5 * 60
             ):  # Run message went missing.
                 logger.info('Re-staging run bundle %s', bundle.uuid)
-                if self._model.restage_bundle(bundle):
+                if self._model.transition_bundle_staged(bundle):
                     workers.restage(bundle.uuid)
 
     def _acknowledge_recently_finished_bundles(self, workers):
@@ -274,12 +274,12 @@ class BundleManager(object):
                 logger.info(
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
                 )
-                self._model.set_offline_bundle(bundle)
+                self._model.transition_bundle_offline(bundle)
             elif self._worker_model.send_json_message(
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
                 logger.info('Acknowleded finalization of run bundle %s', bundle.uuid)
-                self._model.finish_bundle(bundle)
+                self._model.transition_bundle_finished(bundle)
 
     def _bring_offline_stuck_running_bundles(self, workers):
         """
@@ -299,7 +299,7 @@ class BundleManager(object):
                 failure_message = 'Worker offline'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
-                self._model.set_offline_bundle(bundle)
+                self._model.transition_bundle_offline(bundle)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
         """
@@ -407,7 +407,7 @@ class BundleManager(object):
         Tries to start running the bundle on the given worker, returning False
         if that failed.
         """
-        if self._model.set_starting_bundle(bundle, worker['user_id'], worker['worker_id']):
+        if self._model.transition_bundle_starting(bundle, worker['user_id'], worker['worker_id']):
             workers.set_starting(bundle.uuid, worker)
             if (
                 self._worker_model.shared_file_system
@@ -424,7 +424,7 @@ class BundleManager(object):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
-                self._model.restage_bundle(bundle)
+                self._model.transition_bundle_staged(bundle)
                 workers.restage(bundle.uuid)
                 return False
         else:

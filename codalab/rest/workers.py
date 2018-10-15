@@ -120,7 +120,7 @@ def start_bundle(worker_id, uuid):
     bundle = local.model.get_bundle(uuid)
     check_run_permission(bundle)
     response.content_type = "application/json"
-    if local.model.start_bundle(
+    if local.model.transition_bundle_preparing(
         bundle,
         request.user.user_id,
         worker_id,

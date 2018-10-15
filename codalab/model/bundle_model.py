@@ -134,6 +134,10 @@ class BundleModel(object):
             clauses.append(self.make_clause(getattr(table.c, key), value))
         return and_(*clauses)
 
+    # =============================================================================================
+    # Bundle information query methods.
+    # =============================================================================================
+
     def get_bundle(self, uuid):
         """
         Retrieve a bundle from the database given its uuid.
@@ -644,11 +648,39 @@ class BundleModel(object):
         ]
         return bundles
 
+    def bundle_checkin(self, bundle, worker_bundle_update, user_id, worker_id, hostname):
+        '''
+        Updates the database tables with the most recent bundle information from worker
+        '''
+        state = worker_bundle_update['state']
+        with self.engine.begin() as connection:
+            # If bundle isn't in db anymore the user deleted it so cancel
+            row = connection.execute(
+                cl_bundle.select().where(cl_bundle.c.id == bundle.id)
+            ).fetchone()
+            if not row:
+                return False
+            if state == State.FINALIZING:
+                return self.transition_bundle_finalizing(
+                    bundle,
+                    user_id,
+                    worker_bundle_update['info']['exitcode'],
+                    worker_bundle_update['info']['failure_message'],
+                    connection,
+                )
+            elif state in [State.PREPARING, State.RUNNING]:
+                return self.transition_bundle_running(
+                    bundle, worker_bundle_update, row, user_id, worker_id, hostname, connection
+                )
+            else:
+                # State isn't one we can check in for
+                return False
+
     # =============================================================================================
     # Bundle state machine transition methods.
     # =============================================================================================
 
-    def set_starting_bundle(self, bundle, user_id, worker_id):
+    def transition_bundle_starting(self, bundle, user_id, worker_id):
         """
         Sets the bundle to STARTING. Adds a worker_run row that tracks which worker will run
         the bundle.
@@ -673,7 +705,7 @@ class BundleModel(object):
 
             return True
 
-    def set_offline_bundle(self, bundle):
+    def transition_bundle_offline(self, bundle):
         """
         Sets the bundle to WORKER_OFFLINE. Remove the corresponding row from worker_run if it exists.
         """
@@ -701,7 +733,7 @@ class BundleModel(object):
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
-    def restage_bundle(self, bundle):
+    def transition_bundle_staged(self, bundle):
         """
         Sets a bundle back from STARTING to STAGED, returning False if the
         bundle was not in STARTING state. Clears the job_handle metadata and
@@ -730,7 +762,7 @@ class BundleModel(object):
 
             return True
 
-    def start_bundle(self, bundle, user_id, worker_id, hostname, start_time):
+    def transition_bundle_preparing(self, bundle, user_id, worker_id, hostname, start_time):
         """
         Marks the bundle as PREPARING but only if it is still scheduled to run
         on the given worker (done by checking the worker_run table). Returns
@@ -761,9 +793,9 @@ class BundleModel(object):
 
         return True
 
-    def resume_bundle(self, bundle, bundle_update, row, user_id, worker_id, hostname, connection):
+    def transition_bundle_running(self, bundle, worker_bundle_update, row, user_id, worker_id, hostname, connection):
         '''
-        Marks the bundle as running. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
+        Marks the bundle as RUNNING. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
         Updates a few metadata fields and the events log.
         '''
         if row.state == State.WORKER_OFFLINE:
@@ -780,40 +812,40 @@ class BundleModel(object):
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
             connection.execute(cl_worker_run.insert().values(worker_run_row))
 
-        metadata_update = {
-            'run_status': bundle_update['run_status'],
-            'time': bundle_update['time'],
-            'time_user': bundle_update['time_user'],
-            'time_system': bundle_update['time_system'],
+        bundle_update = {
+            'state': worker_bundle_update['state'],
+            'metadata': {
+                'run_status': worker_bundle_update['run_status'],
+                'time': worker_bundle_update['time'],
+                'time_user': worker_bundle_update['time_user'],
+                'time_system': worker_bundle_update['time_system'],
+            }
         }
 
-        if bundle_update['docker_image'] is not None:
-            metadata_update['docker_image'] = bundle_update['docker_image']
+        if worker_bundle_update['docker_image'] is not None:
+            bundle_update['metadata']['docker_image'] = worker_bundle_update['docker_image']
 
         self.update_bundle(
-            bundle, {'state': bundle_update['state'], 'metadata': metadata_update}, connection
+            bundle, bundle_update, connection
         )
 
         self.update_events_log(
             user_id=bundle.owner_id,
             user_name=None,  # Don't know
-            command='resume_bundle',
+            command='transition_bundle_running',
             args=(bundle.uuid),
             uuid=bundle.uuid,
         )
 
         return True
 
-    def finalize_bundle(self, bundle, user_id, exitcode, failure_message, connection):
+    def transition_bundle_finalizing(self, bundle, user_id, exitcode, failure_message, connection):
         """
-        Marks the bundle as READY / KILLED / FAILED, updating a few metadata fields, the
-        events log and removing the worker_run row. Additionally, if the user
-        running the bundle was the CodaLab root user, increments the time
-        used by the bundle owner.
+        Marks the bundle as FINALIZING, updating a few metadata fields.
+        Additionally, if the user running the bundle was the CodaLab root user,
+        increments the time used by the bundle owner.
         """
-        state = State.FAILED if failure_message or exitcode else State.READY
-        if failure_message == 'Kill requested':
-            state = State.KILLED
+        state = State.FINALIZING
         if failure_message is None and exitcode is not None and exitcode != 0:
             failure_message = 'Exit code %d' % exitcode
 
@@ -824,7 +856,7 @@ class BundleModel(object):
         if exitcode is not None:
             metadata['exitcode'] = exitcode
 
-        self.update_bundle(bundle, {'state': State.FINALIZING, 'metadata': metadata}, connection)
+        self.update_bundle(bundle, {'state': state, 'metadata': metadata}, connection)
 
         if user_id == self.root_user_id:
             self.increment_user_time_used(bundle.owner_id, getattr(bundle.metadata, 'time', 0))
@@ -839,19 +871,18 @@ class BundleModel(object):
 
         return True
 
-    def finish_bundle(self, bundle):
-        '''
+    def transition_bundle_finished(self, bundle):
+        """
         Updates the given FINALIZING bundle to FINISHED state so the server stops
         telling the worker it is finalized
-        '''
+        """
         metadata = bundle.metadata.to_dict()
         failure_message = metadata.get('failure_message', None)
         exitcode = metadata.get('exitcode', 0)
+
         state = State.FAILED if failure_message or exitcode else State.READY
         if failure_message == 'Kill requested':
             state = State.KILLED
-
-        metadata = {'run_status': 'Finished', 'last_updated': int(time.time())}
 
         with self.engine.begin() as connection:
             self.update_bundle(bundle, {'state': state, 'metadata': metadata}, connection)
@@ -862,34 +893,6 @@ class BundleModel(object):
     # =============================================================================================
     # Bundle database manipulation methods.
     # =============================================================================================
-
-    def bundle_checkin(self, bundle, bundle_update, user_id, worker_id, hostname):
-        '''
-        Updates the database tables with the most recent bundle information from worker
-        '''
-        state = bundle_update['state']
-        with self.engine.begin() as connection:
-            # If bundle isn't in db anymore the user deleted it so cancel
-            row = connection.execute(
-                cl_bundle.select().where(cl_bundle.c.id == bundle.id)
-            ).fetchone()
-            if not row:
-                return False
-            if state == State.FINALIZING:
-                return self.finalize_bundle(
-                    bundle,
-                    user_id,
-                    bundle_update['info']['exitcode'],
-                    bundle_update['info']['failure_message'],
-                    connection,
-                )
-            elif state in [State.PREPARING, State.RUNNING]:
-                return self.resume_bundle(
-                    bundle, bundle_update, row, user_id, worker_id, hostname, connection
-                )
-            else:
-                # State isn't one we can check in for
-                return False
 
     def save_bundle(self, bundle):
         """

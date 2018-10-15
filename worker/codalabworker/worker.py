@@ -121,7 +121,7 @@ class Worker(object):
         now = time.time()
         start_message = {'hostname': socket.gethostname(), 'start_time': int(now)}
 
-        if self._bundle_service.start_bundle(self.id, bundle['uuid'], start_message):
+        if self._bundle_service.transition_bundle_preparing(self.id, bundle['uuid'], start_message):
             self._run_manager.create_run(bundle, resources)
         else:
             print >>sys.stdout, 'Bundle {} no longer assigned to this worker'.format(bundle['uuid'])
