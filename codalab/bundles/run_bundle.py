@@ -59,6 +59,7 @@ class RunBundle(DerivedBundle):
     ):
         if not isinstance(command, basestring):
             raise UsageError('%r is not a valid command!' % (command,))
+        metadata['time_codalab'] = 0
         return super(RunBundle, cls).construct(
             targets, command, metadata, owner_id, uuid, data_hash, state
         )

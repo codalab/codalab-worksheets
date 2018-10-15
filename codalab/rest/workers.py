@@ -132,38 +132,6 @@ def start_bundle(worker_id, uuid):
     return json.dumps(False)
 
 
-@put(
-    "/workers/<worker_id>/update_bundle_metadata/<uuid:re:%s>" % spec_util.UUID_STR,
-    name="worker_update_bundle_metadata",
-    apply=AuthenticatedPlugin(),
-)
-def update_bundle_metadata(worker_id, uuid):
-    """
-    Updates metadata related to a running bundle.
-    """
-    bundle = local.model.get_bundle(uuid)
-    check_run_permission(bundle)
-    allowed_keys = set(
-        [
-            "run_status",
-            "time",
-            "time_user",
-            "time_system",
-            "time_codalab",
-            "memory",
-            "memory_max",
-            "data_size",
-            "last_updated",
-            "docker_image",
-        ]
-    )
-    metadata_update = {}
-    for key, value in request.json.iteritems():
-        if key in allowed_keys:
-            metadata_update[key] = value
-    local.model.update_bundle(bundle, {"metadata": metadata_update})
-
-
 @get("/workers/info", name="workers_info", apply=AuthenticatedPlugin())
 def workers_info():
     if request.user.user_id != local.model.root_user_id:

@@ -204,7 +204,6 @@ class LocalRunManager(BaseRunManager):
             time=0,
             time_user=0,
             time_system=0,
-            time_codalab=0,
             max_memory=0,
             disk_utilization=0,
             info={},
