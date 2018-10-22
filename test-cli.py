@@ -1633,6 +1633,25 @@ def test(ctx):
             os.remove(out_file)
 
 
+@TestModule.register('unicode')
+def test(ctx):
+    # Unicode in file contents
+    uuid = run_command([cl, 'upload', '--contents', u'你好世界😊'])
+    check_equals(u'你好世界😊', run_command([cl, 'cat', uuid]))
+
+    # Unicode in file path
+    uuid = run_command([cl, 'upload', test_path(u'你好世界😊.txt')])
+    check_equals(test_path_contents(u'你好世界😊.txt'), run_command([cl, 'cat', uuid]))
+
+    # Unicode in bundle name, description, and tags
+    uuid = run_command(
+        [cl, 'upload', test_path(u'你好世界😊.txt'), '--description', '描述', '--tags', u'😀', u'😁']
+    )
+    check_equals(u'你好世界😊.txt', get_info(uuid, 'name'))
+    check_equals('描述', get_info(uuid, 'description'))
+    check_contains([u'😀', u'😁'], get_info(uuid, 'tags'))
+
+
 if __name__ == '__main__':
     if len(sys.argv) == 1:
         print('Usage: python %s <module> ... <module>' % sys.argv[0])
