@@ -39,3 +39,20 @@ before_script:
 script:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/black . --check; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/python test-cli.py default; fi
+  - mysql -e "CREATE DATABASE codalab_bundles;"
+  - ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles
+  - ./codalab/bin/cl config cli/default_address http://localhost:2900
+  - ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04
+  - ./scripts/create-root-user.py $CODALAB_PASSWORD
+  - ./codalab/bin/cl server &
+  - ./codalab/bin/cl bundle-manager &
+  - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/travis/.codalab/root.password
+  - chmod 600 /home/travis/.codalab/root.password
+  - sleep 15
+  - pip install ./worker
+  - cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose &
+  - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
+  - ./codalab/bin/cl upload -c stuff
+  - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
+  - ./venv/bin/python test-cli.py default
+  - ./test-worker.sh
