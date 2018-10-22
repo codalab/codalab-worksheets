@@ -694,10 +694,7 @@ class BundleModel(object):
                 # The user deleted the bundle.
                 return False
 
-            bundle_update = {
-                'state': State.STARTING,
-                'metadata': {},
-            }
+            bundle_update = {'state': State.STARTING}
             self.update_bundle(bundle, bundle_update, connection)
 
             worker_run_row = {'user_id': user_id, 'worker_id': worker_id, 'run_uuid': bundle.uuid}
@@ -705,7 +702,7 @@ class BundleModel(object):
 
             return True
 
-    def transition_bundle_offline(self, bundle):
+    def transition_bundle_worker_offline(self, bundle):
         """
         Sets the bundle to WORKER_OFFLINE. Remove the corresponding row from worker_run if it exists.
         """
@@ -726,10 +723,7 @@ class BundleModel(object):
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
             )
 
-            bundle_update = {
-                'state': State.WORKER_OFFLINE,
-                'metadata': {},
-            }
+            bundle_update = {'state': State.WORKER_OFFLINE}
             self.update_bundle(bundle, bundle_update, connection)
         return True
 
@@ -751,10 +745,7 @@ class BundleModel(object):
                 # that has started running.
                 return False
 
-            bundle_update = {
-                'state': State.STAGED,
-                'metadata': {'job_handle': None}
-            }
+            bundle_update = {'state': State.STAGED, 'metadata': {'job_handle': None}}
             self.update_bundle(bundle, bundle_update, connection)
             connection.execute(
                 cl_worker_run.delete().where(cl_worker_run.c.run_uuid == bundle.uuid)
@@ -778,8 +769,7 @@ class BundleModel(object):
 
             bundle_update = {
                 'state': State.PREPARING,
-                'metadata': {'remote': hostname,
-                             'started': start_time},
+                'metadata': {'remote': hostname, 'started': start_time},
             }
             self.update_bundle(bundle, bundle_update, connection)
 
@@ -793,7 +783,9 @@ class BundleModel(object):
 
         return True
 
-    def transition_bundle_running(self, bundle, worker_bundle_update, row, user_id, worker_id, hostname, connection):
+    def transition_bundle_running(
+        self, bundle, worker_bundle_update, row, user_id, worker_id, hostname, connection
+    ):
         '''
         Marks the bundle as RUNNING. If bundle was WORKER_OFFLINE, also inserts a row into worker_run.
         Updates a few metadata fields and the events log.
@@ -819,15 +811,13 @@ class BundleModel(object):
                 'time': worker_bundle_update['time'],
                 'time_user': worker_bundle_update['time_user'],
                 'time_system': worker_bundle_update['time_system'],
-            }
+            },
         }
 
         if worker_bundle_update['docker_image'] is not None:
             bundle_update['metadata']['docker_image'] = worker_bundle_update['docker_image']
 
-        self.update_bundle(
-            bundle, bundle_update, connection
-        )
+        self.update_bundle(bundle, bundle_update, connection)
 
         self.update_events_log(
             user_id=bundle.owner_id,

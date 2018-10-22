@@ -274,7 +274,7 @@ class BundleManager(object):
                 logger.info(
                     'Bringing bundle offline %s: %s', bundle.uuid, 'No worker claims bundle'
                 )
-                self._model.transition_bundle_offline(bundle)
+                self._model.transition_bundle_worker_offline(bundle)
             elif self._worker_model.send_json_message(
                 worker['socket_id'], {'type': 'mark_finalized', 'uuid': bundle.uuid}, 0.2
             ):
@@ -299,7 +299,7 @@ class BundleManager(object):
                 failure_message = 'Worker offline'
             if failure_message is not None:
                 logger.info('Bringing bundle offline %s: %s', bundle.uuid, failure_message)
-                self._model.transition_bundle_offline(bundle)
+                self._model.transition_bundle_worker_offline(bundle)
 
     def _schedule_run_bundles_on_workers(self, workers, user_owned):
         """

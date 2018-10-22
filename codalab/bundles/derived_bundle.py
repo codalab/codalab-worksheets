@@ -12,9 +12,9 @@ class DerivedBundle(NamedBundle):
     METADATA_SPECS = list(NamedBundle.METADATA_SPECS)
     # Don't format specs
     # fmt: off
-    METADATA_SPECS.append(
-        MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed or killed dependencies.', default=False,)
-    )
+    METADATA_SPECS.append(MetadataSpec('allow_failed_dependencies', bool, 'Whether to allow this bundle to have failed or killed dependencies.', default=False,))
+    METADATA_SPECS.append(MetadataSpec('last_updated', int, 'Timestamp of when information about this bundle was last updated.', generated=True, formatting='date'))
+    METADATA_SPECS.append(MetadataSpec('time_codalab', float, 'Amount of time (seconds) use to execute this bundle (including setup/teardown).', generated=True, formatting='duration'))
     # fmt: on
 
     @classmethod

@@ -38,12 +38,10 @@ class RunBundle(DerivedBundle):
     METADATA_SPECS.append(MetadataSpec('time', float, 'Amount of time (seconds) used by the run command in total (user + system).', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_user', float, 'Amount of user time (seconds) used by the run command.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('time_system', float, 'Amount of system time (seconds) used by the run command.', generated=True, formatting='duration'))
-    METADATA_SPECS.append(MetadataSpec('time_codalab', float, 'Amount of time (seconds) used by the run command and codalab (setup/teardown) in total.', generated=True, formatting='duration'))
     METADATA_SPECS.append(MetadataSpec('memory', float, 'Amount of memory (bytes) used by this run.', generated=True, formatting='size'))
     METADATA_SPECS.append(MetadataSpec('memory_max', float, 'Maximum amount of memory (bytes) used by this run at any time during execution.', generated=True, formatting='size'))
 
     METADATA_SPECS.append(MetadataSpec('started', int, 'Time when this bundle started executing.', generated=True, formatting='date'))
-    METADATA_SPECS.append(MetadataSpec('last_updated', int, 'Time when information about this bundle was last updated.', generated=True, formatting='date'))
     METADATA_SPECS.append(MetadataSpec('run_status', basestring, 'Execution status of the bundle.', generated=True))
 
     # Information about running
