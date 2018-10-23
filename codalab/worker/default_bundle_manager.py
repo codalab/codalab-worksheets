@@ -37,9 +37,21 @@ class DefaultBundleManager(BundleManager):
         self._schedule_run_bundles_on_workers(workers, user_owned=False)
 
     def _check_resource_failure(
-        self, value, user_fail_string=None, global_fail_string=None, user_max=None, global_max=None,
-            pretty_print=lambda x: str(x)
+        self,
+        value,
+        user_fail_string=None,
+        global_fail_string=None,
+        user_max=None,
+        global_max=None,
+        pretty_print=lambda x: str(x),
     ):
+        """
+        Returns a failure message in case a certain resource limit is not respected.
+        If value > user_max, user_fail_string is formatted with value and user_max in that order
+        If value > global_max, global_fail_strintg is formatted with value and global_max in that order
+        Pretty print is applied to both the value and max values before they're passed on to the functions
+        The strings should expect string inputs for formatting and pretty_print should convert values to strings
+        """
         if value:
             if user_max and value > user_max:
                 return user_fail_string % (pretty_print(value), pretty_print(user_max))
@@ -64,7 +76,7 @@ class DefaultBundleManager(BundleManager):
             failures.append(
                 self._check_resource_failure(
                     self._compute_request_cpus(bundle),
-                    global_fail_string='No workers available with %d CPUs, max available: %d',
+                    global_fail_string='No workers available with %s CPUs, max available: %s',
                     global_max=max(map(lambda worker: worker['cpus'], workers_list)),
                 )
             )
@@ -72,7 +84,7 @@ class DefaultBundleManager(BundleManager):
             failures.append(
                 self._check_resource_failure(
                     self._compute_request_gpus(bundle),
-                    global_fail_string='No workers available with %d GPUs, max available: %d',
+                    global_fail_string='No workers available with %s GPUs, max available: %s',
                     global_max=max(map(lambda worker: worker['gpus'], workers_list)),
                 )
             )
