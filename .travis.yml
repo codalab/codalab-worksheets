@@ -4,11 +4,14 @@ services:
   - docker
 env:
   - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword
+  # Make sure we only fire the builds of our docker images on master and staging
+  - BRANCH=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}
 python:
   - 3.6
   - 2.7
 before_install:
   - docker --version
+  - chmod +x ./travis_build_images.sh
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install sqlalchemy; fi
 #   add packages required by tests (mock and nose are on Travis VM by default)
@@ -40,3 +43,5 @@ before_script:
 script:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/black . --check; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/python test-cli.py default; fi
+after_success:
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./travis_build_images.sh fi
