@@ -302,7 +302,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         else:
             container_id = self._client.create_container(
                 docker_image,
-                command=command,
+                command=docker_command,
                 environment=environment,
                 working_dir=working_dir,
                 entrypoint=entrypoint,
