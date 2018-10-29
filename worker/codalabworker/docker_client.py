@@ -417,7 +417,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             stderr = self._client.logs(container_id, stderr=True, stdout=False)
             # Strip non-ASCII chars since failure_message is not Unicode
             if len(stderr) > 0:
-                failure_msg = stderr.encode('ascii', 'ignore')
+                failure_msg = stderr.encode('ascii', errors='ignore')
             else:
                 failure_msg = None
             return (True, container_info['State']['ExitCode'], failure_msg)
