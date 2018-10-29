@@ -74,7 +74,10 @@ class LocalRunManager(BaseRunManager):
         Set up docker networks for runs: one with external network access and one without
         """
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
-        if self.docker_network_external_name not in self.docker.list_networks():
+        new_external_network, self.docker_network_external_id = self.docker.ensure_unique_network(
+            self.docker_network_external_name, internal=False
+        )
+        if new_external_network:
             logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
             self.docker_network_external_id = self.docker.create_network(
                 self.docker_network_external_name, internal=False
@@ -87,7 +90,10 @@ class LocalRunManager(BaseRunManager):
             )
 
         self.docker_network_internal_name = self._docker_network_prefix + "_int"
-        if self.docker_network_internal_name not in self.docker.list_networks():
+        new_internal_network, self.docker_network_internal_id = self.docker.ensure_unique_network(
+            self.docker_network_internal_name, internal=True
+        )
+        if new_internal_network:
             logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
             self.docker_network_internal_id = self.docker.create_network(
                 self.docker_network_internal_name
