@@ -161,7 +161,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         return self._client.inspect_image(image_name)
 
     @wrap_exception('Unable to ensure unique network')
-    def ensure_unique_network(self, name):
+    def ensure_unique_network(self, name, internal=True):
         """
         Ensures there's a unique docker network with the given name in the machine.
         If no network by the name exists, creates one and returns its Id.
@@ -171,7 +171,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         """
         networks = self._client.networks(names=[name])
         if len(networks) == 0:
-            network_id = self.create_network(name)
+            network_id = self.create_network(name, internal)
             return True, network_id
         else:
             # First remove any duplicates that might exist
