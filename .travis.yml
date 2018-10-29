@@ -4,8 +4,6 @@ services:
   - docker
 env:
   - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword
-  # Make sure we only fire the builds of our docker images on master and staging
-  - BRANCH=${TRAVIS_PULL_REQUEST_BRANCH:-$TRAVIS_BRANCH}
 python:
   - 3.6
   - 2.7
