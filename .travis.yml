@@ -43,5 +43,22 @@ before_script:
 script:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/black . --check; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/python test-cli.py default; fi
-after_success:
-  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./travis_build_images.sh fi
+deploy:
+  # Build docker images using tag if we're on release branch with a semver tag
+  # Otherwise if we're on master or staging build named branches
+  - provider: script
+    script:
+      # remove first char of tag since it'll be 'v' and we strip that for docker image tags
+      - ./travis_build_images.sh ${$TRAVIS_TAG:1}
+    on:
+      branch: release
+      # only build on valid-looking semver tags
+      tags: true
+      condition: $TRAVIS_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+
+  - provider: script
+    script:
+      - ./travis_build_images.sh $TRAVIS_BRANCH
+    on:
+      # PR's also fire travis builds where 'branch' is the base branch
+      # we don't want to build docker images for those
+      condition: branch IN (master, staging) AND type IS push
