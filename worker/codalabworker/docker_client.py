@@ -160,9 +160,24 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         logger.debug('Fetching Docker image metadata for %s', image_name)
         return self._client.inspect_image(image_name)
 
-    @wrap_exception('Unable to fetch Docker network list')
-    def list_networks(self):
-        return [net.get('Name') for net in self._client.networks()]
+    @wrap_exception('Unable to ensure unique network')
+    def ensure_unique_network(self, name):
+        """
+        Ensures there's a unique docker network with the given name in the machine.
+        If no network by the name exists, creates one and returns its Id.
+        If one or more networks exist by the name, deletes all but the first one
+        then returns the Id of the first one.
+        Return (True, Id) if a new network is created, (False, Id) if existing network used
+        """
+        networks = self._client.networks(names=[name])
+        if len(networks) == 0:
+            network_id = self.create_network(name)
+            return True, network_id
+        else:
+            # First remove any duplicates that might exist
+            for net in networks[1:]:
+                self.remove_network(net.get('Id'))
+            return False, networks[0].get('Id')
 
     @wrap_exception('Unable to create Docker network')
     def create_network(self, network_name, internal=True):
