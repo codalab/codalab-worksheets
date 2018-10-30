@@ -143,6 +143,7 @@ chmod 600 %s""" % args.password_file
     docker_client = DockerClient()
     bundle_service = BundleServiceClient(args.server, username, password)
     if not os.path.exists(args.work_dir):
+        logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
 
     def create_local_run_manager(worker):
@@ -235,12 +236,9 @@ def parse_gpuset_args(docker_client, arg):
     if arg == '':
         return set()
 
-    info = docker_client.get_nvidia_devices_info()
-    all_gpus = []
-    if info is not None:
-        for d in info['Devices']:
-            m = re.search('^/dev/nvidia(\d+)$', d['Path'])
-            all_gpus.append(int(m.group(1)))
+    all_gpus = docker_client.get_nvidia_devices_info()
+    if all_gpus is None:
+        all_gpus = []
 
     if arg == 'ALL':
         return set(all_gpus)

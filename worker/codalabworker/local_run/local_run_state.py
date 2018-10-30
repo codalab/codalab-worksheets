@@ -201,16 +201,16 @@ class LocalRunStateMachine(StateTransitioner):
 
         # 4) Start container
         try:
-            container_id = self._run_manager.docker.start_container(
+            container_id = self._run_manager.docker.start_bundle_container(
                 run_state.bundle_path,
                 bundle_uuid,
+                dependencies,
                 run_state.bundle['command'],
                 run_state.resources['docker_image'],
-                docker_network,
-                dependencies,
-                cpuset,
-                gpuset,
-                run_state.resources['request_memory'],
+                network_name=docker_network,
+                cpuset=cpuset,
+                gpuset=gpuset,
+                memory_bytes=run_state.resources['request_memory'],
             )
         except DockerException as e:
             run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
@@ -321,7 +321,11 @@ class LocalRunStateMachine(StateTransitioner):
             try:
                 self._run_manager.docker.kill_container(run_state.container_id)
             except DockerException:
-                traceback.print_exc()
+                finished, _, _ = self._run_manager.docker.check_finished(run_state.container_id)
+                if not finished:
+                    # If we can't kill a Running container, something is wrong
+                    # Otherwise all well
+                    traceback.print_exc()
             self._run_manager.disk_utilization[bundle_uuid]['running'] = False
             self._run_manager.disk_utilization.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)

@@ -1542,7 +1542,6 @@ class BundleCLI(object):
 
         uuid = generate_uuid()
         bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
-        request_network = None
         target_specs = [parse_key_target(spec) for spec in args.target_spec]
         dependencies = [
             (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
@@ -1557,14 +1556,15 @@ class BundleCLI(object):
             os.symlink(docker_dependency_path, child_path)
 
         dc = DockerClient()
-        container_id = dc.create_container(
-            bundle_path, uuid, args.command, docker_image, request_network, dependencies, ['-it']
+        container_id = dc.create_bundle_container(
+            bundle_path, uuid, dependencies, args.command, docker_image
         )
         print >>self.stdout, '===='
         print >>self.stdout, 'Container ID: ', container_id[:12]
         print >>self.stdout, 'Local Bundle UUID: ', uuid
         print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
         print >>self.stdout, '===='
+        # TODO(bkgoksel): Docker Python SDK doesn't support interactive container launching so we do this
         os.system('docker start -ai {}'.format(container_id))
 
     @Commands.command(
