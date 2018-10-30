@@ -202,7 +202,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 raise DockerException(df_response.read())
             df_info = json.loads(df_response.read())
         total = df_info['LayersSize']
-        used = 0.
+        used = 0.0
         for image in df_info['Images']:
             if image['Containers'] > 0:
                 if image['VirtualSize'] == -1 or image['SharedSize'] == -1:

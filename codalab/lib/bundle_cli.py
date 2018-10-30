@@ -1685,7 +1685,9 @@ class BundleCLI(object):
         indices = [None] * len(
             items
         )  # Parallel array to items that stores the index associated with that bundle uuid
-        uuid2index = {}  # bundle uuid => index of the bundle (at the end, number of times it occurs on the worksheet)
+        uuid2index = (
+            {}
+        )  # bundle uuid => index of the bundle (at the end, number of times it occurs on the worksheet)
         for i, item in reversed(list(enumerate(items))):
             if item['type'] == worksheet_util.TYPE_BUNDLE:
                 uuid = item['bundle']['id']

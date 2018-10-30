@@ -5,33 +5,38 @@ services:
 env:
   - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword
 python:
-  - "2.7"
+  - 3.6
+  - 2.7
 before_install:
   - docker --version
 install:
-  - "pip install sqlalchemy"
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install sqlalchemy; fi
 #   add packages required by tests (mock and nose are on Travis VM by default)
-  - "pip install pyyaml psutil"
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install pyyaml psutil; fi
   - sudo apt-get update
   - sudo apt-get install -y sshpass python-virtualenv
   - sudo apt-get install -y libmysqlclient-dev
-  - ./setup.sh server
-  - ./venv/bin/pip install --upgrade setuptools
-  - ./venv/bin/pip install --upgrade pip
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./setup.sh server; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/pip install --upgrade setuptools; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/pip install --upgrade pip; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then virtualenv -p python3.6 venv; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/pip install --upgrade black==18.9b0; fi
+before_script:
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then mysql -e "CREATE DATABASE codalab_bundles;"; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config cli/default_address http://localhost:2900; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./scripts/create-root-user.py $CODALAB_PASSWORD; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl server; fi &
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl bundle-manager; fi &
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/travis/.codalab/root.password; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then chmod 600 /home/travis/.codalab/root.password; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then sleep 15; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install ./worker; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose; fi &
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./codalab/bin/cl upload -c stuff; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^; fi
 script:
-  - mysql -e "CREATE DATABASE codalab_bundles;"
-  - ./codalab/bin/cl config server/engine_url mysql://root@localhost:3306/codalab_bundles
-  - ./codalab/bin/cl config cli/default_address http://localhost:2900
-  - ./codalab/bin/cl config workers/default_docker_image ubuntu:14.04
-  - ./scripts/create-root-user.py $CODALAB_PASSWORD
-  - ./codalab/bin/cl server &
-  - ./codalab/bin/cl bundle-manager &
-  - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" > /home/travis/.codalab/root.password
-  - chmod 600 /home/travis/.codalab/root.password
-  - sleep 15
-  - pip install ./worker
-  - cl-worker --server http://127.0.0.1:2900 --work-dir /home/travis/.codalab/worker-scratch --password-file /home/travis/.codalab/root.password --verbose &
-  - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl work
-  - ./codalab/bin/cl upload -c stuff
-  - printf "$CODALAB_USERNAME\n$CODALAB_PASSWORD\n" | sshpass -p "" ./codalab/bin/cl rm ^
-  - ./venv/bin/python test-cli.py default
+  - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/black . --check; fi
+  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/python test-cli.py default; fi

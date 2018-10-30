@@ -44,7 +44,7 @@ class FileTransferProgress(object):
     @staticmethod
     def format_size(num_bytes):
         # Simply formats number of mebibytes
-        return "%.2fMiB" % (num_bytes / 1024. / 1024.)
+        return "%.2fMiB" % (num_bytes / 1024.0 / 1024.0)
 
     def __enter__(self):
         self.start_time = time.time()
