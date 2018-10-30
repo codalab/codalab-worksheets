@@ -109,6 +109,8 @@ def sanitize(string):
 
 
 def run_command(args, expected_exit_code=0):
+    # Decode args into ASCII as travis can't handle them otherwise
+    args = [arg.encode('ascii', 'ignore') for arg in args]
     sys.stdout.write('>> %s' % ' '.join(args))
 
     try:
