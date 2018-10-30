@@ -408,6 +408,15 @@ class SlurmWorkerDaemon(Daemon):
         request_queue = run_fields['request_queue']
         tag = self.parse_request_queue(request_queue)
 
+        if run_fields['request_gpus']:
+            if request_queue == 'jag-hi':
+                partition = 'jag-hi'
+                tag = 'jag-hi'
+            else:
+                partition = 'jag-lo'
+        else:
+            partition = 'john'
+
         sbatch_flags = [
             self.sbatch_binary,
             '--mem={}'.format(run_fields['request_memory']),
@@ -415,6 +424,8 @@ class SlurmWorkerDaemon(Daemon):
             '--chdir={}'.format(self.daemon_dir),
             '--job-name={}'.format(self.job_name),
             '--output={}'.format(output_file),
+            '--nodes 1',
+            '--partition={}'.format(partition),
         ]
 
         if run_fields['request_cpus'] > 1:
