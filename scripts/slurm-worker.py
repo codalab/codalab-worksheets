@@ -178,6 +178,7 @@ class SlurmWorkerDaemon(Daemon):
         'request_time',
     ]
     TAGS_REGEX = r'tag=([\w_-]+)'
+    STANFORD_USER_REGEX = r"(?:/afs/cs\.stanford\.edu/u/)(\w+)(?:/.*)?"
 
     def __init__(self, daemon_dir):
         pidfile = os.path.join(daemon_dir, 'worker.pid')
@@ -513,6 +514,15 @@ class SlurmWorkerDaemon(Daemon):
             tag = tag_matches.group(1)
         return tag
 
+    @classmethod
+    def get_root_dir(cls, home):
+        matches = re.match(cls.STANFORD_USER_REGEX, home)
+        if matches is None:
+            raise Exception('Launch from your AFS home and don\'t modify --root-dir')
+        else:
+            user = matches.group(1)
+            return '/u/scr/{}/.cl_slurm_worker'.format(user)
+
     @staticmethod
     def parse_field(field, val):
         """
@@ -523,7 +533,7 @@ class SlurmWorkerDaemon(Daemon):
         if field == 'request_time':
             try:
                 return SlurmWorkerDaemon.parse_duration(val)
-            except ValueError:
+            except (ValueError, TypeError):
                 return None
         elif field in ['request_cpus', 'request_gpus']:
             return int(val)
@@ -591,6 +601,7 @@ class SlurmWorkerDaemon(Daemon):
 
 def parse_args():
     home = os.environ.get('HOME')
+    root_dir = SlurmWorkerDaemon.get_root_dir(home)
     parser = argparse.ArgumentParser(
         description='Controller for the CodaLab Slurm Worker daemon. The daemon logs in to the specified CodaLab instance with your credentials '
         'and continuously polls for runs. Every time it encounters a stage run, it launches a Slurm job that contains a single-use CodaLab '
@@ -643,7 +654,7 @@ def parse_args():
         '--slurm-host',
         type=str,
         help='Machine to run Slurm commands from. Should be SSH\'able without interactive authentication. Default is None, in which case commands are run locally.',
-        default=None,
+        default='sc',
     )
     parser.add_argument(
         '--cl-worker-binary',
@@ -661,7 +672,7 @@ def parse_args():
         '--root-dir',
         type=str,
         help='ONLY FOR ADVANCED USE: Base directory to store daemon files, if changed for one invocation needs to be changed for any future invocation. Do not change if you do not know what you are doing.',
-        default=os.path.join(home, '.cl_slurm_worker'),
+        default=root_dir,
     )
     parser.add_argument(
         '--tail', type=int, help='If specified only print this many lines from logs', default=None
