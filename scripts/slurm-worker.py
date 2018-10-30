@@ -424,7 +424,6 @@ class SlurmWorkerDaemon(Daemon):
             '--chdir={}'.format(self.daemon_dir),
             '--job-name={}'.format(self.job_name),
             '--output={}'.format(output_file),
-            '--nodes 1',
             '--partition={}'.format(partition),
         ]
 
