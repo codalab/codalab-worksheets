@@ -409,8 +409,9 @@ class SlurmWorkerDaemon(Daemon):
         tag = self.parse_request_queue(request_queue)
 
         if run_fields['request_gpus']:
-            if tag == 'jag-hi':
+            if request_queue == 'jag-hi':
                 partition = 'jag-hi'
+                tag = 'jag-hi'
             else:
                 partition = 'jag-lo'
         else:
