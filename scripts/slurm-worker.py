@@ -169,7 +169,14 @@ class Daemon:
 
 class SlurmWorkerDaemon(Daemon):
 
-    FIELDS = ['uuid', 'request_cpus', 'request_gpus', 'request_memory', 'request_time', 'tags']
+    FIELDS = [
+        'uuid',
+        'request_cpus',
+        'request_gpus',
+        'request_memory',
+        'request_queue',
+        'request_time',
+    ]
     HOSTS_REGEX = r'host=((john|jagupard)\d+\.stanford\.edu)'
     TAGS_REGEX = r'tag=([\w_-]+)'
 
@@ -389,12 +396,11 @@ class SlurmWorkerDaemon(Daemon):
         output_file = os.path.join(self.log_dir, '{}.out'.format(worker_name))
         request_queue = run_fields['request_queue']
         host, tag = self.parse_request_queue(request_queue)
-        worker_tag = tag
 
         if run_fields['request_gpus']:
             if request_queue == 'jag-hi':
                 partition = 'jag-hi'
-                worker_tag = 'jag-hi'
+                tag = 'jag-hi'
             else:
                 partition = 'jag-lo'
         else:
@@ -420,7 +426,7 @@ class SlurmWorkerDaemon(Daemon):
         sbatch_command = ' '.join(sbatch_flags)
         worker_command_script = self.write_worker_invocation(
             worker_name=worker_name,
-            tag=worker_tag,
+            tag=tag,
             num_cpus=run_fields['request_cpus'],
             num_gpus=run_fields['request_gpus'],
             verbose=True,
