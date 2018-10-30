@@ -8,6 +8,7 @@ import socket
 from codalabworker.worker_thread import ThreadDict
 from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.run_manager import BaseRunManager
+from codalabworker.docker_client import DockerException
 from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from local_reader import LocalReader
 
@@ -73,9 +74,14 @@ class LocalRunManager(BaseRunManager):
         Set up docker networks for runs: one with external network access and one without
         """
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
-        if self.docker_network_external_name not in self.docker.list_networks():
+        new_external_network, self.docker_network_external_id = self.docker.ensure_unique_network(
+            self.docker_network_external_name, internal=False
+        )
+        if new_external_network:
             logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
-            self.docker.create_network(self.docker_network_external_name, internal=False)
+            self.docker_network_external_id = self.docker.create_network(
+                self.docker_network_external_name, internal=False
+            )
         else:
             logger.debug(
                 'Docker network already exists, not creating: {}'.format(
@@ -84,9 +90,14 @@ class LocalRunManager(BaseRunManager):
             )
 
         self.docker_network_internal_name = self._docker_network_prefix + "_int"
-        if self.docker_network_internal_name not in self.docker.list_networks():
+        new_internal_network, self.docker_network_internal_id = self.docker.ensure_unique_network(
+            self.docker_network_internal_name, internal=True
+        )
+        if new_internal_network:
             logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
-            self.docker.create_network(self.docker_network_internal_name)
+            self.docker_network_internal_id = self.docker.create_network(
+                self.docker_network_internal_name
+            )
         else:
             logger.debug(
                 'Docker network already exists, not creating: {}'.format(
@@ -122,6 +133,12 @@ class LocalRunManager(BaseRunManager):
         self.disk_utilization.stop()
         self.uploading.stop()
         self.save_state()
+        try:
+            self.docker.remove_network(self.docker_network_internal_id)
+            self.docker.remove_network(self.docker_network_external_id)
+        except DockerException as e:
+            logger.error("Cannot clear docker networks: {}".format(e.message))
+
         logger.info("Stopped Local Run Manager. Exiting")
 
     def kill_all(self):
@@ -203,8 +220,8 @@ class LocalRunManager(BaseRunManager):
             request_gpus: integer
 
         Returns a 2-tuple:
-            cpuset: assigned cpuset.
-            gpuset: assigned gpuset.
+            cpuset: assigned cpuset (str indices).
+            gpuset: assigned gpuset (str indices).
 
         Throws an exception if unsuccessful.
         """
@@ -220,7 +237,7 @@ class LocalRunManager(BaseRunManager):
             raise Exception("Not enough cpus or gpus to assign!")
 
         def propose_set(resource_set, request_count):
-            return set(list(resource_set)[:request_count])
+            return set(str(el) for el in list(resource_set)[:request_count])
 
         return propose_set(cpuset, request_cpus), propose_set(gpuset, request_gpus)
 
