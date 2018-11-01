@@ -1,6 +1,5 @@
 import logging
 import os
-import struct
 import sys
 import docker
 
@@ -36,6 +35,7 @@ class DockerClient(object):
 
     MIN_API_VERSION = '1.17'
     NVIDIA_RUNTIME = 'nvidia'
+    DEFAULT_RUNTIME = 'runc'
 
     def __init__(self):
         docker_host = os.environ.get('DOCKER_HOST') or 'unix://var/run/docker.sock'
@@ -73,9 +73,9 @@ to run the worker from the Docker shell.
             print >>sys.stderr, """
 nvidia-docker-plugin not available, no GPU support on this worker.
 """
-            self._use_nvidia_docker = False
+            self._docker_runtime = DockerClient.DEFAULT_RUNTIME
         else:
-            self._use_nvidia_docker = True
+            self._docker_runtime = DockerClient.NVIDIA_RUNTIME
 
     def _test_nvidia_docker(self):
         """Throw exception if nvidia-docker runtime is not available."""
@@ -93,7 +93,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         Returns the index of each NVIDIA device if NVIDIA runtime is available and there are devices.
         Otherwise returns None
         """
-        if not self._use_nvidia_docker:
+        if self._docker_runtime != DockerClient.NVIDIA_RUNTIME:
             return None
         return self._get_nvidia_devices()
 
@@ -283,10 +283,14 @@ nvidia-docker-plugin not available, no GPU support on this worker.
                 network_mode=network_name,
                 mem_limit=memory_bytes,
                 cpuset_cpus=cpuset,
+                runtime=self._docker_runtime,
             )
         else:
             host_config = self._client.create_host_config(
-                binds=volume_binds, mem_limit=memory_bytes, cpuset_cpus=cpuset
+                binds=volume_binds,
+                mem_limit=memory_bytes,
+                cpuset_cpus=cpuset,
+                runtime=self._docker_runtime,
             )
 
         # Get user/group that owns the bundle directory
@@ -299,34 +303,21 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # This can cause problems if users expect to run as a specific user
         user = '%s:%s' % (uid, gid)
 
-        if self._use_nvidia_docker:
+        if self._docker_runtime == DockerClient.NVIDIA_RUNTIME:
             # nvidia-docker runtime uses this env variable to allocate GPUs
             environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
-            container_id = self._client.create_container(
-                docker_image,
-                command=docker_command,
-                environment=environment,
-                working_dir=working_dir,
-                entrypoint=entrypoint,
-                host_config=host_config,
-                volumes=volumes,
-                user=user,
-                detach=True,
-                runtime=DockerClient.NVIDIA_RUNTIME,
-            ).get('Id')
-        else:
-            container_id = self._client.create_container(
-                docker_image,
-                command=docker_command,
-                environment=environment,
-                working_dir=working_dir,
-                entrypoint=entrypoint,
-                host_config=host_config,
-                volumes=volumes,
-                user=user,
-                detach=True,
-            ).get('Id')
-        return container_id
+        return self._client.create_container(
+            docker_image,
+            command=docker_command,
+            environment=environment,
+            working_dir=working_dir,
+            entrypoint=entrypoint,
+            host_config=host_config,
+            volumes=volumes,
+            user=user,
+            detach=True,
+            runtime=self._docker_runtime,
+        ).get('Id')
 
     @wrap_exception('Unable to start Docker container')
     def start_bundle_container(
