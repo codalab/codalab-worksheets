@@ -261,7 +261,7 @@ class SlurmWorkerDaemon(Daemon):
             with open(self.password_file, 'r') as pw_file:
                 self.username = pw_file.readline().strip()
         else:
-            print("No password file for workers, getting from user")
+            print("Please log in with your Codalab credentials again.")
             self.username = os.environ.get('CODALAB_USERNAME')
             if self.username is None:
                 try:
