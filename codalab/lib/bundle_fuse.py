@@ -3,7 +3,6 @@
 from __future__ import with_statement
 
 import os
-import sys
 import errno
 import stat
 import time
@@ -20,8 +19,6 @@ except EnvironmentError:
 
 if fuse_is_available:
     from codalab.common import NotFoundError
-    from codalab.client.json_api_client import JsonApiRelationship
-    from codalab.lib.path_util import normalize
 
     class ByteRangeReader(object):
         '''
@@ -143,7 +140,6 @@ if fuse_is_available:
         def yank_path(self, path):
             """Clear cache of results from a specific path"""
             for func in self._caches:
-                cache = {}
                 for key in self._caches[func].keys():
                     if path in key[0]:
                         del self._caches[func][key]
@@ -158,10 +154,9 @@ if fuse_is_available:
 
         """
 
-        def __init__(self, client, target, verbose=False):
+        def __init__(self, client, bundle_uuid, verbose=False):
             self.client = client
-            self.target = target
-            self.bundle_uuid = target[0]
+            self.bundle_uuid = bundle_uuid
             self.fd = 0  # file descriptor
             self.verbose = verbose
             self.bundle_metadata = self.client.fetch('bundles', self.bundle_uuid)['metadata']
@@ -294,6 +289,6 @@ if fuse_is_available:
             self.verbose_print('read path={}, length={}, offset={}'.format(path, length, offset))
             return result
 
-    def bundle_mount(client, mountpoint, target, verbose=False):
+    def bundle_mount(client, mountpoint, bundle_uuid, verbose=False):
         ''' Mount the filesystem on the mountpoint. '''
-        FUSE(BundleFuse(client, target, verbose), mountpoint, nothreads=True, foreground=True)
+        FUSE(BundleFuse(client, bundle_uuid, verbose), mountpoint, nothreads=True, foreground=True)
