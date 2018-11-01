@@ -79,9 +79,6 @@ class LocalRunManager(BaseRunManager):
         )
         if new_external_network:
             logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
-            self.docker_network_external_id = self.docker.create_network(
-                self.docker_network_external_name, internal=False
-            )
         else:
             logger.debug(
                 'Docker network already exists, not creating: {}'.format(
@@ -95,9 +92,6 @@ class LocalRunManager(BaseRunManager):
         )
         if new_internal_network:
             logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
-            self.docker_network_internal_id = self.docker.create_network(
-                self.docker_network_internal_name
-            )
         else:
             logger.debug(
                 'Docker network already exists, not creating: {}'.format(
