@@ -177,7 +177,7 @@ class SlurmWorkerDaemon(Daemon):
         'request_queue',
         'request_time',
     ]
-    HOSTS = ['host=jagupard%d' % i for i in range(4, 21)] + ['host=john%d' % i for i in range(1, 12)]
+    HOSTS = ['host=jagupard%d.stanford.edu' % i for i in range(4, 21)] + ['host=john%d.stanford.edu' % i for i in range(1, 12)]
     TAGS_REGEX = r'tag=([\w_-]+)'
     STANFORD_USER_REGEX = r"(?:/afs/cs\.stanford\.edu/u/)(\w+)(?:/.*)?"
 
@@ -526,7 +526,7 @@ class SlurmWorkerDaemon(Daemon):
         host, tag = None, None
         for host_arg in SlurmWorkerDaemon.HOSTS:
             if host_arg in queue:
-                host = host_arg[5:]  # strip "host=" from the substring
+                host = host_arg[5:-13]  # strip "host=" and ".stanford.edu" from the substring
         if tag_matches is not None:
             tag = tag_matches.group(1)
         return host, tag
