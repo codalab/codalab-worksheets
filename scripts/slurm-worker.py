@@ -239,14 +239,17 @@ class SlurmWorkerDaemon(Daemon):
 
         logged_in = False
         while not logged_in:
+            # TODO (bkgoksel): For some reason the username prompt from the CLI is never printed so do this for now :(
+            print("Username?")
             cli_login_output = subprocess.check_output(
                 '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
             )
             try:
                 # Make python3 compatible by decoding if we can
                 cli_login_output = cli_login_output.decode('utf-8')
-            except Exception:
-                pass
+            except subprocess.CalledProcessError:
+                logged_in = False
+                continue
             logged_in = 'Invalid' not in cli_login_output
 
         if os.path.isfile(self.password_file):
