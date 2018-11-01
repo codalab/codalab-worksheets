@@ -281,20 +281,23 @@ class SlurmWorkerDaemon(Daemon):
         Print the logs of this daemon.
         :param tail: If specified print last N lines from both STDERR and STDOUT
         """
-        with open(self.stdout, 'r') as stdout, open(self.stderr, 'r') as stderr:
-            stdout_lines = stdout.readlines()
-            stderr_lines = stderr.readlines()
-            if tail:
-                stdout_lines = stdout_lines[-tail:]
-                stderr_lines = stderr_lines[-tail:]
-            stdout = os.linesep.join(stdout_lines)
-            stderr = os.linesep.join(stderr_lines)
-            print(">>>>>>STDOUT")
-            print(stdout)
-            print(">>>>>>STDERR")
-            print(stderr)
-            print(">>>>>>LOGFILES: [in {}]".format(self.log_dir))
-            print(os.listdir(self.log_dir))
+        try:
+            with open(self.stdout, 'r') as stdout, open(self.stderr, 'r') as stderr:
+                stdout_lines = stdout.readlines()
+                stderr_lines = stderr.readlines()
+                if tail:
+                    stdout_lines = stdout_lines[-tail:]
+                    stderr_lines = stderr_lines[-tail:]
+                stdout = os.linesep.join(stdout_lines)
+                stderr = os.linesep.join(stderr_lines)
+                print(">>>>>>STDOUT")
+                print(stdout)
+                print(">>>>>>STDERR")
+                print(stderr)
+                print(">>>>>>LOGFILES: [in {}]".format(self.log_dir))
+                print(os.listdir(self.log_dir))
+        except IOError:
+            print("Can't open logs. Is a worker running?")
 
     def run(self, args):
         """
