@@ -450,7 +450,7 @@ class SlurmWorkerDaemon(Daemon):
         work_dir = os.path.join(self.worker_parent_dir, worker_name)
         # sbatch requires an interpreter
         interpreter = '#!/bin/bash'
-        prepare_command = 'mkdir -vp {0} && mkdir -vp {0}/runs;'.format(work_dir)
+        prepare_command = 'mkdir -vp {0}/runs;'.format(work_dir)
         cleanup_command = 'rm -rf {};'.format(work_dir)
         flags = [
             '--exit-when-idle',
