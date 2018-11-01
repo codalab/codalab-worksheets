@@ -30,7 +30,6 @@ setup(
         "Programming Language :: Python :: 2 :: Only",
         "Programming Language :: Python :: 2.7",
         "License :: OSI Approved :: Apache Software License",
-        "Operating System :: UNIX",
     ],
     python_requires='~=2.7',
     package_data={'': 'requirements.txt'},
