@@ -250,10 +250,10 @@ class SlurmWorkerDaemon(Daemon):
                     cli_login_output = cli_login_output.decode('utf-8')
                 except Exception:
                     pass
+                logged_in = 'Invalid' not in cli_login_output
             except subprocess.CalledProcessError:
                 logged_in = False
                 continue
-            logged_in = 'Invalid' not in cli_login_output
 
         if os.path.isfile(self.password_file):
             if os.stat(self.password_file).st_mode & (stat.S_IRWXG | stat.S_IRWXO):
