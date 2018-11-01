@@ -50,6 +50,12 @@ class Worker(object):
             try:
                 self._run_manager.process_runs()
                 self._run_manager.save_state()
+                self._checkin()
+                self._run_manager.save_state()
+
+                if not self._last_checkin_successful:
+                    logger.info('Connected! Successful check in.')
+                self._last_checkin_successful = True
                 if (
                     self._exit_when_idle
                     and self._last_checkin_successful
@@ -57,12 +63,6 @@ class Worker(object):
                 ):
                     self._stop = True
                     break
-                self._checkin()
-                self._run_manager.save_state()
-
-                if not self._last_checkin_successful:
-                    logger.info('Connected! Successful check in.')
-                self._last_checkin_successful = True
 
             except Exception:
                 self._last_checkin_successful = False
