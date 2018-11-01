@@ -240,8 +240,12 @@ class SlurmWorkerDaemon(Daemon):
         logged_in = False
         while not logged_in:
             # TODO (bkgoksel): For some reason the username prompt from the CLI is never printed so do this for now :(
-            print("Username?")
             try:
+                print(
+                    "Please log in with your credentials for {}. \n Username?".format(
+                        args.server_instance
+                    )
+                )
                 cli_login_output = subprocess.check_output(
                     '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
                 )
