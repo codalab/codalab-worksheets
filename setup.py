@@ -33,6 +33,13 @@ setup(
     license='Apache License 2.0',
     keywords='codalab reproducible computation worksheets competitions',
     packages=find_packages(exclude=["tests*"]),
+    classifiers=[
+        "Programming Language :: Python :: 2 :: Only",
+        "Programming Language :: Python :: 2.7",
+        "License :: OSI Approved :: Apache Software License",
+        "Operating System :: UNIX",
+    ],
+    python_requires='~=2.7',
     include_package_data=True,
     install_requires=get_requirements('worker/requirements.txt'),
     entry_points={'console_scripts': ['cl=codalab.bin.cl:main']},
