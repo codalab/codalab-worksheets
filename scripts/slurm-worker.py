@@ -177,6 +177,7 @@ class SlurmWorkerDaemon(Daemon):
         'request_queue',
         'request_time',
     ]
+    HOSTS = ['host=jagupard%d' % i for i in range(4, 21)] + ['host=john%d' % i for i in range(1, 12)]
     TAGS_REGEX = r'tag=([\w_-]+)'
     STANFORD_USER_REGEX = r"(?:/afs/cs\.stanford\.edu/u/)(\w+)(?:/.*)?"
 
@@ -410,7 +411,7 @@ class SlurmWorkerDaemon(Daemon):
         worker_name = 'worker-{}'.format(run_fields['uuid'])
         output_file = os.path.join(self.log_dir, '{}.out'.format(worker_name))
         request_queue = run_fields['request_queue']
-        tag = self.parse_request_queue(request_queue)
+        host, tag = self.parse_request_queue(request_queue)
 
         if run_fields['request_gpus']:
             if tag == 'jag-hi':
@@ -522,10 +523,13 @@ class SlurmWorkerDaemon(Daemon):
         if queue is None:
             return None
         tag_matches = re.match(cls.TAGS_REGEX, queue)
-        tag = None
+        host, tag = None, None
+        for host_arg in SlurmWorkerDaemon.HOSTS:
+            if host_arg in queue:
+                host = host_arg[5:]  # strip "host=" from the substring
         if tag_matches is not None:
             tag = tag_matches.group(1)
-        return tag
+        return host, tag
 
     @classmethod
     def get_root_dir(cls, home):
