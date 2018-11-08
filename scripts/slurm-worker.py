@@ -177,7 +177,6 @@ class SlurmWorkerDaemon(Daemon):
         'request_queue',
         'request_time',
     ]
-    HOSTS_REGEX = r'host=((john|jagupard)\d+\.stanford\.edu)'
     TAGS_REGEX = r'tag=([\w_-]+)'
 
     def __init__(self, daemon_dir):
@@ -241,12 +240,15 @@ class SlurmWorkerDaemon(Daemon):
         while not logged_in:
             # TODO (bkgoksel): For some reason the username prompt from the CLI is never printed so do this for now :(
             print("Username?")
-            cli_login_output = subprocess.check_output(
-                '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
-            )
             try:
-                # Make python3 compatible by decoding if we can
-                cli_login_output = cli_login_output.decode('utf-8')
+                cli_login_output = subprocess.check_output(
+                    '{} work {}::'.format(args.cl_binary, args.server_instance), shell=True
+                )
+                try:
+                    # Make python3 compatible by decoding if we can
+                    cli_login_output = cli_login_output.decode('utf-8')
+                except Exception:
+                    pass
             except subprocess.CalledProcessError:
                 logged_in = False
                 continue
@@ -402,7 +404,7 @@ class SlurmWorkerDaemon(Daemon):
         worker_name = 'worker-{}'.format(run_fields['uuid'])
         output_file = os.path.join(self.log_dir, '{}.out'.format(worker_name))
         request_queue = run_fields['request_queue']
-        host, tag = self.parse_request_queue(request_queue)
+        tag = self.parse_request_queue(request_queue)
 
         sbatch_flags = [
             self.sbatch_binary,
@@ -415,9 +417,6 @@ class SlurmWorkerDaemon(Daemon):
 
         if run_fields['request_cpus'] > 1:
             sbatch_flags.append('--cpus-per-task={}'.format(run_fields['request_cpus']))
-
-        if host:
-            sbatch_flags.append('--nodelist={}'.format(host))
 
         sbatch_command = ' '.join(sbatch_flags)
         worker_command_script = self.write_worker_invocation(
@@ -506,15 +505,12 @@ class SlurmWorkerDaemon(Daemon):
     @classmethod
     def parse_request_queue(cls, queue):
         if queue is None:
-            return None, None
-        host_matches = re.match(cls.HOSTS_REGEX, queue)
+            return None
         tag_matches = re.match(cls.TAGS_REGEX, queue)
-        host, tag = None, None
-        if host_matches is not None:
-            host = host_matches.group(1)
+        tag = None
         if tag_matches is not None:
             tag = tag_matches.group(1)
-        return host, tag
+        return tag
 
     @staticmethod
     def parse_field(field, val):
