@@ -529,6 +529,20 @@ class SlurmWorkerDaemon(Daemon):
         else:
             return val
 
+    def prune_logs(self):
+        try:
+            pf = open(self.pidfile, 'r')
+            pid = int(pf.read().strip())
+            pf.close()
+        except IOError:
+            pid = None
+        if pid:
+            message = "Daemon running, please stop before pruning.\n"
+            sys.stderr.write(message)
+            sys.exit(1)
+        else:
+            shutil.rmtree(self.log_dir)
+
     @staticmethod
     def list_instances(root_dir):
         print('Slurm worker daemons:')
@@ -585,8 +599,8 @@ def parse_args():
     parser.add_argument(
         'action',
         type=str,
-        choices={'start', 'stop', 'restart', 'logs', 'list', 'status'},
-        help='start, stop or restart the daemon or use logs to print the logs. Use list or status to list all known daemons for this user',
+        choices={'start', 'stop', 'restart', 'logs', 'list', 'status', 'prune'},
+        help='start, stop or restart the daemon or use logs to print the logs. Use list or status to list all known daemons for this user. Use prune to prune the logs of a stopped daemon',
     )
     parser.add_argument(
         '--name',
@@ -672,6 +686,8 @@ def main():
         daemon.print_logs(args.tail)
     elif args.action == 'list' or args.action == 'status':
         daemon.list_instances(args.root_dir)
+    elif args.action == 'prune':
+        daemon.prune_logs()
     else:
         print("Unknown command %s" % args.action)
         sys.exit(2)
