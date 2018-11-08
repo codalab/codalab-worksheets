@@ -659,31 +659,31 @@ def parse_args():
         '--sbatch-binary',
         type=str,
         help='Where the binary for the sbatch command lives (default is sbatch)',
-        default='sbatch',
+        default='/u/nlp/bin/sbatch',
     )
     parser.add_argument(
         '--squeue-binary',
         type=str,
         help='Where the binary for the squeue command lives (default is squeue)',
-        default='squeue',
+        default='/u/nlp/bin/squeue',
     )
     parser.add_argument(
         '--slurm-host',
         type=str,
         help='Machine to run Slurm commands from. Should be SSH\'able without interactive authentication. Default is None, in which case commands are run locally.',
-        default='sc',
+        default='/u/nlp/bin/sc',
     )
     parser.add_argument(
         '--cl-worker-binary',
         type=str,
         help='Where the cl-worker binary lives (default is cl-worker)',
-        default='cl-worker',
+        default='/u/nlp/bin/cl-worker',
     )
     parser.add_argument(
         '--cl-binary',
         type=str,
         help='Where the cl (Codalab CLI) binary lives (default is cl)',
-        default='cl',
+        default='/u/nlp/bin/cl',
     )
     parser.add_argument(
         '--root-dir',
