@@ -473,6 +473,7 @@ class SlurmWorkerDaemon(Daemon):
             '--server {}'.format(self.server_instance),
             '--password {}'.format(self.password_file),
             '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
+            '--gpuset {}'.format(','.join(str(idx) for idx in range(num_gpus))),
             '--work-dir {}'.format(work_dir),
             '--network-prefix {}_network'.format(worker_name),
         ]
