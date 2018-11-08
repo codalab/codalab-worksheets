@@ -309,6 +309,7 @@ class SlurmWorkerDaemon(Daemon):
         self.cl_worker_binary = args.cl_worker_binary
         self.server_instance = args.server_instance
         self.sbatch_binary = args.sbatch_binary
+        self.squeue_binary = args.squeue_binary
         self.slurm_host = args.slurm_host
         self.sleep_interval = args.sleep_interval
         self.max_concurrent_workers = args.max_concurrent_workers
