@@ -384,7 +384,7 @@ class SlurmWorkerDaemon(Daemon):
         """
         Returns the number of currently running jobs this script has launched
         """
-        squeue_command = 'squeue --name={}'.format(self.job_name)
+        squeue_command = '{} --name={}'.format(self.squeue_binary, self.job_name)
         squeue_output = subprocess.check_output(squeue_command, shell=True)
         try:
             # Make python3 compatible by decoding if we can
@@ -631,6 +631,12 @@ def parse_args():
         type=str,
         help='Where the binary for the sbatch command lives (default is sbatch)',
         default='sbatch',
+    )
+    parser.add_argument(
+        '--squeue-binary',
+        type=str,
+        help='Where the binary for the squeue command lives (default is squeue)',
+        default='squeue',
     )
     parser.add_argument(
         '--slurm-host',
