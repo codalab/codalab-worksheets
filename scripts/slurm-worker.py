@@ -375,7 +375,8 @@ class SlurmWorkerDaemon(Daemon):
         """
         Do the necessary cleanup before exiting
         """
-        shutil.rmtree(self.daemon_dir)
+        # TODO (bkgoksel): Figure out exactly what needs to be done here
+        pass
 
     def _get_num_running_jobs(self):
         """
@@ -504,6 +505,8 @@ class SlurmWorkerDaemon(Daemon):
 
     @classmethod
     def parse_request_queue(cls, queue):
+        if queue is None:
+            return None, None
         host_matches = re.match(cls.HOSTS_REGEX, queue)
         tag_matches = re.match(cls.TAGS_REGEX, queue)
         host, tag = None, None
