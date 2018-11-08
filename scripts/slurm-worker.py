@@ -671,7 +671,7 @@ def parse_args():
         '--slurm-host',
         type=str,
         help='Machine to run Slurm commands from. Should be SSH\'able without interactive authentication. Default is None, in which case commands are run locally.',
-        default='/u/nlp/bin/sc',
+        default='sc',
     )
     parser.add_argument(
         '--cl-worker-binary',
