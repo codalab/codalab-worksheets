@@ -1133,6 +1133,7 @@ class BundleCLI(object):
         elif any(map(path_util.path_is_url, args.path)):
             if not all(map(path_util.path_is_url, args.path)):
                 raise UsageError("URLs and local files cannot be uploaded in the same bundle.")
+            bundle_info['metadata']['source_url'] = str(args.path)
 
             new_bundle = client.create('bundles', bundle_info, params={'worksheet': worksheet_uuid})
             client.upload_contents_blob(
