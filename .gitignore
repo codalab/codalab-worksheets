@@ -57,7 +57,7 @@ dist/
 build/
 codalab_env/
 *.egg-info
-venv/
+venv*/
 .git
 
 doc
