@@ -39,10 +39,12 @@ def wrap_exception(message):
 
     return decorator
 
+
 class BundleAuthException(RestClientException):
     """
     Exception raised by the BundleServiceClient methods if auth error occurs.
     """
+
 
 class BundleServiceException(RestClientException):
     """
@@ -67,6 +69,10 @@ class BundleServiceClient(RestClient):
 
         base_url += '/rest'
         super(BundleServiceClient, self).__init__(base_url)
+        try:
+            self._authorize()
+        except BundleServiceException as ex:
+            raise BundleAuthException(ex, True)
 
     def _get_access_token(self):
         with self._authorization_lock:
