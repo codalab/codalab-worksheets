@@ -125,7 +125,16 @@ BUNDLE_COMMANDS = (
     'netcat',
 )
 
-WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
+WORKSHEET_COMMANDS = (
+    'new',
+    'add',
+    'wadd',
+    'work',
+    'print',
+    'wedit',
+    'wrm',
+    'wls'
+)
 
 GROUP_AND_PERMISSION_COMMANDS = (
     'gls',
@@ -139,7 +148,11 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'chown',
 )
 
-USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell')
+USER_COMMANDS = (
+    'uinfo',
+    'uedit',
+    'ufarewell'
+)
 
 SERVER_COMMANDS = (
     'server',
@@ -151,7 +164,13 @@ SERVER_COMMANDS = (
     'bs-health-check',
 )
 
-OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
+OTHER_COMMANDS = (
+    'help',
+    'status',
+    'alias',
+    'config',
+    'logout'
+)
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -2652,9 +2671,10 @@ class BundleCLI(object):
                 completer=UnionCompleter(WorksheetsCompleter, BundlesCompleter),
             ),
             Commands.Argument(
-                'dest_worksheet',
+                '--dest-worksheet',
                 help='Worksheet to which to add items (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
+                default='.',
             ),
             Commands.Argument(
                 '-d',
