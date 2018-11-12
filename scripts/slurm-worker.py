@@ -473,11 +473,12 @@ class SlurmWorkerDaemon(Daemon):
             '--server {}'.format(self.server_instance),
             '--password {}'.format(self.password_file),
             '--cpuset {}'.format(','.join(str(idx) for idx in range(num_cpus))),
-            '--gpuset {}'.format(','.join(str(idx) for idx in range(num_gpus))),
             '--work-dir {}'.format(work_dir),
             '--network-prefix {}_network'.format(worker_name),
         ]
 
+        if num_gpus:
+            flags.append('--gpuset {}'.format(','.join(str(idx) for idx in range(num_gpus))))
         if tag is not None:
             flags.append('--tag {}'.format(tag))
             print('Running worker with tag {}'.format(tag))
