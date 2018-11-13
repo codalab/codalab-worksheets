@@ -144,7 +144,11 @@ chmod 600 %s""" % args.password_file
     try:
         bundle_service = BundleServiceClient(args.server, username, password)
     except BundleAuthException as ex:
-        logger.error('Cannot log into the bundle service. Please check your worker credentials: {}'.format(ex))
+        logger.error(
+            'Cannot log into the bundle service. Please check your worker credentials: {}'.format(
+                ex
+            )
+        )
         raise
 
     if not os.path.exists(args.work_dir):
