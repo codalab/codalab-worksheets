@@ -478,7 +478,7 @@ class SlurmWorkerDaemon(Daemon):
         ]
 
         if num_gpus:
-            flags.append('--gpuset {}'.format(','.join(str(idx) for idx in range(num_gpus))))
+            flags.append('--gpuset ALL')
         if tag is not None:
             flags.append('--tag {}'.format(tag))
             print('Running worker with tag {}'.format(tag))
