@@ -97,6 +97,8 @@ BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
     BASIC_BUNDLE_SPEC_FORMAT,
 )
 
+WORKSHEETS_URL_SEPARATOR = '/worksheets/'
+
 TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
 ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
@@ -2616,6 +2618,14 @@ class BundleCLI(object):
     # CLI methods for worksheet-related commands follow!
     #############################################################################
 
+    def worksheet_url(self, worksheet_info):
+        return '%s%s%s (%s)' % (
+            self.manager.session()['address'],
+            WORKSHEETS_URL_SEPARATOR,
+            worksheet_info['uuid'],
+            worksheet_info['name'],
+        )
+
     def worksheet_str(self, worksheet_info):
         return '%s%s%s(%s)' % (
             self.manager.session()['address'],
@@ -2791,8 +2801,8 @@ class BundleCLI(object):
                 if args.uuid_only:
                     print >>self.stdout, worksheet_info['uuid']
                 else:
-                    print >>self.stdout, 'Currently on worksheet %s.' % (
-                        self.worksheet_str(worksheet_info)
+                    print >>self.stdout, 'Currently on worksheet: %s.' % (
+                        self.worksheet_url(worksheet_info)
                     )
             else:
                 print >>self.stdout, 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
