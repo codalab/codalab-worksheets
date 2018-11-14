@@ -12,21 +12,18 @@ from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
-ImageAvailabilityState = namedtuple(
-    'ImageAvailabilityState', 'state info'
-)
+ImageAvailabilityState = namedtuple('ImageAvailabilityState', 'state info')
 
 
-class DockerImageManager():
+class DockerImageManager:
 
     IMAGE_READY = 'IMAGE_READY'
     IMAGE_DOWNLOADING = 'IMAGE_DOWNLOADING'
     IMAGE_NOT_AVAILABLE = 'IMAGE_NOT_AVAILABLE'
 
-    def __init__(self,
-                 commit_file,  # type: str
-                 max_image_cache_size,  # type: int
-                 max_single_image_size,):  # type: int
+    def __init__(
+        self, commit_file, max_image_cache_size, max_single_image_size  # type: str  # type: int
+    ):  # type: int
         """
         Initializes a DockerImageManager
         :param commit_file: String path to where the state file should be committed
@@ -36,7 +33,9 @@ class DockerImageManager():
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env()  # type: DockerClient
         self._last_used = {}  # type: Dict[str, int]
-        self._downloading = ThreadDict(fields={'success': False, 'status': 'Download starting', 'lock': threading.RLock()})
+        self._downloading = ThreadDict(
+            fields={'success': False, 'status': 'Download starting', 'lock': threading.RLock()}
+        )
         self._max_image_cache_size = max_image_cache_size
         self._max_single_image_size = max_single_image_size
         self._lock = threading.RLock()
@@ -57,6 +56,7 @@ class DockerImageManager():
 
     def start(self):
         if self._max_image_cache_size:
+
             def cleanup_loop(self):
                 while not self._stop:
                     try:
@@ -86,7 +86,10 @@ class DockerImageManager():
         for digest, last_used in self._last_used.items():
             try:
                 image_info = self._docker.images.get(digest)
-                virtual_size, marginal_size = image_info.attrs['VirtualSize'], image_info.attrs['Size']
+                virtual_size, marginal_size = (
+                    image_info.attrs['VirtualSize'],
+                    image_info.attrs['Size'],
+                )
                 image_disk_use.append(last_used, image_info.id, virtual_size, marginal_size)
             except docker.errors.ImageNotFound:
                 continue
@@ -119,12 +122,14 @@ class DockerImageManager():
                     self._docker.images.remove(image_to_remove_id)
                 except docker.errors.APIError:
                     images_to_skip.add(image_to_remove_id)
-                sorted_image_disk_usage = [usage for usage in self._get_image_disk_usage() if usage[1] not in images_to_skip]
+                sorted_image_disk_usage = [
+                    usage
+                    for usage in self._get_image_disk_usage()
+                    if usage[1] not in images_to_skip
+                ]
                 total_disk_usage = sum(usage[2] for usage in sorted_image_disk_usage)
 
-    def get(self,
-            uuid,   # type: str
-            image_spec):  # type: str
+    def get(self, uuid, image_spec):  # type: str  # type: str
         """
         Request the docker image for the run with uuid, registering uuid as a dependent of this docker image
         :param uuid: UUID of bundle requesting this image
@@ -140,18 +145,29 @@ class DockerImageManager():
         except docker.errors.ImageNotFound:
             return self._pull_or_report(image_spec)  # type: DockerAvailabilityState
         except Exception as ex:
-            return ImageAvailabilityState(state=DockerImageManager.IMAGE_NOT_AVAILABLE, info=str(ex))
+            return ImageAvailabilityState(
+                state=DockerImageManager.IMAGE_NOT_AVAILABLE, info=str(ex)
+            )
 
     def _pull_or_report(self, image_spec):
         if image_spec in self._downloading:
             with self._downloading[image_spec].lock:
                 if self._downloading[image_spec].is_alive():
-                    return ImageAvailabilityState(state=DockerImageManager.IMAGE_DOWNLOADING, info=self._downloading[image_spec].status)
+                    return ImageAvailabilityState(
+                        state=DockerImageManager.IMAGE_DOWNLOADING,
+                        info=self._downloading[image_spec].status,
+                    )
                 else:
                     if self._downloading[image_spec]['success']:
-                        status = ImageAvailabilityState(state=DockerImageManager.IMAGE_READY, info=self._downloading[image_spec].status)
+                        status = ImageAvailabilityState(
+                            state=DockerImageManager.IMAGE_READY,
+                            info=self._downloading[image_spec].status,
+                        )
                     else:
-                        status = ImageAvailabilityState(state=DockerImageManager.IMAGE_NOT_AVAILABLE, info=self._downloading[image_spec].status)
+                        status = ImageAvailabilityState(
+                            state=DockerImageManager.IMAGE_NOT_AVAILABLE,
+                            info=self._downloading[image_spec].status,
+                        )
                     self._downloading.remove(image_spec)
                     return status
         else:

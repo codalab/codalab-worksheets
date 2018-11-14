@@ -144,7 +144,9 @@ class LocalRunStateMachine(StateTransitioner):
         docker_image = run_state.resources['docker_image']
         image_state = self._run_manager.image_manager.get(bundle_uuid, docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
-            status_messages.append('Pulling docker image: ' + (image_state.message or docker_image or ""))
+            status_messages.append(
+                'Pulling docker image: ' + (image_state.message or docker_image or "")
+            )
             dependencies_ready = False
         elif image_state.stage == DependencyStage.FAILED:
             # Failed to pull image; -> CLEANING_UP
