@@ -174,10 +174,13 @@ class SlurmWorkerDaemon(Daemon):
         'request_cpus',
         'request_gpus',
         'request_memory',
+        'tags',
         'request_queue',
         'request_time',
     ]
-    HOSTS = ['host=jagupard%d.stanford.edu' % i for i in range(4, 21)] + ['host=john%d.stanford.edu' % i for i in range(1, 12)]
+    HOSTS = ['jagupard%d' % i for i in range(4, 21)] + ['john%d' % i for i in range(1, 12)]
+    GPUS = ['k40', 'titanx', 'titanxp', 'titanv']
+    QUEUES = ['jag-hi', 'jag-lo', 'jag-urgent']
     TAGS_REGEX = r'tag=([\w_-]+)'
     STANFORD_USER_REGEX = r"(?:/afs/cs\.stanford\.edu/u/)(\w+)(?:/.*)?"
 
@@ -411,20 +414,18 @@ class SlurmWorkerDaemon(Daemon):
         worker_name = 'worker-{}'.format(run_fields['uuid'])
         output_file = os.path.join(self.log_dir, '{}.out'.format(worker_name))
         request_queue = run_fields['request_queue']
-        host, tag = self.parse_request_queue(request_queue)
+        tag = self.parse_request_queue(request_queue)
+        tags = run_fields['tags']
+        host, gpu_type, requested_partition = self.parse_tags(tags)
 
         if run_fields['request_gpus']:
-            if tag == 'jag-hi':
-                partition = 'jag-hi'
-            else:
-                partition = 'jag-lo'
+            partition = requested_partition if requested_partition else 'jag-lo'
         else:
             partition = 'john'
 
         sbatch_flags = [
             self.sbatch_binary,
             '--mem={}'.format(run_fields['request_memory']),
-            '--gres=gpu:{}'.format(run_fields['request_gpus']),
             '--chdir={}'.format(self.daemon_dir),
             '--job-name={}'.format(self.job_name),
             '--output={}'.format(output_file),
@@ -433,6 +434,10 @@ class SlurmWorkerDaemon(Daemon):
 
         if run_fields['request_cpus'] > 1:
             sbatch_flags.append('--cpus-per-task={}'.format(run_fields['request_cpus']))
+
+        if run_fields['request_gpus']:
+            gpu_type = '{}:'.format(gpu_type) if gpu_type else ''
+            sbatch_flags.append('--gres=gpu:{}{}'.format(gpu_type, run_fields['request_gpus']))
 
         sbatch_command = ' '.join(sbatch_flags)
         worker_command_script = self.write_worker_invocation(
@@ -525,13 +530,22 @@ class SlurmWorkerDaemon(Daemon):
         if queue is None:
             return None
         tag_matches = re.match(cls.TAGS_REGEX, queue)
-        host, tag = None, None
-        for host_arg in SlurmWorkerDaemon.HOSTS:
-            if host_arg in queue:
-                host = host_arg[5:-13]  # strip "host=" and ".stanford.edu" from the substring
         if tag_matches is not None:
-            tag = tag_matches.group(1)
-        return host, tag
+            return tag_matches.group(1)
+        else:
+            return None
+
+    @classmethod
+    def parse_tags(cls, tags):
+        host, gpu_type, partition = None, None, None
+        for tag in tags:
+            if tag in cls.HOSTS:
+                host = tag
+            elif tag in cls.GPUS:
+                gpu_type = tag
+            elif tag in cls.QUEUES:
+                partition = tag
+        return host, gpu_type, partition
 
     @classmethod
     def get_root_dir(cls, home):
