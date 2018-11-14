@@ -1,3 +1,4 @@
+import copy
 import logging
 import os
 from subprocess import check_output
@@ -5,10 +6,11 @@ import threading
 import time
 import socket
 
-from codalabworker.worker_thread import ThreadDict
+import docker
+import codalabworker.docker_utils as docker_utils
+
 from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.run_manager import BaseRunManager
-from codalabworker.docker_client import DockerException
 from local_run_state import LocalRunStateMachine, LocalRunStage, LocalRunState
 from local_reader import LocalReader
 
@@ -32,49 +34,49 @@ class LocalRunManager(BaseRunManager):
     def __init__(
         self,
         worker,  # type: Worker
-        docker,  # type: DockerContainerManager
         image_manager,  # type: DockerImageManager
         dependency_manager,  # type: LocalFileSystemDependencyManager
         commit_file,  # type: str
         cpuset,  # type: Set[str]
         gpuset,  # type: Set[str]
         work_dir,  # type: str
+        docker_runtime=docker_utils.DEFAULT_RUNTIME,  # type: str
         docker_network_prefix='codalab_worker_network',  # type: str
     ):
         self._worker = worker
         self._state_committer = JsonStateCommitter(commit_file)
-        self._run_state_manager = LocalRunStateMachine(self)
         self._reader = LocalReader()
+        self._docker = docker.from_env()
         self._docker_network_prefix = docker_network_prefix
         self._bundles_dir = os.path.join(work_dir, LocalRunManager.BUNDLES_DIR_NAME)
         if not os.path.exists(self._bundles_dir):
             logger.info('{} doesn\'t exist, creating.'.format(self._bundles_dir))
             os.makedirs(self._bundles_dir, 0o770)
 
-        # These members are public as the run state manager needs access to them
-        self.docker = docker
-        self.image_manager = image_manager
-        self.dependency_manager = dependency_manager
-        self.cpuset = cpuset
-        self.gpuset = gpuset
+        self._image_manager = image_manager
+        self._dependency_manager = dependency_manager
+        self._cpuset = cpuset
+        self._gpuset = gpuset
         self._stop = False
 
         self.runs = {}  # bundle_uuid -> LocalRunState
-        # bundle_uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
-        self.disk_utilization = ThreadDict(
-            fields={'disk_utilization': 0, 'running': True, 'lock': None}
-        )
-        # bundle_uuid -> {'thread': Thread, 'run_status': str}
-        self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
         self.lock = threading.RLock()
         self._init_docker_networks()
+        self._run_state_manager = LocalRunStateMachine(
+            self._image_manager,
+            self._dependency_manager,
+            self.docker_network_internal_name,
+            self.docker_network_external_name,
+            self.docker_runtime,
+            self._worker.upload_bundle_contents,
+            self.assign_cpu_and_gpu_sets)
 
     def _init_docker_networks(self):
         """
         Set up docker networks for runs: one with external network access and one without
         """
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
-        new_external_network, self.docker_network_external_id = self.docker.ensure_unique_network(
+        new_external_network, self.docker_network_external_id = docker_utils.ensure_unique_network(
             self.docker_network_external_name, internal=False
         )
         if new_external_network:
@@ -87,7 +89,7 @@ class LocalRunManager(BaseRunManager):
             )
 
         self.docker_network_internal_name = self._docker_network_prefix + "_int"
-        new_internal_network, self.docker_network_internal_id = self.docker.ensure_unique_network(
+        new_internal_network, self.docker_network_internal_id = docker_utils.ensure_unique_network(
             self.docker_network_internal_name, internal=True
         )
         if new_internal_network:
@@ -100,18 +102,26 @@ class LocalRunManager(BaseRunManager):
             )
 
     def save_state(self):
-        self._state_committer.commit(self.runs)
+        # Remove complex container objects from state before serializing, these can be retrieved
+        simple_runs = {uuid: state._replace(container=None) for uuid, state in self.runs.items()}
+        self._state_committer.commit(simple_runs)
 
     def load_state(self):
         self.runs = self._state_committer.load()
+        # Retrieve the complex container objects from the Dokcer API
+        for uuid, run_state in self.runs.items():
+            try:
+                run_state = run_state._replace(container=self._docker.containers.get(run_state.container_id))
+            except docker.errors.NotFound:
+                continue
 
     def start(self):
         """
         Load your state from disk, and start your sub-managers
         """
         self.load_state()
-        self.image_manager.start()
-        self.dependency_manager.start()
+        self._image_manager.start()
+        self._dependency_manager.start()
 
     def stop(self):
         """
@@ -120,17 +130,14 @@ class LocalRunManager(BaseRunManager):
         """
         logger.info("Stopping Local Run Manager")
         self._stop = True
-        self.image_manager.stop()
-        self.dependency_manager.stop()
-        for uuid in self.disk_utilization.keys():
-            self.disk_utilization[uuid]['running'] = False
-        self.disk_utilization.stop()
-        self.uploading.stop()
+        self._image_manager.stop()
+        self._dependency_manager.stop()
+        self._run_state_manager.stop()
         self.save_state()
         try:
-            self.docker.remove_network(self.docker_network_internal_id)
-            self.docker.remove_network(self.docker_network_external_id)
-        except DockerException as e:
+            docker_utils.remove_network(self.docker_network_internal_id)
+            docker_utils.remove_network(self.docker_network_external_id)
+        except docker_utils.DockerException as e:
             logger.error("Cannot clear docker networks: {}".format(e.message))
 
         logger.info("Stopped Local Run Manager. Exiting")
@@ -251,12 +258,6 @@ class LocalRunManager(BaseRunManager):
             with self.lock:
                 self.runs[uuid].info['finalized'] = True
 
-    def upload_bundle_contents(self, bundle_uuid, bundle_path, progress_callback):
-        """
-        Use the Worker API to upload contents of bundle_path to bundle_uuid
-        """
-        self._worker.upload_bundle_contents(bundle_uuid, bundle_path, progress_callback)
-
     def read(self, run_state, path, dep_paths, args, reply):
         """
         Use your Reader helper to invoke the given read command
@@ -277,12 +278,12 @@ class LocalRunManager(BaseRunManager):
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
         """
-        container_ip = self.docker.get_container_ip(
-            self.docker_network_external_name, run_state.container_id
+        container_ip = docker_utils.get_container_ip(
+            self.docker_network_external_name, run_state.container
         )
         if not container_ip:
-            container_ip = self.docker.get_container_ip(
-                self.docker_network_internal_name, run_state.container_id
+            container_ip = docker_utils.get_container_ip(
+                self.docker_network_internal_name, run_state.container
             )
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((container_ip, port))
@@ -329,7 +330,7 @@ class LocalRunManager(BaseRunManager):
         """
         Returns a list of all dependencies available in this RunManager
         """
-        return self.dependency_manager.all_dependencies
+        return self._dependency_manager.all_dependencies
 
     @property
     def cpus(self):
@@ -355,7 +356,3 @@ class LocalRunManager(BaseRunManager):
         except ValueError:
             # Fallback to sysctl when os.sysconf('SC_PHYS_PAGES') fails on OS X
             return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
-
-    @property
-    def dependencies_dir(self):
-        return self.dependency_manager.dependencies_dir

@@ -129,10 +129,9 @@ class DockerImageManager:
                 ]
                 total_disk_usage = sum(usage[2] for usage in sorted_image_disk_usage)
 
-    def get(self, uuid, image_spec):  # type: str  # type: str
+    def get(self, image_spec):
         """
         Request the docker image for the run with uuid, registering uuid as a dependent of this docker image
-        :param uuid: UUID of bundle requesting this image
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """

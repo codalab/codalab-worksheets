@@ -5,11 +5,13 @@ import threading
 import time
 import traceback
 
-from codalabworker.docker_client import DockerException
+import codalabworker.docker_utils as docker_utils
+
 from codalabworker.file_util import remove_path, get_path_size
 from codalabworker.formatting import size_str, duration_str
 from codalabworker.bundle_state import State
 from codalabworker.fsm import DependencyStage, StateTransitioner
+from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
@@ -71,6 +73,7 @@ LocalRunState = namedtuple(
         'bundle_path',
         'resources',
         'start_time',
+        'container',
         'container_id',
         'docker_image',
         'is_killed',
@@ -90,9 +93,15 @@ class LocalRunStateMachine(StateTransitioner):
     Manages the state machine of the runs running on the local machine
     """
 
-    def __init__(self, run_manager):
+    def __init__(self,
+                 docker_image_manager,
+                 dependency_manager,
+                 docker_network_internal_name,
+                 docker_network_external_name,
+                 docker_runtime,
+                 upload_bundle_callback,
+                 assign_cpu_and_gpu_sets_fn,):
         super(LocalRunStateMachine, self).__init__()
-        self._run_manager = run_manager
         self.add_transition(LocalRunStage.PREPARING, self._transition_from_PREPARING)
         self.add_transition(LocalRunStage.RUNNING, self._transition_from_RUNNING)
         self.add_transition(LocalRunStage.CLEANING_UP, self._transition_from_CLEANING_UP)
@@ -101,6 +110,26 @@ class LocalRunStateMachine(StateTransitioner):
         )
         self.add_transition(LocalRunStage.FINALIZING, self._transition_from_FINALIZING)
         self.add_terminal(LocalRunStage.FINISHED)
+
+        self.dependency_manager = dependency_manager
+        self.docker_image_manager = docker_image_manager
+        self.docker_network_external_name = docker_network_external_name
+        self.docker_network_internal_name = docker_network_internal_name
+        self.docker_runtime = docker_runtime
+        # bundle_uuid -> {'thread': Thread, 'run_status': str}
+        self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
+        # bundle_uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
+        self.disk_utilization = ThreadDict(
+            fields={'disk_utilization': 0, 'running': True, 'lock': None}
+        )
+        self.upload_bundle_callback = upload_bundle_callback
+        self.assign_cpu_and_gpu_sets_fn = assign_cpu_and_gpu_sets_fn
+
+    def stop(self):
+        for uuid in self.disk_utilization.keys():
+            self.disk_utilization[uuid]['running'] = False
+        self.disk_utilization.stop()
+        self.uploading.stop()
 
     def _transition_from_PREPARING(self, run_state):
         """
@@ -125,7 +154,7 @@ class LocalRunStateMachine(StateTransitioner):
         # get dependencies
         for dep in run_state.bundle['dependencies']:
             dependency = (dep['parent_uuid'], dep['parent_path'])
-            dependency_state = self._run_manager.dependency_manager.get(bundle_uuid, dependency)
+            dependency_state = self.dependency_manager.get(bundle_uuid, dependency)
             if dependency_state.stage == DependencyStage.DOWNLOADING:
                 status_messages.append(
                     'Downloading dependency %s: %s done (archived size)'
@@ -142,7 +171,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         # get the docker image
         docker_image = run_state.resources['docker_image']
-        image_state = self._run_manager.image_manager.get(bundle_uuid, docker_image)
+        image_state = self.docker_image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
@@ -175,10 +204,10 @@ class LocalRunStateMachine(StateTransitioner):
             if not child_path.startswith(run_state.bundle_path):
                 raise Exception('Invalid key for dependency: %s' % (dep['child_path']))
 
-            dependency_path = self._run_manager.dependency_manager.get(
+            dependency_path = self.dependency_manager.get(
                 bundle_uuid, (dep['parent_uuid'], dep['parent_path'])
             ).path
-            dependency_path = os.path.join(self._run_manager.dependencies_dir, dependency_path)
+            dependency_path = os.path.join(self.dependency_manager.dependencies_dir, dependency_path)
 
             docker_dependency_path = os.path.join(docker_dependencies_path, dep['child_path'])
 
@@ -189,12 +218,12 @@ class LocalRunStateMachine(StateTransitioner):
 
         # 3) Set up container
         if run_state.resources['request_network']:
-            docker_network = self._run_manager.docker_network_external_name
+            docker_network = self.docker_network_external_name
         else:
-            docker_network = self._run_manager.docker_network_internal_name
+            docker_network = self.docker_network_internal_name
 
         try:
-            cpuset, gpuset = self._run_manager.assign_cpu_and_gpu_sets(
+            cpuset, gpuset = self.assign_cpu_and_gpu_sets_fn(
                 run_state.resources['request_cpus'], run_state.resources['request_gpus']
             )
         except Exception:
@@ -203,7 +232,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         # 4) Start container
         try:
-            container_id = self._run_manager.docker.start_bundle_container(
+            container = docker_utils.start_bundle_container(
                 run_state.bundle_path,
                 bundle_uuid,
                 dependencies,
@@ -213,18 +242,20 @@ class LocalRunStateMachine(StateTransitioner):
                 cpuset=cpuset,
                 gpuset=gpuset,
                 memory_bytes=run_state.resources['request_memory'],
+                runtime=self.runtime,
             )
-        except DockerException as e:
+        except docker_utils.DockerException as e:
             run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
-        digest = self._run_manager.docker.get_image_repo_digest(run_state.resources['docker_image'])
+        digest = docker_utils.get_digest(run_state.resources['docker_image'])
 
         return run_state._replace(
             stage=LocalRunStage.RUNNING,
             start_time=time.time(),
             run_status='Running job in Docker container',
-            container_id=container_id,
+            container_id=container.id,
+            container=container,
             docker_image=digest,
             has_contents=True,
             cpuset=cpuset,
@@ -241,10 +272,10 @@ class LocalRunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = self._run_manager.docker.check_finished(
-                    run_state.container_id
+                finished, exitcode, failure_msg = docker_utils.check_finished(
+                    run_state.container
                 )
-            except DockerException:
+            except docker_utils.DockerException:
                 traceback.print_exc()
                 finished, exitcode, failure_msg = False, None, None
             new_info = dict(finished=finished, exitcode=exitcode, failure_message=failure_msg)
@@ -255,7 +286,7 @@ class LocalRunStateMachine(StateTransitioner):
         def check_resource_utilization(run_state):
             kill_messages = []
 
-            run_stats = self._run_manager.docker.get_container_stats(run_state.container_id)
+            run_stats = docker_utils.get_container_stats(run_state.container)
             time_used = time.time() - run_state.start_time
 
             run_state = run_state._replace(time_used=time_used)
@@ -263,7 +294,7 @@ class LocalRunStateMachine(StateTransitioner):
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
             )
             run_state = run_state._replace(
-                disk_utilization=self._run_manager.disk_utilization[bundle_uuid]['disk_utilization']
+                disk_utilization=self.disk_utilization_threads[bundle_uuid]['disk_utilization']
             )
 
             if (
@@ -301,10 +332,10 @@ class LocalRunStateMachine(StateTransitioner):
                 start_time = time.time()
                 try:
                     disk_utilization = get_path_size(run_state.bundle_path)
-                    self._run_manager.disk_utilization[bundle_uuid][
+                    self.disk_utilization[bundle_uuid][
                         'disk_utilization'
                     ] = disk_utilization
-                    running = self._run_manager.disk_utilization[bundle_uuid]['running']
+                    running = self.disk_utilization[bundle_uuid]['running']
                 except Exception:
                     traceback.print_exc()
                 end_time = time.time()
@@ -313,7 +344,7 @@ class LocalRunStateMachine(StateTransitioner):
                 # there are lots of files, we run it at most 10% of the time.
                 time.sleep(max((end_time - start_time) * 10, 1.0))
 
-        self._run_manager.disk_utilization.add_if_new(
+        self.disk_utilization.add_if_new(
             bundle_uuid, threading.Thread(target=check_disk_utilization, args=[])
         )
         run_state = check_and_report_finished(run_state)
@@ -321,15 +352,15 @@ class LocalRunStateMachine(StateTransitioner):
 
         if run_state.is_killed and run_state.container_id is not None:
             try:
-                self._run_manager.docker.kill_container(run_state.container_id)
-            except DockerException:
-                finished, _, _ = self._run_manager.docker.check_finished(run_state.container_id)
+                run_state.container.kill()
+            except docker_utils.DockerException:
+                finished, _, _ = docker_utils.check_finished(run_state.container)
                 if not finished:
                     # If we can't kill a Running container, something is wrong
                     # Otherwise all well
                     traceback.print_exc()
-            self._run_manager.disk_utilization[bundle_uuid]['running'] = False
-            self._run_manager.disk_utilization.remove(bundle_uuid)
+            self.disk_utilization[bundle_uuid]['running'] = False
+            self.disk_utilization.remove(bundle_uuid)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, container_id=None)
         if run_state.info['finished']:
             logger.debug(
@@ -338,8 +369,8 @@ class LocalRunStateMachine(StateTransitioner):
                 run_state.info['exitcode'],
                 run_state.info['failure_message'],
             )
-            self._run_manager.disk_utilization[bundle_uuid]['running'] = False
-            self._run_manager.disk_utilization.remove(bundle_uuid)
+            self.disk_utilization[bundle_uuid]['running'] = False
+            self.disk_utilization.remove(bundle_uuid)
             return run_state._replace(
                 stage=LocalRunStage.CLEANING_UP, run_status='Uploading results'
             )
@@ -359,17 +390,16 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.container_id is not None:
             while True:
                 try:
-                    finished, _, _ = self._run_manager.docker.check_finished(run_state.container_id)
+                    finished, _, _ = docker_utils.check_finished(run_state.container_id)
                     if finished:
-                        self._run_manager.docker.delete_container(run_state.container_id)
+                        run_state.container.remove(force=True)
                         break
-                except DockerException:
+                except docker_utils.DockerException:
                     traceback.print_exc()
                     time.sleep(1)
 
-        self._run_manager.image_manager.release(bundle_uuid, run_state.resources['docker_image'])
         for dep in run_state.bundle['dependencies']:
-            self._run_manager.dependency_manager.release(
+            self.dependency_manager.release(
                 bundle_uuid, (dep['parent_uuid'], dep['parent_path'])
             )
 
@@ -381,7 +411,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         if run_state.has_contents:
             return run_state._replace(
-                stage=LocalRunStage.UPLOADING_RESULTS, run_status='Uploading results'
+                stage=LocalRunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
             )
         else:
             return self.finalize_run(run_state)
@@ -407,29 +437,29 @@ class LocalRunStateMachine(StateTransitioner):
                     run_status = 'Uploading results: %s done (archived size)' % size_str(
                         bytes_uploaded
                     )
-                    self._run_manager.uploading[bundle_uuid]['run_status'] = run_status
+                    self.uploading[bundle_uuid]['run_status'] = run_status
                     return True
 
-                self._run_manager.upload_bundle_contents(
+                self.upload_bundle_callback(
                     bundle_uuid, run_state.bundle_path, progress_callback
                 )
             except Exception as e:
-                self._run_manager.uploading[bundle_uuid]['run_status'] = (
+                self.uploading[bundle_uuid]['run_status'] = (
                     "Error while uploading: %s" % e
                 )
                 traceback.print_exc()
 
         bundle_uuid = run_state.bundle['uuid']
-        self._run_manager.uploading.add_if_new(
+        self.uploading.add_if_new(
             bundle_uuid, threading.Thread(target=upload_results, args=[])
         )
 
-        if self._run_manager.uploading[bundle_uuid].is_alive():
+        if self.uploading[bundle_uuid].is_alive():
             return run_state._replace(
-                run_status=self._run_manager.uploading[bundle_uuid]['run_status']
+                run_status=self.uploading[bundle_uuid]['run_status']
             )
 
-        self._run_manager.uploading.remove(bundle_uuid)
+        self.uploading.remove(bundle_uuid)
         return self.finalize_run(run_state)
 
     def finalize_run(self, run_state):
