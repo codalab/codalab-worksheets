@@ -13,6 +13,7 @@ import argparse
 import atexit
 import errno
 import getpass
+import json
 import math
 import os
 import re
@@ -360,12 +361,6 @@ class SlurmWorkerDaemon(Daemon):
                     except Exception:
                         pass
                     field_values = field_values.split()
-                    if len(field_values) < len(SlurmWorkerDaemon.FIELDS):
-                        # cl info returns empty string instead of None and in our case request_time
-                        # can be None. So we make it the last field and manually append a None if we
-                        # get fewer than expected values back.
-                        # TODO (bkgoksel): Fix this
-                        field_values.append(None)
                     run = {
                         field: SlurmWorkerDaemon.parse_field(field, val)
                         for field, val in zip(SlurmWorkerDaemon.FIELDS, field_values)
@@ -415,7 +410,7 @@ class SlurmWorkerDaemon(Daemon):
         output_file = os.path.join(self.log_dir, '{}.out'.format(worker_name))
         request_queue = run_fields['request_queue']
         tag = self.parse_request_queue(request_queue)
-        tags = run_fields['tags']
+        tags = json.loads(run_fields['tags'])
         host, gpu_type, requested_partition = self.parse_tags(tags)
 
         if run_fields['request_gpus']:
