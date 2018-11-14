@@ -3,7 +3,7 @@ import os
 import sys
 import docker
 
-from formatting import size_str, parse_size
+from formatting import parse_size
 
 logger = logging.getLogger(__name__)
 
@@ -28,7 +28,7 @@ class DockerException(Exception):
         super(DockerException, self).__init__(message)
 
 
-class DockerClient(object):
+class DockerContainerManager(object):
     """
     TODO(bkgoksel): Add module doc
     """
@@ -73,9 +73,9 @@ to run the worker from the Docker shell.
             print >>sys.stderr, """
 nvidia-docker-plugin not available, no GPU support on this worker.
 """
-            self._docker_runtime = DockerClient.DEFAULT_RUNTIME
+            self._docker_runtime = DockerContainerManager.DEFAULT_RUNTIME
         else:
-            self._docker_runtime = DockerClient.NVIDIA_RUNTIME
+            self._docker_runtime = DockerContainerManager.NVIDIA_RUNTIME
 
     def _test_nvidia_docker(self):
         """Throw exception if nvidia-docker runtime is not available."""
@@ -93,7 +93,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         Returns the index of each NVIDIA device if NVIDIA runtime is available and there are devices.
         Otherwise returns None
         """
-        if self._docker_runtime != DockerClient.NVIDIA_RUNTIME:
+        if self._docker_runtime != DockerContainerManager.NVIDIA_RUNTIME:
             return None
         return self._get_nvidia_devices()
 
@@ -108,7 +108,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         cuda_image_full = '{0}:{1}'.format(cuda_image_repo, cuda_image_tag)
         nvidia_command = 'nvidia-smi --query-gpu=index --format=csv,noheader'
         container = self._client.create_container(
-            cuda_image_full, command=nvidia_command, runtime=DockerClient.NVIDIA_RUNTIME
+            cuda_image_full, command=nvidia_command, runtime=DockerContainerManager.NVIDIA_RUNTIME
         )
         self._client.start(container.get('Id'))
         container_status = self._client.wait(container.get('Id'))
@@ -128,37 +128,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             int, self.MIN_API_VERSION.split('.')
         ):
             raise DockerException('Please upgrade your version of Docker')
-
-    @wrap_exception('Unable to get disk usage info')
-    def get_disk_usage(self):
-        """
-        Return the total amount of disk space used by Docker images, and the
-        amount that can be reclaimed by removing unused Docker images, in bytes.
-
-        Emulates computation of the RECLAIMABLE field in the output for
-        `docker system df`.
-
-        Original implementation:
-        https://github.com/docker/docker/blob/ea61dac9e6d04879445f9c34729055ac1bb15050/cli/command/formatter/disk_usage.go#L197-L214
-        """
-        df_info = self._client.df()
-        total = df_info['LayersSize']
-        used = 0.0
-        for image in df_info['Images']:
-            if image['Containers'] > 0:
-                if image['VirtualSize'] == -1 or image['SharedSize'] == -1:
-                    continue
-                used += image['VirtualSize'] - image['SharedSize']
-        reclaimable = total - used
-        return total, reclaimable
-
-    def _inspect_image(self, image_name):
-        """
-        Get raw image info JSON.
-        :param image_name: id, tag, or repo digest
-        """
-        logger.debug('Fetching Docker image metadata for %s', image_name)
-        return self._client.inspect_image(image_name)
 
     @wrap_exception('Unable to ensure unique network')
     def ensure_unique_network(self, name, internal=True):
@@ -203,50 +172,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         except KeyError:  # if container ip cannot be found in provided network, return None
             return None
 
-    @wrap_exception('Unable to fetch Docker image metadata')
-    def get_image_repo_digest(self, request_docker_image):
-        info = self._inspect_image(request_docker_image)
-        return info['RepoDigests'][0]
-
-    @wrap_exception('Unable to remove Docker image')
-    def remove_image(self, repo_digest):
-        # First get the image id, because removing by repo digest only untags
-        # the digest, without deleting the image.
-        # https://github.com/docker/docker/issues/24688
-        image_id = self._inspect_image(repo_digest)['Id']
-        self._client.remove_image(image_id)
-
-    @wrap_exception('Unable to download Docker image')
-    def download_image(self, docker_image, progress_callback):
-        try:
-            repo, tag = docker_image.split(':')
-        except ValueError:
-            logger.debug(
-                'Missing tag/digest on request docker image "%s", defaulting to latest',
-                docker_image,
-            )
-            repo, tag = docker_image, 'latest'
-
-        logger.debug('Downloading Docker image %s:%s', repo, tag)
-        output = self._client.pull(repo, tag=tag, stream=True, decode=True)
-        for status_dict in output:
-            if 'error' in status_dict:
-                raise DockerException(status_dict['error'])
-            try:
-                status = status_dict['status']
-            except KeyError:
-                pass
-            try:
-                status += ' (%s / %s)' % (
-                    size_str(status_dict['progressDetail']['current']),
-                    size_str(status_dict['progressDetail']['total']),
-                )
-            except KeyError:
-                pass
-            should_resume = progress_callback(status)
-            if not should_resume:
-                raise DockerException('Download aborted by user')
-
     @wrap_exception('Unable to create Docker container')
     def create_bundle_container(
         self,
@@ -265,7 +190,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
             command = '{};'.format(command)
         docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
         docker_bundle_path = '/' + uuid
-        volume_binds = DockerClient.get_bundle_container_volume_binds(
+        volume_binds = DockerContainerManager.get_bundle_container_volume_binds(
             bundle_path, docker_bundle_path, dependencies
         )
         volumes = list(volume_binds.keys())
@@ -303,7 +228,7 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         # This can cause problems if users expect to run as a specific user
         user = '%s:%s' % (uid, gid)
 
-        if self._docker_runtime == DockerClient.NVIDIA_RUNTIME:
+        if self._docker_runtime == DockerContainerManager.NVIDIA_RUNTIME:
             # nvidia-docker runtime uses this env variable to allocate GPUs
             environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
         return self._client.create_container(
@@ -332,7 +257,6 @@ nvidia-docker-plugin not available, no GPU support on this worker.
         gpuset=None,
         memory_bytes=0,
     ):
-
         # Impose a minimum container request memory 4mb, same as docker's minimum allowed value
         # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
         # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded

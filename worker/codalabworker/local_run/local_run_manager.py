@@ -32,7 +32,7 @@ class LocalRunManager(BaseRunManager):
     def __init__(
         self,
         worker,  # type: Worker
-        docker,  # type: DockerClient
+        docker,  # type: DockerContainerManager
         image_manager,  # type: DockerImageManager
         dependency_manager,  # type: LocalFileSystemDependencyManager
         commit_file,  # type: str

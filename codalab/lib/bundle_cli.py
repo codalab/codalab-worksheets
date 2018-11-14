@@ -77,7 +77,7 @@ from codalab.lib.print_util import FileTransferProgress
 from codalabworker.file_util import un_tar_directory
 
 from codalab.lib.spec_util import generate_uuid
-from codalabworker.docker_client import DockerClient
+from codalabworker.docker_client import DockerContainerManager
 from codalabworker.file_util import remove_path
 from codalabworker.bundle_state import State
 from codalab.rest.worksheet_block_schemas import BlockModes
@@ -1556,7 +1556,7 @@ class BundleCLI(object):
             child_path = os.path.join(bundle_path, dependency_path)
             os.symlink(docker_dependency_path, child_path)
 
-        dc = DockerClient()
+        dc = DockerContainerManager()
         container_id = dc.create_bundle_container(
             bundle_path, uuid, dependencies, args.command, docker_image
         )

@@ -15,7 +15,7 @@ import multiprocessing
 import re
 
 from bundle_service_client import BundleServiceClient
-from docker_client import DockerClient
+from docker_client import DockerContainerManager
 from formatting import parse_size
 from worker import Worker
 from local_run.local_dependency_manager import LocalFileSystemDependencyManager
@@ -140,7 +140,7 @@ chmod 600 %s""" % args.password_file
     else:
         max_images_bytes = parse_size(args.max_image_cache_size)
 
-    docker_client = DockerClient()
+    docker_client = DockerContainerManager()
     bundle_service = BundleServiceClient(args.server, username, password)
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
@@ -230,7 +230,7 @@ def parse_gpuset_args(docker_client, arg):
     Parse given arg into a set of integers representing gpu devices
 
     Arguments:
-        docker_client: DockerClient instance
+        docker_client: DockerContainerManager instance
         arg: comma seperated string of ints, or "ALL" representing all gpus
     """
     if arg == '':
