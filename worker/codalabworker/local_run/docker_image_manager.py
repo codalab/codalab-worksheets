@@ -14,7 +14,7 @@ from codalabworker.worker_thread import ThreadDict
 logger = logging.getLogger(__name__)
 
 # Stores the download state of a Docker image (as DependencyStage and relevant status message from the download
-ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['state', 'info'])
+ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['stage', 'info'])
 
 
 class DockerImageManager:
@@ -139,27 +139,27 @@ class DockerImageManager:
             digest = image.attrs.get('RepoDigests', [image_spec])[0]
             with self._lock:
                 self._last_used[digest] = time.time()
-            return ImageAvailabilityState(state=DependencyStage.READY, info='Image ready')
+            return ImageAvailabilityState(stage=DependencyStage.READY, info='Image ready')
         except docker.errors.ImageNotFound:
             return self._pull_or_report(image_spec)  # type: DockerAvailabilityState
         except Exception as ex:
-            return ImageAvailabilityState(state=DependencyStage.FAILED, info=str(ex))
+            return ImageAvailabilityState(stage=DependencyStage.FAILED, info=str(ex))
 
     def _pull_or_report(self, image_spec):
         if image_spec in self._downloading:
             with self._downloading[image_spec].lock:
                 if self._downloading[image_spec].is_alive():
                     return ImageAvailabilityState(
-                        state=DependencyStage.DOWNLOADING, info=self._downloading[image_spec].status
+                        stage=DependencyStage.DOWNLOADING, info=self._downloading[image_spec].status
                     )
                 else:
                     if self._downloading[image_spec]['success']:
                         status = ImageAvailabilityState(
-                            state=DependencyStage.READY, info=self._downloading[image_spec].status
+                            stage=DependencyStage.READY, info=self._downloading[image_spec].status
                         )
                     else:
                         status = ImageAvailabilityState(
-                            state=DependencyStage.FAILED, info=self._downloading[image_spec].status
+                            stage=DependencyStage.FAILED, info=self._downloading[image_spec].status
                         )
                     self._downloading.remove(image_spec)
                     return status
