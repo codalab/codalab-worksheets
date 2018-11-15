@@ -7,6 +7,9 @@ import pickle
 import threading
 import time
 
+from codalabworker.fsm import DependencyStage
+from codalabworker.bundle_state import WorkerRun, State
+
 
 def parse_args():
     parser = argparse.ArgumentParser()
@@ -26,17 +29,9 @@ def main():
     slurm_run.start()
 
 
-SlurmRunState = collections.namedtuple('SlurmRunState', ['uuid', 'status', 'error_mesage'])
-
-
-class AvailabilityState(object):
-    NOT_READY = 'NOT_READY'
-    READY = 'READY'
-    NOT_AVAILABLE = 'NOT_AVAILABLE'
-
-    def __init__(self, initial_status=NOT_READY, initial_info=''):
-        self.status = initial_status
-        self.info = initial_info
+# TODO: Figure out what we need to keep track of for this run
+# TODO: Standardize fields of the 'info' field of Run state
+AvailabilityState = collections.namedtuple('AvailabilityState', ['status', 'info'])
 
 
 class SlurmRun(object):
@@ -47,9 +42,9 @@ class SlurmRun(object):
         self.docker = docker.from_env()
         self.state_file_path = state_file_path
         self.state_file_lock_path = state_file_path + '.lock'
-        self.image_state = AvailabilityState(initial_info='Fetching docker image')
-        self.dependencies_state = AvailabilityState(initial_info='Fetching dependencies')
-        self.run_state = SlurmRunState(uuid=bundle['uuid'], status='PREPARING', error_message=None)
+        self.image_state = AvailabilityState(status=DependencyStage.DOWNLOADING, info='Fetching docker image')
+        self.dependencies_state = AvailabilityState(status=DependencyStage.DOWNLOADING, info='Fetching dependencies')
+        self.run_state = WorkerRun(uuid=bundle['uuid'], run_status='', start_time=time.time(), docker_image='', info={}, state=State.PREPARING)
 
     def write_state(self):
         while True:
@@ -86,13 +81,13 @@ class SlurmRun(object):
 
     @property
     def preparing_dependencies(self):
-        return (self.image_state.status != AvailabilityState.READY or self.dependencies_state.status != AvailabilityState.READY or (self.image_state.status != AvailabilityState.NOT_AVAILABLE and self.dependencies_state.status != AvailabilityState.NOT_AVAILABLE))
+        return (self.image_state.status != DependencyStage.READY or self.dependencies_state.status != DependencyStage.READY or (self.image_state.status != DependencyStage.NOT_AVAILABLE and self.dependencies_state.status != DependencyStage.NOT_AVAILABLE))
 
     def prepare_dependencies(self, bundle, resources):
         while self.preparing_dependencies:
             self.pull_or_get_image()
             self.download_or_get_dependency()
-        if (self.image_state.status == AvailabilityState.NOT_AVAILABLE or self.dependencies_state.status == AvailabilityState.NOT_AVAILABLE):
+        if (self.image_state.status == DependencyStage.NOT_AVAILABLE or self.dependencies_state.status == DependencyStage.NOT_AVAILABLE):
             # TODO: Raise properly
             raise Exception
 

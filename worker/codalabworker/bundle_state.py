@@ -1,3 +1,16 @@
+class WorkerRun(object):
+    """
+    Defines all the field the worker needs to check in with the server for its runs
+    """
+    def __init__(self, uuid, run_status, start_time, docker_image, info, state):
+        self.uuid = uuid
+        self.run_status = run_status
+        self.start_time = start_time
+        self.docker_image = docker_image
+        self.info = info
+        self.state = state
+
+
 class State(object):
     """
     An enumeration of states that a bundle can be in.

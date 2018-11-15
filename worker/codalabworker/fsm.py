@@ -5,15 +5,8 @@ class DependencyStage(object):
     without unintended adverse effects (which happens upon manager resume)
     '''
 
-    # if not in _downloading, create and start _downloading thread.
-    # (thread recreates directories and downloads)
-    # if thread still alive -> DOWNLOADING else -> READY
     DOWNLOADING = 'DOWNLOADING'
-
-    # -> READY
     READY = 'READY'
-
-    # -> FAILED
     FAILED = 'FAILED'
 
 
