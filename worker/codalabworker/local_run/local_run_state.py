@@ -242,7 +242,7 @@ class LocalRunStateMachine(StateTransitioner):
                 dependencies,
                 run_state.bundle['command'],
                 run_state.resources['docker_image'],
-                network_name=docker_network,
+                network=docker_network,
                 cpuset=cpuset,
                 gpuset=gpuset,
                 memory_bytes=run_state.resources['request_memory'],
