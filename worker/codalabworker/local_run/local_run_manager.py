@@ -69,7 +69,8 @@ class LocalRunManager(BaseRunManager):
             docker_network_external_name=self.docker_network_external_name,
             docker_runtime=self.docker_runtime,
             upload_bundle_callback=self._worker.upload_bundle_contents,
-            assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets)
+            assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
+        )
 
     def _init_docker_networks(self):
         """
@@ -111,7 +112,9 @@ class LocalRunManager(BaseRunManager):
         # Retrieve the complex container objects from the Docker API
         for uuid, run_state in self.runs.iteritems():
             try:
-                run_state = run_state._replace(container=self._docker.containers.get(run_state.container_id))
+                run_state = run_state._replace(
+                    container=self._docker.containers.get(run_state.container_id)
+                )
             except docker.errors.NotFound:
                 continue
 

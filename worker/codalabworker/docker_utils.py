@@ -46,9 +46,7 @@ class DockerException(Exception):
 @wrap_exception('Unable to use Docker')
 def test_version(client=None):
     version_info = client.version()
-    if map(int, version_info['ApiVersion'].split('.')) < map(
-        int, MIN_API_VERSION.split('.')
-    ):
+    if map(int, version_info['ApiVersion'].split('.')) < map(int, MIN_API_VERSION.split('.')):
         raise DockerException('Please upgrade your version of Docker')
 
 
@@ -58,9 +56,7 @@ def get_available_runtime(client=None):
     try:
         nvidia_devices = get_nvidia_devices(client)
         if len(nvidia_devices) == 0:
-            raise DockerException(
-                "nvidia-docker runtime available but no NVIDIA devices detected"
-            )
+            raise DockerException("nvidia-docker runtime available but no NVIDIA devices detected")
         return NVIDIA_RUNTIME
     except DockerException as e:
         logger.error("Cannot initialize NVIDIA runtime, no GPU support: %s", e)
@@ -78,12 +74,9 @@ def get_nvidia_devices(client=None):
     cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
     client.images.pull(cuda_image)
     nvidia_command = 'nvidia-smi --query-gpu=index --format=csv,noheader'
-    output = client.container.run(cuda_image,
-                                  nvidia_command,
-                                  runtime=NVIDIA_RUNTIME,
-                                  detach=False,
-                                  stdout=True,
-                                  remove=True,)
+    output = client.container.run(
+        cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
+    )
     return output.split()
 
 
@@ -213,7 +206,7 @@ def start_bundle_container(
         detach=detach,
         tty=tty,
         runtime=runtime,
-        client=client
+        client=client,
     )
 
     # Start the container.
@@ -265,9 +258,7 @@ def get_container_stats(container, client=None):
 
     # Get memory usage
     try:
-        memory_path = os.path.join(
-            cgroup, 'memory/docker', container.id, 'memory.usage_in_bytes'
-        )
+        memory_path = os.path.join(cgroup, 'memory/docker', container.id, 'memory.usage_in_bytes')
         with open(memory_path) as f:
             stats['memory'] = int(f.read())
     except Exception:

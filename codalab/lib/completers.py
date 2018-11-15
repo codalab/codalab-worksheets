@@ -15,7 +15,6 @@ from codalab.common import NotFoundError
 from codalab.lib import spec_util, worksheet_util, cli_util
 
 
-
 class CodaLabCompleter(object):
     """
     A CodaLabCompleter is just a class that needs to be initialized with a BundleCLI instance.

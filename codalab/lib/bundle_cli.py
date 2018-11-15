@@ -1557,8 +1557,14 @@ class BundleCLI(object):
             os.symlink(docker_dependency_path, child_path)
 
         container_id = start_bundle_container(
-            bundle_path, uuid, dependencies, args.command, docker_image,
-            detach=False, tty=True, runtime=get_available_runtime()
+            bundle_path,
+            uuid,
+            dependencies,
+            args.command,
+            docker_image,
+            detach=False,
+            tty=True,
+            runtime=get_available_runtime(),
         ).id
         print >>self.stdout, '===='
         print >>self.stdout, 'Container ID: ', container_id[:12]

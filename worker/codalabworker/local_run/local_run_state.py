@@ -93,14 +93,16 @@ class LocalRunStateMachine(StateTransitioner):
     Manages the state machine of the runs running on the local machine
     """
 
-    def __init__(self,
-                 docker_image_manager,
-                 dependency_manager,
-                 docker_network_internal_name,
-                 docker_network_external_name,
-                 docker_runtime,
-                 upload_bundle_callback,
-                 assign_cpu_and_gpu_sets_fn,):
+    def __init__(
+        self,
+        docker_image_manager,
+        dependency_manager,
+        docker_network_internal_name,
+        docker_network_external_name,
+        docker_runtime,
+        upload_bundle_callback,
+        assign_cpu_and_gpu_sets_fn,
+    ):
         super(LocalRunStateMachine, self).__init__()
         self.add_transition(LocalRunStage.PREPARING, self._transition_from_PREPARING)
         self.add_transition(LocalRunStage.RUNNING, self._transition_from_RUNNING)
@@ -207,7 +209,9 @@ class LocalRunStateMachine(StateTransitioner):
             dependency_path = self.dependency_manager.get(
                 bundle_uuid, (dep['parent_uuid'], dep['parent_path'])
             ).path
-            dependency_path = os.path.join(self.dependency_manager.dependencies_dir, dependency_path)
+            dependency_path = os.path.join(
+                self.dependency_manager.dependencies_dir, dependency_path
+            )
 
             docker_dependency_path = os.path.join(docker_dependencies_path, dep['child_path'])
 
@@ -272,9 +276,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         def check_and_report_finished(run_state):
             try:
-                finished, exitcode, failure_msg = docker_utils.check_finished(
-                    run_state.container
-                )
+                finished, exitcode, failure_msg = docker_utils.check_finished(run_state.container)
             except docker_utils.DockerException:
                 traceback.print_exc()
                 finished, exitcode, failure_msg = False, None, None
@@ -332,9 +334,7 @@ class LocalRunStateMachine(StateTransitioner):
                 start_time = time.time()
                 try:
                     disk_utilization = get_path_size(run_state.bundle_path)
-                    self.disk_utilization[bundle_uuid][
-                        'disk_utilization'
-                    ] = disk_utilization
+                    self.disk_utilization[bundle_uuid]['disk_utilization'] = disk_utilization
                     running = self.disk_utilization[bundle_uuid]['running']
                 except Exception:
                     traceback.print_exc()
@@ -399,9 +399,7 @@ class LocalRunStateMachine(StateTransitioner):
                     time.sleep(1)
 
         for dep in run_state.bundle['dependencies']:
-            self.dependency_manager.release(
-                bundle_uuid, (dep['parent_uuid'], dep['parent_path'])
-            )
+            self.dependency_manager.release(bundle_uuid, (dep['parent_uuid'], dep['parent_path']))
 
             child_path = os.path.join(run_state.bundle_path, dep['child_path'])
             try:
@@ -411,7 +409,9 @@ class LocalRunStateMachine(StateTransitioner):
 
         if run_state.has_contents:
             return run_state._replace(
-                stage=LocalRunStage.UPLOADING_RESULTS, run_status='Uploading results', container=None
+                stage=LocalRunStage.UPLOADING_RESULTS,
+                run_status='Uploading results',
+                container=None,
             )
         else:
             return self.finalize_run(run_state)
@@ -440,24 +440,16 @@ class LocalRunStateMachine(StateTransitioner):
                     self.uploading[bundle_uuid]['run_status'] = run_status
                     return True
 
-                self.upload_bundle_callback(
-                    bundle_uuid, run_state.bundle_path, progress_callback
-                )
+                self.upload_bundle_callback(bundle_uuid, run_state.bundle_path, progress_callback)
             except Exception as e:
-                self.uploading[bundle_uuid]['run_status'] = (
-                    "Error while uploading: %s" % e
-                )
+                self.uploading[bundle_uuid]['run_status'] = "Error while uploading: %s" % e
                 traceback.print_exc()
 
         bundle_uuid = run_state.bundle['uuid']
-        self.uploading.add_if_new(
-            bundle_uuid, threading.Thread(target=upload_results, args=[])
-        )
+        self.uploading.add_if_new(bundle_uuid, threading.Thread(target=upload_results, args=[]))
 
         if self.uploading[bundle_uuid].is_alive():
-            return run_state._replace(
-                run_status=self.uploading[bundle_uuid]['run_status']
-            )
+            return run_state._replace(run_status=self.uploading[bundle_uuid]['run_status'])
 
         self.uploading.remove(bundle_uuid)
         return self.finalize_run(run_state)
