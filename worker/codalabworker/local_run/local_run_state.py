@@ -246,7 +246,7 @@ class LocalRunStateMachine(StateTransitioner):
                 cpuset=cpuset,
                 gpuset=gpuset,
                 memory_bytes=run_state.resources['request_memory'],
-                runtime=self.runtime,
+                runtime=self.docker_runtime,
             )
         except docker_utils.DockerException as e:
             run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
