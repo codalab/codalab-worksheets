@@ -7,13 +7,13 @@ import inspect
 import itertools
 import os
 import re
+import docker
 
 from argcomplete import warn
 
 from codalab.common import NotFoundError
 from codalab.lib import spec_util, worksheet_util, cli_util
 
-from .docker_util import Docker
 
 
 class CodaLabCompleter(object):
@@ -200,14 +200,15 @@ class DockerImagesCompleter(CodaLabCompleter):
     """
 
     def __call__(self, prefix, action=None, parsed_args=None):
-        def handle_err(exitcode, msg):
-            warn("Error: %s (exitcode %d)" % (msg, exitcode))
-
         if prefix == "":
             prefix = "codalab"
         first_slash = prefix.find('/')
         trimmed_prefix = prefix[0:first_slash] if first_slash >= 0 else prefix
-        return Docker.search(trimmed_prefix, handle_err)
+        try:
+            client = docker.from_env()
+            return (img['name'] for img in client.images.search(trimmed_prefix))
+        except docker.errors.APIError as ex:
+            warn('Error: {}'.format(ex))
 
 
 def short_uuid(full_uuid):

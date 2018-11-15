@@ -294,7 +294,7 @@ class LocalRunStateMachine(StateTransitioner):
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
             )
             run_state = run_state._replace(
-                disk_utilization=self.disk_utilization_threads[bundle_uuid]['disk_utilization']
+                disk_utilization=self.disk_utilization[bundle_uuid]['disk_utilization']
             )
 
             if (

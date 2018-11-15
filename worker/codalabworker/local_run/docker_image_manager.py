@@ -7,28 +7,25 @@ import logging
 import docker
 
 from codalabworker.formatting import size_str
+from codalabworker.fsm import DependencyStage
 from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
-ImageAvailabilityState = namedtuple('ImageAvailabilityState', 'state info')
+# Stores the download state of a Docker image (as DependencyStage and relevant status message from the download
+ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['state', 'info'])
 
 
 class DockerImageManager:
 
-    IMAGE_READY = 'IMAGE_READY'
-    IMAGE_DOWNLOADING = 'IMAGE_DOWNLOADING'
-    IMAGE_NOT_AVAILABLE = 'IMAGE_NOT_AVAILABLE'
-
     def __init__(
-        self, commit_file, max_image_cache_size, max_single_image_size  # type: str  # type: int
+        self, commit_file, max_image_cache_size  # type: str  # type: int
     ):  # type: int
         """
         Initializes a DockerImageManager
         :param commit_file: String path to where the state file should be committed
         :param max_image_cache_size: Total size in bytes that the image cache can use
-        :param max_single_image_size: Maximum size in bytes of a specific image that can be cached
         """
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env()  # type: DockerClient
@@ -37,7 +34,6 @@ class DockerImageManager:
             fields={'success': False, 'status': 'Download starting', 'lock': threading.RLock()}
         )
         self._max_image_cache_size = max_image_cache_size
-        self._max_single_image_size = max_single_image_size
         self._lock = threading.RLock()
 
         self._stop = False
@@ -52,7 +48,7 @@ class DockerImageManager:
 
     def _load_state(self):
         with self._lock:
-            self._last_uesd = self._state_committer.load()
+            self._last_used = self._state_committer.load()
 
     def start(self):
         if self._max_image_cache_size:
@@ -111,17 +107,20 @@ class DockerImageManager:
         """
         while True:
             time.sleep(self._sleep_secs)
-            sorted_image_disk_usage = self._get_image_disk_usage()
+            sorted_image_disk_usage = self._get_image_disk_usage()  # sorted List[last_used, id, virtual_size, marginal_size]
             total_disk_usage = sum(usage[2] for usage in sorted_image_disk_usage)
             images_to_skip = set()
             while total_disk_usage > self._max_image_cache_size:
+                # Get the id of the least recently used image in cache
                 image_to_remove_id = sorted_image_disk_usage[0][1]
                 if image_to_remove_id in images_to_skip:
                     continue
                 try:
                     self._docker.images.remove(image_to_remove_id)
                 except docker.errors.APIError:
+                    # if we can't remove image don't try again in this round of cleanup
                     images_to_skip.add(image_to_remove_id)
+                # When recomputing skip the size of images we can't delete so we don't get stuck
                 sorted_image_disk_usage = [
                     usage
                     for usage in self._get_image_disk_usage()
@@ -140,12 +139,12 @@ class DockerImageManager:
             digest = image.attrs.get('RepoDigests', [image_spec])[0]
             with self._lock:
                 self._last_used[digest] = time.time()
-            return ImageAvailabilityState(state=DockerImageManager.IMAGE_READY, info='Image ready')
+            return ImageAvailabilityState(state=DependencyStage.READY, info='Image ready')
         except docker.errors.ImageNotFound:
             return self._pull_or_report(image_spec)  # type: DockerAvailabilityState
         except Exception as ex:
             return ImageAvailabilityState(
-                state=DockerImageManager.IMAGE_NOT_AVAILABLE, info=str(ex)
+                state=DependencyStage.FAILED, info=str(ex)
             )
 
     def _pull_or_report(self, image_spec):
@@ -153,18 +152,18 @@ class DockerImageManager:
             with self._downloading[image_spec].lock:
                 if self._downloading[image_spec].is_alive():
                     return ImageAvailabilityState(
-                        state=DockerImageManager.IMAGE_DOWNLOADING,
+                        state=DependencyStage.DOWNLOADING,
                         info=self._downloading[image_spec].status,
                     )
                 else:
                     if self._downloading[image_spec]['success']:
                         status = ImageAvailabilityState(
-                            state=DockerImageManager.IMAGE_READY,
+                            state=DependencyStage.READY,
                             info=self._downloading[image_spec].status,
                         )
                     else:
                         status = ImageAvailabilityState(
-                            state=DockerImageManager.IMAGE_NOT_AVAILABLE,
+                            state=DependencyStage.FAILED,
                             info=self._downloading[image_spec].status,
                         )
                     self._downloading.remove(image_spec)

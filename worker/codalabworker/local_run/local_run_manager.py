@@ -63,13 +63,13 @@ class LocalRunManager(BaseRunManager):
         self.lock = threading.RLock()
         self._init_docker_networks()
         self._run_state_manager = LocalRunStateMachine(
-            self._image_manager,
-            self._dependency_manager,
-            self.docker_network_internal_name,
-            self.docker_network_external_name,
-            self.docker_runtime,
-            self._worker.upload_bundle_contents,
-            self.assign_cpu_and_gpu_sets)
+            docker_image_manager=self._image_manager,
+            dependency_manager=self._dependency_manager,
+            docker_network_internal_name=self.docker_network_internal_name,
+            docker_network_external_name=self.docker_network_external_name,
+            docker_runtime=self.docker_runtime,
+            upload_bundle_callback=self._worker.upload_bundle_contents,
+            assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets)
 
     def _init_docker_networks(self):
         """
@@ -108,7 +108,7 @@ class LocalRunManager(BaseRunManager):
 
     def load_state(self):
         self.runs = self._state_committer.load()
-        # Retrieve the complex container objects from the Dokcer API
+        # Retrieve the complex container objects from the Docker API
         for uuid, run_state in self.runs.iteritems():
             try:
                 run_state = run_state._replace(container=self._docker.containers.get(run_state.container_id))
@@ -198,6 +198,7 @@ class LocalRunManager(BaseRunManager):
             resources=resources,
             start_time=now,
             container_id=None,
+            container=None,
             docker_image=None,
             is_killed=False,
             has_contents=False,

@@ -1,8 +1,22 @@
+"""
+docker_utils
+General collection of Codalab-specific stateless utility functions to work with Docker.
+Most are wrappers around the official Docker python client.
+A preexisting client may be passed as a keyword parameter to all functions but one is automatically
+created if not.
+"""
+
 import logging
 import os
 import docker
 
 from formatting import parse_size
+
+
+MIN_API_VERSION = '1.17'
+NVIDIA_RUNTIME = 'nvidia'
+DEFAULT_RUNTIME = 'runc'
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +41,6 @@ def wrap_exception(message):
 class DockerException(Exception):
     def __init__(self, message):
         super(DockerException, self).__init__(message)
-
-
-MIN_API_VERSION = '1.17'
-NVIDIA_RUNTIME = 'nvidia'
-DEFAULT_RUNTIME = 'runc'
 
 
 @wrap_exception('Unable to use Docker')
@@ -151,7 +160,7 @@ def create_bundle_container(
         environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
 
     return client.containers.create(
-        docker_image,
+        image=docker_image,
         command=docker_command,
         network=network,
         mem_limit=memory_bytes,
