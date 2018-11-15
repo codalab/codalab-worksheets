@@ -19,15 +19,14 @@ DEFAULT_RUNTIME = 'runc'
 
 
 logger = logging.getLogger(__name__)
+client = docker.from_env()
 
 
 def wrap_exception(message):
     def decorator(f):
         def wrapper(*args, **kwargs):
             try:
-                if 'client' not in kwargs or not kwargs['client']:
-                    kwargs['client'] = docker.from_env()
-                return f(*args, **kwargs)
+                f(*args, **kwargs)
             except DockerException as e:
                 raise DockerException(message + ': ' + e.message)
             except (docker.errors.APIError, docker.errors.ImageNotFound) as e:
@@ -44,17 +43,17 @@ class DockerException(Exception):
 
 
 @wrap_exception('Unable to use Docker')
-def test_version(client=None):
+def test_version():
     version_info = client.version()
     if map(int, version_info['ApiVersion'].split('.')) < map(int, MIN_API_VERSION.split('.')):
         raise DockerException('Please upgrade your version of Docker')
 
 
 @wrap_exception('Problem establishing NVIDIA support')
-def get_available_runtime(client=None):
-    test_version(client)
+def get_available_runtime():
+    test_version()
     try:
-        nvidia_devices = get_nvidia_devices(client)
+        nvidia_devices = get_nvidia_devices()
         if len(nvidia_devices) == 0:
             raise DockerException("nvidia-docker runtime available but no NVIDIA devices detected")
         return NVIDIA_RUNTIME
@@ -64,7 +63,7 @@ def get_available_runtime(client=None):
 
 
 @wrap_exception('Problem getting NVIDIA devices')
-def get_nvidia_devices(client=None):
+def get_nvidia_devices():
     """
     Returns the index of each NVIDIA device if NVIDIA runtime is available.
     Raises docker.errors.ContainerError if GPUs are unreachable,
@@ -74,34 +73,14 @@ def get_nvidia_devices(client=None):
     cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
     client.images.pull(cuda_image)
     nvidia_command = 'nvidia-smi --query-gpu=index --format=csv,noheader'
-    output = client.container.run(
+    output = client.containers.run(
         cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
     )
     return output.split()
 
 
-@wrap_exception('Unable to ensure unique network')
-def ensure_unique_network(name, internal=True, client=None):
-    """
-    Ensures there's a unique docker network with the given name in the machine.
-    If no network by the name exists, creates one and returns its Id.
-    If one or more networks exist by the name, deletes all but the first one
-    then returns the Id of the first one.
-    Return (True, Id) if a new network is created, (False, Id) if existing network used
-    """
-    networks = client.networks.list(names=[name])
-    if len(networks) == 0:
-        network = client.networks.create(name, internal=internal)
-        return True, network.id
-    else:
-        # First remove any duplicates that might exist
-        for net in networks[1:]:
-            net.remove()
-        return False, networks[0].id
-
-
 @wrap_exception('Unable to fetch Docker container ip')
-def get_container_ip(network_name, container, client=None):
+def get_container_ip(network_name, container):
     logger.debug('Fetching Docker container ip for %s', container.id)
     try:
         return container.attrs["NetworkSettings"]["Networks"][network_name]["IPAddress"]
@@ -123,7 +102,6 @@ def create_bundle_container(
     detach=True,
     tty=False,
     remove=True,
-    client=None,
     runtime=DEFAULT_RUNTIME,
 ):
     if not command.endswith(';'):
@@ -131,7 +109,7 @@ def create_bundle_container(
     docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(
-        bundle_path, docker_bundle_path, dependencies, client=client
+        bundle_path, docker_bundle_path, dependencies
     )
     environment = {'HOME': docker_bundle_path}
     working_dir = docker_bundle_path
@@ -185,7 +163,6 @@ def start_bundle_container(
     detach=True,
     tty=False,
     runtime=DEFAULT_RUNTIME,
-    client=None,
 ):
     # Impose a minimum container request memory 4mb, same as docker's minimum allowed value
     # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
@@ -206,7 +183,6 @@ def start_bundle_container(
         detach=detach,
         tty=tty,
         runtime=runtime,
-        client=client,
     )
 
     # Start the container.
@@ -229,7 +205,7 @@ def get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependenc
 
 
 @wrap_exception("Can't get container stats")
-def get_container_stats(container, client=None):
+def get_container_stats(container):
     # We don't use the stats API since it doesn't seem to be reliable, and
     # is definitely slow. This doesn't work on Mac.
     cgroup = None
@@ -268,7 +244,7 @@ def get_container_stats(container, client=None):
 
 
 @wrap_exception('Unable to check Docker container status')
-def check_finished(container, client=None):
+def check_finished(container):
     if not container.attrs['State']['Running']:
         # If the logs are nonempty, then something might have gone
         # wrong with the commands run before the user command,
@@ -284,6 +260,6 @@ def check_finished(container, client=None):
 
 
 @wrap_exception('Unable to get image digest')
-def get_digest(image_spec, client=None):
+def get_digest(image_spec):
     image = client.images.get(image_spec)
     return image.attrs.get('RepoDigests', [image_spec])[0]

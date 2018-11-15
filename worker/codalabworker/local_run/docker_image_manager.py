@@ -66,7 +66,8 @@ class DockerImageManager:
         logger.info("Stopping docker image manager")
         self._stop = True
         self._downloading.stop()
-        self._cleanup_thread.join()
+        if self._cleanup_thread:
+            self._cleanup_thread.join()
         logger.info("Stopped docker image manager.")
 
     def _get_image_disk_usage(self):

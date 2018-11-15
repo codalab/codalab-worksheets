@@ -174,7 +174,7 @@ chmod 600 %s""" % args.password_file
             gpuset,
             args.work_dir,
             docker_runtime=docker_runtime,
-            docker_network_dir=args.network_prefix,
+            docker_network_prefix=args.network_prefix,
         )
 
     worker = Worker(
@@ -234,8 +234,9 @@ def parse_gpuset_args(arg):
     if arg == '':
         return set()
 
-    all_gpus = docker_utils.get_nvidia_devices_info()
-    if all_gpus is None:
+    try:
+        all_gpus = docker_utils.get_nvidia_devices()
+    except docker_utils.DockerException:
         all_gpus = []
 
     if arg == 'ALL':

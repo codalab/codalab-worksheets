@@ -59,15 +59,15 @@ class LocalRunManager(BaseRunManager):
         self._gpuset = gpuset
         self._stop = False
 
-        self.runs = {}  # bundle_uuid -> LocalRunState
-        self.lock = threading.RLock()
+        self._runs = {}  # bundle_uuid -> LocalRunState
+        self._lock = threading.RLock()
         self._init_docker_networks()
         self._run_state_manager = LocalRunStateMachine(
             docker_image_manager=self._image_manager,
             dependency_manager=self._dependency_manager,
             docker_network_internal_name=self.docker_network_internal_name,
             docker_network_external_name=self.docker_network_external_name,
-            docker_runtime=self.docker_runtime,
+            docker_runtime=docker_runtime,
             upload_bundle_callback=self._worker.upload_bundle_contents,
             assign_cpu_and_gpu_sets_fn=self.assign_cpu_and_gpu_sets,
         )
@@ -76,41 +76,26 @@ class LocalRunManager(BaseRunManager):
         """
         Set up docker networks for runs: one with external network access and one without
         """
-        self.docker_network_external_name = self._docker_network_prefix + "_ext"
-        new_external_network, self.docker_network_external_id = docker_utils.ensure_unique_network(
-            self.docker_network_external_name, internal=False
-        )
-        if new_external_network:
-            logger.debug('Creating docker network: {}'.format(self.docker_network_external_name))
-        else:
-            logger.debug(
-                'Docker network already exists, not creating: {}'.format(
-                    self.docker_network_external_name
-                )
-            )
+        def create_or_get_network(name, internal):
+            try:
+                return self._docker.networks.create(name, internal=internal, check_duplicate=True)
+            except docker.errors.APIError:
+                return self._docker.networks.list(names=[name])[0]
 
+        self.docker_network_external_name = self._docker_network_prefix + "_ext"
         self.docker_network_internal_name = self._docker_network_prefix + "_int"
-        new_internal_network, self.docker_network_internal_id = docker_utils.ensure_unique_network(
-            self.docker_network_internal_name, internal=True
-        )
-        if new_internal_network:
-            logger.debug('Creating docker network: {}'.format(self.docker_network_internal_name))
-        else:
-            logger.debug(
-                'Docker network already exists, not creating: {}'.format(
-                    self.docker_network_internal_name
-                )
-            )
+        self.docker_network_external = create_or_get_network(self.docker_network_external_name, False)
+        self.docker_network_internal = create_or_get_network(self.docker_network_internal_name, True)
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
-        simple_runs = {uuid: state._replace(container=None) for uuid, state in self.runs.items()}
+        simple_runs = {uuid: state._replace(container=None) for uuid, state in self._runs.items()}
         self._state_committer.commit(simple_runs)
 
     def load_state(self):
-        self.runs = self._state_committer.load()
+        self._runs = self._state_committer.load()
         # Retrieve the complex container objects from the Docker API
-        for uuid, run_state in self.runs.iteritems():
+        for uuid, run_state in self._runs.iteritems():
             try:
                 run_state = run_state._replace(
                     container=self._docker.containers.get(run_state.container_id)
@@ -138,9 +123,9 @@ class LocalRunManager(BaseRunManager):
         self._run_state_manager.stop()
         self.save_state()
         try:
-            docker_utils.remove_network(self.docker_network_internal_id)
-            docker_utils.remove_network(self.docker_network_external_id)
-        except docker_utils.DockerException as e:
+            self.docker_network_internal.remove()
+            self.docker_network_external.remove()
+        except docker.errors.APIError as e:
             logger.error("Cannot clear docker networks: {}".format(e.message))
 
         logger.info("Stopped Local Run Manager. Exiting")
@@ -151,36 +136,36 @@ class LocalRunManager(BaseRunManager):
         """
         logger.debug("Killing all bundles")
         # Set all bundle statuses to killed
-        with self.lock:
-            for uuid in self.runs.keys():
-                run_state = self.runs[uuid]
+        with self._lock:
+            for uuid in self._runs.keys():
+                run_state = self._runs[uuid]
                 run_state.info['kill_message'] = 'Worker stopped'
                 run_state = run_state._replace(info=run_state.info, is_killed=True)
-                self.runs[uuid] = run_state
+                self._runs[uuid] = run_state
         # Wait until all runs finished or KILL_TIMEOUT seconds pas
         for attempt in range(LocalRunManager.KILL_TIMEOUT):
-            with self.lock:
-                self.runs = {
-                    k: v for k, v in self.runs.items() if v.stage != LocalRunStage.FINISHED
+            with self._lock:
+                self._runs = {
+                    k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED
                 }
-                if len(self.runs) > 0:
+                if len(self._runs) > 0:
                     logger.debug(
                         "Waiting for {} more bundles. {} seconds until force quit.".format(
-                            len(self.runs), LocalRunManager.KILL_TIMEOUT - attempt
+                            len(self._runs), LocalRunManager.KILL_TIMEOUT - attempt
                         )
                     )
             time.sleep(1)
 
     def process_runs(self):
         """ Transition each run then filter out finished runs """
-        with self.lock:
+        with self._lock:
             # transition all runs
-            for bundle_uuid in self.runs.keys():
-                run_state = self.runs[bundle_uuid]
-                self.runs[bundle_uuid] = self._run_state_manager.transition(run_state)
+            for bundle_uuid in self._runs.keys():
+                run_state = self._runs[bundle_uuid]
+                self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
 
             # filter out finished runs
-            self.runs = {k: v for k, v in self.runs.items() if v.stage != LocalRunStage.FINISHED}
+            self._runs = {k: v for k, v in self._runs.items() if v.stage != LocalRunStage.FINISHED}
 
     def create_run(self, bundle, resources):
         """
@@ -212,8 +197,8 @@ class LocalRunManager(BaseRunManager):
             disk_utilization=0,
             info={},
         )
-        with self.lock:
-            self.runs[bundle_uuid] = run_state
+        with self._lock:
+            self._runs[bundle_uuid] = run_state
 
     def assign_cpu_and_gpu_sets(self, request_cpus, request_gpus):
         """
@@ -230,10 +215,10 @@ class LocalRunManager(BaseRunManager):
 
         Throws an exception if unsuccessful.
         """
-        cpuset, gpuset = set(self.cpuset), set(self.gpuset)
+        cpuset, gpuset = set(self._cpuset), set(self._gpuset)
 
-        with self.lock:
-            for run_state in self.runs.values():
+        with self._lock:
+            for run_state in self._runs.values():
                 if run_state.stage == LocalRunStage.RUNNING:
                     cpuset -= run_state.cpuset
                     gpuset -= run_state.gpuset
@@ -251,16 +236,16 @@ class LocalRunManager(BaseRunManager):
         Returns the state of the run with the given UUID if it is managed
         by this RunManager, returns None otherwise
         """
-        with self.lock:
-            return self.runs.get(uuid, None)
+        with self._lock:
+            return self._runs.get(uuid, None)
 
     def mark_finalized(self, uuid):
         """
         Marks the run as finalized server-side so it can be discarded
         """
-        if uuid in self.runs:
-            with self.lock:
-                self.runs[uuid].info['finalized'] = True
+        if uuid in self._runs:
+            with self._lock:
+                self._runs[uuid].info['finalized'] = True
 
     def read(self, run_state, path, dep_paths, args, reply):
         """
@@ -306,17 +291,17 @@ class LocalRunManager(BaseRunManager):
         """
         Kill bundle with uuid
         """
-        with self.lock:
+        with self._lock:
             run_state.info['kill_message'] = 'Kill requested'
             run_state = run_state._replace(info=run_state.info, is_killed=True)
-            self.runs[run_state.bundle['uuid']] = run_state
+            self._runs[run_state.bundle['uuid']] = run_state
 
     @property
     def all_runs(self):
         """
         Returns a list of all the runs managed by this RunManager
         """
-        with self.lock:
+        with self._lock:
             result = {
                 bundle_uuid: {
                     'run_status': run_state.run_status,
@@ -325,7 +310,7 @@ class LocalRunManager(BaseRunManager):
                     'info': run_state.info,
                     'state': LocalRunStage.WORKER_STATE_TO_SERVER_STATE[run_state.stage],
                 }
-                for bundle_uuid, run_state in self.runs.items()
+                for bundle_uuid, run_state in self._runs.items()
             }
             return result
 
@@ -341,14 +326,14 @@ class LocalRunManager(BaseRunManager):
         """
         Total number of CPUs this RunManager has
         """
-        return len(self.cpuset)
+        return len(self._cpuset)
 
     @property
     def gpus(self):
         """
         Total number of GPUs this RunManager has
         """
-        return len(self.gpuset)
+        return len(self._gpuset)
 
     @property
     def memory_bytes(self):
