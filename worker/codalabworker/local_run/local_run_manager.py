@@ -76,6 +76,7 @@ class LocalRunManager(BaseRunManager):
         """
         Set up docker networks for runs: one with external network access and one without
         """
+
         def create_or_get_network(name, internal):
             try:
                 return self._docker.networks.create(name, internal=internal, check_duplicate=True)
@@ -84,8 +85,12 @@ class LocalRunManager(BaseRunManager):
 
         self.docker_network_external_name = self._docker_network_prefix + "_ext"
         self.docker_network_internal_name = self._docker_network_prefix + "_int"
-        self.docker_network_external = create_or_get_network(self.docker_network_external_name, False)
-        self.docker_network_internal = create_or_get_network(self.docker_network_internal_name, True)
+        self.docker_network_external = create_or_get_network(
+            self.docker_network_external_name, False
+        )
+        self.docker_network_internal = create_or_get_network(
+            self.docker_network_internal_name, True
+        )
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved

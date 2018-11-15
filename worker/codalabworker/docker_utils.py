@@ -108,9 +108,7 @@ def create_bundle_container(
         command = '{};'.format(command)
     docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
     docker_bundle_path = '/' + uuid
-    volumes = get_bundle_container_volume_binds(
-        bundle_path, docker_bundle_path, dependencies
-    )
+    volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
     environment = {'HOME': docker_bundle_path}
     working_dir = docker_bundle_path
     # Unset entrypoint regardless of image
