@@ -101,7 +101,6 @@ def create_bundle_container(
     memory_bytes=0,
     detach=True,
     tty=False,
-    remove=True,
     runtime=DEFAULT_RUNTIME,
 ):
     if not command.endswith(';'):
@@ -143,7 +142,6 @@ def create_bundle_container(
         runtime=runtime,
         tty=tty,
         stdin_open=tty,
-        remove=remove,
     )
 
 
