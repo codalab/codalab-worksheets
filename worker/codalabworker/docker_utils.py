@@ -26,7 +26,7 @@ def wrap_exception(message):
     def decorator(f):
         def wrapper(*args, **kwargs):
             try:
-                f(*args, **kwargs)
+                return f(*args, **kwargs)
             except DockerException as e:
                 raise DockerException(message + ': ' + e.message)
             except (docker.errors.APIError, docker.errors.ImageNotFound) as e:
