@@ -28,7 +28,8 @@ class DockerImageManager:
         self._docker = docker.from_env()  # type: DockerClient
         self._last_used = {}  # type: Dict[str, int]
         self._downloading = ThreadDict(
-            fields={'success': False, 'status': 'Download starting', 'lock': threading.RLock()}
+            fields={'success': False, 'status': 'Download starting'},
+            lock=True
         )
         self._max_image_cache_size = max_image_cache_size
         self._lock = threading.RLock()
@@ -147,7 +148,7 @@ class DockerImageManager:
 
     def _pull_or_report(self, image_spec):
         if image_spec in self._downloading:
-            with self._downloading[image_spec].lock:
+            with self._downloading[image_spec]['lock']:
                 if self._downloading[image_spec].is_alive():
                     return ImageAvailabilityState(
                         stage=DependencyStage.DOWNLOADING, info=self._downloading[image_spec].status
@@ -161,7 +162,8 @@ class DockerImageManager:
                         status = ImageAvailabilityState(
                             stage=DependencyStage.FAILED, info=self._downloading[image_spec].status
                         )
-                    self._downloading.remove(image_spec)
+                    with self._downloading['image_spec']['lock']:
+                        self._downloading.remove(image_spec)
                     return status
         else:
 
@@ -170,7 +172,7 @@ class DockerImageManager:
                 output = self._docker.images.pull(image_spec, stream=True, decode=True)
                 for status_dict in output:
                     if 'error' in status_dict:
-                        with self._downloading[image_spec].lock:
+                        with self._downloading[image_spec]['lock']:
                             self._downloading[image_spec]['status'] = status_dict['error']
                             return
                     new_status = status_dict.get('status', '')
@@ -181,9 +183,9 @@ class DockerImageManager:
                         )
                     except KeyError:
                         pass
-                    with self._downloading[image_spec].lock:
+                    with self._downloading[image_spec]['lock']:
                         self._downloading[image_spec].status = new_status
-                with self._downloading[image_spec].lock:
+                with self._downloading[image_spec]['lock']:
                     self._downloading[image_spec]['success'] = True
                     self._downloading[image_spec]['status'] = 'Download complete'
 

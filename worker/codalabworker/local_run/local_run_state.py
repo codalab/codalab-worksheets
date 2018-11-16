@@ -174,6 +174,7 @@ class LocalRunStateMachine(StateTransitioner):
         # get the docker image
         docker_image = run_state.resources['docker_image']
         image_state = self.docker_image_manager.get(docker_image)
+        __import__('pdb').set_trace()
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
