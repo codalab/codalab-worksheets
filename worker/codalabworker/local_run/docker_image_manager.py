@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 # Stores the download state of a Docker image (as DependencyStage and relevant status message from the download
 ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['stage', 'info'])
+# Stores information relevant about caching about docker images
+ImageCacheEntry = namedtuple(
+    'ImageCacheEntry', ['id', 'digest', 'last_used', 'virtual_size', 'marginal_size']
+)
 
 
 class DockerImageManager:
@@ -26,10 +30,9 @@ class DockerImageManager:
         """
         self._state_committer = JsonStateCommitter(commit_file)  # type: JsonStateCommitter
         self._docker = docker.from_env()  # type: DockerClient
-        self._last_used = {}  # type: Dict[str, int]
+        self._image_cache = {}  # type: Dict[str, ImageCacheEntry]
         self._downloading = ThreadDict(
-            fields={'success': False, 'status': 'Download starting'},
-            lock=True
+            fields={'success': False, 'status': 'Download starting'}, lock=True
         )
         self._max_image_cache_size = max_image_cache_size
         self._lock = threading.RLock()
@@ -42,11 +45,11 @@ class DockerImageManager:
 
     def _save_state(self):
         with self._lock:
-            self._state_committer.commit(self._last_used)
+            self._state_committer.commit(self._image_cache)
 
     def _load_state(self):
         with self._lock:
-            self._last_used = self._state_committer.load()
+            self._image_cache = self._state_committer.load()
 
     def start(self):
         if self._max_image_cache_size:
@@ -71,29 +74,10 @@ class DockerImageManager:
             self._cleanup_thread.join()
         logger.info("Stopped docker image manager.")
 
-    def _get_image_disk_usage(self):
-        """
-        Fetches Virtual and Marginal disk sizes of all the docker images that this image manager
-        has in its last used tracking state.
-        :returns: List[Tuple[int, str, int, int]]: Sorted list of (last used timestamp, image id, virtual size, marginal size)
-        """
-        image_disk_use = []
-        for digest, last_used in self._last_used.items():
-            try:
-                image_info = self._docker.images.get(digest)
-                virtual_size, marginal_size = (
-                    image_info.attrs['VirtualSize'],
-                    image_info.attrs['Size'],
-                )
-                image_disk_use.append(last_used, image_info.id, virtual_size, marginal_size)
-            except docker.errors.ImageNotFound:
-                continue
-        return sorted(image_disk_use)
-
     def _cleanup(self):
         """
         Prunes the image cache for runs
-        1. Only care about images we downloaded and know about
+        1. Only care about images we (this DockerImageManager) downloaded and know about
         2. We use sum of VirtualSize's, which is an upper bound on the disk use of our images:
             in case no images share any intermediate layers, this will be the real disk use,
             however if images share layers, the virtual size will count that layer's size for each
@@ -106,28 +90,22 @@ class DockerImageManager:
         """
         while True:
             time.sleep(self._sleep_secs)
-            sorted_image_disk_usage = (
-                self._get_image_disk_usage()
-            )  # sorted List[last_used, id, virtual_size, marginal_size]
-            total_disk_usage = sum(usage[2] for usage in sorted_image_disk_usage)
-            images_to_skip = set()
-            while total_disk_usage > self._max_image_cache_size:
-                # Get the id of the least recently used image in cache
-                image_to_remove_id = sorted_image_disk_usage[0][1]
-                if image_to_remove_id in images_to_skip:
-                    continue
+            deletable_entries = set(self._image_cache.values())
+            disk_use = sum(cache_entry.virtual_size for cache_entry in deletable_entries)
+            while disk_use > self._max_image_cache_size:
+                entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
                 try:
-                    self._docker.images.remove(image_to_remove_id)
+                    self._docker.images.remove(entry_to_remove.id)
+                    # if we successfully removed the image also remove its cache entry
+                    del self._image_cache[entry_to_remove.digest]
                 except docker.errors.APIError:
-                    # if we can't remove image don't try again in this round of cleanup
-                    images_to_skip.add(image_to_remove_id)
-                # When recomputing skip the size of images we can't delete so we don't get stuck
-                sorted_image_disk_usage = [
-                    usage
-                    for usage in self._get_image_disk_usage()
-                    if usage[1] not in images_to_skip
-                ]
-                total_disk_usage = sum(usage[2] for usage in sorted_image_disk_usage)
+                    # Maybe we can't delete this image because its container is still running
+                    # (think a run that takes 4 days so this is the oldest image but still in use)
+                    # In that case we just continue with our lives, hoping it will get deleted once
+                    # it's no longer in use and the cache becomes full again
+                    pass
+                deletable_entries.remove(entry_to_remove)
+                disk_use = sum(entry.virtual_size for entry in deletable_entries)
 
     def get(self, image_spec):
         """
@@ -139,7 +117,13 @@ class DockerImageManager:
             image = self._docker.images.get(image_spec)
             digest = image.attrs.get('RepoDigests', [image_spec])[0]
             with self._lock:
-                self._last_used[digest] = time.time()
+                self._image_cache[digest] = ImageCacheEntry(
+                    id=image.id,
+                    digest=digest,
+                    last_used=time.time(),
+                    virtual_size=image.attrs['VirtualSize'],
+                    marginal_size=image.attrs['Size'],
+                )
             return ImageAvailabilityState(stage=DependencyStage.READY, info='Image ready')
         except docker.errors.ImageNotFound:
             return self._pull_or_report(image_spec)  # type: DockerAvailabilityState
