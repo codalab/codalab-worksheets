@@ -174,7 +174,6 @@ class LocalRunStateMachine(StateTransitioner):
         # get the docker image
         docker_image = run_state.resources['docker_image']
         image_state = self.docker_image_manager.get(docker_image)
-        __import__('pdb').set_trace()
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
@@ -253,15 +252,13 @@ class LocalRunStateMachine(StateTransitioner):
             run_state.info['failure_message'] = 'Cannot start Docker container: {}'.format(e)
             return run_state._replace(stage=LocalRunStage.CLEANING_UP, info=run_state.info)
 
-        digest = docker_utils.get_digest(run_state.resources['docker_image'])
-
         return run_state._replace(
             stage=LocalRunStage.RUNNING,
             start_time=time.time(),
             run_status='Running job in Docker container',
             container_id=container.id,
             container=container,
-            docker_image=digest,
+            docker_image=image_state.digest,
             has_contents=True,
             cpuset=cpuset,
             gpuset=gpuset,
@@ -391,7 +388,7 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.container_id is not None:
             while True:
                 try:
-                    finished, _, _ = docker_utils.check_finished(run_state.container_id)
+                    finished, _, _ = docker_utils.check_finished(run_state.container)
                     if finished:
                         run_state.container.remove(force=True)
                         break

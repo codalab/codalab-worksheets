@@ -88,8 +88,8 @@ def get_container_ip(network_name, container):
         return None
 
 
-@wrap_exception('Unable to create Docker container')
-def create_bundle_container(
+@wrap_exception('Unable to start Docker container')
+def start_bundle_container(
     bundle_path,
     uuid,
     dependencies,
@@ -103,6 +103,12 @@ def create_bundle_container(
     tty=False,
     runtime=DEFAULT_RUNTIME,
 ):
+    # Impose a minimum container request memory 4mb, same as docker's minimum allowed value
+    # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
+    # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
+    # access to the host machine's memory, which we have decided to not allow
+    if memory_bytes < parse_size('4m'):
+        raise DockerException('Minimum memory must be 4m ({} bytes)'.format(parse_size('4m')))
     if not command.endswith(';'):
         command = '{};'.format(command)
     docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
@@ -127,7 +133,8 @@ def create_bundle_container(
         # nvidia-docker runtime uses this env variable to allocate GPUs
         environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
 
-    return client.containers.create(
+    logger.debug('Starting Docker container for UUID %s, container ID %s,', uuid, container.id)
+    container = client.containers.start(
         image=docker_image,
         command=docker_command,
         network=network,
@@ -143,48 +150,6 @@ def create_bundle_container(
         tty=tty,
         stdin_open=tty,
     )
-
-
-@wrap_exception('Unable to start Docker container')
-def start_bundle_container(
-    bundle_path,
-    uuid,
-    dependencies,
-    command,
-    docker_image,
-    network=None,
-    cpuset=None,
-    gpuset=None,
-    memory_bytes=0,
-    detach=True,
-    tty=False,
-    runtime=DEFAULT_RUNTIME,
-):
-    # Impose a minimum container request memory 4mb, same as docker's minimum allowed value
-    # https://docs.docker.com/config/containers/resource_constraints/#limit-a-containers-access-to-memory
-    # When using the REST api, it is allowed to set Memory to 0 but that means the container has unbounded
-    # access to the host machine's memory, which we have decided to not allow
-    if memory_bytes < parse_size('4m'):
-        raise DockerException('Minimum memory must be 4m ({} bytes)'.format(parse_size('4m')))
-    container = create_bundle_container(
-        bundle_path,
-        uuid,
-        dependencies,
-        command,
-        docker_image,
-        network=network,
-        cpuset=cpuset,
-        gpuset=gpuset,
-        memory_bytes=memory_bytes,
-        detach=detach,
-        tty=tty,
-        runtime=runtime,
-    )
-
-    # Start the container.
-    logger.debug('Starting Docker container for UUID %s, container ID %s,', uuid, container.id)
-    container.start()
-
     return container
 
 
@@ -253,9 +218,3 @@ def check_finished(container):
             failure_msg = None
         return (True, container.attrs['State']['ExitCode'], failure_msg)
     return (False, None, None)
-
-
-@wrap_exception('Unable to get image digest')
-def get_digest(image_spec):
-    image = client.images.get(image_spec)
-    return image.attrs.get('RepoDigests', [image_spec])[0]

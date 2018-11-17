@@ -98,16 +98,21 @@ class LocalRunManager(BaseRunManager):
         self._state_committer.commit(simple_runs)
 
     def load_state(self):
-        self._runs = self._state_committer.load()
+        runs = self._state_committer.load()
         # Retrieve the complex container objects from the Docker API
-        for uuid, run_state in self._runs.iteritems():
+        for uuid, run_state in runs.iteritems():
             if run_state.container_id:
                 try:
                     run_state = run_state._replace(
                         container=self._docker.containers.get(run_state.container_id)
                     )
-                except docker.errors.NotFound:
-                    continue
+                except docker.errors.NotFound as ex:
+                    logger.debug('Error getting the container for the run: %s', ex)
+                    run_state = run_state.replace(
+                        container_id=None
+                    )
+                finally:
+                    self._runs[uuid] = run_state
 
     def start(self):
         """

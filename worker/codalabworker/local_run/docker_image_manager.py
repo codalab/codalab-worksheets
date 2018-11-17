@@ -13,8 +13,8 @@ from codalabworker.worker_thread import ThreadDict
 
 logger = logging.getLogger(__name__)
 
-# Stores the download state of a Docker image (as DependencyStage and relevant status message from the download
-ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['stage', 'info'])
+# Stores the download state of a Docker image (also includes the digest being pulled, digest string, DependencyStage and relevant status message from the download)
+ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['digest', 'stage', 'message'])
 # Stores information relevant about caching about docker images
 ImageCacheEntry = namedtuple(
     'ImageCacheEntry', ['id', 'digest', 'last_used', 'virtual_size', 'marginal_size']
@@ -32,7 +32,7 @@ class DockerImageManager:
         self._docker = docker.from_env()  # type: DockerClient
         self._image_cache = {}  # type: Dict[str, ImageCacheEntry]
         self._downloading = ThreadDict(
-            fields={'success': False, 'status': 'Download starting'}, lock=True
+            fields={'success': False, 'status': 'Download starting.'}, lock=True
         )
         self._max_image_cache_size = max_image_cache_size
         self._lock = threading.RLock()
@@ -124,53 +124,45 @@ class DockerImageManager:
                     virtual_size=image.attrs['VirtualSize'],
                     marginal_size=image.attrs['Size'],
                 )
-            return ImageAvailabilityState(stage=DependencyStage.READY, info='Image ready')
+            return ImageAvailabilityState(digest=digest, stage=DependencyStage.READY, message='Image ready')
         except docker.errors.ImageNotFound:
             return self._pull_or_report(image_spec)  # type: DockerAvailabilityState
         except Exception as ex:
-            return ImageAvailabilityState(stage=DependencyStage.FAILED, info=str(ex))
+            return ImageAvailabilityState(digest=None, stage=DependencyStage.FAILED, message=str(ex))
 
     def _pull_or_report(self, image_spec):
         if image_spec in self._downloading:
             with self._downloading[image_spec]['lock']:
                 if self._downloading[image_spec].is_alive():
                     return ImageAvailabilityState(
-                        stage=DependencyStage.DOWNLOADING, info=self._downloading[image_spec].status
+                        digest=None, stage=DependencyStage.DOWNLOADING, message=self._downloading[image_spec]['status']
                     )
                 else:
                     if self._downloading[image_spec]['success']:
+                        digest = self._docker.images.get(image_spec).attrs.get('RepoDigests', [image_spec])[0]
                         status = ImageAvailabilityState(
-                            stage=DependencyStage.READY, info=self._downloading[image_spec].status
+                            digest=digest, stage=DependencyStage.READY, message=self._downloading[image_spec]['status']
                         )
                     else:
                         status = ImageAvailabilityState(
-                            stage=DependencyStage.FAILED, info=self._downloading[image_spec].status
+                            digest=None, stage=DependencyStage.FAILED, message=self._downloading[image_spec]['status']
                         )
-                    with self._downloading['image_spec']['lock']:
-                        self._downloading.remove(image_spec)
+                    self._downloading.remove(image_spec)
                     return status
         else:
-
             def download():
                 logger.debug('Downloading Docker image %s', image_spec)
-                output = self._docker.images.pull(image_spec, stream=True, decode=True)
-                for status_dict in output:
-                    if 'error' in status_dict:
-                        with self._downloading[image_spec]['lock']:
-                            self._downloading[image_spec]['status'] = status_dict['error']
-                            return
-                    new_status = status_dict.get('status', '')
-                    try:
-                        new_status += ' (%s / %s)' % (
-                            size_str(status_dict['progressDetail']['current']),
-                            size_str(status_dict['progressDetail']['total']),
-                        )
-                    except KeyError:
-                        pass
-                    with self._downloading[image_spec]['lock']:
-                        self._downloading[image_spec].status = new_status
-                with self._downloading[image_spec]['lock']:
+                try:
+                    output = self._docker.images.pull(image_spec)
+                    logger.debug('Download for Docker image %s complete', image_spec)
                     self._downloading[image_spec]['success'] = True
-                    self._downloading[image_spec]['status'] = 'Download complete'
+                    self._downloading[image_spec]['message'] = "Downloading image"
+                except docker.errors.APIError as ex:
+                    logger.debug('Download for Docker image %s failed: %s', image_spec, ex)
+                    self._downloading[image_spec]['success'] = False
+                    self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
 
             self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
+            return ImageAvailabilityState(
+                stage=DependencyStage.DOWNLOADING, message=self._downloading[image_spec]['status']
+            )
