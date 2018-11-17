@@ -133,8 +133,7 @@ def start_bundle_container(
         # nvidia-docker runtime uses this env variable to allocate GPUs
         environment['NVIDIA_VISIBLE_DEVICES'] = ','.join(gpuset) if gpuset else 'all'
 
-    logger.debug('Starting Docker container for UUID %s, container ID %s,', uuid, container.id)
-    container = client.containers.start(
+    container = client.containers.run(
         image=docker_image,
         command=docker_command,
         network=network,
@@ -150,6 +149,7 @@ def start_bundle_container(
         tty=tty,
         stdin_open=tty,
     )
+    logger.debug('Started Docker container for UUID %s, container ID %s,', uuid, container.id)
     return container
 
 

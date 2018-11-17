@@ -22,7 +22,7 @@ ImageCacheEntry = namedtuple(
 
 
 class DockerImageManager:
-    def __init__(self, commit_file, max_image_cache_size):  # type: str  # type: int  # type: int
+    def __init__(self, commit_file, max_image_cache_size):
         """
         Initializes a DockerImageManager
         :param commit_file: String path to where the state file should be committed
@@ -164,5 +164,5 @@ class DockerImageManager:
 
             self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
             return ImageAvailabilityState(
-                stage=DependencyStage.DOWNLOADING, message=self._downloading[image_spec]['status']
+                digest=None, stage=DependencyStage.DOWNLOADING, message=self._downloading[image_spec]['status']
             )
