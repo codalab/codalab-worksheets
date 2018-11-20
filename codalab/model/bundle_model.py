@@ -874,6 +874,8 @@ class BundleModel(object):
         if failure_message == 'Kill requested':
             state = State.KILLED
 
+        metadata = {'run_status': 'Finished'}
+
         with self.engine.begin() as connection:
             self.update_bundle(bundle, {'state': state, 'metadata': metadata}, connection)
             connection.execute(
