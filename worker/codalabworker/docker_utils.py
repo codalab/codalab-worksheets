@@ -111,7 +111,7 @@ def start_bundle_container(
         raise DockerException('Minimum memory must be 4m ({} bytes)'.format(parse_size('4m')))
     if not command.endswith(';'):
         command = '{};'.format(command)
-    docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
+    docker_command = ['bash', '-c', '"( {} ) >stdout 2>stderr"'.format(command)]
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
     environment = {'HOME': docker_bundle_path}
