@@ -28,16 +28,6 @@ class State(object):
     # Assigned worker has gone offline
     WORKER_OFFLINE = 'worker_offline'
 
-    OPTIONS = {
-        CREATED,
-        STAGED,
-        MAKING,
-        STARTING,
-        RUNNING,
-        READY,
-        FAILED,
-        PREPARING,
-        FINALIZING,
-    }
+    OPTIONS = {CREATED, STAGED, MAKING, STARTING, RUNNING, READY, FAILED, PREPARING, FINALIZING}
     ACTIVE_STATES = {MAKING, STARTING, RUNNING, FINALIZING, PREPARING}
     FINAL_STATES = {READY, FAILED, KILLED}

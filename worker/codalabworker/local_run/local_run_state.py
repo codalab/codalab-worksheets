@@ -292,9 +292,11 @@ class LocalRunStateMachine(StateTransitioner):
             run_stats = docker_utils.get_container_stats(run_state.container)
             time_total = time.time() - run_state.start_time
 
-            run_state = run_state._replace(time=time_total,
-                                           time_user=run_stats['time_user'],
-                                           time_system=run_stats['time_system'])
+            run_state = run_state._replace(
+                time=time_total,
+                time_user=run_stats['time_user'],
+                time_system=run_stats['time_system'],
+            )
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
             )
