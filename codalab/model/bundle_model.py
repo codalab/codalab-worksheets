@@ -918,8 +918,8 @@ class BundleModel(object):
         bundle.update_in_memory(update)
         for (key, value) in metadata_update.iteritems():
             bundle.metadata.set_metadata_key(key, value)
-        bundle.metadata.set_metadata_key("last_updated", time.time())
-        bundle.metadata.set_metadata_key("time_codalab", time.time() - bundle.metadata.created)
+        bundle.metadata.set_metadata_key("last_updated", int(time.time()))
+        bundle.metadata.set_metadata_key("time_codalab", int(time.time() - bundle.metadata.created))
         bundle.validate()
         # Construct clauses and update lists for updating certain bundle columns.
         if update:
