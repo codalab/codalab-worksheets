@@ -32,7 +32,9 @@ class NamedBundle(Bundle):
     def construct(cls, row):
         # The base NamedBundle construct method takes a bundle row and adds in
         # automatically generated metadata values.
-        row['metadata'] = dict(row['metadata'], created=int(time.time()), last_updated=int(time.time()))
+        row['metadata'] = dict(
+            row['metadata'], created=int(time.time()), last_updated=int(time.time())
+        )
         return cls(row)
 
     def validate(self):
