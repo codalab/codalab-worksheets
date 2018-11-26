@@ -69,8 +69,10 @@ class DockerImageManager:
     def stop(self):
         logger.info("Stopping docker image manager")
         self._stop = True
+        logger.debug("Stopping docker image manager: stop the downloads threads")
         self._downloading.stop()
         if self._cleanup_thread:
+            logger.debug("Stopping docker image manager: stop the cleanup thread")
             self._cleanup_thread.join()
         logger.info("Stopped docker image manager.")
 
@@ -88,24 +90,26 @@ class DockerImageManager:
             use of images). Calling df gives us an accurate disk use of ALL the images on the machine
             but because of (1) we don't want to use that.
         """
-        while True:
+        while not self._stop:
             time.sleep(self._sleep_secs)
             deletable_entries = set(self._image_cache.values())
             disk_use = sum(cache_entry.virtual_size for cache_entry in deletable_entries)
             while disk_use > self._max_image_cache_size:
                 entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
+                logger.info('Disk use (%s) > max cache size (%s), pruning image: %s', disk_use, self._max_image_cache_size, entry_to_remove.digest)
                 try:
                     self._docker.images.remove(entry_to_remove.id)
                     # if we successfully removed the image also remove its cache entry
                     del self._image_cache[entry_to_remove.digest]
-                except docker.errors.APIError:
+                except docker.errors.APIError as err:
                     # Maybe we can't delete this image because its container is still running
                     # (think a run that takes 4 days so this is the oldest image but still in use)
                     # In that case we just continue with our lives, hoping it will get deleted once
                     # it's no longer in use and the cache becomes full again
-                    pass
+                    logger.error("Cannot remove image %s from cache: %s", entry_to_remove.digest, err)
                 deletable_entries.remove(entry_to_remove)
                 disk_use = sum(entry.virtual_size for entry in deletable_entries)
+        logger.debug("Stopping docker image manager cleanup")
 
     def get(self, image_spec):
         """
