@@ -574,6 +574,10 @@ class BundleCLI(object):
         instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
 
         if instance is not None:
+            if self.headless:
+                raise UsageError(
+                    'Cannot use alias on web CLI'
+                )
             if not allow_remote:
                 raise UsageError(
                     'Cannot execute command on a target on a remote instance. Please remove the instance reference (i.e. "prod::" in prod::worksheet//bundle)'
