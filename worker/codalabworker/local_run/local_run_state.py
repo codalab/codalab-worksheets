@@ -5,6 +5,7 @@ import threading
 import time
 import traceback
 
+import docker
 import codalabworker.docker_utils as docker_utils
 
 from codalabworker.file_util import remove_path, get_path_size
@@ -351,7 +352,7 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.is_killed and run_state.container_id is not None:
             try:
                 run_state.container.kill()
-            except docker.errors.APIException:
+            except docker.errors.APIError:
                 finished, _, _ = docker_utils.check_finished(run_state.container)
                 if not finished:
                     # If we can't kill a Running container, something is wrong
@@ -392,7 +393,7 @@ class LocalRunStateMachine(StateTransitioner):
                     if finished:
                         run_state.container.remove(force=True)
                         break
-                except docker_utils.DockerException:
+                except docker.errors.APIError:
                     traceback.print_exc()
                     time.sleep(1)
 
