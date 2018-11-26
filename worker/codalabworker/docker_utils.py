@@ -111,7 +111,7 @@ def start_bundle_container(
         raise DockerException('Minimum memory must be 4m ({} bytes)'.format(parse_size('4m')))
     if not command.endswith(';'):
         command = '{};'.format(command)
-    docker_command = ['bash', '-c', '"( {} ) >stdout 2>stderr"'.format(command)]
+    docker_command = ['bash', '-c', '( %s ) >stdout 2>stderr' % command]
     docker_bundle_path = '/' + uuid
     volumes = get_bundle_container_volume_binds(bundle_path, docker_bundle_path, dependencies)
     environment = {'HOME': docker_bundle_path}
@@ -206,7 +206,10 @@ def get_container_stats(container):
 
 @wrap_exception('Unable to check Docker container status')
 def check_finished(container):
-    if not container.attrs['State']['Running']:
+    # Unfortunately docker SDK doesn't update the status of Container objects
+    # so we re-fetch them from the API again to get the most recent state
+    container = client.containers.get(container.id)
+    if container.status != 'running':
         # If the logs are nonempty, then something might have gone
         # wrong with the commands run before the user command,
         # such as bash or cd.
