@@ -18,19 +18,43 @@ def wrap_exception(message):
         def wrapper(*args, **kwargs):
             try:
                 return f(*args, **kwargs)
+            except BundleAuthException:
+                raise
             except RestClientException as e:
                 raise BundleServiceException(message + ': ' + e.message, e.client_error)
             except urllib2.HTTPError as e:
-                raise BundleServiceException(
-                    message + ': ' + httplib.responses[e.code] + ' - ' + e.read(),
-                    e.code >= 400 and e.code < 500,
-                )
+                client_error = json.load(e)
+
+                if client_error['error'] == 'invalid_grant':
+                    raise BundleAuthException(
+                        message
+                        + ': '
+                        + httplib.responses[e.code]
+                        + ' - '
+                        + json.dumps(client_error),
+                        True,
+                    )
+                else:
+                    raise BundleServiceException(
+                        message
+                        + ': '
+                        + httplib.responses[e.code]
+                        + ' - '
+                        + json.dumps(client_error),
+                        e.code >= 400 and e.code < 500,
+                    )
             except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
                 raise BundleServiceException(message + ': ' + str(e), False)
 
         return wrapper
 
     return decorator
+
+
+class BundleAuthException(RestClientException):
+    """
+    Exception raised by the BundleServiceClient methods if auth error occurs.
+    """
 
 
 class BundleServiceException(RestClientException):
@@ -56,6 +80,10 @@ class BundleServiceClient(RestClient):
 
         base_url += '/rest'
         super(BundleServiceClient, self).__init__(base_url)
+        try:
+            self._authorize()
+        except BundleServiceException as ex:
+            raise BundleAuthException(ex, True)
 
     def _get_access_token(self):
         with self._authorization_lock:
