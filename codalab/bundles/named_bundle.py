@@ -21,9 +21,9 @@ class NamedBundle(Bundle):
         MetadataSpec('description', basestring, 'Full description of the bundle.', short_key='d'),
         MetadataSpec('tags', list, 'Space-separated list of tags used for search (e.g., machine-learning).', metavar='TAG',),
         MetadataSpec('created', int, 'Time when this bundle was created.', generated=True, formatting='date'),
+        MetadataSpec('last_updated', int, 'Timestamp of when information about this bundle was last updated.', generated=True, formatting='date'),
         MetadataSpec('data_size', int, 'Size of this bundle (in bytes).', generated=True, formatting='size'),
         MetadataSpec('failure_message', basestring, 'Error message if this run bundle failed.', generated=True,),
-        MetadataSpec('last_updated', int, 'Timestamp of when information about this bundle was last updated.', generated=True, formatting='date'),
         MetadataSpec('time_codalab', float, 'Amount of time (seconds) use to execute this bundle (including setup/teardown).', generated=True, formatting='duration'),
     )
     # fmt: on

@@ -228,6 +228,7 @@ def _create_bundles():
     created_uuids = []
     for bundle in bundles:
         # Prep bundle info for saving into database
+        # TODO (bkgoksel): Understand what is going on here
         # Unfortunately cannot use the `construct` methods because they don't
         # provide a uniform interface for constructing bundles for all types
         # Hopefully this can all be unified after REST migration is complete
@@ -241,6 +242,8 @@ def _create_bundles():
             bundle['state'] = State.CREATED
         bundle['is_anonymous'] = worksheet.is_anonymous  # inherit worksheet anonymity
         bundle.setdefault('metadata', {})['created'] = int(time.time())
+        bundle['metadata']['last_updated'] = int(time.time())
+        bundle['metadata']['time_codalab'] = 0
         for dep in bundle.setdefault('dependencies', []):
             dep['child_uuid'] = bundle_uuid
 
