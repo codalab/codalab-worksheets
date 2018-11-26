@@ -351,7 +351,7 @@ class LocalRunStateMachine(StateTransitioner):
         if run_state.is_killed and run_state.container_id is not None:
             try:
                 run_state.container.kill()
-            except docker_utils.DockerException:
+            except docker.errors.APIException:
                 finished, _, _ = docker_utils.check_finished(run_state.container)
                 if not finished:
                     # If we can't kill a Running container, something is wrong
