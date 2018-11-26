@@ -294,8 +294,8 @@ class LocalRunStateMachine(StateTransitioner):
 
             run_state = run_state._replace(
                 time=time_total,
-                time_user=run_stats['time_user'],
-                time_system=run_stats['time_system'],
+                time_user=run_stats.get('time_user', run_state.time_user),
+                time_system=run_stats.get('time_system', run_state.time_system),
             )
             run_state = run_state._replace(
                 max_memory=max(run_state.max_memory, run_stats.get('memory', 0))
