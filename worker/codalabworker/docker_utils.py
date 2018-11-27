@@ -81,7 +81,9 @@ def get_nvidia_devices():
 
 @wrap_exception('Unable to fetch Docker container ip')
 def get_container_ip(network_name, container):
-    logger.debug('Fetching Docker container ip for %s', container.id)
+    # Unfortunately docker SDK doesn't update the status of Container objects
+    # so we re-fetch them from the API again to get the most recent state
+    container = client.containers.get(container.id)
     try:
         return container.attrs["NetworkSettings"]["Networks"][network_name]["IPAddress"]
     except KeyError:  # if container ip cannot be found in provided network, return None
