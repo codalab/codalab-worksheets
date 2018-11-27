@@ -13,7 +13,8 @@ import stat
 import sys
 import multiprocessing
 
-from bundle_service_client import BundleServiceClient
+
+from bundle_service_client import BundleServiceClient, BundleAuthException
 import docker_utils
 from formatting import parse_size
 from worker import Worker
@@ -133,16 +134,23 @@ chmod 600 %s""" % args.password_file
     else:
         logging.basicConfig(format='%(asctime)s %(message)s', level=logging.INFO)
 
+    try:
+        bundle_service = BundleServiceClient(args.server, username, password)
+    except BundleAuthException as ex:
+        logger.error('Cannot log into the bundle service. Please check your worker credentials.\n')
+        logger.debug('Auth error: {}'.format(ex))
+        return
+
     max_work_dir_size_bytes = parse_size(args.max_work_dir_size)
     if args.max_image_cache_size is None:
         max_images_bytes = None
     else:
         max_images_bytes = parse_size(args.max_image_cache_size)
 
-    bundle_service = BundleServiceClient(args.server, username, password)
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
+    docker_client = DockerClient()
 
     def create_local_run_manager(worker):
         """
