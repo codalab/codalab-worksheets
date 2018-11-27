@@ -150,7 +150,6 @@ chmod 600 %s""" % args.password_file
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
-    docker_client = DockerClient()
 
     def create_local_run_manager(worker):
         """
