@@ -108,9 +108,7 @@ class LocalRunManager(BaseRunManager):
                     )
                 except docker.errors.NotFound as ex:
                     logger.debug('Error getting the container for the run: %s', ex)
-                    run_state = run_state.replace(
-                        container_id=None
-                    )
+                    run_state = run_state.replace(container_id=None)
                 finally:
                     self._runs[uuid] = run_state
 

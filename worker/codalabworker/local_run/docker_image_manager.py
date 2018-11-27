@@ -96,7 +96,12 @@ class DockerImageManager:
             disk_use = sum(cache_entry.virtual_size for cache_entry in deletable_entries)
             while disk_use > self._max_image_cache_size:
                 entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
-                logger.info('Disk use (%s) > max cache size (%s), pruning image: %s', disk_use, self._max_image_cache_size, entry_to_remove.digest)
+                logger.info(
+                    'Disk use (%s) > max cache size (%s), pruning image: %s',
+                    disk_use,
+                    self._max_image_cache_size,
+                    entry_to_remove.digest,
+                )
                 try:
                     self._docker.images.remove(entry_to_remove.id)
                     # if we successfully removed the image also remove its cache entry
@@ -106,7 +111,9 @@ class DockerImageManager:
                     # (think a run that takes 4 days so this is the oldest image but still in use)
                     # In that case we just continue with our lives, hoping it will get deleted once
                     # it's no longer in use and the cache becomes full again
-                    logger.error("Cannot remove image %s from cache: %s", entry_to_remove.digest, err)
+                    logger.error(
+                        "Cannot remove image %s from cache: %s", entry_to_remove.digest, err
+                    )
                 deletable_entries.remove(entry_to_remove)
                 disk_use = sum(entry.virtual_size for entry in deletable_entries)
         logger.debug("Stopping docker image manager cleanup")
@@ -128,32 +135,45 @@ class DockerImageManager:
                     virtual_size=image.attrs['VirtualSize'],
                     marginal_size=image.attrs['Size'],
                 )
-            return ImageAvailabilityState(digest=digest, stage=DependencyStage.READY, message='Image ready')
+            return ImageAvailabilityState(
+                digest=digest, stage=DependencyStage.READY, message='Image ready'
+            )
         except docker.errors.ImageNotFound:
             return self._pull_or_report(image_spec)  # type: DockerAvailabilityState
         except Exception as ex:
-            return ImageAvailabilityState(digest=None, stage=DependencyStage.FAILED, message=str(ex))
+            return ImageAvailabilityState(
+                digest=None, stage=DependencyStage.FAILED, message=str(ex)
+            )
 
     def _pull_or_report(self, image_spec):
         if image_spec in self._downloading:
             with self._downloading[image_spec]['lock']:
                 if self._downloading[image_spec].is_alive():
                     return ImageAvailabilityState(
-                        digest=None, stage=DependencyStage.DOWNLOADING, message=self._downloading[image_spec]['status']
+                        digest=None,
+                        stage=DependencyStage.DOWNLOADING,
+                        message=self._downloading[image_spec]['status'],
                     )
                 else:
                     if self._downloading[image_spec]['success']:
-                        digest = self._docker.images.get(image_spec).attrs.get('RepoDigests', [image_spec])[0]
+                        digest = self._docker.images.get(image_spec).attrs.get(
+                            'RepoDigests', [image_spec]
+                        )[0]
                         status = ImageAvailabilityState(
-                            digest=digest, stage=DependencyStage.READY, message=self._downloading[image_spec]['status']
+                            digest=digest,
+                            stage=DependencyStage.READY,
+                            message=self._downloading[image_spec]['status'],
                         )
                     else:
                         status = ImageAvailabilityState(
-                            digest=None, stage=DependencyStage.FAILED, message=self._downloading[image_spec]['status']
+                            digest=None,
+                            stage=DependencyStage.FAILED,
+                            message=self._downloading[image_spec]['status'],
                         )
                     self._downloading.remove(image_spec)
                     return status
         else:
+
             def download():
                 logger.debug('Downloading Docker image %s', image_spec)
                 try:
@@ -168,5 +188,7 @@ class DockerImageManager:
 
             self._downloading.add_if_new(image_spec, threading.Thread(target=download, args=[]))
             return ImageAvailabilityState(
-                digest=None, stage=DependencyStage.DOWNLOADING, message=self._downloading[image_spec]['status']
+                digest=None,
+                stage=DependencyStage.DOWNLOADING,
+                message=self._downloading[image_spec]['status'],
             )
