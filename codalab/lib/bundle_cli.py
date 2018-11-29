@@ -127,16 +127,7 @@ BUNDLE_COMMANDS = (
     'netcat',
 )
 
-WORKSHEET_COMMANDS = (
-    'new',
-    'add',
-    'wadd',
-    'work',
-    'print',
-    'wedit',
-    'wrm',
-    'wls'
-)
+WORKSHEET_COMMANDS = ('new', 'add', 'wadd', 'work', 'print', 'wedit', 'wrm', 'wls')
 
 GROUP_AND_PERMISSION_COMMANDS = (
     'gls',
@@ -150,11 +141,7 @@ GROUP_AND_PERMISSION_COMMANDS = (
     'chown',
 )
 
-USER_COMMANDS = (
-    'uinfo',
-    'uedit',
-    'ufarewell'
-)
+USER_COMMANDS = ('uinfo', 'uedit', 'ufarewell')
 
 SERVER_COMMANDS = (
     'server',
@@ -166,13 +153,7 @@ SERVER_COMMANDS = (
     'bs-health-check',
 )
 
-OTHER_COMMANDS = (
-    'help',
-    'status',
-    'alias',
-    'config',
-    'logout'
-)
+OTHER_COMMANDS = ('help', 'status', 'alias', 'config', 'logout')
 
 
 class CodaLabArgumentParser(argparse.ArgumentParser):
@@ -574,9 +555,7 @@ class BundleCLI(object):
 
         if instance is not None:
             if self.headless:
-                raise UsageError(
-                    'Cannot use alias on web CLI'
-                )
+                raise UsageError('Cannot use alias on web CLI')
             if not allow_remote:
                 raise UsageError(
                     'Cannot execute command on a target on a remote instance. Please remove the instance reference (i.e. "prod::" in prod::worksheet//bundle)'
@@ -2798,7 +2777,7 @@ class BundleCLI(object):
                 if args.uuid_only:
                     print >>self.stdout, worksheet_info['uuid']
                 else:
-                    print >>self.stdout, 'Currently on worksheet: %s.' % (
+                    print >>self.stdout, 'Currently on worksheet: %s' % (
                         self.worksheet_url(worksheet_info)
                     )
             else:
@@ -2822,7 +2801,7 @@ class BundleCLI(object):
 
         if verbose:
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
-            print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
+            print >>self.stdout, 'Switched to worksheet: %s' % (self.worksheet_url(worksheet_info))
 
     @Commands.command(
         'wedit',
