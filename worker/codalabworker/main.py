@@ -12,10 +12,10 @@ import socket
 import stat
 import sys
 import multiprocessing
-import re
+
 
 from bundle_service_client import BundleServiceClient, BundleAuthException
-from docker_client import DockerClient
+import docker_utils
 from formatting import parse_size
 from worker import Worker
 from local_run.local_dependency_manager import LocalFileSystemDependencyManager
@@ -150,7 +150,6 @@ chmod 600 %s""" % args.password_file
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
-    docker_client = DockerClient()
 
     def create_local_run_manager(worker):
         """
@@ -158,8 +157,9 @@ chmod 600 %s""" % args.password_file
         to initilize its run manager. This method creates a LocalFilesystem-Docker RunManager
         which is the default execution architecture Codalab uses
         """
+        docker_runtime = docker_utils.get_available_runtime()
         cpuset = parse_cpuset_args(args.cpuset)
-        gpuset = parse_gpuset_args(docker_client, args.gpuset)
+        gpuset = parse_gpuset_args(args.gpuset)
 
         dependency_manager = LocalFileSystemDependencyManager(
             os.path.join(args.work_dir, 'dependencies-state.json'),
@@ -169,19 +169,19 @@ chmod 600 %s""" % args.password_file
         )
 
         image_manager = DockerImageManager(
-            docker_client, os.path.join(args.work_dir, 'images-state.json'), max_images_bytes
+            os.path.join(args.work_dir, 'images-state.json'), max_images_bytes
         )
 
         return LocalRunManager(
             worker,
-            docker_client,
             image_manager,
             dependency_manager,
             os.path.join(args.work_dir, 'run-state.json'),
             cpuset,
             gpuset,
             args.work_dir,
-            args.network_prefix,
+            docker_runtime=docker_runtime,
+            docker_network_prefix=args.network_prefix,
         )
 
     worker = Worker(
@@ -231,19 +231,19 @@ def parse_cpuset_args(arg):
     return set(cpuset)
 
 
-def parse_gpuset_args(docker_client, arg):
+def parse_gpuset_args(arg):
     """
     Parse given arg into a set of integers representing gpu devices
 
     Arguments:
-        docker_client: DockerClient instance
         arg: comma seperated string of ints, or "ALL" representing all gpus
     """
     if arg == '':
         return set()
 
-    all_gpus = docker_client.get_nvidia_devices_info()
-    if all_gpus is None:
+    try:
+        all_gpus = docker_utils.get_nvidia_devices()
+    except docker_utils.DockerException:
         all_gpus = []
 
     if arg == 'ALL':

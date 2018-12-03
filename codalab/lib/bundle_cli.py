@@ -77,7 +77,7 @@ from codalab.lib.print_util import FileTransferProgress
 from codalabworker.file_util import un_tar_directory
 
 from codalab.lib.spec_util import generate_uuid
-from codalabworker.docker_client import DockerClient
+from codalabworker.docker_utils import get_available_runtime, start_bundle_container
 from codalabworker.file_util import remove_path
 from codalabworker.bundle_state import State
 from codalab.rest.worksheet_block_schemas import BlockModes
@@ -1556,17 +1556,22 @@ class BundleCLI(object):
             child_path = os.path.join(bundle_path, dependency_path)
             os.symlink(docker_dependency_path, child_path)
 
-        dc = DockerClient()
-        container_id = dc.create_bundle_container(
-            bundle_path, uuid, dependencies, args.command, docker_image
-        )
+        container_id = start_bundle_container(
+            bundle_path,
+            uuid,
+            dependencies,
+            args.command,
+            docker_image,
+            detach=False,
+            tty=True,
+            runtime=get_available_runtime(),
+        ).id
         print >>self.stdout, '===='
         print >>self.stdout, 'Container ID: ', container_id[:12]
         print >>self.stdout, 'Local Bundle UUID: ', uuid
         print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
         print >>self.stdout, '===='
-        # TODO(bkgoksel): Docker Python SDK doesn't support interactive container launching so we do this
-        os.system('docker start -ai {}'.format(container_id))
+        os.system('docker attach {}'.format(container_id))
 
     @Commands.command(
         'edit',
