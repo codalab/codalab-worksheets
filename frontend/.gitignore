@@ -1,0 +1,47 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Sphinx documentation
+docs/_build/
+
+# dotenv
+.env
+
+# virtualenv
+.venv
+venv/
+ENV/
+
+# PyCharm or WebStorm
+.idea
+
+# Node
+*node_modules/
+
+# Java
+*.class
+
+# Atom
+*.tags
+
+# Caches
+*.cache
+*.mypy_cache
+*.pytest_cache

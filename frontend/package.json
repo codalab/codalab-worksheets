@@ -1,0 +1,43 @@
+{
+  "name": "codalab-worksheets",
+  "version": "1.0.0",
+  "description": "Run reproducible experiments and create executable papers using worksheets.",
+  "repository": "https://github.com/codalab/codalab-cli",
+  "author": "CodaLab Team",
+  "main": "index.js",
+  "license": "Apache 2.0",
+  "keywords": [],
+  "dependencies": {
+    "@material-ui/core": "^3.6.1",
+    "@material-ui/icons": "^3.0.1",
+    "classnames": "^2.2.6",
+    "react": "^16.6.3",
+    "react-dom": "^16.6.3",
+    "react-hot-loader": "^4.3.12",
+    "redux": "^4.0.1",
+    "redux-seamless-immutable": "^0.4.0",
+    "seamless-immutable": "^7.1.4"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.2.0",
+    "@babel/core": "^7.2.0",
+    "@babel/plugin-proposal-class-properties": "^7.2.0",
+    "@babel/preset-env": "^7.2.0",
+    "@babel/preset-flow": "^7.0.0",
+    "@neutrinojs/jest": "^8.3.0",
+    "@neutrinojs/react": "^8.3.0",
+    "babel-core": "^7.0.0-bridge.0",
+    "babel-loader": "^8.0.4",
+    "flow-bin": "^0.87.0",
+    "neutrino": "^8.3.0",
+    "prettier": "^1.15.3"
+  },
+  "scripts": {
+    "build": "neutrino build",
+    "start": "neutrino start",
+    "test": "neutrino test",
+    "babs": "babel src/ -d build/ --copy-files",
+    "typecheck": "cd src/ && flow",
+    "format": "prettier --config ./.prettierrc --write 'src/**/*.js'"
+  }
+}
