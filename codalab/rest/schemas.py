@@ -53,7 +53,10 @@ class WorksheetItemSchema(Schema):
         include_resource_linkage=True, attribute='worksheet_uuid', type_='worksheets', required=True
     )
     subworksheet = fields.Relationship(
-        include_resource_linkage=True, type_='worksheets', attribute='subworksheet_uuid', allow_none=True
+        include_resource_linkage=True,
+        type_='worksheets',
+        attribute='subworksheet_uuid',
+        allow_none=True,
     )
     bundle = fields.Relationship(
         include_resource_linkage=True, type_='bundles', attribute='bundle_uuid', allow_none=True
@@ -137,7 +140,11 @@ class BundleDependencySchema(PlainSchema):
 class BundlePermissionSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
     bundle = fields.Relationship(
-        include_resource_linkage=True, attribute='object_uuid', type_='bundles', load_only=True, required=True
+        include_resource_linkage=True,
+        attribute='object_uuid',
+        type_='bundles',
+        load_only=True,
+        required=True,
     )
     group = fields.Relationship(
         include_resource_linkage=True, attribute='group_uuid', type_='groups', required=True
@@ -168,7 +175,9 @@ class BundleSchema(Schema):
     is_anonymous = fields.Bool()
     metadata = fields.Dict()
     dependencies = fields.Nested(BundleDependencySchema, many=True)
-    children = fields.Relationship(include_resource_linkage=True, type_='bundles', id_field='uuid', many=True)
+    children = fields.Relationship(
+        include_resource_linkage=True, type_='bundles', id_field='uuid', many=True
+    )
     group_permissions = fields.Relationship(
         include_resource_linkage=True, type_='bundle-permissions', id_field='id', many=True
     )
