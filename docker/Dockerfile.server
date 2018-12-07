@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
   python-software-properties \
   python-virtualenv \
   software-properties-common \
-  zip
+  zip \
 && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies
