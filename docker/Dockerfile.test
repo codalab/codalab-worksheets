@@ -1,0 +1,66 @@
+FROM ubuntu:16.04
+MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
+
+ENV DEBIAN_FRONTEND noninteractive
+ENV MYSQL_ROOT_PASSWORD rootpw
+
+RUN echo "mysql-server mysql-server/root_password password rootpw" | debconf-set-selections
+RUN echo "mysql-server mysql-server/root_password_again password rootpw" | debconf-set-selections
+
+# Install dependencies
+
+RUN apt-get update && apt-get install -y \
+  apt-transport-https \
+  build-essential \
+  ca-certificates \
+  curl \
+  git \
+  libfuse-dev \
+  libjpeg-dev \
+  libmysqlclient-dev \
+  mysql-client \
+  mysql-server \
+  npm \
+  nodejs-legacy \
+  python2.7 \
+  python2.7-dev \
+  python-software-properties \
+  python-virtualenv \
+  software-properties-common \
+  zip \
+&& rm -rf /var/lib/apt/lists/*
+
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+
+RUN add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+      $(lsb_release -cs) \
+         stable"
+
+RUN apt-get update && apt-get install -y \
+  docker-ce \
+ && rm -rf /var/lib/apt/lists/*
+
+# Set up codalab locally
+
+ENV CODALAB_DIR /opt
+ENV CODALAB_HOME /home/codalab
+ENV CODALAB_USERNAME codalab
+ENV CODALAB_PASSWORD testpwd
+
+RUN mkdir /opt/codalab-cli
+COPY worker /opt/codalab-cli/worker
+COPY requirements.txt /opt/codalab-cli
+COPY worker/requirements.txt /opt
+COPY requirements-server.txt /opt/codalab-cli
+COPY setup.sh /opt/codalab-cli
+RUN cd /opt/codalab-cli && ./setup.sh server
+
+COPY . /opt/codalab-cli
+
+ENV PATH "/opt/codalab-cli/venv/bin:${PATH}"
+
+EXPOSE 2900
+EXPOSE 3306
+
+ENTRYPOINT ["/opt/codalab-cli/scripts/local_instance.sh"]

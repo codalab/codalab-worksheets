@@ -1,9 +1,12 @@
 FROM ubuntu:16.04
-MAINTAINER Percy Liang <pliang@cs.stanford.edu>
+MAINTAINER CodaLab Worksheets <codalab.worksheets@gmail.com>
 
-# Install dependencies
-RUN apt-get update
-RUN apt-get install -y python-dev python-pip
+ENV DEBIAN_FRONTEND noninteractive
+
+RUN apt-get update && apt-get install -y \
+  python-dev \
+  python-pip
+
 COPY worker/requirements.txt /opt
 RUN pip install -r /opt/requirements.txt
 
