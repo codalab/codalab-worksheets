@@ -6,8 +6,11 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt-get update && apt-get install -y \
   python-dev \
   python-pip
+<<<<<<< HEAD
 
 RUN pip install --upgrade pip
+=======
+>>>>>>> Get some stuff working
 
 COPY worker/requirements.txt /opt
 RUN pip install -r /opt/requirements.txt
