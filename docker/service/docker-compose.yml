@@ -12,7 +12,7 @@ services:
       - ./config/conf.d:/etc/mysql/conf.d
 
   db-initializer:
-    image: codalab/bundleserver:0.2.37
+    image: codalab/bundleserver:local-dev
     entrypoint: ['/data/bin/initialize-db.sh']
     depends_on:
       - mysql
@@ -25,7 +25,7 @@ services:
       - ./config/config.json:/home/.codalab/config.json
 
   rest-server:
-    image: codalab/bundleserver:0.2.37
+    image: codalab/bundleserver:local-dev
     command: server
     ports:
       - 2900:2900
@@ -39,7 +39,7 @@ services:
       - db-initializer
 
   bundle-manager:
-    image: codalab/bundleserver:0.2.37
+    image: codalab/bundleserver:local-dev
     # sleep 30 seconds to give db-initializer time to initialize the db
     # TODO (bkgoksel): use something better than sleep (still works but logs error messages if sleep time isn't enough)
     entrypoint: bash -c "sleep 5 && /opt/codalab-cli/codalab/bin/cl bundle-manager"
@@ -53,7 +53,7 @@ services:
       - db-initializer
 
   web-server:
-    image: codalab/webserver:0.2.37
+    image: codalab/webserver:local-dev
     entrypoint: ["./manage", "runserver", "0.0.0.0:2700"]
     environment:
       - DJANGO_CONFIGURATION=Prod
@@ -74,3 +74,17 @@ services:
       - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
       - webserver-static:/www/data
       - ./wait-for-it.sh:/data/bin/wait-for-it.sh
+
+  tests:
+    image: codalab/bundleserver:local-dev
+    entrypoint: ['/data/bin/run-tests.sh']
+    depends_on:
+      - rest-server
+    environment:
+      - CODALAB_HOME=/home/.codalab
+      - CODALAB_USERNAME=codalab
+      - CODALAB_PASSWORD=TESTPASSWORD
+    volumes:
+      - ./run-tests.sh:/data/bin/run-tests.sh
+      - ./config/config.json:/home/.codalab/config.json
+
