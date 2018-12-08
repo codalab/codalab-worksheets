@@ -16,7 +16,7 @@
             "disk_quota": "10g",
             "time_quota": "7d"
         },
-        "engine_url": "mysql://codalab:TESTPASSWORD@mysql/codalab_bundles",
+        "engine_url": "mysql://codalab:TESTPASSWORD@mysql:3306/codalab_bundles",
         "instance_name": "localhost",
         "rest_host": "0.0.0.0",
         "rest_port": 2900,

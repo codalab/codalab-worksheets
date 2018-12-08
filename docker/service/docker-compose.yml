@@ -12,7 +12,7 @@ services:
       - ./config/conf.d:/etc/mysql/conf.d
 
   db-initializer:
-    image: codalab/bundleserver:0.2.38
+    image: codalab/bundleserver:0.2.37
     entrypoint: ['/data/bin/initialize-db.sh']
     depends_on:
       - mysql
@@ -22,10 +22,10 @@ services:
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
       - ./initialize-db.sh:/data/bin/initialize-db.sh
-      - ./.codalab:/home/.codalab
+      - ./config/config.json:/home/.codalab/config.json
 
   rest-server:
-    image: codalab/bundleserver:0.2.38
+    image: codalab/bundleserver:0.2.37
     command: server
     ports:
       - 2900:2900
@@ -34,33 +34,35 @@ services:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./.codalab:/home/.codalab
+      - ./config/config.json:/home/.codalab/config.json
     depends_on:
       - db-initializer
 
   bundle-manager:
-    image: codalab/bundleserver:0.2.38
+    image: codalab/bundleserver:0.2.37
     # sleep 30 seconds to give db-initializer time to initialize the db
     # TODO (bkgoksel): use something better than sleep (still works but logs error messages if sleep time isn't enough)
-    entrypoint: bash -c "sleep 30 && /opt/codalab-cli/codalab/bin/cl bundle-manager"
+    entrypoint: bash -c "sleep 5 && /opt/codalab-cli/codalab/bin/cl bundle-manager"
     environment:
       - CODALAB_HOME=/home/.codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./.codalab:/home/.codalab
+      - ./config/config.json:/home/.codalab/config.json
     depends_on:
       - db-initializer
 
   web-server:
-    image: codalab/webserver:0.2.38
+    image: codalab/webserver:0.2.37
+    entrypoint: ["./manage", "runserver", "0.0.0.0:2700"]
     environment:
-      - DJANGO_CONFIGURATION=prod
+      - DJANGO_CONFIGURATION=Prod
       - DJANGO_SECRET_KEY=SECRET_KEY
       - DJANGO_ALLOWED_HOSTS=localhost:127.0.0.1
     ports:
       - 2700:2700
     volumes:
+      - ./config/uwsgi.ini:/usr/local/etc/uwsgi.ini
       - webserver-static:/opt/codalab-worksheets/codalab/apps/web/static
 
   nginx:
@@ -70,5 +72,5 @@ services:
       - 80:80
     volumes:
       - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
-      - webserver-static:www/data
+      - webserver-static:/www/data
       - ./wait-for-it.sh:/data/bin/wait-for-it.sh
