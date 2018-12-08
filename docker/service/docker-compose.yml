@@ -17,12 +17,12 @@ services:
     depends_on:
       - mysql
     environment:
-      - CODALAB_HOME=/home/.codalab
+      - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
       - ./initialize-db.sh:/data/bin/initialize-db.sh
-      - ./config/config.json:/home/.codalab/config.json
+      - ./config/config.json:/home/codalab/config.json
 
   rest-server:
     image: codalab/bundleserver:local-dev
@@ -30,11 +30,11 @@ services:
     ports:
       - 2900:2900
     environment:
-      - CODALAB_HOME=/home/.codalab
+      - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./config/config.json:/home/.codalab/config.json
+      - ./config/config.json:/home/codalab/config.json
     depends_on:
       - db-initializer
 
@@ -44,11 +44,11 @@ services:
     # TODO (bkgoksel): use something better than sleep (still works but logs error messages if sleep time isn't enough)
     entrypoint: bash -c "sleep 5 && /opt/codalab-cli/codalab/bin/cl bundle-manager"
     environment:
-      - CODALAB_HOME=/home/.codalab
+      - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./config/config.json:/home/.codalab/config.json
+      - ./config/config.json:/home/codalab/config.json
     depends_on:
       - db-initializer
 
@@ -81,10 +81,10 @@ services:
     depends_on:
       - rest-server
     environment:
-      - CODALAB_HOME=/home/.codalab
+      - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
       - ./run-tests.sh:/data/bin/run-tests.sh
-      - ./config/config.json:/home/.codalab/config.json
+      - ./config/config.json:/home/codalab/config.json
 
