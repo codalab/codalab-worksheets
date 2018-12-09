@@ -238,7 +238,7 @@ def temp_instance():
     TODO:
         - Use dockerized CodaLab services
     """
-    original_worksheet = current_worksheet()
+    original_worksheet = current_worksheet().split('/worksheets/')[1]
 
     # Create another CodaLab instance.
     old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
@@ -784,7 +784,7 @@ def test(ctx):
 @TestModule.register('rm')
 def test(ctx):
     uuid = run_command([cl, 'upload', test_path('a.txt')])
-    run_command([cl, 'add', 'bundle', uuid, '.'])  # Duplicate
+    run_command([cl, 'add', 'bundle', uuid])  # Duplicate
     run_command([cl, 'rm', uuid])  # Can delete even though it exists twice on the same worksheet
 
 
@@ -821,18 +821,20 @@ def test(ctx):
     check_equals(uuid, run_command([cl, 'ls', '-u']))
     # create worksheet
     check_contains(uuid[0:5], run_command([cl, 'ls']))
-    run_command([cl, 'add', 'text', 'testing', '.'])
-    run_command([cl, 'add', 'text', '% display contents / maxlines=10', '.'])
-    run_command([cl, 'add', 'bundle', uuid, '.'])
-    run_command([cl, 'add', 'text', '// comment', '.'])
-    run_command([cl, 'add', 'text', '% schema foo', '.'])
-    run_command([cl, 'add', 'text', '% add uuid', '.'])
-    run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD', '.'])
-    run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"', '.'])
-    run_command([cl, 'add', 'text', '% display table foo', '.'])
-    run_command([cl, 'add', 'bundle', uuid, '.'])
-    run_command([cl, 'add', 'bundle', uuid, wuuid])  # not testing real copying ability
-    run_command([cl, 'add', 'worksheet', wuuid, '.'])
+    run_command([cl, 'add', 'text', 'testing'])
+    run_command([cl, 'add', 'text', '% display contents / maxlines=10'])
+    run_command([cl, 'add', 'bundle', uuid])
+    run_command([cl, 'add', 'text', '// comment'])
+    run_command([cl, 'add', 'text', '% schema foo'])
+    run_command([cl, 'add', 'text', '% add uuid'])
+    run_command([cl, 'add', 'text', '% add data_hash data_hash s/0x/HEAD'])
+    run_command([cl, 'add', 'text', '% add CREATE created "date | [0:5]"'])
+    run_command([cl, 'add', 'text', '% display table foo'])
+    run_command([cl, 'add', 'bundle', uuid])
+    run_command(
+        [cl, 'add', 'bundle', uuid, '--dest-worksheet', wuuid]
+    )  # not testing real copying ability
+    run_command([cl, 'add', 'worksheet', wuuid])
     check_contains(
         ['Worksheet', 'testing', test_path_contents('a.txt'), uuid, 'HEAD', 'CREATE'],
         run_command([cl, 'print']),
@@ -857,8 +859,8 @@ def test(ctx):
     ctx.collect_worksheet(wuuid)
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
     uuid = run_command([cl, 'upload', test_path('a.txt')])
-    run_command([cl, 'add', 'text', '% search ' + uuid, '.'])
-    run_command([cl, 'add', 'text', '% wsearch ' + wuuid, '.'])
+    run_command([cl, 'add', 'text', '% search ' + uuid])
+    run_command([cl, 'add', 'text', '% wsearch ' + wuuid])
     check_contains([uuid[0:8], wuuid[0:8]], run_command([cl, 'print']))
     # Check search by group
     group_wname = random_name()
@@ -906,14 +908,14 @@ def test(ctx):
     check_contains(['Switched', wname, wuuid], run_command([cl, 'work', wuuid]))
     # Before freezing: can modify everything
     uuid1 = run_command([cl, 'upload', '-c', 'hello'])
-    run_command([cl, 'add', 'text', 'message', '.'])
+    run_command([cl, 'add', 'text', 'message'])
     run_command([cl, 'wedit', '-t', 'new_title'])
     run_command([cl, 'wperm', wuuid, 'public', 'n'])
     run_command([cl, 'wedit', '--freeze'])
     # After freezing: can only modify contents
     run_command([cl, 'detach', uuid1], 1)  # would remove an item
     run_command([cl, 'rm', uuid1], 1)  # would remove an item
-    run_command([cl, 'add', 'text', 'message', '.'], 1)  # would add an item
+    run_command([cl, 'add', 'text', 'message'], 1)  # would add an item
     run_command([cl, 'wedit', '-t', 'new_title'])  # can edit
     run_command([cl, 'wperm', wuuid, 'public', 'a'])  # can edit
 
@@ -922,9 +924,9 @@ def test(ctx):
 def test(ctx):
     uuid1 = run_command([cl, 'upload', test_path('a.txt')])
     uuid2 = run_command([cl, 'upload', test_path('b.txt')])
-    run_command([cl, 'add', 'bundle', uuid1, '.'])
+    run_command([cl, 'add', 'bundle', uuid1])
     ctx.collect_bundle(uuid1)
-    run_command([cl, 'add', 'bundle', uuid2, '.'])
+    run_command([cl, 'add', 'bundle', uuid2])
     ctx.collect_bundle(uuid2)
     # State after the above: 1 2 1 2
     run_command([cl, 'detach', uuid1], 1)  # multiple indices
@@ -1017,7 +1019,7 @@ def test(ctx):
 
     # test running with a reference to this worksheet
     source_worksheet_full = current_worksheet()
-    source_worksheet_name = source_worksheet_full.split('::')[1]
+    source_worksheet_name = source_worksheet_full.split('worksheets/')[1]
 
     # Create new worksheet
     new_wname = random_name()
@@ -1350,7 +1352,10 @@ def test(ctx):
 @TestModule.register('copy')
 def test(ctx):
     """Test copying between instances."""
-    source_worksheet = current_worksheet()
+    source_worksheet_full = current_worksheet()
+    source_worksheet_name = source_worksheet_full.split('/worksheets/')[1]
+    source_worksheet_host = source_worksheet_full.split('/worksheets/')[0]
+    source_worksheet = source_worksheet_host + "::" + source_worksheet_name
 
     with temp_instance() as remote:
         remote_worksheet = remote.home
@@ -1365,14 +1370,14 @@ def test(ctx):
         # Upload to original worksheet, transfer to remote
         run_command([cl, 'work', source_worksheet])
         uuid = run_command([cl, 'upload', test_path('')])
-        run_command([cl, 'add', 'bundle', uuid, remote_worksheet])
+        run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
         check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
         check_agree([cl, 'cat', uuid])
 
         # Upload to remote, transfer to local
         run_command([cl, 'work', remote_worksheet])
         uuid = run_command([cl, 'upload', test_path('')])
-        run_command([cl, 'add', 'bundle', uuid, source_worksheet])
+        run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
         check_agree([cl, 'info', '-f', 'data_hash,data_size,name', uuid])
         check_agree([cl, 'cat', uuid])
 
@@ -1380,13 +1385,13 @@ def test(ctx):
         run_command([cl, 'work', remote_worksheet])
         uuid = run_command([cl, 'upload', '-c', 'hello'])
         run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
-        run_command([cl, 'add', 'bundle', uuid, source_worksheet])
+        run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', source_worksheet])
 
         # Upload to local, transfer to remote (metadata only)
         run_command([cl, 'work', source_worksheet])
         uuid = run_command([cl, 'upload', '-c', 'hello'])
         run_command([cl, 'rm', '-d', uuid])  # Keep only metadata
-        run_command([cl, 'add', 'bundle', uuid, remote_worksheet])
+        run_command([cl, 'add', 'bundle', uuid, '--dest-worksheet', remote_worksheet])
 
         # Test adding worksheet items
         run_command([cl, 'wadd', source_worksheet, remote_worksheet])
