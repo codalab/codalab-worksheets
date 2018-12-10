@@ -1021,8 +1021,7 @@ def test(ctx):
     check_equals('hello', run_command([cl, 'cat', dependent + '/stdout']))
 
     # test running with a reference to this worksheet
-    source_worksheet_full = current_worksheet()
-    source_worksheet_name = source_worksheet_full.split('worksheets/')[1]
+    source_worksheet_name = current_worksheet()
 
     # Create new worksheet
     new_wname = random_name()
