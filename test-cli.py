@@ -74,7 +74,10 @@ def current_worksheet():
     """
     m = re.search('(http[^\(]+)', run_command([cl, 'work']))
     assert m is not None
-    return m.group(1)
+    worksheet_full = m.group(1)
+    worksheet_name = worksheet_full.split('/worksheets/')[1]
+    worksheet_host = worksheet_full.split('/worksheets/')[0]
+    return worksheet_host + "::" + worksheet_name
 
 
 def current_user():
@@ -238,7 +241,7 @@ def temp_instance():
     TODO:
         - Use dockerized CodaLab services
     """
-    original_worksheet = current_worksheet().split('/worksheets/')[1]
+    original_worksheet = current_worksheet()
 
     # Create another CodaLab instance.
     old_home = os.path.abspath(os.path.expanduser(os.getenv('CODALAB_HOME', '~/.codalab')))
@@ -1352,10 +1355,7 @@ def test(ctx):
 @TestModule.register('copy')
 def test(ctx):
     """Test copying between instances."""
-    source_worksheet_full = current_worksheet()
-    source_worksheet_name = source_worksheet_full.split('/worksheets/')[1]
-    source_worksheet_host = source_worksheet_full.split('/worksheets/')[0]
-    source_worksheet = source_worksheet_host + "::" + source_worksheet_name
+    source_worksheet = current_worksheet()
 
     with temp_instance() as remote:
         remote_worksheet = remote.home
