@@ -5,8 +5,7 @@ services:
 python:
   - 3.6
 install:
-  - virtualenv -p python3.6 venv
-  - ./venv/bin/pip install --upgrade black==18.9b0
+  - pip install --upgrade black==18.9b0
 script:
-  - cd ./docker/service && ./build-and-start.sh --test && cd ../..
-  - ./venv/bin/black . --check
+  - cd ./docker/service && ./build-and-start.sh --test
+  - black . --check
