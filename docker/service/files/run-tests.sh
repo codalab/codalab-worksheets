@@ -13,4 +13,4 @@ cl status
 
 >&2 echo "CL up, begin tests"
 
-python /opt/codalab-cli/test-cli.py default
+cd /opt/codalab-cli && ./venv/bin/python test-cli.py default
