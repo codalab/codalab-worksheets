@@ -2,29 +2,18 @@ version: '3'
 
 services:
   mysql:
-    image: mysql:5.5.53
+    image: mysql:5.7
     environment:
       - MYSQL_ROOT_PASSWORD=ROOTPWD
+      - MYSQL_DATABASE=codalab_bundles
+      - MYSQL_USER=codalab
+      - MYSQL_PASSWORD=TESTPASSWORD
     volumes:
       - ./files/config/conf.d:/etc/mysql/conf.d
 
-  db-initializer:
-    image: codalab/bundleserver:local-dev
-    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh mysql:3306 -- /data/bin/initialize-db.sh']
-    depends_on:
-      - mysql
-    environment:
-      - CODALAB_HOME=/home/codalab
-      - CODALAB_USERNAME=codalab
-      - CODALAB_PASSWORD=TESTPASSWORD
-    volumes:
-      - ./files/initialize-db.sh:/data/bin/initialize-db.sh
-      - ./files/config/config.json:/home/codalab/config.json
-      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
-
   rest-server:
     image: codalab/bundleserver:local-dev
-    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-cli/codalab/bin/cl server']
+    entrypoint: ['bash', '-c', '/opt/codalab-cli/venv/bin/pip install /opt/codalab-cli && /data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-cli/venv/bin/python /opt/codalab-cli/scripts/create-root-user.py TESTPASSWORD && echo "root account created" && /opt/codalab-cli/codalab/bin/cl server']
     ports:
       - 2900:2900
     environment:
@@ -35,12 +24,10 @@ services:
       - ./files/config/config.json:/home/codalab/config.json
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
-      - db-initializer
+      - mysql
 
   bundle-manager:
     image: codalab/bundleserver:local-dev
-    # sleep 30 seconds to give db-initializer time to initialize the db
-    # TODO (bkgoksel): use something better than sleep (still works but logs error messages if sleep time isn't enough)
     entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl bundle-manager']
     environment:
       - CODALAB_HOME=/home/codalab
@@ -50,4 +37,15 @@ services:
       - ./files/config/config.json:/home/codalab/config.json
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
-      - db-initializer
+      - rest-server
+
+  worker:
+    image: codalab/worker:local-dev
+    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- cl-worker --verbose']
+    environment:
+      - CODALAB_USERNAME=codalab
+      - CODALAB_PASSWORD=TESTPASSWORD
+    volumes:
+      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
+    depends_on:
+      - bundle-manager
