@@ -9,7 +9,7 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=ROOTPWD
     volumes:
-      - ./config/conf.d:/etc/mysql/conf.d
+      - ./files/config/conf.d:/etc/mysql/conf.d
 
   db-initializer:
     image: codalab/bundleserver:local-dev
@@ -21,8 +21,8 @@ services:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./initialize-db.sh:/data/bin/initialize-db.sh
-      - ./config/config.json:/home/codalab/config.json
+      - ./files/initialize-db.sh:/data/bin/initialize-db.sh
+      - ./files/config/config.json:/home/codalab/config.json
 
   rest-server:
     image: codalab/bundleserver:local-dev
@@ -34,7 +34,7 @@ services:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./config/config.json:/home/codalab/config.json
+      - ./files/config/config.json:/home/codalab/config.json
     depends_on:
       - db-initializer
 
@@ -48,7 +48,7 @@ services:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./config/config.json:/home/codalab/config.json
+      - ./files/config/config.json:/home/codalab/config.json
     depends_on:
       - db-initializer
 
@@ -62,7 +62,7 @@ services:
     ports:
       - 2700:2700
     volumes:
-      - ./config/uwsgi.ini:/usr/local/etc/uwsgi.ini
+      - ./files/config/uwsgi.ini:/usr/local/etc/uwsgi.ini
       - webserver-static:/opt/codalab-worksheets/codalab/apps/web/static
 
   nginx:
@@ -71,20 +71,23 @@ services:
     ports:
       - 80:80
     volumes:
-      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./files/config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
       - webserver-static:/www/data
-      - ./wait-for-it.sh:/data/bin/wait-for-it.sh
 
   tests:
     image: codalab/bundleserver:local-dev
-    entrypoint: ['/data/bin/run-tests.sh']
+    entrypoint: /data/bin/wait-for-it.sh rest-server:2900 -- /data/bin/run-tests.sh
     depends_on:
       - rest-server
     environment:
       - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
+    ports:
+      - 2900:2900
     volumes:
-      - ./run-tests.sh:/data/bin/run-tests.sh
-      - ./config/config.json:/home/codalab/config.json
+      - ./files/run-tests.sh:/data/bin/run-tests.sh
+      - ./files/config/config.json:/home/codalab/config.json
+      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
 
