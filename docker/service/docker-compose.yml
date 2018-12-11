@@ -2,7 +2,7 @@ version: '3'
 
 services:
   mysql:
-    image: mysql:5.7
+    image: mysql:5.5.62
     environment:
       - MYSQL_ROOT_PASSWORD=ROOTPWD
       - MYSQL_DATABASE=codalab_bundles
@@ -41,11 +41,12 @@ services:
 
   worker:
     image: codalab/worker:local-dev
-    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- cl-worker --verbose']
+    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- cl-worker --server http://rest-server:2900 --verbose']
     environment:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
+      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       - bundle-manager
