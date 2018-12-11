@@ -5,7 +5,7 @@ volumes:
 
 services:
   mysql:
-    image: mysql:5.5.53
+    image: mysql:5.7
     environment:
       - MYSQL_ROOT_PASSWORD=ROOTPWD
       - MYSQL_DATABASE=codalab_bundles
