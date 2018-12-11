@@ -4,6 +4,9 @@ services:
   - docker
 python:
   - 3.6
+before_install:
+  - sudo service mysql stop # stop built-in mysql service, so the one in the db container can bind to port 3306 properly
+  - while sudo lsof -Pi :3306 -sTCP:LISTEN -t; do sleep 1; done # wait for mysql to shutdown
 install:
   - pip install --upgrade black==18.9b0
 script:
