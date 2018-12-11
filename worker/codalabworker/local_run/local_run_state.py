@@ -454,7 +454,9 @@ class LocalRunStateMachine(StateTransitioner):
             # upload failed
             failure_message = run_state.info.get('failure_message', None)
             if failure_message:
-                run_state.info['failure_message'] = failure_message + '. ' + self.uploading[bundle_uuid]['run_status']
+                run_state.info['failure_message'] = (
+                    failure_message + '. ' + self.uploading[bundle_uuid]['run_status']
+                )
             else:
                 run_state.info['failure_message'] = self.uploading[bundle_uuid]['run_status']
 
