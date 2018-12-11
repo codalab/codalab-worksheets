@@ -7,6 +7,8 @@ RUN apt-get update && apt-get install -y \
   python-dev \
   python-pip
 
+RUN pip install --upgrade pip
+
 COPY worker/requirements.txt /opt
 RUN pip install -r /opt/requirements.txt
 

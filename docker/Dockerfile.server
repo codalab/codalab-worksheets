@@ -18,6 +18,8 @@ RUN apt-get update && apt-get install -y \
   zip \
 && rm -rf /var/lib/apt/lists/*
 
+RUN pip install --upgrade pip
+
 # Install dependencies
 RUN mkdir /opt/codalab-cli
 COPY worker /opt/codalab-cli/worker
@@ -28,6 +30,7 @@ RUN cd /opt/codalab-cli && ./setup.sh server
 
 # Install code
 COPY . /opt/codalab-cli
+RUN pip install -e /opt/codalab-cli
 
 ENV PATH="/opt/codalab-cli/codalab/bin:${PATH}"
 ENV CODALAB_HOME=/home/codalab
