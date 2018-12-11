@@ -34,6 +34,7 @@ docker build -t codalab/bundleserver:local-dev -f docker/Dockerfile.server .
 docker build -t codalab/worker:local-dev -f docker/Dockerfile.worker .
 
 COMPOSE_FILES="-f docker-compose.yml"
+COMPOSE_FLAGS="-d"
 
 if [ "$WEBSERVER" = "1" ]; then
   cd $CODALAB_DIR/codalab-worksheets
@@ -43,7 +44,8 @@ fi
 
 if [ "$TEST" = "1" ]; then
   COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.test.yml"
+  COMPOSE_FLAGS="--exit-code-from tests"
 fi
 
 cd $CODALAB_DIR/codalab-cli/docker/service
-docker-compose $COMPOSE_FILES up -d
+docker-compose $COMPOSE_FILES up $COMPOSE_FLAGS
