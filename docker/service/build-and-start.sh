@@ -6,6 +6,8 @@ PARENT_DIR=$(cd "$(dirname "$0")/../../.."; pwd)
 echo $PARENT_DIR
 if [ -z "$CODALAB_DIR" ]; then CODALAB_DIR="$PARENT_DIR"; fi
 
+docker-compose down
+
 cd $CODALAB_DIR/codalab-cli
 docker build -t codalab/bundleserver:local-dev -f docker/Dockerfile.server .
 docker build -t codalab/worker:local-dev -f docker/Dockerfile.worker .
