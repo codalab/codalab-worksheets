@@ -2,7 +2,7 @@ version: '3'
 
 services:
   db-initializer:
-    entrypoint: ['bash', '-c', '/data/bin/initialize-db.sh && sleep infinity']
+    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh mysql:3306 -- /data/bin/initialize-db.sh && sleep infinity']
   tests:
     image: codalab/bundleserver:local-dev
     entrypoint: "/data/bin/wait-for-it.sh rest-server:2900 -- /data/bin/run-tests.sh"
