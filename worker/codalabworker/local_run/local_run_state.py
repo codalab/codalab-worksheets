@@ -120,7 +120,7 @@ class LocalRunStateMachine(StateTransitioner):
         self.docker_network_internal_name = docker_network_internal_name
         self.docker_runtime = docker_runtime
         # bundle_uuid -> {'thread': Thread, 'run_status': str}
-        self.uploading = ThreadDict(fields={'run_status': 'Upload started'})
+        self.uploading = ThreadDict(fields={'run_status': 'Upload started', 'success': False})
         # bundle_uuid -> {'thread': Thread, 'disk_utilization': int, 'running': bool}
         self.disk_utilization = ThreadDict(
             fields={'disk_utilization': 0, 'running': True, 'lock': None}
@@ -440,6 +440,7 @@ class LocalRunStateMachine(StateTransitioner):
                     return True
 
                 self.upload_bundle_callback(bundle_uuid, run_state.bundle_path, progress_callback)
+                self.uploading[bundle_uuid]['success'] = True
             except Exception as e:
                 self.uploading[bundle_uuid]['run_status'] = "Error while uploading: %s" % e
                 traceback.print_exc()
@@ -449,6 +450,13 @@ class LocalRunStateMachine(StateTransitioner):
 
         if self.uploading[bundle_uuid].is_alive():
             return run_state._replace(run_status=self.uploading[bundle_uuid]['run_status'])
+        elif not self.uploading[bundle_uuid]['success']:
+            # upload failed
+            failure_message = run_state.info.get('failure_message', None)
+            if failure_message:
+                run_state.info['failure_message'] = failure_message + '. ' + self.uploading[bundle_uuid]['run_status']
+            else:
+                run_state.info['failure_message'] = self.uploading[bundle_uuid]['run_status']
 
         self.uploading.remove(bundle_uuid)
         return self.finalize_run(run_state)
