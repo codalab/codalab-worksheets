@@ -2,7 +2,7 @@ version: '3'
 
 services:
   mysql:
-    image: mysql:5.5.62
+    image: mysql:5.5.53
     environment:
       - MYSQL_ROOT_PASSWORD=ROOTPWD
       - MYSQL_DATABASE=codalab_bundles
@@ -28,7 +28,7 @@ services:
 
   bundle-manager:
     image: codalab/bundleserver:local-dev
-    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl bundle-manager']
+    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl new home && /opt/codalab-cli/codalab/bin/cl new dashboard && /opt/codalab-cli/codalab/bin/cl bundle-manager']
     environment:
       - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab

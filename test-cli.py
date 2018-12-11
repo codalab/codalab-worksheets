@@ -477,7 +477,7 @@ class TestModule(object):
         'default', or the name of an existing test module.
         """
         # Might prompt user for password
-        subprocess.call([cl, 'work'])
+        subprocess.call([cl, 'work', 'http://localhost:2900::'])
 
         # Build list of modules to run based on query
         modules_to_run = []
