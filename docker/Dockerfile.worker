@@ -12,6 +12,8 @@ RUN pip install --upgrade pip
 =======
 >>>>>>> Get some stuff working
 
+RUN pip install --upgrade pip
+
 COPY worker/requirements.txt /opt
 RUN pip install -r /opt/requirements.txt
 
