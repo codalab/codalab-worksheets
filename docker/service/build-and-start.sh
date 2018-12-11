@@ -33,17 +33,17 @@ cd $CODALAB_DIR/codalab-cli
 docker build -t codalab/bundleserver:local-dev -f docker/Dockerfile.server .
 docker build -t codalab/worker:local-dev -f docker/Dockerfile.worker .
 
-COMPOSE_EXTRA_FILES=""
+COMPOSE_FILES="-f docker-compose.yml"
 
 if [ "$WEBSERVER" = "1" ]; then
   cd $CODALAB_DIR/codalab-worksheets
   docker build -t codalab/webserver:local-dev -f Dockerfile .
-  COMPOSE_EXTRA_FILES="$COMPOSE_EXTRA_FILES -f docker-compose.webserver.yml"
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.webserver.yml"
 fi
 
 if [ "$TEST" = "1" ]; then
-  COMPOSE_EXTRA_FILES="$COMPOSE_EXTRA_FILES -f docker-compose.test.yml"
+  COMPOSE_FILES="$COMPOSE_FILES -f docker-compose.test.yml"
 fi
 
 cd $CODALAB_DIR/codalab-cli/docker/service
-docker-compose$COMPOSE_EXTRA_FILES up -d
+docker-compose $COMPOSE_FILES up -d
