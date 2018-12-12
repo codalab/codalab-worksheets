@@ -11,8 +11,11 @@
     "@material-ui/core": "^3.6.2",
     "@material-ui/icons": "^3.0.1",
     "classnames": "^2.2.6",
+    "jquery": "^3.3.1",
     "react": "^16.6.3",
+    "react-cookie": "^3.0.8",
     "react-dom": "^16.6.3",
+    "react-router-dom": "^4.3.1",
     "react-scripts": "2.1.1",
     "reselect": "^4.0.0",
     "seamless-immutable": "^7.1.4"
@@ -27,7 +30,7 @@
     "not op_mini all"
   ],
   "scripts": {
-    "start": "react-scripts start",
+    "start": "PORT=2700 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "format": "prettier --config ./.prettierrc --write 'src/**/*.js'",
