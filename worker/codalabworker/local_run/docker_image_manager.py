@@ -6,7 +6,6 @@ import logging
 
 import docker
 
-from codalabworker.formatting import size_str
 from codalabworker.fsm import DependencyStage
 from codalabworker.state_committer import JsonStateCommitter
 from codalabworker.worker_thread import ThreadDict
@@ -135,6 +134,9 @@ class DockerImageManager:
                     virtual_size=image.attrs['VirtualSize'],
                     marginal_size=image.attrs['Size'],
                 )
+            # We can remove the download thread if it still exists
+            if image_spec in self._downloading:
+                self._downloading.remove(image_spec)
             return ImageAvailabilityState(
                 digest=digest, stage=DependencyStage.READY, message='Image ready'
             )
@@ -177,7 +179,7 @@ class DockerImageManager:
             def download():
                 logger.debug('Downloading Docker image %s', image_spec)
                 try:
-                    output = self._docker.images.pull(image_spec)
+                    self._docker.images.pull(image_spec)
                     logger.debug('Download for Docker image %s complete', image_spec)
                     self._downloading[image_spec]['success'] = True
                     self._downloading[image_spec]['message'] = "Downloading image"
