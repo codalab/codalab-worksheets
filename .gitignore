@@ -64,3 +64,5 @@ doc
 codalab/tests
 codalab/tags
 notes.otl
+
+*/node_modules/*
