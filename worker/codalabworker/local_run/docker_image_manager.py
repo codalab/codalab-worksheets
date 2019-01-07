@@ -102,7 +102,10 @@ class DockerImageManager:
                     entry_to_remove.digest,
                 )
                 try:
-                    self._docker.images.remove(entry_to_remove.id)
+                    image_to_delete = self._docker.images.get(entry_to_remove.id)
+                    tags_to_delete = image_to_delete.tags
+                    for tag in tags_to_delete:
+                        self._docker.images.remove(tag)
                     # if we successfully removed the image also remove its cache entry
                     del self._image_cache[entry_to_remove.digest]
                 except docker.errors.APIError as err:
