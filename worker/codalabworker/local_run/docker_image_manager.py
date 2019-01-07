@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 ImageAvailabilityState = namedtuple('ImageAvailabilityState', ['digest', 'stage', 'message'])
 # Stores information relevant about caching about docker images
 ImageCacheEntry = namedtuple(
-    'ImageCacheEntry', ['id', 'digest', 'last_used', 'virtual_size', 'marginal_size']
+    'ImageCacheEntry', ['id', 'digest', 'dependents', 'last_used', 'virtual_size', 'marginal_size']
 )
 
 
@@ -91,35 +91,45 @@ class DockerImageManager:
         """
         while not self._stop:
             time.sleep(self._sleep_secs)
-            deletable_entries = set(self._image_cache.values())
-            disk_use = sum(cache_entry.virtual_size for cache_entry in deletable_entries)
-            while disk_use > self._max_image_cache_size:
-                entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
-                logger.info(
-                    'Disk use (%s) > max cache size (%s), pruning image: %s',
-                    disk_use,
-                    self._max_image_cache_size,
-                    entry_to_remove.digest,
+            with self._lock:
+                all_entries = set(self._image_cache.values())
+                total_disk_used = sum(cache_entry.virtual_size for cache_entry in all_entries)
+                # Only delete entries that don't have dependents (ie not in use)
+                deletable_entries = filter(lambda x: not x.dependents, all_entries)
+                deletable_disk_used = sum(
+                    cache_entry.virtual_size for cache_entry in deletable_entries
                 )
-                try:
-                    self._docker.images.remove(entry_to_remove.id)
-                    # if we successfully removed the image also remove its cache entry
-                    del self._image_cache[entry_to_remove.digest]
-                except docker.errors.APIError as err:
-                    # Maybe we can't delete this image because its container is still running
-                    # (think a run that takes 4 days so this is the oldest image but still in use)
-                    # In that case we just continue with our lives, hoping it will get deleted once
-                    # it's no longer in use and the cache becomes full again
+                if total_disk_used - deletable_disk_used > self._max_image_cache_size:
                     logger.error(
-                        "Cannot remove image %s from cache: %s", entry_to_remove.digest, err
+                        'Size of docker images in use (%d) greater than docker disk use quota (%d)',
+                        total_disk_used - deletable_disk_used,
+                        self._max_image_cache_size,
                     )
-                deletable_entries.remove(entry_to_remove)
-                disk_use = sum(entry.virtual_size for entry in deletable_entries)
+                while deletable_disk_used > self._max_image_cache_size:
+                    entry_to_remove = min(deletable_entries, key=lambda entry: entry.last_used)
+                    logger.info(
+                        'Deletable disk use (%s) > max cache size (%s), pruning image: %s',
+                        deletable_disk_used,
+                        self._max_image_cache_size,
+                        entry_to_remove.digest,
+                    )
+                    try:
+                        self._docker.images.remove(entry_to_remove.id, force=True)
+                        # if we successfully removed the image also remove its cache entry
+                        del self._image_cache[entry_to_remove.digest]
+                    except docker.errors.APIError as err:
+                        # We should not really hit this case so log it
+                        logger.error(
+                            "Cannot remove image %s from cache: %s", entry_to_remove.digest, err
+                        )
+                    deletable_entries.remove(entry_to_remove)
+                    deletable_disk_used = sum(entry.virtual_size for entry in deletable_entries)
         logger.debug("Stopping docker image manager cleanup")
 
-    def get(self, image_spec):
+    def get(self, uuid, image_spec):
         """
         Request the docker image for the run with uuid, registering uuid as a dependent of this docker image
+        :param uuid: UUID of the run that needs this docker image
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """
@@ -127,13 +137,20 @@ class DockerImageManager:
             image = self._docker.images.get(image_spec)
             digest = image.attrs.get('RepoDigests', [image_spec])[0]
             with self._lock:
-                self._image_cache[digest] = ImageCacheEntry(
-                    id=image.id,
-                    digest=digest,
-                    last_used=time.time(),
-                    virtual_size=image.attrs['VirtualSize'],
-                    marginal_size=image.attrs['Size'],
-                )
+                if digest in self._image_cache:
+                    old_entry = self._image_cache[digest]
+                    new_entry = old_entry._replace(last_used=time.time())
+                    new_entry.dependents.add(uuid)
+                else:
+                    new_entry = ImageCacheEntry(
+                        id=image.id,
+                        digest=digest,
+                        dependents=set([uuid]),
+                        last_used=time.time(),
+                        virtual_size=image.attrs['VirtualSize'],
+                        marginal_size=image.attrs['Size'],
+                    )
+                self._image_cache[digest] = new_entry
             # We can remove the download thread if it still exists
             if image_spec in self._downloading:
                 self._downloading.remove(image_spec)
@@ -146,6 +163,36 @@ class DockerImageManager:
             return ImageAvailabilityState(
                 digest=None, stage=DependencyStage.FAILED, message=str(ex)
             )
+
+    def release(self, uuid, image_spec):
+        """
+        Register that the run with uuid doesn't need the docker image anymore
+        :param uuid: UUID of the run that doesn't need this docker image anymore
+        :param image_spec: Repo image_spec of docker image being requested
+        """
+        try:
+            image = self._docker.images.get(image_spec)
+            digest = image.attrs.get('RepoDigests', [image_spec])[0]
+            with self._lock:
+                try:
+                    self._image_cache[digest].dependents.remove(uuid)
+                except KeyError:
+                    # Don't have this image in cache anymore, log and pass
+                    logger.error(
+                        "Image (%s) that was in use by run (%s) was not found in cache at release time.",
+                        image_spec,
+                        uuid,
+                    )
+                except ValueError:
+                    # This bundle wasn't in dependents, log and pass
+                    logger.error(
+                        "Run (%s) was not found in image (%s)'s dependents at release time even though it used it.",
+                        uuid,
+                        image_spec,
+                    )
+        except docker.errors.ImageNotFound:
+            # We don't have the image so no need to do anything
+            pass
 
     def _pull_or_report(self, image_spec):
         if image_spec in self._downloading:
