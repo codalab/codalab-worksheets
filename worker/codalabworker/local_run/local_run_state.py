@@ -174,7 +174,7 @@ class LocalRunStateMachine(StateTransitioner):
 
         # get the docker image
         docker_image = run_state.resources['docker_image']
-        image_state = self.docker_image_manager.get(bundle_uuid, docker_image)
+        image_state = self.docker_image_manager.get(docker_image)
         if image_state.stage == DependencyStage.DOWNLOADING:
             status_messages.append(
                 'Pulling docker image: ' + (image_state.message or docker_image or "")
@@ -397,7 +397,6 @@ class LocalRunStateMachine(StateTransitioner):
                     traceback.print_exc()
                     time.sleep(1)
 
-        self.docker_image_manager.release(bundle_uuid, run_state.resources['docker_image'])
         for dep in run_state.bundle['dependencies']:
             self.dependency_manager.release(bundle_uuid, (dep['parent_uuid'], dep['parent_path']))
 
