@@ -57,7 +57,7 @@ class BundleContentsBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.BUNDLE_CONTENTS_MODE)
     path = fields.String()
     bundle = fields.Relationship(
-        include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True
+        include_resource_linkage=True, type_='bundles', attribute='bundle_uuid', allow_none=True
     )
     max_lines = fields.Integer()
 
@@ -70,7 +70,7 @@ class BundleImageBlockSchema(WorksheetBlockSchema):
     mode = fields.Constant(BlockModes.BUNDLE_IMAGE_MODE)
     path = fields.String()
     bundle = fields.Relationship(
-        include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True
+        include_resource_linkage=True, type_='bundles', attribute='bundle_uuid', allow_none=True
     )
     max_lines = fields.Integer()
 
