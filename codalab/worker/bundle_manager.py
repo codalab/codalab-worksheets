@@ -424,6 +424,7 @@ class BundleManager(object):
                 logger.info('Starting run bundle %s', bundle.uuid)
                 return True
             else:
+                logger.error('Can\'t start bundle due to send JSON over socket failure: %s', bundle.uuid)
                 self._model.restage_bundle(bundle)
                 workers.restage(bundle.uuid)
                 return False

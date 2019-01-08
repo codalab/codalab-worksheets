@@ -21,7 +21,7 @@ services:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./files/config/config.json:/home/codalab/config.json
+      - ./files/codalab_home:/home/codalab
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - mysql
@@ -34,7 +34,7 @@ services:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./files/config/config.json:/home/codalab/config.json
+      - ./files/codalab_home:/home/codalab
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - rest-server

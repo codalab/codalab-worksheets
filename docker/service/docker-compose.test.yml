@@ -12,6 +12,6 @@ services:
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
       - ./files/run-tests.sh:/data/bin/run-tests.sh
-      - ./files/config/config.json:/home/codalab/config.json
+      - ./files/codalab_home/config.json:/home/codalab/config.json
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
 
