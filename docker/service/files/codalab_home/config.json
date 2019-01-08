@@ -1,0 +1,33 @@
+{
+    "aliases": {
+        "localhost": "http://rest-server:2900",
+        "main": "https://worksheets.codalab.org"
+    },
+    "cli": {
+        "default_address": "http://rest-server:2900",
+        "verbose": 1
+    },
+    "server": {
+        "auth": {
+            "class": "RestOAuthHandler"
+        },
+        "class": "MySQLModel",
+        "default_user_info": {
+            "disk_quota": "10g",
+            "time_quota": "7d"
+        },
+        "engine_url": "mysql://codalab:TESTPASSWORD@mysql:3306/codalab_bundles",
+        "instance_name": "localhost",
+        "rest_host": "0.0.0.0",
+        "rest_port": 2900,
+        "secret_key": "SECRET_KEY",
+        "verbose": 1
+    },
+    "workers": {
+        "default_cpu_image": "codalab/default-cpu:latest",
+        "default_gpu_image": "codalab/default-gpu:latest",
+        "max_request_disk": "100g",
+        "max_request_memory": "55g",
+        "max_request_time": "100d"
+    }
+}
