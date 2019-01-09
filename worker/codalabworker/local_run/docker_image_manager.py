@@ -180,13 +180,13 @@ class DockerImageManager:
                         status = ImageAvailabilityState(
                             digest=digest,
                             stage=DependencyStage.READY,
-                            message=self._downloading[image_spec]['status'],
+                            message=self._downloading[image_spec]['message'],
                         )
                     else:
                         status = ImageAvailabilityState(
                             digest=None,
                             stage=DependencyStage.FAILED,
-                            message=self._downloading[image_spec]['status'],
+                            message=self._downloading[image_spec]['message'],
                         )
                     self._downloading.remove(image_spec)
                     return status
