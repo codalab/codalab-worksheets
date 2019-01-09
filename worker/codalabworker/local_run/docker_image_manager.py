@@ -126,6 +126,19 @@ class DockerImageManager:
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """
+        if ':' not in image_spec:
+            # Both digests and repo:tag kind of specs include the : character. The only case without it is when
+            # a repo is specified without a tag (like 'latest')
+            # When this is the case, different images API methods act differently:
+            # - pull pulls all tags of the image
+            # - get tries to get `latest` by default
+            # That means if someone requests a docker image without a tag, and the image does not have a latest
+            # tag pushed to Dockerhub, pull will succeed since it will pull all other tags, but later get calls
+            # will fail since the `latest` tag won't be found on the system.
+            # We don't want to assume what tag the user wanted so we want the pull step to fail if no tag is specified
+            # and there's no latest tag on dockerhub.
+            # Hence, we append the latest tag to the image spec if there's no tag specified otherwise at the very beginning
+            image_spec += ':latest'
         try:
             image = self._docker.images.get(image_spec)
             digest = image.attrs.get('RepoDigests', [image_spec])[0]
