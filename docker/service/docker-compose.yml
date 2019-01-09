@@ -1,5 +1,8 @@
 version: '3'
 
+volumes:
+  codalab_home:
+
 services:
   mysql:
     image: mysql:5.5.53
@@ -13,7 +16,7 @@ services:
 
   rest-server:
     image: codalab/bundleserver:local-dev
-    entrypoint: ['bash', '-c', '/opt/codalab-cli/venv/bin/pip install /opt/codalab-cli && /data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-cli/venv/bin/python /opt/codalab-cli/scripts/create-root-user.py TESTPASSWORD && echo "root account created" && /opt/codalab-cli/codalab/bin/cl server']
+    entrypoint: ['bash', '-c', '/opt/codalab-cli/venv/bin/pip install /opt/codalab-cli && /data/bin/wait-for-it.sh mysql:3306 -- /opt/codalab-cli/codalab/bin/cl config server/engine_url mysql://codalab:TESTPASSWORD@mysql:3306/codalab_bundles && /opt/codalab-cli/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-cli/codalab/bin/cl config server/rest_host 0.0.0.0 && /opt/codalab-cli/codalab/bin/cl config server/secret_key SECRET_KEY && /opt/codalab-cli/venv/bin/python /opt/codalab-cli/scripts/create-root-user.py TESTPASSWORD && echo "root account created" && /opt/codalab-cli/codalab/bin/cl server']
     ports:
       - 2900:2900
     environment:
@@ -21,20 +24,20 @@ services:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./files/codalab_home:/home/codalab
+      - codalab_home:/home/codalab
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - mysql
 
   bundle-manager:
     image: codalab/bundleserver:local-dev
-    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl new home && /opt/codalab-cli/codalab/bin/cl new dashboard && /opt/codalab-cli/codalab/bin/cl bundle-manager']
+    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl config server/engine_url mysql://codalab:TESTPASSWORD@mysql:3306/codalab_bundles && /opt/codalab-cli/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-cli/codalab/bin/cl config server/rest_host 0.0.0.0 && /opt/codalab-cli/codalab/bin/cl config server/secret_key SECRET_KEY && /opt/codalab-cli/codalab/bin/cl new home && /opt/codalab-cli/codalab/bin/cl new dashboard && /opt/codalab-cli/codalab/bin/cl bundle-manager']
     environment:
       - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
-      - ./files/codalab_home:/home/codalab
+      - codalab_home:/home/codalab
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - rest-server

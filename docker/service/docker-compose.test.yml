@@ -3,15 +3,13 @@ version: '3'
 services:
   tests:
     image: codalab/bundleserver:local-dev
-    entrypoint: /data/bin/wait-for-it.sh rest-server:2900 -- /data/bin/run-tests.sh
+    entrypoint: "/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl config cli/default_address http://rest-server:2900 && /data/bin/run-tests.sh"
     depends_on:
       - rest-server
     environment:
-      - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
       - ./files/run-tests.sh:/data/bin/run-tests.sh
-      - ./files/codalab_home/config.json:/home/codalab/config.json
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
 
