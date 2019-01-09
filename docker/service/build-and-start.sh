@@ -24,13 +24,15 @@ while [ "$1" != "" ]; do
 done
 
 PARENT_DIR=$(cd "$(dirname "$0")/../../.."; pwd)
-echo $PARENT_DIR
 if [ -z "$CODALAB_DIR" ]; then CODALAB_DIR="$PARENT_DIR"; fi
 
-docker-compose down
+echo "==> Bringing down service"
+docker-compose down --remove-orphans
 
 cd $CODALAB_DIR/codalab-cli
+echo "==> Building the bundleserver Docker image"
 docker build -t codalab/bundleserver:local-dev -f docker/Dockerfile.server .
+echo "==> Building the worker Docker image"
 docker build -t codalab/worker:local-dev -f docker/Dockerfile.worker .
 
 COMPOSE_FILES="-f docker-compose.yml"
@@ -48,4 +50,5 @@ if [ "$TEST" = "1" ]; then
 fi
 
 cd $CODALAB_DIR/codalab-cli/docker/service
+echo "==> Bringing service up with 'docker-compose $COMPOSE_FILES up $COMPOSE_FLAGS'"
 docker-compose $COMPOSE_FILES up $COMPOSE_FLAGS

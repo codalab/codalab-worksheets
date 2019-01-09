@@ -31,7 +31,7 @@ services:
 
   bundle-manager:
     image: codalab/bundleserver:local-dev
-    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl config server/engine_url mysql://codalab:TESTPASSWORD@mysql:3306/codalab_bundles && /opt/codalab-cli/codalab/bin/cl config cli/default_address http://rest-server:2900 && /opt/codalab-cli/codalab/bin/cl config server/rest_host 0.0.0.0 && /opt/codalab-cli/codalab/bin/cl config server/secret_key SECRET_KEY && /opt/codalab-cli/codalab/bin/cl new home && /opt/codalab-cli/codalab/bin/cl new dashboard && /opt/codalab-cli/codalab/bin/cl bundle-manager']
+    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- /opt/codalab-cli/codalab/bin/cl logout && /opt/codalab-cli/codalab/bin/cl new home && /opt/codalab-cli/codalab/bin/cl new dashboard && /opt/codalab-cli/codalab/bin/cl bundle-manager']
     environment:
       - CODALAB_HOME=/home/codalab
       - CODALAB_USERNAME=codalab
@@ -44,12 +44,13 @@ services:
 
   worker:
     image: codalab/worker:local-dev
-    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- cl-worker --server http://rest-server:2900 --verbose']
+    entrypoint: ['bash', '-c', '/data/bin/wait-for-it.sh rest-server:2900 -- cl-worker --server http://rest-server:2900 --verbose --work-dir /var/codalab/worker-dir']
     environment:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
     volumes:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
       - /var/run/docker.sock:/var/run/docker.sock
+      - /var/codalab/worker-dir/:/var/codalab/worker-dir/
     depends_on:
       - bundle-manager
