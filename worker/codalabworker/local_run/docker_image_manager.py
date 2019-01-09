@@ -186,7 +186,7 @@ class DockerImageManager:
                     logger.debug('Download for Docker image %s complete', image_spec)
                     self._downloading[image_spec]['success'] = True
                     self._downloading[image_spec]['message'] = "Downloading image"
-                except docker.errors.APIError as ex:
+                except (docker.errors.APIError, docker.errors.ImageNotFound) as ex:
                     logger.debug('Download for Docker image %s failed: %s', image_spec, ex)
                     self._downloading[image_spec]['success'] = False
                     self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)
