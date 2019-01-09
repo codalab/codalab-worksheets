@@ -13,6 +13,10 @@ services:
       - MYSQL_PASSWORD=TESTPASSWORD
     volumes:
       - ./files/config/conf.d:/etc/mysql/conf.d
+    logging:
+      driver: json-file
+      options:
+        mode: non-blocking
 
   rest-server:
     image: codalab/bundleserver:local-dev
@@ -28,6 +32,10 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - mysql
+    logging:
+      driver: json-file
+      options:
+        mode: non-blocking
 
   bundle-manager:
     image: codalab/bundleserver:local-dev
@@ -41,6 +49,10 @@ services:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
     depends_on:
       - rest-server
+    logging:
+      driver: json-file
+      options:
+        mode: non-blocking
 
   worker:
     image: codalab/worker:local-dev
@@ -48,9 +60,14 @@ services:
     environment:
       - CODALAB_USERNAME=codalab
       - CODALAB_PASSWORD=TESTPASSWORD
+    privileged: true
     volumes:
       - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
       - /var/run/docker.sock:/var/run/docker.sock
       - /var/codalab/worker-dir/:/var/codalab/worker-dir/
     depends_on:
       - bundle-manager
+    logging:
+      driver: json-file
+      options:
+        mode: non-blocking
