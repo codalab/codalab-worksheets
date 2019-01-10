@@ -8,8 +8,8 @@ import {
     Switch,
 } from 'react-router-dom';
 import { CookiesProvider, withCookies } from 'react-cookie';
-// import { serverHost, frontendHost } from './ServerConstants';
 import UserInfo from './components/UserInfo';
+import PublicHome from './components/PublicHome';
 import $ from 'jquery';
 
 ////////////////////////////////////////////////////////////
@@ -33,7 +33,7 @@ function CodalabApp() {
                         </li>
                     </ul>
                     <Switch>
-                        <Route path='/' exact component={Public} />
+                        <Route path='/' exact component={PublicHome} />
                         <Route path='/login' component={Login} />
                         <PrivateRoute path='/account/profile' component={UserInfo} />
                         <Route component={NoPage} />
@@ -60,7 +60,9 @@ const fakeAuth = {
                 console.log(response);
                 console.log(status);
                 console.log(xhr);
-                callback();
+                if (callback) {
+                    callback();
+                }
             },
         });
     },
@@ -122,11 +124,13 @@ class Login extends React.Component {
 
     login = (e) => {
         e.preventDefault();
-        fakeAuth.authenticate({ username: this.state.username, password: this.state.password },
-                  this.setState(() => ({
-        redirectToReferrer: true
-      }))
-);
+        fakeAuth.authenticate(
+            { username: this.state.username, password: this.state.password },
+            () =>
+                this.setState(() => ({
+                    redirectToReferrer: true,
+                })),
+        );
     };
 
     handleInputChange = (event) => {
@@ -148,11 +152,7 @@ class Login extends React.Component {
         return (
             <div>
                 <p>You must log in to view the page at {from.pathname}</p>
-                <form
-                    className='login'
-                    method='POST'
-                    onSubmit={this.login}
-                >
+                <form className='login' method='POST' onSubmit={this.login}>
                     <div className='form-group'>
                         <label htmlFor='id_login'>Login:</label>
                         <input
