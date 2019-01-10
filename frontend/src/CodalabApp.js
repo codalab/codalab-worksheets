@@ -8,7 +8,7 @@ import {
     Switch,
 } from 'react-router-dom';
 import { CookiesProvider, withCookies } from 'react-cookie';
-import { serverHost, frontendHost } from './ServerConstants';
+// import { serverHost, frontendHost } from './ServerConstants';
 import UserInfo from './components/UserInfo';
 import $ from 'jquery';
 
@@ -46,10 +46,10 @@ function CodalabApp() {
 
 const fakeAuth = {
     isAuthenticated: false,
-    authenticate(authObject) {
+    authenticate(authObject, callback) {
         $.ajax({
             type: 'POST',
-            url: serverHost + '/rest/account/login',
+            url: '/rest/account/login',
             data: {
                 username: authObject.username,
                 password: authObject.password,
@@ -60,6 +60,7 @@ const fakeAuth = {
                 console.log(response);
                 console.log(status);
                 console.log(xhr);
+                callback();
             },
         });
     },
@@ -121,7 +122,11 @@ class Login extends React.Component {
 
     login = (e) => {
         e.preventDefault();
-        fakeAuth.authenticate({ username: this.state.username, password: this.state.password });
+        fakeAuth.authenticate({ username: this.state.username, password: this.state.password },
+                  this.setState(() => ({
+        redirectToReferrer: true
+      }))
+);
     };
 
     handleInputChange = (event) => {
@@ -132,7 +137,6 @@ class Login extends React.Component {
         this.setState({
             [name]: value,
         });
-        console.log(this.state);
     };
 
     render() {
@@ -145,34 +149,33 @@ class Login extends React.Component {
             <div>
                 <p>You must log in to view the page at {from.pathname}</p>
                 <form
-                    class='login'
+                    className='login'
                     method='POST'
-                    // action={serverHost + '/rest/account/login'}
                     onSubmit={this.login}
                 >
-                    <div class='form-group'>
-                        <label for='id_login'>Login:</label>
+                    <div className='form-group'>
+                        <label htmlFor='id_login'>Login:</label>
                         <input
                             id='id_login'
-                            class='form-control'
+                            className='form-control'
                             name='username'
                             placeholder='Username or e-mail'
                             type='text'
-                            autofocus=''
-                            autocomplete='off'
+                            autoFocus=''
+                            autoComplete='off'
                             value={this.state.username}
                             onChange={this.handleInputChange}
                         />
                     </div>
-                    <div class='form-group'>
-                        <label for='id_password'>Password:</label>
+                    <div className='form-group'>
+                        <label htmlFor='id_password'>Password:</label>
                         <input
                             id='id_password'
-                            class='form-control'
+                            className='form-control'
                             name='password'
                             placeholder='Password'
                             type='password'
-                            autocomplete='off'
+                            autoComplete='off'
                             value={this.state.password}
                             onChange={this.handleInputChange}
                         />
