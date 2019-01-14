@@ -102,7 +102,10 @@ class DockerImageManager:
                     entry_to_remove.digest,
                 )
                 try:
-                    self._docker.images.remove(entry_to_remove.id)
+                    image_to_delete = self._docker.images.get(entry_to_remove.id)
+                    tags_to_delete = image_to_delete.tags
+                    for tag in tags_to_delete:
+                        self._docker.images.remove(tag)
                     # if we successfully removed the image also remove its cache entry
                     del self._image_cache[entry_to_remove.digest]
                 except docker.errors.APIError as err:
@@ -123,6 +126,19 @@ class DockerImageManager:
         :param image_spec: Repo image_spec of docker image being requested
         :returns: A DockerAvailabilityState object with the state of the docker image
         """
+        if ':' not in image_spec:
+            # Both digests and repo:tag kind of specs include the : character. The only case without it is when
+            # a repo is specified without a tag (like 'latest')
+            # When this is the case, different images API methods act differently:
+            # - pull pulls all tags of the image
+            # - get tries to get `latest` by default
+            # That means if someone requests a docker image without a tag, and the image does not have a latest
+            # tag pushed to Dockerhub, pull will succeed since it will pull all other tags, but later get calls
+            # will fail since the `latest` tag won't be found on the system.
+            # We don't want to assume what tag the user wanted so we want the pull step to fail if no tag is specified
+            # and there's no latest tag on dockerhub.
+            # Hence, we append the latest tag to the image spec if there's no tag specified otherwise at the very beginning
+            image_spec += ':latest'
         try:
             image = self._docker.images.get(image_spec)
             digest = image.attrs.get('RepoDigests', [image_spec])[0]
@@ -164,13 +180,13 @@ class DockerImageManager:
                         status = ImageAvailabilityState(
                             digest=digest,
                             stage=DependencyStage.READY,
-                            message=self._downloading[image_spec]['status'],
+                            message=self._downloading[image_spec]['message'],
                         )
                     else:
                         status = ImageAvailabilityState(
                             digest=None,
                             stage=DependencyStage.FAILED,
-                            message=self._downloading[image_spec]['status'],
+                            message=self._downloading[image_spec]['message'],
                         )
                     self._downloading.remove(image_spec)
                     return status
@@ -183,7 +199,7 @@ class DockerImageManager:
                     logger.debug('Download for Docker image %s complete', image_spec)
                     self._downloading[image_spec]['success'] = True
                     self._downloading[image_spec]['message'] = "Downloading image"
-                except docker.errors.APIError as ex:
+                except (docker.errors.APIError, docker.errors.ImageNotFound) as ex:
                     logger.debug('Download for Docker image %s failed: %s', image_spec, ex)
                     self._downloading[image_spec]['success'] = False
                     self._downloading[image_spec]['message'] = "Can't download image: {}".format(ex)

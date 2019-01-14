@@ -16,10 +16,11 @@ from formatting import parse_size
 MIN_API_VERSION = '1.17'
 NVIDIA_RUNTIME = 'nvidia'
 DEFAULT_RUNTIME = 'runc'
+DEFAULT_TIMEOUT = 720
 
 
 logger = logging.getLogger(__name__)
-client = docker.from_env()
+client = docker.from_env(timeout=DEFAULT_TIMEOUT)
 
 
 def wrap_exception(message):
