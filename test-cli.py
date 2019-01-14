@@ -97,20 +97,20 @@ def get_uuid(line):
     return m.group(1)
 
 
-def sanitize(string):
+def sanitize(string, max_chars=256):
     try:
         string = string.decode('utf-8')
-        n = 256
-        if len(string) > n:
-            string = string[:n] + ' (...more...)'
+        if len(string) > max_chars:
+            string = string[:max_chars] + ' (...more...)'
         return string
     except UnicodeDecodeError:
         return '<binary>\n'
 
 
-def run_command(args, expected_exit_code=0):
-    # Decode args into ASCII as travis can't handle them otherwise
-    args = [arg.encode('ascii', 'ignore') for arg in args]
+def run_command(args, expected_exit_code=0, max_output_chars=256):
+    # Decode args into ASCII as travis can't handle them otherwise. Any non-ASCII characters
+    # passed through this command line driver will be encoded in XML style.
+    # args = [arg.encode('ascii', 'xmlcharrefreplace') for arg in args]
     sys.stdout.write('>> %s' % ' '.join(args))
 
     try:
@@ -123,7 +123,7 @@ def run_command(args, expected_exit_code=0):
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
     print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
-    print(sanitize(output))
+    print(sanitize(output, max_output_chars))
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
@@ -1635,21 +1635,28 @@ def test(ctx):
 
 @TestModule.register('unicode')
 def test(ctx):
+    # Non-unicode in file contents
+    uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
+    check_equals('nounicode', run_command([cl, 'cat', uuid]))
+
     # Unicode in file contents
-    uuid = run_command([cl, 'upload', '--contents', u'你好世界😊'])
-    check_equals(u'你好世界😊', run_command([cl, 'cat', uuid]))
+    uuid = run_command([cl, 'upload', '--contents', '你好世界😊'])
+    check_equals('_', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
+    check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
 
     # Unicode in file path
-    uuid = run_command([cl, 'upload', test_path(u'你好世界😊.txt')])
-    check_equals(test_path_contents(u'你好世界😊.txt'), run_command([cl, 'cat', uuid]))
+    uuid = run_command([cl, 'upload', test_path('你好世界😊.txt')])
+    check_equals('_-.txt', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
+    check_equals(test_path_contents('你好世界😊.txt'), run_command([cl, 'cat', uuid]))
 
-    # Unicode in bundle name, description, and tags
-    uuid = run_command(
-        [cl, 'upload', test_path(u'你好世界😊.txt'), '--description', '描述', '--tags', u'😀', u'😁']
-    )
-    check_equals(u'你好世界😊.txt', get_info(uuid, 'name'))
-    check_equals('描述', get_info(uuid, 'description'))
-    check_contains([u'😀', u'😁'], get_info(uuid, 'tags'))
+    # Unicode in bundle description and tags
+    run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
+    run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
+
+    # Unicode in edits --> interactive mode not tested, but `cl edit` properly discards
+    # edits that introduce unicode.
+    # uuid = run_command([cl, 'upload', test_path('a.txt')])
+    # run_command([cl, 'edit', uuid], 1)
 
 
 if __name__ == '__main__':

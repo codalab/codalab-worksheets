@@ -49,6 +49,7 @@ from codalab.lib import (
     worksheet_util,
     zip_util,
     bundle_fuse,
+    unicode_util,
 )
 from codalab.lib.cli_util import (
     nested_dict_get,
@@ -649,16 +650,17 @@ class BundleCLI(object):
             rows.append(row)
 
         # Display the table
-        lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
+        lengths = [max(len(unicode(value)) for value in col) for col in zip(*rows)]
         for (i, row) in enumerate(rows):
             row_strs = []
             for (j, value) in enumerate(row):
+                value = unicode(value)
                 length = lengths[j]
-                padding = (length - len(str(value))) * ' '
+                padding = (length - len(value)) * ' '
                 if justify.get(columns[j], -1) < 0:
-                    row_strs.append(str(value) + padding)
+                    row_strs.append(value + padding)
                 else:
-                    row_strs.append(padding + str(value))
+                    row_strs.append(padding + value)
             if show_header or i > 0:
                 print >>self.stdout, indent + '  '.join(row_strs)
             if i == 0:
@@ -1104,10 +1106,10 @@ class BundleCLI(object):
 
         # Build bundle info
         metadata = self.get_missing_metadata(UploadedBundle, args, initial_metadata={})
-        # name = 'test.zip' => name = 'test'
         if args.contents is not None and metadata['name'] is None:
             metadata['name'] = 'contents'
         if not args.pack and zip_util.path_is_archive(metadata['name']):
+            # name = 'test.zip' => name = 'test'
             metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
         bundle_info = {
             'bundle_type': 'dataset',  # TODO: deprecate Dataset and ProgramBundles
@@ -1166,6 +1168,7 @@ class BundleCLI(object):
                 force_compression=args.force_compression,
             )
 
+
             # Create bundle.
             # We must create the bundle right before we upload it because we
             # perform some input validation in functions such as
@@ -1177,8 +1180,8 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
-            print >>self.stderr, 'Uploading %s (%s) to %s' % (
-                packed['filename'],
+            print >>self.stderr, u'Uploading %s (%s) to %s' % (
+                packed['filename'].decode('UTF-8'),
                 new_bundle['id'],
                 client.address,
             )
@@ -1188,7 +1191,7 @@ class BundleCLI(object):
                     new_bundle['id'],
                     fileobj=packed['fileobj'],
                     params={
-                        'filename': packed['filename'],
+                        'filename': packed['filename'].decode('UTF-8').encode('ascii', 'replace'),
                         'unpack': packed['should_unpack'],
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
