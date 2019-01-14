@@ -1,16 +1,14 @@
 import React from 'react';
-import {
-    BrowserRouter as Router,
-    Route,
-    Link,
-    Redirect,
-    withRouter,
-    Switch,
-} from 'react-router-dom';
+import { Router, Route, Link, Redirect, withRouter, Switch } from 'react-router-dom';
 import { CookiesProvider, withCookies } from 'react-cookie';
 import UserInfo from './components/UserInfo';
 import PublicHome from './components/PublicHome';
 import $ from 'jquery';
+import NavBar from './components/NavBar';
+import Footer from './components/Footer';
+import Login from './components/Login';
+import history from './history';
+import Cookies from 'universal-cookie';
 
 ////////////////////////////////////////////////////////////
 // 1. Click the public page
@@ -21,31 +19,36 @@ import $ from 'jquery';
 function CodalabApp() {
     return (
         <CookiesProvider>
-            <Router>
+            <Router history={history}>
                 <div>
-                    <AuthButton />
-                    <ul>
-                        <li>
-                            <Link to='/'>Public Page</Link>
-                        </li>
-                        <li>
-                            <Link to='/account/profile'>User Info Page</Link>
-                        </li>
-                    </ul>
+                    <Route path='/' render={(props) => <NavBar {...props} auth={fakeAuth} />} />
+
                     <Switch>
                         <Route path='/' exact component={PublicHome} />
-                        <Route path='/login' component={Login} />
+                        <Route path='/account/signup' component={Login} />
+                        <Route
+                            path='/account/login'
+                            render={(props) => <Login {...props} auth={fakeAuth} />}
+                        />
                         <PrivateRoute path='/account/profile' component={UserInfo} />
                         <Route component={NoPage} />
                     </Switch>
+
+                    <Route path='/' render={(props) => <Footer {...props} />} />
                 </div>
             </Router>
         </CookiesProvider>
     );
 }
 
+function checkAuth() {
+    let codalab_session = new Cookies().get('codalab_session');
+    console.log(codalab_session != undefined);
+    return codalab_session != undefined;
+}
+
 const fakeAuth = {
-    isAuthenticated: false,
+    isAuthenticated: checkAuth(),
     authenticate(authObject, callback) {
         $.ajax({
             type: 'POST',
@@ -66,28 +69,14 @@ const fakeAuth = {
             },
         });
     },
-    signout(cb) {
+    signout: (cb) => {
         this.isAuthenticated = false;
-        setTimeout(cb, 100);
+        new Cookies().remove('codalab_session');
+        history.push(
+            '/rest/account/logout?redirect_uri=' + encodeURIComponent(history.location.pathname),
+        );
     },
 };
-
-const AuthButton = withRouter(({ history, cookies }) =>
-    fakeAuth.isAuthenticated ? (
-        <p>
-            Welcome!{' '}
-            <button
-                onClick={() => {
-                    fakeAuth.signout(() => history.push('/'));
-                }}
-            >
-                Sign out
-            </button>
-        </p>
-    ) : (
-        <p>You are not logged in.</p>
-    ),
-);
 
 const PrivateRoute = ({ component: Component, ...rest }) => (
     <Route
@@ -98,7 +87,7 @@ const PrivateRoute = ({ component: Component, ...rest }) => (
             ) : (
                 <Redirect
                     to={{
-                        pathname: '/login',
+                        pathname: '/account/login',
                         state: { from: props.location },
                     }}
                 />
@@ -109,83 +98,6 @@ const PrivateRoute = ({ component: Component, ...rest }) => (
 
 function NoPage() {
     return <div>404 No Page Exists</div>;
-}
-
-function Public() {
-    return <h3>Public</h3>;
-}
-
-function Protected() {
-    return <h3>Protected</h3>;
-}
-
-class Login extends React.Component {
-    state = { redirectToReferrer: false, username: '', password: '' };
-
-    login = (e) => {
-        e.preventDefault();
-        fakeAuth.authenticate(
-            { username: this.state.username, password: this.state.password },
-            () =>
-                this.setState(() => ({
-                    redirectToReferrer: true,
-                })),
-        );
-    };
-
-    handleInputChange = (event) => {
-        const target = event.target;
-        const value = target.value;
-        const name = target.name;
-
-        this.setState({
-            [name]: value,
-        });
-    };
-
-    render() {
-        let { from } = this.props.location.state || { from: { pathname: '/' } };
-        let { redirectToReferrer } = this.state;
-
-        if (redirectToReferrer) return <Redirect to={from} />;
-
-        return (
-            <div>
-                <p>You must log in to view the page at {from.pathname}</p>
-                <form className='login' method='POST' onSubmit={this.login}>
-                    <div className='form-group'>
-                        <label htmlFor='id_login'>Login:</label>
-                        <input
-                            id='id_login'
-                            className='form-control'
-                            name='username'
-                            placeholder='Username or e-mail'
-                            type='text'
-                            autoFocus=''
-                            autoComplete='off'
-                            value={this.state.username}
-                            onChange={this.handleInputChange}
-                        />
-                    </div>
-                    <div className='form-group'>
-                        <label htmlFor='id_password'>Password:</label>
-                        <input
-                            id='id_password'
-                            className='form-control'
-                            name='password'
-                            placeholder='Password'
-                            type='password'
-                            autoComplete='off'
-                            value={this.state.password}
-                            onChange={this.handleInputChange}
-                        />
-                    </div>
-                    {/* the above is almost certainly wrong, not sure how to fix*/}
-                    <button type='submit'>Sign In</button>
-                </form>
-            </div>
-        );
-    }
 }
 
 export default CodalabApp;

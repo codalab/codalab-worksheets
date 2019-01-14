@@ -18,7 +18,8 @@
     "react-router-dom": "^4.3.1",
     "react-scripts": "2.1.1",
     "reselect": "^4.0.0",
-    "seamless-immutable": "^7.1.4"
+    "seamless-immutable": "^7.1.4",
+    "underscore": "^1.9.1"
   },
   "devDependencies": {
     "prettier": "^1.15.3"
