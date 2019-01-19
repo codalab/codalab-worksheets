@@ -1,9 +1,5 @@
 import * as React from 'react';
-import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
-import $ from 'jquery';
-import _ from 'underscore';
-import { renderSize, renderDuration } from '../util/worksheet_utils';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
 
