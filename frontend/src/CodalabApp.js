@@ -7,6 +7,7 @@ import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Login from './components/Login';
+import Bundle from './components/Bundle';
 import history from './history';
 import Cookies from 'universal-cookie';
 
@@ -31,6 +32,7 @@ function CodalabApp() {
                             render={(props) => <Login {...props} auth={fakeAuth} />}
                         />
                         <PrivateRoute path='/account/profile' component={UserInfo} />
+                        <Route path='/bundle/:uuid' component={Bundle} />
                         <Route component={NoPage} />
                     </Switch>
 
@@ -69,12 +71,12 @@ const fakeAuth = {
             },
         });
     },
-    signout: (cb) => {
-        this.isAuthenticated = false;
+    signout: (event) => {
+        fakeAuth.isAuthenticated = false;
         new Cookies().remove('codalab_session');
-        history.push(
-            '/rest/account/logout?redirect_uri=' + encodeURIComponent(history.location.pathname),
-        );
+        window.location.href =
+            '/rest/account/logout?redirect_uri=' + encodeURIComponent(history.location.pathname);
+        event.preventDefault();
     },
 };
 

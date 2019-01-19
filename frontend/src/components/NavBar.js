@@ -90,11 +90,12 @@ class NavBar extends React.Component {
                                         <li>
                                             <a
                                                 onClick={this.props.auth.signout}
-                                                href={
-                                                    '/rest/account/logout?redirect_uri=' +
-                                                    encodeURIComponent(this.props.location.pathname)
-                                                }
-                                                target='_self'
+                                                href='#'
+                                                // href={
+                                                //     '/rest/account/logout?redirect_uri=' +
+                                                //     encodeURIComponent(this.props.location.pathname)
+                                                // }
+                                                // target='_self'
                                             >
                                                 Sign Out
                                             </a>
