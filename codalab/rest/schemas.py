@@ -46,6 +46,12 @@ def validate_child_path(path):
     if not CHILD_PATH_REGEX.match(path):
         raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
+def validate_ascii(value):
+    try:
+        value.encode("ascii")
+    except UnicodeError:
+        raise ValidationError('Unsupported character detected, use ascii characters')
+
 
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
@@ -99,10 +105,10 @@ class WorksheetSchema(Schema):
     uuid = fields.String(attribute='uuid')  # for backwards compatibility
     name = fields.String(validate=validate_name)
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
-    title = fields.String()
+    title = fields.String(validate=validate_ascii)
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
-    tags = fields.List(fields.String())
+    tags = fields.List(fields.String(validate=validate_ascii))
     group_permissions = fields.Relationship(
         include_resource_linkage=True, type_='worksheet-permissions', id_field='id', many=True
     )
