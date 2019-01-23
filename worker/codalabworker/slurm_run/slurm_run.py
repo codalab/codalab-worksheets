@@ -6,7 +6,7 @@ like Slurm
 from argparse import ArgumentParser
 from codalabworker.bundle_state import State
 from codalabworker.bundle_state_objects import BundleInfo, RunResources, WorkerRun
-from codalabworker.file_util import get_path_size
+from codalabworker.file_util import get_path_size, remove_path
 from codalabworker.formatting import duration_str, size_str
 from codalabworker import docker_utils
 import docker
@@ -14,6 +14,7 @@ import errno
 import fcntl
 import json
 import os
+import shutil
 import threading
 import time
 import traceback
@@ -36,7 +37,6 @@ def main():
 
 
 class SlurmRun(object):
-
     def __init__(self, args):
         with open(args.bundle_file, "r") as infile:
             bundle_dict = json.load(infile)
@@ -49,7 +49,7 @@ class SlurmRun(object):
             run_status="Starting run",
             start_time=time.time(),
             docker_image=self.resources.docker_image,
-            info={},
+            info={},  # should have 'exitcode' and 'failure_message' fields if run fails
             state=State.PREPARING,
         )
         self.docker_client = docker.from_env()
@@ -68,17 +68,17 @@ class SlurmRun(object):
             # Network already exists, go on
             pass
         self.UPDATE_INTERVAL = 5
+        self.finished = False
+        self.has_contents = False
+        self.resource_use = {"disk": 0, "time": 0, "memory": 0}
 
     def start(self):
         try:
-            self.run_state.run_status = "Pulling docker image {}".format(self.resources.docker_image)
+            self.run_state.run_status = "Pulling docker image {}".format(
+                self.resources.docker_image
+            )
             self.write_state()
-            try:
-                self.run_state.docker_image = self.pull_docker_image()
-            except Exception as ex:
-                # TODO Set failure messages ie to be docker
-                print("Docker image download failed: {}".format(ex))
-                raise
+            self.run_state.docker_image = self.pull_docker_image()
             self.run_state.run_status = "Preparing the filesystem"
             self.write_state()
             self.wait_for_bundle_folder()
@@ -87,11 +87,23 @@ class SlurmRun(object):
             self.run_state.state = State.RUNNING
             self.write_state()
             self.monitor_container()
-            self.run_state.run_status = "Execution finished. Uploading results"
-            self.write_state()
         except Exception as ex:
-            # TODO fail the image with ex
+            if 'exitcode' not in self.run_state.info:
+                self.run_state.info['exitcode'] = '1'
+            self.run_state.info['failure_message'] = str(ex)
+            self.run_state.state = State.FINALIZING
+            try:
+                shutil.rmtree(self.bundle.location)
+            except Exception as ex:
+                print("Cannot remove bundle location at failure cleanup: {}".format(ex))
+            self.write_state()
             print("Run failed: {}".format(ex))
+        self.run_state.run_status = "Execution finished. Cleaning up."
+        self.write_state()
+        self.cleanup()
+        self.run_state.run_status = "Run finished, finalizing"
+        self.run_state.state = State.FINALIZING
+        self.write_state()
 
     def write_state(self):
         while True:
@@ -154,11 +166,15 @@ class SlurmRun(object):
         docker_dependencies = []
         docker_dependencies_path = "/" + self.bundle.uuid + "_dependencies"
         for dep_key, dep in self.bundle.dependencies.items():
-            child_path = os.path.normpath(os.path.join(self.bundle.location, dep.child_path))
+            child_path = os.path.normpath(
+                os.path.join(self.bundle.location, dep.child_path)
+            )
             if not child_path.startswith(self.bundle.location):
                 raise Exception("Invalid key for dependency: %s" % (dep.child_path))
 
-            docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
+            docker_dependency_path = os.path.join(
+                docker_dependencies_path, dep.child_path
+            )
             os.symlink(docker_dependency_path, child_path)
             dependency_path = os.path.realpath(
                 os.path.join(os.path.realpath(dep.location), dep.parent_path)
@@ -184,11 +200,12 @@ class SlurmRun(object):
         if it uses too many resources
         Returns when the docker container is finished
         """
+
         def check_disk_utilization():
-            while not self.run_state.info['finished']:
+            while not self.finished and not self.killed:
                 start_time = time.time()
                 try:
-                    self.run_state.info['disk_utilization'] = get_path_size(self.bundle.location)
+                    self.resource_use["disk"] = get_path_size(self.bundle.location)
                 except Exception:
                     traceback.print_exc()
                 end_time = time.time()
@@ -196,11 +213,14 @@ class SlurmRun(object):
                 # To ensure that we don't hammer the disk for this computation when
                 # there are lots of files, we run it at most 10% of the time.
                 time.sleep(max((end_time - start_time) * 10, 1.0))
-        self.disk_utilization_thread = threading.Thread(target=check_disk_utilization, args=[])
-        self.disk_utilization_thread.start()
+
+        disk_utilization_thread = threading.Thread(
+            target=check_disk_utilization, args=[]
+        )
+        disk_utilization_thread.start()
 
         def check_resource_utilization():
-            """.
+            """
             Checks the time, memory and disk use of the container, setting it up to be killed
             if it is going over its allocated resources
             :returns: List[str]: Kill messages with reasons to kill if there are reasons, otherwise empty
@@ -208,55 +228,74 @@ class SlurmRun(object):
             kill_messages = []
 
             run_stats = docker_utils.get_container_stats(self.container)
-            time_used = time.time() - self.run_state.start_time
-
-            self.run_state.info.update(dict(
-                time_used=time_used,
-                max_memory=max(self.run_state.info['max_memory'], run_stats.get('memory', 0))
-            ))
+            self.resource_use["time"] = time.time() - self.run_state.start_time
+            self.resource_use["memory"] = max(
+                self.resource_use["memory"], run_stats.get("memory", 0)
+            )
 
             if (
                 self.resources.request_time
-                and self.run_state.info['time_used'] > self.resources.request_time
+                and self.resource_use["time"] > self.resources.request_time
             ):
                 kill_messages.append(
-                    'Time limit %s exceeded.' % duration_str(self.resources.request_time)
+                    "Time limit %s exceeded."
+                    % duration_str(self.resources.request_time)
                 )
 
-            if self.run_state.info['max_memory'] > self.resources.request_memory:
+            if self.resource_use["memory"] > self.resources.request_memory:
                 kill_messages.append(
-                    'Memory limit %s exceeded.'
+                    "Memory limit %s exceeded."
                     % size_str(self.resources.request_memory)
                 )
 
             if (
                 self.resources.request_disk
-                and self.run_state.info['disk_utilization'] > self.resources.request_disk
+                and self.resource_use["disk"]
+                > self.resources.request_disk
             ):
                 kill_messages.append(
-                    'Disk limit %sb exceeded.' % size_str(self.resources.request_disk)
+                    "Disk limit %sb exceeded." % size_str(self.resources.request_disk)
                 )
 
             return kill_messages
 
-        finished = False
-        while not self.killed and not finished:
+        while not self.killed and not self.finished:
             time.sleep(self.UPDATE_INTERVAL)
-            finished, exitcode, failure_message = self.check_and_report_finished()
+            self.finished, exitcode, failure_message = self.check_and_report_finished()
             kill_messages = self.check_resource_utilization()
             if kill_messages:
                 self.killed = True
+                self.run_state.info['exitcode'] = 1
+                self.run_state.info['failure_message'] = ', '.join(kill_messages)
 
             if self.killed:
                 try:
                     self.container.kill()
                 except docker.errors.APIError:
-                    finished, _, _ = docker_utils.check_finished(self.container)
-                    if not finished:
+                    self.finished, _, _ = docker_utils.check_finished(self.container)
+                    if not self.finished:
                         # If we can't kill a Running container, something is wrong
                         # Otherwise all well
                         traceback.print_exc()
-        self.disk_utilization_thread.join()
+        disk_utilization_thread.join()
+
+    def cleanup(self):
+        # Make sure the container is removed
+        if self.container:
+            try:
+                self.container.remove()
+            except Exception:
+                traceback.print_exc()
+        # Remove the dependency symlinks from the bundle folder
+        for dep_key, dep in self.bundle.dependencies.items():
+            child_path = os.path.normpath(
+                os.path.join(self.bundle.location, dep.child_path)
+            )
+            try:
+                remove_path(child_path)
+            except Exception:
+                traceback.print_exc()
+        # TODO: Clean up docker image cache
 
 
 if __name__ == "__main__":
