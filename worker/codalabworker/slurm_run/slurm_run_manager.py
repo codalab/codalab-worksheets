@@ -6,6 +6,7 @@ import json
 import os
 import time
 import shutil
+import subprocess
 
 
 class SlurmRunManager(BaseRunManager):
@@ -15,14 +16,20 @@ class SlurmRunManager(BaseRunManager):
     COMMANDS_FILE_NAME = "commands.json"
     BUNDLE_FILE_NAME = "bundle_info.json"
     RESOURCES_FILE_NAME = "resources.json"
+    SLURM_OUTPUT_FILE_NAME = "slurm_log.txt"
 
-    def __init__(self, worker_dir):
+    def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='cl-slurm-worker', slurm_host='sc'):
         self.runs = set()  # List[str] UUIDs of runs
         self.run_states = {}  # uuid -> Dict (of WorkerRun)
         self.run_commands = {}  # uuid -> List[Command]
         self.run_paths = {}  # uuid -> str
         self.run_jobs = {}  # uuid -> str (Slurm JOBIDs)
+
+        self.slurm_host = slurm_host
+        self.sbatch_binary = sbatch_binary
+        self.slurm_run_binary = slurm_run_binary
         self.work_dir = os.path.join(worker_dir, "run_manager")
+
         try:
             os.mkdir(self.work_dir)
         except OSError as e:
@@ -38,8 +45,14 @@ class SlurmRunManager(BaseRunManager):
     def stop(self):
         for uuid in self.runs:
             if uuid in self.run_jobs:
-                jobid = self.run_jobs[uuid]
-                # TODO: scancel jobid
+                jobname = self.run_jobs[uuid]
+                squeue_command = 'squeue -o \%A -h -n {}'.format(jobname)
+                try:
+                    jobid = subprocess.check_output(squeue_command)
+                except subprocess.CalledProcessError as ex:
+                    print(ex)
+                else:
+                    subprocess.check_call('scancel {}'.format(jobid))
 
     def save_state(self):
         """
@@ -58,6 +71,8 @@ class SlurmRunManager(BaseRunManager):
         2. Write bundle, resources and lock files
         3. Submit slurm job
         """
+        bundle = BundleInfo.from_dict(bundle)
+        resources = RunResources.from_dict(resources)
         self.runs.add(bundle.uuid)
         self.run_paths[bundle.uuid] = os.path.join(self.work_dir, bundle.uuid)
         self.run_commands[bundle.uuid] = []
@@ -78,6 +93,9 @@ class SlurmRunManager(BaseRunManager):
         resources_path = os.path.join(
             self.run_paths[bundle.uuid], self.RESOURCES_FILE_NAME
         )
+        slurm_output_path = os.path.join(
+            self.run_paths[bundle.uuid], self.SLURM_OUTPUT_FILE_NAME
+        )
 
         with open(bundle_info_path, "w") as outfile:
             json.dump(bundle.__dict__, outfile)
@@ -86,7 +104,50 @@ class SlurmRunManager(BaseRunManager):
         self._write_commands(
             self.run_commands[bundle.uuid], self.run_paths[bundle.uuid]
         )
-        # TODO: Submit the Slurm job
+        # TODO: request_queue =
+        # TODO: host, gpu_type, parition = parse_tags()
+        job_name = "codalab-run-{}".format(bundle.uuid)
+        gpu_type = None
+        partition = "jag-lo" if resources.gpus else "john"
+        sbatch_flags = [
+            self.sbatch_binary,
+            "--mem={}".format(resources.memory),
+            "--chdir={}".format(self.run_paths[bundle.uuid]),
+            "--job-name={}".format(job_name),
+            "--output={}".format(slurm_output_path),
+            "--partition={}".format(partition),
+        ]
+        if resources.cpus > 1:
+            sbatch_flags.append("--cpus-per-task={}".format(resources.cpus))
+        if resources.gpus:
+            gpu_type = "{}:".format(gpu_type) if gpu_type else ""
+            sbatch_flags.append("--gres=gpu:{}{}".format(gpu_type, resources.gpus))
+        sbatch_command = " ".join(sbatch_flags)
+        slurm_run_command = "{} \
+                --bundle-file {} \
+                --resources-file {} \
+                --state-file {} \
+                --state-lock-file {} \
+                --commands-file {} \
+                --commands-lock-file {}".format(
+            self.slurm_run_binary,
+            bundle_info_path,
+            resources_path,
+            state_path,
+            state_lock_path,
+            commands_path,
+            commands_lock_path,
+        )
+        final_command = '{} {}'.format(sbatch_command, slurm_run_command)
+        if self.slurm_host is not None:
+            final_command = 'ssh {} {}'.format(self.slurm_host, final_command)
+        try:
+            subprocess.check_call(final_command, shell=True)
+        except Exception as e:
+            # TODO: something went wrong
+            print(e)
+        else:
+            self.run_jobs[bundle.uuid] = job_name
 
     def get_run(self, uuid):
         if uuid in self.run_paths:

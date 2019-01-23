@@ -25,7 +25,9 @@ def parse_args():
     parser.add_argument("--bundle-file", type=str)
     parser.add_argument("--resources-file", type=str)
     parser.add_argument("--state-file", type=str)
-    parser.add_argument("--lock-file", type=str)
+    parser.add_argument("--state-lock-file", type=str)
+    parser.add_argument("--commands-file", type=str)
+    parser.add_argument("--commands-lock-file", type=str)
     args = parser.parse_args()
     return args
 
@@ -44,6 +46,12 @@ class SlurmRun(object):
         with open(args.resources_file, "r") as infile:
             resources_dict = json.load(infile)
             self.resources = RunResources.from_dict(resources_dict)
+
+        self.state_file = args.state_file
+        self.state_lock_file = args.state_lock_file
+        self.commands_file = args.state_lock_file
+        self.commands_lock_file = args.state_lock_file
+
         self.run_state = WorkerRun(
             uuid=self.bundle.uuid,
             run_status="Starting run",
@@ -108,7 +116,7 @@ class SlurmRun(object):
     def write_state(self):
         while True:
             try:
-                lock_file = open(self.lock_file, "w+")
+                lock_file = open(self.state_lock_file, "w+")
                 fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
             except IOError as ex:
