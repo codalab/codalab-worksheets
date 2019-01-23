@@ -4,6 +4,8 @@ like Slurm
 """
 
 from argparse import ArgumentParser
+from codalabworker.bundle_state import State
+from codalabworker.bundle_state_objects import BundleInfo, RunResources, WorkerRun
 import docker
 import errno
 import fcntl
@@ -28,7 +30,7 @@ def main():
 def write_state(state, state_file, lock_file):
     while True:
         try:
-            lock_file = open(lock_file, 'w+')
+            lock_file = open(lock_file, "w+")
             fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
             break
         except IOError as ex:
@@ -36,22 +38,30 @@ def write_state(state, state_file, lock_file):
                 raise
             else:
                 time.sleep(0.1)
-    with open(state_file, 'wb') as f:
-        json.dump(state, f)
+    with open(state_file, "wb") as f:
+        json.dump(state.__dict__, f)
     fcntl.flock(lock_file, fcntl.LOCK_UN)
     lock_file.close()
 
 
 def run_bundle(args):
-    # TODO: Make a dict of everything that needs to be reported to the worker
     with open(args.bundle_file, "r") as infile:
-        bundle = json.load(infile)
+        bundle_dict = json.load(infile)
+        bundle = BundleInfo.from_dict(bundle_dict)
     with open(args.resources_file, "r") as infile:
-        resources = json.load(infile)
-    run_state = {"docker_image": resources["request_docker_image"]}
+        resources_dict = json.load(infile)
+        resources = RunResources.from_dict(resources_dict)
+    run_state = WorkerRun(
+        uuid=bundle.uuid,
+        run_status="Starting run",
+        start_time=time.time(),
+        docker_image=resources.docker_image,
+        info={},
+        state=State.PREPARING,
+    )
     try:
-        run_state["docker_image"] = pull_docker_image(
-            bundle["uuid"], resources["request_docker_image"]
+        run_state.docker_image = pull_docker_image(
+            bundle.uuid, resources.docker_image
         )
     except Exception as ex:
         # TODO fail the image with ex
