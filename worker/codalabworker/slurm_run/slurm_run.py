@@ -6,10 +6,12 @@ like Slurm
 from argparse import ArgumentParser
 from codalabworker.bundle_state import State
 from codalabworker.bundle_state_objects import BundleInfo, RunResources, WorkerRun
+from codalabworker import docker_utils
 import docker
 import errno
 import fcntl
 import json
+import os
 import time
 
 
@@ -17,6 +19,7 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument("--bundle-file", type=str)
     parser.add_argument("--resources-file", type=str)
+    parser.add_argument("--state-file", type=str)
     parser.add_argument("--lock-file", type=str)
     args = parser.parse_args()
     return args
@@ -60,12 +63,26 @@ def run_bundle(args):
         state=State.PREPARING,
     )
     try:
-        run_state.docker_image = pull_docker_image(
-            bundle.uuid, resources.docker_image
-        )
+        run_state.run_status = "Pulling docker image {}".format(resources.docker_image)
+        write_state(run_state, args.state_file, args.lock_file)
+        try:
+            run_state.docker_image = pull_docker_image(
+                bundle.uuid, resources.docker_image
+            )
+        except Exception as ex:
+            # TODO Set failure messages ie to be docker
+            print("Docker image download failed: {}".format(ex))
+            raise
+        run_state.run_status = "Preparing the filesystem"
+        write_state(run_state, args.state_file, args.lock_file)
+        wait_for_bundle_folder(bundle)
+        container = start_container(bundle, resources)
+        run_state.run_status = "Running job in Docker"
+        run_state.state = State.RUNNING
+        write_state(run_state, args.state_file, args.lock_file)
     except Exception as ex:
         # TODO fail the image with ex
-        print("Docker image download failed: {}".format(ex))
+        print("Run failed: {}".format(ex))
 
 
 def pull_docker_image(uuid, image_spec):
@@ -92,6 +109,69 @@ def pull_docker_image(uuid, image_spec):
             docker_client.images.remove(tag)
     image.tag("codalab-image-cache/last-used", tag=timestamp)
     return image.attrs.get("RepoDigests", [image_spec])[0]
+
+
+def wait_for_bundle_folder(bundle):
+    """
+    To avoid NFS directory caching issues, the bundle manager creates
+    the bundle folder on shared filesystems. Here we wait for the cache
+    to be renewed on the worker machine and for the folder to show up
+    """
+    retries_left = 120
+    while not os.path.exists(bundle.location) and retries_left > 0:
+        retries_left -= 1
+        time.sleep(0.5)
+    if not retries_left:
+        raise Exception("Bundle location {} not found".format(bundle.location))
+
+
+def start_container(bundle, resources):
+    """
+    Symlinks to dependencies on the filesystem, sets docker runtime and network, starts and returns the container object
+    """
+    docker_client = docker.from_env()
+    # Symlink dependencies
+    docker_dependencies = []
+    docker_dependencies_path = "/" + bundle.uuid + "_dependencies"
+    for dep_key, dep in bundle.dependencies.items():
+        child_path = os.path.normpath(os.path.join(bundle.location, dep.child_path))
+        if not child_path.startswith(bundle.location):
+            raise Exception("Invalid key for dependency: %s" % (dep.child_path))
+
+        docker_dependency_path = os.path.join(docker_dependencies_path, dep.child_path)
+        os.symlink(docker_dependency_path, child_path)
+        dependency_path = os.path.realpath(
+            os.path.join(os.path.realpath(dep.location), dep.parent_path)
+        )
+        # These are turned into docker volume bindings like:
+        #   dependency_path:docker_dependency_path:ro
+        docker_dependencies.append((dependency_path, docker_dependency_path))
+
+    # Figure out docker details
+    docker_runtime = "nvidia" if resources.gpus else "runc"
+    if resources.network:
+        docker_network_name = "codalab-external"
+        internal = False
+    else:
+        docker_network_name = "codalab-internal"
+        internal = True
+    try:
+        docker_client.networks.create(
+            docker_network_name, internal=internal, check_duplicate=True
+        )
+    except docker.errors.APIError:
+        # Network already exists, go on
+        pass
+    return docker_utils.start_bundle_container(
+        bundle.location,
+        bundle.uuid,
+        docker_dependencies,
+        bundle.command,
+        resources.docker_image,
+        network=docker_network_name,
+        memory_bytes=resources.memory,
+        runtime=docker_runtime,
+    )
 
 
 if __name__ == "__main__":
