@@ -5,6 +5,8 @@ like Slurm
 
 from argparse import ArgumentParser
 import docker
+import errno
+import fcntl
 import json
 import time
 
@@ -13,21 +15,39 @@ def parse_args():
     parser = ArgumentParser()
     parser.add_argument("--bundle-file", type=str)
     parser.add_argument("--resources-file", type=str)
+    parser.add_argument("--lock-file", type=str)
     args = parser.parse_args()
     return args
 
 
 def main():
     args = parse_args()
-    with open(args.bundle_file, "r") as infile:
-        bundle_dict = json.load(infile)
-    with open(args.resources_file, "r") as infile:
-        resources_dict = json.load(infile)
-    run_bundle(bundle_dict, resources_dict)
+    run_bundle(args)
 
 
-def run_bundle(bundle, resources):
+def write_state(state, state_file, lock_file):
+    while True:
+        try:
+            lock_file = open(lock_file, 'w+')
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            break
+        except IOError as ex:
+            if ex.errno != errno.EAGAIN:
+                raise
+            else:
+                time.sleep(0.1)
+    with open(state_file, 'wb') as f:
+        json.dump(state, f)
+    fcntl.flock(lock_file, fcntl.LOCK_UN)
+    lock_file.close()
+
+
+def run_bundle(args):
     # TODO: Make a dict of everything that needs to be reported to the worker
+    with open(args.bundle_file, "r") as infile:
+        bundle = json.load(infile)
+    with open(args.resources_file, "r") as infile:
+        resources = json.load(infile)
     run_state = {"docker_image": resources["request_docker_image"]}
     try:
         run_state["docker_image"] = pull_docker_image(
