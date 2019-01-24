@@ -18,7 +18,7 @@ class SlurmRunManager(BaseRunManager):
     RESOURCES_FILE_NAME = "resources.json"
     SLURM_OUTPUT_FILE_NAME = "slurm_log.txt"
 
-    def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='cl-slurm-worker', slurm_host='sc'):
+    def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='cl-slurm-job', slurm_host='sc'):
         self.runs = set()  # List[str] UUIDs of runs
         self.run_states = {}  # uuid -> Dict (of WorkerRun)
         self.run_commands = {}  # uuid -> List[Command]
