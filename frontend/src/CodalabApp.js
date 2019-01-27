@@ -10,6 +10,7 @@ import Login from './components/Login';
 import Bundle from './components/Bundle';
 import history from './history';
 import Cookies from 'universal-cookie';
+import Worksheet from './components/worksheets/Worksheet';
 
 ////////////////////////////////////////////////////////////
 // 1. Click the public page
@@ -21,9 +22,11 @@ function CodalabApp() {
     return (
         <CookiesProvider>
             <Router history={history}>
-                <div>
+                <div style={{ height: '100%' }}>
+                    {/*NavBar. Rendered as a route on all pages so it can access the navigation props.*/}
                     <Route path='/' render={(props) => <NavBar {...props} auth={fakeAuth} />} />
 
+                    {/*Main Content.*/}
                     <Switch>
                         <Route path='/' exact component={PublicHome} />
                         <Route path='/account/signup' component={Login} />
@@ -32,11 +35,13 @@ function CodalabApp() {
                             render={(props) => <Login {...props} auth={fakeAuth} />}
                         />
                         <PrivateRoute path='/account/profile' component={UserInfo} />
+                        <Route path='/worksheets/:uuid' component={Worksheet} />
                         <Route path='/bundle/:uuid' component={Bundle} />
                         <Route component={NoPage} />
                     </Switch>
 
-                    <Route path='/' render={(props) => <Footer {...props} />} />
+                    {/*Footer.*/}
+                    <Footer />
                 </div>
             </Router>
         </CookiesProvider>

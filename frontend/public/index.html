@@ -23,15 +23,15 @@
     <!--Hack for CSS. TODO: remove this, replace it with integration of LESS into the build pipeline.-->
     <link rel="stylesheet" type="text/css" href="%PUBLIC_URL%/css/imports.css">
     <link rel="stylesheet" type="text/css" href="%PUBLIC_URL%/css/jquery-editable.css">
-
-
+    <script type="text/javascript" src="%PUBLIC_URL%/js/ws_mousetrap_fork.js"></script>
+    <script id="mathjaxjs" type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
     <title>CodaLab Worksheets</title>
   </head>
   <body>
     <noscript>
       You need to enable JavaScript to run this app.
     </noscript>
-    <div id="root"></div>
+    <div id="root" style="height: 100%"></div>
     <!--
       This HTML file is a template.
       If you open it directly in the browser, you will see an empty page.
@@ -42,5 +42,16 @@
       To begin the development, run `npm start` or `yarn start`.
       To create a production bundle, use `npm run build` or `yarn build`.
     -->
+
+    <script>
+      document.querySelector('#mathjaxjs').addEventListener('load', function() {
+        MathJax.Hub.Config({
+          tex2jax: {
+            skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+            inlineMath: [['$','$']]
+          }
+        });
+      });
+    </script>
   </body>
 </html>

@@ -3,7 +3,7 @@ import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
 import { CODALAB_VERSION } from '../constants';
 
-class NavBar extends React.Component {
+class Footer extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
@@ -13,9 +13,9 @@ class NavBar extends React.Component {
     /** Renderer. */
     render() {
         return (
-            <footer class='navbar-fixed-bottom'>
-                <div class='container-fluid'>
-                    <ul class='nav navbar-nav navbar-right'>
+            <footer className='navbar-fixed-bottom'>
+                <div className='container-fluid'>
+                    <ul className='nav navbar-nav navbar-right'>
                         <li>
                             <a
                                 href='https://github.com/codalab/codalab-worksheets/wiki/Project_About_CodaLab'
@@ -47,4 +47,4 @@ class NavBar extends React.Component {
     }
 }
 
-export default NavBar;
+export default Footer;

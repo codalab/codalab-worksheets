@@ -12,36 +12,36 @@ class NavBar extends React.Component {
     /** Renderer. */
     render() {
         return (
-            <nav class='navbar navbar-default navbar-fixed-top' role='navigation'>
-                <div class='container-fluid'>
-                    <div class='navbar-header'>
+            <nav className='navbar navbar-default navbar-fixed-top' role='navigation'>
+                <div className='container-fluid'>
+                    <div className='navbar-header'>
                         <button
                             type='button'
-                            class='navbar-toggle collapsed'
+                            className='navbar-toggle collapsed'
                             data-toggle='collapse'
                             data-target='#navbar_collapse'
                         >
-                            <span class='sr-only'>Toggle navigation</span>
-                            <span class='icon-bar' />
-                            <span class='icon-bar' />
-                            <span class='icon-bar' />
+                            <span className='sr-only'>Toggle navigation</span>
+                            <span className='icon-bar' />
+                            <span className='icon-bar' />
+                            <span className='icon-bar' />
                         </button>
-                        <a class='navbar-brand' href='/' tabIndex={1} target='_self'>
+                        <a className='navbar-brand' href='/' tabIndex={1} target='_self'>
                             <img
                                 src={process.env.PUBLIC_URL + '/img/codalab-logo.png'}
                                 alt='Home'
                             />
                         </a>
                     </div>
-                    <div class='collapse navbar-collapse' id='navbar_collapse'>
-                        <ul class='nav navbar-nav navbar-right'>
+                    <div className='collapse navbar-collapse' id='navbar_collapse'>
+                        <ul className='nav navbar-nav navbar-right'>
                             <li>
                                 <a href='/rest/worksheets/?name=home' tabIndex={2} target='_self'>
                                     Public Home
                                 </a>
                             </li>
                             {this.props.auth.isAuthenticated && (
-                                <li class='user-authenticated'>
+                                <li className='user-authenticated'>
                                     <a
                                         href='/rest/worksheets/?name=%2F'
                                         tabIndex={2}
@@ -52,7 +52,7 @@ class NavBar extends React.Component {
                                 </li>
                             )}
                             {this.props.auth.isAuthenticated && (
-                                <li class='user-authenticated'>
+                                <li className='user-authenticated'>
                                     <a
                                         href='/rest/worksheets/?name=dashboard'
                                         tabIndex={2}
@@ -71,17 +71,17 @@ class NavBar extends React.Component {
                                 </a>
                             </li>
                             {this.props.auth.isAuthenticated && (
-                                <li class="user-authenticated dropdown {% active request '/accounts/' %}">
+                                <li className="user-authenticated dropdown {% active request '/accounts/' %}">
                                     <a>
                                         <img
                                             src={
                                                 process.env.PUBLIC_URL + '/img/icon_mini_avatar.png'
                                             }
-                                            class='mini-avatar'
+                                            className='mini-avatar'
                                         />{' '}
-                                        <span class='user-name' /> <span class='caret' />
+                                        <span className='user-name' /> <span className='caret' />
                                     </a>
-                                    <ul class='dropdown-menu' role='menu'>
+                                    <ul className='dropdown-menu' role='menu'>
                                         <li>
                                             <a href='/account/profile' target='_self'>
                                                 My Account
@@ -104,14 +104,14 @@ class NavBar extends React.Component {
                                 </li>
                             )}
                             {!this.props.auth.isAuthenticated && (
-                                <li class='user-not-authenticated'>
+                                <li className='user-not-authenticated'>
                                     <a href='/account/signup' target='_self'>
                                         Sign Up
                                     </a>
                                 </li>
                             )}
                             {!this.props.auth.isAuthenticated && (
-                                <li class='user-not-authenticated'>
+                                <li className='user-not-authenticated'>
                                     <a href='/account/login' target='_self'>
                                         Sign In
                                     </a>

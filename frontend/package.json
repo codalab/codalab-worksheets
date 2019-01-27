@@ -12,6 +12,7 @@
     "@material-ui/icons": "^3.0.1",
     "classnames": "^2.2.6",
     "jquery": "^3.3.1",
+    "marked": "^0.6.0",
     "react": "^16.6.3",
     "react-cookie": "^3.0.8",
     "react-dom": "^16.6.3",
@@ -19,7 +20,8 @@
     "react-scripts": "2.1.1",
     "reselect": "^4.0.0",
     "seamless-immutable": "^7.1.4",
-    "underscore": "^1.9.1"
+    "underscore": "^1.9.1",
+    "wolfy87-eventemitter": "^5.2.5"
   },
   "devDependencies": {
     "prettier": "^1.15.3"
