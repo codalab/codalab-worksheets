@@ -306,7 +306,10 @@ class LocalRunStateMachine(StateTransitioner):
                     'Time limit %s exceeded.' % duration_str(run_state.resources['request_time'])
                 )
 
-            if run_state.max_memory > run_state.resources['request_memory'] or run_state.info.get('exitcode', '0') == '137':
+            if (
+                run_state.max_memory > run_state.resources['request_memory']
+                or run_state.info.get('exitcode', '0') == '137'
+            ):
                 kill_messages.append(
                     'Memory limit %s exceeded.'
                     % duration_str(run_state.resources['request_memory'])
