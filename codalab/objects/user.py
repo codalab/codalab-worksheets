@@ -59,7 +59,7 @@ class User(ORMObject):
         assert password is not None
         assert salt and '$' not in salt
         hash = pbkdf2(password, salt, iterations)
-        hash = base64.b64encode(hash).decode('ascii').strip()
+        hash = base64.b64encode(bytes(hash)).decode('ascii').strip()
         return "%s$%d$%s$%s" % ('pbkdf2_sha256', iterations, salt, hash)
 
     @staticmethod

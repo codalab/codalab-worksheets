@@ -49,7 +49,7 @@ class RestOAuthHandler(object):
     def _make_token_request(self, data):
         headers = {
             'Content-Type': 'application/x-www-form-urlencoded',
-            'Authorization': 'Basic ' + base64.b64encode('codalab_cli_client:'),
+            'Authorization': 'Basic ' + base64.b64encode(b'codalab_cli_client:'),
             'X-Requested-With': 'XMLHttpRequest',
         }
         headers.update(self._extra_headers)
