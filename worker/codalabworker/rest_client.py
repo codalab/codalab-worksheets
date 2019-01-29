@@ -65,7 +65,7 @@ class RestClient(object):
         if query_params is not None:
             path = path + '?' + urllib.parse.urlencode(query_params)
 
-        # Everything needs to be utf-8 encoded or else urllib2 will complain
+        # Everything needs to be utf-8 encoded or else urllib will complain
         if 'Content-Type' in headers:
             headers['Content-Type'] += '; charset=utf-8'
         if data and isinstance(data, str):

@@ -54,7 +54,7 @@ class RestOAuthHandler(object):
         }
         headers.update(self._extra_headers)
         request = urllib.request.Request(
-            self._address + '/rest/oauth2/token', headers=headers, data=urllib.parse.urlencode(data)
+            self._address + '/rest/oauth2/token', headers=headers, data=urllib.parse.urlencode(data).encode('utf-8')
         )
         try:
             response = urllib.request.urlopen(request)
