@@ -90,7 +90,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         dependencies = {}
         dependency_locks = {}
         paths = set()
-        for dep, dep_state in state['dependencies'].items():
+        for dep, dep_state in list(state['dependencies'].items()):
             full_path = os.path.join(self.dependencies_dir, dep_state.path)
             if os.path.exists(full_path):
                 dependencies[dep] = dep_state
@@ -147,7 +147,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         logger.info("Stopped local dependency manager. Exiting.")
 
     def _process_dependencies(self):
-        for entry, state in self._dependencies.items():
+        for entry, state in list(self._dependencies.items()):
             with self._dependency_locks[entry]:
                 self._dependencies[entry] = self.transition(state)
 
@@ -161,12 +161,12 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
             self._acquire_all_locks()
             failed_deps = {
                 dep: state
-                for dep, state in self._dependencies.items()
+                for dep, state in list(self._dependencies.items())
                 if state.stage == DependencyStage.FAILED
                 and time.time() - state.last_used
                 > LocalFileSystemDependencyManager.DEPENDENCY_FAILURE_COOLDOWN
             }
-            for dependency, dependency_state in failed_deps.items():
+            for dependency, dependency_state in list(failed_deps.items()):
                 self._delete_dependency(dependency)
             self._release_all_locks()
 
@@ -182,7 +182,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         while True:
             with self._global_lock:
                 self._acquire_all_locks()
-                bytes_used = sum(dep.size_bytes for dep in self._dependencies.values())
+                bytes_used = sum(dep.size_bytes for dep in list(self._dependencies.values()))
                 serialized_length = len(codalabworker.pyjson.dumps(self._dependencies))
                 if (
                     bytes_used > self._max_cache_size_bytes
@@ -198,21 +198,21 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
                     )
                     ready_deps = {
                         dep: state
-                        for dep, state in self._dependencies.items()
+                        for dep, state in list(self._dependencies.items())
                         if state.stage == DependencyStage.READY and not state.dependents
                     }
                     failed_deps = {
                         dep: state
-                        for dep, state in self._dependencies.items()
+                        for dep, state in list(self._dependencies.items())
                         if state.stage == DependencyStage.FAILED
                     }
                     if failed_deps:
                         dep_to_remove = min(
-                            failed_deps.iteritems(), key=lambda dep_state: dep_state[1].last_used
+                            iter(failed_deps.items()), key=lambda dep_state: dep_state[1].last_used
                         )[0]
                     elif ready_deps:
                         dep_to_remove = min(
-                            ready_deps.iteritems(), key=lambda dep_state: dep_state[1].last_used
+                            iter(ready_deps.items()), key=lambda dep_state: dep_state[1].last_used
                         )[0]
                     else:
                         logger.info(
@@ -309,7 +309,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Acquires all dependency locks in the thread it's called from
         """
         with self._global_lock:
-            for dependency, lock in self._dependency_locks.iteritems():
+            for dependency, lock in self._dependency_locks.items():
                 lock.acquire()
 
     def _release_all_locks(self):
@@ -317,7 +317,7 @@ class LocalFileSystemDependencyManager(StateTransitioner, BaseDependencyManager)
         Releases all dependency locks in the thread it's called from
         """
         with self._global_lock:
-            for dependency, lock in self._dependency_locks.iteritems():
+            for dependency, lock in self._dependency_locks.items():
                 lock.release()
 
     def _assign_path(self, dependency):

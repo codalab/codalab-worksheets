@@ -96,7 +96,7 @@ class WorkerModel(object):
 
     @staticmethod
     def _deserialize_dependencies(blob):
-        return map(tuple, json.loads(blob))
+        return list(map(tuple, json.loads(blob)))
 
     def worker_cleanup(self, user_id, worker_id):
         """
@@ -172,7 +172,7 @@ class WorkerModel(object):
         }
         for row in worker_run_rows:
             worker_dict[(row.user_id, row.worker_id)]['run_uuids'].append(row.run_uuid)
-        return worker_dict.values()
+        return list(worker_dict.values())
 
     def get_bundle_worker(self, uuid):
         """

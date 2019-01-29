@@ -14,13 +14,13 @@ import sys
 import multiprocessing
 
 
-from bundle_service_client import BundleServiceClient, BundleAuthException
-import docker_utils
-from formatting import parse_size
-from worker import Worker
-from local_run.local_dependency_manager import LocalFileSystemDependencyManager
-from local_run.docker_image_manager import DockerImageManager
-from local_run.local_run_manager import LocalRunManager
+from .bundle_service_client import BundleServiceClient, BundleAuthException
+from . import docker_utils
+from .formatting import parse_size
+from .worker import Worker
+from .local_run.local_dependency_manager import LocalFileSystemDependencyManager
+from .local_run.docker_image_manager import DockerImageManager
+from .local_run.local_run_manager import LocalRunManager
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +123,7 @@ chmod 600 %s""" % args.password_file
     else:
         username = os.environ.get('CODALAB_USERNAME')
         if username is None:
-            username = raw_input('Username: ')
+            username = input('Username: ')
         password = os.environ.get('CODALAB_PASSWORD')
         if password is None:
             password = getpass.getpass()
@@ -215,7 +215,7 @@ def parse_cpuset_args(arg):
     """
     cpu_count = multiprocessing.cpu_count()
     if arg == 'ALL':
-        cpuset = range(cpu_count)
+        cpuset = list(range(cpu_count))
     else:
         try:
             cpuset = [int(s) for s in arg.split(',')]

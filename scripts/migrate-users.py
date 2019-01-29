@@ -78,7 +78,7 @@ if django_config['database']['ENGINE'] == 'django.db.backends.mysql':
         db_params['host'] = django_config['database']['HOST']
     if django_config['database'].get('PORT', None):
         db_params['port'] = django_config['database']['PORT']
-        if isinstance(db_params['port'], unicode):
+        if isinstance(db_params['port'], str):
             db_params['port'] = int(db_params['port'])
     django_db = MySQLdb.connect(**db_params)
 elif django_config['database']['ENGINE'] == 'django.db.backends.sqlite3':

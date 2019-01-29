@@ -23,13 +23,13 @@ class RunBundle(DerivedBundle):
     # Request a machine with this much resources and don't let run exceed these resources
     # Don't format metadata specs
     # fmt: off
-    METADATA_SPECS.append(MetadataSpec('request_docker_image', basestring, 'Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.', completer=DockerImagesCompleter, hide_when_anonymous=True, default=None))
-    METADATA_SPECS.append(MetadataSpec('request_time', basestring, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.', formatting='duration', default=None))
-    METADATA_SPECS.append(MetadataSpec('request_memory', basestring, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='2g'))
-    METADATA_SPECS.append(MetadataSpec('request_disk', basestring, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.', formatting='size', default=None))
+    METADATA_SPECS.append(MetadataSpec('request_docker_image', str, 'Which docker image (either tag or digest, e.g., codalab/default-cpu:latest) we wish to use.', completer=DockerImagesCompleter, hide_when_anonymous=True, default=None))
+    METADATA_SPECS.append(MetadataSpec('request_time', str, 'Amount of time (e.g., 3, 3m, 3h, 3d) allowed for this run. Defaults to user time quota left.', formatting='duration', default=None))
+    METADATA_SPECS.append(MetadataSpec('request_memory', str, 'Amount of memory (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run.', formatting='size', default='2g'))
+    METADATA_SPECS.append(MetadataSpec('request_disk', str, 'Amount of disk space (e.g., 3, 3k, 3m, 3g, 3t) allowed for this run. Defaults to user disk quota left.', formatting='size', default=None))
     METADATA_SPECS.append(MetadataSpec('request_cpus', int, 'Number of CPUs allowed for this run.', default=1))
     METADATA_SPECS.append(MetadataSpec('request_gpus', int, 'Number of GPUs allowed for this run.', default=0))
-    METADATA_SPECS.append(MetadataSpec('request_queue', basestring, 'Submit run to this job queue.', hide_when_anonymous=True, default=None))
+    METADATA_SPECS.append(MetadataSpec('request_queue', str, 'Submit run to this job queue.', hide_when_anonymous=True, default=None))
     METADATA_SPECS.append(MetadataSpec('request_priority', int, 'Job priority (higher is more important).', default=None))
     METADATA_SPECS.append(MetadataSpec('request_network', bool, 'Whether to allow network access.', default=False))
 
@@ -43,20 +43,20 @@ class RunBundle(DerivedBundle):
 
     METADATA_SPECS.append(MetadataSpec('started', int, 'Time when this bundle started executing.', generated=True, formatting='date'))
     METADATA_SPECS.append(MetadataSpec('last_updated', int, 'Time when information about this bundle was last updated.', generated=True, formatting='date'))
-    METADATA_SPECS.append(MetadataSpec('run_status', basestring, 'Execution status of the bundle.', generated=True))
+    METADATA_SPECS.append(MetadataSpec('run_status', str, 'Execution status of the bundle.', generated=True))
 
     # Information about running
-    METADATA_SPECS.append(MetadataSpec('docker_image', basestring, 'Which docker image was used to run the process.', generated=True, hide_when_anonymous=True))
+    METADATA_SPECS.append(MetadataSpec('docker_image', str, 'Which docker image was used to run the process.', generated=True, hide_when_anonymous=True))
     METADATA_SPECS.append(MetadataSpec('exitcode', int, 'Exitcode of the process.', generated=True))
-    METADATA_SPECS.append(MetadataSpec('job_handle', basestring, 'Identifies the job handle (internal).', generated=True, hide_when_anonymous=True))
-    METADATA_SPECS.append(MetadataSpec('remote', basestring, 'Where this job is/was run (internal).', generated=True, hide_when_anonymous=True))
+    METADATA_SPECS.append(MetadataSpec('job_handle', str, 'Identifies the job handle (internal).', generated=True, hide_when_anonymous=True))
+    METADATA_SPECS.append(MetadataSpec('remote', str, 'Where this job is/was run (internal).', generated=True, hide_when_anonymous=True))
     # fmt: on
 
     @classmethod
     def construct(
         cls, targets, command, metadata, owner_id, uuid=None, data_hash=None, state=State.CREATED
     ):
-        if not isinstance(command, basestring):
+        if not isinstance(command, str):
             raise UsageError('%r is not a valid command!' % (command,))
         return super(RunBundle, cls).construct(
             targets, command, metadata, owner_id, uuid, data_hash, state

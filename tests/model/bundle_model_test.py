@@ -9,7 +9,7 @@ from codalab.model.bundle_model import BundleModel, db_metadata
 def metadata_to_dicts(uuid, metadata):
     return [
         {'bundle_uuid': uuid, 'metadata_key': key, 'metadata_value': value}
-        for (key, value) in metadata.iteritems()
+        for (key, value) in metadata.items()
     ]
 
 
@@ -21,7 +21,7 @@ def canonicalize(metadata_dicts):
   '''
     # Strip out any 'id' columns coming from the database.
     return sorted(
-        sorted((k, v) for (k, v) in dict(metadata_dict).iteritems() if k != 'id')
+        sorted((k, v) for (k, v) in dict(metadata_dict).items() if k != 'id')
         for metadata_dict in metadata_dicts
     )
 
@@ -36,9 +36,9 @@ class MockDependency(object):
 
     def __init__(self, row=None):
         if row:
-            for (field, value) in self._fields.iteritems():
+            for (field, value) in self._fields.items():
                 self._tester.assertEqual(row[field], value)
-        for (field, value) in self._fields.iteritems():
+        for (field, value) in self._fields.items():
             setattr(self, field, value)
 
     def to_dict(self):
@@ -57,7 +57,7 @@ class MockBundle(object):
 
     def __init__(self, row=None):
         if row:
-            for (field, value) in self._fields.iteritems():
+            for (field, value) in self._fields.items():
                 if field == 'metadata':
                     actual_value = canonicalize(row[field])
                     expected_value = canonicalize(
@@ -68,7 +68,7 @@ class MockBundle(object):
                     [MockDependency(dep) for dep in row[field]]
                 else:
                     self._tester.assertEqual(row[field], value)
-        for (field, value) in self._fields.iteritems():
+        for (field, value) in self._fields.items():
             setattr(self, field, value)
         self._validate_called = False
 

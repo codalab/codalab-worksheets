@@ -110,5 +110,5 @@ class ThreadDict(dict):
         """
         Joins and removes all the threads in the dict
         """
-        for key in self.keys():
+        for key in list(self.keys()):
             self[key].join()

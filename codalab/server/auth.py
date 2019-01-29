@@ -4,8 +4,8 @@ AuthHandler encapsulates the logic to authenticate users on the server-side.
 import base64
 import json
 import threading
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 
 
 # TODO(sckoo): clean up auth logic across:
@@ -53,14 +53,14 @@ class RestOAuthHandler(object):
             'X-Requested-With': 'XMLHttpRequest',
         }
         headers.update(self._extra_headers)
-        request = urllib2.Request(
-            self._address + '/rest/oauth2/token', headers=headers, data=urllib.urlencode(data)
+        request = urllib.request.Request(
+            self._address + '/rest/oauth2/token', headers=headers, data=urllib.parse.urlencode(data)
         )
         try:
-            response = urllib2.urlopen(request)
+            response = urllib.request.urlopen(request)
             result = json.load(response)
             return result
-        except urllib2.HTTPError as e:
+        except urllib.error.HTTPError as e:
             if e.code == 401:
                 return None
             raise

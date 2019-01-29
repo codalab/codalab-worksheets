@@ -87,7 +87,7 @@ def check_isfile(path, fn_name):
 
 
 def path_is_url(path):
-    if isinstance(path, basestring):
+    if isinstance(path, str):
         for prefix in ['http', 'https', 'ftp']:
             if path.startswith(prefix + '://'):
                 return True
@@ -105,7 +105,7 @@ def safe_join(*paths):
     Note that os.path.join has this functionality EXCEPT at the end of the list,
     which causes problems when a target subpath is empty.
     """
-    return os.path.join(*filter(None, paths))
+    return os.path.join(*[_f for _f in paths if _f])
 
 
 def get_relative_path(root, path):

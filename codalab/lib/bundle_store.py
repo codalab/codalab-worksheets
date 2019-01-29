@@ -5,6 +5,7 @@ from collections import OrderedDict
 
 from codalab.lib import path_util, spec_util
 from codalabworker.bundle_state import State
+from functools import reduce
 
 
 class BundleStoreCleanupMixin(object):
@@ -307,7 +308,7 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
                     dep_paths = [
                         os.path.join(bundle_path, dep.child_path) for dep in bundle.dependencies
                     ]
-                    to_delete += filter(os.path.exists, dep_paths)
+                    to_delete += list(filter(os.path.exists, dep_paths))
             return to_delete
 
         def _check_other_paths(other_paths, db_bundle_by_uuid):
@@ -340,14 +341,14 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             partition_path = os.path.join(
                 self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY
             )
-            entries = map(
+            entries = list(map(
                 lambda f: os.path.join(partition_path, f),
                 reduce(lambda d, f: d + f, path_util.ls(partition_path)),
-            )
-            bundle_paths = filter(_is_bundle, entries)
+            ))
+            bundle_paths = list(filter(_is_bundle, entries))
             other_paths = set(entries) - set(bundle_paths)
 
-            uuids = map(_get_uuid, bundle_paths)
+            uuids = list(map(_get_uuid, bundle_paths))
             db_bundles = model.batch_get_bundles(uuid=uuids)
             db_bundle_by_uuid = dict()
             for bundle in db_bundles:

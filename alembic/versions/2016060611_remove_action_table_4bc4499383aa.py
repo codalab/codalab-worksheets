@@ -23,8 +23,8 @@ def downgrade():
     sa.Column('id', mysql.INTEGER(display_width=11), nullable=False),
     sa.Column('bundle_uuid', mysql.VARCHAR(length=63), nullable=False),
     sa.Column('action', mysql.TEXT(), nullable=False),
-    sa.ForeignKeyConstraint(['bundle_uuid'], [u'bundle.uuid'], name=u'bundle_action_ibfk_1'),
+    sa.ForeignKeyConstraint(['bundle_uuid'], ['bundle.uuid'], name='bundle_action_ibfk_1'),
     sa.PrimaryKeyConstraint('id'),
-    mysql_default_charset=u'latin1',
-    mysql_engine=u'InnoDB'
+    mysql_default_charset='latin1',
+    mysql_engine='InnoDB'
     )

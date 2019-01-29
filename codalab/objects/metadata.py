@@ -12,7 +12,7 @@ class Metadata(object):
         if isinstance(metadata_dict, (list, tuple)):
             metadata_dict = self.collapse_dicts(metadata_specs, metadata_dict)
         self._metadata_keys = set()
-        for (key, value) in metadata_dict.iteritems():
+        for (key, value) in metadata_dict.items():
             self.set_metadata_key(key, value)
 
     def validate(self, metadata_specs):
@@ -31,7 +31,7 @@ class Metadata(object):
                     # cast int to float
                     value = float(value)
                 # Validate formatted string fields
-                if issubclass(spec.type, basestring) and spec.formatting is not None and value:
+                if issubclass(spec.type, str) and spec.formatting is not None and value:
                     try:
                         if spec.formatting == 'duration':
                             formatting.parse_duration(value)
@@ -105,7 +105,7 @@ class Metadata(object):
                 values = value if spec.type == list else (value,)
                 for value in values:
                     result.append(
-                        {'metadata_key': unicode(spec.key), 'metadata_value': unicode(value)}
+                        {'metadata_key': str(spec.key), 'metadata_value': str(value)}
                     )
         return result
 

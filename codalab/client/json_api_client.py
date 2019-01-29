@@ -1,9 +1,9 @@
-import httplib
+import http.client
 import socket
 import sys
 import six
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 
 from codalab.common import http_error_to_exception, precondition, UsageError
 from codalabworker.rest_client import RestClient, RestClientException
@@ -14,7 +14,7 @@ def wrap_exception(message):
         def wrapper(*args, **kwargs):
             try:
                 return f(*args, **kwargs)
-            except urllib2.HTTPError as e:
+            except urllib.error.HTTPError as e:
                 # Translate known errors to the standard CodaLab errors
                 error_body = e.read()
                 exc = http_error_to_exception(e.code, error_body)
@@ -28,7 +28,7 @@ def wrap_exception(message):
                         JsonApiException(
                             message.format(*args, **kwargs)
                             + ': '
-                            + httplib.responses[e.code]
+                            + http.client.responses[e.code]
                             + ' - '
                             + error_body,
                             400 <= e.code < 500,
@@ -43,7 +43,7 @@ def wrap_exception(message):
                     ),
                     sys.exc_info()[2],
                 )
-            except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
+            except (urllib.error.URLError, http.client.HTTPException, socket.error) as e:
                 six.reraise(
                     JsonApiException,
                     JsonApiException(message.format(*args, **kwargs) + ': ' + str(e), False),
@@ -105,7 +105,7 @@ class JsonApiRelationship(dict):
             dict.__repr__(self),
         )
 
-    def __nonzero__(self):
+    def __bool__(self):
         """
         Implements value of bool(relationship).
         Should be true for non-empty relationships.
@@ -134,7 +134,7 @@ class EmptyJsonApiRelationship(JsonApiRelationship):
         """Empty relationships should be serialized as a null linkage."""
         return {'data': None}
 
-    def __nonzero__(self):
+    def __bool__(self):
         """Empty relationship should be falsey."""
         return False
 
@@ -186,9 +186,9 @@ class JsonApiClient(RestClient):
         if include is not None:
             result.append(('include', ','.join(include)))
 
-        for k, v in params.iteritems() if isinstance(params, dict) else params:
+        for k, v in iter(params.items()) if isinstance(params, dict) else params:
             if isinstance(v, list):
-                for item in map(unicode, v):
+                for item in map(str, v):
                     result.append((k, item))
             elif isinstance(v, bool):
                 result.append((k, int(v)))
@@ -286,7 +286,7 @@ class JsonApiClient(RestClient):
                 obj.update(obj_data['attributes'])
             if 'meta' in obj_data:
                 obj['meta'] = obj_data['meta']
-            for key, relationship in obj_data.get('relationships', {}).iteritems():
+            for key, relationship in obj_data.get('relationships', {}).items():
                 linkage = relationship['data']
                 if isinstance(linkage, list):
                     obj[key] = [unpack_linkage(l) for l in linkage]
@@ -371,7 +371,7 @@ class JsonApiClient(RestClient):
             packed_obj = {'type': type_}
             attributes = {}
             relationships = {}
-            for key, value in obj.iteritems():
+            for key, value in obj.items():
                 if isinstance(value, JsonApiRelationship):
                     relationships[key] = value.as_linkage()
                 elif key == 'id':
@@ -585,7 +585,7 @@ class JsonApiClient(RestClient):
 
     @wrap_exception('Unable to fetch contents info of bundle {1}')
     def fetch_contents_info(self, bundle_id, target_path='', depth=0):
-        request_path = '/bundles/%s/contents/info/%s' % (bundle_id, urllib.quote(target_path))
+        request_path = '/bundles/%s/contents/info/%s' % (bundle_id, urllib.parse.quote(target_path))
         response = self._make_request('GET', request_path, query_params={'depth': depth})
         return response['data']
 
@@ -603,7 +603,7 @@ class JsonApiClient(RestClient):
         :param tail: number of lines to summarize from end of file
         :return: file-like object containing requested data blob
         """
-        request_path = '/bundles/%s/contents/blob/%s' % (bundle_id, urllib.quote(target_path))
+        request_path = '/bundles/%s/contents/blob/%s' % (bundle_id, urllib.parse.quote(target_path))
         headers = {'Accept-Encoding': 'gzip'}
         if range_ is not None:
             headers['Range'] = 'bytes=%d-%d' % range_

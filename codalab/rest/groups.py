@@ -1,7 +1,7 @@
 """
 Worksheets REST API Groups Views.
 """
-import httplib
+import http.client
 
 from bottle import abort, get, delete, post, request, local
 
@@ -77,7 +77,7 @@ def delete_groups():
     for group_id in group_ids:
         local.model.delete_group(group_id)
 
-    abort(httplib.NO_CONTENT)
+    abort(http.client.NO_CONTENT)
 
 
 @post('/groups', apply=AuthenticatedPlugin())
@@ -132,4 +132,4 @@ def delete_group_members(group_spec):
     group = get_group_info(group_spec, need_admin=True)
     for user_id in user_ids:
         local.model.delete_user_in_group(user_id, group['uuid'])
-    abort(httplib.NO_CONTENT)
+    abort(http.client.NO_CONTENT)

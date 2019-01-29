@@ -10,7 +10,7 @@ import logging
 import os
 import docker
 
-from formatting import parse_size
+from .formatting import parse_size
 
 
 MIN_API_VERSION = '1.17'
@@ -46,7 +46,7 @@ class DockerException(Exception):
 @wrap_exception('Unable to use Docker')
 def test_version():
     version_info = client.version()
-    if map(int, version_info['ApiVersion'].split('.')) < map(int, MIN_API_VERSION.split('.')):
+    if list(map(int, version_info['ApiVersion'].split('.'))) < list(map(int, MIN_API_VERSION.split('.'))):
         raise DockerException('Please upgrade your version of Docker')
 
 

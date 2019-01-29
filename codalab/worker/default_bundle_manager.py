@@ -77,7 +77,7 @@ class DefaultBundleManager(BundleManager):
                 self._check_resource_failure(
                     self._compute_request_cpus(bundle),
                     global_fail_string='No workers available with %s CPUs, max available: %s',
-                    global_max=max(map(lambda worker: worker['cpus'], workers_list)),
+                    global_max=max([worker['cpus'] for worker in workers_list]),
                 )
             )
 
@@ -85,7 +85,7 @@ class DefaultBundleManager(BundleManager):
                 self._check_resource_failure(
                     self._compute_request_gpus(bundle),
                     global_fail_string='No workers available with %s GPUs, max available: %s',
-                    global_max=max(map(lambda worker: worker['gpus'], workers_list)),
+                    global_max=max([worker['gpus'] for worker in workers_list]),
                 )
             )
 

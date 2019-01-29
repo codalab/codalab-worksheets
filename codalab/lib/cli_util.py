@@ -28,7 +28,7 @@ def nested_dict_get(obj, *args, **kwargs):
     :return: retrieved value or default if it doesn't exist
     """
     default = kwargs.pop('default', None)
-    precondition(not kwargs, 'unsupported kwargs %s' % kwargs.keys())
+    precondition(not kwargs, 'unsupported kwargs %s' % list(kwargs.keys()))
     try:
         for arg in args:
             obj = obj[arg]

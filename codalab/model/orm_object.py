@@ -26,7 +26,7 @@ class ORMObject(object):
         if strict:
             for column in self.COLUMNS:
                 precondition(column in row, 'Row %s missing column: %s' % (row, column))
-        for (key, value) in row.iteritems():
+        for (key, value) in row.items():
             message = 'Row %s has extra column: %s' % (row, key)
             precondition(key in self.COLUMNS or key == 'id', message)
             setattr(self, key, value)

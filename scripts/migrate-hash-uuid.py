@@ -12,6 +12,7 @@ import os
 import sys
 import shlex
 from subprocess import Popen
+from functools import reduce
 
 sys.path.append('.')
 

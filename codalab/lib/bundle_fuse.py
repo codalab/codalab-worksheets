@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from __future__ import with_statement
+
 
 import os
 import errno
@@ -119,7 +119,7 @@ if fuse_is_available:
             self._timeouts[f] = self.timeout
 
             def func(*args, **kwargs):
-                kw = kwargs.items()
+                kw = list(kwargs.items())
                 kw.sort()
                 key = (args, tuple(kw))
                 try:
@@ -130,7 +130,7 @@ if fuse_is_available:
                     v = self.cache[key] = f(*args, **kwargs), time.time()
                 return v[0]
 
-            func.func_name = f.func_name
+            func.__name__ = f.__name__
 
             return func
 
@@ -140,7 +140,7 @@ if fuse_is_available:
         def yank_path(self, path):
             """Clear cache of results from a specific path"""
             for func in self._caches:
-                for key in self._caches[func].keys():
+                for key in list(self._caches[func].keys()):
                     if path in key[0]:
                         del self._caches[func][key]
 
