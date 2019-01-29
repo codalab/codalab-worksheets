@@ -37,7 +37,7 @@ import tempfile
 import textwrap
 import time
 from distutils.util import strtobool
-from urlparse import urlparse
+from urllib.parse import urlparse
 
 from codalab.client.json_api_client import JsonApiClient
 from codalab.common import CODALAB_VERSION, PermissionError, UsageError
@@ -90,7 +90,7 @@ def prompt_bool(prompt, default=None):
         raise ValueError("default must be None, True, or False")
 
     while True:
-        response = raw_input(prompt).strip()
+        response = input(prompt).strip()
         if default is not None and len(response) == 0:
             return default
         try:
@@ -107,7 +107,7 @@ def prompt_str(prompt, default=None):
         prompt = "%s " % (prompt,)
 
     while True:
-        response = raw_input(prompt).strip()
+        response = input(prompt).strip()
         if len(response) > 0:
             return response
         elif default is not None:
@@ -142,10 +142,10 @@ class CodaLabManager(object):
         codalab_cli = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
         def replace(x):
-            if isinstance(x, basestring):
+            if isinstance(x, str):
                 return x.replace('$CODALAB_CLI', codalab_cli)
             if isinstance(x, dict):
-                return dict((k, replace(v)) for k, v in x.items())
+                return dict((k, replace(v)) for k, v in list(x.items()))
             return x
 
         self.config = replace(self.config)
@@ -546,7 +546,7 @@ class CodaLabManager(object):
         self.save_state()
 
         # Print notice if server version is newer
-        if map(int, server_version.split('.')) > map(int, CODALAB_VERSION.split('.')):
+        if list(map(int, server_version.split('.'))) > list(map(int, CODALAB_VERSION.split('.'))):
             message = (
                 "NOTICE: "
                 "The instance you are connected to is running CodaLab v{}. "

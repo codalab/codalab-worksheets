@@ -28,7 +28,7 @@ import time
 import textwrap
 from collections import defaultdict
 from contextlib import closing
-from StringIO import StringIO
+from io import StringIO
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -278,7 +278,7 @@ class Commands(object):
                 name += ' (%s)' % ', '.join(list(aliases))
             return name
 
-        available_other_commands = filter(lambda command: command in cls.commands, OTHER_COMMANDS)
+        available_other_commands = [command for command in OTHER_COMMANDS if command in cls.commands]
 
         indent = 2
         max_length = max(
@@ -385,7 +385,7 @@ class Commands(object):
         subparsers = parser.add_subparsers(dest='command', metavar='command')
 
         # Build subparser for each subcommand
-        for command in cls.commands.itervalues():
+        for command in cls.commands.values():
             help = '\n'.join(command.help)
             subparser = subparsers.add_parser(
                 command.name,
@@ -465,7 +465,7 @@ class Commands(object):
                     kwargs['type'] = str
                     kwargs['nargs'] = '*'
                     kwargs['metavar'] = spec.metavar
-                elif issubclass(spec.type, basestring):
+                elif issubclass(spec.type, str):
                     kwargs['type'] = str
                     kwargs['metavar'] = spec.metavar
                 elif spec.type is bool:
@@ -718,7 +718,7 @@ class BundleCLI(object):
         """
         return {
             metadata_util.metadata_argument_to_key(key): value
-            for key, value in vars(args).iteritems()
+            for key, value in vars(args).items()
             if key.startswith('md_') and value is not None
         }
 
@@ -807,9 +807,9 @@ class BundleCLI(object):
             clean = lambda s: shlex.split(s.strip())[0] if s else ''
         except ValueError as e:
             raise UsageError(e.message)
-        return map(
+        return list(map(
             clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)
-        )
+        ))
 
     def do_command(self, argv, stdout=None, stderr=None):
         parser = Commands.build_parser(self)
@@ -942,7 +942,7 @@ class BundleCLI(object):
             else:
                 print >>self.stdout, args.name + ': ' + formatting.verbose_contents_str(instance)
         else:
-            for name, instance in aliases.items():
+            for name, instance in list(aliases.items()):
                 print >>self.stdout, name + ': ' + instance
 
     @Commands.command(
@@ -1545,7 +1545,7 @@ class BundleCLI(object):
         bundle_path = os.path.join(self.manager.codalab_home, 'local_bundles', uuid)
         target_specs = [parse_key_target(spec) for spec in args.target_spec]
         dependencies = [
-            (u'{}'.format(key), u'/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
+            ('{}'.format(key), '/{}_dependencies/{}'.format(uuid, key)) for key, _ in target_specs
         ]
 
         # Set up a directory to store the bundle.
@@ -2027,7 +2027,7 @@ class BundleCLI(object):
             else:
                 # Display all the fields
                 if i > 0:
-                    print
+                    print()
                 self.print_basic_info(client, info, args.raw)
                 if args.verbose:
                     self.print_children(info)
@@ -2043,7 +2043,7 @@ class BundleCLI(object):
     def key_value_str(key, value):
         return '%-26s: %s' % (
             key,
-            formatting.verbose_contents_str(unicode(value) if value is not None else None),
+            formatting.verbose_contents_str(str(value) if value is not None else None),
         )
 
     def print_basic_info(self, client, info, raw):
@@ -2071,7 +2071,7 @@ class BundleCLI(object):
 
         # Metadata fields (non-standard)
         standard_keys = set(spec.key for spec in cls.METADATA_SPECS)
-        for key, value in metadata.items():
+        for key, value in list(metadata.items()):
             if key in standard_keys:
                 continue
             lines.append(self.key_value_str(key, value))
@@ -2359,7 +2359,7 @@ class BundleCLI(object):
                 run_state = client.fetch('bundles', bundle_uuid)['state']
 
             # Read data.
-            for i in xrange(0, len(subpaths)):
+            for i in range(0, len(subpaths)):
                 # If the subpath we're interested in appears, check if it's a
                 # file and if so, initialize the offset.
                 if subpath_is_file[i] is None:
@@ -2894,7 +2894,7 @@ class BundleCLI(object):
                         lines = infile.readlines()
                 lines = [line.rstrip() for line in lines]
             else:
-                worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
+                worksheet_info['items'] = list(map(self.unpack_item, worksheet_info['items']))
                 lines = worksheet_util.request_lines(worksheet_info)
 
             # Update worksheet
@@ -2956,7 +2956,7 @@ class BundleCLI(object):
                 ]
             },
         )
-        worksheet_info['items'] = map(self.unpack_item, worksheet_info['items'])
+        worksheet_info['items'] = list(map(self.unpack_item, worksheet_info['items']))
 
         if args.raw:
             lines = worksheet_util.get_worksheet_lines(worksheet_info)
@@ -3301,7 +3301,7 @@ class BundleCLI(object):
 
         # Get the first member that matches the target user ID
         member = next(
-            itertools.ifilter(lambda m: m['id'] == user['id'], group['members'] + group['admins']),
+            filter(lambda m: m['id'] == user['id'], group['members'] + group['admins']),
             None,
         )
 
@@ -3533,7 +3533,7 @@ class BundleCLI(object):
                 value = user[key]
 
             if should_pretty_print:
-                print >>self.stdout, u'{:<15}: {}'.format(key, value).encode('utf-8')
+                print >>self.stdout, '{:<15}: {}'.format(key, value).encode('utf-8')
             else:
                 print >>self.stdout, value.encode('utf-8')
 

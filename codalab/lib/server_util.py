@@ -4,11 +4,11 @@ Don't import from non-REST API code, since this file imports bottle.
 """
 from functools import wraps
 import base64
-import httplib
+import http.client
 import sys
 import threading
 import time
-import urllib
+import urllib.request, urllib.parse, urllib.error
 import re
 
 from bottle import abort, request, HTTPResponse, redirect, app
@@ -117,7 +117,7 @@ def query_get_type(type_, key, default=None):
     try:
         return type_(value)
     except ValueError:
-        abort(httplib.BAD_REQUEST, "Invalid %s %r" % (type_.__name__, value))
+        abort(http.client.BAD_REQUEST, "Invalid %s %r" % (type_.__name__, value))
 
 
 def query_get_bool(key, default=False):
@@ -127,7 +127,7 @@ def query_get_bool(key, default=False):
     try:
         return bool(int(value))
     except ValueError:
-        abort(httplib.BAD_REQUEST, '%r parameter must be integer boolean' % key)
+        abort(http.client.BAD_REQUEST, '%r parameter must be integer boolean' % key)
 
 
 def query_get_json_api_include_set(supported):
@@ -143,7 +143,7 @@ def query_get_json_api_include_set(supported):
     requested = set(query_str.split(','))
     if not requested <= supported:
         abort(
-            httplib.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported))
+            http.client.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported))
         )
     return requested
 
@@ -178,7 +178,7 @@ def redirect_with_query(redirect_uri, params):
     """Return a Bottle redirect to the given target URI with query parameters
     encoded from the params dict.
     """
-    return redirect(redirect_uri + '?' + urllib.urlencode(params))
+    return redirect(redirect_uri + '?' + urllib.parse.urlencode(params))
 
 
 """

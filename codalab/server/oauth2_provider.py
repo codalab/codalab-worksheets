@@ -62,6 +62,7 @@ from codalab.lib.server_util import (
     extract_params,
     import_string,
 )
+import collections
 
 log = logging.getLogger(__name__)
 
@@ -151,13 +152,13 @@ class OAuth2Provider(object):
         """
         expires_in = self.app.config.get('OAUTH2_PROVIDER_TOKEN_EXPIRES_IN')
         token_generator = self.app.config.get('OAUTH2_PROVIDER_TOKEN_GENERATOR', None)
-        if token_generator and not callable(token_generator):
+        if token_generator and not isinstance(token_generator, collections.Callable):
             token_generator = import_string(token_generator)
 
         refresh_token_generator = self.app.config.get(
             'OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR', None
         )
-        if refresh_token_generator and not callable(refresh_token_generator):
+        if refresh_token_generator and not isinstance(refresh_token_generator, collections.Callable):
             refresh_token_generator = import_string(refresh_token_generator)
 
         if hasattr(self, '_validator'):

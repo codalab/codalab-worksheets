@@ -86,7 +86,7 @@ def parse_metadata_form(bundle_subclass, form_result):
             metadata_type = metadata_types[metadata_key]
             if metadata_type == list:
                 result[metadata_key] = remainder.split() if remainder else []
-            elif metadata_type == basestring:
+            elif metadata_type == str:
                 result[metadata_key] = remainder
             else:
                 try:

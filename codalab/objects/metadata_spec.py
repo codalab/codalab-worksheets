@@ -46,8 +46,8 @@ class MetadataSpec(object):
 
     def get_constructor(self):
         # Convert from string to type
-        if self.type == basestring:
-            return unicode
+        if self.type == str:
+            return str
         if self.type == bool:
             return bool_constructor
         return self.type

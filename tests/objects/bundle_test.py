@@ -9,7 +9,7 @@ from codalab.objects.metadata_spec import MetadataSpec
 class MockBundle(Bundle):
     BUNDLE_TYPE = 'mock'
     METADATA_SPECS = (
-        MetadataSpec('str_metadata', basestring, 'test str metadata'),
+        MetadataSpec('str_metadata', str, 'test str metadata'),
         MetadataSpec('int_metadata', int, 'test int metadata'),
         MetadataSpec('list_metadata', list, 'test list metadata'),
     )

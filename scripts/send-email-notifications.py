@@ -39,7 +39,7 @@ def get_to_send_list(model, threshold):
                 ]
             ).where(cl_user.c.notifications >= threshold)
         ).fetchall()
-        return [dict(zip(HEADER, row)) for row in rows if row.email]
+        return [dict(list(zip(HEADER, row))) for row in rows if row.email]
 
 
 def get_sent_list(sent_file):
@@ -96,8 +96,8 @@ def main(args):
 
         # Apply template to get body of message
         body = body_template
-        for field, value in info.items():
-            body = body.replace('{{' + field + '}}', unicode(value or ''))
+        for field, value in list(info.items()):
+            body = body.replace('{{' + field + '}}', str(value or ''))
 
         if args.verbose >= 1:
             print('To      : %s' % info['email_description'])

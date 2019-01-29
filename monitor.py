@@ -327,7 +327,7 @@ while True:
         send_email('report', report)
 
     if ping_time():
-        print
+        print()
 
     # Update timer
     time.sleep(1)

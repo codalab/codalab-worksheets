@@ -1,7 +1,7 @@
 """
 Web terminal API.
 """
-from cStringIO import StringIO
+from io import StringIO
 from datetime import datetime, timedelta
 from oauthlib.common import generate_token
 import shlex
@@ -123,7 +123,7 @@ def general_command(worksheet_uuid, command):
     The method currently intercepts stdout/stderr and returns it back to the user.
     """
     # Tokenize
-    if isinstance(command, basestring):
+    if isinstance(command, str):
         # shlex throws ValueError on incorrectly formatted commands
         try:
             # see https://docs.python.org/2/library/shlex.html#shlex.shlex.escapedquotes

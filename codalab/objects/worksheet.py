@@ -47,7 +47,7 @@ class Worksheet(ORMObject):
         super(Worksheet, self).update_in_memory(row)
         if items is not None:
             self.items = [
-                {str(k): v for k, v in item.iteritems()} for item in items  # Ensure key is string
+                {str(k): v for k, v in item.items()} for item in items  # Ensure key is string
             ]
             self.last_item_id = max(item['id'] for item in items) if items else -1
         else:

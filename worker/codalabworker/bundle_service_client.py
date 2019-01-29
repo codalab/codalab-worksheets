@@ -1,16 +1,16 @@
 import base64
 from contextlib import closing
-import httplib
+import http.client
 import json
 import socket
 import sys
 import threading
 import time
-import urllib
-import urllib2
+import urllib.request, urllib.parse, urllib.error
+import urllib.request, urllib.error, urllib.parse
 
-from rest_client import RestClient, RestClientException
-from file_util import tar_gzip_directory
+from .rest_client import RestClient, RestClientException
+from .file_util import tar_gzip_directory
 
 
 def wrap_exception(message):
@@ -22,14 +22,14 @@ def wrap_exception(message):
                 raise
             except RestClientException as e:
                 raise BundleServiceException(message + ': ' + e.message, e.client_error)
-            except urllib2.HTTPError as e:
+            except urllib.error.HTTPError as e:
                 client_error = json.load(e)
 
                 if client_error['error'] == 'invalid_grant':
                     raise BundleAuthException(
                         message
                         + ': '
-                        + httplib.responses[e.code]
+                        + http.client.responses[e.code]
                         + ' - '
                         + json.dumps(client_error),
                         True,
@@ -38,12 +38,12 @@ def wrap_exception(message):
                     raise BundleServiceException(
                         message
                         + ': '
-                        + httplib.responses[e.code]
+                        + http.client.responses[e.code]
                         + ' - '
                         + json.dumps(client_error),
                         e.code >= 400 and e.code < 500,
                     )
-            except (urllib2.URLError, httplib.HTTPException, socket.error) as e:
+            except (urllib.error.URLError, http.client.HTTPException, socket.error) as e:
                 raise BundleServiceException(message + ': ' + str(e), False)
 
         return wrapper
@@ -103,10 +103,10 @@ class BundleServiceClient(RestClient):
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
         }
-        request = urllib2.Request(
-            self._base_url + '/oauth2/token', data=urllib.urlencode(request_data), headers=headers
+        request = urllib.request.Request(
+            self._base_url + '/oauth2/token', data=urllib.parse.urlencode(request_data), headers=headers
         )
-        with closing(urllib2.urlopen(request)) as response:
+        with closing(urllib.request.urlopen(request)) as response:
             response_data = response.read()
         try:
             token = json.loads(response_data)
@@ -120,7 +120,7 @@ class BundleServiceClient(RestClient):
         self._token_expiration_time = time.time() + token['expires_in']
 
     def _worker_url_prefix(self, worker_id):
-        return '/workers/' + urllib.quote(worker_id)
+        return '/workers/' + urllib.parse.quote(worker_id)
 
     @wrap_exception('Unable to check in with bundle service')
     def checkin(self, worker_id, request_data):
@@ -139,7 +139,7 @@ class BundleServiceClient(RestClient):
         method = 'POST'
         url = self._worker_url_prefix(worker_id) + '/reply_data/' + str(socket_id)
         query_params = {'header_message': json.dumps(header_message)}
-        if isinstance(fileobj_or_string, basestring):
+        if isinstance(fileobj_or_string, str):
             self._make_request(method, url, query_params, headers={}, data=fileobj_or_string)
         else:
             self._upload_with_chunked_encoding(method, url, query_params, fileobj_or_string)
