@@ -105,7 +105,7 @@ class BundleServiceClient(RestClient):
         }
         request = urllib.request.Request(
             self._base_url + '/oauth2/token',
-            data=urllib.parse.urlencode(request_data),
+            data=urllib.parse.urlencode(request_data).encode('utf-8'),
             headers=headers,
         )
         with closing(urllib.request.urlopen(request)) as response:
