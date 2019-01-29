@@ -278,7 +278,9 @@ class Commands(object):
                 name += ' (%s)' % ', '.join(list(aliases))
             return name
 
-        available_other_commands = [command for command in OTHER_COMMANDS if command in cls.commands]
+        available_other_commands = [
+            command for command in OTHER_COMMANDS if command in cls.commands
+        ]
 
         indent = 2
         max_length = max(
@@ -807,9 +809,12 @@ class BundleCLI(object):
             clean = lambda s: shlex.split(s.strip())[0] if s else ''
         except ValueError as e:
             raise UsageError(e.message)
-        return list(map(
-            clean, cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos)
-        ))
+        return list(
+            map(
+                clean,
+                cf._get_completions(comp_words, cword_prefix, cword_prequote, first_colon_pos),
+            )
+        )
 
     def do_command(self, argv, stdout=None, stderr=None):
         parser = Commands.build_parser(self)
@@ -3301,8 +3306,7 @@ class BundleCLI(object):
 
         # Get the first member that matches the target user ID
         member = next(
-            filter(lambda m: m['id'] == user['id'], group['members'] + group['admins']),
-            None,
+            filter(lambda m: m['id'] == user['id'], group['members'] + group['admins']), None
         )
 
         if member is None:

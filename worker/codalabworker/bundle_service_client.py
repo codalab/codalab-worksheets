@@ -104,7 +104,9 @@ class BundleServiceClient(RestClient):
             'X-Requested-With': 'XMLHttpRequest',
         }
         request = urllib.request.Request(
-            self._base_url + '/oauth2/token', data=urllib.parse.urlencode(request_data), headers=headers
+            self._base_url + '/oauth2/token',
+            data=urllib.parse.urlencode(request_data),
+            headers=headers,
         )
         with closing(urllib.request.urlopen(request)) as response:
             response_data = response.read()

@@ -360,7 +360,9 @@ class BundleManager(object):
         # Filter by memory.
         request_memory = self._compute_request_memory(bundle)
         if request_memory:
-            workers_list = [worker for worker in workers_list if worker['memory_bytes'] >= request_memory]
+            workers_list = [
+                worker for worker in workers_list if worker['memory_bytes'] >= request_memory
+            ]
 
         # Filter by tag.
         request_queue = bundle.metadata.request_queue

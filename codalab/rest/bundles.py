@@ -573,7 +573,9 @@ def _fetch_bundle_contents_blob(uuid, path=''):
             fileobj = local.download_manager.stream_file(uuid, path, gzipped_stream)
     else:
         # Symlinks.
-        abort(http.client.FORBIDDEN, 'Cannot download files of this type (%s).' % target_info['type'])
+        abort(
+            http.client.FORBIDDEN, 'Cannot download files of this type (%s).' % target_info['type']
+        )
 
     # Set headers.
     response.set_header('Content-Type', mimetype or 'text/plain')
@@ -628,7 +630,8 @@ def _update_bundle_contents_blob(uuid):
     final_state = request.query.get('state_on_success', default=State.READY)
     if finalize_on_success and final_state not in State.FINAL_STATES:
         abort(
-            http.client.BAD_REQUEST, 'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES)
+            http.client.BAD_REQUEST,
+            'state_on_success must be one of %s' % '|'.join(State.FINAL_STATES),
         )
 
     # If this bundle already has data, remove it.

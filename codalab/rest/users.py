@@ -25,7 +25,9 @@ def update_authenticated_user():
     user_info = AuthenticatedUserSchema(strict=True).load(request.json, partial=False).data
 
     if any(k in user_info for k in USER_READ_ONLY_FIELDS):
-        abort(http.client.FORBIDDEN, "These fields are read-only: " + ', '.join(USER_READ_ONLY_FIELDS))
+        abort(
+            http.client.FORBIDDEN, "These fields are read-only: " + ', '.join(USER_READ_ONLY_FIELDS)
+        )
 
     # Patch in user_id manually (do not allow requests to change id)
     user_info['user_id'] = request.user.user_id

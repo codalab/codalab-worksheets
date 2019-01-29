@@ -94,7 +94,9 @@ class LocalRunManager(BaseRunManager):
 
     def save_state(self):
         # Remove complex container objects from state before serializing, these can be retrieved
-        simple_runs = {uuid: state._replace(container=None) for uuid, state in list(self._runs.items())}
+        simple_runs = {
+            uuid: state._replace(container=None) for uuid, state in list(self._runs.items())
+        }
         self._state_committer.commit(simple_runs)
 
     def load_state(self):
@@ -174,7 +176,9 @@ class LocalRunManager(BaseRunManager):
                 self._runs[bundle_uuid] = self._run_state_manager.transition(run_state)
 
             # filter out finished runs
-            self._runs = {k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED}
+            self._runs = {
+                k: v for k, v in list(self._runs.items()) if v.stage != LocalRunStage.FINISHED
+            }
 
     def create_run(self, bundle, resources):
         """

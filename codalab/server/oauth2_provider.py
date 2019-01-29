@@ -158,7 +158,9 @@ class OAuth2Provider(object):
         refresh_token_generator = self.app.config.get(
             'OAUTH2_PROVIDER_REFRESH_TOKEN_GENERATOR', None
         )
-        if refresh_token_generator and not isinstance(refresh_token_generator, collections.Callable):
+        if refresh_token_generator and not isinstance(
+            refresh_token_generator, collections.Callable
+        ):
             refresh_token_generator = import_string(refresh_token_generator)
 
         if hasattr(self, '_validator'):
