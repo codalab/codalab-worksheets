@@ -99,7 +99,7 @@ class BundleServiceClient(RestClient):
             'password': self._password,
         }
         headers = {
-            'Authorization': 'Basic ' + base64.b64encode('codalab_worker_client:'),
+            'Authorization': 'Basic ' + base64.b64encode(b'codalab_worker_client:'),
             'Content-Type': 'application/x-www-form-urlencoded',
             'X-Requested-With': 'XMLHttpRequest',
         }
