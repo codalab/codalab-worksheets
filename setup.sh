@@ -23,8 +23,8 @@ if [ "$#" -ne 1 ] || ( [ "$1" != "client" ] && [ "$1" != "server" ] ); then
   exit 1
 fi
 
-# Virtualenv must be for standard Python 2.x distribution (not conda)
-echo -e "${info}[*] Checking for virtualenv --> Must be for standard Python 2.x (not conda) ...${reset}"
+# Virtualenv must be for standard Python 3.x distribution (not conda)
+echo -e "${info}[*] Checking for virtualenv --> Must be for standard Python 3.x (not conda) ...${reset}"
 if ! which virtualenv; then
   echo -e "${warning}[!] virtualenv is not found.${reset}"
   echo -e "${warning}[!] If you are using Ubuntu, run the following to install:${reset}"
@@ -39,7 +39,7 @@ env=$codalabdir/venv
 
 if [ ! -e $env ]; then
   echo -e "${info}[*] Setting up a Python virtual environment (in $env)...${reset}"
-  virtualenv -p /usr/bin/python2.7 $env
+  virtualenv -p python3.6 $env
   echo
 fi
 
