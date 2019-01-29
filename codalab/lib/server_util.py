@@ -143,7 +143,8 @@ def query_get_json_api_include_set(supported):
     requested = set(query_str.split(','))
     if not requested <= supported:
         abort(
-            http.client.BAD_REQUEST, '?include=%s not supported' % ','.join(list(requested - supported))
+            http.client.BAD_REQUEST,
+            '?include=%s not supported' % ','.join(list(requested - supported)),
         )
     return requested
 

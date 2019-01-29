@@ -104,9 +104,7 @@ class Metadata(object):
                     continue
                 values = value if spec.type == list else (value,)
                 for value in values:
-                    result.append(
-                        {'metadata_key': str(spec.key), 'metadata_value': str(value)}
-                    )
+                    result.append({'metadata_key': str(spec.key), 'metadata_value': str(value)})
         return result
 
     def to_dict(self):

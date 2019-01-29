@@ -46,7 +46,9 @@ class DockerException(Exception):
 @wrap_exception('Unable to use Docker')
 def test_version():
     version_info = client.version()
-    if list(map(int, version_info['ApiVersion'].split('.'))) < list(map(int, MIN_API_VERSION.split('.'))):
+    if list(map(int, version_info['ApiVersion'].split('.'))) < list(
+        map(int, MIN_API_VERSION.split('.'))
+    ):
         raise DockerException('Please upgrade your version of Docker')
 
 

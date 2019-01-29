@@ -341,10 +341,12 @@ class MultiDiskBundleStore(BaseBundleStore, BundleStoreCleanupMixin, BundleStore
             partition_path = os.path.join(
                 self.partitions, partition, MultiDiskBundleStore.DATA_SUBDIRECTORY
             )
-            entries = list(map(
-                lambda f: os.path.join(partition_path, f),
-                reduce(lambda d, f: d + f, path_util.ls(partition_path)),
-            ))
+            entries = list(
+                map(
+                    lambda f: os.path.join(partition_path, f),
+                    reduce(lambda d, f: d + f, path_util.ls(partition_path)),
+                )
+            )
             bundle_paths = list(filter(_is_bundle, entries))
             other_paths = set(entries) - set(bundle_paths)
 

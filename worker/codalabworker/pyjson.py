@@ -19,9 +19,7 @@ class PyJSONEncoder(json.JSONEncoder):
         if not (isinstance(key, tuple) or isinstance(key, str) or isinstance(key, str)):
             raise Exception('PyJSON can only encode dicts with str, unicode or tuple keys')
         if isinstance(key, tuple):
-            if not all(
-                isinstance(tuple_el, str) or isinstance(tuple_el, str) for tuple_el in key
-            ):
+            if not all(isinstance(tuple_el, str) or isinstance(tuple_el, str) for tuple_el in key):
                 raise Exception(
                     'Tuple elements need to be all strings (or unicode) for PyJSON to work'
                 )

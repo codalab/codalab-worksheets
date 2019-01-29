@@ -32,7 +32,6 @@ import re
 import sys
 
 
-
 from codalab.common import PermissionError, UsageError
 from codalab.lib import canonicalize, editor_util, formatting
 from codalab.objects.permission import group_permissions_str, permission_str
@@ -291,10 +290,12 @@ def parse_worksheet_form(form_result, model, user, worksheet_uuid):
     bundle_specs = list(zip(*bundle_lines)) if len(bundle_lines) > 0 else [(), ()]
     # bundle_uuids = {line_i: bundle_uuid, ...}
     bundle_uuids = dict(
-        list(zip(
-            bundle_specs[0],
-            canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1]),
-        ))
+        list(
+            zip(
+                bundle_specs[0],
+                canonicalize.get_bundle_uuids(model, user, worksheet_uuid, bundle_specs[1]),
+            )
+        )
     )
 
     items = []
