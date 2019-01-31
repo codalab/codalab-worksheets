@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 """
 BundleModel is a wrapper around database calls to save and load bundle metadata.
 """
@@ -964,7 +963,7 @@ class BundleModel(object):
                 if metadata_update:
                     connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
                     self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
-            except UnicodeEncodeError:
+            except UnicodeError:
                 raise UsageError("Invalid character detected; use ascii characters only.")
 
         if connection:

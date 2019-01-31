@@ -47,10 +47,11 @@ def validate_child_path(path):
         raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
 def validate_ascii(value):
-    try:
-        value.encode("ascii")
-    except UnicodeError:
-        raise ValidationError('Unsupported character detected, use ascii characters')
+    if(isinstance(value, basestring)):
+        try:
+            value.encode("ascii")
+        except UnicodeError:
+            raise ValidationError('Unsupported character detected, use ascii characters')
 
 
 class WorksheetItemSchema(Schema):
@@ -179,7 +180,7 @@ class BundleSchema(Schema):
     state = fields.String()
     owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
     is_anonymous = fields.Bool()
-    metadata = fields.Dict()
+    metadata = fields.Dict(values=fields.Field(validate=validate_ascii))
     dependencies = fields.Nested(BundleDependencySchema, many=True)
     children = fields.Relationship(
         include_resource_linkage=True, type_='bundles', id_field='uuid', many=True
