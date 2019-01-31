@@ -22,7 +22,7 @@ def bool_constructor(x=False):
 def unicode_constructor(s=""):
     # Need this method so that any uninterpretable characters in the database will be
     # replaced with '?'.
-    return unicode(s, errors='replace')
+    return unicode(s, encoding'ascii', errors='replace')
 
 
 class MetadataSpec(object):
