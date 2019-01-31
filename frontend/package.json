@@ -12,6 +12,7 @@
     "@material-ui/icons": "^3.0.1",
     "classnames": "^2.2.6",
     "jquery": "^3.3.1",
+    "jsonapi-datastore": "^0.4.0-beta",
     "marked": "^0.6.0",
     "react": "^16.6.3",
     "react-cookie": "^3.0.8",
@@ -24,6 +25,7 @@
     "wolfy87-eventemitter": "^5.2.5"
   },
   "devDependencies": {
+    "flow-bin": "^0.91.0",
     "prettier": "^1.15.3"
   },
   "browserslist": [
@@ -36,6 +38,7 @@
     "start": "PORT=2700 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
+    "flow": "flow",
     "format": "prettier --config ./.prettierrc --write 'src/**/*.js'",
     "eject": "react-scripts eject"
   }

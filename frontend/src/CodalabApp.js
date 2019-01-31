@@ -1,16 +1,21 @@
 import React from 'react';
 import { Router, Route, Link, Redirect, withRouter, Switch } from 'react-router-dom';
 import { CookiesProvider, withCookies } from 'react-cookie';
+
+// Components
 import UserInfo from './components/UserInfo';
 import PublicHome from './components/PublicHome';
 import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Login from './components/Login';
-import Bundle from './components/Bundle';
+import Worksheet from './components/worksheets/Worksheet';
+
+// Routes
+import BundleRoute from './routes/BundleRoute';
+
 import history from './history';
 import Cookies from 'universal-cookie';
-import Worksheet from './components/worksheets/Worksheet';
 
 ////////////////////////////////////////////////////////////
 // 1. Click the public page
@@ -36,8 +41,8 @@ function CodalabApp() {
                         />
                         <PrivateRoute path='/account/profile' component={UserInfo} />
                         <Route path='/worksheets/:uuid' component={Worksheet} />
-                        <Route path='/bundle/:uuid' component={Bundle} />
-                        <Route component={NoPage} />
+                        <Route path='/bundles/:uuid' component={BundleRoute} />
+                        <Route component={PageNotFound} />
                     </Switch>
 
                     {/*Footer.*/}
@@ -103,8 +108,8 @@ const PrivateRoute = ({ component: Component, ...rest }) => (
     />
 );
 
-function NoPage() {
-    return <div>404 No Page Exists</div>;
+function PageNotFound() {
+    return <div>404 Page Not Found</div>;
 }
 
 export default CodalabApp;
