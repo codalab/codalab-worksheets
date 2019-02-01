@@ -53,7 +53,7 @@ def validate_ascii(value):
         except UnicodeError:
             raise ValidationError('Unsupported character detected, use ascii characters')
     elif(isinstance(value, list)):
-        for v in list: validate_ascii(v)
+        for v in value: validate_ascii(v)
     elif(isinstance(value, dict)):
         for v in value.itervalues(): validate_ascii(v)
 
