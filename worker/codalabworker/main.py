@@ -57,8 +57,9 @@ def main():
         type=str,
         metavar='GPUSET_STR',
         default='ALL',
-        help='Comma-separated list of GPUs in which to allow bundle execution '
-        '(e.g., \"0,1\", \"1\").',
+        help='Comma-separated list of GPUs in which to allow bundle execution. '
+        'Each GPU can be specified by its index or UUID'
+        '(e.g., \"0,1\", \"1\", \"GPU-62casdfasd-asfas...\"',
     )
     parser.add_argument(
         '--max-work-dir-size',
@@ -233,7 +234,7 @@ def parse_cpuset_args(arg):
 
 def parse_gpuset_args(arg):
     """
-    Parse given arg into a set of integers representing gpu devices
+    Parse given arg into a set of strings representing gpu UUIDs
 
     Arguments:
         arg: comma seperated string of ints, or "ALL" representing all gpus
@@ -242,25 +243,17 @@ def parse_gpuset_args(arg):
         return set()
 
     try:
-        all_gpus = docker_utils.get_nvidia_devices()
+        all_gpus = docker_utils.get_nvidia_devices() # Dict[GPU index: GPU UUID]
     except docker_utils.DockerException:
-        all_gpus = []
+        all_gpus = {}
 
     if arg == 'ALL':
-        return set(all_gpus)
+        return set(all_gpus.values())
     else:
-        try:
-            gpuset = [int(s) for s in arg.split(',')]
-        except ValueError:
-            raise ValueError(
-                "GPUSET_STR invalid format: must be a string of comma-separated integers"
-            )
-
-        if not len(gpuset) == len(set(gpuset)):
-            raise ValueError("GPUSET_STR invalid: GPUs not distinct values")
-        if not all(gpu in all_gpus for gpu in gpuset):
+        gpuset = arg.split(',')
+        if not all(gpu in all_gpus or gpu in all_gpus.values() for gpu in gpuset):
             raise ValueError("GPUSET_STR invalid: GPUs out of range")
-        return set(gpuset)
+        return set(all_gpus.get(gpu, gpu) for gpu in gpuset)
 
 
 if __name__ == '__main__':

@@ -66,18 +66,19 @@ def get_available_runtime():
 @wrap_exception('Problem getting NVIDIA devices')
 def get_nvidia_devices():
     """
-    Returns the index of each NVIDIA device if NVIDIA runtime is available.
+    Returns a Dict[index, UUID] of all NVIDIA devices available to docker
     Raises docker.errors.ContainerError if GPUs are unreachable,
            docker.errors.ImageNotFound if the CUDA image cannot be pulled
            docker.errors.APIError if another server error occurs
     """
     cuda_image = 'nvidia/cuda:9.0-cudnn7-devel-ubuntu16.04'
     client.images.pull(cuda_image)
-    nvidia_command = 'nvidia-smi --query-gpu=index --format=csv,noheader'
+    nvidia_command = 'nvidia-smi --query-gpu=index,uuid --format=csv,noheader'
     output = client.containers.run(
         cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
     )
-    return output.split()
+    # Get newline delimited gpu-index, gpu-uuid list
+    return {gpu.split(', ')[0]: gpu.split(', ')[1] for gpu in output.split()}
 
 
 @wrap_exception('Unable to fetch Docker container ip')
