@@ -78,7 +78,8 @@ def get_nvidia_devices():
         cuda_image, nvidia_command, runtime=NVIDIA_RUNTIME, detach=False, stdout=True, remove=True
     )
     # Get newline delimited gpu-index, gpu-uuid list
-    return {gpu.split(', ')[0]: gpu.split(', ')[1] for gpu in output.split()}
+    print(output.split('\n')[:-1])
+    return {gpu.split(',')[0].strip(): gpu.split(',')[1].strip() for gpu in output.split('\n')[:-1]}
 
 
 @wrap_exception('Unable to fetch Docker container ip')
