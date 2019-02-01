@@ -52,6 +52,10 @@ def validate_ascii(value):
             value.encode("ascii")
         except UnicodeError:
             raise ValidationError('Unsupported character detected, use ascii characters')
+    elif(isinstance(value, list)):
+        for v in list: validate_ascii(v)
+    elif(isinstance(value, dict)):
+        for v in value.itervalues(): validate_ascii(v)
 
 
 class WorksheetItemSchema(Schema):
