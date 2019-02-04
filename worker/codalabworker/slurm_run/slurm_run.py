@@ -46,6 +46,7 @@ class SlurmRun(object):
         with open(args.resources_file, "r") as infile:
             resources_dict = json.load(infile)
             self.resources = RunResources.from_dict(resources_dict)
+        __import__('pdb').set_trace()
 
         self.state_file = args.state_file
         self.state_lock_file = args.state_lock_file
@@ -77,6 +78,7 @@ class SlurmRun(object):
             pass
         self.UPDATE_INTERVAL = 5
         self.finished = False
+        self.killed = False
         self.has_contents = False
         self.resource_use = {"disk": 0, "time": 0, "memory": 0}
 
@@ -96,10 +98,12 @@ class SlurmRun(object):
             self.write_state()
             self.monitor_container()
         except Exception as ex:
+            self.container = None
             if 'exitcode' not in self.run_state.info:
                 self.run_state.info['exitcode'] = '1'
             self.run_state.info['failure_message'] = str(ex)
             self.run_state.state = State.FINALIZING
+            self.killed = True
             try:
                 shutil.rmtree(self.bundle.location)
             except Exception as ex:
@@ -197,6 +201,7 @@ class SlurmRun(object):
             docker_dependencies,
             self.bundle.command,
             self.resources.docker_image,
+            gpuset=self.resources.gpus,
             network=self.docker_network_name,
             memory_bytes=self.resources.memory,
             runtime=self.docker_runtime,
@@ -242,35 +247,35 @@ class SlurmRun(object):
             )
 
             if (
-                self.resources.request_time
-                and self.resource_use["time"] > self.resources.request_time
+                self.resources.time
+                and self.resource_use["time"] > self.resources.time
             ):
                 kill_messages.append(
                     "Time limit %s exceeded."
-                    % duration_str(self.resources.request_time)
+                    % duration_str(self.resources.time)
                 )
 
-            if self.resource_use["memory"] > self.resources.request_memory:
+            if self.resource_use["memory"] > self.resources.memory:
                 kill_messages.append(
                     "Memory limit %s exceeded."
-                    % size_str(self.resources.request_memory)
+                    % size_str(self.resources.memory)
                 )
 
             if (
-                self.resources.request_disk
+                self.resources.disk
                 and self.resource_use["disk"]
-                > self.resources.request_disk
+                > self.resources.disk
             ):
                 kill_messages.append(
-                    "Disk limit %sb exceeded." % size_str(self.resources.request_disk)
+                    "Disk limit %sb exceeded." % size_str(self.resources.disk)
                 )
 
             return kill_messages
 
         while not self.killed and not self.finished:
             time.sleep(self.UPDATE_INTERVAL)
-            self.finished, exitcode, failure_message = self.check_and_report_finished()
-            kill_messages = self.check_resource_utilization()
+            self.finished, exitcode, failure_message = docker_utils.check_finished(self.container)
+            kill_messages = check_resource_utilization()
             if kill_messages:
                 self.killed = True
                 self.run_state.info['exitcode'] = 1
@@ -285,6 +290,7 @@ class SlurmRun(object):
                         # If we can't kill a Running container, something is wrong
                         # Otherwise all well
                         traceback.print_exc()
+        __import__('pdb').set_trace()
         disk_utilization_thread.join()
 
     def cleanup(self):
