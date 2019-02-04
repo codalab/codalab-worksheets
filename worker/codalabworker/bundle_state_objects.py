@@ -45,7 +45,7 @@ class Dependency(object):
 class BundleInfo(object):
     """
     Defines the bundle info passed to the worker by the server.
-    Refer to codaalab/lib/bundle_util.py#bundle_to_bundle_info() for how the
+    Refer to codalab/lib/bundle_util.py#bundle_to_bundle_info() for how the
     dict to construct this object is created on server side.
     """
 
@@ -85,21 +85,21 @@ class BundleInfo(object):
         }  # type: Dict[DependencyKey, Dependency]
         self.location = location  # type: Optional[str] set if local filesystem
 
-        @classmethod
-        def from_dict(cls, dct):
-            return cls(
-                uuid=dct["uuid"],
-                bundle_type=dct["bundle_type"],
-                owner_id=dct["owner_id"],
-                command=dct["command"],
-                data_hash=dct["data_hash"],
-                state=dct["state"],
-                is_anonymous=dct["is_anonymous"],
-                metadata=dct["metadata"],
-                dependencies=dct["dependencies"],
-                args=dct["args"],
-                location=dct.get("location", None),
-            )
+    @classmethod
+    def from_dict(cls, dct):
+        return cls(
+            uuid=dct["uuid"],
+            bundle_type=dct["bundle_type"],
+            owner_id=dct["owner_id"],
+            command=dct["command"],
+            data_hash=dct["data_hash"],
+            state=dct["state"],
+            is_anonymous=dct["is_anonymous"],
+            metadata=dct["metadata"],
+            dependencies=dct["dependencies"],
+            args=dct["args"],
+            location=dct.get("location", None),
+        )
 
 
 class RunResources(object):
@@ -109,7 +109,7 @@ class RunResources(object):
 
     def __init__(self, cpus, gpus, docker_image, time, memory, disk, network):
         self.cpus = cpus  # type: int
-        self.gpus = gpus  # type: int
+        self.gpus = gpus  # type: str
         self.docker_image = docker_image  # type: str
         self.time = time  # type: int
         self.memory = memory  # type: int
@@ -123,7 +123,7 @@ class RunResources(object):
     def from_dict(cls, dct):
         return cls(
             cpus=int(dct["cpus"]),
-            gpus=int(dct["gpus"]),
+            gpus=dct["gpus"],
             docker_image=dct["docker_image"],
             time=int(dct["time"]),
             memory=int(dct["memory"]),
