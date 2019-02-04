@@ -144,7 +144,7 @@ class WorksheetItemList extends React.Component {
         return uuidToIndex;
     }
 
-    handleContextMenuSelection(uuid, focusIndex, subFocusIndex, option) {
+    handleContextMenuSelection = (uuid, focusIndex, subFocusIndex, option) => {
         var type = option[0];
         var args = option[1];
         args.push(uuid);
@@ -165,9 +165,9 @@ class WorksheetItemList extends React.Component {
         $('#command_line')
             .terminal()
             .exec(buildTerminalCommand(args));
-    }
+    };
 
-    handleContextMenu(uuid, focusIndex, subFocusIndex, isRunBundle, e) {
+    handleContextMenu = (uuid, focusIndex, subFocusIndex, isRunBundle, e) => {
         e.preventDefault();
         this.props.setFocus(focusIndex, subFocusIndex, false);
         var bundleType = isRunBundle ? ContextMenuEnum.type.RUN : ContextMenuEnum.type.BUNDLE;
@@ -175,7 +175,7 @@ class WorksheetItemList extends React.Component {
             bundleType,
             this.handleContextMenuSelection.bind(undefined, uuid, focusIndex, subFocusIndex),
         );
-    }
+    };
 
     render() {
         this.capture_keys(); // each item capture keys are handled dynamically after this call
@@ -206,16 +206,11 @@ class WorksheetItemList extends React.Component {
             );
             items_display = worksheet_items;
         } else {
-            items_display = React.createElement('p', { className: 'empty-worksheet' }, '(empty)');
+            items_display = <p className='empty-worksheet'>(empty)</p>;
         }
         if (info && info.error)
-            items_display = React.createElement(
-                'p',
-                { className: 'alert-danger' },
-                'Error in worksheet: ',
-                info.error,
-            );
-        return React.createElement('div', { id: 'worksheet_items' }, items_display);
+            items_display = <p className='alert-danger'>Error in worksheet: {info.error}</p>;
+        return <div id='worksheet_items'>{items_display}</div>;
     }
 }
 
