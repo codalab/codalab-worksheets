@@ -28,6 +28,7 @@ import time
 import textwrap
 from collections import defaultdict
 from contextlib import closing
+from StringIO import StringIO
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -420,7 +421,6 @@ class Commands(object):
                     # If the 'choices' kwarg is set, we don't have to worry, because argcomplete
                     # will fill in a ChoicesCompleter for us.
                     argument.completer = NullCompleter
-
 
             # Associate subcommand with its action function
             subparser.set_defaults(function=command.function)
