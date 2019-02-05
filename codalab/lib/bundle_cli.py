@@ -28,7 +28,6 @@ import time
 import textwrap
 from collections import defaultdict
 from contextlib import closing
-from StringIO import StringIO
 
 import argcomplete
 from argcomplete.completers import FilesCompleter, ChoicesCompleter
@@ -104,6 +103,7 @@ UUID_POST_FUNC = '[0:8]'  # Only keep first 8 characters
 
 # Command groupings
 BUNDLE_COMMANDS = (
+    'ancestors',
     'upload',
     'make',
     'run',
@@ -420,6 +420,7 @@ class Commands(object):
                     # If the 'choices' kwarg is set, we don't have to worry, because argcomplete
                     # will fill in a ChoicesCompleter for us.
                     argument.completer = NullCompleter
+
 
             # Associate subcommand with its action function
             subparser.set_defaults(function=command.function)
@@ -1462,6 +1463,29 @@ class BundleCLI(object):
             'dependencies': dependencies,
         }
 
+    def recursive_get_bundles(self, client, bundle_spec, indent=0):
+        bundles = client.fetch(
+            'bundles',
+            params={
+                'specs': bundle_spec,
+                'include': ['owner'] + (['host_worksheets']),
+            },
+        )
+
+        for i, info in enumerate(bundles):
+            if len(info['dependencies']) == 0:
+                print >> self.stdout, ' ' * indent + "- %s(%s)" \
+                % (info['metadata']['name'], info['id'][:8])
+                return
+            else:
+
+                print >> self.stdout, ' ' * indent + "- %s(%s)" \
+                % (info['metadata']['name'], info['id'][:8])
+
+                for child in info['dependencies']:
+                    self.recursive_get_bundles(client, child['parent_uuid'][:8], indent+1)
+
+
     @Commands.command(
         'run',
         help='Create a bundle by running a program bundle on an input bundle.',
@@ -1727,6 +1751,30 @@ class BundleCLI(object):
                 new_items.append(item)
 
         client.create('worksheet-items', data=new_items, params={'replace': True})
+
+    @Commands.command(
+        'ancestors',
+        aliases=('an',),
+        help='recursively prints out all of the ancestors of the bundle.',
+        arguments=(
+                Commands.Argument(
+                    'bundle_spec', help=BUNDLE_SPEC_FORMAT, nargs='+',
+                    completer=BundlesCompleter
+                ),
+                Commands.Argument(
+                    '-w',
+                    '--worksheet-spec',
+                    help='Operate on this worksheet (%s).' % WORKSHEET_SPEC_FORMAT,
+                    completer=WorksheetsCompleter,
+                ),
+        ),
+    )
+    def do_ancestors_command(self, args):
+        args.bundle_spec = spec_util.expand_specs(args.bundle_spec)
+        client, worksheet_uuid = self.parse_client_worksheet_uuid(
+            args.worksheet_spec)
+
+        self.recursive_get_bundles(client, args.bundle_spec, 0)
 
     @Commands.command(
         'rm',
