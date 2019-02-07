@@ -2,17 +2,15 @@
 import * as React from 'react';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import * as $ from 'jquery';
+import $ from 'jquery';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid} from '../util/worksheet_utils';
+import { BundleEditableField } from "./EditableField";
 
 // TODO: Replace dummy components
-let FileBrowser = () => <div>TODO</div>;
-let BundleEditableField = () => <div>TODO</div>;
+let FileBrowser = () => <div>FileBrowser</div>;
+// let BundleEditableField = () => <div>BundleEditableField</div>;
 
-/**
- * This stateful component displays a bundle's metadata and contents.
- */
 class Bundle extends React.Component<{
     // UUID of bundle.
     uuid: string,
@@ -21,7 +19,7 @@ class Bundle extends React.Component<{
     bundleMetadataChanged: () => void,
 
     // Whether this bundle is displayed in full page.
-    isStandalonePage: bool,
+    isStandalonePage: boolean,
 }> {
     /** Constructor. */
     constructor(props) {
@@ -64,6 +62,7 @@ class Bundle extends React.Component<{
     // Fetch bundle metadata
     $.ajax({
       type: 'GET',
+
       url: '/rest/bundles/' + this.props.uuid,
       data: {
         include_display_metadata: 1,
