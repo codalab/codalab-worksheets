@@ -17,6 +17,8 @@ class SlurmRunManager(BaseRunManager):
     BUNDLE_FILE_NAME = "bundle_info.json"
     RESOURCES_FILE_NAME = "resources.json"
     SLURM_OUTPUT_FILE_NAME = "slurm_log.txt"
+    MAX_CORES_ALLOWED = 1
+    MAX_GPUS_ALLOWED = 0
 
     def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='cl-slurm-job', slurm_host='sc'):
         self.runs = set()  # List[str] UUIDs of runs
@@ -197,6 +199,7 @@ class SlurmRunManager(BaseRunManager):
         """
         return list(self.run_states.values())
 
+    @property
     def all_dependencies(self):
         """
         Returns a list of all dependencies available in this RunManager
@@ -204,6 +207,7 @@ class SlurmRunManager(BaseRunManager):
         """
         return []
 
+    @property
     def cpus(self):
         """
         SlurmWorker doesn't really have a number of CPUs, but we don't want infinitely
@@ -212,6 +216,7 @@ class SlurmRunManager(BaseRunManager):
         """
         return self.MAX_CORES_ALLOWED
 
+    @property
     def gpus(self):
         """
         SlurmWorker doesn't really have a number of CPUs, but we don't want infinitely
@@ -220,6 +225,7 @@ class SlurmRunManager(BaseRunManager):
         """
         return self.MAX_GPUS_ALLOWED
 
+    @property
     def memory_bytes(self):
         """
         This worker doesn't really have a memory limit so we just send a really large number
