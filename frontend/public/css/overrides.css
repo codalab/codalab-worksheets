@@ -1,0 +1,16 @@
+html {
+    font-size: 16px;
+}
+body {
+    font-family: 'Roboto', 'Segoe UI', 'Segoe', 'Helvetica Neue', sans-serif;
+    font-weight: normal;
+    line-height: 1.6;
+    color: #666;
+    background-color: #f7f7f7;
+}
+th {
+    font-weight: 500;
+}
+b {
+    font-weight: 500;
+}

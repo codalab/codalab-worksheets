@@ -2,27 +2,33 @@
 import * as React from 'react';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import * as $ from 'jquery';
+import $ from 'jquery';
 import { JsonApiDataStore } from 'jsonapi-datastore';
-import { renderFormat, renderPermissions, shorten_uuid} from '../util/worksheet_utils';
+import { renderFormat, renderPermissions, shorten_uuid } from '../util/worksheet_utils';
+import { BundleEditableField } from './EditableField';
 
 // TODO: Replace dummy components
-let FileBrowser = () => <div>TODO</div>;
-let BundleEditableField = () => <div>TODO</div>;
+let FileBrowser = () => <div />;
 
-/**
- * This stateful component displays a bundle's metadata and contents.
- */
-class Bundle extends React.Component<{
-    // UUID of bundle.
-    uuid: string,
+class Bundle extends React.Component<
+    {
+        // UUID of bundle.
+        uuid: string,
 
-    // Callback on metadata change.
-    bundleMetadataChanged: () => void,
+        // Callback on metadata change.
+        bundleMetadataChanged: () => void,
 
-    // Whether this bundle is displayed in full page.
-    isStandalonePage: bool,
-}> {
+        // Whether this bundle is displayed in full page.
+        isStandalonePage: boolean,
+    },
+    {
+        errorMessages: string[],
+        bundleInfo: {},
+        fileContents: string,
+        stdout: string,
+        stderr: string,
+    },
+> {
     /** Constructor. */
     constructor(props) {
         super(props);
@@ -33,351 +39,502 @@ class Bundle extends React.Component<{
             stdout: null,
             stderr: null,
         };
-
     }
 
-  /**
-   * Return a Promise to fetch the summary of the given file.
-   * @param uuid  uuid of bundle
-   * @param path  path within the bundle
-   * @return  jQuery Deferred object
-   */
-  fetchFileSummary(uuid, path) {
-    return $.ajax({
-      type: 'GET',
-      url: '/rest/bundles/' + uuid + '/contents/blob' + path,
-      data: {
-        head: 50,
-        tail: 50,
-        truncation_text: '\n... [truncated] ...\n\n'
-      },
-      dataType: 'text',
-      cache: false,
-      context: this,  // automatically bind `this` in all callbacks
-    });
-  }
-
-  /**
-   * Fetch bundle data and update the state of this component.
-   */
-  refreshBundle() {
-    // Fetch bundle metadata
-    $.ajax({
-      type: 'GET',
-      url: '/rest/bundles/' + this.props.uuid,
-      data: {
-        include_display_metadata: 1,
-        include: 'owner,group_permissions,host_worksheets',
-      },
-      dataType: 'json',
-      cache: false,
-      context: this,  // automatically bind `this` in all callbacks
-    }).then(function (response) {
-      // Normalize JSON API doc into simpler object
-      const bundleInfo = new JsonApiDataStore().sync(response);
-      bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
-      bundleInfo.metadataType = response.data.meta.metadata_type;
-      this.setState({bundleInfo: bundleInfo});
-    }).fail(function (xhr, status, err) {
-      this.setState({bundleInfo: null, fileContents: null, stdout: null, stderr: null, errorMessages: this.state.errorMessages.concat([xhr.responseText])});
-    });
-
-    // Fetch bundle contents
-    $.ajax({
-      type: 'GET',
-      url: '/rest/bundles/' + this.props.uuid + '/contents/info/',
-      data: {
-        depth: 1
-      },
-      dataType: 'json',
-      cache: false,
-      context: this,  // automatically bind `this` in all callbacks
-    }).then(function (response) {
-      const info = response.data;
-      if (!info) return;
-      if (info.type === 'file' || info.type === 'link') {
-        return this.fetchFileSummary(this.props.uuid, '/').then(function (blob) {
-          this.setState({fileContents: blob, stdout: null, stderr: null});
+    /**
+     * Return a Promise to fetch the summary of the given file.
+     * @param uuid  uuid of bundle
+     * @param path  path within the bundle
+     * @return  jQuery Deferred object
+     */
+    fetchFileSummary(uuid, path) {
+        return $.ajax({
+            type: 'GET',
+            url: '/rest/bundles/' + uuid + '/contents/blob' + path,
+            data: {
+                head: 50,
+                tail: 50,
+                truncation_text: '\n... [truncated] ...\n\n',
+            },
+            dataType: 'text',
+            cache: false,
+            context: this, // automatically bind `this` in all callbacks
         });
-      } else if (info.type === 'directory') {
-        // Get stdout/stderr (important to set things to null).
-        let fetchRequests = [];
-        let stateUpdate = {
-          fileContents: null
-        };
-        ['stdout', 'stderr'].forEach(function (name) {
-          if (info.contents.some((entry) => entry.name === name)) {
-            fetchRequests.push(this.fetchFileSummary(this.props.uuid, '/' + name).then(function (blob) {
-              stateUpdate[name] = blob;
-            }));
-          } else {
-            stateUpdate[name] = null;
-          }
-        }.bind(this));
-        $.when.apply($, fetchRequests).then(() => {
-          this.setState(stateUpdate);
-        });
-        return $.when(fetchRequests);
-      }
-    }).fail(function (xhr, status, err) {
-      // 404 Not Found errors are normal if contents aren't available yet, so ignore them
-      if (xhr.status != 404) {
-        this.setState({bundleInfo: null, fileContents: null, stdout: null, stderr: null, errorMessages: this.state.errorMessages.concat([xhr.responseText])});
-      } else {
-        // If contents aren't available yet, then also clear stdout and stderr.
-        this.setState({fileContents: null, stdout: null, stderr: null});
-      }
-    });
-  }
-
-  componentDidMount() {
-    if (this.props.isStandalonePage) {
-      this.refreshBundle();
     }
-  }
+
+    /**
+     * Fetch bundle data and update the state of this component.
+     */
+    refreshBundle() {
+        // Fetch bundle metadata
+        $.ajax({
+            type: 'GET',
+
+            url: '/rest/bundles/' + this.props.uuid,
+            data: {
+                include_display_metadata: 1,
+                include: 'owner,group_permissions,host_worksheets',
+            },
+            dataType: 'json',
+            cache: false,
+            context: this, // automatically bind `this` in all callbacks
+        })
+            .then(function(response) {
+                // Normalize JSON API doc into simpler object
+                const bundleInfo = new JsonApiDataStore().sync(response);
+                bundleInfo.editableMetadataFields = response.data.meta.editable_metadata_keys;
+                bundleInfo.metadataType = response.data.meta.metadata_type;
+                this.setState({ bundleInfo: bundleInfo });
+            })
+            .fail(function(xhr, status, err) {
+                this.setState({
+                    bundleInfo: null,
+                    fileContents: null,
+                    stdout: null,
+                    stderr: null,
+                    errorMessages: this.state.errorMessages.concat([xhr.responseText]),
+                });
+            });
+
+        // Fetch bundle contents
+        $.ajax({
+            type: 'GET',
+            url: '/rest/bundles/' + this.props.uuid + '/contents/info/',
+            data: {
+                depth: 1,
+            },
+            dataType: 'json',
+            cache: false,
+            context: this, // automatically bind `this` in all callbacks
+        })
+            .then(function(response) {
+                const info = response.data;
+                if (!info) return;
+                if (info.type === 'file' || info.type === 'link') {
+                    return this.fetchFileSummary(this.props.uuid, '/').then(function(blob) {
+                        this.setState({ fileContents: blob, stdout: null, stderr: null });
+                    });
+                } else if (info.type === 'directory') {
+                    // Get stdout/stderr (important to set things to null).
+                    let fetchRequests = [];
+                    let stateUpdate = {
+                        fileContents: null,
+                    };
+                    ['stdout', 'stderr'].forEach(
+                        function(name) {
+                            if (info.contents.some((entry) => entry.name === name)) {
+                                fetchRequests.push(
+                                    this.fetchFileSummary(this.props.uuid, '/' + name).then(
+                                        function(blob) {
+                                            stateUpdate[name] = blob;
+                                        },
+                                    ),
+                                );
+                            } else {
+                                stateUpdate[name] = null;
+                            }
+                        }.bind(this),
+                    );
+                    $.when.apply($, fetchRequests).then(() => {
+                        this.setState(stateUpdate);
+                    });
+                    return $.when(fetchRequests);
+                }
+            })
+            .fail(function(xhr, status, err) {
+                // 404 Not Found errors are normal if contents aren't available yet, so ignore them
+                if (xhr.status != 404) {
+                    this.setState({
+                        bundleInfo: null,
+                        fileContents: null,
+                        stdout: null,
+                        stderr: null,
+                        errorMessages: this.state.errorMessages.concat([xhr.responseText]),
+                    });
+                } else {
+                    // If contents aren't available yet, then also clear stdout and stderr.
+                    this.setState({ fileContents: null, stdout: null, stderr: null });
+                }
+            });
+    }
+
+    componentDidMount() {
+        if (this.props.isStandalonePage) {
+            this.refreshBundle();
+        }
+    }
 
     /** Renderer. */
     render() {
         const bundleInfo = this.state.bundleInfo;
         if (!bundleInfo) {
-          // Error
-          if (this.state.errorMessages.length > 0) {
-            return renderErrorMessages(this.state.errorMessages);
-          }
+            // Error
+            if (this.state.errorMessages.length > 0) {
+                return renderErrorMessages(this.state.errorMessages);
+            }
 
-          // Still loading
-          return <div id="bundle-message" class="bundle-detail">
-              <img src={'${process.env.PUBLIC_URL}/img/Preloader_Small.gif'}/> Loading bundle...
-          </div>;
+            // Still loading
+            return (
+                <div id='bundle-message' class='bundle-detail'>
+                    <img src={'${process.env.PUBLIC_URL}/img/Preloader_Small.gif'} /> Loading
+                    bundle...
+                </div>
+            );
         }
 
-        const bundleMetadataChanged = this.props.isStandalonePage ? this.refreshBundle : this.props.bundleMetadataChanged;
+        const bundleMetadataChanged = this.props.isStandalonePage
+            ? this.refreshBundle
+            : this.props.bundleMetadataChanged;
 
-        return (<div id="panel_content">
-          {renderErrorMessages(this.state.errorMessages)}
-          {renderHeader(bundleInfo, bundleMetadataChanged)}
-          {renderDependencies(bundleInfo)}
-          {renderContents(bundleInfo, this.state.fileContents, this.state.stdout, this.state.stderr)}
-          <FileBrowser uuid={bundleInfo.uuid} />
-          {renderMetadata(bundleInfo, bundleMetadataChanged)}
-          {renderHostWorksheets(bundleInfo)}
-        </div>);
+        return (
+            <div id='panel_content'>
+                {renderErrorMessages(this.state.errorMessages)}
+                {renderHeader(bundleInfo, bundleMetadataChanged)}
+                {renderDependencies(bundleInfo)}
+                {renderContents(
+                    bundleInfo,
+                    this.state.fileContents,
+                    this.state.stdout,
+                    this.state.stderr,
+                )}
+                <FileBrowser uuid={bundleInfo.uuid} />
+                {renderMetadata(bundleInfo, bundleMetadataChanged)}
+                {renderHostWorksheets(bundleInfo)}
+            </div>
+        );
     }
 }
 
 function renderErrorMessages(messages) {
-  return <div id="bundle-error-messages">
-    {messages.map(message => {
-      return <div className="alert alert-danger alert-dismissable">{message}</div>;
-    })}
-  </div>;
+    return (
+        <div id='bundle-error-messages'>
+            {messages.map((message) => {
+                return <div className='alert alert-danger alert-dismissable'>{message}</div>;
+            })}
+        </div>
+    );
 }
 
 function renderDependencies(bundleInfo) {
-  let dependencies_table = [];
-  if (!bundleInfo.dependencies || bundleInfo.dependencies.length == 0) return <div/>;
+    let dependencies_table = [];
+    if (!bundleInfo.dependencies || bundleInfo.dependencies.length == 0) return <div />;
 
-  bundleInfo.dependencies.forEach(function (dep, i) {
-    let dep_bundle_url = "/bundles/" + dep.parent_uuid;
-    dependencies_table.push(<tr>
-      <td>
-          {dep.child_path}
-      </td>
-      <td>
-          &rarr; {dep.parent_name}(<a href={dep_bundle_url}>{shorten_uuid(dep.parent_uuid)}</a>){dep.parent_path ? '/' + dep.parent_path : ''}
-      </td>
-    </tr>);
-  });
+    bundleInfo.dependencies.forEach(function(dep, i) {
+        let dep_bundle_url = '/bundles/' + dep.parent_uuid;
+        dependencies_table.push(
+            <tr>
+                <td>{dep.child_path}</td>
+                <td>
+                    &rarr; {dep.parent_name}(
+                    <a href={dep_bundle_url}>{shorten_uuid(dep.parent_uuid)}</a>)
+                    {dep.parent_path ? '/' + dep.parent_path : ''}
+                </td>
+            </tr>,
+        );
+    });
 
-  return (<div>
-    <h4>dependencies</h4>
-    <table className="bundle-meta table">
-      <tbody>{dependencies_table}</tbody>
-    </table>
-  </div>);
+    return (
+        <div>
+            <h4>dependencies</h4>
+            <table className='bundle-meta table'>
+                <tbody>{dependencies_table}</tbody>
+            </table>
+        </div>
+    );
 }
 
 function createRow(bundleInfo, bundleMetadataChanged, key, value) {
-  // Return a row corresponding to showing
-  //   key: value
-  // which can be edited.
-  let editableMetadataFields = bundleInfo.editableMetadataFields;
-  let fieldType = bundleInfo.metadataType;
-  if (bundleInfo.permission > 1 && editableMetadataFields && editableMetadataFields.indexOf(key) != -1) {
-    return (<tr>
-      <th><span className="editable-key">{key}</span></th>
-      <td><BundleEditableField canEdit={true} dataType={fieldType[key]} fieldName={key} uuid={bundleInfo.uuid} value={value} onChange={bundleMetadataChanged} /></td>
-    </tr>);
-  }
-  else {
-    return (<tr>
-      <th><span>{key}</span></th>
-      <td><span>{renderFormat(value, fieldType[key])}</span></td>
-    </tr>);
-  }
+    // Return a row corresponding to showing
+    //   key: value
+    // which can be edited.
+    let editableMetadataFields = bundleInfo.editableMetadataFields;
+    let fieldType = bundleInfo.metadataType;
+    if (
+        bundleInfo.permission > 1 &&
+        editableMetadataFields &&
+        editableMetadataFields.indexOf(key) != -1
+    ) {
+        return (
+            <tr>
+                <th>
+                    <span className='editable-key'>{key}</span>
+                </th>
+                <td>
+                    <BundleEditableField
+                        canEdit={true}
+                        dataType={fieldType[key]}
+                        fieldName={key}
+                        uuid={bundleInfo.uuid}
+                        value={value}
+                        onChange={bundleMetadataChanged}
+                    />
+                </td>
+            </tr>
+        );
+    } else {
+        return (
+            <tr>
+                <th>
+                    <span>{key}</span>
+                </th>
+                <td>
+                    <span>{renderFormat(value, fieldType[key])}</span>
+                </td>
+            </tr>
+        );
+    }
 }
 
 function renderMetadata(bundleInfo, bundleMetadataChanged) {
-  let metadata = bundleInfo.metadata;
-  let metadataListHtml = [];
+    let metadata = bundleInfo.metadata;
+    let metadataListHtml = [];
 
-  // FIXME: editing allow_failed_dependencies doesn't work
-  // FIXME: merge with other switch statements?
-  // FIXME: use simpler declarative setup instead of looping and switches?
-  // Sort the metadata by key.
-  let keys = [];
-  for (let property in metadata) {
-    if (metadata.hasOwnProperty(property))
-      keys.push(property);
-  }
-  keys.sort();
-  for (let i = 0; i < keys.length; i++) {
-    let key = keys[i];
-    metadataListHtml.push(createRow(bundleInfo, bundleMetadataChanged, key, metadata[key]));
-  }
+    // FIXME: editing allow_failed_dependencies doesn't work
+    // FIXME: merge with other switch statements?
+    // FIXME: use simpler declarative setup instead of looping and switches?
+    // Sort the metadata by key.
+    let keys = [];
+    for (let property in metadata) {
+        if (metadata.hasOwnProperty(property)) keys.push(property);
+    }
+    keys.sort();
+    for (let i = 0; i < keys.length; i++) {
+        let key = keys[i];
+        metadataListHtml.push(createRow(bundleInfo, bundleMetadataChanged, key, metadata[key]));
+    }
 
-  return (<div>
-    <div className="collapsible-header"><span><p>metadata &#x25BE;</p></span></div>
-    <div className="collapsible-content">
-      <table className="bundle-meta table">
-        <tbody>{metadataListHtml}</tbody>
-      </table>
-    </div>
-  </div>);
+    return (
+        <div>
+            <div className='collapsible-header'>
+                <span>
+                    <p>metadata &#x25BE;</p>
+                </span>
+            </div>
+            <div className='collapsible-content'>
+                <table className='bundle-meta table'>
+                    <tbody>{metadataListHtml}</tbody>
+                </table>
+            </div>
+        </div>
+    );
 }
 
 function renderHeader(bundleInfo, bundleMetadataChanged) {
-  let bundleDownloadUrl = "/rest/bundles/" + bundleInfo.uuid + "/contents/blob/";
-  let bundleStateClass = 'bundle-state state-' + (bundleInfo.state || 'ready');
+    let bundleDownloadUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/';
+    let bundleStateClass = 'bundle-state state-' + (bundleInfo.state || 'ready');
 
-  // Display basic information
-  let rows = [];
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'uuid', bundleInfo.uuid));
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'name', bundleInfo.metadata.name));
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'description', bundleInfo.metadata.description));
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'owner', (bundleInfo.owner == null) ? '<anonymous>' : bundleInfo.owner.user_name));
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'is_anonymous', renderFormat(bundleInfo.is_anonymous, 'bool')));
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'permissions', renderPermissions(bundleInfo)));
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'created', bundleInfo.metadata.created));
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'data_size', bundleInfo.metadata.data_size));
-  if (bundleInfo.bundle_type == 'run') {
-    rows.push(createRow(bundleInfo, bundleMetadataChanged, 'command', bundleInfo.command));
-  }
-  if (bundleInfo.metadata.failure_message) {
-    rows.push(createRow(bundleInfo, bundleMetadataChanged, 'failure_message', bundleInfo.metadata.failure_message));
-  }
-  if (bundleInfo.bundle_type == 'run') {
-    if (bundleInfo.state == 'running' && bundleInfo.metadata.run_status != 'Running')
-      rows.push(createRow(bundleInfo, bundleMetadataChanged, 'run_status', bundleInfo.metadata.run_status));
-    rows.push(createRow(bundleInfo, bundleMetadataChanged, 'time', bundleInfo.metadata.time));
-  }
+    // Display basic information
+    let rows = [];
+    rows.push(createRow(bundleInfo, bundleMetadataChanged, 'uuid', bundleInfo.uuid));
+    rows.push(createRow(bundleInfo, bundleMetadataChanged, 'name', bundleInfo.metadata.name));
+    rows.push(
+        createRow(
+            bundleInfo,
+            bundleMetadataChanged,
+            'description',
+            bundleInfo.metadata.description,
+        ),
+    );
+    rows.push(
+        createRow(
+            bundleInfo,
+            bundleMetadataChanged,
+            'owner',
+            bundleInfo.owner == null ? '<anonymous>' : bundleInfo.owner.user_name,
+        ),
+    );
+    rows.push(
+        createRow(
+            bundleInfo,
+            bundleMetadataChanged,
+            'is_anonymous',
+            renderFormat(bundleInfo.is_anonymous, 'bool'),
+        ),
+    );
+    rows.push(
+        createRow(bundleInfo, bundleMetadataChanged, 'permissions', renderPermissions(bundleInfo)),
+    );
+    rows.push(createRow(bundleInfo, bundleMetadataChanged, 'created', bundleInfo.metadata.created));
+    rows.push(
+        createRow(bundleInfo, bundleMetadataChanged, 'data_size', bundleInfo.metadata.data_size),
+    );
+    if (bundleInfo.bundle_type == 'run') {
+        rows.push(createRow(bundleInfo, bundleMetadataChanged, 'command', bundleInfo.command));
+    }
+    if (bundleInfo.metadata.failure_message) {
+        rows.push(
+            createRow(
+                bundleInfo,
+                bundleMetadataChanged,
+                'failure_message',
+                bundleInfo.metadata.failure_message,
+            ),
+        );
+    }
+    if (bundleInfo.bundle_type == 'run') {
+        if (bundleInfo.state == 'running' && bundleInfo.metadata.run_status != 'Running')
+            rows.push(
+                createRow(
+                    bundleInfo,
+                    bundleMetadataChanged,
+                    'run_status',
+                    bundleInfo.metadata.run_status,
+                ),
+            );
+        rows.push(createRow(bundleInfo, bundleMetadataChanged, 'time', bundleInfo.metadata.time));
+    }
 
-  rows.push(createRow(bundleInfo, bundleMetadataChanged, 'state', <span className={bundleStateClass}>{bundleInfo.state}</span>));
-  let bundleHeader;
-  if (document.getElementById('bundle-content')) {
-    let bundle_name = (<h3 className="bundle-name">{bundleInfo.metadata.name}</h3>);
-    bundleHeader = (
-        <div className="bundle-header">
-          {bundle_name}
-          <div className="bundle-links">
-            <a href={bundleDownloadUrl} className="bundle-download btn btn-default btn-sm" alt="Download Bundle">
-              <span className="glyphicon glyphicon-download-alt"></span>
-            </a>
-          </div>
-        </div>
-    )
-  }
-  return (
-  <div>
-    {bundleHeader}
-    <table className="bundle-meta table">
-      <tbody>
-        {rows.map(function (elem) {return elem;})}
-        <tr>
-          <th><span>download</span></th>
-          <td>
-            <div className="bundle-links">
-              <a href={bundleDownloadUrl} className="bundle-download btn btn-default btn-sm" alt="Download Bundle">
-                <span className="glyphicon glyphicon-download-alt"></span>
-              </a>
+    rows.push(
+        createRow(
+            bundleInfo,
+            bundleMetadataChanged,
+            'state',
+            <span className={bundleStateClass}>{bundleInfo.state}</span>,
+        ),
+    );
+    let bundleHeader;
+    if (document.getElementById('bundle-content')) {
+        let bundle_name = <h3 className='bundle-name'>{bundleInfo.metadata.name}</h3>;
+        bundleHeader = (
+            <div className='bundle-header'>
+                {bundle_name}
+                <div className='bundle-links'>
+                    <a
+                        href={bundleDownloadUrl}
+                        className='bundle-download btn btn-default btn-sm'
+                        alt='Download Bundle'
+                    >
+                        <span className='glyphicon glyphicon-download-alt' />
+                    </a>
+                </div>
             </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>);
+        );
+    }
+    return (
+        <div>
+            {bundleHeader}
+            <table className='bundle-meta table'>
+                <tbody>
+                    {rows.map(function(elem) {
+                        return elem;
+                    })}
+                    <tr>
+                        <th>
+                            <span>download</span>
+                        </th>
+                        <td>
+                            <div className='bundle-links'>
+                                <a
+                                    href={bundleDownloadUrl}
+                                    className='bundle-download btn btn-default btn-sm'
+                                    alt='Download Bundle'
+                                >
+                                    <span className='glyphicon glyphicon-download-alt' />
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    );
 }
 
 function renderContents(bundleInfo, fileContents, stdout, stderr) {
-  let stdoutHtml = '';
-  if (stdout) {
-    let stdoutUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/stdout';
-    stdoutHtml = (<div>
-      <span><a href={stdoutUrl} target="_blank">stdout</a></span>
-      &nbsp;
-      <span className="collapsible-header">&#x25BE;</span>
-      <div className="collapsible-content bundle-meta">
-        <pre>{stdout}</pre>
-      </div>
-    </div>);
-  }
+    let stdoutHtml = '';
+    if (stdout) {
+        let stdoutUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/stdout';
+        stdoutHtml = (
+            <div>
+                <span>
+                    <a href={stdoutUrl} target='_blank'>
+                        stdout
+                    </a>
+                </span>
+                &nbsp;
+                <span className='collapsible-header'>&#x25BE;</span>
+                <div className='collapsible-content bundle-meta'>
+                    <pre>{stdout}</pre>
+                </div>
+            </div>
+        );
+    }
 
-  let stderrHtml = '';
-  if (stderr) {
-    let stderrUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/stderr';
-    stderrHtml = (<div>
-      <span><a href={stderrUrl} target="_blank">stderr</a></span>
-      &nbsp;
-      <span className="collapsible-header">&#x25BE;</span>
-      <div className="collapsible-content bundle-meta">
-        <pre>{stderr}</pre>
-      </div>
-    </div>);
-  }
+    let stderrHtml = '';
+    if (stderr) {
+        let stderrUrl = '/rest/bundles/' + bundleInfo.uuid + '/contents/blob/stderr';
+        stderrHtml = (
+            <div>
+                <span>
+                    <a href={stderrUrl} target='_blank'>
+                        stderr
+                    </a>
+                </span>
+                &nbsp;
+                <span className='collapsible-header'>&#x25BE;</span>
+                <div className='collapsible-content bundle-meta'>
+                    <pre>{stderr}</pre>
+                </div>
+            </div>
+        );
+    }
 
-  let contentsHtml = '';
-  if (fileContents) {
-    contentsHtml = (<div>
-      <div className="collapsible-header"><span><p>contents &#x25BE;</p></span></div>
-      <div className="collapsible-content bundle-meta">
-        <pre>{fileContents}</pre>
-      </div>
-    </div>);
-  }
+    let contentsHtml = '';
+    if (fileContents) {
+        contentsHtml = (
+            <div>
+                <div className='collapsible-header'>
+                    <span>
+                        <p>contents &#x25BE;</p>
+                    </span>
+                </div>
+                <div className='collapsible-content bundle-meta'>
+                    <pre>{fileContents}</pre>
+                </div>
+            </div>
+        );
+    }
 
-  return (<div>
-    {contentsHtml}
-    {stdoutHtml}
-    {stderrHtml}
-  </div>);
+    return (
+        <div>
+            {contentsHtml}
+            {stdoutHtml}
+            {stderrHtml}
+        </div>
+    );
 }
 
 function renderHostWorksheets(bundleInfo) {
-  if (!bundleInfo.host_worksheets) return <div/>;
+    if (!bundleInfo.host_worksheets) return <div />;
 
-  let hostWorksheetRows = [];
-  bundleInfo.host_worksheets.forEach(function (worksheet) {
-    let hostWorksheetUrl = "/worksheets/" + worksheet.uuid;
-    hostWorksheetRows.push(<tr>
-      <td>
-          <a href={hostWorksheetUrl}>{worksheet.name}</a>
-      </td>
-    </tr>);
-  });
+    let hostWorksheetRows = [];
+    bundleInfo.host_worksheets.forEach(function(worksheet) {
+        let hostWorksheetUrl = '/worksheets/' + worksheet.uuid;
+        hostWorksheetRows.push(
+            <tr>
+                <td>
+                    <a href={hostWorksheetUrl}>{worksheet.name}</a>
+                </td>
+            </tr>,
+        );
+    });
 
-  return (<div>
-    <div className="collapsible-header"><span><p>host worksheets &#x25BE;</p></span></div>
-    <div className="collapsible-content">
-      <div className="host-worksheets-table">
-        <table className="bundle-meta table">
-          <tbody>
-              {hostWorksheetRows}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
-  );
+    return (
+        <div>
+            <div className='collapsible-header'>
+                <span>
+                    <p>host worksheets &#x25BE;</p>
+                </span>
+            </div>
+            <div className='collapsible-content'>
+                <div className='host-worksheets-table'>
+                    <table className='bundle-meta table'>
+                        <tbody>{hostWorksheetRows}</tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default Bundle;

@@ -1,16 +1,10 @@
 // @flow
 import * as React from 'react';
+import $ from 'jquery';
 import classNames from 'classnames';
-import { withStyles } from '@material-ui/core/styles';
 
-/**
- * This [pure / stateful] component ___.
- */
 class Example extends React.Component<
     {
-        /** CSS-in-JS styling object. */
-        classes: {},
-
         /** React components within opening & closing tags. */
         children: React.Node,
     },
@@ -41,10 +35,3 @@ class Example extends React.Component<
         );
     }
 }
-
-/** CSS-in-JS styling object. */
-const styles = (theme) => ({
-    // css-key: value,
-});
-
-export default withStyles(styles)(Example);
