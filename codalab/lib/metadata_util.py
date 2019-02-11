@@ -31,10 +31,14 @@ def fill_missing_metadata(bundle_subclass, args, initial_metadata):
             default = MetadataDefaults.get_default(spec, bundle_subclass, args)
             new_initial_metadata[spec.key] = default
         final_value = new_initial_metadata[spec.key]
-        is_unicode_string = isinstance(final_value, basestring) and unicode_util.contains_unicode(final_value)
-        is_unicode_list = isinstance(final_value, list) and any(unicode_util.contains_unicode(v) for v in final_value)
+        is_unicode_string = isinstance(final_value, basestring) and unicode_util.contains_unicode(
+            final_value
+        )
+        is_unicode_list = isinstance(final_value, list) and any(
+            unicode_util.contains_unicode(v) for v in final_value
+        )
         if is_unicode_string or is_unicode_list:
-            raise UsageError('Metadata cannot contain unicode: %s = %s' % (spec.key, final_value,))
+            raise UsageError('Metadata cannot contain unicode: %s = %s' % (spec.key, final_value))
 
     return new_initial_metadata
 
@@ -93,10 +97,15 @@ def parse_metadata_form(bundle_subclass, form_result):
             if metadata_type == list:
                 result[metadata_key] = remainder.split() if remainder else []
                 if any(unicode_util.contains_unicode(v) for v in result[metadata_key]):
-                    raise UsageError('Metadata cannot contain unicode: %s = %s' % (metadata_key, result[metadata_key],))
+                    raise UsageError(
+                        'Metadata cannot contain unicode: %s = %s'
+                        % (metadata_key, result[metadata_key])
+                    )
             elif metadata_type == basestring:
                 if remainder is not None and unicode_util.contains_unicode(remainder):
-                    raise UsageError('Metadata cannot contain unicode: %s = %s' % (metadata_key, remainder,))
+                    raise UsageError(
+                        'Metadata cannot contain unicode: %s = %s' % (metadata_key, remainder)
+                    )
                 result[metadata_key] = remainder
             else:
                 try:

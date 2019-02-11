@@ -1168,7 +1168,6 @@ class BundleCLI(object):
                 force_compression=args.force_compression,
             )
 
-
             # Create bundle.
             # We must create the bundle right before we upload it because we
             # perform some input validation in functions such as
