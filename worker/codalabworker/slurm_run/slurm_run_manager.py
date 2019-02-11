@@ -10,7 +10,6 @@ import subprocess
 
 
 class SlurmRunManager(BaseRunManager):
-    STATE_LOCK_FILE_NAME = "state.lock"
     STATE_FILE_NAME = "state.json"
     COMMANDS_LOCK_FILE_NAME = "commands.lock"
     COMMANDS_FILE_NAME = "commands.json"
@@ -20,7 +19,7 @@ class SlurmRunManager(BaseRunManager):
     MAX_CORES_ALLOWED = 1
     MAX_GPUS_ALLOWED = 0
 
-    def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='cl-slurm-job', slurm_host='sc'):
+    def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='/u/nlp/bin/cl-slurm-job', slurm_host=None):
         self.runs = set()  # List[str] UUIDs of runs
         self.run_states = {}  # uuid -> Dict (of WorkerRun)
         self.run_commands = {}  # uuid -> List[Command]
@@ -64,8 +63,11 @@ class SlurmRunManager(BaseRunManager):
 
     def process_runs(self):
         for uuid in self.runs:
-            self.run_states[uuid] = self._read_run_state(self.run_paths[uuid])
-            self._write_commands(self.run_commands[uuid], self.run_paths[uuid])
+            try:
+                self.run_states[uuid] = self._read_run_state(self.run_paths[uuid])
+                self._write_commands(self.run_commands[uuid], self.run_paths[uuid])
+            except IOError:
+                pass
 
     def create_run(self, bundle, resources):
         """
@@ -76,33 +78,33 @@ class SlurmRunManager(BaseRunManager):
         bundle = BundleInfo.from_dict(bundle)
         resources = RunResources.from_dict(resources)
         self.runs.add(bundle.uuid)
-        self.run_paths[bundle.uuid] = os.path.join(self.work_dir, bundle.uuid)
+        self.run_paths[bundle.uuid] = os.path.abspath(os.path.join(self.work_dir, bundle.uuid))
         self.run_commands[bundle.uuid] = []
 
-        state_lock_path = os.path.join(
-            self.run_paths[bundle.uuid], self.STATE_LOCK_FILE_NAME
-        )
-        state_path = os.path.join(self.run_paths[bundle.uuid], self.STATE_FILE_NAME)
-        commands_lock_path = os.path.join(
+        os.mkdir(self.run_paths[bundle.uuid])
+        state_path = os.path.abspath(os.path.join(self.run_paths[bundle.uuid], self.STATE_FILE_NAME))
+        commands_lock_path = os.path.abspath(os.path.join(
             self.run_paths[bundle.uuid], self.COMMANDS_LOCK_FILE_NAME
-        )
-        commands_path = os.path.join(
+        ))
+        commands_path = os.path.abspath(os.path.join(
             self.run_paths[bundle.uuid], self.COMMANDS_FILE_NAME
-        )
-        bundle_info_path = os.path.join(
+        ))
+        bundle_info_path = os.path.abspath(os.path.join(
             self.run_paths[bundle.uuid], self.BUNDLE_FILE_NAME
-        )
-        resources_path = os.path.join(
+        ))
+        resources_path = os.path.abspath(os.path.join(
             self.run_paths[bundle.uuid], self.RESOURCES_FILE_NAME
-        )
-        slurm_output_path = os.path.join(
+        ))
+        slurm_output_path = os.path.abspath(os.path.join(
             self.run_paths[bundle.uuid], self.SLURM_OUTPUT_FILE_NAME
-        )
+        ))
 
         with open(bundle_info_path, "w") as outfile:
             json.dump(bundle.__dict__, outfile)
         with open(resources_path, "w") as outfile:
             json.dump(resources.__dict__, outfile)
+        open(state_path, 'a').close()
+        open(commands_path, 'a').close()
         self._write_commands(
             self.run_commands[bundle.uuid], self.run_paths[bundle.uuid]
         )
@@ -113,7 +115,7 @@ class SlurmRunManager(BaseRunManager):
         partition = "jag-lo" if resources.gpus else "john"
         sbatch_flags = [
             self.sbatch_binary,
-            "--mem={}".format(resources.memory),
+            "--mem={}K".format(resources.memory//1024),
             "--chdir={}".format(self.run_paths[bundle.uuid]),
             "--job-name={}".format(job_name),
             "--output={}".format(slurm_output_path),
@@ -129,14 +131,12 @@ class SlurmRunManager(BaseRunManager):
                 --bundle-file {} \
                 --resources-file {} \
                 --state-file {} \
-                --state-lock-file {} \
                 --commands-file {} \
                 --commands-lock-file {}".format(
             self.slurm_run_binary,
             bundle_info_path,
             resources_path,
             state_path,
-            state_lock_path,
             commands_path,
             commands_lock_path,
         )
@@ -153,7 +153,10 @@ class SlurmRunManager(BaseRunManager):
 
     def get_run(self, uuid):
         if uuid in self.run_paths:
-            return self._read_run_state(self.run_paths[uuid])
+            try:
+                return self._read_run_state(self.run_paths[uuid])
+            except Exception:
+                return self.run_states.get(uuid, None)
         return None
 
     def mark_finalized(self, uuid):
@@ -197,7 +200,7 @@ class SlurmRunManager(BaseRunManager):
         """
         Returns a list of all the runs managed by this RunManager
         """
-        return list(self.run_states.values())
+        return self.run_states
 
     @property
     def all_dependencies(self):
@@ -236,25 +239,19 @@ class SlurmRunManager(BaseRunManager):
     def _read_run_state(self, path):
         """
         Reads a WorkerRun run state dict from the state file in the given dir
-        waiting for the lock at the lock file in the given dir
         """
-        lock_path = os.path.join(path, self.STATE_LOCK_FILE_NAME)
         state_path = os.path.join(path, self.STATE_FILE_NAME)
-        while True:
+        num_retries = 10
+        while num_retries:
             try:
-                lock_file = open(lock_path, "w+")
-                fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                break
-            except IOError as ex:
-                if ex.errno != errno.EAGAIN:
+                with open(state_path, "r") as f:
+                    run_state = json.load(f)
+                return run_state
+            except Exception as ex:
+                num_retries -= 1
+                if num_retries == 0:
+                    print("Can't read state file: {}".format(ex))
                     raise
-                else:
-                    time.sleep(0.1)
-        with open(state_path, "r") as f:
-            run_state = json.load(f)
-        fcntl.flock(lock_file, fcntl.LOCK_UN)
-        lock_file.close()
-        return run_state
 
     def _write_commands(self, commands, path):
         """

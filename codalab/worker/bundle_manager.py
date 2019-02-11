@@ -513,13 +513,13 @@ class BundleManager(object):
         # Figure out the resource requirements.
         resources = message['resources'] = {}
 
-        resources['request_cpus'] = self._compute_request_cpus(bundle)
-        resources['request_gpus'] = self._compute_request_gpus(bundle)
+        resources['cpus'] = self._compute_request_cpus(bundle)
+        resources['gpus'] = self._compute_request_gpus(bundle)
 
         resources['docker_image'] = self._get_docker_image(bundle)
-        resources['request_time'] = self._compute_request_time(bundle)
-        resources['request_memory'] = self._compute_request_memory(bundle)
-        resources['request_disk'] = self._compute_request_disk(bundle)
-        resources['request_network'] = bundle.metadata.request_network
+        resources['time'] = self._compute_request_time(bundle)
+        resources['memory'] = self._compute_request_memory(bundle)
+        resources['disk'] = self._compute_request_disk(bundle)
+        resources['network'] = bundle.metadata.request_network
 
         return message

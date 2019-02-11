@@ -35,6 +35,6 @@ setup(
     package_data={'': 'requirements.txt'},
     include_package_data=True,
     install_requires=get_requirements('./requirements.txt'),
-    entry_points={'console_scripts': ['cl-worker=codalabworker.main:main']},
+    entry_points={'console_scripts': ['cl-worker=codalabworker.main:main', 'cl-slurm-job=codalabworker.slurm_run.slurm_run:main']},
     zip_safe=False,
 ),

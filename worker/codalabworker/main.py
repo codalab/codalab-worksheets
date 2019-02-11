@@ -197,8 +197,6 @@ chmod 600 %s""" % args.password_file
     def create_slurm_run_manager(worker):
         return SlurmRunManager(
             worker_dir=args.work_dir,
-            sbatch_binary="sbatch",
-            slurm_run_binary="cl-slurm-job",
         )
 
     run_manager_factory = create_slurm_run_manager if args.slurm_worker else create_local_run_manager
