@@ -795,8 +795,8 @@ class BundleModel(object):
                 return self.finalize_bundle(
                     bundle,
                     user_id,
-                    bundle_update['info']['exitcode'],
-                    bundle_update['info']['failure_message'],
+                    bundle_update['info'].get('exitcode', 0),
+                    bundle_update['info'].get('failure_message', None),
                     connection,
                 )
             elif state in [State.PREPARING, State.RUNNING]:
