@@ -246,10 +246,10 @@ class Worksheet extends React.Component {
     discardChanges() {
         this.toggleEditMode(false, false);
     }
-    editMode() {
+    editMode = () => {
         this.toggleEditMode(true);
-    }
-    handleActionBarFocus(event) {
+    };
+    handleActionBarFocus = (event) => {
         this.setState({ activeComponent: 'action' });
         // just scroll to the top of the page.
         // Add the stop() to keep animation events from building up in the queue
@@ -258,8 +258,8 @@ class Worksheet extends React.Component {
         $('body')
             .stop(true)
             .animate({ scrollTop: 0 }, 250);
-    }
-    handleActionBarBlur(event) {
+    };
+    handleActionBarBlur = (event) => {
         // explicitly close terminal because we're leaving the action bar
         // $('#command_line').terminal().focus(false);
         this.setState({ activeComponent: 'list' });
@@ -268,7 +268,7 @@ class Worksheet extends React.Component {
             .removeClass('actionbar-focus')
             .removeAttr('style');
         $('#ws_search').removeAttr('style');
-    }
+    };
     setupEventHandlers() {
         var self = this;
         // Load worksheet from history when back/forward buttons are used.
@@ -627,7 +627,7 @@ class Worksheet extends React.Component {
     // Also, a non-null item could contain a list of bundle_infos, which represent a list of bundles. Usually not all of them need updating.
     // The bundle_infos for bundles that don't need updating are also null.
     // If rawIndexAfterEditMode is defined, this reloadWorksheet is called right after toggling editMode. It should resolve rawIndex to (focusIndex, subFocusIndex) pair.
-    reloadWorksheet(partialUpdateItems, rawIndexAfterEditMode) {
+    reloadWorksheet = (partialUpdateItems, rawIndexAfterEditMode) => {
         if (partialUpdateItems === undefined) {
             $('#update_progress').show();
             this.setState({ updating: true });
@@ -693,7 +693,7 @@ class Worksheet extends React.Component {
             this.setState({ ws: ws, version: this.state.version + 1 });
             this.checkRunBundle(ws.info);
         }
-    }
+    };
 
     openWorksheet(uuid) {
         // Change to a different worksheet. This does not call reloadWorksheet().
