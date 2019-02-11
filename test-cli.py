@@ -108,9 +108,6 @@ def sanitize(string, max_chars=256):
 
 
 def run_command(args, expected_exit_code=0, max_output_chars=256):
-    # Decode args into ASCII as travis can't handle them otherwise. Any non-ASCII characters
-    # passed through this command line driver will be encoded in XML style.
-    # args = [arg.encode('ascii', 'xmlcharrefreplace') for arg in args]
     sys.stdout.write('>> %s' % ' '.join(args))
 
     try:
