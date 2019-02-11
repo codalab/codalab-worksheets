@@ -1,12 +1,12 @@
 import * as React from 'react';
 import SubHeader from '../components/SubHeader';
 import ContentWrapper from '../components/ContentWrapper';
-import Bundle from '../components/Bundle'
+import Bundle from '../components/Bundle';
 
 /**
  * This route page displays a bundle's metadata and contents.
  */
-class BundleRoute extends React.Component<>{
+class BundleRoute extends React.Component<> {
     /** Prop default values. */
     static defaultProps = {
         // key: value,
@@ -20,15 +20,12 @@ class BundleRoute extends React.Component<>{
             bundleInfo: null,
             uuid,
         };
-
     }
 
     /** Renderer. */
     render() {
         const { uuid } = this.props.match.params;
-        return (
-            <Bundle uuid={uuid} isStandalonePage={true} />
-        );
+        return <Bundle uuid={uuid} isStandalonePage={true} />;
     }
 }
 

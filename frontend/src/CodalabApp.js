@@ -2,9 +2,12 @@ import React from 'react';
 import { Router, Route, Link, Redirect, withRouter, Switch } from 'react-router-dom';
 import { CookiesProvider, withCookies } from 'react-cookie';
 
+import { MuiThemeProvider } from '@material-ui/core/styles';
+import CodalabTheme from './theme';
+
 // Components
 import UserInfo from './components/UserInfo';
-import PublicHome from './components/PublicHome';
+import HomePage from './components/HomePage';
 import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
@@ -26,29 +29,35 @@ import Cookies from 'universal-cookie';
 function CodalabApp() {
     return (
         <CookiesProvider>
-            <Router history={history}>
-                <div style={{ height: '100%' }}>
-                    {/*NavBar. Rendered as a route on all pages so it can access the navigation props.*/}
-                    <Route path='/' render={(props) => <NavBar {...props} auth={fakeAuth} />} />
+            <MuiThemeProvider theme={CodalabTheme}>
+                <Router history={history}>
+                    <div style={{ height: '100%' }}>
+                        {/*NavBar. Rendered as a route on all pages so it can access the navigation props.*/}
+                        <Route path='/' render={(props) => <NavBar {...props} auth={fakeAuth} />} />
 
-                    {/*Main Content.*/}
-                    <Switch>
-                        <Route path='/' exact component={PublicHome} />
-                        <Route path='/account/signup' component={Login} />
-                        <Route
-                            path='/account/login'
-                            render={(props) => <Login {...props} auth={fakeAuth} />}
-                        />
-                        <PrivateRoute path='/account/profile' component={UserInfo} />
-                        <Route path='/worksheets/:uuid' component={Worksheet} />
-                        <Route path='/bundles/:uuid' component={BundleRoute} />
-                        <Route component={PageNotFound} />
-                    </Switch>
+                        {/*Main Content.*/}
+                        <Switch>
+                            <Route
+                                path='/'
+                                exact
+                                render={(props) => <HomePage {...props} auth={fakeAuth} />}
+                            />
+                            <Route path='/account/signup' component={Login} />
+                            <Route
+                                path='/account/login'
+                                render={(props) => <Login {...props} auth={fakeAuth} />}
+                            />
+                            <PrivateRoute path='/account/profile' component={UserInfo} />
+                            <Route path='/worksheets/:uuid' component={Worksheet} />
+                            <Route path='/bundles/:uuid' component={BundleRoute} />
+                            <Route component={PageNotFound} />
+                        </Switch>
 
-                    {/*Footer.*/}
-                    <Footer />
-                </div>
-            </Router>
+                        {/*Footer.*/}
+                        <Footer />
+                    </div>
+                </Router>
+            </MuiThemeProvider>
         </CookiesProvider>
     );
 }

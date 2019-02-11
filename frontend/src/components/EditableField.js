@@ -24,7 +24,6 @@ export class EditableField extends React.Component<{
         canEdit: true,
     };
 
-
     shouldComponentUpdate(nextProps, nextState) {
         return nextProps.value !== this.props.value;
     }
@@ -32,35 +31,38 @@ export class EditableField extends React.Component<{
     render() {
         return (
             <Editable
-                dataType="text"
-                mode="inline"
+                dataType='text'
+                mode='inline'
                 value={this.props.value}
                 disabled={!this.props.canEdit}
-                emptyValueText="<none>"
+                emptyValueText='<none>'
                 showButtons={false}
-                validate={(value) => isAscii(value) ? null : "Only ASCII characters allowed."}
-                handleSubmit={({ value }) => $.ajax({
-                    type: this.props.method,
-                    url: this.props.url,
-                    data: JSON.stringify(this.props.buildPayload(value)),
-                    contentType: 'application/json; charset=UTF-8',
-                    dataType: 'json',
-                    cache: false,
-                    context: this,  // automatically bind `this` in all callbacks
-                    xhr: function() {
-                        // Hack for IE < 9 to use PATCH method
-                        return window.XMLHttpRequest == null ||
-                        new window.XMLHttpRequest().addEventListener == null
-                            ? new window.ActiveXObject('Microsoft.XMLHTTP')
-                            : $.ajaxSettings.xhr();
-                    },
-                }).done(function (response) {
-                    if(this.props.onChange) this.props.onChange();
-                }).fail(function (response, status, err) {
-                    console.log("Invalid value entered: ", response.responseText);
-                })}
+                validate={(value) => (isAscii(value) ? null : 'Only ASCII characters allowed.')}
+                handleSubmit={({ value }) =>
+                    $.ajax({
+                        type: this.props.method,
+                        url: this.props.url,
+                        data: JSON.stringify(this.props.buildPayload(value)),
+                        contentType: 'application/json; charset=UTF-8',
+                        dataType: 'json',
+                        cache: false,
+                        context: this, // automatically bind `this` in all callbacks
+                        xhr: function() {
+                            // Hack for IE < 9 to use PATCH method
+                            return window.XMLHttpRequest == null ||
+                                new window.XMLHttpRequest().addEventListener == null
+                                ? new window.ActiveXObject('Microsoft.XMLHTTP')
+                                : $.ajaxSettings.xhr();
+                        },
+                    })
+                        .done(function(response) {
+                            if (this.props.onChange) this.props.onChange();
+                        })
+                        .fail(function(response, status, err) {
+                            console.log('Invalid value entered: ', response.responseText);
+                        })
+                }
             />
-
         );
     }
 }
@@ -71,13 +73,15 @@ export class WorksheetEditableField extends React.Component<{
 }> {
     buildPayload(value) {
         return {
-            data: [{
-                id: this.props.uuid,
-                type: 'worksheets',
-                attributes: {
-                    [this.props.fieldName]: value,
+            data: [
+                {
+                    id: this.props.uuid,
+                    type: 'worksheets',
+                    attributes: {
+                        [this.props.fieldName]: value,
+                    },
                 },
-            }]
+            ],
         };
     }
 
@@ -85,8 +89,8 @@ export class WorksheetEditableField extends React.Component<{
         return (
             <EditableField
                 {...this.props}
-                url="/rest/worksheets"
-                method="PATCH"
+                url='/rest/worksheets'
+                method='PATCH'
                 buildPayload={(value) => this.buildPayload(value)}
             />
         );
@@ -106,15 +110,17 @@ export class BundleEditableField extends React.Component<{
 
     buildPayload(value) {
         return {
-            data: [{
-                id: this.props.uuid,
-                type: 'bundles',
-                attributes: {
-                    metadata: {
-                        [this.props.fieldName]: serializeFormat(value, this.props.dataType)
-                    }
-                }
-            }]
+            data: [
+                {
+                    id: this.props.uuid,
+                    type: 'bundles',
+                    attributes: {
+                        metadata: {
+                            [this.props.fieldName]: serializeFormat(value, this.props.dataType),
+                        },
+                    },
+                },
+            ],
         };
     }
     render() {
@@ -122,11 +128,10 @@ export class BundleEditableField extends React.Component<{
             <EditableField
                 {...this.props}
                 value={renderFormat(this.props.value, this.props.dataType)}
-                url="/rest/bundles"
-                method="PATCH"
+                url='/rest/bundles'
+                method='PATCH'
                 buildPayload={(value) => this.buildPayload(value)}
             />
         );
     }
 }
-

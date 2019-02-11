@@ -2,11 +2,16 @@ import * as React from 'react';
 import classNames from 'classnames';
 import Immutable from 'seamless-immutable';
 
-class NavBar extends React.Component {
+class NavBar extends React.Component<{
+    auth: {
+        isAuthenticated: boolean,
+        signout: () => void,
+    },
+}> {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({});
+        this.state = {};
     }
 
     /** Renderer. */
@@ -21,7 +26,7 @@ class NavBar extends React.Component {
                             data-toggle='collapse'
                             data-target='#navbar_collapse'
                         >
-                            <span className='sr-only'>Toggle navigation</span>
+                            <span className='sr-only'>Toggle Navigation</span>
                             <span className='icon-bar' />
                             <span className='icon-bar' />
                             <span className='icon-bar' />
@@ -37,7 +42,7 @@ class NavBar extends React.Component {
                         <ul className='nav navbar-nav navbar-right'>
                             <li>
                                 <a href='/rest/worksheets/?name=home' tabIndex={2} target='_self'>
-                                    Public Home
+                                    Gallery
                                 </a>
                             </li>
                             {this.props.auth.isAuthenticated && (
