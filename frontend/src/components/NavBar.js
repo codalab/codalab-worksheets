@@ -1,5 +1,6 @@
 import * as React from 'react';
 import classNames from 'classnames';
+import $ from 'jquery';
 import Immutable from 'seamless-immutable';
 
 class NavBar extends React.Component {
@@ -7,6 +8,28 @@ class NavBar extends React.Component {
     constructor(props) {
         super(props);
         this.state = Immutable({});
+    }
+
+    componentDidMount() {
+        // Initialize history stack
+        $.ajax({
+            url: '/rest/user',
+            dataType: 'json',
+            cache: false,
+            type: 'GET',
+            success: function(data) {
+                var userInfo = data.data.attributes;
+                userInfo.user_id = data.data.id;
+                this.setState(
+                    Immutable({
+                        userInfo: userInfo,
+                    }),
+                );
+            }.bind(this),
+            error: function(xhr, status, err) {
+                console.error(xhr.responseText);
+            },
+        });
     }
 
     /** Renderer. */
@@ -71,7 +94,13 @@ class NavBar extends React.Component {
                                 </a>
                             </li>
                             {this.props.auth.isAuthenticated && (
-                                <li className="user-authenticated dropdown {% active request '/accounts/' %}">
+                                <li
+                                    className={
+                                        'user-authenticated dropdown ' +
+                                        (this.props.location.pathname.includes('/account/') &&
+                                            'active')
+                                    }
+                                >
                                     <a>
                                         <img
                                             src={
@@ -79,7 +108,9 @@ class NavBar extends React.Component {
                                             }
                                             className='mini-avatar'
                                         />{' '}
-                                        <span className='user-name' /> <span className='caret' />
+                                        <span className='user-name' />
+                                        {this.state.userInfo && this.state.userInfo.user_name}
+                                        <span className='caret' />
                                     </a>
                                     <ul className='dropdown-menu' role='menu'>
                                         <li>

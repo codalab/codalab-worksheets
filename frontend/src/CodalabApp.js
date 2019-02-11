@@ -27,7 +27,7 @@ function CodalabApp() {
     return (
         <CookiesProvider>
             <Router history={history}>
-                <div style={{ height: '100%' }}>
+                <React.Fragment>
                     {/*NavBar. Rendered as a route on all pages so it can access the navigation props.*/}
                     <Route path='/' render={(props) => <NavBar {...props} auth={fakeAuth} />} />
 
@@ -47,7 +47,7 @@ function CodalabApp() {
 
                     {/*Footer.*/}
                     <Footer />
-                </div>
+                </React.Fragment>
             </Router>
         </CookiesProvider>
     );

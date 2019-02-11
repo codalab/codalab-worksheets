@@ -14,13 +14,16 @@ import HelpButton from '../HelpButton';
 import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
 import ContentWrapper from '../ContentWrapper';
 import ReactDOM from 'react-dom';
+import ExtraWorksheetHTML from './ExtraWorksheetHTML';
+import 'bootstrap';
+import 'jquery-ui-bundle';
 
 /*
 Information about the current worksheet and its items.
 */
 
 // TODO: dummy objects
-let ace = {};
+let ace = window.ace;
 
 var WorksheetContent = (function() {
     function WorksheetContent(uuid) {
@@ -240,12 +243,12 @@ class Worksheet extends React.Component {
         return info && info.edit_permission;
     }
 
-    viewMode() {
+    viewMode = () => {
         this.toggleEditMode(false, true);
-    }
-    discardChanges() {
+    };
+    discardChanges = () => {
         this.toggleEditMode(false, false);
-    }
+    };
     editMode = () => {
         this.toggleEditMode(true);
     };
@@ -695,7 +698,7 @@ class Worksheet extends React.Component {
         }
     };
 
-    openWorksheet(uuid) {
+    openWorksheet = (uuid) => {
         // Change to a different worksheet. This does not call reloadWorksheet().
         this.setState({ ws: new WorksheetContent(uuid) });
 
@@ -705,7 +708,7 @@ class Worksheet extends React.Component {
 
         // Create a new entry in the browser history with new URL.
         window.history.pushState({ uuid: this.state.ws.uuid }, '', '/worksheets/' + uuid + '/');
-    }
+    };
 
     saveAndUpdateWorksheet(fromRaw, rawIndex) {
         $('#worksheet-message').hide();
@@ -861,55 +864,58 @@ class Worksheet extends React.Component {
         var editButtons = this.state.editMode ? editModeFeatures : editFeatures;
 
         return (
-            <div id='worksheet_container'>
-                <div id='worksheet' className={searchClassName}>
-                    {action_bar_display}
-                    {chat_box_display}
-                    {chat_portal}
-                    {context_menu_display}
-                    <HelpButton />
-                    <div id='worksheet_panel' className='actionbar-focus'>
-                        {worksheet_side_panel}
-                        <div className='ws-container'>
-                            <div className='container-fluid'>
-                                <div id='worksheet_content' className={editableClassName}>
-                                    <div className='header-row'>
-                                        <div className='row'>
-                                            <div className='col-sm-6 col-md-8'>
-                                                <h4 className='worksheet-title'>
-                                                    <WorksheetEditableField
-                                                        canEdit={this.canEdit()}
-                                                        fieldName='title'
-                                                        value={info && info.title}
-                                                        uuid={info && info.uuid}
-                                                        onChange={this.reloadWorksheet}
-                                                    />
-                                                </h4>
-                                            </div>
-                                            <div className='col-sm-6 col-md-4'>
-                                                <div className='controls'>
-                                                    <a
-                                                        href='#'
-                                                        data-toggle='modal'
-                                                        data-target='#glossaryModal'
-                                                        className='glossary-link'
-                                                    >
-                                                        <code>?</code> Keyboard Shortcuts
-                                                    </a>
-                                                    {editButtons}
+            <React.Fragment>
+                <div id='worksheet_container'>
+                    <div id='worksheet' className={searchClassName}>
+                        {action_bar_display}
+                        {chat_box_display}
+                        {chat_portal}
+                        {context_menu_display}
+                        <HelpButton />
+                        <div id='worksheet_panel' className='actionbar-focus'>
+                            {worksheet_side_panel}
+                            <div className='ws-container'>
+                                <div className='container-fluid'>
+                                    <div id='worksheet_content' className={editableClassName}>
+                                        <div className='header-row'>
+                                            <div className='row'>
+                                                <div className='col-sm-6 col-md-8'>
+                                                    <h4 className='worksheet-title'>
+                                                        <WorksheetEditableField
+                                                            canEdit={this.canEdit()}
+                                                            fieldName='title'
+                                                            value={info && info.title}
+                                                            uuid={info && info.uuid}
+                                                            onChange={this.reloadWorksheet}
+                                                        />
+                                                    </h4>
+                                                </div>
+                                                <div className='col-sm-6 col-md-4'>
+                                                    <div className='controls'>
+                                                        <a
+                                                            href='#'
+                                                            data-toggle='modal'
+                                                            data-target='#glossaryModal'
+                                                            className='glossary-link'
+                                                        >
+                                                            <code>?</code> Keyboard Shortcuts
+                                                        </a>
+                                                        {editButtons}
+                                                    </div>
                                                 </div>
                                             </div>
+                                            <hr />
                                         </div>
-                                        <hr />
+                                        {worksheet_display}
                                     </div>
-                                    {worksheet_display}
                                 </div>
                             </div>
                         </div>
+                        <div id='dragbar_vertical' className='dragbar' />
                     </div>
-                    <div id='dragbar_vertical' className='dragbar' />
                 </div>
-            </div>
+                <ExtraWorksheetHTML />
+            </React.Fragment>
         );
     }
 }
