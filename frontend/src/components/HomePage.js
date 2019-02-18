@@ -9,6 +9,11 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import ResponsiveEmbed from 'react-responsive-embed';
 
+import UploadIcon from '@material-ui/icons/CloudUpload';  // insert_chart, cloud upload
+import ExperimentIcon from '@material-ui/icons/InsertChart';  // extension, barchart, score
+import PublishIcon from '@material-ui/icons/Public';  // share, public
+
+
 const kSidePadding = 32;
 const kSpacerPadding = 24;
 
@@ -107,7 +112,9 @@ class HomePage extends React.Component<{
                                 reproduce your results.
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={4} className={classes.textBox}>
+
+                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                            <UploadIcon/>
                             <Typography variant='h6'>Upload</Typography>
                             <Typography>
                                 Upload code (in any programming language) and datasets (in any
@@ -117,7 +124,13 @@ class HomePage extends React.Component<{
                                 research projects!
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={4} className={classes.textBox}>
+                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                            <img src={`${process.env.PUBLIC_URL}/img/summary1.png`}
+                                 className={classes.summaryImg}/>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                            <ExperimentIcon/>
                             <Typography variant='h6'>Experiment</Typography>
                             <Typography>
                                 Execute your code in the cloud by explicitly specifying your
@@ -126,7 +139,13 @@ class HomePage extends React.Component<{
                                 a single run to form a bundle.
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={4} className={classes.textBox}>
+                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                            <img src={`${process.env.PUBLIC_URL}/img/summary2.png`}
+                                 className={classes.summaryImg}/>
+                        </Grid>
+
+                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                            <PublishIcon/>
                             <Typography variant='h6'>Publish</Typography>
                             <Typography>
                                 Organize your experiments in a worksheet (like a digital lab
@@ -135,6 +154,10 @@ class HomePage extends React.Component<{
                                 from your runs. When you're ready, just make the worksheet public
                                 and share your results with the world!
                             </Typography>
+                        </Grid>
+                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                            <img src={`${process.env.PUBLIC_URL}/img/summary3.png`}
+                                 className={classes.summaryImg}/>
                         </Grid>
 
                         {/** Getting started. */}
@@ -150,8 +173,11 @@ class HomePage extends React.Component<{
                                 </Typography>
                             </Grid>
                             <Grid item xs={12} sm={4} className={classes.textBox}>
+                                <Typography>
+                                    <pre>pip install codalab</pre>
+                                </Typography>
                                 <Typography gutterBottom>
-                                    For <b>beginning users</b>, the best place to start is to clone the{' '}
+                                    For <b>beginning users</b>, the best place to start is to clone the
                                     <code>codalab/worksheet-examples</code>
                                     repository and walk through the material there:
                                 </Typography>
@@ -247,12 +273,6 @@ class HomePage extends React.Component<{
                                     className={classes.userLogo}
                                 />
                             </Grid>
-                            <Grid item className={classes.textBox}>
-                                <img
-                                    src={`${process.env.PUBLIC_URL}/img/users/outercurve.png`}
-                                    className={classes.userLogo}
-                                />
-                            </Grid>
                         </Grid>
                     </Grid>
                 </Grid>
@@ -270,7 +290,7 @@ const styles = (theme) => ({
         padding: `${kSpacerPadding}px ${kSidePadding}px`,
     },
     splash: {
-        backgroundImage: `url(${process.env.PUBLIC_URL}/img/slider_exp_comp.gif)`,
+        backgroundImage: `url(${process.env.PUBLIC_URL}/img/splash1.png)`,
         backgroundSize: 'cover',
         minHeight: 300,
     },
@@ -300,6 +320,12 @@ const styles = (theme) => ({
     },
     list: {
         paddingLeft: 32,
+    },
+    summaryImg: {
+        width: '100%',
+        borderRadius: 4,
+        border: '1.5px solid #D5D5D5',
+        boxShadow: '0px 0px 80px -40px rgba(0, 0, 0, 0.3)',
     },
 });
 
