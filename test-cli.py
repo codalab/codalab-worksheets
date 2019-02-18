@@ -99,16 +99,20 @@ def get_uuid(line):
 
 def sanitize(string, max_chars=256):
     try:
-        string = string.decode('utf-8')
-        if len(string) > max_chars:
-            string = string[:max_chars] + ' (...more...)'
-        return string
+        string.decode('utf-8')
     except UnicodeDecodeError:
         return '<binary>\n'
 
+    string = string.decode('utf-8').encode('ascii', errors='replace')  # Travis only prints ASCII
+    if len(string) > max_chars:
+        string = string[:max_chars] + ' (...more...)'
+    return string
+
 
 def run_command(args, expected_exit_code=0, max_output_chars=256):
-    sys.stdout.write('>> %s' % ' '.join(args))
+    for a in args: assert isinstance(a, str)
+    # Travis only prints ASCII
+    print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
 
     try:
         output = subprocess.check_output(args)
@@ -835,7 +839,7 @@ def test(ctx):
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
-    run_command([cl, 'wedit', wuuid, '--title', u'fáncy ünicode'])  # try unicode in worksheet title
+    run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode'], 1)  # try encoded unicode in worksheet title
     run_command(
         [cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')]
     )  # try unicode in worksheet contents
@@ -1640,11 +1644,6 @@ def test(ctx):
     uuid = run_command([cl, 'upload', '--contents', '你好世界😊'])
     check_equals('_', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
     check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
-
-    # Unicode in file path
-    uuid = run_command([cl, 'upload', test_path('你好世界😊.txt')])
-    check_equals('_-.txt', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
-    check_equals(test_path_contents('你好世界😊.txt'), run_command([cl, 'cat', uuid]))
 
     # Unicode in bundle description and tags
     run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
