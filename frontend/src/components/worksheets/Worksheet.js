@@ -9,7 +9,7 @@ import WorksheetChatBox from './WorksheetChatBox';
 import WorksheetChatPortal from './WorksheetChatPortal';
 import WorksheetItemList from './WorksheetItemList';
 import WorksheetSidePanel from './WorksheetSidePanel';
-import WorksheetEditableField from './WorksheetEditableField';
+import { WorksheetEditableField } from '../EditableField';
 import HelpButton from '../HelpButton';
 import { ContextMenuMixin, default as ContextMenu } from './ContextMenu';
 import ContentWrapper from '../ContentWrapper';

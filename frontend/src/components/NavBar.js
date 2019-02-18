@@ -17,6 +17,10 @@ class NavBar extends React.Component<{
 
     componentDidMount() {
         // Initialize history stack
+        this.fetchName();
+    }
+
+    fetchName() {
         $.ajax({
             url: '/rest/user',
             dataType: 'json',
@@ -39,6 +43,10 @@ class NavBar extends React.Component<{
 
     /** Renderer. */
     render() {
+        if (this.props.auth.isAuthenticated && this.state.userInfo === undefined) {
+            this.fetchName();
+        }
+
         return (
             <nav className='navbar navbar-default navbar-fixed-top' role='navigation'>
                 <div className='container-fluid'>
@@ -69,26 +77,26 @@ class NavBar extends React.Component<{
                                 </a>
                             </li>
                             {this.props.auth.isAuthenticated && (
-                                <li className='user-authenticated'>
-                                    <a
-                                        href='/rest/worksheets/?name=%2F'
-                                        tabIndex={2}
-                                        target='_self'
-                                    >
-                                        My Home
-                                    </a>
-                                </li>
-                            )}
-                            {this.props.auth.isAuthenticated && (
-                                <li className='user-authenticated'>
-                                    <a
-                                        href='/rest/worksheets/?name=dashboard'
-                                        tabIndex={2}
-                                        target='_self'
-                                    >
-                                        My Dashboard
-                                    </a>
-                                </li>
+                                <React.Fragment>
+                                    <li className='user-authenticated'>
+                                        <a
+                                            href='/rest/worksheets/?name=%2F'
+                                            tabIndex={2}
+                                            target='_self'
+                                        >
+                                            My Home
+                                        </a>
+                                    </li>
+                                    <li className='user-authenticated'>
+                                        <a
+                                            href='/rest/worksheets/?name=dashboard'
+                                            tabIndex={2}
+                                            target='_self'
+                                        >
+                                            My Dashboard
+                                        </a>
+                                    </li>
+                                </React.Fragment>
                             )}
                             <li>
                                 <a
@@ -140,18 +148,18 @@ class NavBar extends React.Component<{
                                 </li>
                             )}
                             {!this.props.auth.isAuthenticated && (
-                                <li className='user-not-authenticated'>
-                                    <a href='/account/signup' target='_self'>
-                                        Sign Up
-                                    </a>
-                                </li>
-                            )}
-                            {!this.props.auth.isAuthenticated && (
-                                <li className='user-not-authenticated'>
-                                    <a href='/account/login' target='_self'>
-                                        Sign In
-                                    </a>
-                                </li>
+                                <React.Fragment>
+                                    <li className='user-not-authenticated'>
+                                        <a href='/account/signup' target='_self'>
+                                            Sign Up
+                                        </a>
+                                    </li>
+                                    <li className='user-not-authenticated'>
+                                        <a href='/account/login' target='_self'>
+                                            Sign In
+                                        </a>
+                                    </li>
+                                </React.Fragment>
                             )}
                         </ul>
                     </div>

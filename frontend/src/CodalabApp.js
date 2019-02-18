@@ -12,6 +12,11 @@ import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Login from './components/Login';
+import SignUp from './components/SignUp';
+import SignUpSuccess from './components/SignUpSuccess';
+import ChangeEmail from './components/ChangeEmail';
+import VerifySuccess from './components/VerifySuccess';
+import VerifyError from './components/VerifyError';
 import Worksheet from './components/worksheets/Worksheet';
 
 // Routes
@@ -42,7 +47,20 @@ function CodalabApp() {
                                 exact
                                 render={(props) => <HomePage {...props} auth={fakeAuth} />}
                             />
-                            <Route path='/account/signup' component={Login} />
+                            <Route path='/account/signup/success' component={SignUpSuccess} />
+                            <Route path='/account/verify/error' component={VerifyError} />
+                            <Route
+                                path='/account/verify/success'
+                                render={(props) => <VerifySuccess {...props} auth={fakeAuth} />}
+                            />
+                            <Route
+                                path='/account/signup'
+                                component={(props) => <SignUp {...props} auth={fakeAuth} />}
+                            />
+                            <Route
+                                path='/account/changeemail'
+                                component={(props) => <ChangeEmail {...props} auth={fakeAuth} />}
+                            />
                             <Route
                                 path='/account/login'
                                 render={(props) => <Login {...props} auth={fakeAuth} />}
@@ -63,7 +81,6 @@ function CodalabApp() {
 
 function checkAuth() {
     let codalab_session = new Cookies().get('codalab_session');
-    console.log(codalab_session != undefined);
     return codalab_session != undefined;
 }
 
@@ -77,12 +94,8 @@ const fakeAuth = {
                 username: authObject.username,
                 password: authObject.password,
             },
-            //or your custom data either as object {foo: "bar", ...} or foo=bar&...
             success: function(response, status, xhr) {
                 fakeAuth.isAuthenticated = true;
-                console.log(response);
-                console.log(status);
-                console.log(xhr);
                 if (callback) {
                     callback();
                 }
