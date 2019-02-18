@@ -110,7 +110,8 @@ def sanitize(string, max_chars=256):
 
 
 def run_command(args, expected_exit_code=0, max_output_chars=256):
-    for a in args: assert isinstance(a, str)
+    for a in args:
+        assert isinstance(a, str)
     # Travis only prints ASCII
     print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
 
@@ -839,7 +840,9 @@ def test(ctx):
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
-    run_command([cl, 'wedit', wuuid, '--title', 'fáncy ünicode'], 1)  # try encoded unicode in worksheet title
+    run_command(
+        [cl, 'wedit', wuuid, '--title', 'fáncy ünicode'], 1
+    )  # try encoded unicode in worksheet title
     run_command(
         [cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')]
     )  # try unicode in worksheet contents
