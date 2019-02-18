@@ -3,7 +3,7 @@ import Immutable from 'seamless-immutable';
 import $ from 'jquery';
 import _ from 'underscore';
 import { renderPermissions, shorten_uuid } from '../../util/worksheet_utils';
-import WorksheetEditableField from './WorksheetEditableField';
+import { WorksheetEditableField } from '../EditableField';
 import Bundle from '../Bundle';
 import RunBundleBuilder from './RunBundleBuilder';
 import NewWorksheet from './NewWorksheet';

@@ -28,6 +28,7 @@ class UserInfo extends React.Component {
     processData(response) {
         // Shim in links to change email and password
         var user = response.data;
+        console.log(user.attributes.email);
         user.attributes.email = (
             <span>
                 {user.attributes.email} <a href='/account/changeemail'>(change)</a>

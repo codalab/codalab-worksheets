@@ -65,7 +65,7 @@ class Bundle extends React.Component<
     /**
      * Fetch bundle data and update the state of this component.
      */
-    refreshBundle() {
+    refreshBundle = () => {
         // Fetch bundle metadata
         $.ajax({
             type: 'GET',
@@ -156,7 +156,7 @@ class Bundle extends React.Component<
                     this.setState({ fileContents: null, stdout: null, stderr: null });
                 }
             });
-    }
+    };
 
     componentDidMount() {
         if (this.props.isStandalonePage) {

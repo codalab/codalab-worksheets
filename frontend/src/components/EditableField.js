@@ -59,6 +59,7 @@ export class EditableField extends React.Component<{
                             if (this.props.onChange) this.props.onChange();
                         })
                         .fail(function(response, status, err) {
+                            // TODO: this doesn't stop the value from updating in the frontend
                             console.log('Invalid value entered: ', response.responseText);
                         })
                 }
