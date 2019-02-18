@@ -18,6 +18,12 @@ import ChangeEmail from './components/ChangeEmail';
 import VerifySuccess from './components/VerifySuccess';
 import VerifyError from './components/VerifyError';
 import Worksheet from './components/worksheets/Worksheet';
+import {
+    PasswordReset,
+    PasswordResetSent,
+    PasswordResetVerified,
+    PasswordResetComplete,
+} from './components/PasswordReset';
 
 // Routes
 import BundleRoute from './routes/BundleRoute';
@@ -52,6 +58,21 @@ function CodalabApp() {
                             <Route
                                 path='/account/verify/success'
                                 render={(props) => <VerifySuccess {...props} auth={fakeAuth} />}
+                            />
+                            <Route
+                                path='/account/reset/verified'
+                                component={PasswordResetVerified}
+                            />
+                            <Route path='/account/reset/sent' component={PasswordResetSent} />
+                            <Route
+                                path='/account/reset/complete'
+                                render={(props) => (
+                                    <PasswordResetComplete {...props} auth={fakeAuth} />
+                                )}
+                            />
+                            <Route
+                                path='/account/reset'
+                                component={(props) => <PasswordReset {...props} auth={fakeAuth} />}
                             />
                             <Route
                                 path='/account/signup'

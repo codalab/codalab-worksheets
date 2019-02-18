@@ -5,7 +5,7 @@ import { Redirect } from 'react-router-dom';
 import $ from 'jquery';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import { Formik, Form, Field, ErrorMessage } from 'formik';
+import { Formik } from 'formik';
 
 class ChangeEmail extends React.Component {
     /** Constructor. */

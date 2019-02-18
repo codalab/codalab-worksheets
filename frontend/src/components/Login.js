@@ -78,9 +78,28 @@ class Login extends React.Component {
                                 onChange={this.handleInputChange}
                             />
                         </div>
+                        <button class='btn btn-primary margin-top' type='submit'>
+                            Sign In
+                        </button>
                         {/* the above is almost certainly wrong, not sure how to fix*/}
-                        <button type='submit'>Sign In</button>
                     </form>
+                    <p>
+                        <a href='/account/signup'>Don't have an account? Sign up!</a>
+                    </p>
+                    <p>
+                        <a href='/account/reset'>Forgot your password?</a>
+                    </p>
+                    <a
+                        href=''
+                        onClick={() => {
+                            alert(
+                                'Please log in and navigate to your dashboard to resend confirmation email.',
+                            );
+                            return false;
+                        }}
+                    >
+                        Resend confirmation email
+                    </a>
                 </ContentWrapper>
             </React.Fragment>
         );
