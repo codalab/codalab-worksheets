@@ -17,7 +17,7 @@ class SlurmRunManager(BaseRunManager):
     RESOURCES_FILE_NAME = "resources.json"
     SLURM_OUTPUT_FILE_NAME = "slurm_log.txt"
     MAX_CORES_ALLOWED = 1
-    MAX_GPUS_ALLOWED = 0
+    MAX_GPUS_ALLOWED = 3
 
     def __init__(self, worker_dir, sbatch_binary='sbatch', slurm_run_binary='/u/nlp/bin/cl-slurm-job', slurm_host=None):
         self.runs = set()  # List[str] UUIDs of runs

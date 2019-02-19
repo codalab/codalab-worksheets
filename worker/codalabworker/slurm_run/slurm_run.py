@@ -15,6 +15,7 @@ import fcntl
 import json
 import os
 import shutil
+import subprocess
 import threading
 import time
 import traceback
@@ -79,8 +80,18 @@ class SlurmRun(object):
         self.has_contents = False
         self.resource_use = {"disk": 0, "time": 0, "memory": 0}
 
+    def get_gpus(self):
+        try:
+            self.gpus = subprocess.check_output('nvidia-smi --query-gpu=uuid --format=csv,noheader').split('\n')
+        except Exception:
+            if self.resources.gpus > 0:
+                raise
+
     def start(self):
         try:
+            self.run_state.run_status = "Propagating resource requests"
+            self.write_state()
+            self.gpus = self.get_gpus()
             self.run_state.run_status = "Pulling docker image {}".format(
                 self.resources.docker_image
             )
@@ -186,7 +197,7 @@ class SlurmRun(object):
             docker_dependencies,
             self.bundle.command,
             self.resources.docker_image,
-            gpuset=self.resources.gpus,
+            gpuset=self.gpus,
             network=self.docker_network_name,
             memory_bytes=self.resources.memory,
             runtime=self.docker_runtime,
