@@ -253,7 +253,7 @@ class WorksheetDetailSidePanel extends React.Component {
                         var url = '/bundles/' + b.uuid;
                         var short_uuid = shorten_uuid(b.uuid);
                         rows.push(
-                            <tr>
+                            <tr key={short_uuid}>
                                 <td>{b.bundle_type}</td>
                                 <td>
                                     <a href={url} target='_blank'>
@@ -269,7 +269,7 @@ class WorksheetDetailSidePanel extends React.Component {
                         var title = info.title || info.name;
                         var url = '/worksheets/' + info.uuid;
                         rows.push(
-                            <tr>
+                            <tr key={url}>
                                 <td>worksheet</td>
                                 <td>
                                     <a href={url} target='_blank'>
@@ -300,44 +300,48 @@ class WorksheetDetailSidePanel extends React.Component {
         return (
             <div id='panel_content'>
                 <table className='bundle-meta table'>
-                    <tr>
-                        <th>uuid</th>
-                        <td>{worksheet.uuid}</td>
-                    </tr>
-                    <tr>
-                        <th>name</th>
-                        <td>
-                            <WorksheetEditableField
-                                canEdit={true}
-                                fieldName='name'
-                                value={worksheet.name}
-                                uuid={worksheet.uuid}
-                                onChange={this.props.bundleMetadataChanged}
-                            />
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>title</th>
-                        <td>
-                            <WorksheetEditableField
-                                canEdit={true}
-                                fieldName='title'
-                                value={worksheet.title}
-                                uuid={worksheet.uuid}
-                                onChange={this.props.bundleMetadataChanged}
-                            />
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>owner</th>
-                        <td>
-                            {worksheet.owner_name == null ? '<anonymous>' : worksheet.owner_name}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>permissions</th>
-                        <td>{renderPermissions(worksheet)}</td>
-                    </tr>
+                    <tbody>
+                        <tr>
+                            <th>uuid</th>
+                            <td>{worksheet.uuid}</td>
+                        </tr>
+                        <tr>
+                            <th>name</th>
+                            <td>
+                                <WorksheetEditableField
+                                    canEdit={true}
+                                    fieldName='name'
+                                    value={worksheet.name}
+                                    uuid={worksheet.uuid}
+                                    onChange={this.props.bundleMetadataChanged}
+                                />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>title</th>
+                            <td>
+                                <WorksheetEditableField
+                                    canEdit={true}
+                                    fieldName='title'
+                                    value={worksheet.title}
+                                    uuid={worksheet.uuid}
+                                    onChange={this.props.bundleMetadataChanged}
+                                />
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>owner</th>
+                            <td>
+                                {worksheet.owner_name == null
+                                    ? '<anonymous>'
+                                    : worksheet.owner_name}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>permissions</th>
+                            <td>{renderPermissions(worksheet)}</td>
+                        </tr>
+                    </tbody>
                 </table>
                 {bundles_html}
             </div>

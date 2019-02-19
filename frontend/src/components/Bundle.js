@@ -175,7 +175,7 @@ class Bundle extends React.Component<
 
             // Still loading
             return (
-                <div id='bundle-message' class='bundle-detail'>
+                <div id='bundle-message' className='bundle-detail'>
                     <img src={'${process.env.PUBLIC_URL}/img/Preloader_Small.gif'} /> Loading
                     bundle...
                 </div>
@@ -255,7 +255,7 @@ function createRow(bundleInfo, bundleMetadataChanged, key, value) {
         editableMetadataFields.indexOf(key) != -1
     ) {
         return (
-            <tr>
+            <tr key={key}>
                 <th>
                     <span className='editable-key'>{key}</span>
                 </th>
@@ -273,7 +273,7 @@ function createRow(bundleInfo, bundleMetadataChanged, key, value) {
         );
     } else {
         return (
-            <tr>
+            <tr key={key}>
                 <th>
                     <span>{key}</span>
                 </th>
@@ -511,7 +511,7 @@ function renderHostWorksheets(bundleInfo) {
     bundleInfo.host_worksheets.forEach(function(worksheet) {
         let hostWorksheetUrl = '/worksheets/' + worksheet.uuid;
         hostWorksheetRows.push(
-            <tr>
+            <tr key={worksheet.uuid}>
                 <td>
                     <a href={hostWorksheetUrl}>{worksheet.name}</a>
                 </td>

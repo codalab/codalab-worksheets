@@ -2,31 +2,31 @@ import * as React from 'react';
 
 let ExtraWorksheetHTML = () => (
     <React.Fragment>
-        <div id='save_progress' class='progress-message'>
+        <div id='save_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Saving...
         </div>
-        <div id='update_progress' class='progress-message'>
+        <div id='update_progress' className='progress-message'>
             <img src='/img/Preloader_Small.gif' /> Updating...
         </div>
-        <div id='save_error' class='progress-message'>
-            <i class='glyphicon glyphicon-remove-circle' /> Error saving...
+        <div id='save_error' className='progress-message'>
+            <i className='glyphicon glyphicon-remove-circle' /> Error saving...
         </div>
-        <div id='glossaryModal' class='modal' data-keyboard='true'>
-            <div class='modal-dialog'>
-                <div class='modal-content'>
-                    <div class='modal-header'>
-                        <button type='button' class='close' data-dismiss='modal'>
+        <div id='glossaryModal' className='modal' data-keyboard='true'>
+            <div className='modal-dialog'>
+                <div className='modal-content'>
+                    <div className='modal-header'>
+                        <button type='button' className='close' data-dismiss='modal'>
                             <span aria-hidden='true'>&times;</span>
-                            <span class='sr-only'>Close</span>
+                            <span className='sr-only'>Close</span>
                         </button>
                         <h4>Keyboard Shortcuts</h4>
                     </div>
-                    <div class='modal-body'>
+                    <div className='modal-body'>
                         <a href='http://terminal.jcubic.pl/api_reference.php' target='_blank'>
                             {' '}
                             More shortcuts for web terminal (see Keyboard shortcuts section){' '}
                         </a>
-                        <table class='table table-striped'>
+                        <table className='table table-striped'>
                             <tbody>
                                 <tr>
                                     <td>

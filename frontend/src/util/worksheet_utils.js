@@ -151,7 +151,7 @@ export function renderPermissions(state) {
             you({wrapPermissionInColorSpan(state.permission_spec)})
             {_.map(state.group_permissions || [], function(perm) {
                 return (
-                    <span>
+                    <span key={perm.group_name}>
                         {' '}
                         {perm.group_name}
                         {'('}

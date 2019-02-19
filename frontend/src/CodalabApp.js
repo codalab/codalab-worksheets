@@ -12,9 +12,8 @@ import $ from 'jquery';
 import NavBar from './components/NavBar';
 import Footer from './components/Footer';
 import Login from './components/Login';
-import SignUp from './components/SignUp';
-import SignUpSuccess from './components/SignUpSuccess';
-import ChangeEmail from './components/ChangeEmail';
+import { SignUp, SignUpSuccess } from './components/SignUp';
+import { ChangeEmail, ChangeEmailSuccess } from './components/ChangeEmail';
 import VerifySuccess from './components/VerifySuccess';
 import VerifyError from './components/VerifyError';
 import Worksheet from './components/worksheets/Worksheet';
@@ -77,6 +76,10 @@ function CodalabApp() {
                             <Route
                                 path='/account/signup'
                                 component={(props) => <SignUp {...props} auth={fakeAuth} />}
+                            />
+                            <Route
+                                path='/account/changeemail/sent'
+                                component={ChangeEmailSuccess}
                             />
                             <Route
                                 path='/account/changeemail'

@@ -5,15 +5,28 @@ import { Redirect } from 'react-router-dom';
 import $ from 'jquery';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import { Formik } from 'formik';
+import queryString from 'query-string';
 
-class ChangeEmail extends React.Component {
+export const ChangeEmailSuccess = (props) => {
+    return (
+        <React.Fragment>
+            <SubHeader title='Change Email Address' />
+            <ContentWrapper>
+                <p>
+                    We have sent you an email to verify your new email address. Please contact us if
+                    you do not receive it within a few minutes.
+                </p>
+            </ContentWrapper>
+        </React.Fragment>
+    );
+};
+
+export class ChangeEmail extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
         this.state = Immutable({
-            redirectToSent: false,
-            error: {},
+            form: {},
         });
     }
 
@@ -23,23 +36,12 @@ class ChangeEmail extends React.Component {
         const name = target.name;
 
         this.setState({
-            [name]: value,
-        });
-    };
-
-    onSubmit = (values, { setSubmitting }) => {
-        $.ajax({
-            type: 'POST',
-            url: '/rest/account/changeemail',
-            data: values,
-            success: (response, status, xhr) => {
-                this.setState(Immutable({ redirectToSent: true }));
-            },
+            form: { [name]: value },
         });
     };
 
     render() {
-        if (this.state.redirectToSent) return <Redirect to={'/account/changeemail/sent'} />;
+        const { error } = queryString.parse(this.props.location.search);
 
         return (
             <React.Fragment>
@@ -62,49 +64,30 @@ class ChangeEmail extends React.Component {
                             </p>
                             <div className='user-authenticated row'>
                                 <div className='col-md-6'>
-                                    <Formik
-                                        initialValues={{
-                                            email: '',
-                                        }}
-                                        onSubmit={this.onSubmit}
-                                    >
-                                        {({
-                                            values,
-                                            errors,
-                                            handleChange,
-                                            handleBlur,
-                                            handleSubmit,
-                                            isSubmitting,
-                                        }) => (
-                                            <React.Fragment>
-                                                <form onSubmit={handleSubmit}>
-                                                    <div className='form-group'>
-                                                        <div className='form-group'>
-                                                            <label for='id_email'>Email:</label>
-                                                            <input
-                                                                id='id_email'
-                                                                className='form-control'
-                                                                name='email'
-                                                                placeholder='Email address'
-                                                                type='email'
-                                                                autofocus
-                                                                required
-                                                                value={values.email}
-                                                                onChange={handleChange}
-                                                                onBlur={handleBlur}
-                                                            />
-                                                        </div>
-                                                    </div>
-                                                    <input
-                                                        className='btn btn-primary margin-top'
-                                                        type='submit'
-                                                        value='Request Email Change'
-                                                        disabled={isSubmitting}
-                                                    />
-                                                </form>
-                                            </React.Fragment>
-                                        )}
-                                    </Formik>
+                                    {error && <div class='alert alert-error'>{error}</div>}
+                                    <form method='post' action='/rest/account/changeemail'>
+                                        <div className='form-group'>
+                                            <div className='form-group'>
+                                                <label for='id_email'>Email:</label>
+                                                <input
+                                                    id='id_email'
+                                                    className='form-control'
+                                                    name='email'
+                                                    placeholder='Email address'
+                                                    type='email'
+                                                    autofocus
+                                                    required
+                                                    value={this.state.form.email}
+                                                    onChange={this.handleInputChange}
+                                                />
+                                            </div>
+                                        </div>
+                                        <input
+                                            className='btn btn-primary margin-top'
+                                            type='submit'
+                                            value='Request Email Change'
+                                        />
+                                    </form>
                                 </div>
                             </div>
                         </React.Fragment>
@@ -114,5 +97,3 @@ class ChangeEmail extends React.Component {
         );
     }
 }
-
-export default ChangeEmail;

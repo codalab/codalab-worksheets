@@ -78,7 +78,7 @@ class Login extends React.Component {
                                 onChange={this.handleInputChange}
                             />
                         </div>
-                        <button class='btn btn-primary margin-top' type='submit'>
+                        <button className='btn btn-primary margin-top' type='submit'>
                             Sign In
                         </button>
                         {/* the above is almost certainly wrong, not sure how to fix*/}

@@ -28,7 +28,6 @@ class UserInfo extends React.Component {
     processData(response) {
         // Shim in links to change email and password
         var user = response.data;
-        console.log(user.attributes.email);
         user.attributes.email = (
             <span>
                 {user.attributes.email} <a href='/account/changeemail'>(change)</a>
@@ -40,19 +39,16 @@ class UserInfo extends React.Component {
             </span>
         );
 
-        console.log(user);
         return user;
     }
 
     componentDidMount() {
-        console.log('UserInfo Mount');
         $.ajax({
             method: 'GET',
             url: '/rest/user',
             dataType: 'json',
         })
             .done((response) => {
-                console.log(response);
                 this.setState({
                     user: this.processData(response),
                 });
@@ -108,153 +104,148 @@ class UserInfo extends React.Component {
 
     /** Renderer. */
     render() {
-        let renderArray = [];
-
-        renderArray.push(<SubHeader title='My Account' />);
-
-        if (!this.state.user) {
-            renderArray.push(
+        return (
+            <React.Fragment>
+                <SubHeader title='My Account' />
                 <ContentWrapper>
-                    <div className='account-profile-error'>{_.values(this.state.errors)}</div>
-                </ContentWrapper>,
-            );
-        } else {
-            renderArray.push(
-                <ContentWrapper>
-                    <form className='account-profile-form'>
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Username'
-                            fieldKey='user_name'
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Email'
-                            fieldKey='email'
-                            readOnly
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Password'
-                            fieldKey='password'
-                            readOnly
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='First Name'
-                            fieldKey='first_name'
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Last Name'
-                            fieldKey='last_name'
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Affiliation'
-                            fieldKey='affiliation'
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Website URL'
-                            fieldKey='url'
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Last Login (UTC)'
-                            fieldKey='last_login'
-                            readOnly
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Date Joined (UTC)'
-                            fieldKey='date_joined'
-                            readOnly
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Disk Quota (bytes)'
-                            fieldKey='disk_quota'
-                            readOnly
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Disk Used (bytes)'
-                            fieldKey='disk_used'
-                            readOnly
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Time Quota'
-                            fieldKey='time_quota'
-                            readOnly
-                        />
-                        <AccountProfileField
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Time Used'
-                            fieldKey='time_used'
-                            readOnly
-                        />
-                        <AccountNotificationsCheckbox
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Send me only critical updates about my account.'
-                            fieldKey='1'
-                        />
-                        <AccountNotificationsCheckbox
-                            {...this.props}
-                            user={this.state.user}
-                            errors={this.state.errors}
-                            onChange={this.handleChange}
-                            title='Send me general updates about new features (once a month).'
-                            fieldKey='2'
-                        />
-                    </form>
-                </ContentWrapper>,
-            );
-        }
-        return renderArray;
+                    {!this.state.user && (
+                        <div className='account-profile-error'>{_.values(this.state.errors)}</div>
+                    )}
+                    {this.state.user && (
+                        <form className='account-profile-form'>
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Username'
+                                fieldKey='user_name'
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Email'
+                                fieldKey='email'
+                                readOnly
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Password'
+                                fieldKey='password'
+                                readOnly
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='First Name'
+                                fieldKey='first_name'
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Last Name'
+                                fieldKey='last_name'
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Affiliation'
+                                fieldKey='affiliation'
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Website URL'
+                                fieldKey='url'
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Last Login (UTC)'
+                                fieldKey='last_login'
+                                readOnly
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Date Joined (UTC)'
+                                fieldKey='date_joined'
+                                readOnly
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Disk Quota (bytes)'
+                                fieldKey='disk_quota'
+                                readOnly
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Disk Used (bytes)'
+                                fieldKey='disk_used'
+                                readOnly
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Time Quota'
+                                fieldKey='time_quota'
+                                readOnly
+                            />
+                            <AccountProfileField
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Time Used'
+                                fieldKey='time_used'
+                                readOnly
+                            />
+                            <AccountNotificationsCheckbox
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Send me only critical updates about my account.'
+                                fieldKey='1'
+                            />
+                            <AccountNotificationsCheckbox
+                                {...this.props}
+                                user={this.state.user}
+                                errors={this.state.errors}
+                                onChange={this.handleChange}
+                                title='Send me general updates about new features (once a month).'
+                                fieldKey='2'
+                            />
+                        </form>
+                    )}
+                </ContentWrapper>
+            </React.Fragment>
+        );
     }
 }
 

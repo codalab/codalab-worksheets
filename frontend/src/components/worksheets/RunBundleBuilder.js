@@ -286,13 +286,13 @@ class BundleBrowser extends React.Component {
                                     />
                                 );
                                 rows.push(
-                                    <tr>
+                                    <tr key={short_uuid}>
                                         <td>{fileBrowser}</td>
                                     </tr>,
                                 );
                             } else {
                                 rows.push(
-                                    <tr>
+                                    <tr key={short_uuid}>
                                         <td>
                                             <input
                                                 type='checkbox'
@@ -347,12 +347,11 @@ class RunBundleTerminal extends React.Component {
     render() {
         var command = (
             <div className='run-bundle-terminal-item'>
-                ${' '}
                 <input
                     type='text'
                     id='run-bundle-terminal-command'
                     className='inline-block run-bundle-terminal-input'
-                    value={this.props.command}
+                    value={this.props.command || ''}
                     placeholder='date; echo hello'
                     onChange={this.props.handleCommandChange}
                     onKeyUp={this.handleKeyUp}

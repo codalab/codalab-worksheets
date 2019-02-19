@@ -2,7 +2,6 @@ import * as React from 'react';
 import classNames from 'classnames';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
-import { Formik } from 'formik';
 
 const VerifySuccess = (props) => {
     return (
