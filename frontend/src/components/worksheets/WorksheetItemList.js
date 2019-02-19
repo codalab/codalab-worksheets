@@ -67,11 +67,6 @@ class WorksheetItemList extends React.Component {
         this.state = Immutable({});
     }
 
-    /** Renderer. */
-    render() {
-        return <div>WorksheetItemList</div>;
-    }
-
     static displayName = 'WorksheetItemList';
 
     componentDidUpdate() {

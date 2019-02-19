@@ -244,7 +244,7 @@ class WorksheetDetailSidePanel extends React.Component {
         // Show brief summary of contents.
         var rows = [];
         if (worksheet.items) {
-            worksheet.items.forEach(function(item) {
+            worksheet.items.forEach(function(item, itemIndex) {
                 if (item.bundles_spec) {
                     // Show bundle
                     var bundle_infos = item.bundles_spec.bundle_infos;
@@ -253,7 +253,7 @@ class WorksheetDetailSidePanel extends React.Component {
                         var url = '/bundles/' + b.uuid;
                         var short_uuid = shorten_uuid(b.uuid);
                         rows.push(
-                            <tr key={short_uuid}>
+                            <tr key={short_uuid + itemIndex}>
                                 <td>{b.bundle_type}</td>
                                 <td>
                                     <a href={url} target='_blank'>
@@ -269,7 +269,7 @@ class WorksheetDetailSidePanel extends React.Component {
                         var title = info.title || info.name;
                         var url = '/worksheets/' + info.uuid;
                         rows.push(
-                            <tr key={url}>
+                            <tr key={url + itemIndex}>
                                 <td>worksheet</td>
                                 <td>
                                     <a href={url} target='_blank'>

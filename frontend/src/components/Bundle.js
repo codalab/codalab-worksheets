@@ -222,7 +222,7 @@ function renderDependencies(bundleInfo) {
     bundleInfo.dependencies.forEach(function(dep, i) {
         let dep_bundle_url = '/bundles/' + dep.parent_uuid;
         dependencies_table.push(
-            <tr>
+            <tr key={dep.parent_uuid + i}>
                 <td>{dep.child_path}</td>
                 <td>
                     &rarr; {dep.parent_name}(

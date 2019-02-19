@@ -92,7 +92,7 @@ class RunBundleBuilder extends React.Component<Props> {
             // remove a dependency
             var removedDepIndex = null;
             selectedDependencies = selectedDependencies.filter(function(ele, i) {
-                depEqual =
+                let depEqual =
                     ele.uuid === newDep.uuid &&
                     ele.bundle_name === newDep.bundle_name &&
                     ele.path === newDep.path;
@@ -268,12 +268,13 @@ class BundleBrowser extends React.Component {
 
         var rows = [];
         worksheet.items.forEach(
-            function(item) {
+            function(item, itemIndex) {
                 if (item.bundles_spec) {
                     item.bundles_spec.bundle_infos.forEach(
-                        function(b) {
+                        function(b, index) {
                             var url = '/bundles/' + b.uuid;
                             var short_uuid = shorten_uuid(b.uuid);
+                            let key = short_uuid + ' ' + itemIndex + ' ' + index;
                             if (b.target_info && b.target_info.type === 'directory') {
                                 var fileBrowser = (
                                     <FileBrowser
@@ -286,13 +287,13 @@ class BundleBrowser extends React.Component {
                                     />
                                 );
                                 rows.push(
-                                    <tr key={short_uuid}>
+                                    <tr key={key}>
                                         <td>{fileBrowser}</td>
                                     </tr>,
                                 );
                             } else {
                                 rows.push(
-                                    <tr key={short_uuid}>
+                                    <tr key={key}>
                                         <td>
                                             <input
                                                 type='checkbox'
@@ -363,7 +364,7 @@ class RunBundleTerminal extends React.Component {
                 var short_uuid = shorten_uuid(d.uuid);
                 var target = d.path === '' ? d.bundle_name : d.bundle_name + '/' + d.path;
                 return (
-                    <div className='run-bundle-terminal-item'>
+                    <div className='run-bundle-terminal-item' key={short_uuid + i}>
                         <input
                             type='text'
                             className='run-bundle-terminal-input'
