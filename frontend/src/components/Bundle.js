@@ -218,6 +218,8 @@ class Bundle extends React.Component<
     }
 }
 
+// TODO: all of these should be a part of the bundle, or their own pure react components, not random functions
+
 function renderErrorMessages(messages) {
     return (
         <div id='bundle-error-messages'>
@@ -406,6 +408,7 @@ function renderHeader(bundleInfo, bundleMetadataChanged) {
         ),
     );
     let bundleHeader;
+    // TODO: don't use the fact that there is a bundle-content element in lgoic
     if (document.getElementById('bundle-content')) {
         let bundle_name = <h3 className='bundle-name'>{bundleInfo.metadata.name}</h3>;
         bundleHeader = (
