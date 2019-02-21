@@ -957,11 +957,14 @@ class BundleModel(object):
 
         # Perform the actual updates.
         def do_update(connection):
-            if update:
-                connection.execute(cl_bundle.update().where(clause).values(update))
-            if metadata_update:
-                connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
-                self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            try:
+                if update:
+                    connection.execute(cl_bundle.update().where(clause).values(update))
+                if metadata_update:
+                    connection.execute(cl_bundle_metadata.delete().where(metadata_clause))
+                    self.do_multirow_insert(connection, cl_bundle_metadata, metadata_values)
+            except UnicodeError:
+                raise UsageError("Invalid character detected; use ascii characters only.")
 
         if connection:
             do_update(connection)
