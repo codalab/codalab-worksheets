@@ -124,7 +124,6 @@ class Worksheet extends React.Component {
 
     setFocus = (index, subIndex, shouldScroll) => {
         if (shouldScroll === undefined) shouldScroll = true;
-        //console.log('setFocus', index, subIndex);
         var info = this.state.ws.info;
         // resolve to the last item that contains bundle(s)
         if (index === 'end') {

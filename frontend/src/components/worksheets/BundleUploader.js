@@ -85,7 +85,6 @@ class BundleUploader extends React.Component<Props> {
                 var fileEntryKey = this.addUploading(file.name, bundleUuid);
                 var progressbar = $('#' + PROGRESS_BAR_ID + bundleUuid);
                 var progressLabel = $('#' + PROGRESS_LABEL_ID + bundleUuid);
-                console.log(progressbar);
                 progressbar.progressbar({
                     value: 0,
                     max: 100,
@@ -222,7 +221,6 @@ class BundleUploader extends React.Component<Props> {
                 <div id='bundle-upload-progress-bars'>
                     {_.map(this.state.uploading, function(value, key) {
                         var bundleUuid = value.uuid;
-                        console.log(PROGRESS_BAR_ID + bundleUuid);
                         return (
                             <div
                                 id={PROGRESS_BAR_ID + bundleUuid}

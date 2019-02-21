@@ -93,7 +93,6 @@ class UserInfo extends React.Component {
             })
             .fail(function(xhr, status, err) {
                 // Update errors for the specified field to pick up
-                console.log(xhr.responseText);
                 var errors = $.extend({}, this.state.errors);
                 errors[key] = xhr.responseText;
                 this.setState({

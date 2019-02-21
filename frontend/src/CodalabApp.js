@@ -30,12 +30,6 @@ import BundleRoute from './routes/BundleRoute';
 import history from './history';
 import Cookies from 'universal-cookie';
 
-////////////////////////////////////////////////////////////
-// 1. Click the public page
-// 2. Click the protected page
-// 3. Log in
-// 4. Click the back button, note the URL each time
-
 function CodalabApp() {
     return (
         <CookiesProvider>

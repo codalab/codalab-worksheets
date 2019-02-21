@@ -186,7 +186,7 @@ class Bundle extends React.Component<
             ? this.refreshBundle
             : this.props.bundleMetadataChanged;
 
-        return (
+        const content = (
             <div id='panel_content'>
                 {renderErrorMessages(this.state.errorMessages)}
                 {renderHeader(bundleInfo, bundleMetadataChanged)}
@@ -202,6 +202,19 @@ class Bundle extends React.Component<
                 {renderHostWorksheets(bundleInfo)}
             </div>
         );
+
+        if (this.props.isStandalonePage) {
+            return (
+                <div id='bundle-content'>
+                    <React.Fragment>
+                        <SubHeader title='Bundle View' />
+                        <ContentWrapper>{content}</ContentWrapper>
+                    </React.Fragment>
+                </div>
+            );
+        } else {
+            return content;
+        }
     }
 }
 
