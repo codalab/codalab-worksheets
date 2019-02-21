@@ -97,21 +97,23 @@ def get_uuid(line):
     return m.group(1)
 
 
-def sanitize(string):
+def sanitize(string, max_chars=256):
     try:
-        string = string.decode('utf-8')
-        n = 256
-        if len(string) > n:
-            string = string[:n] + ' (...more...)'
-        return string
+        string.decode('utf-8')
     except UnicodeDecodeError:
         return '<binary>\n'
 
+    string = string.decode('utf-8').encode('ascii', errors='replace')  # Travis only prints ASCII
+    if len(string) > max_chars:
+        string = string[:max_chars] + ' (...more...)'
+    return string
 
-def run_command(args, expected_exit_code=0):
-    # Decode args into ASCII as travis can't handle them otherwise
-    args = [arg.encode('ascii', 'ignore') for arg in args]
-    sys.stdout.write('>> %s' % ' '.join(args))
+
+def run_command(args, expected_exit_code=0, max_output_chars=256):
+    for a in args:
+        assert isinstance(a, str)
+    # Travis only prints ASCII
+    print('>> %s' % " ".join([a.decode("utf-8").encode("ascii", errors='replace') for a in args]))
 
     try:
         output = subprocess.check_output(args)
@@ -123,7 +125,7 @@ def run_command(args, expected_exit_code=0):
         output = traceback.format_exc()
         exitcode = 'test-cli exception'
     print(Colorizer.cyan(" (exit code %s, expected %s)" % (exitcode, expected_exit_code)))
-    print(sanitize(output))
+    print(sanitize(output, max_output_chars))
     assert expected_exit_code == exitcode, 'Exit codes don\'t match'
     return output.rstrip()
 
@@ -838,7 +840,9 @@ def test(ctx):
     run_command([cl, 'wadd', wuuid, wuuid])
     check_num_lines(8, run_command([cl, 'ls', '-u']))
     run_command([cl, 'wedit', wuuid, '--name', wname + '2'])
-    run_command([cl, 'wedit', wuuid, '--title', u'fáncy ünicode'])  # try unicode in worksheet title
+    run_command(
+        [cl, 'wedit', wuuid, '--title', 'fáncy ünicode'], 1
+    )  # try encoded unicode in worksheet title
     run_command(
         [cl, 'wedit', wuuid, '--file', test_path('unicode-worksheet')]
     )  # try unicode in worksheet contents
@@ -1631,6 +1635,27 @@ def test(ctx):
         finally:
             os.remove(config_file)
             os.remove(out_file)
+
+
+@TestModule.register('unicode')
+def test(ctx):
+    # Non-unicode in file contents
+    uuid = run_command([cl, 'upload', '--contents', 'nounicode'])
+    check_equals('nounicode', run_command([cl, 'cat', uuid]))
+
+    # Unicode in file contents
+    uuid = run_command([cl, 'upload', '--contents', '你好世界😊'])
+    check_equals('_', get_info(uuid, 'name'))  # Currently ignores unicode chars for name
+    check_equals('你好世界😊', run_command([cl, 'cat', uuid]))
+
+    # Unicode in bundle description and tags
+    run_command([cl, 'upload', test_path('a.txt'), '--description', '你好'], 1)
+    run_command([cl, 'upload', test_path('a.txt'), '--tags', 'test', '😁'], 1)
+
+    # Unicode in edits --> interactive mode not tested, but `cl edit` properly discards
+    # edits that introduce unicode.
+    # uuid = run_command([cl, 'upload', test_path('a.txt')])
+    # run_command([cl, 'edit', uuid], 1)
 
 
 if __name__ == '__main__':
