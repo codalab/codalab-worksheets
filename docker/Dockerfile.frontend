@@ -1,0 +1,12 @@
+FROM node:10
+
+EXPOSE 2700
+
+RUN npm install -g serve
+
+WORKDIR /opt/frontend
+COPY frontend/package*.json ./
+RUN npm install && npm build
+COPY frontend ./frontend .
+
+RUN serve -s build -l 2700
