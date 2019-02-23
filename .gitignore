@@ -1,6 +1,9 @@
 *.pyc
 *.swp
 
+tags
+pip-wheel-metadata/
+
 # Eclipse files.
 .*project
 .settings
