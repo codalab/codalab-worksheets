@@ -166,34 +166,55 @@ class SlurmRunManager(BaseRunManager):
         del self.run_states[uuid]
         del self.run_paths[uuid]
 
-    def write(self, bundle_uuid, path, string):
+    def read(self, run_state, path, dep_paths, args, reply):
+
+    def write(self, run_state, path, dep_paths, string):
         """
         Write string to path in bundle with uuid
+        TODO: Make sure this works
         """
         if bundle_uuid not in self.runs:
             return
-        self.run_commands[bundle_uuid].append(
-            {"command": "write", "args": {"path": path, "string": string}}
-        )
+        if os.path.normpath(path) in dep_paths:
+            return
+        with open(os.path.join(run_state.bundle_path, path), 'w') as f:
+            f.write(string)
 
-    def netcat(self, bundle_uuid, port, message):
+    def netcat(self, run_state, port, message, reply):
         """
         Write message to port of bundle with uuid and read the response.
         Returns a stream with the response contents
+        TODO: Make this work
         """
-        if bundle_uuid not in self.runs:
+        if run_state.bundle_uuid not in self.runs:
             return
-        self.run_commands[bundle_uuid].append(
-            {"command": "kill", "args": {"port": port, "message": message}}
+        container_ip = docker_utils.get_container_ip(
+            self.docker_network_external_name, run_state.container
         )
+        if not container_ip:
+            container_ip = docker_utils.get_container_ip(
+                self.docker_network_internal_name, run_state.container
+            )
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((container_ip, port))
+        s.sendall(message)
 
-    def kill(self, bundle_uuid):
+        total_data = []
+        while True:
+            data = s.recv(LocalRunManager.NETCAT_BUFFER_SIZE)
+            if not data:
+                break
+            total_data.append(data)
+        s.close()
+        reply(None, {}, ''.join(total_data))
+
+    def kill(self, run_state):
         """
         Kill bundle with uuid
         """
-        if bundle_uuid not in self.runs:
+        if run_state.bundle_uuid not in self.runs:
             return
-        self.run_commands[bundle_uuid].append({"command": "kill"})
+        self.run_commands[run_state.bundle_uuid].append({"command": "kill"})
 
     @property
     def all_runs(self):
