@@ -656,6 +656,16 @@ def _update_bundle_contents_blob(uuid):
 
         local.upload_manager.update_metadata_and_save(bundle, enforce_disk_quota=True)
 
+    except UsageError as err:
+        # This is a user error (most likely disk quota overuser) so raise a client HTTP error
+        if local.upload_manager.has_contents(bundle):
+            local.upload_manager.cleanup_existing_contents(bundle)
+        msg = "Upload failed: %s" % err
+        local.model.update_bundle(
+            bundle, {'state': State.FAILED, 'metadata': {'failure_message': msg}}
+        )
+        abort(httplib.BAD_REQUEST, msg)
+
     except Exception as e:
         # Upload failed: cleanup, update state if desired, and return HTTP error
         if local.upload_manager.has_contents(bundle):

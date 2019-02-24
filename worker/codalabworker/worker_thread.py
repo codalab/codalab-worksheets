@@ -1,4 +1,5 @@
 import copy
+import threading
 
 
 class WorkerThread(object):
@@ -64,13 +65,15 @@ class ThreadDict(dict):
         dict[key][<field_name>] referring to any of the fields
     """
 
-    def __init__(self, fields=None):
+    def __init__(self, fields=None, lock=False):
         """
         Creates a new ThreadDict.
         :param fields: A Dict from strings(field names) to initial values
+        :param lock: A bool that if true adds an RLock field for each entry
         """
         dict.__init__(self)
         self._initial_fields = fields
+        self._lock = lock
 
     def add_if_new(self, key, thread):
         """
@@ -89,6 +92,8 @@ class ThreadDict(dict):
         :param thread: thread to be added to the dict and to be started
         """
         new_fields = copy.deepcopy(self._initial_fields)
+        if self._lock:
+            new_fields['lock'] = threading.RLock()
         new_thread = WorkerThread(thread=thread, fields=new_fields)
         self[key] = new_thread
         new_thread.start()

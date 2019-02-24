@@ -1,6 +1,8 @@
 from setuptools import setup, find_packages
 import setuptools
-from codalab.common import CODALAB_VERSION
+
+# should match codalab/common.py#CODALAB_VERSION
+CODALAB_VERSION = "0.2.41"
 
 if int(setuptools.__version__.split('.')[0]) < 25:
     print(

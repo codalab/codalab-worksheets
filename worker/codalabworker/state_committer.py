@@ -19,10 +19,11 @@ class JsonStateCommitter(BaseStateCommitter):
         self._state_file = json_path
 
     def load(self, default=None):
-        if not os.path.exists(self._state_file):
+        try:
+            with open(self._state_file) as json_data:
+                return pyjson.load(json_data)
+        except (ValueError, EnvironmentError):
             return dict() if default is None else default
-        with open(self._state_file) as json_data:
-            return pyjson.load(json_data)
 
     def commit(self, state):
         """ Write out the state in JSON format to a temporary file and rename it into place """

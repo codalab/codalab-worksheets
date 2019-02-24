@@ -12,10 +12,10 @@ import socket
 import stat
 import sys
 import multiprocessing
-import re
+
 
 from bundle_service_client import BundleServiceClient, BundleAuthException
-from docker_client import DockerClient
+import docker_utils
 from formatting import parse_size
 from worker import Worker
 from local_run.local_dependency_manager import LocalFileSystemDependencyManager
@@ -57,8 +57,9 @@ def main():
         type=str,
         metavar='GPUSET_STR',
         default='ALL',
-        help='Comma-separated list of GPUs in which to allow bundle execution '
-        '(e.g., \"0,1\", \"1\").',
+        help='Comma-separated list of GPUs in which to allow bundle execution. '
+        'Each GPU can be specified by its index or UUID'
+        '(e.g., \"0,1\", \"1\", \"GPU-62casdfasd-asfas...\"',
     )
     parser.add_argument(
         '--max-work-dir-size',
@@ -150,7 +151,6 @@ chmod 600 %s""" % args.password_file
     if not os.path.exists(args.work_dir):
         logging.debug('Work dir %s doesn\'t exist, creating.', args.work_dir)
         os.makedirs(args.work_dir, 0o770)
-    docker_client = DockerClient()
 
     def create_local_run_manager(worker):
         """
@@ -158,8 +158,9 @@ chmod 600 %s""" % args.password_file
         to initilize its run manager. This method creates a LocalFilesystem-Docker RunManager
         which is the default execution architecture Codalab uses
         """
+        docker_runtime = docker_utils.get_available_runtime()
         cpuset = parse_cpuset_args(args.cpuset)
-        gpuset = parse_gpuset_args(docker_client, args.gpuset)
+        gpuset = parse_gpuset_args(args.gpuset)
 
         dependency_manager = LocalFileSystemDependencyManager(
             os.path.join(args.work_dir, 'dependencies-state.json'),
@@ -169,19 +170,19 @@ chmod 600 %s""" % args.password_file
         )
 
         image_manager = DockerImageManager(
-            docker_client, os.path.join(args.work_dir, 'images-state.json'), max_images_bytes
+            os.path.join(args.work_dir, 'images-state.json'), max_images_bytes
         )
 
         return LocalRunManager(
             worker,
-            docker_client,
             image_manager,
             dependency_manager,
             os.path.join(args.work_dir, 'run-state.json'),
             cpuset,
             gpuset,
             args.work_dir,
-            args.network_prefix,
+            docker_runtime=docker_runtime,
+            docker_network_prefix=args.network_prefix,
         )
 
     worker = Worker(
@@ -231,36 +232,28 @@ def parse_cpuset_args(arg):
     return set(cpuset)
 
 
-def parse_gpuset_args(docker_client, arg):
+def parse_gpuset_args(arg):
     """
-    Parse given arg into a set of integers representing gpu devices
+    Parse given arg into a set of strings representing gpu UUIDs
 
     Arguments:
-        docker_client: DockerClient instance
         arg: comma seperated string of ints, or "ALL" representing all gpus
     """
     if arg == '':
         return set()
 
-    all_gpus = docker_client.get_nvidia_devices_info()
-    if all_gpus is None:
-        all_gpus = []
+    try:
+        all_gpus = docker_utils.get_nvidia_devices()  # Dict[GPU index: GPU UUID]
+    except docker_utils.DockerException:
+        all_gpus = {}
 
     if arg == 'ALL':
-        return set(all_gpus)
+        return set(all_gpus.values())
     else:
-        try:
-            gpuset = [int(s) for s in arg.split(',')]
-        except ValueError:
-            raise ValueError(
-                "GPUSET_STR invalid format: must be a string of comma-separated integers"
-            )
-
-        if not len(gpuset) == len(set(gpuset)):
-            raise ValueError("GPUSET_STR invalid: GPUs not distinct values")
-        if not all(gpu in all_gpus for gpu in gpuset):
+        gpuset = arg.split(',')
+        if not all(gpu in all_gpus or gpu in all_gpus.values() for gpu in gpuset):
             raise ValueError("GPUSET_STR invalid: GPUs out of range")
-        return set(gpuset)
+        return set(all_gpus.get(gpu, gpu) for gpu in gpuset)
 
 
 if __name__ == '__main__':
