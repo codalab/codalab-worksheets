@@ -5,8 +5,6 @@ import _ from 'underscore';
 import { keepPosInView } from '../../util/worksheet_utils';
 import * as Mousetrap from '../../util/ws_mousetrap_fork';
 import WorksheetActionBar from './WorksheetActionBar';
-import WorksheetChatBox from './WorksheetChatBox';
-import WorksheetChatPortal from './WorksheetChatPortal';
 import WorksheetItemList from './WorksheetItemList';
 import WorksheetSidePanel from './WorksheetSidePanel';
 import { WorksheetEditableField } from '../EditableField';
@@ -807,22 +805,6 @@ class Worksheet extends React.Component {
                 setFocus={this.setFocus}
             />
         );
-        // chat_box only appears if enable_chat flag is on in config.json and user is authenticated
-        var chat_box_display =
-            info && info.enable_chat && this.state.userInfo ? (
-                <WorksheetChatBox
-                    ws={this.state.ws}
-                    focusIndex={this.state.focusIndex}
-                    subFocusIndex={this.state.subFocusIndex}
-                    userInfo={this.state.userInfo}
-                />
-            ) : null;
-
-        // chat_portal only appears if enable_chat flag is on in config.json and user is authenticated
-        var chat_portal =
-            info && info.enable_chat && this.state.userInfo ? (
-                <WorksheetChatPortal userInfo={this.state.userInfo} />
-            ) : null;
 
         var items_display = (
             <WorksheetItemList
@@ -867,8 +849,6 @@ class Worksheet extends React.Component {
                 <div id='worksheet_container'>
                     <div id='worksheet' className={searchClassName}>
                         {action_bar_display}
-                        {chat_box_display}
-                        {chat_portal}
                         {context_menu_display}
                         <HelpButton />
                         <div id='worksheet_panel' className='actionbar-focus'>
