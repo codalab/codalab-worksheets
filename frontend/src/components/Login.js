@@ -4,24 +4,24 @@ import Immutable from 'seamless-immutable';
 import { Redirect } from 'react-router-dom';
 import SubHeader from './SubHeader';
 import ContentWrapper from './ContentWrapper';
+import queryString from 'query-string';
 
 class Login extends React.Component {
     /** Constructor. */
     constructor(props) {
         super(props);
-        this.state = Immutable({ redirectToReferrer: false, username: '', password: '' });
-    }
+        let fromPathname = '/';
+        if (this.props.location.state && this.props.location.state.from) {
+            fromPathname = this.props.location.state.from.pathname;
+        }
 
-    loginRequest = (e) => {
-        e.preventDefault();
-        this.props.auth.authenticate(
-            { username: this.state.username, password: this.state.password },
-            () =>
-                this.setState(() => ({
-                    redirectToReferrer: true,
-                })),
-        );
-    };
+        this.state = Immutable({
+            redirectToReferrer: false,
+            username: '',
+            password: '',
+            from: fromPathname,
+        });
+    }
 
     handleInputChange = (event) => {
         const target = event.target;
@@ -34,12 +34,10 @@ class Login extends React.Component {
     };
 
     render() {
-        let from = { pathname: '/' };
-        if (this.props.location.pathname && this.props.location.pathname != '/account/login') {
-            from.pathname = this.props.location.pathname;
-        }
+        const { next } = queryString.parse(this.props.location.search);
+        const pathname = this.props.location.pathname;
 
-        let { redirectToReferrer } = this.state;
+        let { redirectToReferrer, from } = this.state;
 
         if (redirectToReferrer) return <Redirect to={from} />;
 
@@ -47,10 +45,8 @@ class Login extends React.Component {
             <React.Fragment>
                 <SubHeader title='Sign In' />
                 <ContentWrapper>
-                    {from.pathname != '/' && (
-                        <p>You must log in to view the page at {from.pathname}</p>
-                    )}
-                    <form className='login' method='POST' onSubmit={this.loginRequest}>
+                    {from != '/' && <p>You must log in to view the page at {from}</p>}
+                    <form className='login' method='POST' action='/rest/account/login'>
                         <div className='form-group'>
                             <label htmlFor='id_login'>Login:</label>
                             <input
@@ -78,6 +74,8 @@ class Login extends React.Component {
                                 onChange={this.handleInputChange}
                             />
                         </div>
+                        <input type='hidden' name='success_uri' value={from} />
+                        <input type='hidden' name='error_uri' value={pathname} />
                         <button className='btn btn-primary margin-top' type='submit'>
                             Sign In
                         </button>
@@ -91,11 +89,11 @@ class Login extends React.Component {
                     </p>
                     <a
                         href=''
-                        onClick={() => {
+                        onClick={(event) => {
                             alert(
                                 'Please log in and navigate to your dashboard to resend confirmation email.',
                             );
-                            return false;
+                            event.preventDefault();
                         }}
                     >
                         Resend confirmation email

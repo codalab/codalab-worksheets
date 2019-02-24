@@ -104,22 +104,6 @@ function checkAuth() {
 
 const fakeAuth = {
     isAuthenticated: checkAuth(),
-    authenticate(authObject, callback) {
-        $.ajax({
-            type: 'POST',
-            url: '/rest/account/login',
-            data: {
-                username: authObject.username,
-                password: authObject.password,
-            },
-            success: function(response, status, xhr) {
-                fakeAuth.isAuthenticated = true;
-                if (callback) {
-                    callback();
-                }
-            },
-        });
-    },
     signout: (event) => {
         fakeAuth.isAuthenticated = false;
         new Cookies().remove('codalab_session');

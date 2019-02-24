@@ -152,17 +152,11 @@ export class SignUp extends React.Component {
                                 onChange={this.handleInputChange}
                             />
                         </div>
-                        <input
-                            type='hidden'
-                            name='success_uri'
-                            value='/account/signup/success'
-                            onChange={this.handleInputChange}
-                        />
+                        <input type='hidden' name='success_uri' value='/account/signup/success' />
                         <input
                             type='hidden'
                             name='error_uri'
                             value={this.props.location.pathname}
-                            onChange={this.handleInputChange}
                         />
                         <button type='submit'>Sign Up &raquo;</button>
                     </form>
