@@ -47,16 +47,33 @@ def validate_child_path(path):
         raise ValidationError('Child path must match %s, was %s' % (NAME_REGEX.pattern, path))
 
 
+def validate_ascii(value):
+    if isinstance(value, basestring):
+        try:
+            value.encode("ascii")
+        except UnicodeError:
+            raise ValidationError('Unsupported character detected, use ascii characters')
+    elif isinstance(value, list):
+        for v in value:
+            validate_ascii(v)
+    elif isinstance(value, dict):
+        for v in value.itervalues():
+            validate_ascii(v)
+
+
 class WorksheetItemSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
     worksheet = fields.Relationship(
-        include_data=True, attribute='worksheet_uuid', type_='worksheets', required=True
+        include_resource_linkage=True, attribute='worksheet_uuid', type_='worksheets', required=True
     )
     subworksheet = fields.Relationship(
-        include_data=True, type_='worksheets', attribute='subworksheet_uuid', allow_none=True
+        include_resource_linkage=True,
+        type_='worksheets',
+        attribute='subworksheet_uuid',
+        allow_none=True,
     )
     bundle = fields.Relationship(
-        include_data=True, type_='bundles', attribute='bundle_uuid', allow_none=True
+        include_resource_linkage=True, type_='bundles', attribute='bundle_uuid', allow_none=True
     )
     value = fields.String()
     type = fields.String(validate=validate.OneOf(set(WORKSHEET_ITEM_TYPES)), required=True)
@@ -69,14 +86,14 @@ class WorksheetItemSchema(Schema):
 class WorksheetPermissionSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
     worksheet = fields.Relationship(
-        include_data=True,
+        include_resource_linkage=True,
         attribute='object_uuid',
         type_='worksheets',
         load_only=True,
         required=True,
     )
     group = fields.Relationship(
-        include_data=True, attribute='group_uuid', type_='groups', required=True
+        include_resource_linkage=True, attribute='group_uuid', type_='groups', required=True
     )
     group_name = fields.String(dump_only=True)  # for convenience
     permission = fields.Integer(validate=lambda p: 0 <= p <= 2)
@@ -95,16 +112,16 @@ class WorksheetSchema(Schema):
     id = fields.String(validate=validate_uuid, attribute='uuid')
     uuid = fields.String(attribute='uuid')  # for backwards compatibility
     name = fields.String(validate=validate_name)
-    owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
-    title = fields.String()
+    owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
+    title = fields.String(validate=validate_ascii)
     frozen = fields.DateTime(allow_none=True)
     is_anonymous = fields.Bool()
-    tags = fields.List(fields.String())
+    tags = fields.List(fields.String(validate=validate_ascii))
     group_permissions = fields.Relationship(
-        include_data=True, type_='worksheet-permissions', id_field='id', many=True
+        include_resource_linkage=True, type_='worksheet-permissions', id_field='id', many=True
     )
     items = fields.Relationship(
-        include_data=True, type_='worksheet-items', id_field='id', many=True
+        include_resource_linkage=True, type_='worksheet-items', id_field='id', many=True
     )
     last_item_id = fields.Integer(dump_only=True)
 
@@ -137,10 +154,14 @@ class BundleDependencySchema(PlainSchema):
 class BundlePermissionSchema(Schema):
     id = fields.Integer(as_string=True, dump_only=True)
     bundle = fields.Relationship(
-        include_data=True, attribute='object_uuid', type_='bundles', load_only=True, required=True
+        include_resource_linkage=True,
+        attribute='object_uuid',
+        type_='bundles',
+        load_only=True,
+        required=True,
     )
     group = fields.Relationship(
-        include_data=True, attribute='group_uuid', type_='groups', required=True
+        include_resource_linkage=True, attribute='group_uuid', type_='groups', required=True
     )
     group_name = fields.String(dump_only=True)  # for convenience
     permission = fields.Integer(validate=lambda p: 0 <= p <= 2)
@@ -164,16 +185,18 @@ class BundleSchema(Schema):
     command = fields.String(allow_none=True)
     data_hash = fields.String()
     state = fields.String()
-    owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
+    owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
     is_anonymous = fields.Bool()
-    metadata = fields.Dict()
+    metadata = fields.Dict(values=fields.Field(validate=validate_ascii))
     dependencies = fields.Nested(BundleDependencySchema, many=True)
-    children = fields.Relationship(include_data=True, type_='bundles', id_field='uuid', many=True)
+    children = fields.Relationship(
+        include_resource_linkage=True, type_='bundles', id_field='uuid', many=True
+    )
     group_permissions = fields.Relationship(
-        include_data=True, type_='bundle-permissions', id_field='id', many=True
+        include_resource_linkage=True, type_='bundle-permissions', id_field='id', many=True
     )
     host_worksheets = fields.Relationship(
-        include_data=True, type_='worksheets', id_field='uuid', many=True
+        include_resource_linkage=True, type_='worksheets', id_field='uuid', many=True
     )
     args = fields.String()
 
@@ -268,9 +291,9 @@ class GroupSchema(Schema):
     id = fields.String(validate=validate_uuid, attribute='uuid')
     name = fields.String(required=True, validate=validate_name)
     user_defined = fields.Bool(dump_only=True)
-    owner = fields.Relationship(include_data=True, type_='users', attribute='owner_id')
-    admins = fields.Relationship(include_data=True, type_='users', many=True)
-    members = fields.Relationship(include_data=True, type_='users', many=True)
+    owner = fields.Relationship(include_resource_linkage=True, type_='users', attribute='owner_id')
+    admins = fields.Relationship(include_resource_linkage=True, type_='users', many=True)
+    members = fields.Relationship(include_resource_linkage=True, type_='users', many=True)
 
     class Meta:
         type_ = 'groups'

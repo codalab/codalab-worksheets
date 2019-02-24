@@ -49,6 +49,7 @@ from codalab.lib import (
     worksheet_util,
     zip_util,
     bundle_fuse,
+    unicode_util,
 )
 from codalab.lib.cli_util import (
     nested_dict_get,
@@ -77,7 +78,7 @@ from codalab.lib.print_util import FileTransferProgress
 from codalabworker.file_util import un_tar_directory
 
 from codalab.lib.spec_util import generate_uuid
-from codalabworker.docker_client import DockerClient
+from codalabworker.docker_utils import get_available_runtime, start_bundle_container
 from codalabworker.file_util import remove_path
 from codalabworker.bundle_state import State
 from codalab.rest.worksheet_block_schemas import BlockModes
@@ -649,16 +650,17 @@ class BundleCLI(object):
             rows.append(row)
 
         # Display the table
-        lengths = [max(len(str(value)) for value in col) for col in zip(*rows)]
+        lengths = [max(len(unicode(value)) for value in col) for col in zip(*rows)]
         for (i, row) in enumerate(rows):
             row_strs = []
             for (j, value) in enumerate(row):
+                value = unicode(value)
                 length = lengths[j]
-                padding = (length - len(str(value))) * ' '
+                padding = (length - len(value)) * ' '
                 if justify.get(columns[j], -1) < 0:
-                    row_strs.append(str(value) + padding)
+                    row_strs.append(value + padding)
                 else:
-                    row_strs.append(padding + str(value))
+                    row_strs.append(padding + value)
             if show_header or i > 0:
                 print >>self.stdout, indent + '  '.join(row_strs)
             if i == 0:
@@ -1104,10 +1106,10 @@ class BundleCLI(object):
 
         # Build bundle info
         metadata = self.get_missing_metadata(UploadedBundle, args, initial_metadata={})
-        # name = 'test.zip' => name = 'test'
         if args.contents is not None and metadata['name'] is None:
             metadata['name'] = 'contents'
         if not args.pack and zip_util.path_is_archive(metadata['name']):
+            # name = 'test.zip' => name = 'test'
             metadata['name'] = zip_util.strip_archive_ext(metadata['name'])
         bundle_info = {
             'bundle_type': 'dataset',  # TODO: deprecate Dataset and ProgramBundles
@@ -1177,8 +1179,8 @@ class BundleCLI(object):
                 bundle_info,
                 params={'worksheet': worksheet_uuid, 'wait_for_upload': True},
             )
-            print >>self.stderr, 'Uploading %s (%s) to %s' % (
-                packed['filename'],
+            print >>self.stderr, u'Uploading %s (%s) to %s' % (
+                packed['filename'].decode('UTF-8'),
                 new_bundle['id'],
                 client.address,
             )
@@ -1188,7 +1190,7 @@ class BundleCLI(object):
                     new_bundle['id'],
                     fileobj=packed['fileobj'],
                     params={
-                        'filename': packed['filename'],
+                        'filename': packed['filename'].decode('UTF-8').encode('ascii', 'replace'),
                         'unpack': packed['should_unpack'],
                         'simplify': packed['should_simplify'],
                         'state_on_success': State.READY,
@@ -1556,17 +1558,22 @@ class BundleCLI(object):
             child_path = os.path.join(bundle_path, dependency_path)
             os.symlink(docker_dependency_path, child_path)
 
-        dc = DockerClient()
-        container_id = dc.create_bundle_container(
-            bundle_path, uuid, dependencies, args.command, docker_image
-        )
+        container_id = start_bundle_container(
+            bundle_path,
+            uuid,
+            dependencies,
+            args.command,
+            docker_image,
+            detach=False,
+            tty=True,
+            runtime=get_available_runtime(),
+        ).id
         print >>self.stdout, '===='
         print >>self.stdout, 'Container ID: ', container_id[:12]
         print >>self.stdout, 'Local Bundle UUID: ', uuid
         print >>self.stdout, 'You can find local bundle contents in: ', bundle_path
         print >>self.stdout, '===='
-        # TODO(bkgoksel): Docker Python SDK doesn't support interactive container launching so we do this
-        os.system('docker start -ai {}'.format(container_id))
+        os.system('docker attach {}'.format(container_id))
 
     @Commands.command(
         'edit',
