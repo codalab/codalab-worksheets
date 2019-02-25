@@ -6,9 +6,7 @@ import $ from 'jquery';
 import { JsonApiDataStore } from 'jsonapi-datastore';
 import { renderFormat, renderPermissions, shorten_uuid } from '../util/worksheet_utils';
 import { BundleEditableField } from './EditableField';
-
-// TODO: Replace dummy components
-let FileBrowser = () => <div />;
+import { FileBrowser } from './FileBrowser';
 
 class Bundle extends React.Component<
     {

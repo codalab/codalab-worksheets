@@ -9,10 +9,9 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import ResponsiveEmbed from 'react-responsive-embed';
 
-import UploadIcon from '@material-ui/icons/CloudUpload';  // insert_chart, cloud upload
-import ExperimentIcon from '@material-ui/icons/InsertChart';  // extension, barchart, score
-import PublishIcon from '@material-ui/icons/Public';  // share, public
-
+import UploadIcon from '@material-ui/icons/CloudUpload'; // insert_chart, cloud upload
+import ExperimentIcon from '@material-ui/icons/InsertChart'; // extension, barchart, score
+import PublishIcon from '@material-ui/icons/Public'; // share, public
 
 const kSidePadding = 32;
 const kSpacerPadding = 24;
@@ -114,7 +113,7 @@ class HomePage extends React.Component<{
                         </Grid>
 
                         <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <UploadIcon/>
+                            <UploadIcon />
                             <Typography variant='h6'>Upload</Typography>
                             <Typography>
                                 Upload code (in any programming language) and datasets (in any
@@ -125,12 +124,14 @@ class HomePage extends React.Component<{
                             </Typography>
                         </Grid>
                         <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <img src={`${process.env.PUBLIC_URL}/img/summary1.png`}
-                                 className={classes.summaryImg}/>
+                            <img
+                                src={`${process.env.PUBLIC_URL}/img/summary1.png`}
+                                className={classes.summaryImg}
+                            />
                         </Grid>
 
                         <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <ExperimentIcon/>
+                            <ExperimentIcon />
                             <Typography variant='h6'>Experiment</Typography>
                             <Typography>
                                 Execute your code in the cloud by explicitly specifying your
@@ -140,12 +141,14 @@ class HomePage extends React.Component<{
                             </Typography>
                         </Grid>
                         <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <img src={`${process.env.PUBLIC_URL}/img/summary2.png`}
-                                 className={classes.summaryImg}/>
+                            <img
+                                src={`${process.env.PUBLIC_URL}/img/summary2.png`}
+                                className={classes.summaryImg}
+                            />
                         </Grid>
 
                         <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <PublishIcon/>
+                            <PublishIcon />
                             <Typography variant='h6'>Publish</Typography>
                             <Typography>
                                 Organize your experiments in a worksheet (like a digital lab
@@ -156,8 +159,10 @@ class HomePage extends React.Component<{
                             </Typography>
                         </Grid>
                         <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <img src={`${process.env.PUBLIC_URL}/img/summary3.png`}
-                                 className={classes.summaryImg}/>
+                            <img
+                                src={`${process.env.PUBLIC_URL}/img/summary3.png`}
+                                className={classes.summaryImg}
+                            />
                         </Grid>
 
                         {/** Getting started. */}
@@ -177,7 +182,8 @@ class HomePage extends React.Component<{
                                     <pre>pip install codalab</pre>
                                 </Typography>
                                 <Typography gutterBottom>
-                                    For <b>beginning users</b>, the best place to start is to clone the
+                                    For <b>beginning users</b>, the best place to start is to clone
+                                    the
                                     <code>codalab/worksheet-examples</code>
                                     repository and walk through the material there:
                                 </Typography>
