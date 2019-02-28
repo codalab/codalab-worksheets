@@ -249,11 +249,11 @@ class WorksheetDetailSidePanel extends React.Component {
                     // Show bundle
                     var bundle_infos = item.bundles_spec.bundle_infos;
 
-                    bundle_infos.forEach(function(b) {
+                    bundle_infos.forEach(function(b, bundleItemIndex) {
                         var url = '/bundles/' + b.uuid;
                         var short_uuid = shorten_uuid(b.uuid);
                         rows.push(
-                            <tr key={short_uuid + itemIndex}>
+                            <tr key={short_uuid + itemIndex + bundleItemIndex}>
                                 <td>{b.bundle_type}</td>
                                 <td>
                                     <a href={url} target='_blank'>
@@ -265,11 +265,11 @@ class WorksheetDetailSidePanel extends React.Component {
                     });
                 } else if (item.mode == 'subworksheets_block') {
                     // Show worksheet
-                    item.subworksheet_infos.forEach(function(info) {
+                    item.subworksheet_infos.forEach(function(info, subworksheetItemIndex) {
                         var title = info.title || info.name;
                         var url = '/worksheets/' + info.uuid;
                         rows.push(
-                            <tr key={url + itemIndex}>
+                            <tr key={url + itemIndex + subworksheetItemIndex}>
                                 <td>worksheet</td>
                                 <td>
                                     <a href={url} target='_blank'>

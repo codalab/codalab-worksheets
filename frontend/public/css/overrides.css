@@ -17,3 +17,8 @@ b {
 footer {
     background-color: #225ea8;
 }
+
+/*TODO: remove this when we replace jquery-terminal*/
+iframe {
+    border: 0;
+}
