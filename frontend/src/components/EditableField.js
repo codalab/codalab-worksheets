@@ -2,7 +2,6 @@
 import * as React from 'react';
 import * as $ from 'jquery';
 import classNames from 'classnames';
-// import { EditableTextField } from 'react-bootstrap-xeditable';
 import Editable from 'react-x-editable';
 import { renderFormat, serializeFormat } from '../util/worksheet_utils';
 
@@ -25,7 +24,7 @@ export class EditableField extends React.Component<{
     };
 
     shouldComponentUpdate(nextProps, nextState) {
-        return nextProps.value !== this.props.value;
+        return (nextProps.value !== this.props.value || nextProps.canEdit !== this.props.canEdit);
     }
 
     render() {

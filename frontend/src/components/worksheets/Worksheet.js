@@ -861,11 +861,11 @@ class Worksheet extends React.Component {
                                                 <div className='col-sm-6 col-md-8'>
                                                     <h4 className='worksheet-title'>
                                                         <WorksheetEditableField
-                                                            canEdit={this.canEdit()}
+                                                            canEdit={true}
                                                             fieldName='title'
                                                             value={info && info.title}
                                                             uuid={info && info.uuid}
-                                                            onChange={this.reloadWorksheet}
+                                                            onChange={() => this.reloadWorksheet()}
                                                         />
                                                     </h4>
                                                 </div>
