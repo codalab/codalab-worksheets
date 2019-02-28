@@ -9,9 +9,9 @@ import TableCell from '@material-ui/core/TableCell';
 import TableRow from '@material-ui/core/TableRow';
 import ResponsiveEmbed from 'react-responsive-embed';
 
-import UploadIcon from '@material-ui/icons/CloudUpload'; // insert_chart, cloud upload
-import ExperimentIcon from '@material-ui/icons/InsertChart'; // extension, barchart, score
-import PublishIcon from '@material-ui/icons/Public'; // share, public
+import UploadIcon from '@material-ui/icons/CloudUploadOutlined'; // insert_chart, cloud upload
+import ExperimentIcon from '@material-ui/icons/InsertChartOutlined'; // extension, barchart, score
+import PublishIcon from '@material-ui/icons/PublicOutlined'; // share, public
 
 const kSidePadding = 32;
 const kSpacerPadding = 24;
@@ -106,59 +106,61 @@ class HomePage extends React.Component<{
                         {/** Summary. */}
                         <Grid item xs={12} className={classNames(classes.textBox, classes.spacer)}>
                             <Typography variant='h5' color='textSecondary' textAlign='center'>
-                                Run your machine learning jobs in the cloud. Manage your experiments
-                                in a digital lab notebook. Publish so other researchers can
+                                Run your machine learning experiments in the cloud. Manage them in a
+                                digital lab notebook. Publish them so other researchers can
                                 reproduce your results.
                             </Typography>
                         </Grid>
 
-                        <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <UploadIcon />
-                            <Typography variant='h6'>Upload</Typography>
+                        <Grid item xs={12} sm={5} className={classes.textBox} container alignContent='center'>
+                            <div className={classes.titleBox}>
+                                <UploadIcon className={classes.titleIcon}/>
+                                <Typography variant='h6' inline>Upload</Typography>
+                            </div>
                             <Typography>
                                 Upload code (in any programming language) and datasets (in any
-                                format) so you can run jobs in the cloud. Unlike other platforms,
-                                there are virtually no constraints on how you structure your code
-                                and datasets, so you can feel free to use it for all your crazy
-                                research projects!
+                                format) as bundles. There are no constraints on how you structure
+                                your bundles.
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                        <Grid item xs={12} sm={7} className={classes.textBox}>
                             <img
                                 src={`${process.env.PUBLIC_URL}/img/summary1.png`}
                                 className={classes.summaryImg}
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <ExperimentIcon />
-                            <Typography variant='h6'>Experiment</Typography>
+                        <Grid item xs={12} sm={5} className={classes.textBox} container alignContent='center'>
+                            <div className={classes.titleBox}>
+                                <ExperimentIcon className={classes.titleIcon}/>
+                                <Typography variant='h6' inline>Experiment</Typography>
+                            </div>
                             <Typography>
-                                Execute your code in the cloud by explicitly specifying your
-                                dependencies, the Docker execution environment, and hardware
-                                requirements. This information is captured along with the results of
-                                a single run to form a bundle.
+                                Run your code in the cloud by specifying an arbitrary command along
+                                with your bundle dependencies, a Docker execution environment, and
+                                resource requirements. The output of the run becomes a new bundle.
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                        <Grid item xs={12} sm={7} className={classes.textBox}>
                             <img
                                 src={`${process.env.PUBLIC_URL}/img/summary2.png`}
                                 className={classes.summaryImg}
                             />
                         </Grid>
 
-                        <Grid item xs={12} sm={6} className={classes.textBox}>
-                            <PublishIcon />
-                            <Typography variant='h6'>Publish</Typography>
+                        <Grid item xs={12} sm={5} className={classes.textBox} container alignContent='center'>
+                            <div className={classes.titleBox}>
+                                <PublishIcon className={classes.titleIcon}/>
+                                <Typography variant='h6' inline>Publish</Typography>
+                            </div>
                             <Typography>
-                                Organize your experiments in a worksheet (like a digital lab
-                                notebook) using a extended version of Markdown. You can set up
-                                custom tables and graphs that are automatically populated with data
-                                from your runs. When you're ready, just make the worksheet public
-                                and share your results with the world!
+                                Organize your experiments in a worksheet (a digital lab notebook)
+                                using an extended version of Markdown. You can set up custom tables
+                                and graphs that are automatically populated with the output of your
+                                runs. Share the worksheet with the world!
                             </Typography>
                         </Grid>
-                        <Grid item xs={12} sm={6} className={classes.textBox}>
+                        <Grid item xs={12} sm={7} className={classes.textBox}>
                             <img
                                 src={`${process.env.PUBLIC_URL}/img/summary3.png`}
                                 className={classes.summaryImg}
@@ -296,7 +298,7 @@ const styles = (theme) => ({
         padding: `${kSpacerPadding}px ${kSidePadding}px`,
     },
     splash: {
-        backgroundImage: `url(${process.env.PUBLIC_URL}/img/splash1.png)`,
+        backgroundImage: `url(${process.env.PUBLIC_URL}/img/splash.png)`,
         backgroundSize: 'cover',
         minHeight: 300,
     },
@@ -316,6 +318,14 @@ const styles = (theme) => ({
     },
     textBox: {
         padding: '8px',
+        verticalAlign: 'middle',
+    },
+    titleBox: {
+        display: 'flex',
+        alignItems: 'center',
+    },
+    titleIcon: {
+        marginRight: 10,
     },
     spacer: {
         paddingTop: `${kSpacerPadding}px`,

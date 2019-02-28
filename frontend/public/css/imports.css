@@ -48,7 +48,7 @@ abbr[title] {
 }
 b,
 strong {
-  font-weight: bold;
+  font-weight: 500;
 }
 dfn {
   font-style: italic;
@@ -982,8 +982,8 @@ h6,
 .h4,
 .h5,
 .h6 {
-  font-family: 'Segoe UI';
-  font-weight: 200;
+  font-family: 'Roboto';
+  font-weight: 500;
   line-height: 1.2;
   color: inherit;
 }
@@ -6443,7 +6443,7 @@ body.ws-interface > .container {
 .page-header {
   margin: 0 0 20px;
   border: none;
-  background: url('../img/splash1.png') repeat-x top left;
+  background: url('../img/splash.png') repeat-x top left;
   min-height: 80px;
   color: white;
 }
@@ -6953,9 +6953,9 @@ body,
   text-indent: 0;
   margin: 0;
   font-size: 28px;
-  font-weight: bold;
+  font-weight: 500;
   line-height: 1.1em;
-  padding: 20px 0 20px 15px;
+  padding-top: 40px;
   min-height: 60px;
 }
 #worksheet_content .worksheet-name {
@@ -7478,7 +7478,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
 #worksheet_content .type-table table > thead > tr > th,
 #worksheet_content .type-record table > thead > tr > th,
 #worksheet_content .type-search table > thead > tr > th {
-  font-weight: bold;
+  font-weight: 500;
   color: #666;
 }
 #worksheet_content .type-table table.focused,
