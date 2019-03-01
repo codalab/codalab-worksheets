@@ -444,7 +444,7 @@ class Worksheet extends React.Component {
             dataType: 'json',
             cache: false,
             success: function(worksheet_content) {
-                if (this.state.isUpdatingBundles) {
+                if (this.state.isUpdatingBundles && worksheet_content.uuid === this.state.ws.uuid) {
                     if (worksheet_content.items) {
                         self.reloadWorksheet(worksheet_content.items);
                     }
@@ -633,6 +633,13 @@ class Worksheet extends React.Component {
             this.setState({ updating: true });
             this.state.ws.fetch({
                 success: function(data) {
+                    if (this.state.ws.uuid !== data.uuid) {
+                        this.setState({
+                            updating: false,
+                            version: this.state.version + 1,
+                        });
+                        return false;
+                    }
                     $('#update_progress, #worksheet-message').hide();
                     $('#worksheet_content').show();
                     var items = this.state.ws.info.items;
