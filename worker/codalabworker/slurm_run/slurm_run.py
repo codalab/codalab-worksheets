@@ -82,16 +82,18 @@ class SlurmRun(object):
 
     def get_gpus(self):
         try:
-            self.gpus = subprocess.check_output('nvidia-smi --query-gpu=uuid --format=csv,noheader').split('\n')
-        except Exception:
+            self.gpus = subprocess.check_output('nvidia-smi --query-gpu=uuid --format=csv,noheader', shell=True).split('\n')[:-1]
+        except Exception as ex:
+            print(ex)
             if self.resources.gpus > 0:
                 raise
 
     def start(self):
         try:
+            print("Run started")
             self.run_state.run_status = "Propagating resource requests"
             self.write_state()
-            self.gpus = self.get_gpus()
+            self.get_gpus()
             self.run_state.run_status = "Pulling docker image {}".format(
                 self.resources.docker_image
             )
@@ -112,10 +114,6 @@ class SlurmRun(object):
             self.run_state.info['failure_message'] = str(ex)
             self.run_state.state = State.FINALIZING
             self.killed = True
-            try:
-                shutil.rmtree(self.bundle.location)
-            except Exception as ex:
-                print("Cannot remove bundle location at failure cleanup: {}".format(ex))
             self.write_state()
             print("Run failed: {}".format(ex))
         self.run_state.run_status = "Execution finished. Cleaning up."
