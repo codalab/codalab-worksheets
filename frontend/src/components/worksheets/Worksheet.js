@@ -867,8 +867,10 @@ class Worksheet extends React.Component {
                                             <div className='row'>
                                                 <div className='col-sm-6 col-md-8'>
                                                     <h4 className='worksheet-title'>
+                                                        {/*TODO: hack, take out ASAP*/}
                                                         <WorksheetEditableField
-                                                            canEdit={true}
+                                                            key={'title' + this.canEdit()}
+                                                            canEdit={this.canEdit()}
                                                             fieldName='title'
                                                             value={info && info.title}
                                                             uuid={info && info.uuid}

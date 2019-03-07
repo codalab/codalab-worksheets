@@ -15,6 +15,11 @@ class MarkdownItem extends React.Component {
     processMathJax = () => {
         window.MathJax.Hub.Queue(['Typeset', window.MathJax.Hub, ReactDOM.findDOMNode(this)]);
     };
+
+    componentDidMount() {
+        this.processMathJax();
+    }
+
     componentDidUpdate() {
         this.processMathJax();
     }
