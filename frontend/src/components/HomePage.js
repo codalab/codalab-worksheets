@@ -67,7 +67,6 @@ class HomePage extends React.Component<{
                                 className={classes.textBox}
                                 alignContent='center'
                             >
-                                <Grid>
                                     <Typography variant='h4' className={classes.tagline}>
                                         A collaborative platform for reproducible research.
                                     </Typography>
@@ -87,7 +86,6 @@ class HomePage extends React.Component<{
                                             ),
                                         ]}
                                     </div>
-                                </Grid>
                             </Grid>
                             <Grid item xs={12} sm={6} container>
                                 <div className={classes.video}>
