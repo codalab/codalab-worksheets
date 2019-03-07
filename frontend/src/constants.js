@@ -1,1 +1,1 @@
-export const CODALAB_VERSION = 'REACT_UPGRADE';
+export const CODALAB_VERSION = '0.2.41';

@@ -18,7 +18,7 @@ class Footer extends React.Component {
                     <ul className='nav navbar-nav navbar-right'>
                         <li>
                             <a
-                                href='https://github.com/codalab/codalab-worksheets/wiki/Project_About_CodaLab'
+                                href='https://github.com/codalab/codalab-worksheets/wiki/About'
                                 target='_blank'
                             >
                                 About
@@ -34,7 +34,7 @@ class Footer extends React.Component {
                         </li>
                         <li>
                             <a
-                                href='https://github.com/codalab/codalab-worksheets/wiki/Worksheet-Features'
+                                href='https://github.com/codalab/codalab-worksheets/wiki/Latest-Features'
                                 target='_blank'
                             >
                                 v{CODALAB_VERSION}

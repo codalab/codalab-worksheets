@@ -34,7 +34,7 @@ class Login extends React.Component {
     };
 
     render() {
-        const { next } = queryString.parse(this.props.location.search);
+        const { next, error } = queryString.parse(this.props.location.search);
         const pathname = this.props.location.pathname;
 
         let { redirectToReferrer, from } = this.state;
@@ -46,6 +46,7 @@ class Login extends React.Component {
                 <SubHeader title='Sign In' />
                 <ContentWrapper>
                     {from != '/' && <p>You must log in to view the page at {from}</p>}
+                    {error && <div class='alert alert-error'>{error}</div>}
                     <form className='login' method='POST' action='/rest/account/login'>
                         <div className='form-group'>
                             <label htmlFor='id_login'>Login:</label>
