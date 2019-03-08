@@ -98,7 +98,7 @@ code,
 kbd,
 pre,
 samp {
-  font-family: monospace, monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 1em;
 }
 button,
@@ -1327,7 +1327,7 @@ code,
 kbd,
 pre,
 samp {
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Roboto Mono', monospace;
 }
 code {
   padding: 2px 4px;
@@ -6588,7 +6588,7 @@ kbd {
 .frontpage-code {
   margin: 10px;
   margin-left: 30px;
-  font-family: monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 14px;
   color: #33aa33;
 }
@@ -7147,7 +7147,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   background: white;
   color: #666;
   box-shadow: none;
-  font-family: monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 14px;
   outline: none;
   height: auto;
@@ -7244,7 +7244,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   border-left: 4px solid #ddd;
 }
 #worksheet_content .type-contents blockquote p {
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Roboto Mono', monospace;
   color: #666;
   margin: 0;
   font-size: 12px;
@@ -7594,7 +7594,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
 }
 .select2-drop,
 .select2-container {
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 13px;
 }
 .select2-container {
@@ -7615,7 +7615,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   border-radius: 0;
 }
 .select2-container-multi .select2-choices .select2-search-field input {
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 13px;
 }
 .select2-drop,
@@ -7737,7 +7737,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
 .file-browser-table > tfoot > tr > td .file .size {
   width: 5em;
   float: right;
-  font-family: Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-family: 'Roboto Mono', monospace;
   font-size: 80%;
   line-height: 1.6;
 }
@@ -7981,7 +7981,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
 }
 .terminal,
 .cmd {
-  font-family: FreeMono, monospace;
+  font-family: 'Roboto Mono', monospace;
   color: #223;
   background-color: #EFEFEF;
   font-size: 12px;
@@ -8083,8 +8083,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   display: inline-block;
 }
 #run-bundle-terminal {
-  background-color: lightslategray;
-  color: white;
+  background-color: #f7f7f7;
   height: 80%;
   padding: 10px;
   overflow-y: scroll;
@@ -8093,7 +8092,7 @@ fieldset[disabled] #worksheet_content .header-row .controls .edit-features .btn-
   padding: 3px;
 }
 .run-bundle-terminal-input {
-  background-color: lightslategray;
+  background-color: #f7f7f7;
   border: 1px solid white;
 }
 #run-bundle-terminal-command {

@@ -1,1 +1,1 @@
-export const CODALAB_VERSION = '0.2.41';
+export const CODALAB_VERSION = '0.3.0';
