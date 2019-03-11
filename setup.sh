@@ -49,6 +49,23 @@ echo -e "${info}[*] Installing Python packages into $env...${reset}"
 if [ "$1" == "server" ]; then
   $env/bin/pip install -r $codalabdir/requirements-server.txt
   $env/bin/pip install -e $codalabdir/worker
+  echo -e "${info}[*] Running npm build for frontend...${reset}"
+  if ! which npm; then
+    echo -e "${warning}[!] npm is not found.${reset}"
+    echo -e "${warning}[!] You need npm if you want to set up the front end web server.${reset}"
+    echo -e "${warning}[!] If you are using Ubuntu run the following to install:${reset}"
+    echo
+    echo -e "${warning}  sudo apt-get install ${reset}"
+  else
+    cd frontend
+    npm install
+    npm install -g serve
+    npm run build
+    echo -e "${info}  Frontend server installed. You can start server with the following command:${reset}"
+    echo
+    echo -e "${info}  serve -s build -l 2700${reset}"
+    cd ..
+  fi
 elif [ "$1" == "client" ]; then
   $env/bin/pip install -r $codalabdir/requirements.txt
 fi
