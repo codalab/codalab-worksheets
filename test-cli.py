@@ -72,11 +72,9 @@ def current_worksheet():
     Does so by parsing the output of `cl work`:
         Switched to worksheet http://localhost:2800/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
     """
-    m = re.search('(http[^\(]+)', run_command([cl, 'work']))
+    m = re.search('(http.*?)/worksheets/(.*?) \((.*?)\)', run_command([cl, 'work']))
     assert m is not None
-    worksheet_full = m.group(1).strip()
-    worksheet_host = worksheet_full.split('/worksheets/')[0]
-    worksheet_name = worksheet_full.split('/worksheets/')[1]
+    worksheet_host, worksheet_uuid, worksheet_name = m.group(1), m.group(2), m.group(3)
     return worksheet_host + "::" + worksheet_name
 
 
