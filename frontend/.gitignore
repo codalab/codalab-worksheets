@@ -1,1 +1,61 @@
-node_modules/
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+coverage/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Sphinx documentation
+docs/_build/
+
+# dotenv
+.env
+
+# virtualenv
+.venv
+venv/
+ENV/
+
+# PyCharm or WebStorm
+.idea
+
+# Node
+*node_modules/
+/.pnp
+.pnp.js
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+# Java
+*.class
+
+# Atom
+*.tags
+
+# Caches
+*.cache
+*.mypy_cache
+*.pytest_cache
+
+# Miscellaneous
+.DS_Store
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
