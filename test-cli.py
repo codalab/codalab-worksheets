@@ -70,13 +70,13 @@ def current_worksheet():
     Returns the full worksheet spec of the current worksheet.
 
     Does so by parsing the output of `cl work`:
-        Switched to worksheet http://localhost:2800::home-pliang(0x87a7a7ffe29d4d72be9b23c745adc120).
+        Switched to worksheet http://localhost:2800/worksheets/0x87a7a7ffe29d4d72be9b23c745adc120 (home-codalab).
     """
     m = re.search('(http[^\(]+)', run_command([cl, 'work']))
     assert m is not None
-    worksheet_full = m.group(1)
-    worksheet_name = worksheet_full.split('/worksheets/')[1]
+    worksheet_full = m.group(1).strip()
     worksheet_host = worksheet_full.split('/worksheets/')[0]
+    worksheet_name = worksheet_full.split('/worksheets/')[1]
     return worksheet_host + "::" + worksheet_name
 
 

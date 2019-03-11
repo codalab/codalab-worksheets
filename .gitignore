@@ -65,3 +65,4 @@ codalab/tests
 codalab/tags
 notes.otl
 codalab-worker-scratch/
+frontend/node_modules
