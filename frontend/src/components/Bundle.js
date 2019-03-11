@@ -36,7 +36,21 @@ class Bundle extends React.Component<
             fileContents: null,
             stdout: null,
             stderr: null,
+            prevUuid: props.uuid,
         };
+    }
+
+    static getDerivedStateFromProps(props, state) {
+        // Any time the current bundle uuid changes,
+        // clear the error messages and not the actual contents, so that in
+        // the side panel, the page doesn't flicker.
+        if (props.uuid !== state.prevUuid) {
+            return {
+                prevUuid: props.uuid,
+                errorMessages: [],
+            };
+        }
+        return null;
     }
 
     /**
