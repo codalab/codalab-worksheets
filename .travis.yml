@@ -9,6 +9,7 @@ python:
   - 2.7
 before_install:
   - docker --version
+  - chmod +x ./docker/build_images.sh
 install:
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install sqlalchemy; fi
 #   add packages required by tests (mock and nose are on Travis VM by default)
@@ -39,3 +40,25 @@ before_script:
 script:
   - if [[ $TRAVIS_PYTHON_VERSION == 3.6 ]]; then ./venv/bin/black . --check; fi
   - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then ./venv/bin/python test-cli.py default; fi
+    i
+deploy:
+  # Build docker images using tag if it's a version tag (we're releasing)
+  # Otherwise if we're on master or staging build named images
+  - provider: script
+    # Remove first char of tag (v) to get version number from tag
+    # Also build `latest` tags if we're releasing a new version
+    script:
+      - ./docker/build_images.sh ${$TRAVIS_TAG:1} -p
+      - ./docker/build_images.sh latest -p
+    on:
+      branch: release
+      # only build on valid semver tags
+      tags: true
+      condition: $TRAVIS_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+
+  - provider: script
+    # Build with branch name if not releasing
+    script:
+      - ./docker/build_images.sh $TRAVIS_BRANCH -p
+    on:
+      # only build for master and staging for debuggin
+      condition: branch IN (master, staging) AND type IS push
