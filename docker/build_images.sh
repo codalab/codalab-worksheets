@@ -10,13 +10,12 @@ usage()
 
 TAG=$1
 shift
-if [ $1 = '-p' | $1 = '--push' ]; then
+if [ "$1" = '-p' ] || [ "$1" = '--push' ]; then
   PUSH=1
 else
   PUSH=0
 fi
 
-cd ..
 echo "==> Building the bundleserver Docker image"
 docker build -t codalab/bundleserver:$TAG -f docker/Dockerfile.server .
 echo "==> Building the frontend Docker image"
