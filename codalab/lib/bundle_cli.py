@@ -97,6 +97,8 @@ BUNDLE_SPEC_FORMAT = '[%s%s]%s' % (
     BASIC_BUNDLE_SPEC_FORMAT,
 )
 
+WORKSHEETS_URL_SEPARATOR = '/worksheets/'
+
 TARGET_SPEC_FORMAT = '%s[%s<subpath within bundle>]' % (BUNDLE_SPEC_FORMAT, os.sep)
 ALIASED_TARGET_SPEC_FORMAT = '[<key>:]' + TARGET_SPEC_FORMAT
 GROUP_SPEC_FORMAT = '(<uuid>|<name>|public)'
@@ -553,6 +555,8 @@ class BundleCLI(object):
         instance, worksheet_spec, bundle_spec, subpath = parse_target_spec(target_spec)
 
         if instance is not None:
+            if self.headless:
+                raise UsageError('Cannot use alias on web CLI')
             if not allow_remote:
                 raise UsageError(
                     'Cannot execute command on a target on a remote instance. Please remove the instance reference (i.e. "prod::" in prod::worksheet//bundle)'
@@ -2597,6 +2601,14 @@ class BundleCLI(object):
     # CLI methods for worksheet-related commands follow!
     #############################################################################
 
+    def worksheet_url(self, worksheet_info):
+        return '%s%s%s (%s)' % (
+            self.manager.session()['address'],
+            WORKSHEETS_URL_SEPARATOR,
+            worksheet_info['uuid'],
+            worksheet_info['name'],
+        )
+
     def worksheet_str(self, worksheet_info):
         return '%s%s%s(%s)' % (
             self.manager.session()['address'],
@@ -2659,9 +2671,10 @@ class BundleCLI(object):
                 completer=UnionCompleter(WorksheetsCompleter, BundlesCompleter),
             ),
             Commands.Argument(
-                'dest_worksheet',
+                '--dest-worksheet',
                 help='Worksheet to which to add items (%s).' % WORKSHEET_SPEC_FORMAT,
                 completer=WorksheetsCompleter,
+                default='.',
             ),
             Commands.Argument(
                 '-d',
@@ -2771,8 +2784,8 @@ class BundleCLI(object):
                 if args.uuid_only:
                     print >>self.stdout, worksheet_info['uuid']
                 else:
-                    print >>self.stdout, 'Currently on worksheet %s.' % (
-                        self.worksheet_str(worksheet_info)
+                    print >>self.stdout, 'Currently on worksheet: %s' % (
+                        self.worksheet_url(worksheet_info)
                     )
             else:
                 print >>self.stdout, 'Not on any worksheet. Use `cl new` or `cl work` to switch to one.'
@@ -2795,7 +2808,7 @@ class BundleCLI(object):
 
         if verbose:
             worksheet_info = client.fetch('worksheets', worksheet_uuid)
-            print >>self.stdout, 'Switched to worksheet %s.' % (self.worksheet_str(worksheet_info))
+            print >>self.stdout, 'Switched to worksheet: %s' % (self.worksheet_url(worksheet_info))
 
     @Commands.command(
         'wedit',
