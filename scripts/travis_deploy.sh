@@ -13,7 +13,7 @@ fi
 if [ "$RELEASE" = "1" ]; then
   ./docker/build_images.sh $TAG -p
   ./docker/build_images.sh latest -p
-  ./upload_to_pypi.sh $TAG
+  ./scripts/upload_to_pypi.sh $TAG
 else
   ./docker/build_images.sh $TAG -p
 fi

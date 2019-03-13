@@ -52,14 +52,15 @@ jobs:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CI=false
       python: 2.7
       after_success: echo "skipped"
+      before_deploy:
+        - pip install twine
       deploy:
         # Build docker images using tag if it's a version tag (we're releasing)
         # Otherwise if we're on master or staging build named images
         - provider: script
           # Remove first char of tag (v) to get version number from tag
-          script: ./scripts/travis_deploy.sh ${$TRAVIS_TAG:1} release
+          script: ./scripts/travis_deploy.sh ${TRAVIS_TAG#?} release
           on:
-            branch: release
             # only build on valid semver tags
             tags: true
             condition: $TRAVIS_TAG =~ ^v[0-9]+\.[0-9]+\.[0-9]+
