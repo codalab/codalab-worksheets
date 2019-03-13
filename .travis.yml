@@ -50,8 +50,7 @@ jobs:
         - docker
       env:
         - CODALAB_USERNAME=codalab CODALAB_PASSWORD=testpassword CI=false
-      python:
-        - 2.7
+      python: 2.7
       after_success: echo "skipped"
       deploy:
         # Build docker images using tag if it's a version tag (we're releasing)
