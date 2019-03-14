@@ -1,0 +1,68 @@
+version: '3.5'
+
+x-codalab-home-mount:
+  &codalab-home-mount
+  type: bind
+  source: ${CODALAB_SERVICE_HOME}
+  target: ${CODALAB_SERVICE_HOME}
+
+x-codalab-bundles-mount:
+  &codalab-bundles-mount
+  type: bind
+  source: ${CODALAB_BUNDLE_STORE}
+  target: ${CODALAB_BUNDLE_STORE}
+
+services:
+  mysql:
+    image: mysql:5.5.53
+    environment:
+      - MYSQL_DATABASE=codalab_bundles
+      - MYSQL_USER=${CODALAB_MYSQL_USER}
+      - MYSQL_PASSWORD=${CODALAB_MYSQL_PWD}
+    volumes:
+      - ${CODALAB_MYSQL_MOUNT}/config/conf.d:/etc/mysql/conf.d
+      - ${CODALAB_MYSQL_MOUNT}/mysql:/var/lib/mysql
+
+  rest-server:
+    image: codalab/bundleserver:${CODALAB_VERSION}
+    command: server
+    ports:
+      - 2900:2900
+    environment:
+      - CODALAB_HOME=${CODALAB_SERVICE_HOME}
+      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
+      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+    volumes:
+      - *codalab-home-mount
+      - *codalab-bundles-mount
+      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
+    depends_on:
+      - mysql
+
+  bundle-manager:
+    image: codalab/bundleserver:${CODALAB_VERSION}
+    command: bundle-manager
+    environment:
+      - CODALAB_HOME=${CODALAB_SERVICE_HOME}
+      - CODALAB_USERNAME=${CODALAB_ROOT_USER}
+      - CODALAB_PASSWORD=${CODALAB_ROOT_PWD}
+    volumes:
+      - *codalab-home-mount
+      - *codalab-bundles-mount
+      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
+    depends_on:
+      - rest-server
+
+  frontend:
+    image: codalab/frontend:${CODALAB_VERSION}
+    ports:
+      - 2700:2700
+
+  nginx:
+    image: nginx:1.12.0
+    command: /data/bin/wait-for-it.sh rest-server:2900 -- nginx
+    ports:
+      - 80:80
+    volumes:
+      - ./files/config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./files/wait-for-it.sh:/data/bin/wait-for-it.sh
