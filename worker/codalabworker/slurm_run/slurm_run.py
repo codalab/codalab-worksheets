@@ -8,6 +8,7 @@ from codalabworker.bundle_state import State
 from codalabworker.bundle_state_objects import BundleInfo, RunResources, WorkerRun
 from codalabworker.file_util import get_path_size, remove_path
 from codalabworker.formatting import duration_str, size_str
+from codalabworker.slurm_run.slurm_run_manager import KILLED_STRING
 from codalabworker import docker_utils
 import docker
 import errno
@@ -26,8 +27,9 @@ def parse_args():
     parser.add_argument("--bundle-file", type=str)
     parser.add_argument("--resources-file", type=str)
     parser.add_argument("--state-file", type=str)
-    parser.add_argument("--commands-file", type=str)
-    parser.add_argument("--commands-lock-file", type=str)
+    parser.add_argument("--kill-command-file", type=str)
+    parser.add_argument("--docker-network-internal-name", type=str)
+    parser.add_argument("--docker-network-external-name", type=str)
     args = parser.parse_args()
     return args
 
@@ -38,18 +40,27 @@ def main():
     run.start()
 
 
+class KilledException(Exception):
+    def __str__(self):
+        return 'Bundle killed by server'
+
+    def __repr__(self):
+        return 'Bundle killed by server'
+
+
 class SlurmRun(object):
     def __init__(self, args):
         with open(args.bundle_file, "r") as infile:
             bundle_dict = json.load(infile)
             self.bundle = BundleInfo.from_dict(bundle_dict)
+            print("====BUNDLE=====")
+            print(self.bundle)
         with open(args.resources_file, "r") as infile:
             resources_dict = json.load(infile)
             self.resources = RunResources.from_dict(resources_dict)
 
         self.state_file = args.state_file
-        self.commands_file = args.commands_file
-        self.commands_lock_file = args.commands_lock_file
+        self.kill_command_file = args.kill_command_file
 
         self.run_state = WorkerRun(
             uuid=self.bundle.uuid,
@@ -62,10 +73,10 @@ class SlurmRun(object):
         self.docker_client = docker.from_env()
         self.docker_runtime = "nvidia" if self.resources.gpus else "runc"
         if self.resources.network:
-            self.docker_network_name = "codalab-external"
+            self.docker_network_name = args.docker_network_external_name
             internal = False
         else:
-            self.docker_network_name = "codalab-internal"
+            self.docker_network_name = args.docker_network_internal_name
             internal = True
         try:
             self.docker_client.networks.create(
@@ -81,29 +92,32 @@ class SlurmRun(object):
         self.resource_use = {"disk": 0, "time": 0, "memory": 0}
 
     def get_gpus(self):
-        try:
+        if self.resources.gpus > 0:
             self.gpus = subprocess.check_output('nvidia-smi --query-gpu=uuid --format=csv,noheader', shell=True).split('\n')[:-1]
-        except Exception as ex:
-            print(ex)
-            if self.resources.gpus > 0:
-                raise
+        else:
+            self.gpus = []
 
     def start(self):
         try:
             print("Run started")
             self.run_state.run_status = "Propagating resource requests"
+            print(self.run_state.run_status)
             self.write_state()
             self.get_gpus()
             self.run_state.run_status = "Pulling docker image {}".format(
                 self.resources.docker_image
             )
+            print(self.run_state.run_status)
             self.write_state()
             self.run_state.docker_image = self.pull_docker_image()
             self.run_state.run_status = "Preparing the filesystem"
+            print(self.run_state.run_status)
             self.write_state()
             self.wait_for_bundle_folder()
             self.container = self.start_container()
+            self.run_state.info['container_id'] = self.container.id
             self.run_state.run_status = "Running job in Docker"
+            print(self.run_state.run_status)
             self.run_state.state = State.RUNNING
             self.write_state()
             self.monitor_container()
@@ -113,19 +127,29 @@ class SlurmRun(object):
                 self.run_state.info['exitcode'] = '1'
             self.run_state.info['failure_message'] = str(ex)
             self.run_state.state = State.FINALIZING
-            self.killed = True
+            self.finished = True
             self.write_state()
             print("Run failed: {}".format(ex))
         self.run_state.run_status = "Execution finished. Cleaning up."
+        print(self.run_state.run_status)
         self.write_state()
         self.cleanup()
         self.run_state.run_status = "Run finished, finalizing"
+        print(self.run_state.run_status)
         self.run_state.state = State.FINALIZING
         self.write_state()
 
     def write_state(self):
         with open(self.state_file, "wb") as f:
             json.dump(self.run_state.__dict__, f)
+        if not self.killed:
+            with open(self.kill_command_file, 'r') as f:
+                if f.read() == KILLED_STRING:
+                    print("Kill message received")
+                    self.killed = True
+                    self.run_state.info['exitcode'] = 1
+                    self.run_state.info['failure_message'] = 'Kill requested'
+                    raise KilledException()
 
     def pull_docker_image(self):
         """
@@ -270,6 +294,10 @@ class SlurmRun(object):
             time.sleep(self.UPDATE_INTERVAL)
             self.finished, exitcode, failure_message = docker_utils.check_finished(self.container)
             kill_messages = check_resource_utilization()
+            try:
+                self.write_state()
+            except KilledException as ex:
+                kill_messages.append(str(ex))
             if kill_messages:
                 self.killed = True
                 self.run_state.info['exitcode'] = 1

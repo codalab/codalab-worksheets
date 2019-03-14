@@ -94,9 +94,8 @@ class Worker(object):
             action_type = response['type']
             logger.debug('Received %s message: %s', action_type, response)
             if action_type in ['read', 'netcat']:
-                run_state = self._run_manager.get_run(response['uuid'])
                 socket_id = response['socket_id']
-                if run_state is None:
+                if not self._run_manager.has_run(response['uuid']):
                     self.read_run_missing(socket_id)
                     return
             if action_type == 'run':
@@ -131,9 +130,7 @@ class Worker(object):
             self._bundle_service_reply(socket_id, err, message, data)
 
         try:
-            run_state = self._run_manager.get_run(uuid)
-            dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
-            self._run_manager.read(run_state, path, dep_paths, read_args, reply)
+            self._run_manager.read(uuid, path, read_args, reply)
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
@@ -146,8 +143,7 @@ class Worker(object):
             self._bundle_service_reply(socket_id, err, message, data)
 
         try:
-            run_state = self._run_manager.get_run(uuid)
-            self._run_manager.netcat(run_state, port, message, reply)
+            self._run_manager.netcat(uuid, port, message, reply)
         except BundleServiceException:
             traceback.print_exc()
         except Exception as e:
@@ -156,13 +152,10 @@ class Worker(object):
             reply(err)
 
     def _write(self, uuid, subpath, string):
-        run_state = self._run_manager.get_run(uuid)
-        dep_paths = set([dep['child_path'] for dep in run_state.bundle['dependencies']])
-        self._run_manager.write(run_state, subpath, dep_paths, string)
+        self._run_manager.write(uuid, subpath, string)
 
     def _kill(self, uuid):
-        run_state = self._run_manager.get_run(uuid)
-        self._run_manager.kill(run_state)
+        self._run_manager.kill(uuid)
 
     def _mark_finalized(self, uuid):
         self._run_manager.mark_finalized(uuid)
