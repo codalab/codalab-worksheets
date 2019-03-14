@@ -29,7 +29,7 @@ setup(
         'Visit https://worksheets.codalab.org/ or setup your own server by following the '
         'instructions in the Wiki (https://github.com/codalab/codalab-worksheets/wiki/Server-Setup).'
     ),
-    url='https://github.com/codalab/codalab-cli',
+    url='https://github.com/codalab/codalab-worksheets',
     author='CodaLab',
     author_email='codalab.worksheets@gmail.com',
     license='Apache License 2.0',

@@ -697,7 +697,7 @@ def test(ctx):
     check_contains(['README', 'INSTALL', 'FAQ'], run_command([cl, 'cat', uuid]))
 
     # Upload URL from Git
-    uuid = run_command([cl, 'upload', 'https://github.com/codalab/codalab-cli', '--git'])
+    uuid = run_command([cl, 'upload', 'https://github.com/codalab/codalab-worksheets', '--git'])
     check_contains(['README.md', 'codalab', 'scripts'], run_command([cl, 'cat', uuid]))
 
 

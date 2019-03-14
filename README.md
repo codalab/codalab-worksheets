@@ -1,5 +1,5 @@
 # CodaLab Worksheets
-[![Build Status](https://travis-ci.org/codalab/codalab-cli.svg?branch=master)](https://travis-ci.org/codalab/codalab-cli.svg?branch=master)
+[![Build Status](https://travis-ci.org/codalab/codalab-worksheets.svg?branch=master)](https://travis-ci.org/codalab/codalab-worksheets.svg?branch=master)
 [![Downloads](https://pepy.tech/badge/codalab)](https://pepy.tech/project/codalab)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
@@ -20,7 +20,7 @@ workflow.
 The CodaLab frontend holds the React front-end web interface for CodaLab worksheets.
 
 To get started visit [the official CodaLab Worksheets instance](https://worksheets.codalab.org/)
-For more information about the platform, visit [our Wiki](https://github.com/codalab/codalab-cli/wiki)
+For more information about the platform, visit [our Wiki](https://github.com/codalab/codalab-worksheets/wiki)
 
 If you're interested in contributing or setting up your own CodaLab Worksheets instance, [get in touch with us](mailto:codalab.worksheets@gmail.com)
 
@@ -28,4 +28,4 @@ If you're interested in contributing or setting up your own CodaLab Worksheets i
 ## Links
 
 * [Official CodaLab Worksheets Instance](https://worksheets.codalab.org/): live instance of CodaLab Worksheets
-* [CodaLab Worksheets Wiki](https://github.com/codalab/codalab-cli/wiki): all documentation
+* [CodaLab Worksheets Wiki](https://github.com/codalab/codalab-worksheets/wiki): all documentation
